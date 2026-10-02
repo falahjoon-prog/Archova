@@ -21,13 +21,14 @@ export async function readPdfText(
   bytes: Uint8Array,
   opts: { maxPages?: number } = {},
 ): Promise<{ pageCount: number; pages: PdfPageText[] }> {
-  const pdf = await getDocument({
+  const task = getDocument({
     data: new Uint8Array(bytes),
     useSystemFonts: false,
     standardFontDataUrl: STANDARD_FONTS,
     verbosity: 0,
-  }).promise;
+  });
   try {
+    const pdf = await task.promise;
     const limit = Math.min(pdf.numPages, opts.maxPages ?? MAX_PDF_PAGES);
     const pages: PdfPageText[] = [];
     for (let n = 1; n <= limit; n++) {
@@ -44,6 +45,6 @@ export async function readPdfText(
     }
     return { pageCount: pdf.numPages, pages };
   } finally {
-    await pdf.destroy();
+    await task.destroy();
   }
 }

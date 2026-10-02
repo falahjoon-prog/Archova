@@ -20,7 +20,7 @@
     "@archova/time": "workspace:*",
     "@aws-sdk/client-bedrock-runtime": "^3.1145.0",
     "drizzle-orm": "^0.45.2",
-    "pdfjs-dist": "^5.7.284"
+    "pdfjs-dist": "^6.2.108"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

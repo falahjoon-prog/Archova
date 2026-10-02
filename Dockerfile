@@ -27,12 +27,13 @@ COPY . .
 RUN pnpm turbo run build --filter=@archova/api --filter=@archova/web \
  && pnpm --filter @archova/tools exec node db/build.mjs
 
-# Only the API's native addon stays outside the bundle (apps/api/build.mjs).
+# The packages left outside the bundle (apps/api/build.mjs), at the versions the lockfile resolved.
 RUN mkdir -p /out/api \
  && cd /out/api \
  && ARGON2=$(node -p "require('/repo/apps/api/node_modules/@node-rs/argon2/package.json').version") \
+ && PDFJS=$(node -p "require('/repo/modules/ai/node_modules/pdfjs-dist/package.json').version") \
  && echo '{"name":"api-runtime","private":true,"type":"module"}' > package.json \
- && npm install --omit=dev --no-audit --no-fund "@node-rs/argon2@${ARGON2}" \
+ && npm install --omit=dev --no-audit --no-fund "@node-rs/argon2@${ARGON2}" "pdfjs-dist@${PDFJS}" \
  && cp -r /repo/apps/api/dist ./dist
 
 ADD --checksum=sha256:fe45bbebf92ad3e27a583bbb2ddd1553c521ed4d49af5514dc0a40372ea5395c \
