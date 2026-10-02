@@ -23,7 +23,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
-      - uses: hadolint/hadolint-action@v3.1.0
+      - uses: hadolint/hadolint-action@v3.5.0
         with:
           dockerfile: Dockerfile
           failure-threshold: warning
@@ -57,7 +57,7 @@ jobs:
           cache-to: type=gha,mode=max,scope=${{ matrix.target }}
           provenance: false
       - name: Trivy (fixable high and critical fail the build)
-        uses: aquasecurity/trivy-action@0.33.1
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: archova/${{ matrix.target }}:${{ env.TAG }}
           severity: HIGH,CRITICAL
