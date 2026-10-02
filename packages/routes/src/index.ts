@@ -30,6 +30,7 @@ export const webRoutes = {
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
   tenderPackages: (orgSlug: string, projectId: string) =>

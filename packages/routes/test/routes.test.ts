@@ -5,6 +5,7 @@ describe('webRoutes project tools', () => {
   it('builds tool URLs under the project and encodes segments', () => {
     expect(webRoutes.rfis('acme', 'prj_1')).toBe('/acme/projects/prj_1/rfis');
     expect(webRoutes.rfi('acme', 'prj_1', 'rfi 1')).toBe('/acme/projects/prj_1/rfis/rfi%201');
+    expect(webRoutes.newDefect('acme', 'prj_1')).toBe('/acme/projects/prj_1/defects/new');
     expect(webRoutes.drawing('acme', 'prj_1', 'sht_1')).toBe('/acme/projects/prj_1/drawings/sht_1');
     expect(webRoutes.drawing('acme', 'prj_1', 'sht_1', 'rev_2')).toBe(
       '/acme/projects/prj_1/drawings/sht_1?rev=rev_2',

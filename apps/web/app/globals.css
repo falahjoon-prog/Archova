@@ -782,3 +782,40 @@ section.diary-section .diary-section__summary {
   padding: var(--space-3) 0;
   background: var(--c-bg);
 }
+
+/* Defects */
+.bulk-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--c-action-primary);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.photo-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.photo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+@media (max-width: 900px) {
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
