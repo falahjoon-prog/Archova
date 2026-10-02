@@ -83,6 +83,8 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   [TITLEBLOCK_TASK]: 'ai.drawing_register.extract',
   // F33: the builder approves or rejects the draft here; edits happen in the induction editor (ai/12 §2 I1).
   'induction.draft': 'ai.induction.draft',
+  // F4: whoever can write the diary takes or discards the summary draft.
+  'diary.summary': 'diary.entries.write',
 };
 
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {

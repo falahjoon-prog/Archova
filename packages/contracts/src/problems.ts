@@ -89,6 +89,7 @@ export const PROBLEM_CODES = {
   'rfi_response.not_found': 422,
   'ai.induction.no_documents': 422,
   'ai.translation.language_unavailable': 422,
+  'ai.diary.nothing_to_summarise': 422,
   // diary
   'diary.not_found': 404,
   'diary.future_date': 422,
