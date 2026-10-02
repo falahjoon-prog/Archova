@@ -38,6 +38,12 @@ variable "expire_prefixes" {
   default     = {}
 }
 
+variable "object_lock_enabled" {
+  description = "Enable S3 Object Lock with no default retention, for per-object legal holds (the files bucket). Can only be set when the bucket is created."
+  type        = bool
+  default     = false
+}
+
 variable "object_lock_retention_days" {
   description = "Enable S3 Object Lock in compliance mode with this default retention (audit archive: 7 years). Null disables. Cannot be turned off later."
   type        = number

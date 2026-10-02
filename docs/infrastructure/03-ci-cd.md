@@ -1,6 +1,6 @@
 # 03 · CI/CD
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 ## 1. Principles
 
@@ -54,7 +54,7 @@ Target: **under 15 minutes wall clock** for a typical PR.
 
 | Job | When | Owner |
 |---|---|---|
-| Authenticated DAST (ZAP full scan) against staging with **two seeded tenants**, so cross-tenant access attempts are part of the scan (Sam 09 §7) | Weekly, results to Sam; **open high findings block production release** until fixed or formally accepted by Sam | Sam (findings), Owen (pipeline) |
+| Authenticated DAST (ZAP full scan) against staging with **two seeded tenants**, so cross-tenant access attempts are part of the scan (Sam 09 §7) | Weekly, results to Sam; **open high findings block production release** until fixed or formally accepted by Sam | Sam (findings), Jeff (pipeline) |
 | Fuzzing of upload parsing (PDF, images) and markup geometry input | Nightly, in the worker test suite | Ben, Quinn |
 | Full axe-core run across all Playwright journeys | Nightly | Quinn, Uma |
 | OWASP ASVS Level 2 checklist per module | Before each module ships; the module's release PR links the completed checklist and CI fails a release tag if the link is missing | Sam |
@@ -100,7 +100,7 @@ Rules:
 | JS-only fix | EAS Update to the matching runtime version's `production` channel, rolled out in the same 5% → 20% → 50% → 100% steps, with automatic rollback if crash-free sessions drop below 99.5% |
 
 - **API compatibility:** mobile apps in the field may be weeks old. The API keeps `/v1` backwards compatible, and the server can return a "minimum supported app version" so very old builds prompt an update. Mia owns the in-app handling.
-- **Signing keys** (Apple distribution certificate, Android upload key) are held by EAS credentials, with an offline encrypted backup held by john and Owen.
+- **Signing keys** (Apple distribution certificate, Android upload key) are held by EAS credentials, with an offline encrypted backup held by john and Jeff.
 
 ## 7. Infrastructure pipeline
 
@@ -110,7 +110,7 @@ Rules:
 | Merge | Apply to dev automatically; staging and prod apply after approval in a protected GitHub environment |
 | Nightly | Drift detection plan against all environments |
 
-The org layer (`infra/org`) is applied manually by Owen with a second reviewer, because mistakes there affect every account.
+The org layer (`infra/org`) is applied manually by Jeff with a second reviewer, because mistakes there affect every account.
 
 ## 8. Feature flags
 

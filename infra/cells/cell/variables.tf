@@ -205,7 +205,7 @@ variable "log_retention_days" {
 # --- CI/CD -----------------------------------------------------------------------------------------------------
 
 variable "ci" {
-  description = "GitHub Actions deploy role in this account (infrastructure/03). The OIDC provider comes from infra/bootstrap. Null skips it (e.g. loadtest, driven by Owen)."
+  description = "GitHub Actions deploy role in this account (infrastructure/03). The OIDC provider comes from infra/bootstrap. Null skips it (e.g. loadtest, driven by Jeff)."
   type = object({
     repository = optional(string, "falahjoon-prog/Archova")
   })

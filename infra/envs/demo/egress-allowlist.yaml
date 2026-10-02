@@ -3,7 +3,7 @@
 # infrastructure/01 §3.1, cross-team decisions X25, X28, X44.
 #
 # Every entry is an exact HTTPS hostname with an owner and a reason. Anything not listed is dropped and logged
-# by AWS Network Firewall, and an AI-looking drop pages Owen and Sam. Changes need review from Owen and Sam
+# by AWS Network Firewall, and an AI-looking drop pages Jeff and Sam. Changes need review from Jeff and Sam
 # (and Ari for kind: ai). `pnpm check:egress` fails CI if an AI endpoint outside Australia is added.
 #
 # kind: ai | integration | platform
@@ -31,7 +31,7 @@ restricted:
     reason: OCR, through the VPC endpoint.
   - host: sts.ap-southeast-2.amazonaws.com
     kind: platform
-    owner: Owen
+    owner: Jeff
     used_by: api, ai-worker
     reason: Assume a customer's BYO Bedrock role (X28); normally through the VPC endpoint.
 

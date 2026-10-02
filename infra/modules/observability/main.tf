@@ -165,9 +165,10 @@ resource "aws_cloudwatch_metric_alarm" "valkey_queue_memory" {
   tags                = var.tags
 }
 
-# --- AI egress blocked (X25): any drop from the restricted subnets pages Owen and Sam --------------------------
+# --- AI egress blocked (X25): any drop from the restricted subnets pages Jeff and Sam --------------------------
 
 resource "aws_cloudwatch_metric_alarm" "restricted_egress_blocked" {
+  count               = var.restricted_egress_metric == null ? 0 : 1 # no firewall in the demo
   alarm_name          = "${var.name}-restricted-egress-blocked"
   alarm_description   = "Network Firewall dropped egress from api or ai-worker to a host not on the allow-list. Check the alert log for the server name; an AI-looking host is a security incident (infrastructure/05 §4)."
   namespace           = var.restricted_egress_metric.namespace

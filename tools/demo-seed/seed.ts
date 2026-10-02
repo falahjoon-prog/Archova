@@ -4,7 +4,7 @@
 //
 // Env: SEED_APP_ORIGIN (e.g. https://demo.archova.com.au), SEED_PASSWORD (the demo login's password),
 // SEED_EMAIL (default demo@archova.com.au), SEED_NAME (default "Demo Builder").
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
 import { makePdf } from './pdf';
 
@@ -37,13 +37,24 @@ class Session {
       headers.origin = ORIGIN;
       if (this.csrf) headers['x-csrf-token'] = this.csrf;
     }
-    if (this.cookies.size)
-      headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
-    const res = await fetch(`${ORIGIN}${path}`, {
-      method,
-      headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
-    });
+    if (method === 'POST' && !headers['idempotency-key']) headers['idempotency-key'] = randomUUID();
+    let res: Response;
+    // Rate limits (Nova today, the WAF later) answer 429 with Retry-After; wait and send the same request again,
+    // with the same Idempotency-Key.
+    for (let attempt = 0; ; attempt++) {
+      if (this.cookies.size)
+        headers.cookie = [...this.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
+      res = await fetch(`${ORIGIN}${path}`, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      if (res.status !== 429 || attempt >= 4) break;
+      const wait = Math.min(Number(res.headers.get('retry-after')) || 5, 60);
+      console.log(`${method} ${path} rate limited; retrying in ${wait}s`);
+      await res.text();
+      await new Promise((r) => setTimeout(r, wait * 1000));
+    }
     for (const c of res.headers.getSetCookie()) {
       const [pair] = c.split(';');
       const i = pair!.indexOf('=');
@@ -108,9 +119,12 @@ for (const c of COMPANIES) {
   });
   company[c.key] = created.id;
 }
-const existingProjects = new Set(
-  (await s.ok<{ data: Array<{ name: string }> }>('GET', `${o()}/projects`)).data.map((p) => p.name),
+const existingProjects = new Map(
+  (await s.ok<{ data: Array<{ id: string; name: string }> }>('GET', `${o()}/projects`)).data.map(
+    (p) => [p.name, p.id],
+  ),
 );
+const projectIds: string[] = [];
 
 async function upload(projectId: string, module: string, filename: string, bytes: Uint8Array) {
   const sha256 = createHash('sha256').update(bytes).digest('hex');
@@ -126,12 +140,15 @@ async function upload(projectId: string, module: string, filename: string, bytes
 }
 
 for (const p of PROJECTS) {
-  if (existingProjects.has(p.name)) {
+  const existingId = existingProjects.get(p.name);
+  if (existingId) {
+    projectIds.push(existingId);
     console.log(`${p.name} already exists; skipped.`);
     continue;
   }
   const { sheets, documents, ...fields } = p;
   const project = await s.ok<{ id: string }>('POST', `${o()}/projects`, fields);
+  projectIds.push(project.id);
   const pp = `${o()}/projects/${project.id}`;
 
   // Documents in folders.
@@ -154,7 +171,7 @@ for (const p of PROJECTS) {
         lines: [d.title, `${p.name}, ${p.address.suburb} ${p.address.state}`],
       }),
     );
-    const doc = await s.ok<{ revisions: Array<{ id: string }> }>('POST', `${pp}/documents`, {
+    const doc = await s.ok<{ document: { id: string } }>('POST', `${pp}/documents`, {
       folderId: folders.get(d.folder),
       title: d.title,
       docNumber: d.docNumber,
@@ -162,7 +179,31 @@ for (const p of PROJECTS) {
       status: 'approved',
       revision: { rev: '1', fileId, issuedFor: 'Construction', issuedDate: p.startDate },
     });
-    docRevisionIds.push(doc.revisions[0]!.id);
+    // A second revision, so the register shows history (rev 1 superseded by rev 2).
+    const docId = doc.document.id;
+    const rev2File = await upload(
+      project.id,
+      'documents',
+      `${d.docNumber}-2.pdf`,
+      makePdf({
+        project: p.name,
+        number: d.docNumber,
+        title: d.title,
+        rev: '2',
+        lines: [d.title, 'Revision 2: updated after design coordination.'],
+      }),
+    );
+    const withRev2 = await s.ok<{ revisions: Array<{ id: string; rev: string }> }>(
+      'POST',
+      `${pp}/documents/${docId}/revisions`,
+      {
+        rev: '2',
+        fileId: rev2File,
+        issuedFor: 'Construction',
+        issuedDate: p.startDate,
+      },
+    );
+    docRevisionIds.push(withRev2.revisions.find((r) => r.rev === '2')!.id);
   }
 
   // A drawing set, published, with one markup on the ground floor plan.
@@ -193,29 +234,6 @@ for (const p of PROJECTS) {
     `${pp}/drawing-sets/${set.id}/publish`,
     { confirmNewSheets: true },
   );
-  const plan =
-    published.revisions.find((r) => r.sheetNumber === 'A-101') ?? published.revisions[0]!;
-  await s.ok('POST', `${pp}/drawing-revisions/${plan.id}/markups`, {
-    visibility: 'project',
-    shapes: [
-      {
-        id: 'c1',
-        kind: 'cloud',
-        from: { x: 0.32, y: 0.4 },
-        to: { x: 0.48, y: 0.55 },
-        color: '#d92d20',
-        strokeWidth: 2,
-      },
-      {
-        id: 't1',
-        kind: 'text',
-        at: { x: 0.5, y: 0.38 },
-        text: 'Confirm door swing to accessible WC',
-        color: '#d92d20',
-      },
-    ],
-  });
-
   // A transmittal of the drawing set to the architect.
   const t = await s.ok<{ transmittal: { id: string } }>('POST', `${pp}/transmittals`, {
     subject: `${p.number} drawings for coordination`,
@@ -245,9 +263,79 @@ for (const p of PROJECTS) {
       'if-match': s.etag ?? '',
     },
   );
-  console.log(
-    `Seeded ${p.name}: ${documents.length} documents, ${sheets.length} drawings, 1 transmittal`,
+  // Rev B of the ground floor plan, so the register shows a superseded sheet; the markups go on the current rev.
+  const setB = await s.ok<{ id: string }>('POST', `${pp}/drawing-sets`, {
+    name: 'Revision B',
+    issuedDate: p.startDate,
+    receivedDate: p.startDate,
+  });
+  const planSheet = sheets.find((sh) => sh.number === 'A-101') ?? sheets[0]!;
+  await s.ok('POST', `${pp}/drawing-sets/${setB.id}/revisions`, {
+    sheetNumber: planSheet.number,
+    title: planSheet.title,
+    discipline: planSheet.discipline,
+    rev: 'B',
+    issuedFor: p.status === 'tender' ? 'for_tender' : 'for_construction',
+    fileId: await upload(
+      project.id,
+      'drawings',
+      `${planSheet.number}-B.pdf`,
+      makePdf({
+        project: p.name,
+        number: planSheet.number,
+        title: planSheet.title,
+        rev: 'B',
+        lines: ['Rev B: accessible WC door relocated.'],
+      }),
+    ),
+    drawingDate: p.startDate,
+  });
+  const publishedB = await s.ok<{ revisions: Array<{ id: string; sheetNumber: string }> }>(
+    'POST',
+    `${pp}/drawing-sets/${setB.id}/publish`,
+    { confirmNewSheets: true },
   );
+  const plan = publishedB.revisions[0]!;
+  await s.ok('POST', `${pp}/drawing-revisions/${plan.id}/markups`, {
+    visibility: 'project',
+    shapes: [
+      {
+        id: 'c1',
+        kind: 'cloud',
+        from: { x: 0.32, y: 0.4 },
+        to: { x: 0.48, y: 0.55 },
+        color: '#d92d20',
+        strokeWidth: 2,
+      },
+      {
+        id: 'a1',
+        kind: 'arrow',
+        from: { x: 0.56, y: 0.36 },
+        to: { x: 0.47, y: 0.44 },
+        color: '#d92d20',
+        strokeWidth: 2,
+      },
+      {
+        id: 't1',
+        kind: 'text',
+        at: { x: 0.5, y: 0.34 },
+        text: 'Confirm door swing to accessible WC',
+        color: '#d92d20',
+      },
+    ],
+  });
+  console.log(
+    `Seeded ${p.name}: ${documents.length} documents (2 revisions each), ${sheets.length} drawings (A-101 at rev B), 1 transmittal`,
+  );
+}
+
+// Ask Nova answers only from indexed documents and drawings. Indexing is idempotent, so every run brings each
+// project up to date. A failure here (e.g. Bedrock not enabled yet) leaves the demo usable without Nova.
+for (const id of projectIds) {
+  const r = await s.call('POST', `${o()}/projects/${id}/ai/index`, {});
+  if (r.status >= 300)
+    console.warn(`Nova indexing of project ${id} -> ${r.status} ${JSON.stringify(r.json)}`);
+  else console.log(`Indexed project ${id} for Nova: ${JSON.stringify(r.json)}`);
 }
 
 console.log(`Done. Sign in at ${ORIGIN}/login as ${EMAIL}.`);

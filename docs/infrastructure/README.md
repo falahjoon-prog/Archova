@@ -1,6 +1,6 @@
 # Infrastructure and DevOps
 
-**Owner:** Owen (DevOps and Infrastructure) · **Status:** Draft v1 · **Last updated:** 2 Oct 2026
+**Owner:** Jeff (DevOps and Infrastructure) · **Status:** Draft v1 · **Last updated:** 2 Oct 2026
 **Builds on:** [architecture overview](../architecture/overview.md) and [cross-team decisions](../architecture/cross-team-decisions.md) (Ava), [backend design](../backend/README.md) (Ben), [plan](../../plans/plan.md)
 
 Documentation only, no code yet. This folder describes where the platform runs, how code gets from a pull request to production, how it scales to 100,000+ users, how we know it is healthy, how we recover when it is not, and what it costs.

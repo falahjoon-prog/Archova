@@ -34,7 +34,9 @@ locals {
         API_FILES_STORE  = "s3"
         API_FILES_BUCKET = module.files.id
         API_FILES_REGION = local.region
-        LOG_LEVEL        = "info"
+        # GuardDuty tags each upload in quarantine/ (malware.tf); needs Ben's guardduty adapter.
+        API_FILES_SCANNER = "guardduty"
+        LOG_LEVEL         = "info"
         # Nova on Bedrock in Sydney (X25); the model ids come from var.ai_models.
         API_AI_PROVIDER = "bedrock"
         API_AI_REGION   = local.region

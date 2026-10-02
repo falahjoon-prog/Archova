@@ -1,6 +1,6 @@
 # infra
 
-Terraform for Archova on AWS (owner: Owen). Design: [docs/infrastructure/](../docs/infrastructure/README.md), especially [01-cloud-setup.md](../docs/infrastructure/01-cloud-setup.md). Domain: **archova.com.au**.
+Terraform for Archova on AWS (owner: Jeff). Design: [docs/infrastructure/](../docs/infrastructure/README.md), especially [01-cloud-setup.md](../docs/infrastructure/01-cloud-setup.md). Domain: **archova.com.au**.
 
 Images are built from the root [Dockerfile](../Dockerfile) (targets `api`, `web`, `migrate`) by [images.yml](../.github/workflows/images.yml), which also scans them, writes an SBOM and, once AWS is ready, pushes and signs them.
 
@@ -44,7 +44,7 @@ Resource names: `archova-<env>-<cell>-<service>` (X24). Buckets add the account'
 
 `api` (and later `ai-worker`) run in the **restricted** subnets. Their only way out is AWS Network Firewall, which passes TLS to the exact hostnames in `envs/<env>/egress-allowlist.yaml` and drops and logs everything else; a drop pages on-call. The private subnets (web, workers) may reach anything except the AI vendor deny-list, and Route 53 DNS Firewall stops every subnet resolving those vendors. Bedrock is reached through a VPC endpoint whose policy allows only Sydney/Melbourne models and the AU inference profile; an SCP says the same org-wide.
 
-To change the list, edit the YAML in each environment and open a PR for Owen and Sam (and Ari for `kind: ai`). `pnpm check:egress` fails if an AI endpoint outside Australia, a wildcard, or an entry without an owner and reason is added.
+To change the list, edit the YAML in each environment and open a PR for Jeff and Sam (and Ari for `kind: ai`). `pnpm check:egress` fails if an AI endpoint outside Australia, a wildcard, or an entry without an owner and reason is added.
 
 ## First-time setup
 
@@ -77,7 +77,10 @@ until the first apply. Every later change goes through pull requests and the Inf
    `archova.com.au` and copy the four `ns-….awsdns-…` name servers. At the registrar where you bought the domain,
    open its DNS or name server settings, choose custom name servers, paste the four names and save. .au changes
    usually take effect within a few hours.
-8. **Images, then the demo.** Re-run _Images_ on `main` (it pushes the first images), then re-run _Infra_ and
+8. **Turn on Nova's models.** In the demo account, Sydney region: **Amazon Bedrock** → _Model access_ → enable
+   Claude Haiku 4.5, Claude Sonnet 5, Claude Opus 5.5 and Titan Text Embeddings V2. The cell uses their `au.`
+   inference profiles (Ari); check with `aws bedrock list-inference-profiles --region ap-southeast-2`.
+9. **Images, then the demo.** Re-run _Images_ on `main` (it pushes the first images), then re-run _Infra_ and
    approve `demo-infra`. The _Deploy_ workflow follows every image build on `main`: approve `demo` and it sets up
    the database roles, runs migrations, deploys, smoke-tests and seeds the sample builder.
 
@@ -90,32 +93,31 @@ is nothing else to copy. dev, staging and prod follow the same steps with their 
 `envs/demo` runs a working Archova at **demo.archova.com.au** (API on `api.demo.archova.com.au`) for john and pilot
 builders to click through. It holds synthetic data only: [tools/demo-seed](../tools/demo-seed) creates the
 sample builder _Harbour Line Constructions_ with three projects, companies, folders, documents, published drawing
-sets, a markup and a transmittal, through the public API. Sign in as `demo@archova.com.au` with `DEMO_PASSWORD`.
+sets with a superseded sheet, markups, a transmittal and Nova's index, through the public API. Sign in as `demo@archova.com.au` with `DEMO_PASSWORD`.
 
-It is the production design at the smallest size: two AZs (the ALB and Aurora need two), one NAT gateway, one
-firewall endpoint, interface endpoints in one AZ, Aurora Serverless v2 that pauses after an idle hour (the first
+It is the production design at the smallest size: two AZs (the ALB and Aurora need two), one NAT gateway and
+**no egress firewall** (john, 2 Oct 2026: sample data only; Nova is still held in Australia by DNS Firewall, the
+Bedrock endpoint policy and task IAM), interface endpoints in one AZ, Aurora Serverless v2 that pauses after an idle hour (the first
 click after that waits about 15 seconds), one `cache.t4g.micro` Valkey node, 0.5 vCPU api and web tasks, and a
 short blue/green canary.
 
 Estimated monthly cost, Sydney prices, light use (US$; A$ at about 1.55):
 
-| Item                                                                    |                US$/month |
-| ----------------------------------------------------------------------- | -----------------------: |
-| AWS Network Firewall, one endpoint (its NAT gateway hours are included) |                     ~290 |
-| Interface VPC endpoints, 9 in one AZ                                    |                      ~85 |
-| Fargate: api and web, 0.5 vCPU / 1 GB each, always on                   |                      ~30 |
-| Application Load Balancer                                               |                      ~25 |
-| CloudFront and two WAF web ACLs                                         |                      ~25 |
-| Aurora Serverless v2, pausing when idle, plus storage                   |                   ~15–40 |
-| Valkey `cache.t4g.micro`                                                |                      ~15 |
-| KMS keys, Secrets Manager, CloudWatch logs and alarms, Route 53         |                      ~30 |
-| shared-services: state, image registry (with Melbourne copy), DNS zone  |                      ~10 |
-| Nova on Bedrock (light demo use)                                        |                   ~10–50 |
-| **Total**                                                               | **~535–600 (A$830–930)** |
+| Item                                                                   |                US$/month |
+| ---------------------------------------------------------------------- | -----------------------: |
+| NAT gateway (one)                                                      |                      ~45 |
+| Interface VPC endpoints, 9 in one AZ                                   |                      ~85 |
+| Fargate: api and web, 0.5 vCPU / 1 GB each, always on                  |                      ~30 |
+| Application Load Balancer                                              |                      ~25 |
+| CloudFront and two WAF web ACLs                                        |                      ~25 |
+| Aurora Serverless v2, pausing when idle, plus storage                  |                   ~15–40 |
+| Valkey `cache.t4g.micro`                                               |                      ~15 |
+| KMS keys, Secrets Manager, CloudWatch logs and alarms, Route 53        |                      ~30 |
+| shared-services: state, image registry (with Melbourne copy), DNS zone |                      ~10 |
+| Nova on Bedrock (light demo use)                                       |                   ~10–50 |
+| **Total**                                                              | **~290–355 (A$450–550)** |
 
-Without the Network Firewall (a decision for john; AI would still be held in Australia by DNS Firewall, the
-Bedrock endpoint policy and IAM), add a NAT gateway (~US$45) and the total drops to about US$290–355
-(A$450–550).
+With the Network Firewall (as in dev, staging and prod) it would be about US$535–600 (A$830–930).
 
 ## Differences from the docs
 
@@ -128,16 +130,15 @@ Bedrock endpoint policy and IAM), add a NAT gateway (~US$45) and the total drops
 
 ## Not built yet
 
-| Item                                                                                                     | Where it lands                   |
-| -------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| Preview environments per PR, DAST (ZAP baseline) against the demo                                        | Next PR                          |
-| Secret rotation Lambdas for the app roles and Valkey                                                     | Next PR                          |
-| Nova model ids for `API_AI_MODEL_*` (the api needs them to start in production)                          | Ari                              |
-| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                           | As each app is built             |
-| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                | DR PR, before pilots             |
-| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                    | With the org rollout             |
-| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)        | Later PRs                        |
-| Malware scanning (the api needs it to start in production): GuardDuty Malware Protection for S3 proposed | Needs a decision (Ava, Ben, Sam) |
+| Item                                                                                                                                                                                                                 | Where it lands          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Preview environments per PR, DAST (ZAP baseline) against the demo                                                                                                                                                    | Next PR                 |
+| Secret rotation Lambdas for the app roles and Valkey                                                                                                                                                                 | Next PR                 |
+| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                                                                                                                                       | As each app is built    |
+| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                                                                                                                            | DR PR, before pilots    |
+| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                                                                                                                                | With the org rollout    |
+| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)                                                                                                                    | Later PRs               |
+| files-worker service and role (`archova-<env>-c1-files-worker`): moves THREATS_FOUND uploads to `threats/` (30-day hold), DeleteObjectVersion on `orgs/*/credentials/*` for the 7-day ID-image rule; legal-hold role | With Ben's files worker |
 
 ## What the application needs from infra (phase 0)
 

@@ -1,6 +1,6 @@
 # 02 · Environments
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 ## 1. Environment list
 
@@ -11,7 +11,7 @@
 | **dev** | Integration of `main`, always the latest code | `archova-dev` | CI on every merge to `main` | Seed data + synthetic tenants | Best effort, business hours |
 | **staging** | Production rehearsal: same topology, smaller sizes | `archova-staging` | CI, automatically after dev passes smoke tests | Synthetic data generated at production-like volume. **Never** real customer data | 99% |
 | **production** | Customers | `archova-prod` (cell 1) | CI, after manual approval | Real | 99.9% SLO |
-| **loadtest** | Load and soak tests, chaos drills | `archova-loadtest`, built on demand from the same Terraform | Owen | Synthetic, sized to the 100k target | Torn down after use |
+| **loadtest** | Load and soak tests, chaos drills | `archova-loadtest`, built on demand from the same Terraform | Jeff | Synthetic, sized to the 100k target | Torn down after use |
 
 There is no "UAT" environment. Pilot customers try new features in production behind feature flags, scoped to their org.
 

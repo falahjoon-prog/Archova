@@ -1,6 +1,6 @@
 # 04 · Scaling and load targets
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 **Builds on:** Ava's [scaling.md](../architecture/scaling.md) (capacity model, cells) and Ben's [07-scaling-and-operations.md](../backend/07-scaling-and-operations.md). If numbers here differ from Ava's, hers win and this doc is updated.
 
 ## 1. Load model at the 100k-user target

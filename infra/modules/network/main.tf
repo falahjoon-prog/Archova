@@ -32,11 +32,14 @@ locals {
   firewall_index = [for i in range(var.az_count) : var.firewall_endpoint_count >= var.az_count ? i : 0]
 
 
+  firewall_enabled  = var.firewall_endpoint_count > 0
+  firewall_az_count = local.firewall_enabled ? var.az_count : 0
+
   # AZ name -> firewall endpoint id, from the firewall's sync states.
-  firewall_endpoints = {
-    for s in aws_networkfirewall_firewall.this.firewall_status[0].sync_states :
+  firewall_endpoints = local.firewall_enabled ? {
+    for s in aws_networkfirewall_firewall.this[0].firewall_status[0].sync_states :
     s.availability_zone => s.attachment[0].endpoint_id
-  }
+  } : {}
 
   tags = merge(var.tags, { "archova:component" = "network" })
 }
@@ -79,7 +82,7 @@ resource "aws_subnet" "nat" {
 }
 
 resource "aws_subnet" "firewall" {
-  count             = var.az_count
+  count             = local.firewall_az_count
   vpc_id            = aws_vpc.this.id
   cidr_block        = local.firewall_cidrs[count.index]
   availability_zone = local.azs[count.index]
@@ -168,14 +171,14 @@ resource "aws_route" "nat_internet" {
 }
 
 resource "aws_route" "nat_return_private" {
-  count                  = var.az_count
+  count                  = local.firewall_az_count
   route_table_id         = aws_route_table.nat.id
   destination_cidr_block = local.private_cidrs[count.index]
   vpc_endpoint_id        = local.firewall_endpoints[local.azs[local.firewall_index[count.index]]]
 }
 
 resource "aws_route" "nat_return_restricted" {
-  count                  = var.az_count
+  count                  = local.firewall_az_count
   route_table_id         = aws_route_table.nat.id
   destination_cidr_block = local.restricted_cidrs[count.index]
   vpc_endpoint_id        = local.firewall_endpoints[local.azs[local.firewall_index[count.index]]]
@@ -189,25 +192,26 @@ resource "aws_route_table_association" "nat" {
 
 # Firewall subnets: inspected traffic continues to a NAT gateway.
 resource "aws_route_table" "firewall" {
-  count  = var.az_count
+  count  = local.firewall_az_count
   vpc_id = aws_vpc.this.id
   tags   = merge(local.tags, { Name = "${var.name}-firewall-${local.azs[count.index]}" })
 }
 
 resource "aws_route" "firewall_nat" {
-  count                  = var.az_count
+  count                  = local.firewall_az_count
   route_table_id         = aws_route_table.firewall[count.index].id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.this[local.nat_index[count.index]].id
 }
 
 resource "aws_route_table_association" "firewall" {
-  count          = var.az_count
+  count          = local.firewall_az_count
   subnet_id      = aws_subnet.firewall[count.index].id
   route_table_id = aws_route_table.firewall[count.index].id
 }
 
-# Private and restricted subnets: everything leaving the VPC goes to the firewall endpoint.
+# Private and restricted subnets: everything leaving the VPC goes to the firewall endpoint, or straight to the NAT
+# when the firewall is left out (demo only).
 resource "aws_route_table" "private" {
   count  = var.az_count
   vpc_id = aws_vpc.this.id
@@ -218,7 +222,8 @@ resource "aws_route" "private_egress" {
   count                  = var.az_count
   route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  vpc_endpoint_id        = local.firewall_endpoints[local.azs[local.firewall_index[count.index]]]
+  vpc_endpoint_id        = local.firewall_enabled ? local.firewall_endpoints[local.azs[local.firewall_index[count.index]]] : null
+  nat_gateway_id         = local.firewall_enabled ? null : aws_nat_gateway.this[local.nat_index[count.index]].id
 }
 
 resource "aws_route_table_association" "private" {
@@ -237,7 +242,8 @@ resource "aws_route" "restricted_egress" {
   count                  = var.az_count
   route_table_id         = aws_route_table.restricted[count.index].id
   destination_cidr_block = "0.0.0.0/0"
-  vpc_endpoint_id        = local.firewall_endpoints[local.azs[local.firewall_index[count.index]]]
+  vpc_endpoint_id        = local.firewall_enabled ? local.firewall_endpoints[local.azs[local.firewall_index[count.index]]] : null
+  nat_gateway_id         = local.firewall_enabled ? null : aws_nat_gateway.this[local.nat_index[count.index]].id
 }
 
 resource "aws_route_table_association" "restricted" {

@@ -1,6 +1,6 @@
 # 06 · Backups and disaster recovery
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 ## 1. Recovery targets
 
@@ -33,7 +33,7 @@ The jump in region-loss targets at phase 3 is deliberate. Before payment claims 
 | Container images (ECR) | Managed | Replicated to Melbourne | Last 50 images per service, all images ever deployed to prod for 1 year | 2 regions |
 | Terraform state | S3 versioning + DynamoDB lock | Replicated to Melbourne | All versions 1 year | 2 regions |
 | Source code | GitHub | Nightly mirror to an S3 bucket (`git bundle`) in `shared-services` | 90 days | 2 providers |
-| Mobile signing keys | EAS credentials | Encrypted offline copy held by john and Owen | — | — |
+| Mobile signing keys | EAS credentials | Encrypted offline copy held by john and Jeff | — | — |
 
 **Why the outbox matters for DR:** domain events live in Postgres (Ava D7) and scheduled SOPA jobs are re-derived from the database by the scheduler, so losing Valkey loses at most in-flight jobs, which are re-enqueued from the database state after recovery. Ben's job design must keep every job idempotent and re-creatable for this to hold.
 

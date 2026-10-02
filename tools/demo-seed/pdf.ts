@@ -23,6 +23,10 @@ export function makePdf(opts: {
     text(885, 55, 22, opts.number),
     text(1095, 55, 14, `REV ${opts.rev}`),
     text(885, 32, 8, 'Synthetic demo drawing. Not for construction.'),
+    text(1095, 115, 9, 'SCALE 1:100 @ A3'), // Felix's Measure tool reads the scale from the title block
+    // A simple vector floor plan: outer walls, two internal walls and a door opening.
+    '2 w 80 200 m 820 200 l 820 700 l 80 700 l h S',
+    '1.5 w 400 200 m 400 420 l S 400 480 m 400 700 l S 400 450 m 820 450 l S',
     ...(opts.lines ?? []).map((l, i) => text(60, 760 - i * 22, 12, l)),
   ].join('\n');
 

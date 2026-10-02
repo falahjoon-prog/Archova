@@ -1,6 +1,6 @@
 # 05 · Monitoring, alerting and incident response
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 ## 1. Stack
 
@@ -37,12 +37,12 @@ Tail sampling in the collector: keep 100% of traces with errors or latency above
 |---|---|---|
 | **Service health overview** | SLOs and error-budget burn per service, request rate, 5xx rate, p95/p99, deploy markers | Everyone, on the team screen |
 | Per service (api, web, realtime, each worker group, ai-worker) | RED metrics, task count vs autoscaling target, CPU/memory, restarts | Owners |
-| Database | Writer/reader CPU, connections (proxy and DB), replica lag, slow queries (Performance Insights), deadlocks, storage growth, top queries by tenant | Ben, Owen |
-| Queues and jobs | Backlog, oldest job age, failure rate, dead-letter count per queue; SOPA scheduler last-run | Ben, Owen |
+| Database | Writer/reader CPU, connections (proxy and DB), replica lag, slow queries (Performance Insights), deadlocks, storage growth, top queries by tenant | Ben, Jeff |
+| Queues and jobs | Backlog, oldest job age, failure rate, dead-letter count per queue; SOPA scheduler last-run | Ben, Jeff |
 | Mobile | Crash-free sessions and users per app version, sync success rate, sync duration, OTA adoption | Mia |
 | Web | Core Web Vitals (LCP, INP, CLS) by route, JS error rate | Felix |
 | AI | Requests, latency, token usage, cost per day and per tenant tier, guardrail blocks, error rate by model | Ari |
-| Cost | Daily spend by service and `cost-centre` tag, forecast vs budget | john, Owen |
+| Cost | Daily spend by service and `cost-centre` tag, forecast vs budget | john, Jeff |
 | Security | WAF blocks, auth failures, GuardDuty findings, unusual admin activity | Sam |
 
 ## 4. Alerting
@@ -60,8 +60,8 @@ Alerts route through **PagerDuty** (or incident.io; decide at setup). Two classe
 | Critical queue stuck | Oldest job in `notifications`, `email`, `sopa`, or `sync` older than 10 min |
 | Database | Writer unavailable, failover occurred, replica lag > 30 s, free storage/ACU or connection saturation > 90% |
 | Valkey (queue cluster) | Memory > 85% (queue cluster is `noeviction`, so full means rejected jobs), failover |
-| Security high | GuardDuty high-severity finding, root/break-glass login, CloudTrail disabled attempt (routes to Sam and Owen) |
-| AI egress blocked | Network Firewall dropped traffic from the restricted subnets (api, ai-worker) to an AI-related domain not on the allow-list, or any decrypt of the BYO AI-provider KMS key by an unexpected principal (routes to Sam and Owen) |
+| Security high | GuardDuty high-severity finding, root/break-glass login, CloudTrail disabled attempt (routes to Sam and Jeff) |
+| AI egress blocked | Network Firewall dropped traffic from the restricted subnets (api, ai-worker) to an AI-related domain not on the allow-list, or any decrypt of the BYO AI-provider KMS key by an unexpected principal (routes to Sam and Jeff) |
 | Backup failure | AWS Backup job failed for prod Aurora or the cross-region copy failed twice in a row |
 
 ### Tickets
@@ -75,7 +75,7 @@ SLO slow burn (≥ 2× over 24 h), dead-letter queue non-empty, certificate expi
 - **Nova checks** (Ari, [ai/06 §9](../ai/06-evaluation.md)): after every deploy **and hourly**, known questions with expected citations, one task per Nova feature, and canary queries from the second synthetic org, all through the full gateway and the AU-only egress path. Ari supplies the synthetic data and expected answers.
 - **Paging:** any cross-tenant canary hit (AI or otherwise) pages the on-call immediately as a SEV1 security incident, with Sam; a failed known-answer check opens a ticket for Ari, or pages if more than one feature fails at once.
 
-Data it creates is cleaned up by the checks themselves and by a nightly purge. Ari owns the AI scenarios; Owen owns the tenant, schedules and alerting.
+Data it creates is cleaned up by the checks themselves and by a nightly purge. Ari owns the AI scenarios; Jeff owns the tenant, schedules and alerting.
 
 Run from CloudWatch Synthetics in Sydney every 5 minutes (login every minute), against the synthetic tenant:
 
@@ -91,7 +91,7 @@ One external uptime check (e.g. Better Stack or similar, outside AWS) hits the l
 
 | Stage | Coverage |
 |---|---|
-| Pre-launch / pilots | Business hours (7am–7pm AEST), Owen primary, Ben secondary; best effort after hours |
+| Pre-launch / pilots | Business hours (7am–7pm AEST), Jeff primary, Ben secondary; best effort after hours |
 | First paying customers | 24/7 rotation, weekly shifts, at least 4 engineers in the rotation; primary + secondary |
 | Escalation | Primary (5 min ack) → secondary (15 min) → Ava → john for customer communication |
 

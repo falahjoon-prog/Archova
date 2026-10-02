@@ -1,6 +1,6 @@
 # demo: a working Archova at demo.archova.com.au with synthetic sample projects, for john and pilot builders to
 # click through. Synthetic data only, never customer data. Sized for cost, not resilience: two AZs (ALB and
-# Aurora need two), one NAT, one firewall endpoint, interface endpoints in one AZ, Aurora Serverless v2 that
+# Aurora need two), one NAT and no egress firewall, interface endpoints in one AZ, Aurora Serverless v2 that
 # pauses when idle, one small Valkey node and the smallest Fargate tasks. Its own account (archova-demo).
 
 data "aws_route53_zone" "apex" {
@@ -26,7 +26,7 @@ module "cell" {
   vpc_cidr                    = "10.50.0.0/16"
   az_count                    = 2
   nat_gateway_count           = 1
-  firewall_endpoint_count     = 1
+  firewall_endpoint_count     = 0 # no egress firewall: sample data only (john, 2 Oct 2026); DNS Firewall stays
   interface_endpoint_az_count = 1
   egress_allowlist            = yamldecode(file("${path.module}/egress-allowlist.yaml"))
 
@@ -61,6 +61,14 @@ module "cell" {
   services = {
     api = { cpu = 512, memory = 1024, min = 1, max = 2, desired = 1, deployment = local.quick_deploy }
     web = { cpu = 512, memory = 1024, min = 1, max = 2, desired = 1, deployment = local.quick_deploy }
+  }
+
+  # Bedrock AU inference profiles (Ari, 2 Oct 2026). Sonnet 5.5 has no au. profile, so standard is Sonnet 5.
+  # Confirm with `aws bedrock list-inference-profiles --region ap-southeast-2` and enable model access first.
+  ai_models = {
+    fast     = "au.anthropic.claude-haiku-4-5-20251001-v1:0"
+    standard = "au.anthropic.claude-sonnet-5"
+    advanced = "au.anthropic.claude-opus-5-5"
   }
 
   enable_execute_command = false
