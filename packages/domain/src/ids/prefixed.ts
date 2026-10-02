@@ -38,6 +38,13 @@ export const ID_PREFIXES = {
   diaryEvent: 'dev',
   diaryStandDown: 'dsd',
   diaryAmendment: 'dam',
+  workforceSite: 'wst',
+  gate: 'wgt',
+  worker: 'wkr',
+  attendanceSession: 'ats',
+  attendanceEvent: 'ate',
+  rollCall: 'rlc',
+  eligibilityCheck: 'elc',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: sync
   - name: diary
+  - name: workforce
 paths:
   /v1/auth/signup:
     post:
@@ -2336,6 +2337,454 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/sites:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAttendanceSites
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'Sign-in sites on the project, with their gates.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceSiteList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createAttendanceSite
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Add a sign-in site (a project can have several, e.g. stages).'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAttendanceSiteRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceSite' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/sites/{siteId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: siteId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateAttendanceSite
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Change a site’s day end, gate check mode (block or warn) or boundary.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAttendanceSiteRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceSite' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/sites/{siteId}/gates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: siteId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: createGate
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Add a gate and issue its QR code. The code is shown only in this response.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGateRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GateWithCode' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/gates/{gateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: gateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wgt_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateGate
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Rename a gate or close it.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Gate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/gates/{gateId}/reissue:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: gateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wgt_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: reissueGateCode
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Revoke the gate code and issue a new one (ATT-AC1); printed posters with the old code stop working.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GateWithCode' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/workers:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listWorkers
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.workers.manage
+      summary: 'Workers, visitors and delivery drivers known to this builder. Subcontractors see their own company only.'
+      parameters:
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+        - { name: kind, in: query, schema: { type: string, enum: [worker, visitor, delivery] } }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWorker
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.workers.manage
+      summary: 'Add a worker, visitor or delivery driver.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkerRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Worker' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: workerId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateWorker
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.workers.manage
+      summary: 'Change a worker. Picking a directory company confirms an "other" company typed at the gate (ATT-AC2).'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateWorkerRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Worker' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/sign-in:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: signInSelf
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Sign yourself in by scanning a gate code.'
+      description: 'Asks the compliance check first. A blocked sign-in is recorded and returns `outcome: blocked` with the reasons (ATT-AC7).'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SelfSignInRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SignInResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: signOutSelf
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Sign yourself out.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SelfSignOutRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceSession' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/events:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: recordAttendance
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Sign someone in or out from a tablet at the gate (ATT-US6), or let a blocked worker in with a reason.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordAttendanceRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SignInResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/on-site:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getOnSite
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'Who is on site now, by company (ATT-US2).'
+      parameters:
+        - { name: siteId, in: query, schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OnSite' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/sessions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAttendanceSessions
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: "A day's sign-in records (ATT-AC8)."
+      parameters:
+        - { name: date, in: query, required: true, schema: { type: string, format: date } }
+        - { name: siteId, in: query, schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' } }
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AttendanceSessionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: startRollCall
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Start an evacuation roll call from who is on site now (ATT-AC5).'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartRollCallRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCall' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getRollCall
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'A roll call with everyone’s latest mark.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCall' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/marks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: markRollCall
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'Tick someone accounted for, missing or not on site. Marks are kept in order as the record.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MarkRollCallRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCall' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/end:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: rollCallId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: endRollCall
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'End the roll call.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCall' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -4562,3 +5011,338 @@ components:
           minLength: 1
           maxLength: 1000
           description: Required once the day is submitted; recorded with the amendment (X42).
+    SiteBoundary:
+      type: object
+      additionalProperties: false
+      required: [lat, lng, radiusM]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        radiusM: { type: integer, minimum: 10, maximum: 10000 }
+    Gate:
+      type: object
+      required: [id, siteId, name, qrVersion, active, version]
+      properties:
+        id: { type: string, pattern: '^wgt_[0-9A-Za-z]{26}$' }
+        siteId: { type: string }
+        name: { type: string }
+        qrVersion: { type: integer, description: Goes up each time the code is reissued. }
+        active: { type: boolean }
+        version: { type: integer }
+    GateWithCode:
+      type: object
+      required: [gate, code]
+      properties:
+        gate: { $ref: '#/components/schemas/Gate' }
+        code:
+          type: string
+          description: The secret printed on the gate poster as a QR. Shown only once; reissue to get a new one.
+    AttendanceSite:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          boundary,
+          dayEndLocal,
+          gateCheckMode,
+          active,
+          gates,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        name: { type: string }
+        boundary:
+          description: A custom geofence; `null` uses the project's site location.
+          oneOf: [{ $ref: '#/components/schemas/SiteBoundary' }, { type: 'null' }]
+        dayEndLocal:
+          {
+            type: string,
+            description: 'Open sign-ins close automatically at this site time (ATT-AC4).',
+          }
+        gateCheckMode: { type: string, enum: [block, warn] }
+        active: { type: boolean }
+        gates: { type: array, items: { $ref: '#/components/schemas/Gate' } }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    AttendanceSiteList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AttendanceSite' } }
+    CreateAttendanceSiteRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        boundary: { oneOf: [{ $ref: '#/components/schemas/SiteBoundary' }, { type: 'null' }] }
+        dayEndLocal: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        gateCheckMode: { type: string, enum: [block, warn] }
+    UpdateAttendanceSiteRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        boundary: { oneOf: [{ $ref: '#/components/schemas/SiteBoundary' }, { type: 'null' }] }
+        dayEndLocal: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        gateCheckMode: { type: string, enum: [block, warn] }
+        active: { type: boolean }
+    CreateGateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+    UpdateGateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        active: { type: boolean }
+    Worker:
+      type: object
+      required:
+        [id, userId, companyId, companyNameOther, fullName, phone, email, kind, status, version]
+      properties:
+        id: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        userId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        companyNameOther:
+          type: [string, 'null']
+          description: A company typed at the gate, waiting for the site manager to confirm.
+        fullName: { type: string }
+        phone:
+          {
+            type: [string, 'null'],
+            description: Shown to site managers and the worker's own company.,
+          }
+        email: { type: [string, 'null'] }
+        kind: { type: string, enum: [worker, visitor, delivery] }
+        status: { type: string, enum: [active, inactive] }
+        version: { type: integer }
+    WorkerList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Worker' } }
+    CreateWorkerRequest:
+      type: object
+      additionalProperties: false
+      required: [fullName]
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        companyNameOther: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        phone: { type: [string, 'null'], maxLength: 30 }
+        email: { type: [string, 'null'], format: email, maxLength: 320 }
+        kind: { type: string, enum: [worker, visitor, delivery] }
+    UpdateWorkerRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        fullName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        companyNameOther: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        phone: { type: [string, 'null'], maxLength: 30 }
+        email: { type: [string, 'null'], format: email, maxLength: 320 }
+        kind: { type: string, enum: [worker, visitor, delivery] }
+        status: { type: string, enum: [active, inactive] }
+    AttendanceSession:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          siteId,
+          workerId,
+          companyId,
+          localDate,
+          signedInAt,
+          signedOutAt,
+          minutes,
+          status,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^ats_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        siteId: { type: string }
+        workerId: { type: string }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        localDate: { type: string, format: date }
+        signedInAt: { type: string, format: date-time }
+        signedOutAt: { type: [string, 'null'], format: date-time }
+        minutes: { type: [integer, 'null'] }
+        status:
+          type: string
+          enum: [on_site, off_site, auto_closed, disputed]
+          description: "`auto_closed` hours ended at the site's day end and are not exact (ATT-AC4)."
+        version: { type: integer }
+    AttendanceEntry:
+      type: object
+      required: [session, worker]
+      properties:
+        session: { $ref: '#/components/schemas/AttendanceSession' }
+        worker: { $ref: '#/components/schemas/Worker' }
+    AttendanceSessionList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AttendanceEntry' } }
+    OnSite:
+      type: object
+      required: [total, companies, people]
+      properties:
+        total: { type: integer }
+        companies:
+          type: array
+          items:
+            type: object
+            required: [companyId, companyNameOther, count]
+            properties:
+              companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+              companyNameOther: { type: [string, 'null'] }
+              count: { type: integer }
+        people: { type: array, items: { $ref: '#/components/schemas/AttendanceEntry' } }
+    EligibilityReason:
+      type: object
+      required: [code, blocking]
+      additionalProperties: true
+      properties:
+        code:
+          {
+            type: string,
+            description: 'e.g. `worker.inactive`, `company.unconfirmed`, `induction.missing`',
+          }
+        blocking: { type: boolean }
+    EligibilityCheck:
+      type: object
+      required: [id, result, answeredBy, reasons, checkedAt]
+      properties:
+        id: { type: string, pattern: '^elc_[0-9A-Za-z]{26}$' }
+        result: { type: string, enum: [eligible, blocked, warning] }
+        answeredBy: { type: string, enum: [workforce, wallet] }
+        reasons: { type: array, items: { $ref: '#/components/schemas/EligibilityReason' } }
+        checkedAt: { type: string, format: date-time }
+    SignInResult:
+      type: object
+      required: [outcome, eligibility, session, worker]
+      properties:
+        outcome:
+          type: string
+          enum: [accepted, blocked, overridden, already_on_site, signed_out]
+          description: '`blocked`: show "See the site office before starting work" (ATT-AC7). The attempt is recorded.'
+        eligibility:
+          { oneOf: [{ $ref: '#/components/schemas/EligibilityCheck' }, { type: 'null' }] }
+        session: { oneOf: [{ $ref: '#/components/schemas/AttendanceSession' }, { type: 'null' }] }
+        worker: { $ref: '#/components/schemas/Worker' }
+    SelfSignInRequest:
+      type: object
+      additionalProperties: false
+      required: [gateCode]
+      properties:
+        gateCode: { type: string, minLength: 10, maxLength: 100 }
+        clientAt:
+          {
+            type: string,
+            format: date-time,
+            description: Device time of the scan; later than the server's clock is ignored.,
+          }
+        location: { $ref: '#/components/schemas/GeoFix' }
+        offline:
+          { type: boolean, description: The scan was queued on the phone with no signal (ATT-AC9). }
+    SelfSignOutRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        gateCode: { type: string, minLength: 10, maxLength: 100 }
+        clientAt: { type: string, format: date-time }
+    RecordAttendanceRequest:
+      type: object
+      additionalProperties: false
+      required: [workerId, kind]
+      properties:
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        kind: { type: string, enum: [sign_in, sign_out] }
+        clientAt: { type: string, format: date-time }
+        overrideReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: Lets a blocked worker in; needs `workforce.attendance.override` and is kept on the record.
+    RollCallPerson:
+      type: object
+      required:
+        [
+          workerId,
+          fullName,
+          phone,
+          companyId,
+          companyNameOther,
+          siteId,
+          signedInAt,
+          status,
+          markedAt,
+          markedBy,
+        ]
+      properties:
+        workerId: { type: string }
+        fullName: { type: string }
+        phone: { type: [string, 'null'] }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        companyNameOther: { type: [string, 'null'] }
+        siteId: { type: [string, 'null'] }
+        signedInAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: '`null` for someone marked who was not on the list.',
+          }
+        status: { type: string, enum: [unmarked, accounted_for, missing, not_on_site] }
+        markedAt: { type: [string, 'null'], format: date-time }
+        markedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+    RollCall:
+      type: object
+      required: [id, projectId, siteId, reason, startedAt, startedBy, endedAt, counts, people]
+      properties:
+        id: { type: string, pattern: '^rlc_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        siteId: { type: [string, 'null'] }
+        reason: { type: string }
+        startedAt: { type: string, format: date-time }
+        startedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        endedAt: { type: [string, 'null'], format: date-time }
+        counts:
+          type: object
+          required: [total, accountedFor, missing, unmarked]
+          properties:
+            total: { type: integer }
+            accountedFor: { type: integer }
+            missing: { type: integer }
+            unmarked: { type: integer }
+        people:
+          description: Sorted by company, then name.
+          type: array
+          items: { $ref: '#/components/schemas/RollCallPerson' }
+    StartRollCallRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    MarkRollCallRequest:
+      type: object
+      additionalProperties: false
+      required: [workerId, status]
+      properties:
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        status: { type: string, enum: [accounted_for, missing, not_on_site] }

@@ -107,6 +107,89 @@ export const AiUsageSchema = z.object({
 });
 export type AiUsage = z.infer<typeof AiUsageSchema>;
 
+export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
+export type CompanyRef = z.infer<typeof CompanyRefSchema>;
+
+export const AttendanceSessionSchema = z.object({
+  "id": z.string().regex(new RegExp("^ats_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "siteId": z.string(),
+  "workerId": z.string(),
+  "companyId": z.union([CompanyRefSchema, z.null()]),
+  "localDate": z.string().date(),
+  "signedInAt": z.string().datetime({ offset: true }),
+  "signedOutAt": z.string().datetime({ offset: true }).nullable(),
+  "minutes": z.number().int().nullable(),
+  "status": z.enum(["on_site", "off_site", "auto_closed", "disputed"]),
+  "version": z.number().int(),
+});
+export type AttendanceSession = z.infer<typeof AttendanceSessionSchema>;
+
+export const UserRefSchema = z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$"));
+export type UserRef = z.infer<typeof UserRefSchema>;
+
+export const WorkerSchema = z.object({
+  "id": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "userId": z.union([UserRefSchema, z.null()]),
+  "companyId": z.union([CompanyRefSchema, z.null()]),
+  "companyNameOther": z.string().nullable(),
+  "fullName": z.string(),
+  "phone": z.string().nullable(),
+  "email": z.string().nullable(),
+  "kind": z.enum(["worker", "visitor", "delivery"]),
+  "status": z.enum(["active", "inactive"]),
+  "version": z.number().int(),
+});
+export type Worker = z.infer<typeof WorkerSchema>;
+
+export const AttendanceEntrySchema = z.object({
+  "session": AttendanceSessionSchema,
+  "worker": WorkerSchema,
+});
+export type AttendanceEntry = z.infer<typeof AttendanceEntrySchema>;
+
+export const AttendanceSessionListSchema = z.object({
+  "data": z.array(AttendanceEntrySchema),
+});
+export type AttendanceSessionList = z.infer<typeof AttendanceSessionListSchema>;
+
+export const SiteBoundarySchema = z.object({
+  "lat": z.number().min(-90).max(90),
+  "lng": z.number().min(-180).max(180),
+  "radiusM": z.number().int().min(10).max(10000),
+}).strict();
+export type SiteBoundary = z.infer<typeof SiteBoundarySchema>;
+
+export const GateSchema = z.object({
+  "id": z.string().regex(new RegExp("^wgt_[0-9A-Za-z]{26}$")),
+  "siteId": z.string(),
+  "name": z.string(),
+  "qrVersion": z.number().int(),
+  "active": z.boolean(),
+  "version": z.number().int(),
+});
+export type Gate = z.infer<typeof GateSchema>;
+
+export const AttendanceSiteSchema = z.object({
+  "id": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "name": z.string(),
+  "boundary": z.union([SiteBoundarySchema, z.null()]),
+  "dayEndLocal": z.string(),
+  "gateCheckMode": z.enum(["block", "warn"]),
+  "active": z.boolean(),
+  "gates": z.array(GateSchema),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type AttendanceSite = z.infer<typeof AttendanceSiteSchema>;
+
+export const AttendanceSiteListSchema = z.object({
+  "data": z.array(AttendanceSiteSchema),
+});
+export type AttendanceSiteList = z.infer<typeof AttendanceSiteListSchema>;
+
 export const BallInCourtSchema = z.object({
   "side": z.enum(["assignees", "builder"]).nullable(),
   "userIds": z.array(z.string()),
@@ -158,11 +241,16 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
-export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
-export type CompanyRef = z.infer<typeof CompanyRefSchema>;
-
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
+
+export const CreateAttendanceSiteRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "boundary": z.union([SiteBoundarySchema, z.null()]).optional(),
+  "dayEndLocal": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).optional(),
+  "gateCheckMode": z.enum(["block", "warn"]).optional(),
+}).strict();
+export type CreateAttendanceSiteRequest = z.infer<typeof CreateAttendanceSiteRequestSchema>;
 
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -278,9 +366,6 @@ export const CreateDrawingSetRequestSchema = z.object({
 }).strict();
 export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
 
-export const UserRefSchema = z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$"));
-export type UserRef = z.infer<typeof UserRefSchema>;
-
 export const CreateFolderRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "parentId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),
@@ -289,6 +374,11 @@ export const CreateFolderRequestSchema = z.object({
   "allowedCompanyIds": z.array(CompanyRefSchema).max(200).optional(),
 }).strict();
 export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
+
+export const CreateGateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+}).strict();
+export type CreateGateRequest = z.infer<typeof CreateGateRequestSchema>;
 
 export const MarkupVisibilitySchema = z.enum(["private", "company", "project"]);
 export type MarkupVisibility = z.infer<typeof MarkupVisibilitySchema>;
@@ -416,6 +506,16 @@ export const CreateUploadRequestSchema = z.object({
   "capture": CaptureSchema.optional(),
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
+
+export const CreateWorkerRequestSchema = z.object({
+  "fullName": z.string().min(1).max(200),
+  "companyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "companyNameOther": z.string().min(1).max(200).nullable().optional(),
+  "phone": z.string().max(30).nullable().optional(),
+  "email": z.string().email().max(320).nullable().optional(),
+  "kind": z.enum(["worker", "visitor", "delivery"]).optional(),
+}).strict();
+export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
@@ -781,6 +881,21 @@ export const EffectivePermissionsSchema = z.object({
 });
 export type EffectivePermissions = z.infer<typeof EffectivePermissionsSchema>;
 
+export const EligibilityReasonSchema = z.object({
+  "code": z.string(),
+  "blocking": z.boolean(),
+});
+export type EligibilityReason = z.infer<typeof EligibilityReasonSchema>;
+
+export const EligibilityCheckSchema = z.object({
+  "id": z.string().regex(new RegExp("^elc_[0-9A-Za-z]{26}$")),
+  "result": z.enum(["eligible", "blocked", "warning"]),
+  "answeredBy": z.enum(["workforce", "wallet"]),
+  "reasons": z.array(EligibilityReasonSchema),
+  "checkedAt": z.string().datetime({ offset: true }),
+});
+export type EligibilityCheck = z.infer<typeof EligibilityCheckSchema>;
+
 export const EntitlementsSchema = z.object({
   "orgId": z.string(),
   "plan": z.string(),
@@ -821,6 +936,12 @@ export const FolderListSchema = z.object({
 });
 export type FolderList = z.infer<typeof FolderListSchema>;
 
+export const GateWithCodeSchema = z.object({
+  "gate": GateSchema,
+  "code": z.string(),
+});
+export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
+
 export const JwksSchema = z.object({
   "keys": z.array(z.record(z.string(), z.unknown())),
 });
@@ -831,6 +952,12 @@ export const LoginRequestSchema = z.object({
   "password": z.string().min(1).max(256),
 }).strict();
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export const MarkRollCallRequestSchema = z.object({
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "status": z.enum(["accounted_for", "missing", "not_on_site"]),
+}).strict();
+export type MarkRollCallRequest = z.infer<typeof MarkRollCallRequestSchema>;
 
 export const MarkupSchema = z.object({
   "id": z.string(),
@@ -911,6 +1038,17 @@ export const NovaIndexReportSchema = z.object({
   "chunks": z.number().int(),
 });
 export type NovaIndexReport = z.infer<typeof NovaIndexReportSchema>;
+
+export const OnSiteSchema = z.object({
+  "total": z.number().int(),
+  "companies": z.array(z.object({
+  "companyId": z.union([CompanyRefSchema, z.null()]),
+  "companyNameOther": z.string().nullable(),
+  "count": z.number().int(),
+})),
+  "people": z.array(AttendanceEntrySchema),
+});
+export type OnSite = z.infer<typeof OnSiteSchema>;
 
 export const OrgSchema = z.object({
   "id": z.string(),
@@ -1009,6 +1147,15 @@ export const PublishDrawingSetRequestSchema = z.object({
 }).strict();
 export type PublishDrawingSetRequest = z.infer<typeof PublishDrawingSetRequestSchema>;
 
+export const RecordAttendanceRequestSchema = z.object({
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+  "kind": z.enum(["sign_in", "sign_out"]),
+  "clientAt": z.string().datetime({ offset: true }).optional(),
+  "overrideReason": z.string().min(1).max(500).optional(),
+}).strict();
+export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
@@ -1095,6 +1242,38 @@ export const RfiReasonRequestSchema = z.object({
 }).strict();
 export type RfiReasonRequest = z.infer<typeof RfiReasonRequestSchema>;
 
+export const RollCallPersonSchema = z.object({
+  "workerId": z.string(),
+  "fullName": z.string(),
+  "phone": z.string().nullable(),
+  "companyId": z.union([CompanyRefSchema, z.null()]),
+  "companyNameOther": z.string().nullable(),
+  "siteId": z.string().nullable(),
+  "signedInAt": z.string().datetime({ offset: true }).nullable(),
+  "status": z.enum(["unmarked", "accounted_for", "missing", "not_on_site"]),
+  "markedAt": z.string().datetime({ offset: true }).nullable(),
+  "markedBy": z.union([UserRefSchema, z.null()]),
+});
+export type RollCallPerson = z.infer<typeof RollCallPersonSchema>;
+
+export const RollCallSchema = z.object({
+  "id": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "siteId": z.string().nullable(),
+  "reason": z.string(),
+  "startedAt": z.string().datetime({ offset: true }),
+  "startedBy": z.union([UserRefSchema, z.null()]),
+  "endedAt": z.string().datetime({ offset: true }).nullable(),
+  "counts": z.object({
+  "total": z.number().int(),
+  "accountedFor": z.number().int(),
+  "missing": z.number().int(),
+  "unmarked": z.number().int(),
+}),
+  "people": z.array(RollCallPersonSchema),
+});
+export type RollCall = z.infer<typeof RollCallSchema>;
+
 export const SaveDiaryEntryRequestSchema = z.object({
   "weatherOverride": z.union([DiaryWeatherSchema, z.null()]).optional(),
   "weatherNotes": z.string().max(2000).nullable().optional(),
@@ -1105,6 +1284,20 @@ export const SaveDiaryEntryRequestSchema = z.object({
 }).strict();
 export type SaveDiaryEntryRequest = z.infer<typeof SaveDiaryEntryRequestSchema>;
 
+export const SelfSignInRequestSchema = z.object({
+  "gateCode": z.string().min(10).max(100),
+  "clientAt": z.string().datetime({ offset: true }).optional(),
+  "location": GeoFixSchema.optional(),
+  "offline": z.boolean().optional(),
+}).strict();
+export type SelfSignInRequest = z.infer<typeof SelfSignInRequestSchema>;
+
+export const SelfSignOutRequestSchema = z.object({
+  "gateCode": z.string().min(10).max(100).optional(),
+  "clientAt": z.string().datetime({ offset: true }).optional(),
+}).strict();
+export type SelfSignOutRequest = z.infer<typeof SelfSignOutRequestSchema>;
+
 export const SessionInfoSchema = z.object({
   "user": UserSchema,
   "csrfToken": z.string(),
@@ -1112,12 +1305,26 @@ export const SessionInfoSchema = z.object({
 });
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
 
+export const SignInResultSchema = z.object({
+  "outcome": z.enum(["accepted", "blocked", "overridden", "already_on_site", "signed_out"]),
+  "eligibility": z.union([EligibilityCheckSchema, z.null()]),
+  "session": z.union([AttendanceSessionSchema, z.null()]),
+  "worker": WorkerSchema,
+});
+export type SignInResult = z.infer<typeof SignInResultSchema>;
+
 export const SignupRequestSchema = z.object({
   "email": EmailSchema,
   "password": PasswordSchema,
   "name": z.string().min(1).max(200),
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const StartRollCallRequestSchema = z.object({
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+  "reason": z.string().min(1).max(500),
+}).strict();
+export type StartRollCallRequest = z.infer<typeof StartRollCallRequestSchema>;
 
 export const SubmitDiaryEntryRequestSchema = z.object({
   "clientAt": z.string().datetime({ offset: true }).optional(),
@@ -1256,6 +1463,15 @@ export const UpdateAiSettingsRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateAiSettingsRequest = z.infer<typeof UpdateAiSettingsRequestSchema>;
 
+export const UpdateAttendanceSiteRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "boundary": z.union([SiteBoundarySchema, z.null()]).optional(),
+  "dayEndLocal": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).optional(),
+  "gateCheckMode": z.enum(["block", "warn"]).optional(),
+  "active": z.boolean().optional(),
+}).strict();
+export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
+
 export const UpdateDiaryDelayRequestSchema = z.object({
   "type": DiaryDelayTypeSchema.optional(),
   "description": z.string().min(1).max(2000).optional(),
@@ -1353,6 +1569,12 @@ export const UpdateFolderRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateFolderRequest = z.infer<typeof UpdateFolderRequestSchema>;
 
+export const UpdateGateRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "active": z.boolean().optional(),
+}).strict();
+export type UpdateGateRequest = z.infer<typeof UpdateGateRequestSchema>;
+
 export const UpdateMarkupRequestSchema = z.object({
   "visibility": MarkupVisibilitySchema.optional(),
   "shapes": z.array(MarkupShapeSchema).max(2000).optional(),
@@ -1391,6 +1613,17 @@ export const UpdateRfiRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
 
+export const UpdateWorkerRequestSchema = z.object({
+  "fullName": z.string().min(1).max(200).optional(),
+  "companyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "companyNameOther": z.string().min(1).max(200).nullable().optional(),
+  "phone": z.string().max(30).nullable().optional(),
+  "email": z.string().email().max(320).nullable().optional(),
+  "kind": z.enum(["worker", "visitor", "delivery"]).optional(),
+  "status": z.enum(["active", "inactive"]).optional(),
+}).strict();
+export type UpdateWorkerRequest = z.infer<typeof UpdateWorkerRequestSchema>;
+
 export const UploadSchema = z.object({
   "id": z.string(),
   "status": z.enum(["pending", "uploaded", "expired"]),
@@ -1400,3 +1633,8 @@ export const UploadSchema = z.object({
   "expiresAt": z.string().datetime({ offset: true }),
 });
 export type Upload = z.infer<typeof UploadSchema>;
+
+export const WorkerListSchema = z.object({
+  "data": z.array(WorkerSchema),
+});
+export type WorkerList = z.infer<typeof WorkerListSchema>;

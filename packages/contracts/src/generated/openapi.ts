@@ -1651,6 +1651,339 @@ export interface paths {
         patch: operations["updateDiaryStandDown"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/sites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Sign-in sites on the project, with their gates. */
+        get: operations["listAttendanceSites"];
+        put?: never;
+        /** Add a sign-in site (a project can have several, e.g. stages). */
+        post: operations["createAttendanceSite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/sites/{siteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                siteId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a site’s day end, gate check mode (block or warn) or boundary. */
+        patch: operations["updateAttendanceSite"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/sites/{siteId}/gates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                siteId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a gate and issue its QR code. The code is shown only in this response. */
+        post: operations["createGate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/gates/{gateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                gateId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a gate or close it. */
+        patch: operations["updateGate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/gates/{gateId}/reissue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                gateId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke the gate code and issue a new one (ATT-AC1); printed posters with the old code stop working. */
+        post: operations["reissueGateCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/workers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Workers, visitors and delivery drivers known to this builder. Subcontractors see their own company only. */
+        get: operations["listWorkers"];
+        put?: never;
+        /** Add a worker, visitor or delivery driver. */
+        post: operations["createWorker"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a worker. Picking a directory company confirms an "other" company typed at the gate (ATT-AC2). */
+        patch: operations["updateWorker"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign yourself in by scanning a gate code.
+         * @description Asks the compliance check first. A blocked sign-in is recorded and returns `outcome: blocked` with the reasons (ATT-AC7).
+         */
+        post: operations["signInSelf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign yourself out. */
+        post: operations["signOutSelf"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign someone in or out from a tablet at the gate (ATT-US6), or let a blocked worker in with a reason. */
+        post: operations["recordAttendance"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/on-site": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Who is on site now, by company (ATT-US2). */
+        get: operations["getOnSite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** A day's sign-in records (ATT-AC8). */
+        get: operations["listAttendanceSessions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start an evacuation roll call from who is on site now (ATT-AC5). */
+        post: operations["startRollCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        /** A roll call with everyone’s latest mark. */
+        get: operations["getRollCall"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/marks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tick someone accounted for, missing or not on site. Marks are kept in order as the record. */
+        post: operations["markRollCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End the roll call. */
+        post: operations["endRollCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3008,6 +3341,244 @@ export interface components {
             reason?: string | null;
             /** @description Required once the day is submitted; recorded with the amendment (X42). */
             amendmentReason?: string;
+        };
+        SiteBoundary: {
+            lat: number;
+            lng: number;
+            radiusM: number;
+        };
+        Gate: {
+            id: string;
+            siteId: string;
+            name: string;
+            /** @description Goes up each time the code is reissued. */
+            qrVersion: number;
+            active: boolean;
+            version: number;
+        };
+        GateWithCode: {
+            gate: components["schemas"]["Gate"];
+            /** @description The secret printed on the gate poster as a QR. Shown only once; reissue to get a new one. */
+            code: string;
+        };
+        AttendanceSite: {
+            id: string;
+            projectId: string;
+            name: string;
+            /** @description A custom geofence; `null` uses the project's site location. */
+            boundary: components["schemas"]["SiteBoundary"] | null;
+            /** @description Open sign-ins close automatically at this site time (ATT-AC4). */
+            dayEndLocal: string;
+            /** @enum {string} */
+            gateCheckMode: "block" | "warn";
+            active: boolean;
+            gates: components["schemas"]["Gate"][];
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        AttendanceSiteList: {
+            data: components["schemas"]["AttendanceSite"][];
+        };
+        CreateAttendanceSiteRequest: {
+            name: string;
+            boundary?: components["schemas"]["SiteBoundary"] | null;
+            dayEndLocal?: string;
+            /** @enum {string} */
+            gateCheckMode?: "block" | "warn";
+        };
+        UpdateAttendanceSiteRequest: {
+            name?: string;
+            boundary?: components["schemas"]["SiteBoundary"] | null;
+            dayEndLocal?: string;
+            /** @enum {string} */
+            gateCheckMode?: "block" | "warn";
+            active?: boolean;
+        };
+        CreateGateRequest: {
+            name: string;
+        };
+        UpdateGateRequest: {
+            name?: string;
+            active?: boolean;
+        };
+        Worker: {
+            id: string;
+            userId: components["schemas"]["UserRef"] | null;
+            companyId: components["schemas"]["CompanyRef"] | null;
+            /** @description A company typed at the gate, waiting for the site manager to confirm. */
+            companyNameOther: string | null;
+            fullName: string;
+            /** @description Shown to site managers and the worker's own company. */
+            phone: string | null;
+            email: string | null;
+            /** @enum {string} */
+            kind: "worker" | "visitor" | "delivery";
+            /** @enum {string} */
+            status: "active" | "inactive";
+            version: number;
+        };
+        WorkerList: {
+            data: components["schemas"]["Worker"][];
+        };
+        CreateWorkerRequest: {
+            fullName: string;
+            companyId?: components["schemas"]["CompanyRef"] | null;
+            companyNameOther?: string | null;
+            phone?: string | null;
+            /** Format: email */
+            email?: string | null;
+            /** @enum {string} */
+            kind?: "worker" | "visitor" | "delivery";
+        };
+        UpdateWorkerRequest: {
+            fullName?: string;
+            companyId?: components["schemas"]["CompanyRef"] | null;
+            companyNameOther?: string | null;
+            phone?: string | null;
+            /** Format: email */
+            email?: string | null;
+            /** @enum {string} */
+            kind?: "worker" | "visitor" | "delivery";
+            /** @enum {string} */
+            status?: "active" | "inactive";
+        };
+        AttendanceSession: {
+            id: string;
+            projectId: string;
+            siteId: string;
+            workerId: string;
+            companyId: components["schemas"]["CompanyRef"] | null;
+            /** Format: date */
+            localDate: string;
+            /** Format: date-time */
+            signedInAt: string;
+            /** Format: date-time */
+            signedOutAt: string | null;
+            minutes: number | null;
+            /**
+             * @description `auto_closed` hours ended at the site's day end and are not exact (ATT-AC4).
+             * @enum {string}
+             */
+            status: "on_site" | "off_site" | "auto_closed" | "disputed";
+            version: number;
+        };
+        AttendanceEntry: {
+            session: components["schemas"]["AttendanceSession"];
+            worker: components["schemas"]["Worker"];
+        };
+        AttendanceSessionList: {
+            data: components["schemas"]["AttendanceEntry"][];
+        };
+        OnSite: {
+            total: number;
+            companies: {
+                companyId: components["schemas"]["CompanyRef"] | null;
+                companyNameOther: string | null;
+                count: number;
+            }[];
+            people: components["schemas"]["AttendanceEntry"][];
+        };
+        EligibilityReason: {
+            /** @description e.g. `worker.inactive`, `company.unconfirmed`, `induction.missing` */
+            code: string;
+            blocking: boolean;
+        } & {
+            [key: string]: unknown;
+        };
+        EligibilityCheck: {
+            id: string;
+            /** @enum {string} */
+            result: "eligible" | "blocked" | "warning";
+            /** @enum {string} */
+            answeredBy: "workforce" | "wallet";
+            reasons: components["schemas"]["EligibilityReason"][];
+            /** Format: date-time */
+            checkedAt: string;
+        };
+        SignInResult: {
+            /**
+             * @description `blocked`: show "See the site office before starting work" (ATT-AC7). The attempt is recorded.
+             * @enum {string}
+             */
+            outcome: "accepted" | "blocked" | "overridden" | "already_on_site" | "signed_out";
+            eligibility: components["schemas"]["EligibilityCheck"] | null;
+            session: components["schemas"]["AttendanceSession"] | null;
+            worker: components["schemas"]["Worker"];
+        };
+        SelfSignInRequest: {
+            gateCode: string;
+            /**
+             * Format: date-time
+             * @description Device time of the scan; later than the server's clock is ignored.
+             */
+            clientAt?: string;
+            location?: components["schemas"]["GeoFix"];
+            /** @description The scan was queued on the phone with no signal (ATT-AC9). */
+            offline?: boolean;
+        };
+        SelfSignOutRequest: {
+            gateCode?: string;
+            /** Format: date-time */
+            clientAt?: string;
+        };
+        RecordAttendanceRequest: {
+            workerId: string;
+            siteId?: string;
+            /** @enum {string} */
+            kind: "sign_in" | "sign_out";
+            /** Format: date-time */
+            clientAt?: string;
+            /** @description Lets a blocked worker in; needs `workforce.attendance.override` and is kept on the record. */
+            overrideReason?: string;
+        };
+        RollCallPerson: {
+            workerId: string;
+            fullName: string;
+            phone: string | null;
+            companyId: components["schemas"]["CompanyRef"] | null;
+            companyNameOther: string | null;
+            siteId: string | null;
+            /**
+             * Format: date-time
+             * @description `null` for someone marked who was not on the list.
+             */
+            signedInAt: string | null;
+            /** @enum {string} */
+            status: "unmarked" | "accounted_for" | "missing" | "not_on_site";
+            /** Format: date-time */
+            markedAt: string | null;
+            markedBy: components["schemas"]["UserRef"] | null;
+        };
+        RollCall: {
+            id: string;
+            projectId: string;
+            siteId: string | null;
+            reason: string;
+            /** Format: date-time */
+            startedAt: string;
+            startedBy: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            endedAt: string | null;
+            counts: {
+                total: number;
+                accountedFor: number;
+                missing: number;
+                unmarked: number;
+            };
+            /** @description Sorted by company, then name. */
+            people: components["schemas"]["RollCallPerson"][];
+        };
+        StartRollCallRequest: {
+            siteId?: string;
+            reason: string;
+        };
+        MarkRollCallRequest: {
+            workerId: string;
+            /** @enum {string} */
+            status: "accounted_for" | "missing" | "not_on_site";
         };
     };
     responses: {
@@ -5940,6 +6511,533 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaryStandDown"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAttendanceSites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSiteList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAttendanceSite: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAttendanceSiteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSite"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAttendanceSite: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                siteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAttendanceSiteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSite"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createGate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                siteId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateGateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateWithCode"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateGate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                gateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateGateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Gate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reissueGateCode: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                gateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateWithCode"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkers: {
+        parameters: {
+            query?: {
+                companyId?: components["schemas"]["CompanyRef"];
+                kind?: "worker" | "visitor" | "delivery";
+                q?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWorker: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Worker"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateWorker: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateWorkerRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Worker"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signInSelf: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfSignInRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signOutSelf: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SelfSignOutRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSession"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordAttendance: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordAttendanceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignInResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOnSite: {
+        parameters: {
+            query?: {
+                siteId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OnSite"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAttendanceSessions: {
+        parameters: {
+            query: {
+                date: string;
+                siteId?: string;
+                companyId?: components["schemas"]["CompanyRef"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttendanceSessionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startRollCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartRollCallRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRollCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    markRollCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MarkRollCallRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    endRollCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rollCallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCall"];
                 };
             };
             default: components["responses"]["Problem"];

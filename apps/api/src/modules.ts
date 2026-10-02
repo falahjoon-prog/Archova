@@ -12,6 +12,7 @@ import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-docum
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { createPlatformModule } from '@archova/mod-platform';
+import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { createSyncModule } from '@archova/mod-sync';
 
@@ -21,6 +22,7 @@ export const MODULE_PERMISSIONS = [
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
   DIARY_PERMISSIONS,
+  WORKFORCE_PERMISSIONS,
 ];
 
 export interface ModuleOptions {
@@ -85,8 +87,25 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const sync = createSyncModule();
 
-  const all = [identity, platform, access, billing, files, ai, documents, rfis, diary, sync];
+  const workforce = createWorkforceModule(services, {
+    access: access.api,
+    platform: platform.api,
+    identity: identity.api,
+  });
 
+  const all = [
+    identity,
+    platform,
+    access,
+    billing,
+    files,
+    ai,
+    documents,
+    rfis,
+    diary,
+    workforce,
+    sync,
+  ];
   const routes: RouteTable = {};
   for (const m of all) {
     for (const [id, handler] of Object.entries(m.routes)) {
@@ -106,6 +125,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     sync,
     diary,
+    workforce,
     routes,
   };
 }

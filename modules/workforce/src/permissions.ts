@@ -1,0 +1,14 @@
+import type { PermissionDefinition } from '@archova/domain/permissions';
+
+// Permission keys owned by `workforce` (tool `workforce`, backend schema/workforce.md §Permissions).
+// Anyone on the project can sign themselves in. Subcontractors (`standard`, company-scoped) see the
+// headcount and manage their own workers; site managers (`admin`) run sites, gates, manual sign-ins and
+// roll calls, and can admit a blocked worker.
+export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
+  { key: 'workforce.attendance.sign_in_self', scope: 'project', tool: 'workforce', level: 'read' },
+  { key: 'workforce.attendance.view', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.workers.manage', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.attendance.manage', scope: 'project', tool: 'workforce', level: 'admin' },
+  { key: 'workforce.attendance.override', scope: 'project', tool: 'workforce', level: 'admin' },
+  { key: 'workforce.workers.view_personal', scope: 'project', tool: 'workforce', level: 'admin' },
+];

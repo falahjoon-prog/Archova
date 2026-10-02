@@ -809,9 +809,90 @@ export function createDiaryService(deps: DiaryDeps) {
     saved(scope, entry);
   }
 
+  /**
+   * Subscriber for `workforce.attendance.session_closed.v1` (ATT-AC6): keeps one `attendance` labour line
+   * per company per day in step with sign-ins. The pre-filled values are always refreshed; the line's own
+   * headcount and hours follow them until the site manager edits the line (an edit carries `editReason`).
+   * A submitted day isn't changed without a reason, so only the pre-filled values move there, and no new
+   * line is added to it.
+   */
+  async function applyAttendanceTotals(
+    scope: TenantScope,
+    input: {
+      projectId: string;
+      localDate: LocalDate;
+      companyId: string;
+      headcount: number;
+      hours: number;
+    },
+  ) {
+    const t = LINE_TABLES.labour;
+    let entry = await findEntry(scope, input.projectId, input.localDate);
+    if (!entry) {
+      await scope.tx
+        .insert(entries)
+        .values({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          projectId: input.projectId,
+          date: input.localDate,
+        })
+        .onConflictDoNothing({ target: [entries.projectId, entries.date] });
+      entry = (await findEntry(scope, input.projectId, input.localDate))!;
+      await entryChanged(scope, entry);
+    }
+    const [line] = await scope.tx
+      .select()
+      .from(t)
+      .where(
+        and(
+          eq(t.entryId, entry.id),
+          eq(t.companyId, input.companyId),
+          eq(t.source, 'attendance'),
+          isNull(t.deletedAt),
+        ),
+      )
+      .limit(1);
+    if (!line) {
+      if (isLocked(entry.status)) return null;
+      const [row] = await scope.tx
+        .insert(t)
+        .values({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          projectId: input.projectId,
+          entryId: entry.id,
+          companyId: input.companyId,
+          source: 'attendance',
+          headcount: input.headcount,
+          hours: input.hours,
+          attendanceHeadcount: input.headcount,
+          attendanceHours: input.hours,
+        })
+        .returning();
+      await lineChanged(scope, 'labour', row as LineRow, 'upsert');
+      return row!;
+    }
+    const followsAttendance = !line.editReason && !isLocked(entry.status);
+    const [row] = await scope.tx
+      .update(t)
+      .set({
+        attendanceHeadcount: input.headcount,
+        attendanceHours: input.hours,
+        ...(followsAttendance ? { headcount: input.headcount, hours: input.hours } : {}),
+        version: line.version + 1,
+        updatedAt: now(),
+      })
+      .where(eq(t.id, line.id))
+      .returning();
+    await lineChanged(scope, 'labour', row as LineRow, 'upsert');
+    return row!;
+  }
+
   return {
     list,
     detail,
+    applyAttendanceTotals,
     saveHeader,
     submit,
     signOff,
