@@ -16,7 +16,7 @@ export interface MockPerson {
 }
 
 export const MOCK_COMPANIES: readonly MockCompany[] = [
-  { id: 'cmp_builder', name: 'Harbourline Constructions', trade: 'Builder', role: 'builder' },
+  { id: 'cmp_builder', name: 'Harbour Line Constructions', trade: 'Builder', role: 'builder' },
   {
     id: 'cmp_struct',
     name: 'Smith & Lowe Engineers',

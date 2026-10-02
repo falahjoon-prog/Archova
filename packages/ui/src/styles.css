@@ -887,17 +887,14 @@
 
 /* Drawing canvas */
 .ac-canvas {
-  position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  height: 100%;
+  gap: var(--space-2);
+  min-width: 0;
 }
+/* Above the viewport, so it never covers the sheet's title block. */
 .ac-canvas__zoom {
-  position: absolute;
-  right: var(--space-3);
-  bottom: var(--space-3);
-  z-index: 2;
+  align-self: flex-end;
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -913,8 +910,9 @@
 }
 .ac-canvas__viewport {
   position: relative;
-  flex: 1;
-  min-height: 480px;
+  /* The sheet's aspect is set inline; the cap keeps a landscape sheet and the zoom bar on screen. */
+  min-height: 240px;
+  max-height: 75vh;
   overflow: hidden;
   background: color-mix(in srgb, var(--c-text) 6%, var(--c-bg));
   border: 1px solid var(--c-border-divider);

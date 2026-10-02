@@ -81,31 +81,34 @@ export function DrawingCanvas({
   const viewportRef = useRef<HTMLDivElement>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState({ zoom: 1, x: 0, y: 0 });
-  const [baseWidth, setBaseWidth] = useState(800);
+  const [box, setBox] = useState({ w: 800, h: 600 });
   const drag = useRef<{ x: number; y: number; vx: number; vy: number } | null>(null);
 
-  // Fit width on mount and resize (the sheet's base size is the viewport width at zoom 1).
+  // At zoom 1 the sheet fits the viewport, centred; measured on mount and resize.
   useEffect(() => {
     const el = viewportRef.current;
     if (!el) return;
-    const measure = () => {
-      const w = el.clientWidth || 800;
-      const h = el.clientHeight || 600;
-      setBaseWidth(Math.max(200, Math.min(w, h * aspect)));
-    };
+    const measure = () => setBox({ w: el.clientWidth || 800, h: el.clientHeight || 600 });
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [aspect]);
+  }, []);
+
+  const width = Math.max(200, Math.min(box.w, box.h * aspect));
+  const height = width / aspect;
+  const offset = { x: Math.max(0, (box.w - width) / 2), y: Math.max(0, (box.h - height) / 2) };
+  const offsetRef = useRef(offset);
+  offsetRef.current = offset;
 
   const zoomAt = useCallback((factor: number, cx?: number, cy?: number) => {
     setView((v) => {
       const zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v.zoom * factor));
       const el = viewportRef.current;
-      const px = cx ?? (el ? el.clientWidth / 2 : 0);
-      const py = cy ?? (el ? el.clientHeight / 2 : 0);
+      // The zoom centre, relative to where the fitted sheet sits.
+      const px = (cx ?? (el ? el.clientWidth / 2 : 0)) - offsetRef.current.x;
+      const py = (cy ?? (el ? el.clientHeight / 2 : 0)) - offsetRef.current.y;
       const k = zoom / v.zoom;
       return { zoom, x: px - (px - v.x) * k, y: py - (py - v.y) * k };
     });
@@ -194,9 +197,6 @@ export function DrawingCanvas({
     }
   };
 
-  const width = baseWidth;
-  const height = baseWidth / aspect;
-
   return (
     <div className={cx('ac-canvas', className)}>
       <div className="ac-canvas__zoom" role="group" aria-label="Zoom">
@@ -235,7 +235,7 @@ export function DrawingCanvas({
         aria-label={label}
         aria-roledescription="drawing"
         tabIndex={0}
-        style={{ cursor: mode === 'pan' ? 'grab' : (cursor ?? 'crosshair') }}
+        style={{ aspectRatio: aspect, cursor: mode === 'pan' ? 'grab' : (cursor ?? 'crosshair') }}
         onWheel={onWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
@@ -253,7 +253,7 @@ export function DrawingCanvas({
           style={{
             width,
             height,
-            transform: `translate(${view.x}px, ${view.y}px) scale(${view.zoom})`,
+            transform: `translate(${view.x + offset.x}px, ${view.y + offset.y}px) scale(${view.zoom})`,
           }}
         >
           <div className="ac-canvas__background">{background}</div>
