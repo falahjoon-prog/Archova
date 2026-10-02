@@ -1,0 +1,163 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).createFakeApi());
+vi.mock('@/shared/lib/api', () => fake.module);
+
+const { createRfisApi } = await import('../data/api');
+const { resetProjectPeople } = await import('@/shared/lib/people');
+
+const P = '/v1/orgs/{orgId}/projects/{projectId}/rfis';
+const actor = { id: 'usr_pm', name: 'Dana Okafor', companyId: 'cmp_builder' };
+
+const apiRfi = (over: Record<string, unknown> = {}) => ({
+  id: 'rfi_1',
+  projectId: 'prj_1',
+  number: 4,
+  numberLabel: 'RFI-004',
+  subject: 'Lighting circuit in retail 2',
+  question: 'Four downlights or six?',
+  status: 'open',
+  isPrivate: false,
+  managerId: 'usr_pm',
+  raisedByCompanyId: 'cmp_builder',
+  receivedFromCompanyId: null,
+  assignees: [
+    { userId: 'usr_elec', companyId: 'cmp_elec', isBallInCourt: true, respondedAt: null },
+  ],
+  ballInCourt: { side: 'assignees', userIds: ['usr_elec'] },
+  distributionUserIds: [],
+  distributionCompanyIds: ['cmp_arch'],
+  dueDate: '2026-10-09',
+  isOverdue: false,
+  openedAt: '2026-10-01T00:00:00Z',
+  answeredAt: null,
+  closedAt: null,
+  voidReason: null,
+  costImpact: 'tbc',
+  costEstimate: null,
+  scheduleImpactDays: null,
+  delayDays: null,
+  pin: { drawingRevisionId: 'drv_e301a', x: 0.4, y: 0.6 },
+  officialResponseId: null,
+  createdBy: 'usr_pm',
+  createdAt: '2026-10-01T00:00:00Z',
+  updatedAt: '2026-10-01T00:00:00Z',
+  version: 3,
+  ...over,
+});
+
+beforeEach(() => {
+  fake.reset();
+  resetProjectPeople();
+  fake.on('GET', '/v1/orgs/{orgId}/projects/{projectId}/members', () => ({
+    data: [
+      { userId: 'usr_pm', name: 'Dana Okafor', companyId: 'cmp_builder', status: 'active' },
+      { userId: 'usr_elec', name: 'Sam Patel', companyId: 'cmp_elec', status: 'active' },
+    ],
+    nextCursor: null,
+  }));
+});
+
+describe('RFIs API source', () => {
+  it('maps the register, with the ball in court and its company from the assignees', async () => {
+    fake.on('GET', P, () => ({ data: [apiRfi()], nextCursor: null }));
+    const rows = await createRfisApi('org_1').list('prj_1', {
+      status: 'open',
+      ballInCourtCompanyId: 'cmp_elec',
+      overdueBefore: '2026-10-02',
+    });
+    expect(rows).toEqual([
+      expect.objectContaining({
+        number: 4,
+        assigneeId: 'usr_elec',
+        assigneeCompanyId: 'cmp_elec',
+        ballInCourtId: 'usr_elec',
+        ballInCourtCompanyId: 'cmp_elec',
+        drawing: { sheetId: '', revisionId: 'drv_e301a', label: 'Drawing' },
+        version: 3,
+      }),
+    ]);
+    expect(fake.callsTo('GET', P)[0]!.init.params?.query).toMatchObject({
+      status: 'open',
+      overdue: 'true',
+    });
+  });
+
+  it('names response authors from the project members and closes with the version seen', async () => {
+    const detail = (over: Record<string, unknown> = {}) => ({
+      rfi: apiRfi({ status: 'answered', ...over }),
+      responses: [
+        {
+          id: 'rfr_1',
+          rfiId: 'rfi_1',
+          authorId: 'usr_elec',
+          body: 'Six.',
+          fileIds: [],
+          isOfficial: false,
+          createdAt: '2026-10-02T00:00:00Z',
+        },
+      ],
+    });
+    fake.on('GET', `${P}/{rfiId}`, () => detail());
+    fake.on('POST', `${P}/{rfiId}/close`, () =>
+      detail({ status: 'closed', officialResponseId: 'rfr_1', version: 4 }),
+    );
+    const source = createRfisApi('org_1');
+    const rfi = await source.get('prj_1', 'rfi_1');
+    expect(rfi.responses[0]).toMatchObject({
+      authorName: 'Sam Patel',
+      authorCompanyId: 'cmp_elec',
+    });
+
+    const closed = await source.close('prj_1', 'rfi_1', 'rfr_1', actor);
+    const call = fake.callsTo('POST', `${P}/{rfiId}/close`)[0]!;
+    expect(call.init.params?.header).toEqual({ 'If-Match': '"3"' });
+    expect(call.init.body).toEqual({ officialResponseId: 'rfr_1' });
+    expect(closed).toMatchObject({ status: 'closed', officialResponseId: 'rfr_1' });
+  });
+
+  it('creates a draft and opens it when submitting', async () => {
+    fake.on('POST', P, () => ({
+      rfi: apiRfi({ status: 'draft', number: null, version: 1 }),
+      responses: [],
+    }));
+    fake.on('GET', `${P}/{rfiId}`, () => ({
+      rfi: apiRfi({ status: 'draft', number: null, version: 1 }),
+      responses: [],
+    }));
+    fake.on('POST', `${P}/{rfiId}/open`, () => ({ rfi: apiRfi(), responses: [] }));
+    const opened = await createRfisApi('org_1').create(
+      'prj_1',
+      {
+        subject: 'Lighting circuit in retail 2',
+        question: 'Four downlights or six?',
+        assigneeId: 'usr_elec',
+        dueDate: '2026-10-09',
+        distributionCompanyIds: [],
+        costImpact: 'tbc',
+        scheduleImpactDays: null,
+        drawing: null,
+        specSection: '0331',
+        location: 'Retail 2',
+        isPrivate: false,
+      },
+      actor,
+      true,
+    );
+    const body = fake.callsTo('POST', P)[0]!.init.body;
+    expect(body).toEqual({
+      subject: 'Lighting circuit in retail 2',
+      question: 'Four downlights or six?',
+      assigneeIds: ['usr_elec'],
+      dueDate: '2026-10-09',
+      distributionCompanyIds: [],
+      costImpact: 'tbc',
+      isPrivate: false,
+    });
+    expect(fake.callsTo('POST', P)[0]!.init.params?.header).toHaveProperty('Idempotency-Key');
+    expect(fake.callsTo('POST', `${P}/{rfiId}/open`)[0]!.init.params?.header).toEqual({
+      'If-Match': '"1"',
+    });
+    expect(opened).toMatchObject({ status: 'open', number: 4 });
+  });
+});

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Sparkles } from 'lucide-react';
 
 /** Shared label / hint / error frame for form controls. `describedBy` is computed by the caller. */
 export function Field({
@@ -8,6 +9,7 @@ export function Field({
   error,
   hintId,
   errorId,
+  aiFilled,
   children,
 }: {
   id: string;
@@ -16,12 +18,20 @@ export function Field({
   error?: ReactNode;
   hintId: string;
   errorId: string;
+  /** Shows the Nova marker next to the label (design 02 §7.7: users always know when content came from AI). */
+  aiFilled?: boolean | undefined;
   children: ReactNode;
 }) {
   return (
     <div className="ac-field">
       <label className="ac-field__label" htmlFor={id}>
         {label}
+        {aiFilled ? (
+          <span className="ac-field__ai">
+            <Sparkles size={12} strokeWidth={2} aria-hidden="true" />
+            Drafted by Nova
+          </span>
+        ) : null}
       </label>
       {hint ? (
         <p className="ac-field__hint" id={hintId}>

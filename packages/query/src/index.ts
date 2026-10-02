@@ -15,7 +15,32 @@ export const queryKeys = {
     ['orgs', orgId, 'projects', projectId, 'permissions'] as const,
   companies: (orgId: string) => ['orgs', orgId, 'companies'] as const,
   permissionTemplates: (orgId: string) => ['orgs', orgId, 'permission-templates'] as const,
+
+  // Phase 1 project tools. Everything under a tool's root key is invalidated together after a mutation.
+  /** Root key of one project tool, e.g. `tool(orgId, projectId, 'rfis')`. */
+  tool: (orgId: string, projectId: string, tool: ProjectTool) =>
+    ['orgs', orgId, 'projects', projectId, tool] as const,
+  toolList: (orgId: string, projectId: string, tool: ProjectTool, filters: object = {}) =>
+    ['orgs', orgId, 'projects', projectId, tool, 'list', filters] as const,
+  toolItem: (orgId: string, projectId: string, tool: ProjectTool, id: string) =>
+    ['orgs', orgId, 'projects', projectId, tool, 'item', id] as const,
+  /** Org-scoped drawing revision resources (geometry, markups, pins), per backend 04 §3. */
+  drawingRevision: (orgId: string, revisionId: string, part: 'geometry' | 'markups' | 'pins') =>
+    ['orgs', orgId, 'drawing-revisions', revisionId, part] as const,
+  assistantConversation: (orgId: string, conversationId: string) =>
+    ['orgs', orgId, 'ai', 'conversations', conversationId] as const,
 };
+
+/** Project tools with phase 1 screens; names match the backend modules and mobile features. */
+export type ProjectTool =
+  | 'documents'
+  | 'drawings'
+  | 'drawing-sets'
+  | 'rfis'
+  | 'diary'
+  | 'defects'
+  | 'tender-packages'
+  | 'takeoff-measurements';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */
 const queryOptions = <T extends { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>(

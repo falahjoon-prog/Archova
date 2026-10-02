@@ -1,9 +1,13 @@
 'use client';
 
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
+import type { ComponentProps, ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
-import { AssistantPanel, AssistantScopeProvider } from '@/features/assistant';
+import {
+  AssistantPanel,
+  AssistantScopeProvider,
+  useAssistantPanelState,
+} from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -44,12 +48,12 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
         orgName: membership.orgName,
         role: membership.role,
         kind: membership.kind,
+        user: { id: me.data.user.id, name: me.data.user.name },
       }}
     >
       <AssistantScopeProvider>
-        <AppShell
+        <OrgAppShell
           orgName={membership.orgName}
-          assistant={{ label: 'Ask Nova', panel: <AssistantPanel /> }}
           nav={[{ href: webRoutes.projects(orgSlug), label: 'Projects' }]}
           actions={
             <>
@@ -59,8 +63,24 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           }
         >
           {children}
-        </AppShell>
+        </OrgAppShell>
       </AssistantScopeProvider>
     </CurrentOrgProvider>
+  );
+}
+
+/** The app shell wired to the Ask Nova panel state, which lives in the assistant provider above it. */
+function OrgAppShell(props: Omit<ComponentProps<typeof AppShell>, 'assistant'>) {
+  const panel = useAssistantPanelState();
+  return (
+    <AppShell
+      {...props}
+      assistant={{
+        label: 'Ask Nova',
+        panel: <AssistantPanel />,
+        open: panel.open,
+        onOpenChange: panel.setOpen,
+      }}
+    />
   );
 }

@@ -3,9 +3,14 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } },
+  esbuild: { jsx: 'automatic' },
   test: {
     environment: 'node',
     include: ['**/__tests__/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next'],
+    // Component tests opt in with `// @vitest-environment jsdom`.
+    setupFiles: ['./test/setup.ts'],
+    // Screen tests render whole forms in jsdom; a shared CI runner can take several seconds per test.
+    testTimeout: 15_000,
   },
 });

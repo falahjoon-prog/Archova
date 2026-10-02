@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
+import { BrandLogo } from './BrandLogo';
 
 export interface NavItem {
   href: string;
@@ -24,12 +25,32 @@ export function AppShell({
   orgName: string;
   nav: readonly NavItem[];
   actions?: ReactNode;
-  /** The panel and its toggle label; omitted where the assistant doesn't apply. */
-  assistant?: { label: string; panel: ReactNode };
+  /** The panel, its toggle label and open state; omitted where the assistant doesn't apply. */
+  assistant?: {
+    label: string;
+    panel: ReactNode;
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  };
   children: ReactNode;
 }) {
   const pathname = usePathname();
-  const [assistantOpen, setAssistantOpen] = useState(false);
+  const assistantOpen = assistant?.open ?? false;
+  const onAssistantChange = assistant?.onOpenChange;
+  const toggleAssistant = assistant ? () => assistant.onOpenChange(!assistant.open) : undefined;
+
+  // Cmd/Ctrl+J opens and closes Ask Nova from anywhere (frontend 03 §5).
+  useEffect(() => {
+    if (!onAssistantChange) return;
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        onAssistantChange(!assistantOpen);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onAssistantChange, assistantOpen]);
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -38,7 +59,7 @@ export function AppShell({
       <header className="app-shell__bar">
         <div className="app-shell__brand">
           <Link className="app-shell__logo ac-focusable" href={webRoutes.orgPicker()}>
-            Archova
+            <BrandLogo />
           </Link>
           <span className="app-shell__org" title="Organisation">
             {orgName}
@@ -69,7 +90,8 @@ export function AppShell({
               className="app-shell__assistant-toggle ac-focusable"
               aria-expanded={assistantOpen}
               aria-controls="assistant-panel"
-              onClick={() => setAssistantOpen((o) => !o)}
+              aria-keyshortcuts="Control+J Meta+J"
+              onClick={toggleAssistant}
             >
               {assistant.label}
             </button>
@@ -104,7 +126,9 @@ export function CentredShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <main id="main" className="centred-shell__main" tabIndex={-1}>
-        <p className="centred-shell__brand">Archova</p>
+        <p className="centred-shell__brand">
+          <BrandLogo height={32} />
+        </p>
         {children}
       </main>
     </div>

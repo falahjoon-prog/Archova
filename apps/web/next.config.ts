@@ -18,8 +18,11 @@ const nextConfig: NextConfig = {
     '@archova/contracts',
     '@archova/design-tokens',
     '@archova/domain',
+    '@archova/i18n',
+    '@archova/markup',
     '@archova/query',
     '@archova/routes',
+    '@archova/time',
     '@archova/ui',
   ],
   // Lint runs as its own turbo task (`pnpm --filter @archova/web lint`).

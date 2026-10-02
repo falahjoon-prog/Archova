@@ -46,6 +46,17 @@ export const color = {
 
 export type ColorToken = keyof typeof color.light;
 
+/**
+ * Logo colours (design/02 §2, brand/archova-logo). Keystone orange is for the keystone and safety highlights only,
+ * never body text on white (3.58:1). These are also the seeded brand defaults for the marketing site.
+ */
+export const brand = {
+  ink: '#111827',
+  blue: '#1F4FC4',
+  keystone: '#E8590C',
+  blueOnDark: '#7FA3FF',
+} as const;
+
 /** 4 px base spacing scale. */
 export const space = {
   0: 0,
@@ -82,6 +93,7 @@ export function toCssVariables(): string {
     ...Object.entries(radius).map(([k, v]) => `  --radius-${k}: ${v}px;`),
     ...Object.entries(font.size).map(([k, v]) => `  --font-${k}: ${v}px;`),
     `  --font-family: ${font.family};`,
+    ...Object.entries(brand).map(([k, v]) => `  --brand-${kebab(k)}: ${v};`),
   ].join('\n');
   return [
     `:root {\n${vars(color.light)}\n${scale}\n}`,
