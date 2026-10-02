@@ -49,5 +49,27 @@ export {
   type NovaSuggestionProps,
 } from './patterns/Nova';
 export { ToggleGroup, type ToggleGroupProps, type ToggleOption } from './patterns/ToggleGroup';
+export {
+  CredentialCaptureCard,
+  type CredentialCaptureCardProps,
+  type CredentialStatus,
+} from './patterns/CredentialCaptureCard';
+export {
+  ProgressStepper,
+  type ProgressStepperProps,
+  type SaveState,
+} from './patterns/ProgressStepper';
+export {
+  SignaturePad,
+  type SignaturePadProps,
+  type SignaturePoint,
+  type SignatureValue,
+} from './patterns/SignaturePad';
+export {
+  WatchToEndVideo,
+  formatClock,
+  type WatchProgress,
+  type WatchToEndVideoProps,
+} from './patterns/WatchToEndVideo';
 
 export { cx } from './lib/cx';

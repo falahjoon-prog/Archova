@@ -945,3 +945,195 @@
   height: 100%;
   overflow: visible;
 }
+
+/* ---- Induction patterns (design 02 §7.10, design 08 Part B): phone first, large targets ---- */
+.ac-stepper {
+  display: grid;
+  gap: var(--space-2);
+}
+.ac-stepper__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ac-stepper__count,
+.ac-stepper__save {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.ac-stepper__save {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+.ac-stepper__save--offline {
+  color: var(--c-status-warning);
+}
+.ac-stepper__bar {
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--c-border-divider);
+  overflow: hidden;
+}
+.ac-stepper__bar > span {
+  display: block;
+  height: 100%;
+  background: var(--c-action-primary);
+  transition: width 200ms ease;
+}
+
+.ac-video {
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.ac-video__frame {
+  background: #000;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+.ac-video__frame video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+}
+.ac-video__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ac-video__button {
+  display: inline-grid;
+  place-items: center;
+  min-width: 48px;
+  min-height: 48px;
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  color: var(--c-text);
+  cursor: pointer;
+}
+.ac-video__button[aria-pressed='true'] {
+  border-color: var(--c-action-primary);
+  color: var(--c-action-primary);
+}
+.ac-video__time {
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-secondary);
+  margin-right: auto;
+}
+.ac-video__transcript summary {
+  cursor: pointer;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+}
+
+.ac-signature {
+  display: grid;
+  gap: var(--space-2);
+}
+.ac-signature__pad {
+  width: 100%;
+  aspect-ratio: 3 / 1;
+  border: 2px dashed var(--c-border-control);
+  border-radius: var(--radius-md);
+  background: white;
+  touch-action: none;
+}
+.ac-signature__typed {
+  margin: 0;
+  padding: var(--space-4);
+  border: 2px dashed var(--c-border-control);
+  border-radius: var(--radius-md);
+  font-family: 'Segoe Script', 'Bradley Hand', cursive;
+  font-size: var(--font-2xl);
+  background: white;
+  color: #111827;
+}
+.ac-signature__actions {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.ac-signature__link {
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-action-primary);
+  text-decoration: underline;
+  font: inherit;
+  cursor: pointer;
+}
+.ac-signature__link:disabled {
+  color: var(--c-text-muted);
+  cursor: default;
+}
+
+.ac-credential {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface);
+}
+.ac-credential__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+.ac-credential__title {
+  margin: 0;
+  font-size: var(--font-md);
+}
+.ac-credential__required {
+  font-weight: 400;
+  color: var(--c-text-secondary);
+}
+.ac-credential__photo {
+  position: relative;
+  aspect-ratio: 1.586; /* ID-1 card */
+  border-radius: var(--radius-md);
+  background: var(--c-bg);
+  overflow: hidden;
+}
+.ac-credential__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+/* Frame guide: line the card up inside it. */
+.ac-credential__guide {
+  position: absolute;
+  inset: 12%;
+  border: 2px dashed var(--c-text-secondary);
+  border-radius: var(--radius-md);
+}
+.ac-credential__buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+.ac-credential__pick {
+  min-height: 48px;
+  justify-content: center;
+}
+.ac-credential__pick:focus-within {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.ac-credential__note {
+  margin: 0;
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.ac-credential__fields {
+  display: grid;
+  gap: var(--space-3);
+}

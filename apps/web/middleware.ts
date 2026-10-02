@@ -18,9 +18,10 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Everything except the auth pages, the API paths proxied in development, Next internals and static files.
+  // Everything except the auth pages, guest induction links (`/i/`, X58), the API paths proxied in development,
+  // Next internals and static files.
   matcher: [
-    '/((?!(?:login|signup)(?:/|$)|v1/|\\.well-known/|_next/|favicon\\.ico$|robots\\.txt$|.*\\.[a-zA-Z0-9]+$).+)',
+    '/((?!(?:login|signup|i)(?:/|$)|v1/|\\.well-known/|_next/|favicon\\.ico$|robots\\.txt$|.*\\.[a-zA-Z0-9]+$).+)',
     '/',
   ],
 };

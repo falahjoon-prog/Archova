@@ -19,3 +19,9 @@ describe('webRoutes project tools', () => {
     );
   });
 });
+
+describe('webRoutes guest flows', () => {
+  it('opens an induction link outside any org', () => {
+    expect(webRoutes.induction('abc/123')).toBe('/i/abc%2F123');
+  });
+});

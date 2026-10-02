@@ -6,6 +6,8 @@ const pages = [
   { name: 'sign in', path: '/login' },
   { name: 'sign up', path: '/signup' },
   { name: 'not found', path: '/this-page-does-not-exist' },
+  // The worker induction runs on preview data until the workforce endpoints land (X58).
+  { name: 'worker induction', path: '/i/demo' },
 ];
 
 for (const p of pages) {

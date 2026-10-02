@@ -37,6 +37,10 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/estimating/packages`,
   tenderPackage: (orgSlug: string, projectId: string, packageId: string) =>
     `${p(orgSlug, projectId)}/estimating/packages/${enc(packageId)}`,
+
+  // Guest flows outside any org (X58): no app sign-in, the link itself is the access (X45).
+  /** A worker's site induction, opened from an SMS or email access link. */
+  induction: (token: string) => `/i/${enc(token)}`,
 } as const;
 
 /** Mobile (expo-router) paths. Feature names match web and backend modules one to one. */
