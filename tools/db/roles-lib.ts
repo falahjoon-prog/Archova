@@ -46,6 +46,8 @@ export async function roleStatements(
   sql.push(`grant create on database ${dbName} to app_migrator`);
   sql.push('create extension if not exists citext');
   sql.push('create extension if not exists pgcrypto');
+  // pgvector for Nova retrieval (ai/03 §5); Aurora PostgreSQL 16 ships it.
+  sql.push('create extension if not exists vector');
   sql.push('revoke create on schema public from public');
   return sql;
 }

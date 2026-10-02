@@ -92,7 +92,10 @@ if (login.status === 401 || login.status === 400 || login.status === 404) {
   throw new Error(`login -> ${login.status} ${JSON.stringify(login.json)}`);
 }
 
-const me = await s.ok<{ memberships: Array<{ orgId: string; orgSlug: string }> }>('GET', '/v1/me');
+const me = await s.ok<{
+  user: { id: string };
+  memberships: Array<{ orgId: string; orgSlug: string }>;
+}>('GET', '/v1/me');
 let orgId = me.memberships.find((m) => m.orgSlug === ORG.slug)?.orgId;
 const o = () => `/v1/orgs/${orgId}`;
 const company = {} as Record<CompanyKey, string>;
@@ -324,8 +327,28 @@ for (const p of PROJECTS) {
       },
     ],
   });
+  // An open RFI to the architect, pinned to the clouded area on the ground floor plan.
+  const rfi = await s.ok<{ rfi: { id: string } }>('POST', `${pp}/rfis`, {
+    subject: 'Accessible WC door swing',
+    question:
+      'Drawing A-101 rev B shows the accessible WC door opening inward. Please confirm the swing direction and ' +
+      'the required circulation space under AS 1428.1. Sample data only.',
+    receivedFromCompanyId: company.arch,
+    assigneeIds: [me.user.id],
+    costImpact: 'tbc',
+    pin: { drawingRevisionId: plan.id, x: 0.4, y: 0.47 },
+  });
+  const opened = await s.call(
+    'POST',
+    `${pp}/rfis/${rfi.rfi.id}/open`,
+    {},
+    { 'if-match': s.etag ?? '' },
+  );
+  if (opened.status >= 300)
+    console.warn(`Opening the sample RFI -> ${opened.status} ${JSON.stringify(opened.json)}`);
+
   console.log(
-    `Seeded ${p.name}: ${documents.length} documents (2 revisions each), ${sheets.length} drawings (A-101 at rev B), 1 transmittal`,
+    `Seeded ${p.name}: ${documents.length} documents (2 revisions each), ${sheets.length} drawings (A-101 at rev B), 1 transmittal, 1 RFI`,
   );
 }
 
