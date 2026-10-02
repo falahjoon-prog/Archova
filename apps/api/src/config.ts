@@ -26,8 +26,11 @@ const Env = z.object({
   API_FILES_BUCKET: z.string().default('archova-local-files'),
   API_FILES_REGION: z.string().default('ap-southeast-2'),
   API_S3_ENDPOINT: z.string().url().optional(),
-  // Malware scanning (security-licensing/09 §4): GuardDuty Malware Protection for S3 when deployed.
-  API_FILES_SCANNER: z.enum(['none', 'guardduty']).default('none'),
+  // Malware scanning (security-licensing/09 §4): GuardDuty Malware Protection for S3 on AWS, ClamAV elsewhere
+  // (the Linode option, infrastructure/09).
+  API_FILES_SCANNER: z.enum(['none', 'guardduty', 'clamav']).default('none'),
+  API_CLAMAV_HOST: z.string().default('clamav'),
+  API_CLAMAV_PORT: z.coerce.number().int().default(3310),
   // Nova (ai/02): Bedrock in Australia when deployed; the fake provider locally and in tests.
   API_AI_PROVIDER: z.enum(['fake', 'bedrock']).default('fake'),
   API_AI_REGION: z.string().default('ap-southeast-2'),
@@ -67,6 +70,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       region: e.API_FILES_REGION,
       endpoint: e.API_S3_ENDPOINT,
       scanner: e.API_FILES_SCANNER,
+      clamav: { host: e.API_CLAMAV_HOST, port: e.API_CLAMAV_PORT },
     },
     ai: {
       provider: e.API_AI_PROVIDER,
@@ -98,12 +102,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error(
       'API_FILES_SCANNER=guardduty reads S3 object tags, so it needs API_FILES_STORE=s3',
     );
+  if (config.files.scanner === 'clamav' && config.files.store !== 's3')
+    throw new Error(
+      'API_FILES_SCANNER=clamav reads uploads from storage, so it needs API_FILES_STORE=s3',
+    );
   if (config.env === 'production') {
     const missing: string[] = [];
     if (!config.jwtPrivateJwk) missing.push('API_JWT_PRIVATE_JWK');
     if (!config.redisUrl) missing.push('API_REDIS_URL (sessions, revocation, idempotency)');
     if (config.files.store !== 's3') missing.push('API_FILES_STORE=s3');
-    if (config.files.scanner === 'none') missing.push('API_FILES_SCANNER=guardduty');
+    if (config.files.scanner === 'none') missing.push('API_FILES_SCANNER=guardduty or clamav');
     if (config.ai.provider !== 'bedrock') missing.push('API_AI_PROVIDER=bedrock (Nova)');
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');

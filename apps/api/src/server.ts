@@ -1,5 +1,6 @@
 import { createDatabase, createLogger, createRedis } from '@archova/kernel';
 import {
+  createClamAvScanner,
   createGuardDutyScanner,
   createMemoryObjectStore,
   createS3ObjectStore,
@@ -32,14 +33,17 @@ const store =
       })
     : createMemoryObjectStore();
 
+const bucket = {
+  bucket: config.files.bucket,
+  region: config.files.region,
+  ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
+};
 const scanner =
   config.files.scanner === 'guardduty'
-    ? createGuardDutyScanner({
-        bucket: config.files.bucket,
-        region: config.files.region,
-        ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
-      })
-    : noScanner;
+    ? createGuardDutyScanner(bucket)
+    : config.files.scanner === 'clamav'
+      ? createClamAvScanner({ ...bucket, ...config.files.clamav })
+      : noScanner;
 
 const app = await buildApp({ config, database, redis, logger, store, scanner });
 

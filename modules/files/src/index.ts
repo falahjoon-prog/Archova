@@ -13,6 +13,8 @@ export {
   type S3StoreConfig,
 } from './infra/object-store';
 export {
+  clamdVerdict,
+  createClamAvScanner,
   createGuardDutyScanner,
   guardDutyVerdict,
   noScanner,

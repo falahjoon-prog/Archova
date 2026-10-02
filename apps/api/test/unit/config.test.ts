@@ -27,5 +27,11 @@ describe('config', () => {
     expect(
       loadConfig({ ...base, API_FILES_SCANNER: 'guardduty', API_FILES_STORE: 's3' }).files.scanner,
     ).toBe('guardduty');
+    expect(() => loadConfig({ ...base, API_FILES_SCANNER: 'clamav' })).toThrow(
+      /API_FILES_STORE=s3/,
+    );
+    expect(
+      loadConfig({ ...base, API_FILES_SCANNER: 'clamav', API_FILES_STORE: 's3' }).files.clamav,
+    ).toEqual({ host: 'clamav', port: 3310 });
   });
 });
