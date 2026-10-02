@@ -20,7 +20,7 @@ import {
 } from '../domain/induction';
 import { suggestions } from '../infra/tables';
 import type { Gateway } from './gateway';
-import { searchChunks, toPassage } from './search';
+import { searchChunks, toPassage, type ChunkHit } from './search';
 
 export interface InductionDraftDeps {
   database: Database;
@@ -106,18 +106,21 @@ export function createInductionDraftService(deps: InductionDraftDeps) {
     });
     const hits = await database.withTenantTx(
       ctx,
-      (scope) =>
-        Promise.all(
-          INDUCTION_SECTIONS.map((_, i) =>
-            searchChunks(scope, {
+      // One connection per transaction, so the searches run one after another.
+      async (scope) => {
+        const out: ChunkHit[][] = [];
+        for (const [i, query] of queries.entries())
+          out.push(
+            await searchChunks(scope, {
               projectId,
               scopes,
-              query: queries[i]!,
+              query,
               vector: vectors[i]!,
               limit: PER_SECTION,
             }),
-          ),
-        ),
+          );
+        return out;
+      },
       { readOnly: true },
     );
 

@@ -5,6 +5,7 @@ import { createBedrockProvider } from './bedrock';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
+import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
 import { createFakeProvider, type FakeResponder } from './fake';
 
@@ -14,6 +15,8 @@ import { createFakeProvider, type FakeResponder } from './fake';
  */
 export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = {
   'drawing.titleblock': heuristicTitleBlock,
+  'qa.rewrite': heuristicQaRewrite,
+  'qa.rerank': heuristicQaRerank,
   'qa.answer': heuristicQaAnswer,
   'induction.draft': heuristicInductionDraft,
   'induction.ask': heuristicQaAnswer,

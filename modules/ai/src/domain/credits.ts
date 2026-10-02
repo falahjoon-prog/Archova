@@ -12,6 +12,7 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'embed.document': 0,
   'embed.query': 0,
   'qa.rewrite': 0,
+  'qa.rerank': 0,
   'qa.answer': 1,
   // One draft reads ~30 passages and writes a full induction: about three questions' worth (ai/12 §2).
   'induction.draft': 3,

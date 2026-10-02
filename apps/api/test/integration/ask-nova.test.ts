@@ -1,5 +1,6 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DEFAULT_FAKE_RESPONDERS } from '@archova/mod-ai';
 import {
   addMember,
   createOrg,
@@ -246,5 +247,68 @@ describe('Ask Nova (F2)', () => {
       { question },
     );
     expect(cross.statusCode).toBe(404);
+  });
+  it('rewrites shorthand, re-ranks to the best passages, and still answers when a helper task fails', async () => {
+    const s = await setup('ask-rank');
+    const folder = (await s.owner.browser.post(`${s.base}/folders`, { name: 'Specs' })).json();
+    const topics = [
+      'PAINTING Internal walls get one coat sealer and two coats low-sheen acrylic.',
+      'WATERPROOFING Use a Class III membrane under tiles in bathrooms.',
+      'CONCRETE Suspended slabs are grade N40 with 20 mm aggregate.',
+      'DOORS Apartment entry doors are solid core with a 3-point lock.',
+      'GLAZING Balcony glass is 12 mm toughened laminated.',
+      'ROOFING Roof sheeting is 0.48 mm Colorbond on battens.',
+      'TILING Floor tiles are laid on a screed with a 1:100 fall.',
+      'JOINERY Kitchen benches are 20 mm engineered stone.',
+      'LANDSCAPE Street trees are 100 litre stock.',
+      'HYDRAULICS Hot water units are heat pumps on each balcony.',
+      'ELECTRICAL Each apartment has a separate sub-board.',
+      'FIRE PROTECTION Walls to the level 3 corridor shall achieve a fire resistance level of 90/90/90.',
+    ];
+    await addDocument(
+      s,
+      folder.id,
+      'Specification',
+      'SPEC-01',
+      topics.map((line) => [line]),
+    );
+    expect((await s.owner.browser.post(`${s.base}/ai/index`)).json().chunks).toBe(12);
+
+    const from = t.ai.calls.length;
+    const res = await ask(s.owner.browser, s, 'What is the FRL of the level 3 corridor walls?');
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({
+      found: true,
+      citations: [expect.objectContaining({ page: 12 })],
+    });
+    expect(res.json().answer).toContain('90/90/90');
+
+    const calls = t.ai.calls.slice(from);
+    expect(calls.map((c) => c.task)).toEqual(['qa.rewrite', 'qa.rerank', 'qa.answer']);
+    // Shorthand spelled out for search.
+    expect(calls[0]!.text).toContain('FRL');
+    // The re-ranker sees every candidate; the answer only the relevant ones, best first.
+    expect(calls[1]!.passages).toHaveLength(12);
+    const answered = calls[2]!.passages;
+    expect(answered.length).toBeLessThan(12);
+    expect(answered[0]!.text).toContain('fire resistance level');
+    expect(answered.some((p) => p.text.includes('Street trees'))).toBe(false);
+
+    // A failing rewrite or re-rank doesn't lose the answer: retrieval carries on without it.
+    const broken = () => ({ text: 'not json' });
+    t.ai.on('qa.rewrite', broken);
+    t.ai.on('qa.rerank', broken);
+    try {
+      const again = await ask(
+        s.owner.browser,
+        s,
+        'What fire resistance level do the level 3 corridor walls need?',
+      );
+      expect(again.json()).toMatchObject({ found: true });
+      expect(again.json().answer).toContain('90/90/90');
+    } finally {
+      t.ai.on('qa.rewrite', DEFAULT_FAKE_RESPONDERS['qa.rewrite']!);
+      t.ai.on('qa.rerank', DEFAULT_FAKE_RESPONDERS['qa.rerank']!);
+    }
   });
 });
