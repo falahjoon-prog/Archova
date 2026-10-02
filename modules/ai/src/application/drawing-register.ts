@@ -274,10 +274,9 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
 
   /**
    * A person accepts, edits or rejects a suggestion (ai/04 §7). Recorded with who and when, and published as
-   * `ai.suggestion.decided.v1` for audit and Nova's accept-rate metrics. In phase 1 nothing applies the event: the
-   * web adds the set revision through `documents`, passing the suggestion id. When `documents` applies suggestions
-   * server-side (with the worker), it stores that id on the revision and skips any suggestion that already has one,
-   * so a sheet is never added twice.
+   * `ai.suggestion.decided.v1` for audit and Nova's accept-rate metrics. Nothing applies the event, so a sheet is
+   * never added twice: the web adds the set revision through `documents`, passing `aiSuggestionId`, and `documents`
+   * marks it AI-assisted in its own audit event (agreed with Ben and Felix, 2 Oct 2026).
    */
   async function decide(
     scope: TenantScope,
