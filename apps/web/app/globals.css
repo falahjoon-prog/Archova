@@ -654,3 +654,55 @@ main:focus {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* RFIs */
+.u-prewrap {
+  white-space: pre-wrap;
+}
+.body-lg {
+  font-size: var(--font-md);
+  line-height: 1.5;
+  max-width: 72ch;
+}
+.rfi-form {
+  max-width: 960px;
+}
+.fieldset {
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  margin: 0;
+  min-width: 0;
+}
+.fieldset legend {
+  padding: 0 var(--space-1);
+  font-weight: 600;
+  font-size: var(--font-sm);
+}
+.check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+.choice-card {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.choice-card:has(input:checked) {
+  border-color: var(--c-action-primary);
+}
+.response {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--c-border-divider);
+  margin-bottom: var(--space-3);
+}
+.response--official {
+  border-left-color: var(--c-status-success);
+}
