@@ -9,6 +9,10 @@ export const PROBLEM_CODES = {
   version_conflict: 412,
   rate_limited: 429,
   internal: 500,
+  /** A contract operation whose handler hasn't been built yet. */
+  not_implemented: 501,
+  /** The app build is older than the support window (X39); the device asks the user to update. */
+  'app.upgrade_required': 426,
   // auth (backend 02 §1)
   'auth.unauthenticated': 401,
   'auth.session_revoked': 401,

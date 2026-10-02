@@ -631,6 +631,12 @@ export const RevokeRequestSchema = z.object({
 });
 export type RevokeRequest = z.infer<typeof RevokeRequestSchema>;
 
+export const RevokedScopeSchema = z.object({
+  "projectId": z.string(),
+  "module": z.string().nullable(),
+});
+export type RevokedScope = z.infer<typeof RevokedScopeSchema>;
+
 export const SessionInfoSchema = z.object({
   "user": UserSchema,
   "csrfToken": z.string(),
@@ -644,6 +650,58 @@ export const SignupRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const SyncChangeSchema = z.object({
+  "entityType": z.string().min(1).max(64),
+  "id": z.string().min(1).max(64),
+  "op": z.enum(["upsert", "delete"]),
+  "version": z.number().int().min(0),
+  "data": z.record(z.string(), z.unknown()).optional(),
+});
+export type SyncChange = z.infer<typeof SyncChangeSchema>;
+
+export const SyncMutationSchema = z.object({
+  "mutationId": z.string(),
+  "command": z.string().regex(new RegExp("^[a-z][a-z_]*\\.[A-Za-z][A-Za-z0-9]*$")),
+  "entityId": z.string().min(1).max(64),
+  "baseVersion": z.number().int().min(0).nullable(),
+  "clientAt": z.string().datetime({ offset: true }),
+  "payload": z.record(z.string(), z.unknown()),
+}).strict();
+export type SyncMutation = z.infer<typeof SyncMutationSchema>;
+
+export const SyncProblemSchema = z.object({
+  "code": z.string(),
+  "detail": z.string().optional(),
+});
+export type SyncProblem = z.infer<typeof SyncProblemSchema>;
+
+export const SyncPullResponseSchema = z.object({
+  "changes": z.array(SyncChangeSchema),
+  "revokedScopes": z.array(RevokedScopeSchema),
+  "nextSince": z.string().regex(new RegExp("^[0-9]{1,20}$")),
+  "hasMore": z.boolean(),
+});
+export type SyncPullResponse = z.infer<typeof SyncPullResponseSchema>;
+
+export const SyncPushRequestSchema = z.object({
+  "mutations": z.array(SyncMutationSchema).min(1).max(100),
+}).strict();
+export type SyncPushRequest = z.infer<typeof SyncPushRequestSchema>;
+
+export const SyncPushResultSchema = z.object({
+  "mutationId": z.string(),
+  "status": z.enum(["applied", "conflict", "rejected", "pending_review"]),
+  "version": z.number().int().optional(),
+  "server": z.record(z.string(), z.unknown()).optional(),
+  "problem": SyncProblemSchema.optional(),
+});
+export type SyncPushResult = z.infer<typeof SyncPushResultSchema>;
+
+export const SyncPushResponseSchema = z.object({
+  "results": z.array(SyncPushResultSchema),
+});
+export type SyncPushResponse = z.infer<typeof SyncPushResponseSchema>;
 
 export const TokenRequestSchema = z.object({
   "grant_type": z.enum(["authorization_code", "refresh_token"]),

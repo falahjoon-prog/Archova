@@ -29,6 +29,7 @@ tags:
   - name: oauth
   - name: documents
   - name: ai
+  - name: sync
 paths:
   /v1/auth/signup:
     post:
@@ -1141,6 +1142,67 @@ paths:
             schema: { $ref: '#/components/schemas/AiFeedbackRequest' }
       responses:
         '204': { description: Saved }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/sync/pull:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: syncPull
+      tags: [sync]
+      x-module: sync
+      summary: Changes to the requested scopes since a checkpoint, for the mobile offline store (backend 04 §4).
+      description: |
+        Reads the change feed after `since` for each scope, filtered to what the caller can see.
+        `revokedScopes` is on every response (X14): the device purges that data and stops asking for it.
+        The first load of a scope is `since=0`, paginated with `hasMore`.
+      parameters:
+        - name: scopes
+          in: query
+          required: true
+          description: >-
+            Scopes separated by `;`. A project segment lists its modules: `project:{projectId}:diary,defects;org`.
+          schema: { type: string, minLength: 3, maxLength: 4000 }
+        - name: since
+          in: query
+          required: true
+          description: The `nextSince` from the last pull of these scopes, or `0`.
+          schema: { type: string, pattern: '^[0-9]{1,20}$' }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 500 }
+      responses:
+        '200':
+          description: A page of changes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncPullResponse' }
+        '426': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/sync/push:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: syncPush
+      tags: [sync]
+      x-module: sync
+      summary: Apply commands queued offline, in order, each in its own transaction (backend 04 §4).
+      description: |
+        `command` names a module use case (`defects.markReadyForReview`); permissions, state machines and
+        audit are the same as the REST endpoint. `mutationId` is the idempotency key: a replay returns the
+        stored result. A rejection with `access.revoked` is not stored, so the drain-grant retry (X38) can
+        return `pending_review`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SyncPushRequest' }
+      responses:
+        '200':
+          description: One result per mutation, in request order
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SyncPushResponse' }
+        '426': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
@@ -2317,3 +2379,99 @@ components:
       required: [event]
       properties:
         event: { type: string, enum: [opened, downloaded, acknowledged] }
+    SyncChange:
+      type: object
+      required: [entityType, id, op, version]
+      properties:
+        entityType: { type: string, minLength: 1, maxLength: 64 }
+        id: { type: string, minLength: 1, maxLength: 64 }
+        op: { type: string, enum: [upsert, delete] }
+        version: { type: integer, minimum: 0 }
+        data:
+          type: object
+          additionalProperties: true
+          description: The record's DTO; absent on deletes.
+    RevokedScope:
+      type: object
+      required: [projectId, module]
+      properties:
+        projectId: { type: string }
+        module:
+          type: [string, 'null']
+          description: '`null` means the whole project.'
+    SyncPullResponse:
+      type: object
+      required: [changes, revokedScopes, nextSince, hasMore]
+      properties:
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/SyncChange' }
+        revokedScopes:
+          type: array
+          items: { $ref: '#/components/schemas/RevokedScope' }
+        nextSince: { type: string, pattern: '^[0-9]{1,20}$' }
+        hasMore: { type: boolean }
+    SyncMutation:
+      type: object
+      additionalProperties: false
+      required: [mutationId, command, entityId, baseVersion, clientAt, payload]
+      properties:
+        mutationId:
+          type: string
+          format: uuid
+          description: UUIDv7 made on the device; also the idempotency key.
+        command:
+          type: string
+          pattern: '^[a-z][a-z_]*\.[A-Za-z][A-Za-z0-9]*$'
+          description: A module use case, e.g. `defects.markReadyForReview`.
+        entityId: { type: string, minLength: 1, maxLength: 64 }
+        baseVersion:
+          type: [integer, 'null']
+          minimum: 0
+          description: The version the change was made against; `null` for a create.
+        clientAt:
+          type: string
+          format: date-time
+          description: When the user made the change on the device.
+        payload: { type: object, additionalProperties: true }
+    SyncPushRequest:
+      type: object
+      additionalProperties: false
+      required: [mutations]
+      properties:
+        mutations:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { $ref: '#/components/schemas/SyncMutation' }
+    SyncProblem:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+        detail: { type: string }
+    SyncPushResult:
+      type: object
+      required: [mutationId, status]
+      properties:
+        mutationId: { type: string }
+        status:
+          type: string
+          enum: [applied, conflict, rejected, pending_review]
+          description: >-
+            `pending_review` is sent in drain mode after access ended; an admin accepts or rejects it (X38).
+        version:
+          type: integer
+          description: The record's version after `applied`, or the server's version on `conflict`.
+        server:
+          type: object
+          additionalProperties: true
+          description: The current DTO, on `conflict`.
+        problem: { $ref: '#/components/schemas/SyncProblem' }
+    SyncPushResponse:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/SyncPushResult' }
