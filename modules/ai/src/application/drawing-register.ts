@@ -3,8 +3,8 @@
 // rejects. `ai` never writes the register itself (backend 08 §1): an accepted suggestion is published as an event
 // for the documents module to apply.
 //
-// Phase 1 runs this inline from the API for one file at a time; the ai-worker takes it over from
-// `files.object.ready.v1` (and adds OCR and page rendering for scans) when apps/worker lands.
+// Phase 1 runs this inline from the API for one file at a time; scanned sheets are read with OCR first. The
+// ai-worker takes it over from `files.object.ready.v1` when apps/worker lands.
 import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
 import {
   TITLE_BLOCK_FIELDS,
@@ -21,6 +21,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import { ocrToTextItems } from '../domain/ocr';
 import {
   matchToRegister,
   reviewTitleBlock,
@@ -29,7 +30,7 @@ import {
   type RegisterMatch,
   type ReviewedField,
 } from '../domain/titleblock';
-import { readPdfText } from '../infra/pdf';
+import { readPdfText, readScannedPages } from '../infra/pdf';
 import { suggestions, type SuggestionStatus } from '../infra/tables';
 import type { Gateway } from './gateway';
 
@@ -47,7 +48,7 @@ export interface ReadableFile {
 
 export interface DrawingRegisterDeps {
   database: Database;
-  gateway: Pick<Gateway, 'runTask'>;
+  gateway: Pick<Gateway, 'runTask' | 'ocr'>;
   /** files.readFileBytes: applies the caller's read permission. */
   readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
   /** access.assert */
@@ -63,6 +64,8 @@ export interface SheetSuggestionPayload {
   fields: Record<TitleBlockField, ReviewedField>;
   flagged: TitleBlockField[];
   match: RegisterMatch | null;
+  /** Read with OCR from a scanned page: the person should check it against the sheet. */
+  scanned?: boolean;
   /** Set when a person decides: the fields as accepted or edited. */
   decided?: Partial<Record<TitleBlockField, string | null>>;
 }
@@ -70,7 +73,7 @@ export interface SheetSuggestionPayload {
 export interface ExtractionResult {
   suggestions: Array<typeof suggestions.$inferSelect>;
   pageCount: number;
-  /** Pages with no text layer (scans): need OCR or vision, which come with the worker. */
+  /** Pages with no text, even after OCR. */
   skippedPages: number[];
   refusedPages: number[];
 }
@@ -134,8 +137,8 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
       { readOnly: true, statementTimeout: '60s' },
     );
 
-    const sheets: Array<{ page: number; input: TitleBlockInput }> = [];
-    const skippedPages: number[] = [];
+    const sheets: Array<{ page: number; input: TitleBlockInput; scanned?: boolean }> = [];
+    let skippedPages: number[] = [];
     let pageCount = 1;
     if (file.mime === 'application/pdf') {
       const pdf = await readPdfText(bytes, { maxPages: MAX_SHEETS_PER_RUN });
@@ -148,6 +151,27 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
             page: p.page,
             input: { sheetLabel: `${file.filename} p${p.page}`, titleBlockText: text },
           });
+      }
+      // Scans: OCR the page, then pick the title block from the OCR text like from a text layer, so every field
+      // is still checked against what is on the sheet.
+      if (skippedPages.length) {
+        const scans = await readScannedPages(bytes, skippedPages);
+        const read = await deps.gateway.ocr(
+          ctx,
+          scans.map((s) => s.png),
+          { feature: drawingTitleBlockPrompt.feature, projectId },
+        );
+        scans.forEach((s, i) => {
+          const text = selectTitleBlockText(ocrToTextItems(read[i]!.lines, s.placement), s);
+          if (!text.trim()) return;
+          sheets.push({
+            page: s.page,
+            input: { sheetLabel: `${file.filename} p${s.page}`, titleBlockText: text },
+            scanned: true,
+          });
+          skippedPages = skippedPages.filter((p) => p !== s.page);
+        });
+        sheets.sort((a, b) => a.page - b.page);
       }
     } else if (IMAGE_MIMES.has(file.mime)) {
       sheets.push({
@@ -205,6 +229,7 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
           fields,
           flagged,
           match,
+          ...(r.scanned ? { scanned: true } : {}),
         };
         return {
           id: uuidv7(),

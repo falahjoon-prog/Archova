@@ -34,11 +34,19 @@ export {
   type ModelPrice,
   type RoutingTable,
 } from './domain/routing';
-export { ProviderError, type ModelProvider, type ModelRequest } from './domain/provider';
+export {
+  ProviderError,
+  type ModelProvider,
+  type ModelRequest,
+  type OcrLine,
+  type OcrRequest,
+  type OcrResponse,
+} from './domain/provider';
 export {
   DEFAULT_FAKE_RESPONDERS,
   createFakeProvider,
   fakeEmbedding,
+  type FakeOcrResponder,
   type FakeProvider,
   type FakeResponder,
   type ProviderConfig,

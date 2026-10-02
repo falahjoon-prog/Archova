@@ -55,6 +55,25 @@ export interface EmbedResponse {
   usage: Pick<ModelUsage, 'inputTokens'>;
 }
 
+/** One page image for OCR (ai/02: Textract in Sydney). Greyscale PNG, at most 10 MB and 10,000 px a side. */
+export interface OcrRequest {
+  image: Uint8Array;
+  timeoutMs: number;
+}
+
+/** A line of text found on the image. `box` is in fractions of the image, origin top-left. */
+export interface OcrLine {
+  text: string;
+  /** 0–1. */
+  confidence: number;
+  box: { left: number; top: number; width: number; height: number };
+}
+
+export interface OcrResponse {
+  /** In reading order. */
+  lines: OcrLine[];
+}
+
 /** Error categories every adapter maps vendor errors to (ai/02 §5). */
 export type ProviderErrorKind =
   'rate_limited' | 'overloaded' | 'timeout' | 'unavailable' | 'invalid_request' | 'auth';
@@ -79,7 +98,7 @@ export class ProviderError extends Error {
   }
 }
 
-/** One implementation per provider: Bedrock AU now, a fake for tests (ai/02 §5). */
+/** One implementation per provider: Bedrock and Textract in AU now, a fake for tests (ai/02 §5). */
 export interface ModelProvider {
   /** `bedrock`, `fake`. Recorded on every `ai_requests` row. */
   readonly name: string;
@@ -87,4 +106,6 @@ export interface ModelProvider {
   readonly region: string;
   complete(req: ModelRequest): Promise<ModelResponse>;
   embed(req: EmbedRequest): Promise<EmbedResponse>;
+  /** Reads the text off a scanned page (OCR), for search and title blocks. */
+  detectText(req: OcrRequest): Promise<OcrResponse>;
 }

@@ -24,8 +24,8 @@ export type CallOutcome = 'ok' | 'refused' | 'error' | 'fallback';
 /** One model call, as recorded in `ai.ai_requests`. */
 export interface CallRecord {
   id: string;
-  /** `embedding` for embedding calls, which have no tier. */
-  tier: ModelTier | 'embedding';
+  /** `embedding` and `ocr` for calls that have no tier. */
+  tier: ModelTier | 'embedding' | 'ocr';
   model: string;
   attempt: number;
   usage: ModelUsage;

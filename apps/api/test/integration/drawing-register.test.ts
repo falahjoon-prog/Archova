@@ -11,6 +11,7 @@ import {
   type Browser,
   type TestContext,
 } from './helpers';
+import { scannedPdf, scriptedOcr } from './scans';
 
 let t: TestContext;
 beforeAll(async () => {
@@ -170,6 +171,70 @@ describe('drawing register auto-fill (F1)', () => {
     // Each sheet ran through the gateway as background work: logged, no credits.
     const usage = (await browser.get(`/v1/orgs/${org.id}/ai/usage`)).json();
     expect(usage.byFeature).toEqual([{ feature: 'drawing_register', credits: 0, runs: 5 }]);
+  });
+
+  it('reads scanned sheets with OCR and still checks every field against the sheet', async () => {
+    const { browser } = await signUp(t.app, 'dr-scan');
+    const org = await createOrg(browser, 'Scan Builders');
+    const project = await createProject(browser, org.id);
+    const base = `/v1/orgs/${org.id}/projects/${project.id}/ai`;
+    const a1: [number, number] = [2384, 1684];
+    const file = await uploadPdf(
+      browser,
+      org.id,
+      project.id,
+      await scannedPdf([
+        { scan: { width: 2380, height: 1681 }, size: a1 },
+        { scan: { width: 2381, height: 1681 }, size: a1 },
+      ]),
+    );
+    const titleBlock = [
+      'Smith & Co Architects Pty Ltd',
+      'DRAWING TITLE',
+      'BASEMENT PLAN',
+      'SCALE  1:100 @ A1',
+      'DATE  03/04/2026',
+      'DRAWING No.  A-201    REV  C',
+    ];
+    t.ai.onOcr(
+      scriptedOcr({
+        2380: [
+          // Notes at the top left are outside the title block, and never sent.
+          { text: 'GENERAL NOTES: DO NOT SCALE', left: 0.03, top: 0.04 },
+          ...titleBlock.map((text, i) => ({ text, left: 0.8, top: 0.76 + i * 0.03 })),
+          { text: 'DRAWING No.  ZZ-999', left: 0.8, top: 0.95, confidence: 0.2 },
+        ],
+        // Sheet 2 is too faint to read.
+      }),
+    );
+    try {
+      const body = (
+        await browser.post(`${base}/drawing-register/extractions`, { fileId: file.id })
+      ).json();
+      expect(body).toMatchObject({ pageCount: 2, skippedPages: [2], refusedPages: [] });
+      expect(body.suggestions).toHaveLength(1);
+      expect(body.suggestions[0].payload).toMatchObject({
+        page: 1,
+        scanned: true,
+        isDrawing: true,
+        fields: {
+          number: { value: 'A-201', flagged: false },
+          revision: { value: 'C', flagged: false },
+          title: { value: expect.stringMatching(/basement plan/i) },
+          revisionDate: { value: '2026-04-03' },
+        },
+      });
+      const sent = t.ai.calls.filter((c) => c.task === 'drawing.titleblock').at(-1)!.text;
+      expect(sent).toContain('A-201');
+      expect(sent).not.toContain('GENERAL NOTES');
+      expect(sent).not.toContain('ZZ-999');
+
+      // OCR is background work: logged under the drawing register, no credits.
+      const usage = (await browser.get(`/v1/orgs/${org.id}/ai/usage`)).json();
+      expect(usage.byFeature).toEqual([{ feature: 'drawing_register', credits: 0, runs: 2 }]);
+    } finally {
+      t.ai.onOcr(() => ({ lines: [] }));
+    }
   });
 
   it('lets a subcontractor see suggestions but not run or decide them, and hides other orgs', async () => {

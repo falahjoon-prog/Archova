@@ -11,6 +11,7 @@ import {
   type Browser,
   type TestContext,
 } from './helpers';
+import { scannedPdf, scriptedOcr } from './scans';
 
 let t: TestContext;
 beforeAll(async () => {
@@ -309,6 +310,93 @@ describe('Ask Nova (F2)', () => {
     } finally {
       t.ai.on('qa.rewrite', DEFAULT_FAKE_RESPONDERS['qa.rewrite']!);
       t.ai.on('qa.rerank', DEFAULT_FAKE_RESPONDERS['qa.rerank']!);
+    }
+  });
+
+  it('reads scanned pages with OCR, so a scanned spec can answer questions', async () => {
+    const s = await setup('ask-ocr');
+    const folder = (await s.owner.browser.post(`${s.base}/folders`, { name: 'Specs' })).json();
+    const addFile = async (title: string, docNumber: string, bytes: Uint8Array) => {
+      const fileId = await uploadBytes(t, s.owner.browser, s.org.id, s.project.id, bytes);
+      const res = await s.owner.browser.post(`${s.base}/documents`, {
+        folderId: folder.id,
+        title,
+        docNumber,
+        revision: { rev: 'A', fileId },
+      });
+      expect(res.statusCode).toBe(201);
+      return res.json().document as { id: string };
+    };
+    const a4: [number, number] = [595, 842];
+    // Page 1 has a text layer; page 2 was scanned in.
+    const hydraulics = await addFile(
+      'Hydraulic Specification',
+      'SPEC-0712',
+      await scannedPdf([
+        {
+          text: ['SECTION 0712 HYDRAULICS', '0712.1 GENERAL', 'Comply with AS/NZS 3500.'],
+          size: a4,
+        },
+        { scan: { width: 1240, height: 1754 }, size: a4 },
+      ]),
+    );
+    // A scan OCR finds nothing on (a photo of the site sign, say).
+    await addFile(
+      'Site photo',
+      'PH-01',
+      await scannedPdf([{ scan: { width: 1241, height: 1754 }, size: a4 }]),
+    );
+    t.ai.onOcr(
+      scriptedOcr({
+        1240: [
+          { text: '0712.4 HEATED WATER', left: 0.08, top: 0.06 },
+          {
+            text: 'Heated water shall be delivered to sanitary fixtures at no more than 50 °C.',
+            left: 0.08,
+            top: 0.09,
+          },
+          { text: '~~ ;: ..', left: 0.5, top: 0.5, confidence: 0.2 },
+        ],
+      }),
+    );
+    try {
+      const ocrBefore = t.ai.ocrCalls.length;
+      const index = (await s.owner.browser.post(`${s.base}/ai/index`)).json();
+      expect(index).toMatchObject({ indexed: 1, noText: 1, ocrPages: 2, unsupported: 0 });
+      // Only the pages without a text layer went to OCR.
+      expect(t.ai.ocrCalls.length - ocrBefore).toBe(2);
+      expect(
+        t.ai.ocrCalls
+          .slice(ocrBefore)
+          .every((c) => Buffer.from(c.image).subarray(1, 4).toString() === 'PNG'),
+      ).toBe(true);
+
+      const a = (
+        await ask(
+          s.owner.browser,
+          s,
+          'What is the maximum temperature for heated water delivered to sanitary fixtures?',
+        )
+      ).json();
+      expect(a.found).toBe(true);
+      expect(a.citations[0]).toMatchObject({
+        sourceId: hydraulics.id,
+        reference: 'SPEC-0712',
+        page: 2,
+        quote: expect.stringContaining('50 °C'),
+      });
+      // The low-confidence specks were dropped, not indexed.
+      expect(seenByModel()).not.toContain('~~ ;:');
+
+      // Re-running reads nothing again.
+      expect((await s.owner.browser.post(`${s.base}/ai/index`)).json()).toMatchObject({
+        indexed: 0,
+        ocrPages: 0,
+        unchanged: 2,
+      });
+      expect(t.ai.ocrCalls.length - ocrBefore).toBe(2);
+    } finally {
+      t.ai.onOcr(() => ({ lines: [] }));
     }
   });
 });

@@ -32,6 +32,8 @@ const Env = z.object({
   API_AI_PROVIDER: z.enum(['fake', 'bedrock']).default('fake'),
   API_AI_REGION: z.string().default('ap-southeast-2'),
   API_AI_BEDROCK_ENDPOINT: z.string().url().optional(),
+  // OCR of scanned pages: Textract in the same Australian region (ai/02), through its VPC endpoint when set.
+  API_AI_TEXTRACT_ENDPOINT: z.string().url().optional(),
   API_AI_MODEL_FAST: z.string().optional(),
   API_AI_MODEL_STANDARD: z.string().optional(),
   API_AI_MODEL_ADVANCED: z.string().optional(),
@@ -70,6 +72,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       provider: e.API_AI_PROVIDER,
       region: e.API_AI_REGION,
       endpoint: e.API_AI_BEDROCK_ENDPOINT,
+      ocrEndpoint: e.API_AI_TEXTRACT_ENDPOINT,
       models: {
         fast: e.API_AI_MODEL_FAST ?? '',
         standard: e.API_AI_MODEL_STANDARD ?? '',

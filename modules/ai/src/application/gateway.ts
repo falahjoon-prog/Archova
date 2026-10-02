@@ -18,8 +18,8 @@ import {
 import { localDateOf } from '@archova/time';
 import type { CheckedCitation } from '../domain/citations';
 import { TASK_CREDITS, creditsFor, decideBudget } from '../domain/credits';
-import { ProviderError, type ModelProvider } from '../domain/provider';
-import type { EmbeddingRoute, RoutingTable } from '../domain/routing';
+import { ProviderError, type ModelProvider, type OcrResponse } from '../domain/provider';
+import { OCR_MODEL, type EmbeddingRoute, type RoutingTable } from '../domain/routing';
 import { orgSettings, requests, usageLedger } from '../infra/tables';
 import { invokePrompt, type CallRecord } from './invoke';
 
@@ -29,6 +29,8 @@ export interface GatewayDeps {
   routing: RoutingTable;
   /** Embedding model for retrieval (ai/02 §6); one model per index, so changing it means re-indexing. */
   embedding: EmbeddingRoute;
+  /** OCR price in US micro-dollars a page (ai/05 §1). */
+  ocrPriceMicros?: number;
   redis: RedisClient | null;
   logger: Logger;
   /** The org's IANA zone, for the ledger day (X34). Supplied by `platform`. */
@@ -62,6 +64,12 @@ export type TaskRun<O> =
       fallback: boolean;
     }
   | { runId: string; status: 'refused'; credits: 0; costMicros: number };
+
+export interface OcrOptions {
+  /** Feature the text serves, for the feature switch and the ledger (`ask`, `drawings`). */
+  feature: string;
+  projectId?: string | null;
+}
 
 export interface EmbedOptions {
   /** Documents are embedded when indexed; questions when asked. */
@@ -274,6 +282,54 @@ export function createGateway(deps: GatewayDeps) {
     return { model, vectors };
   }
 
+  /**
+   * Reads the text off scanned page images (ai/03 §3 step 2). Background work like embeddings: 0 credits and never
+   * stopped by the allowance (ai/05 §4), but behind the org and feature switches, and logged and costed per page.
+   */
+  async function ocr(
+    ctx: TenantContext,
+    images: readonly Uint8Array[],
+    opts: OcrOptions,
+  ): Promise<OcrResponse[]> {
+    if (!images.length) return [];
+    const prompt = {
+      id: 'ocr.page',
+      feature: opts.feature,
+      version: 1,
+      kind: 'background' as const,
+    };
+    const ro = { readOnly: true } as const;
+    const { day } = await deps.database.withTenantTx(ctx, (s) => admit(s, prompt, 0), ro);
+    const price = deps.ocrPriceMicros ?? DEFAULT_OCR_PRICE_MICROS;
+    const results: OcrResponse[] = [];
+    const calls: CallRecord[] = [];
+    let failure: ProviderError | null = null;
+    for (const image of images) {
+      const started = Date.now();
+      try {
+        results.push(await deps.provider.detectText({ image, timeoutMs: timeouts.backgroundMs }));
+        calls.push(ocrCall(price, started, null));
+      } catch (e) {
+        failure = e instanceof ProviderError ? e : new ProviderError('unavailable', String(e));
+        calls.push(ocrCall(0, started, failure.kind));
+        break;
+      }
+    }
+    await deps.database.withTenantTx(ctx, (scope) =>
+      record(scope, {
+        prompt,
+        runId: uuidv7(),
+        projectId: opts.projectId ?? null,
+        day,
+        calls,
+        credits: 0,
+        totalCost: calls.reduce((n, c) => n + c.costMicros, 0),
+      }),
+    );
+    if (failure) throw new AppError('ai.unavailable', 'Nova is busy right now. Try again shortly.');
+    return results;
+  }
+
   async function record(
     scope: TenantScope,
     r: {
@@ -336,7 +392,24 @@ export function createGateway(deps: GatewayDeps) {
       });
   }
 
-  return { runTask, embed, creditsUsedSince };
+  return { runTask, embed, ocr, creditsUsedSince };
+}
+
+/** Textract DetectDocumentText list price, US$1.50 per 1,000 pages; confirm the Sydney price (ai/05 §1). */
+export const DEFAULT_OCR_PRICE_MICROS = 1500;
+
+function ocrCall(costMicros: number, started: number, errorKind: string | null): CallRecord {
+  return {
+    id: uuidv7(),
+    tier: 'ocr',
+    model: OCR_MODEL,
+    attempt: 1,
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    costMicros,
+    latencyMs: Date.now() - started,
+    outcome: errorKind ? 'error' : 'ok',
+    errorKind,
+  };
 }
 
 function embedCall(

@@ -1,5 +1,5 @@
-// Chooses the provider implementation from config. Bedrock AU in deployed environments; the fake everywhere
-// else, so tests and local runs never call a real model (and need no AWS credentials).
+// Chooses the provider implementation from config. Bedrock and Textract in AU in deployed environments; the fake
+// everywhere else, so tests and local runs never call a real model (and need no AWS credentials).
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
@@ -8,6 +8,7 @@ import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
 import { createFakeProvider, type FakeResponder } from './fake';
+import { createTextractOcr } from './textract';
 
 /**
  * What the fake provider answers with when nothing is scripted: deterministic stand-ins, so local development
@@ -24,18 +25,29 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.check': fakeTranslationCheck,
 };
 
-export { createFakeProvider, fakeEmbedding, type FakeProvider, type FakeResponder } from './fake';
+export {
+  createFakeProvider,
+  fakeEmbedding,
+  type FakeOcrResponder,
+  type FakeProvider,
+  type FakeResponder,
+} from './fake';
 
 export type ProviderConfig =
   | { kind: 'fake'; responders?: Record<string, FakeResponder> }
-  | { kind: 'bedrock'; region: string; endpoint?: string };
+  | { kind: 'bedrock'; region: string; endpoint?: string; ocrEndpoint?: string };
 
 export function createProvider(config: ProviderConfig): ModelProvider {
   if (config.kind === 'bedrock') {
-    return createBedrockProvider({
+    const bedrock = createBedrockProvider({
       region: config.region,
       ...(config.endpoint ? { endpoint: config.endpoint } : {}),
     });
+    const textract = createTextractOcr({
+      region: config.region,
+      ...(config.ocrEndpoint ? { endpoint: config.ocrEndpoint } : {}),
+    });
+    return { ...bedrock, detectText: textract.detectText };
   }
   return createFakeProvider({ ...DEFAULT_FAKE_RESPONDERS, ...config.responders });
 }
