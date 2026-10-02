@@ -107,6 +107,11 @@ export const AiUsageSchema = z.object({
 });
 export type AiUsage = z.infer<typeof AiUsageSchema>;
 
+export const ApproveInductionSectionRequestSchema = z.object({
+  "section": z.number().int().min(0).max(29),
+}).strict();
+export type ApproveInductionSectionRequest = z.infer<typeof ApproveInductionSectionRequestSchema>;
+
 export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
 export type CompanyRef = z.infer<typeof CompanyRefSchema>;
 
@@ -380,6 +385,13 @@ export const CreateGateRequestSchema = z.object({
 }).strict();
 export type CreateGateRequest = z.infer<typeof CreateGateRequestSchema>;
 
+export const CreateInductionRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+  "validityMonths": z.number().int().min(1).max(36).optional(),
+}).strict();
+export type CreateInductionRequest = z.infer<typeof CreateInductionRequestSchema>;
+
 export const MarkupVisibilitySchema = z.enum(["private", "company", "project"]);
 export type MarkupVisibility = z.infer<typeof MarkupVisibilitySchema>;
 
@@ -506,6 +518,20 @@ export const CreateUploadRequestSchema = z.object({
   "capture": CaptureSchema.optional(),
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
+
+export const WorkerCredentialKindSchema = z.enum(["white_card", "high_risk_licence", "trade_licence", "other"]);
+export type WorkerCredentialKind = z.infer<typeof WorkerCredentialKindSchema>;
+
+export const CreateWorkerCredentialRequestSchema = z.object({
+  "kind": WorkerCredentialKindSchema,
+  "number": z.string().min(1).max(50),
+  "issuingState": AuStateSchema.optional(),
+  "licenceClass": z.string().min(1).max(100).optional(),
+  "issuedOn": z.string().date().optional(),
+  "expiresOn": z.string().date().optional(),
+  "fileIds": z.array(FileRefSchema).min(1).max(4),
+}).strict();
+export type CreateWorkerCredentialRequest = z.infer<typeof CreateWorkerCredentialRequestSchema>;
 
 export const CreateWorkerRequestSchema = z.object({
   "fullName": z.string().min(1).max(200),
@@ -942,6 +968,233 @@ export const GateWithCodeSchema = z.object({
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
 
+export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
+export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
+
+export const InductionSlideSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "points": z.array(z.string().min(1).max(400)).max(12),
+  "script": z.array(z.string().min(1).max(600)).max(12),
+}).strict();
+export type InductionSlide = z.infer<typeof InductionSlideSchema>;
+
+export const InductionSlidesBlockSchema = z.object({
+  "type": z.enum(["slides"]),
+  "slides": z.array(InductionSlideSchema).min(1).max(30),
+}).strict();
+export type InductionSlidesBlock = z.infer<typeof InductionSlidesBlockSchema>;
+
+export const InductionTextBlockSchema = z.object({
+  "type": z.enum(["text"]),
+  "body": z.string().min(1).max(20000),
+}).strict();
+export type InductionTextBlock = z.infer<typeof InductionTextBlockSchema>;
+
+export const InductionFileBlockSchema = z.object({
+  "type": z.enum(["video", "document", "image"]),
+  "fileId": FileRefSchema,
+  "title": z.string().max(200).nullable().optional(),
+}).strict();
+export type InductionFileBlock = z.infer<typeof InductionFileBlockSchema>;
+
+export const InductionSwmsBlockSchema = z.object({
+  "type": z.enum(["swms"]),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+  "title": z.string().max(300).nullable().optional(),
+}).strict();
+export type InductionSwmsBlock = z.infer<typeof InductionSwmsBlockSchema>;
+
+export const InductionBlockSchema = z.union([InductionSlidesBlockSchema, InductionTextBlockSchema, InductionFileBlockSchema, InductionSwmsBlockSchema]);
+export type InductionBlock = z.infer<typeof InductionBlockSchema>;
+
+export const InductionSectionSchema = z.object({
+  "key": InductionSectionKeySchema,
+  "title": z.string().min(1).max(200),
+  "blocks": z.array(InductionBlockSchema).max(20),
+}).strict();
+export type InductionSection = z.infer<typeof InductionSectionSchema>;
+
+export const InductionQuestionSchema = z.object({
+  "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")).optional(),
+  "section": InductionSectionKeySchema,
+  "question": z.string().min(1).max(500),
+  "options": z.array(z.string().min(1).max(300)).min(2).max(6),
+  "answerIndex": z.number().int().min(0).max(5),
+  "critical": z.boolean(),
+}).strict();
+export type InductionQuestion = z.infer<typeof InductionQuestionSchema>;
+
+export const InductionContentSchema = z.object({
+  "sections": z.array(InductionSectionSchema).max(30),
+  "quiz": z.array(InductionQuestionSchema).max(15),
+  "passMark": z.number().int().min(70).max(100),
+}).strict();
+export type InductionContent = z.infer<typeof InductionContentSchema>;
+
+export const InductionApprovalSchema = z.object({
+  "section": z.number().int(),
+  "approvedBy": UserRefSchema,
+  "approvedAt": z.string().datetime({ offset: true }),
+  "current": z.boolean(),
+});
+export type InductionApproval = z.infer<typeof InductionApprovalSchema>;
+
+export const InductionProblemSchema = z.object({
+  "path": z.string(),
+  "message": z.string(),
+});
+export type InductionProblem = z.infer<typeof InductionProblemSchema>;
+
+export const InductionVersionSummarySchema = z.object({
+  "id": z.string().regex(new RegExp("^inv_[0-9A-Za-z]{26}$")),
+  "number": z.number().int().min(1),
+  "contentHash": z.string(),
+  "redo": z.enum(["all", "none"]),
+  "graceDays": z.number().int(),
+  "requiredFrom": z.string().datetime({ offset: true }),
+  "changeNote": z.string().nullable(),
+  "aiGenerated": z.boolean(),
+  "publishedAt": z.string().datetime({ offset: true }),
+  "publishedBy": z.union([UserRefSchema, z.null()]),
+});
+export type InductionVersionSummary = z.infer<typeof InductionVersionSummarySchema>;
+
+export const InductionSchema = z.object({
+  "id": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "siteId": z.string().nullable(),
+  "title": z.string(),
+  "status": z.enum(["draft", "published", "archived"]),
+  "validityMonths": z.number().int(),
+  "draft": InductionContentSchema,
+  "draftAiSuggestionId": z.string().nullable(),
+  "approvals": z.array(InductionApprovalSchema),
+  "problems": z.array(InductionProblemSchema),
+  "currentVersion": z.union([InductionVersionSummarySchema, z.null()]),
+  "requiredVersion": z.union([InductionVersionSummarySchema, z.null()]),
+  "versions": z.array(InductionVersionSummarySchema),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type Induction = z.infer<typeof InductionSchema>;
+
+export const InductionQuizSummarySchema = z.object({
+  "attempts": z.number().int(),
+  "failedAttempts": z.number().int(),
+  "passed": z.boolean(),
+  "lastScore": z.number().int().nullable(),
+});
+export type InductionQuizSummary = z.infer<typeof InductionQuizSummarySchema>;
+
+export const WorkerCredentialSchema = z.object({
+  "id": z.string().regex(new RegExp("^wcr_[0-9A-Za-z]{26}$")),
+  "workerId": z.string(),
+  "kind": WorkerCredentialKindSchema,
+  "number": z.string(),
+  "issuingState": z.union([AuStateSchema, z.null()]),
+  "licenceClass": z.string().nullable(),
+  "issuedOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "fileIds": z.array(FileRefSchema),
+  "status": z.enum(["recorded", "sighted"]),
+  "sightedBy": z.union([UserRefSchema, z.null()]),
+  "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type WorkerCredential = z.infer<typeof WorkerCredentialSchema>;
+
+export const InductionWorkerQuestionSchema = z.object({
+  "id": z.string(),
+  "section": InductionSectionKeySchema,
+  "question": z.string(),
+  "options": z.array(z.string()),
+});
+export type InductionWorkerQuestion = z.infer<typeof InductionWorkerQuestionSchema>;
+
+export const InductionWorkerContentSchema = z.object({
+  "sections": z.array(InductionSectionSchema),
+  "quiz": z.array(InductionWorkerQuestionSchema),
+  "passMark": z.number().int(),
+  "declarationText": z.string(),
+  "swmsNotice": z.string(),
+});
+export type InductionWorkerContent = z.infer<typeof InductionWorkerContentSchema>;
+
+export const InductionCompletionSchema = z.object({
+  "id": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string(),
+  "versionId": z.string(),
+  "versionNumber": z.number().int(),
+  "worker": WorkerSchema,
+  "status": z.enum(["in_progress", "completed"]),
+  "method": z.enum(["self", "assisted"]),
+  "startedAt": z.string().datetime({ offset: true }),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "sectionsViewed": z.array(z.number().int()),
+  "quiz": InductionQuizSummarySchema,
+  "credentials": z.array(WorkerCredentialSchema),
+  "content": InductionWorkerContentSchema,
+});
+export type InductionCompletion = z.infer<typeof InductionCompletionSchema>;
+
+export const InductionListSchema = z.object({
+  "data": z.array(InductionSchema),
+});
+export type InductionList = z.infer<typeof InductionListSchema>;
+
+export const InductionProgressRequestSchema = z.object({
+  "section": z.number().int().min(0).max(29),
+  "seconds": z.number().int().min(0).max(86400).optional(),
+}).strict();
+export type InductionProgressRequest = z.infer<typeof InductionProgressRequestSchema>;
+
+export const InductionQuizResultSchema = z.object({
+  "attempt": z.number().int(),
+  "score": z.number().int(),
+  "passed": z.boolean(),
+  "criticalMissed": z.boolean(),
+  "reviewSections": z.array(z.number().int()),
+  "seeSiteOffice": z.boolean(),
+});
+export type InductionQuizResult = z.infer<typeof InductionQuizResultSchema>;
+
+export const InductionRegisterEntrySchema = z.object({
+  "worker": WorkerSchema,
+  "status": z.enum(["current", "needs_reinduction", "expired", "in_progress", "not_inducted"]),
+  "completion": z.union([z.object({
+  "id": z.string(),
+  "versionNumber": z.number().int(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "score": z.number().int().nullable(),
+  "method": z.enum(["self", "assisted"]),
+}), z.null()]),
+  "credentials": z.array(z.object({
+  "kind": WorkerCredentialKindSchema,
+  "status": z.enum(["recorded", "sighted"]),
+  "expiresOn": z.string().date().nullable(),
+})),
+});
+export type InductionRegisterEntry = z.infer<typeof InductionRegisterEntrySchema>;
+
+export const InductionRegisterSchema = z.object({
+  "inductionId": z.string().nullable(),
+  "requiredVersion": z.number().int().nullable(),
+  "data": z.array(InductionRegisterEntrySchema),
+});
+export type InductionRegister = z.infer<typeof InductionRegisterSchema>;
+
+export const InductionVersionSchema = z.intersection(InductionVersionSummarySchema, z.object({
+  "inductionId": z.string(),
+  "content": InductionContentSchema,
+  "declarationText": z.string(),
+  "approvedBy": z.array(UserRefSchema),
+}));
+export type InductionVersion = z.infer<typeof InductionVersionSchema>;
+
 export const JwksSchema = z.object({
   "keys": z.array(z.record(z.string(), z.unknown())),
 });
@@ -1166,6 +1419,13 @@ export const PublishDrawingSetRequestSchema = z.object({
 }).strict();
 export type PublishDrawingSetRequest = z.infer<typeof PublishDrawingSetRequestSchema>;
 
+export const PublishInductionRequestSchema = z.object({
+  "redo": z.enum(["all", "none"]),
+  "graceDays": z.number().int().min(0).max(30).optional(),
+  "changeNote": z.string().min(1).max(1000).optional(),
+}).strict();
+export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSchema>;
+
 export const RecordAttendanceRequestSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
@@ -1303,6 +1563,12 @@ export const SaveDiaryEntryRequestSchema = z.object({
 }).strict();
 export type SaveDiaryEntryRequest = z.infer<typeof SaveDiaryEntryRequestSchema>;
 
+export const SaveInductionDraftRequestSchema = z.object({
+  "content": InductionContentSchema,
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
+
 export const SelfSignInRequestSchema = z.object({
   "gateCode": z.string().min(10).max(100),
   "clientAt": z.string().datetime({ offset: true }).optional(),
@@ -1332,12 +1598,30 @@ export const SignInResultSchema = z.object({
 });
 export type SignInResult = z.infer<typeof SignInResultSchema>;
 
+export const SignInductionRequestSchema = z.object({
+  "typedName": z.string().min(1).max(200),
+  "signature": z.object({
+  "format": z.enum(["svg"]),
+  "data": z.string().min(1).max(200000),
+}).strict(),
+  "fitForWork": z.boolean(),
+  "agreed": z.boolean(),
+  "clientAt": z.string().datetime({ offset: true }).optional(),
+}).strict();
+export type SignInductionRequest = z.infer<typeof SignInductionRequestSchema>;
+
 export const SignupRequestSchema = z.object({
   "email": EmailSchema,
   "password": PasswordSchema,
   "name": z.string().min(1).max(200),
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const StartInductionRequestSchema = z.object({
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type StartInductionRequest = z.infer<typeof StartInductionRequestSchema>;
 
 export const StartRollCallRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
@@ -1349,6 +1633,14 @@ export const SubmitDiaryEntryRequestSchema = z.object({
   "clientAt": z.string().datetime({ offset: true }).optional(),
 }).strict();
 export type SubmitDiaryEntryRequest = z.infer<typeof SubmitDiaryEntryRequestSchema>;
+
+export const SubmitInductionQuizRequestSchema = z.object({
+  "answers": z.array(z.object({
+  "questionId": z.string().max(40),
+  "answerIndex": z.number().int().min(0).max(5),
+}).strict()).max(15),
+}).strict();
+export type SubmitInductionQuizRequest = z.infer<typeof SubmitInductionQuizRequestSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),
@@ -1594,6 +1886,13 @@ export const UpdateGateRequestSchema = z.object({
 }).strict();
 export type UpdateGateRequest = z.infer<typeof UpdateGateRequestSchema>;
 
+export const UpdateInductionRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "validityMonths": z.number().int().min(1).max(36).optional(),
+  "status": z.enum(["archived"]).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateInductionRequest = z.infer<typeof UpdateInductionRequestSchema>;
+
 export const UpdateMarkupRequestSchema = z.object({
   "visibility": MarkupVisibilitySchema.optional(),
   "shapes": z.array(MarkupShapeSchema).max(2000).optional(),
@@ -1652,6 +1951,11 @@ export const UploadSchema = z.object({
   "expiresAt": z.string().datetime({ offset: true }),
 });
 export type Upload = z.infer<typeof UploadSchema>;
+
+export const WorkerCredentialListSchema = z.object({
+  "data": z.array(WorkerCredentialSchema),
+});
+export type WorkerCredentialList = z.infer<typeof WorkerCredentialListSchema>;
 
 export const WorkerListSchema = z.object({
   "data": z.array(WorkerSchema),

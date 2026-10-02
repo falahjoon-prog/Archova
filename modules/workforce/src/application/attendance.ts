@@ -999,6 +999,9 @@ export function createAttendanceService(deps: WorkforceDeps) {
 
   return {
     viewer,
+    getSite,
+    getWorker,
+    selfWorker,
     listSites,
     createSite,
     updateSite,

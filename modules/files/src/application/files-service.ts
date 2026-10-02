@@ -52,6 +52,11 @@ export interface FilesDeps {
   store: ObjectStore;
   scanner: MalwareScanner;
   logger: Logger;
+  /**
+   * Uploads a feature module owns, checked with that module's key instead of `files.objects.upload`: a worker
+   * photographing their white card during an induction holds no documents permission (backend 06 §5).
+   */
+  uploadPermissions?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -59,16 +64,24 @@ export interface FilesDeps {
  * Phase 0 runs verification, scanning and the move out of quarantine inline in `complete`; the files worker takes
  * this over from the S3 event (same function) when apps/worker lands, adding renditions and EXIF.
  */
-export function createFilesService({ access, store, scanner, logger }: FilesDeps) {
+export function createFilesService({
+  access,
+  store,
+  scanner,
+  logger,
+  uploadPermissions = {},
+}: FilesDeps) {
   async function authorise(
     scope: TenantScope,
     projectId: string | null,
     action: 'upload' | 'read',
+    module?: string,
   ) {
     if (projectId) {
+      const own = action === 'upload' && module ? uploadPermissions[module] : undefined;
       await access.assert(
         scope,
-        action === 'upload' ? 'files.objects.upload' : 'files.objects.read',
+        own ?? (action === 'upload' ? 'files.objects.upload' : 'files.objects.read'),
         { projectId },
       );
     } else if (action === 'upload') {
@@ -83,7 +96,7 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
     scope: TenantScope,
     input: Omit<CreateUploadRequest, 'projectId'> & { projectId: string | null },
   ) {
-    await authorise(scope, input.projectId, 'upload');
+    await authorise(scope, input.projectId, 'upload', input.module);
     if (!ALLOWED_MIME_TYPES.has(input.mime)) {
       throw new AppError(
         'upload.mime_not_allowed',

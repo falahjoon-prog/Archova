@@ -12,10 +12,12 @@
     "test": "vitest run test/unit --passWithNoTests"
   },
   "dependencies": {
+    "@archova/ai-prompts": "workspace:*",
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-access": "workspace:*",
+    "@archova/mod-ai": "workspace:*",
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@archova/time": "workspace:*",

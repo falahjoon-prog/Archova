@@ -2819,6 +2819,484 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RollCall' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listInductions
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'Site inductions on the project, with their published versions (IND-US1).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInduction
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'Start a site induction from the company template: the nine required sections (compliance/04 §2), empty, and the default pass mark.'
+      description: 'One induction per site, or one for the whole project when `siteId` is left out.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInductionRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Induction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getInduction
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'The induction with its working draft, section approvals, what still blocks publishing, and its versions.'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Induction' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateInduction
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'Rename the induction, change how long a completion stays current, or archive it.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateInductionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Induction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/draft:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+    put:
+      operationId: saveInductionDraft
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'Save the working draft (sections, quiz, pass mark).'
+      description: "Pass `aiSuggestionId` when the content comes from a Nova draft (IND-AC13): every section then needs a person's approval before publishing, and editing a section clears its approval."
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveInductionDraftRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Induction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/draft/approvals:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: approveInductionSection
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'Approve one section of the draft as read and checked (IND-AC13). The approver is recorded on the version.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApproveInductionSectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Induction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: publishInduction
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'Publish the draft as a new, unchangeable version (IND-AC2), and choose whether workers must redo it (IND-AC10).'
+      description: 'Refused with `induction.incomplete` while a required section is empty or the quiz breaks the rules, and with `induction.not_approved` while a Nova-drafted section is unapproved.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublishInductionRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionVersion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/versions/{versionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: versionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inv_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getInductionVersion
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: 'A published version exactly as workers saw it, with the quiz answers.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionVersion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-register:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listInductionRegister
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: 'Who is inducted: every worker with their latest completion, version, score, credentials on file and status (IND-AC9).'
+      description: 'Subcontractors see only their own workers.'
+      parameters:
+        - { name: siteId, in: query, schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionRegister' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: startInduction
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Start, or pick up again, the induction on the current version (IND-AC4).'
+      description: 'Without `workerId` the caller takes the induction themselves. A site manager passes `workerId` to take a worker through it on a tablet at the gate (IND-AC8).'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/StartInductionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getInductionCompletion
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'One induction in progress or done: content (without quiz answers), progress, quiz and credentials.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: recordInductionProgress
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Record that a section was seen to the end (video watched, every slide paged, SWMS opened) and the time spent.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InductionProgressRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/quiz-attempts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: submitInductionQuiz
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Submit the quiz. Every attempt is kept; a failed one lists the sections to review (IND-AC5).'
+      description: 'Opens once every section has been seen (`induction.sections_not_viewed` before then).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitInductionQuizRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionQuizResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/credentials:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: addInductionCredential
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Upload a white card or licence while doing the induction (IND-AC7). Stored as "recorded".'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkerCredentialRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerCredential' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/sign:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: signInduction
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: 'Declare and sign (IND-AC6). Seals the record: the signature, time, device time, IP and the hash of the version signed.'
+      description: 'Needs a passed quiz and a white card on record.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignInductionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: workerId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: listWorkerCredentials
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.workers.manage
+      summary: "A worker's white card and licences. Only the builder's site managers and the worker's own company see them (IND-AC12)."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerCredentialList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addWorkerCredential
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.workers.manage
+      summary: 'Record a white card or licence for a worker (the subbie office or site manager).'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkerCredentialRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerCredential' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials/{credentialId}/sight:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: workerId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: credentialId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^wcr_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: sightWorkerCredential
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.manage
+      summary: 'Mark a card as sighted: a site manager has seen the real card (shown as "sighted by [name] on [date]", never "verified").'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerCredential' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -5445,3 +5923,512 @@ components:
       properties:
         workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
         status: { type: string, enum: [accounted_for, missing, not_on_site] }
+    InductionSectionKey:
+      type: string
+      description: 'The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.'
+      enum:
+        [
+          who_and_access,
+          layout_and_amenities,
+          emergencies_and_first_aid,
+          site_hazards,
+          high_risk_work_and_permits,
+          ppe,
+          site_rules,
+          incident_reporting,
+          consultation,
+          extra,
+        ]
+    InductionSlide:
+      type: object
+      additionalProperties: false
+      required: [title, points, script]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        points: { type: array, maxItems: 12, items: { type: string, minLength: 1, maxLength: 400 } }
+        script:
+          description: What the narrator says on this slide.
+          type: array
+          maxItems: 12
+          items: { type: string, minLength: 1, maxLength: 600 }
+    InductionSlidesBlock:
+      type: object
+      additionalProperties: false
+      required: [type, slides]
+      properties:
+        type: { type: string, enum: [slides] }
+        slides:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 30,
+            items: { $ref: '#/components/schemas/InductionSlide' },
+          }
+    InductionTextBlock:
+      type: object
+      additionalProperties: false
+      required: [type, body]
+      properties:
+        type: { type: string, enum: [text] }
+        body: { type: string, minLength: 1, maxLength: 20000 }
+    InductionFileBlock:
+      type: object
+      additionalProperties: false
+      required: [type, fileId]
+      properties:
+        type:
+          type: string
+          enum: [video, document, image]
+          description: 'A video (watched to the end), a PDF or slide deck (paged through), or an image such as the site map.'
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        title: { type: [string, 'null'], maxLength: 200 }
+    InductionSwmsBlock:
+      type: object
+      additionalProperties: false
+      required: [type, documentId]
+      properties:
+        type: { type: string, enum: [swms] }
+        documentId: { type: string, pattern: '^doc_[0-9A-Za-z]{26}$' }
+        title:
+          type: [string, 'null']
+          maxLength: 300
+          description: Filled in from the document register; ignored on input.
+    InductionBlock:
+      oneOf:
+        - $ref: '#/components/schemas/InductionSlidesBlock'
+        - $ref: '#/components/schemas/InductionTextBlock'
+        - $ref: '#/components/schemas/InductionFileBlock'
+        - $ref: '#/components/schemas/InductionSwmsBlock'
+    InductionSection:
+      type: object
+      additionalProperties: false
+      required: [key, title, blocks]
+      properties:
+        key: { $ref: '#/components/schemas/InductionSectionKey' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        blocks:
+          { type: array, maxItems: 20, items: { $ref: '#/components/schemas/InductionBlock' } }
+    InductionQuestion:
+      type: object
+      additionalProperties: false
+      required: [section, question, options, answerIndex, critical]
+      properties:
+        id:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{1,40}$'
+          description: Kept across edits so attempts point at the same question; given by the server when left out.
+        section: { $ref: '#/components/schemas/InductionSectionKey' }
+        question: { type: string, minLength: 1, maxLength: 500 }
+        options:
+          {
+            type: array,
+            minItems: 2,
+            maxItems: 6,
+            items: { type: string, minLength: 1, maxLength: 300 },
+          }
+        answerIndex: { type: integer, minimum: 0, maximum: 5 }
+        critical:
+          type: boolean
+          description: 'Must be answered correctly to pass. Always on for emergency and high-risk work questions.'
+    InductionContent:
+      type: object
+      additionalProperties: false
+      required: [sections, quiz, passMark]
+      properties:
+        sections:
+          { type: array, maxItems: 30, items: { $ref: '#/components/schemas/InductionSection' } }
+        quiz:
+          { type: array, maxItems: 15, items: { $ref: '#/components/schemas/InductionQuestion' } }
+        passMark:
+          type: integer
+          minimum: 70
+          maximum: 100
+          description: 'Overall percentage needed, on top of every critical question right. Default 80 (IND-AC5).'
+    InductionProblem:
+      type: object
+      required: [path, message]
+      properties:
+        path: { type: string }
+        message: { type: string }
+    InductionApproval:
+      type: object
+      required: [section, approvedBy, approvedAt, current]
+      properties:
+        section: { type: integer, description: Index of the section in the draft. }
+        approvedBy: { $ref: '#/components/schemas/UserRef' }
+        approvedAt: { type: string, format: date-time }
+        current:
+          type: boolean
+          description: False once the section has been edited since it was approved.
+    InductionVersionSummary:
+      type: object
+      required:
+        [
+          id,
+          number,
+          contentHash,
+          redo,
+          graceDays,
+          requiredFrom,
+          changeNote,
+          aiGenerated,
+          publishedAt,
+          publishedBy,
+        ]
+      properties:
+        id: { type: string, pattern: '^inv_[0-9A-Za-z]{26}$' }
+        number: { type: integer, minimum: 1 }
+        contentHash: { type: string }
+        redo:
+          type: string
+          enum: [all, none]
+          description: '`all`: every worker must complete this version before their next sign-in, after the grace days. `none`: a minor change; earlier completions stay current.'
+        graceDays: { type: integer }
+        requiredFrom: { type: string, format: date-time }
+        changeNote: { type: [string, 'null'] }
+        aiGenerated: { type: boolean }
+        publishedAt: { type: string, format: date-time }
+        publishedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+    InductionVersion:
+      allOf:
+        - $ref: '#/components/schemas/InductionVersionSummary'
+        - type: object
+          required: [inductionId, content, declarationText, approvedBy]
+          properties:
+            inductionId: { type: string }
+            content: { $ref: '#/components/schemas/InductionContent' }
+            declarationText: { type: string }
+            approvedBy:
+              description: The people who approved Nova-drafted sections, if any.
+              type: array
+              items: { $ref: '#/components/schemas/UserRef' }
+    Induction:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          siteId,
+          title,
+          status,
+          validityMonths,
+          draft,
+          draftAiSuggestionId,
+          approvals,
+          problems,
+          currentVersion,
+          requiredVersion,
+          versions,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        siteId: { type: [string, 'null'] }
+        title: { type: string }
+        status: { type: string, enum: [draft, published, archived] }
+        validityMonths:
+          type: integer
+          description: How long a completion stays current before re-induction (compliance/04 §4, default 12).
+        draft: { $ref: '#/components/schemas/InductionContent' }
+        draftAiSuggestionId:
+          type: [string, 'null']
+          description: Set when the draft came from a Nova suggestion; every section then needs approving.
+        approvals: { type: array, items: { $ref: '#/components/schemas/InductionApproval' } }
+        problems:
+          description: What stops the draft being published now. Empty when it can be.
+          type: array
+          items: { $ref: '#/components/schemas/InductionProblem' }
+        currentVersion:
+          oneOf: [{ $ref: '#/components/schemas/InductionVersionSummary' }, { type: 'null' }]
+        requiredVersion:
+          description: The version workers must have completed to sign in today.
+          oneOf: [{ $ref: '#/components/schemas/InductionVersionSummary' }, { type: 'null' }]
+        versions:
+          description: Newest first.
+          type: array
+          items: { $ref: '#/components/schemas/InductionVersionSummary' }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    InductionList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Induction' } }
+    CreateInductionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        validityMonths: { type: integer, minimum: 1, maximum: 36 }
+    UpdateInductionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        validityMonths: { type: integer, minimum: 1, maximum: 36 }
+        status: { type: string, enum: [archived] }
+    SaveInductionDraftRequest:
+      type: object
+      additionalProperties: false
+      required: [content]
+      properties:
+        content: { $ref: '#/components/schemas/InductionContent' }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `induction.draft` suggestion this content was built from.
+    ApproveInductionSectionRequest:
+      type: object
+      additionalProperties: false
+      required: [section]
+      properties:
+        section: { type: integer, minimum: 0, maximum: 29 }
+    PublishInductionRequest:
+      type: object
+      additionalProperties: false
+      required: [redo]
+      properties:
+        redo: { type: string, enum: [all, none] }
+        graceDays: { type: integer, minimum: 0, maximum: 30 }
+        changeNote: { type: string, minLength: 1, maxLength: 1000 }
+    StartInductionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        workerId:
+          type: string
+          pattern: '^wkr_[0-9A-Za-z]{26}$'
+          description: A site manager taking a worker through it on a tablet.
+    InductionWorkerQuestion:
+      type: object
+      required: [id, section, question, options]
+      properties:
+        id: { type: string }
+        section: { $ref: '#/components/schemas/InductionSectionKey' }
+        question: { type: string }
+        options: { type: array, items: { type: string } }
+    InductionWorkerContent:
+      type: object
+      required: [sections, quiz, passMark, declarationText, swmsNotice]
+      properties:
+        sections: { type: array, items: { $ref: '#/components/schemas/InductionSection' } }
+        quiz: { type: array, items: { $ref: '#/components/schemas/InductionWorkerQuestion' } }
+        passMark: { type: integer }
+        declarationText: { type: string }
+        swmsNotice:
+          type: string
+          description: 'Shown with every SWMS: opening it here is awareness, not sign-on to the SWMS.'
+    InductionQuizSummary:
+      type: object
+      required: [attempts, failedAttempts, passed, lastScore]
+      properties:
+        attempts: { type: integer }
+        failedAttempts: { type: integer }
+        passed: { type: boolean }
+        lastScore: { type: [integer, 'null'] }
+    InductionCompletion:
+      type: object
+      required:
+        [
+          id,
+          inductionId,
+          versionId,
+          versionNumber,
+          worker,
+          status,
+          method,
+          startedAt,
+          completedAt,
+          expiresOn,
+          sectionsViewed,
+          quiz,
+          credentials,
+          content,
+        ]
+      properties:
+        id: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' }
+        inductionId: { type: string }
+        versionId: { type: string }
+        versionNumber: { type: integer }
+        worker: { $ref: '#/components/schemas/Worker' }
+        status: { type: string, enum: [in_progress, completed] }
+        method: { type: string, enum: [self, assisted] }
+        startedAt: { type: string, format: date-time }
+        completedAt: { type: [string, 'null'], format: date-time }
+        expiresOn: { type: [string, 'null'], format: date }
+        sectionsViewed:
+          description: Indexes of the sections seen to the end.
+          type: array
+          items: { type: integer }
+        quiz: { $ref: '#/components/schemas/InductionQuizSummary' }
+        credentials: { type: array, items: { $ref: '#/components/schemas/WorkerCredential' } }
+        content: { $ref: '#/components/schemas/InductionWorkerContent' }
+    InductionProgressRequest:
+      type: object
+      additionalProperties: false
+      required: [section]
+      properties:
+        section: { type: integer, minimum: 0, maximum: 29 }
+        seconds: { type: integer, minimum: 0, maximum: 86400 }
+    SubmitInductionQuizRequest:
+      type: object
+      additionalProperties: false
+      required: [answers]
+      properties:
+        answers:
+          type: array
+          maxItems: 15
+          items:
+            type: object
+            additionalProperties: false
+            required: [questionId, answerIndex]
+            properties:
+              questionId: { type: string, maxLength: 40 }
+              answerIndex: { type: integer, minimum: 0, maximum: 5 }
+    InductionQuizResult:
+      type: object
+      required: [attempt, score, passed, criticalMissed, reviewSections, seeSiteOffice]
+      properties:
+        attempt: { type: integer }
+        score: { type: integer, description: Percentage of questions answered correctly. }
+        passed: { type: boolean }
+        criticalMissed: { type: boolean }
+        reviewSections:
+          description: Indexes of the sections the missed questions came from.
+          type: array
+          items: { type: integer }
+        seeSiteOffice:
+          type: boolean
+          description: True after 3 failed attempts; the site manager is told (compliance/04 §3).
+    SignInductionRequest:
+      type: object
+      additionalProperties: false
+      required: [typedName, signature, fitForWork, agreed]
+      properties:
+        typedName: { type: string, minLength: 1, maxLength: 200 }
+        signature:
+          type: object
+          additionalProperties: false
+          required: [format, data]
+          properties:
+            format: { type: string, enum: [svg] }
+            data:
+              type: string
+              minLength: 1
+              maxLength: 200000
+              description: The finger signature as SVG path data.
+        fitForWork: { type: boolean, description: Must be true. }
+        agreed: { type: boolean, description: Must be true. }
+        clientAt:
+          {
+            type: string,
+            format: date-time,
+            description: The device's clock when they tapped "I agree".,
+          }
+    WorkerCredentialKind:
+      type: string
+      enum: [white_card, high_risk_licence, trade_licence, other]
+    WorkerCredential:
+      type: object
+      required:
+        [
+          id,
+          workerId,
+          kind,
+          number,
+          issuingState,
+          licenceClass,
+          issuedOn,
+          expiresOn,
+          fileIds,
+          status,
+          sightedBy,
+          sightedAt,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^wcr_[0-9A-Za-z]{26}$' }
+        workerId: { type: string }
+        kind: { $ref: '#/components/schemas/WorkerCredentialKind' }
+        number: { type: string }
+        issuingState: { oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }] }
+        licenceClass: { type: [string, 'null'] }
+        issuedOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        fileIds: { type: array, items: { $ref: '#/components/schemas/FileRef' } }
+        status:
+          type: string
+          enum: [recorded, sighted]
+          description: '"Recorded" as the worker entered it, or "sighted" once a site manager has seen the card. Never "verified" (IND-AC7).'
+        sightedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        sightedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    WorkerCredentialList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/WorkerCredential' } }
+    CreateWorkerCredentialRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, number, fileIds]
+      properties:
+        kind: { $ref: '#/components/schemas/WorkerCredentialKind' }
+        number: { type: string, minLength: 1, maxLength: 50 }
+        issuingState: { $ref: '#/components/schemas/AuState' }
+        licenceClass: { type: string, minLength: 1, maxLength: 100 }
+        issuedOn: { type: string, format: date }
+        expiresOn: { type: string, format: date }
+        fileIds:
+          description: Photos of the card, front and back.
+          type: array
+          minItems: 1
+          maxItems: 4
+          items: { $ref: '#/components/schemas/FileRef' }
+    InductionRegisterEntry:
+      type: object
+      required: [worker, status, completion, credentials]
+      properties:
+        worker: { $ref: '#/components/schemas/Worker' }
+        status:
+          type: string
+          enum: [current, needs_reinduction, expired, in_progress, not_inducted]
+        completion:
+          oneOf:
+            - type: object
+              required: [id, versionNumber, completedAt, expiresOn, score, method]
+              properties:
+                id: { type: string }
+                versionNumber: { type: integer }
+                completedAt: { type: [string, 'null'], format: date-time }
+                expiresOn: { type: [string, 'null'], format: date }
+                score: { type: [integer, 'null'] }
+                method: { type: string, enum: [self, assisted] }
+            - { type: 'null' }
+        credentials:
+          description: What's on file. Card numbers and photos stay on the worker's credential list.
+          type: array
+          items:
+            type: object
+            required: [kind, status, expiresOn]
+            properties:
+              kind: { $ref: '#/components/schemas/WorkerCredentialKind' }
+              status: { type: string, enum: [recorded, sighted] }
+              expiresOn: { type: [string, 'null'], format: date }
+    InductionRegister:
+      type: object
+      required: [inductionId, requiredVersion, data]
+      properties:
+        inductionId: { type: [string, 'null'] }
+        requiredVersion: { type: [integer, 'null'] }
+        data: { type: array, items: { $ref: '#/components/schemas/InductionRegisterEntry' } }

@@ -289,7 +289,13 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     return rows.filter((r) => !hidden.has(r.document.folderId) && !r.document.deletedAt);
   }
 
-  return { list, detail, create, addRevision, update, revisionsByIds };
+  /** A document's title for another module's record (an induction's SWMS), with the same visibility check. */
+  async function ref(scope: TenantScope, projectId: string, documentId: string) {
+    const row = await getRow(scope, projectId, documentId);
+    return { id: row.id, title: row.title, docNumber: row.docNumber };
+  }
+
+  return { list, detail, create, addRevision, update, revisionsByIds, ref };
 }
 
 async function changed(scope: TenantScope, projectId: string, id: string, version: number) {

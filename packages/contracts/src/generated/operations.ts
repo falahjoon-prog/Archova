@@ -680,6 +680,108 @@ export const EndRollCallParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
 });
+export const ListInductionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateInductionBody = s.CreateInductionRequestSchema;
+export const GetInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInductionBody = s.UpdateInductionRequestSchema;
+export const SaveInductionDraftParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+});
+export const SaveInductionDraftBody = s.SaveInductionDraftRequestSchema;
+export const ApproveInductionSectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+});
+export const ApproveInductionSectionBody = s.ApproveInductionSectionRequestSchema;
+export const PublishInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+});
+export const PublishInductionBody = s.PublishInductionRequestSchema;
+export const GetInductionVersionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string().regex(new RegExp("^ind_[0-9A-Za-z]{26}$")),
+  "versionId": z.string().regex(new RegExp("^inv_[0-9A-Za-z]{26}$")),
+});
+export const ListInductionRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListInductionRegisterQuery = z.object({
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+});
+export const StartInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const StartInductionBody = s.StartInductionRequestSchema;
+export const GetInductionCompletionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+});
+export const RecordInductionProgressParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+});
+export const RecordInductionProgressBody = s.InductionProgressRequestSchema;
+export const SubmitInductionQuizParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+});
+export const SubmitInductionQuizBody = s.SubmitInductionQuizRequestSchema;
+export const AddInductionCredentialParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+});
+export const AddInductionCredentialBody = s.CreateWorkerCredentialRequestSchema;
+export const SignInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+});
+export const SignInductionBody = s.SignInductionRequestSchema;
+export const ListWorkerCredentialsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+});
+export const AddWorkerCredentialParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+});
+export const AddWorkerCredentialBody = s.CreateWorkerCredentialRequestSchema;
+export const SightWorkerCredentialParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "credentialId": z.string().regex(new RegExp("^wcr_[0-9A-Za-z]{26}$")),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -2132,6 +2234,222 @@ export const operations = {
     internal: false,
     contentType: null,
     params: EndRollCallParams,
+    query: null,
+    body: null,
+  },
+  listInductions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: null,
+    params: ListInductionsParams,
+    query: null,
+    body: null,
+  },
+  createInduction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateInductionParams,
+    query: null,
+    body: CreateInductionBody,
+  },
+  getInduction: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: null,
+    params: GetInductionParams,
+    query: null,
+    body: null,
+  },
+  updateInduction: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateInductionParams,
+    query: null,
+    body: UpdateInductionBody,
+  },
+  saveInductionDraft: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/draft',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveInductionDraftParams,
+    query: null,
+    body: SaveInductionDraftBody,
+  },
+  approveInductionSection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/draft/approvals',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ApproveInductionSectionParams,
+    query: null,
+    body: ApproveInductionSectionBody,
+  },
+  publishInduction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/publish',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: "application/json",
+    params: PublishInductionParams,
+    query: null,
+    body: PublishInductionBody,
+  },
+  getInductionVersion: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/versions/{versionId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.inductions.manage",
+    internal: false,
+    contentType: null,
+    params: GetInductionVersionParams,
+    query: null,
+    body: null,
+  },
+  listInductionRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-register',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: null,
+    params: ListInductionRegisterParams,
+    query: ListInductionRegisterQuery,
+    body: null,
+  },
+  startInduction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: StartInductionParams,
+    query: null,
+    body: StartInductionBody,
+  },
+  getInductionCompletion: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: null,
+    params: GetInductionCompletionParams,
+    query: null,
+    body: null,
+  },
+  recordInductionProgress: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: RecordInductionProgressParams,
+    query: null,
+    body: RecordInductionProgressBody,
+  },
+  submitInductionQuiz: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/quiz-attempts',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitInductionQuizParams,
+    query: null,
+    body: SubmitInductionQuizBody,
+  },
+  addInductionCredential: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/credentials',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: AddInductionCredentialParams,
+    query: null,
+    body: AddInductionCredentialBody,
+  },
+  signInduction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/sign',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SignInductionParams,
+    query: null,
+    body: SignInductionBody,
+  },
+  listWorkerCredentials: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.workers.manage",
+    internal: false,
+    contentType: null,
+    params: ListWorkerCredentialsParams,
+    query: null,
+    body: null,
+  },
+  addWorkerCredential: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.workers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddWorkerCredentialParams,
+    query: null,
+    body: AddWorkerCredentialBody,
+  },
+  sightWorkerCredential: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials/{credentialId}/sight',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: null,
+    params: SightWorkerCredentialParams,
     query: null,
     body: null,
   },

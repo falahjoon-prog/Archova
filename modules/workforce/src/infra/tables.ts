@@ -13,6 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import type { EligibilityReason, EligibilityResult, GateCheckMode } from '../domain/attendance';
+import type { InductionContent } from '../domain/induction';
 
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
 
@@ -167,4 +168,117 @@ export const rollCallMarks = workforceSchema.table('roll_call_marks', {
   status: text('status').$type<MarkStatus>().notNull(),
   markedBy: uuid('marked_by'),
   markedAt: timestamp('marked_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export interface SectionApproval {
+  by: string;
+  at: string;
+  /** Hash of the section when it was approved; an edit makes the approval stale. */
+  hash: string;
+}
+
+export const inductions = workforceSchema.table('inductions', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  siteId: uuid('site_id'),
+  title: text('title').notNull(),
+  status: text('status').$type<'draft' | 'published' | 'archived'>().notNull().default('draft'),
+  validityMonths: integer('validity_months').notNull().default(12),
+  draft: jsonb('draft').$type<InductionContent>().notNull(),
+  draftAiSuggestionId: uuid('draft_ai_suggestion_id'),
+  draftApprovals: jsonb('draft_approvals')
+    .$type<Record<string, SectionApproval>>()
+    .notNull()
+    .default({}),
+  currentVersionId: uuid('current_version_id'),
+  ...audit,
+});
+
+export const inductionVersions = workforceSchema.table('induction_versions', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  inductionId: uuid('induction_id').notNull(),
+  number: integer('number').notNull(),
+  content: jsonb('content').$type<InductionContent>().notNull(),
+  declarationText: text('declaration_text').notNull(),
+  contentHash: text('content_hash').notNull(),
+  redo: text('redo').$type<'all' | 'none'>().notNull(),
+  graceDays: integer('grace_days').notNull().default(0),
+  requiredFrom: timestamp('required_from', { withTimezone: true }).notNull(),
+  changeNote: text('change_note'),
+  aiSuggestionId: uuid('ai_suggestion_id'),
+  approvedBy: uuid('approved_by').array().notNull().default([]),
+  publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
+  publishedBy: uuid('published_by'),
+});
+
+export interface SectionProgress {
+  at: string;
+  seconds: number;
+}
+
+export const inductionCompletions = workforceSchema.table('induction_completions', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  inductionId: uuid('induction_id').notNull(),
+  versionId: uuid('version_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  status: text('status').$type<'in_progress' | 'completed'>().notNull().default('in_progress'),
+  method: text('method').$type<'self' | 'assisted'>().notNull(),
+  assistedBy: uuid('assisted_by'),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  progress: jsonb('progress').$type<Record<string, SectionProgress>>().notNull().default({}),
+  quizPassedAt: timestamp('quiz_passed_at', { withTimezone: true }),
+  quizScore: integer('quiz_score'),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  expiresOn: date('expires_on'),
+  typedName: text('typed_name'),
+  signatureFormat: text('signature_format').$type<'svg'>(),
+  signatureData: text('signature_data'),
+  declarationText: text('declaration_text'),
+  fitForWork: boolean('fit_for_work'),
+  deviceAt: timestamp('device_at', { withTimezone: true }),
+  ip: text('ip'),
+  userAgent: text('user_agent'),
+  language: text('language').notNull().default('en'),
+  translationHash: text('translation_hash'),
+  evidenceHash: text('evidence_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});
+
+export const inductionQuizAttempts = workforceSchema.table('induction_quiz_attempts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  completionId: uuid('completion_id').notNull(),
+  attempt: integer('attempt').notNull(),
+  questions: jsonb('questions').$type<string[]>().notNull(),
+  answers: jsonb('answers').$type<Record<string, number>>().notNull(),
+  score: integer('score').notNull(),
+  criticalOk: boolean('critical_ok').notNull(),
+  passed: boolean('passed').notNull(),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type CredentialKind = 'white_card' | 'high_risk_licence' | 'trade_licence' | 'other';
+
+export const workerCredentials = workforceSchema.table('worker_credentials', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  kind: text('kind').$type<CredentialKind>().notNull(),
+  number: text('number').notNull(),
+  issuingState: text('issuing_state'),
+  licenceClass: text('licence_class'),
+  issuedOn: date('issued_on'),
+  expiresOn: date('expires_on'),
+  fileIds: uuid('file_ids').array().notNull(),
+  status: text('status').$type<'recorded' | 'sighted'>().notNull().default('recorded'),
+  sightedBy: uuid('sighted_by'),
+  sightedAt: timestamp('sighted_at', { withTimezone: true }),
+  ...audit,
 });

@@ -43,6 +43,8 @@ export function createDocumentsModule(
     api: {
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
+      /** For inductions linking a SWMS: the document's title, or not_found. */
+      getDocumentRef: documents.ref,
       /** For Nova (ai/03 §3): every published document and drawing revision, with its access scope. */
       aiSources: aiSources.aiSources,
       /** For Nova retrieval (ai/04 §3): the access scopes the caller holds in a project. */

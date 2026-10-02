@@ -110,6 +110,19 @@ export const PROBLEM_CODES = {
   'attendance.not_on_site': 409,
   'roll_call.not_found': 404,
   'roll_call.ended': 409,
+  'induction.not_found': 404,
+  'induction.version_not_found': 404,
+  'induction.completion_not_found': 404,
+  'induction.exists': 409,
+  'induction.archived': 409,
+  'induction.incomplete': 422,
+  'induction.not_approved': 422,
+  'induction.not_published': 409,
+  'induction.sections_not_viewed': 409,
+  'induction.quiz_not_passed': 409,
+  'induction.completed': 409,
+  'induction.white_card_required': 422,
+  'credential.not_found': 404,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;
