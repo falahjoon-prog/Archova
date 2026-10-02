@@ -1,8 +1,10 @@
 // Pure diary rules shared by the screen, the preview source and tests.
 
 import { addDays, isBusinessDay, zonedToUtc, type LocalDate } from '@archova/time';
-import { companyName } from '@/shared/mocks/directory';
 import type { DelayType, DiaryContent, DiaryDaySummary, DiaryEntry } from './types';
+
+/** Names a company id; the screens pass the project directory's lookup. */
+export type CompanyNamer = (id: string | null | undefined) => string;
 
 /** DIA-AC4: "possible EOT" is ticked by default for weather, client, design and authority delays. */
 export function eotByDefault(type: DelayType): boolean {
@@ -68,6 +70,7 @@ const txt = (v: string) => (v.trim() ? v.trim() : 'blank');
 export function diffContent(
   before: DiaryContent,
   after: DiaryContent,
+  companyName: CompanyNamer,
 ): Array<{ field: string; before: string; after: string }> {
   const out: Array<{ field: string; before: string; after: string }> = [];
   const push = (field: string, b: string, a: string) => {
@@ -131,7 +134,7 @@ export function diffContent(
 }
 
 /** What blocks submit: delays need type, hours and description (DIA-AC4); labour lines need a headcount. */
-export function submitProblems(content: DiaryContent): string[] {
+export function submitProblems(content: DiaryContent, companyName: CompanyNamer): string[] {
   const problems: string[] = [];
   content.delays.forEach((d, i) => {
     if (!d.description.trim() || d.hours === null) {
