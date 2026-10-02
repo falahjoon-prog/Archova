@@ -647,6 +647,7 @@ export const NovaIndexReportSchema = z.object({
   "indexed": z.number().int(),
   "unchanged": z.number().int(),
   "noText": z.number().int(),
+  "ocrPages": z.number().int(),
   "unsupported": z.number().int(),
   "chunks": z.number().int(),
 });

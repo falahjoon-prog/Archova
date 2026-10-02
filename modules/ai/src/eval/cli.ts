@@ -4,7 +4,7 @@
 import { writeFileSync } from 'node:fs';
 import type { ModelTier } from '@archova/ai-prompts';
 import { buildRoutingTable, FAKE_MODELS } from '../index';
-import { createBedrockProvider } from '../infra/providers/bedrock';
+import { createProvider } from '../infra/providers';
 import { createFakeProvider } from '../infra/providers/fake';
 import { formatReport, runSuite } from './harness';
 import { SUITES } from './suites';
@@ -38,7 +38,7 @@ let failed = false;
 for (const suite of suites) {
   const provider =
     providerKind === 'bedrock'
-      ? createBedrockProvider({ region: process.env.AI_EVAL_REGION ?? 'ap-southeast-2' })
+      ? createProvider({ kind: 'bedrock', region: process.env.AI_EVAL_REGION ?? 'ap-southeast-2' })
       : createFakeProvider(suite.fake ? { [suite.prompt.id]: suite.fake } : {});
   const report = await runSuite(suite, {
     provider,

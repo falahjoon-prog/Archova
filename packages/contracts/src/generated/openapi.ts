@@ -886,7 +886,8 @@ export interface paths {
          * @description Each sheet becomes a pending suggestion with the drawing number, title, revision, discipline, date and scale,
          *     the fields a person must check (`flagged`), and how it matches the register (new drawing, new revision...).
          *     Nothing is added to the register until a person accepts. Re-running a file replaces its pending suggestions.
-         *     Pages without a text layer (scans) are listed in `skippedPages` until OCR lands.
+         *     Scanned pages are read with OCR (Textract in Sydney) and their suggestions have `payload.scanned: true`.
+         *     Pages with no text even after OCR are listed in `skippedPages`.
          */
         post: operations["extractDrawingRegister"];
         delete?: never;
@@ -1591,7 +1592,7 @@ export interface components {
         DrawingRegisterExtraction: {
             suggestions: components["schemas"]["AiSuggestion"][];
             pageCount: number;
-            /** @description Pages with no text layer (scans); read once OCR lands. */
+            /** @description Pages with no text, even after OCR (blank, or a scan too large to read inline). */
             skippedPages: number[];
             refusedPages: number[];
         };
@@ -1625,8 +1626,10 @@ export interface components {
         NovaIndexReport: {
             indexed: number;
             unchanged: number;
-            /** @description Revisions with no text layer (scans); indexed once OCR lands. */
+            /** @description Revisions with no text, even after OCR (blank pages, photos, drawings with no words). */
             noText: number;
+            /** @description Scanned pages read with OCR in this run */
+            ocrPages: number;
             /** @description Files that aren't PDFs */
             unsupported: number;
             chunks: number;

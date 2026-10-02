@@ -7,6 +7,8 @@ import type {
   ModelRequest,
   ModelResponse,
   ModelUsage,
+  OcrRequest,
+  OcrResponse,
   StopReason,
 } from '../../domain/provider';
 import { ProviderError } from '../../domain/provider';
@@ -16,6 +18,9 @@ export type FakeReply =
   | { text: string; stop?: StopReason; usage?: Partial<ModelUsage> };
 
 export type FakeResponder = (req: ModelRequest) => FakeReply | Promise<FakeReply>;
+
+/** Fake OCR: tests script what a page "says"; by default a scan reads as blank. */
+export type FakeOcrResponder = (req: OcrRequest) => OcrResponse | Promise<OcrResponse>;
 
 /** Rough token count (4 characters a token) so cost accounting has realistic numbers in tests. */
 export const approxTokens = (text: string) => Math.ceil(text.length / 4);
@@ -40,8 +45,12 @@ export function fakeEmbedding(text: string, dims = FAKE_EMBEDDING_DIMENSIONS): n
 export interface FakeProvider extends ModelProvider {
   /** Registers or replaces the responder for a task. */
   on(task: string, responder: FakeResponder): void;
+  /** Registers or replaces the OCR responder. */
+  onOcr(responder: FakeOcrResponder): void;
   /** Every request seen, newest last. */
   readonly calls: ModelRequest[];
+  /** Every OCR request seen, newest last. */
+  readonly ocrCalls: OcrRequest[];
 }
 
 export function createFakeProvider(
@@ -50,12 +59,18 @@ export function createFakeProvider(
 ): FakeProvider {
   const table = new Map(Object.entries(responders));
   const calls: ModelRequest[] = [];
+  const ocrCalls: OcrRequest[] = [];
+  let ocr: FakeOcrResponder = () => ({ lines: [] });
   return {
     name: 'fake',
     region: opts.region ?? 'ap-southeast-2',
     calls,
+    ocrCalls,
     on(task, responder) {
       table.set(task, responder);
+    },
+    onOcr(responder) {
+      ocr = responder;
     },
     async complete(req: ModelRequest): Promise<ModelResponse> {
       calls.push(req);
@@ -82,6 +97,10 @@ export function createFakeProvider(
         vectors: req.texts.map((t) => fakeEmbedding(t)),
         usage: { inputTokens: req.texts.reduce((s, t) => s + approxTokens(t), 0) },
       };
+    },
+    async detectText(req: OcrRequest): Promise<OcrResponse> {
+      ocrCalls.push(req);
+      return ocr(req);
     },
   };
 }

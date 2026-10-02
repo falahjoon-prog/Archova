@@ -24,6 +24,9 @@ export interface EmbeddingRoute {
   pricePerMTok: number;
 }
 
+/** Recorded as the model on OCR calls: Textract's text detection, in the provider's (Australian) region. */
+export const OCR_MODEL = 'textract-detect-text';
+
 /** Titan Text Embeddings V2 list price (ai/02 §6); confirm the Sydney price with the model id. */
 export const DEFAULT_EMBEDDING_PRICE = 0.02;
 

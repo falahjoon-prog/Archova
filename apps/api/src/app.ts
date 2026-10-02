@@ -62,6 +62,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
                   kind: 'bedrock',
                   region: config.ai.region,
                   ...(config.ai.endpoint ? { endpoint: config.ai.endpoint } : {}),
+                  ...(config.ai.ocrEndpoint ? { ocrEndpoint: config.ai.ocrEndpoint } : {}),
                 },
                 models: config.ai.models,
                 embedding: { model: config.ai.embeddingModel },

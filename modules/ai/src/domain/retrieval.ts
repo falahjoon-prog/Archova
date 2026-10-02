@@ -2,7 +2,7 @@
 // results. The database work lives in application/ask.ts and application/project-index.ts.
 
 /** Bumped when chunking or text extraction changes; revisions are re-indexed at the new version. */
-export const PIPELINE_VERSION = 1;
+export const PIPELINE_VERSION = 2; // 2: OCR for scanned pages
 
 /** ~700 tokens at 4 characters a token (ai/03 §3 step 4: 500–1,000 tokens). */
 export const CHUNK_TARGET_CHARS = 2800;

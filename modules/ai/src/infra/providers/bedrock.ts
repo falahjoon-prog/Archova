@@ -70,7 +70,7 @@ export interface BedrockSender {
 export function createBedrockProvider(
   config: BedrockConfig,
   opts: { client?: BedrockSender } = {},
-): ModelProvider {
+): Omit<ModelProvider, 'detectText'> {
   if (!isAustralianRegion(config.region)) {
     throw new Error(
       `Bedrock region ${config.region} is outside Australia; AI processing must stay in Australia (X25)`,

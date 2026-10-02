@@ -1,13 +1,14 @@
-// Ask Nova ingestion (ai/03 §3): extract each revision's text by page, chunk it, embed it and store it with the
-// access scope `documents` gave it. Idempotent per (revision, pipeline version), so re-runs only do new work.
+// Ask Nova ingestion (ai/03 §3): extract each revision's text by page (the PDF text layer, or OCR for a scanned
+// page), chunk it, embed it and store it with the access scope `documents` gave it. Idempotent per (revision, pipeline version), so re-runs only do new work.
 // Runs in the API process for now, started by a project admin; the ai-worker takes it over, driven by
 // `documents.*` events, when the worker lands.
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { Database, TenantContext, TenantScope } from '@archova/kernel';
+import { ocrPageText } from '../domain/ocr';
 import { PIPELINE_VERSION, chunkPages, type PageText } from '../domain/retrieval';
 import { toLines } from '../domain/titleblock';
-import { readPdfText } from '../infra/pdf';
+import { readPdfText, readScannedPages } from '../infra/pdf';
 import { chunks, indexEntries } from '../infra/tables';
 import type { ReadableFile } from './drawing-register';
 import type { Gateway } from './gateway';
@@ -28,7 +29,7 @@ export interface SourceRevision {
 
 export interface ProjectIndexDeps {
   database: Database;
-  gateway: Pick<Gateway, 'embed'>;
+  gateway: Pick<Gateway, 'embed' | 'ocr'>;
   readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
   assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
   sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
@@ -39,8 +40,10 @@ export interface IndexReport {
   indexed: number;
   /** Revisions already indexed at this pipeline version. */
   unchanged: number;
-  /** Revisions with no text layer (scans wait for OCR in the ai-worker). */
+  /** Revisions with no text, even after OCR (blank pages, photos, drawings with no words). */
   noText: number;
+  /** Scanned pages read with OCR in this run. */
+  ocrPages: number;
   /** Files that aren't PDFs. */
   unsupported: number;
   chunks: number;
@@ -72,7 +75,14 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       return { sources, done: new Set(done.map((d) => d.revisionId)) };
     });
 
-    const report: IndexReport = { indexed: 0, unchanged: 0, noText: 0, unsupported: 0, chunks: 0 };
+    const report: IndexReport = {
+      indexed: 0,
+      unchanged: 0,
+      noText: 0,
+      ocrPages: 0,
+      unsupported: 0,
+      chunks: 0,
+    };
     const todo = sources.filter((s) => {
       if (done.has(s.revisionId)) report.unchanged++;
       return !done.has(s.revisionId);
@@ -119,6 +129,21 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     const pageText = new Map<number, string>(
       pdf.pages.map((p) => [p.page, toLines(p.items).join('\n')]),
     );
+    // Pages these revisions need that have no text layer are scans: read them with OCR.
+    const needed = revs.some((r) => r.page === null)
+      ? [...pageText.keys()]
+      : revs.map((r) => r.page!);
+    const blank = [...new Set(needed)].filter((p) => pageText.has(p) && !pageText.get(p)!.trim());
+    if (blank.length) {
+      const scans = await readScannedPages(file.bytes, blank);
+      const read = await deps.gateway.ocr(
+        ctx,
+        scans.map((s) => s.png),
+        { feature: 'ask', projectId },
+      );
+      scans.forEach((s, i) => pageText.set(s.page, ocrPageText(read[i]!.lines)));
+      report.ocrPages += scans.length;
+    }
     for (const rev of revs) {
       // A drawing is one page of its set; a document is the whole file.
       const pages: PageText[] =
