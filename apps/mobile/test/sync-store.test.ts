@@ -1,6 +1,6 @@
 import { syncStoreConformance } from '@archova/sync-core/testing';
 import { describe, expect, it } from 'vitest';
-import { migrate, SqliteSyncStore, type SqlDatabase } from '../lib/db';
+import { migrate, MIGRATIONS, SqliteSyncStore, type SqlDatabase } from '../lib/db';
 import { nodeSqlDriver } from './support/node-sql';
 
 const MODULE_OF: Record<string, string> = { defect: 'defects', diary_labour: 'diary' };
@@ -51,7 +51,9 @@ describe('migrate', () => {
   it('is re-runnable and refuses a database from a newer build', async () => {
     const db = await freshDb();
     await migrate(db);
-    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({ user_version: 1 });
+    expect(await db.getFirstAsync('PRAGMA user_version')).toEqual({
+      user_version: MIGRATIONS.length,
+    });
     await db.execAsync('PRAGMA user_version = 99');
     await expect(migrate(db)).rejects.toThrow(/newer/);
   });

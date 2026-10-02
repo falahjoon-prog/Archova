@@ -37,6 +37,8 @@ jobs:
         run: pnpm db:lint --static-only
       - name: Workspace boundaries
         run: pnpm check:boundaries
+      - name: Nova evals (fake provider; schema, citation and safety bars gate, ai/06 §4)
+        run: pnpm --filter @archova/mod-ai eval
       - name: Lint, typecheck, unit tests, build
         run: pnpm turbo run lint typecheck test build
 
@@ -46,7 +48,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:16
+        # Postgres 16 with pgvector (Nova retrieval, ai/03 §5), same as docker-compose.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']

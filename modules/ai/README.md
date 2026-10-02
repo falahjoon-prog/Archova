@@ -15,12 +15,18 @@ if (run.status === 'refused') {
 
 The gateway checks that Nova is on for the org, feature and caller, checks the monthly credit allowance (interactive work only), rate-limits per user, renders the prompt, routes the tier to a model, retries once and falls back a tier for interactive work, validates the output against the schema, drops citations that don't match a supplied passage, and logs every call in `ai.ai_requests` with credits and cost in `ai.ai_usage_ledger`. Output that changes a record goes into `ai.ai_suggestions`; the owning module applies it when a person accepts.
 
+## Ask Nova retrieval (F2)
+
+`POST …/ai/index` brings a project's index up to date: every published document and drawing revision (from `documents.api.aiSources`) is read page by page, chunked (`src/domain/retrieval.ts`), embedded through the gateway (`embed`, 0 credits) and stored in `ai.ai_chunks` with its access scope (`drawings` or `folder:<id>`). Re-runs skip finished revisions, mark older revisions superseded, re-stamp moved documents and drop deleted ones. The ai-worker will run this on `documents.*` events once it exists.
+
+`POST …/ai/ask` gets the caller's scopes from `documents.api.aiAccessScopes`, runs keyword (Postgres full-text) and vector (pgvector, exact) searches filtered to those scopes inside the query, merges them by reciprocal rank fusion and sends the top 10 passages to `qa.answer`. An answer without a valid citation becomes "not found" with the closest matches. Postgres needs the `vector` extension (`pgvector/pgvector:pg16` locally and in CI; RDS ships it).
+
 ## Providers
 
-| `API_AI_PROVIDER` | Use                                                                                                                                                                                                                               |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fake` (default)  | Tests and local development. No network or credentials; tests script replies per task.                                                                                                                                            |
-| `bedrock`         | Deployed environments. Needs `API_AI_REGION` in Australia and `API_AI_MODEL_FAST/STANDARD/ADVANCED`. Only in-region model ids or `au.` inference profiles are accepted (X25); `apac.`, `us.`, `global.` and the rest are refused. |
+| `API_AI_PROVIDER` | Use                                                                                                                                                                                                                                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fake` (default)  | Tests and local development. No network or credentials; tests script replies per task.                                                                                                                                                                                                         |
+| `bedrock`         | Deployed environments. Needs `API_AI_REGION` in Australia, `API_AI_MODEL_FAST/STANDARD/ADVANCED` and `API_AI_MODEL_EMBEDDING` (default Titan Text Embeddings V2). Only in-region model ids or `au.` inference profiles are accepted (X25); `apac.`, `us.`, `global.` and the rest are refused. |
 
 Vendor SDKs may be imported only in `src/infra/providers/` (`pnpm check:boundaries`).
 

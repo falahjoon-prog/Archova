@@ -224,7 +224,24 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
     return { url, expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000) };
   }
 
-  return { createUpload, complete, get, downloadUrl };
+  /**
+   * The file's bytes for server-side processing, after the same read check as a download. Capped so one request
+   * can't pull a huge file into memory; bigger files wait for the worker.
+   */
+  async function readBytes(scope: TenantScope, fileId: string, maxBytes: number) {
+    const f = await get(scope, fileId);
+    if (f.status !== 'ready')
+      throw new AppError('file.not_ready', 'This file is not available yet.');
+    if (f.sizeBytes > maxBytes)
+      throw new AppError('validation_failed', 'This file is too large to process here.', [
+        { path: 'fileId', message: `Larger than ${Math.round(maxBytes / 1e6)} MB` },
+      ]);
+    const bytes = await store.get(f.storageKey);
+    if (!bytes) throw new AppError('file.not_ready', 'This file is not available yet.');
+    return { file: f, bytes };
+  }
+
+  return { createUpload, complete, get, downloadUrl, readBytes };
 }
 
 export type FilesService = ReturnType<typeof createFilesService>;

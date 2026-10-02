@@ -40,7 +40,12 @@ for (const suite of suites) {
     providerKind === 'bedrock'
       ? createBedrockProvider({ region: process.env.AI_EVAL_REGION ?? 'ap-southeast-2' })
       : createFakeProvider(suite.fake ? { [suite.prompt.id]: suite.fake } : {});
-  const report = await runSuite(suite, { provider, routing, ...(sample ? { sample } : {}) });
+  const report = await runSuite(suite, {
+    provider,
+    routing,
+    gate: providerKind === 'fake' ? 'safety' : 'all',
+    ...(sample ? { sample } : {}),
+  });
   reports.push(formatReport(report));
   failed ||= !report.passed;
 }

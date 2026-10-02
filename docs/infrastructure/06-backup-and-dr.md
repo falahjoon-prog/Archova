@@ -16,15 +16,16 @@
 | **Region loss, phase 3 onward** (claims live) | Same | **< 1 min** | **≤ 4 h** | Aurora Global Database secondary in Melbourne, promoted; S3 replicas; pilot-light compute scaled up |
 | Account compromise / ransomware | Attacker deletes prod resources and backups | ≤ 24 h | ≤ 24 h | Locked backup vault in a separate account and region that prod credentials cannot touch |
 
-The jump in region-loss targets at phase 3 is deliberate. Before payment claims run in the platform, a day's data loss in a regional disaster is tolerable for pilots (and is the cheapest option); once SOPA claims and payment schedules live here, it is not. Pilots should be told the phase 0–2 target in writing (Sam to include in the terms).
+The jump in region-loss targets at phase 3 is deliberate. Before payment claims run in the platform, a day's data loss in a regional disaster is tolerable for pilots (and is the cheapest option); once SOPA claims and payment schedules live here, it is not. Pilots are told the phase 0–2 target in writing; Sam has it on the pilot terms list (security-licensing 08 §8).
 
 ## 2. What is backed up, and how
 
 | Data | Primary protection | Backups | Retention | Copies |
 |---|---|---|---|---|
-| **Aurora PostgreSQL** (system of record) | Multi-AZ storage (6 copies across 3 AZs) | Continuous backup with point-in-time restore; AWS Backup daily snapshot, plus monthly and yearly | PITR 35 days; daily 35 days; monthly 12 months; yearly 7 years (Sam to confirm legal period for claims evidence) | Copied to the `backup` account vault in Sydney **and** Melbourne; Global Database in Melbourne from phase 3 |
+| **Aurora PostgreSQL** (system of record) | Multi-AZ storage (6 copies across 3 AZs) | Continuous backup with point-in-time restore; AWS Backup daily snapshot, plus monthly and yearly | PITR 35 days; daily 35 days; monthly 12 months; yearly 7 years (agreed with Sam). Legal retention of claims evidence is **not** carried by backups: it comes from Sam's Object-Locked evidence records (project close + 7 years, extendable to 12; security-licensing 07 §5) | Copied to the `backup` account vault in Sydney **and** Melbourne; Global Database in Melbourne from phase 3 |
 | **S3 `files`** (drawings, documents, photos) | 11 nines durability, versioning | Cross-region replication to a bucket in Melbourne **owned by the backup account**, with delete markers not replicated | Current versions forever (until tenant offboarding); noncurrent versions 90 days | 2 regions, 2 accounts |
 | **S3 `audit-archive`** | Object Lock **compliance mode** (cannot be deleted by anyone, including root, until retention expires) | Replicated to Melbourne with the same lock | ≥ 7 years | 2 regions |
+| **Website CMS** (`archova-marketing`: RDS PostgreSQL + S3 media) | Multi-AZ RDS, S3 versioning | RDS PITR; daily AWS Backup copy to the backup account and Melbourne; media replicated to Melbourne | PITR 14 days; daily 35 days | 2 regions (no customer data) |
 | **S3 `exports`** | Versioning | None (regenerable) | 30 days lifecycle | 1 |
 | Valkey (queues, cache) | Multi-AZ replica | Daily snapshot of the queue cluster | 7 days | 1 |
 | OpenSearch | 3-AZ replicas | Automated hourly snapshots | 14 days | Rebuildable from Postgres, so not critical |

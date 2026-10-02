@@ -1,7 +1,12 @@
 // When sync runs (mobile 02 §2.6). Triggers are coalesced: a burst of local writes or hints becomes one
 // run, a run in progress is never doubled, and failures wait out the engine's backoff.
 
-import type { SyncEngine, SyncOutcome } from './engine';
+import type { SyncOutcome, SyncRunOptions } from './engine';
+
+/** What the scheduler runs: the engine, or the app's wrapper that also drains its file queue. */
+export interface Syncable {
+  sync(options?: SyncRunOptions): Promise<SyncOutcome>;
+}
 
 export type SyncTrigger =
   | 'app_open'
@@ -53,7 +58,7 @@ export class SyncScheduler {
   private halted = false;
 
   constructor(
-    private readonly engine: SyncEngine,
+    private readonly engine: Syncable,
     private readonly timers: Timers,
     options: SyncSchedulerOptions = {},
   ) {

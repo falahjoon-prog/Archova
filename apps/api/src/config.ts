@@ -34,6 +34,8 @@ const Env = z.object({
   API_AI_MODEL_FAST: z.string().optional(),
   API_AI_MODEL_STANDARD: z.string().optional(),
   API_AI_MODEL_ADVANCED: z.string().optional(),
+  // Ask Nova embeddings: Titan Text Embeddings V2 in Sydney (ai/02 §6), 1024 dimensions.
+  API_AI_MODEL_EMBEDDING: z.string().default('amazon.titan-embed-text-v2:0'),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -72,6 +74,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
         standard: e.API_AI_MODEL_STANDARD ?? '',
         advanced: e.API_AI_MODEL_ADVANCED ?? '',
       },
+      embeddingModel: e.API_AI_MODEL_EMBEDDING,
     },
     logLevel: e.LOG_LEVEL,
   };
@@ -85,6 +88,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       throw new Error(`API_AI_REGION must be an Australian region (X25), not ${config.ai.region}`);
     for (const t of ['fast', 'standard', 'advanced'] as const)
       assertAustralianModelId(config.ai.models[t]);
+    assertAustralianModelId(config.ai.embeddingModel);
   }
   if (config.env === 'production') {
     const missing: string[] = [];

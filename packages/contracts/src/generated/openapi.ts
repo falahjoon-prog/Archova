@@ -869,6 +869,128 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-register/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova reads the title block of every sheet in an uploaded drawing PDF or image (F1).
+         * @description Each sheet becomes a pending suggestion with the drawing number, title, revision, discipline, date and scale,
+         *     the fields a person must check (`flagged`), and how it matches the register (new drawing, new revision...).
+         *     Nothing is added to the register until a person accepts. Re-running a file replaces its pending suggestions.
+         *     Pages without a text layer (scans) are listed in `skippedPages` until OCR lands.
+         */
+        post: operations["extractDrawingRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova suggestions on this project, newest first. */
+        get: operations["listAiSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept, edit or reject a Nova suggestion (ai/04 §7).
+         * @description Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`).
+         */
+        post: operations["decideAiSuggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova a question about this project's documents and drawings (F2).
+         * @description Nova searches the current revisions the caller can open (private folders and drawing access apply) and
+         *     answers with a citation to the exact document, revision and page for each claim. When the documents don't
+         *     answer it, `found` is false and `closestMatches` lists the nearest passages instead of a guess. Costs one
+         *     Nova credit when the model is called; nothing when no visible passage matches.
+         */
+        post: operations["askNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bring Nova's index of this project's documents and drawings up to date.
+         * @description Reads, chunks and embeds every published revision not yet indexed, marks older revisions superseded, applies
+         *     folder moves to access, and drops deleted records. Safe to repeat: finished revisions are skipped. Runs in the
+         *     request for now; the AI worker will run it on each document event once it lands. Embedding is background
+         *     work and costs no credits.
+         */
+        post: operations["indexProjectForNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1200,6 +1322,89 @@ export interface components {
             /** @enum {string|null} */
             reason?: "wrong" | "missing" | "not_useful" | "wrong_source" | "other" | null;
             comment?: string | null;
+        };
+        /** @enum {string} */
+        AiSuggestionStatus: "pending" | "accepted" | "edited" | "rejected";
+        AiSuggestion: {
+            id: string;
+            projectId: string | null;
+            /** @description Nova task, e.g. `drawing.titleblock` */
+            task: string;
+            targetType: string;
+            targetId: string | null;
+            status: components["schemas"]["AiSuggestionStatus"];
+            confidence: number | null;
+            /** @description Task-specific content. For `drawing.titleblock` see DrawingSheetFields. */
+            payload: {
+                [key: string]: unknown;
+            };
+            runId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        AiSuggestionPage: {
+            data: components["schemas"]["AiSuggestion"][];
+            nextCursor: string | null;
+        };
+        DrawingSheetFields: {
+            number?: string | null;
+            title?: string | null;
+            revision?: string | null;
+            /** @enum {string|null} */
+            discipline?: "architectural" | "structural" | "civil" | "hydraulic" | "mechanical" | "electrical" | "fire" | "landscape" | "interiors" | "survey" | "other" | null;
+            /** Format: date */
+            revisionDate?: string | null;
+            scale?: string | null;
+        };
+        AiSuggestionDecision: {
+            /** @enum {string} */
+            decision: "accepted" | "edited" | "rejected";
+            fields?: components["schemas"]["DrawingSheetFields"];
+        };
+        DrawingRegisterExtraction: {
+            suggestions: components["schemas"]["AiSuggestion"][];
+            pageCount: number;
+            /** @description Pages with no text layer (scans); read once OCR lands. */
+            skippedPages: number[];
+            refusedPages: number[];
+        };
+        /** @description A document or drawing revision page Nova used. */
+        NovaSource: {
+            /** @enum {string} */
+            sourceType: "document" | "drawing";
+            /** @description The document (`doc_`) or drawing sheet (`dsh_`). */
+            sourceId: string;
+            /** @description The document revision (`rev_`) or drawing revision (`drv_`). */
+            revisionId: string;
+            revision: string;
+            title: string;
+            /** @description Document or sheet number */
+            reference: string | null;
+            page: number;
+        };
+        NovaCitation: components["schemas"]["NovaSource"] & {
+            /** @description The exact words the answer relies on */
+            quote: string;
+        };
+        NovaAnswer: {
+            /** @description For feedback (`air_`); null when no model call was needed. */
+            runId: string | null;
+            found: boolean;
+            answer: string;
+            citations: components["schemas"]["NovaCitation"][];
+            /** @description When not found, the nearest passages so the user can check themselves. */
+            closestMatches: components["schemas"]["NovaSource"][];
+        };
+        NovaIndexReport: {
+            indexed: number;
+            unchanged: number;
+            /** @description Revisions with no text layer (scans); indexed once OCR lands. */
+            noText: number;
+            /** @description Files that aren't PDFs */
+            unsupported: number;
+            chunks: number;
         };
         CreateUploadRequest: {
             filename: string;
@@ -3165,6 +3370,148 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    extractDrawingRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Suggestions, one per sheet */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRegisterExtraction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAiSuggestions: {
+        parameters: {
+            query?: {
+                task?: string;
+                status?: components["schemas"]["AiSuggestionStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of suggestions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestionPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideAiSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSuggestionDecision"];
+            };
+        };
+        responses: {
+            /** @description The decided suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    askNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The answer, or "not found" with the closest matches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    indexProjectForNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What this run did */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaIndexReport"];
+                };
             };
             default: components["responses"]["Problem"];
         };

@@ -17,6 +17,12 @@ beforeAll(async () => {
       config: { provider: { kind: 'fake' }, models: FAKE_MODELS },
       // New orgs default to Sydney; the app's own module reads the org's zone from platform.
       orgTimeZone: async () => 'Australia/Sydney',
+      readFile: async () => {
+        throw new Error('not used');
+      },
+      assert: async () => undefined,
+      sources: async () => [],
+      accessScopes: async () => [],
       provider: t.ai,
     },
   ).api;

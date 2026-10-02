@@ -15,3 +15,11 @@ apps/mobile/android/
 next-env.d.ts
 .claude/
 dump.rdb
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+infra/modules/**/.terraform.lock.hcl
+infra/cells/**/.terraform.lock.hcl

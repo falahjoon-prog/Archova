@@ -22,6 +22,7 @@ Runbooks are written as the systems are built (phase 0), stored in `docs/runbook
 | Mobile sync failures and OTA rollback | Phase 3 |
 | WebSocket reconnect storm | Phase 1 |
 | AI provider outage or runaway spend (kill switch) | Phase 1 (when AI ships) |
+| AI egress allow-list: add an approved BYO endpoint, investigate a blocked AI call | Phase 1 (before any AI feature reaches real data) |
 | WAF false positives / blocking a customer | Phase 1 |
 | Rotate secrets and signing keys, revoke a leaked credential | Phase 0 |
 | Security incident first response (with Sam's IR plan) | Phase 0 |
@@ -30,6 +31,11 @@ Runbooks are written as the systems are built (phase 0), stored in `docs/runbook
 | Stand up a new cell; move a tenant between cells | Phase 4 or first enterprise deal |
 | Tenant offboarding: export and delete | Phase 1 |
 | Certificate / domain renewal problems | Phase 0 |
+| Staff access: onboard and offboard staff in the IdP (console, CMS, AWS in one step); lost hardware key | Phase 1 |
+| Website/CMS down: switch CloudFront to the static fallback, restore the CMS database | Phase 1 |
+| Inbound email: confirm SES receiving in ap-southeast-2, or stand up the Sydney MX; bounce and spam handling | Phase 1 |
+| Change published egress IPs (30-day notice) | Phase 1 |
+| Rollout halt on a mobile store release (crash-free < 99.5%) | Phase 3 |
 
 ## 2. Operational readiness checklist (before the first pilot goes live)
 
@@ -46,7 +52,9 @@ Delivery
 
 Observability
 - [ ] SLO dashboards and burn-rate alerts live; every page alert has a runbook
-- [ ] Synthetic checks running against the canary org
+- [ ] Synthetic checks and post-deploy module checks running against the production synthetic tenant
+- [ ] Egress IPs published; ABR GUID and integration secrets in Secrets Manager
+- [ ] Inbound email receiving confirmed in Sydney (SES) or own MX running in Sydney
 - [ ] Log redaction test passing; no PII in logs (spot-checked)
 - [ ] On-call rotation and escalation configured; status page live
 

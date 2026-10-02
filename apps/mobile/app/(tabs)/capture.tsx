@@ -1,10 +1,5 @@
-import { Placeholder } from '../../shared';
+import { CaptureScreen } from '../../features/photos';
 
 export default function CaptureTab() {
-  return (
-    <Placeholder
-      title="Capture"
-      description="Photos, defects, diary notes and observations will be captured here."
-    />
-  );
+  return <CaptureScreen />;
 }

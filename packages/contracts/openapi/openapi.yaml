@@ -1142,6 +1142,141 @@ paths:
       responses:
         '204': { description: Saved }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/drawing-register/extractions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: extractDrawingRegister
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.drawing_register.extract
+      summary: Nova reads the title block of every sheet in an uploaded drawing PDF or image (F1).
+      description: |
+        Each sheet becomes a pending suggestion with the drawing number, title, revision, discipline, date and scale,
+        the fields a person must check (`flagged`), and how it matches the register (new drawing, new revision...).
+        Nothing is added to the register until a person accepts. Re-running a file replaces its pending suggestions.
+        Pages without a text layer (scans) are listed in `skippedPages` until OCR lands.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId]
+              properties:
+                fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: Suggestions, one per sheet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingRegisterExtraction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAiSuggestions
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.suggestions.read
+      summary: Nova suggestions on this project, newest first.
+      parameters:
+        - { name: task, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AiSuggestionStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of suggestions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: decideAiSuggestion
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.suggestions.read
+      summary: Accept, edit or reject a Nova suggestion (ai/04 §7).
+      description: Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AiSuggestionDecision' }
+      responses:
+        '200':
+          description: The decided suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/ask:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: askNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Ask Nova a question about this project's documents and drawings (F2).
+      description: |
+        Nova searches the current revisions the caller can open (private folders and drawing access apply) and
+        answers with a citation to the exact document, revision and page for each claim. When the documents don't
+        answer it, `found` is false and `closestMatches` lists the nearest passages instead of a guess. Costs one
+        Nova credit when the model is called; nothing when no visible passage matches.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '200':
+          description: The answer, or "not found" with the closest matches
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaAnswer' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/index:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: indexProjectForNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.project_index.run
+      summary: Bring Nova's index of this project's documents and drawings up to date.
+      description: |
+        Reads, chunks and embeds every published revision not yet indexed, marks older revisions superseded, applies
+        folder moves to access, and drops deleted records. Safe to repeat: finished revisions are skipped. Runs in the
+        request for now; the AI worker will run it on each document event once it lands. Embedding is background
+        work and costs no credits.
+      responses:
+        '200':
+          description: What this run did
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaIndexReport' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -1691,6 +1826,146 @@ components:
           type: [string, 'null']
           enum: [wrong, missing, not_useful, wrong_source, other, null]
         comment: { type: [string, 'null'], maxLength: 2000 }
+    AiSuggestionStatus:
+      type: string
+      enum: [pending, accepted, edited, rejected]
+    AiSuggestion:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          task,
+          targetType,
+          targetId,
+          status,
+          confidence,
+          payload,
+          runId,
+          createdAt,
+          decidedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: [string, 'null'] }
+        task: { type: string, description: 'Nova task, e.g. `drawing.titleblock`' }
+        targetType: { type: string }
+        targetId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/AiSuggestionStatus' }
+        confidence: { type: [number, 'null'] }
+        payload:
+          description: Task-specific content. For `drawing.titleblock` see DrawingSheetFields.
+          type: object
+          additionalProperties: true
+        runId: { type: string }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+    AiSuggestionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AiSuggestion' }
+        nextCursor: { type: [string, 'null'] }
+    DrawingSheetFields:
+      type: object
+      additionalProperties: false
+      properties:
+        number: { type: [string, 'null'], maxLength: 100 }
+        title: { type: [string, 'null'], maxLength: 300 }
+        revision: { type: [string, 'null'], maxLength: 20 }
+        discipline:
+          type: [string, 'null']
+          enum:
+            [
+              architectural,
+              structural,
+              civil,
+              hydraulic,
+              mechanical,
+              electrical,
+              fire,
+              landscape,
+              interiors,
+              survey,
+              other,
+              null,
+            ]
+        revisionDate: { type: [string, 'null'], format: date }
+        scale: { type: [string, 'null'], maxLength: 50 }
+    AiSuggestionDecision:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [accepted, edited, rejected] }
+        fields: { $ref: '#/components/schemas/DrawingSheetFields' }
+    DrawingRegisterExtraction:
+      type: object
+      required: [suggestions, pageCount, skippedPages, refusedPages]
+      properties:
+        suggestions:
+          type: array
+          items: { $ref: '#/components/schemas/AiSuggestion' }
+        pageCount: { type: integer }
+        skippedPages:
+          description: Pages with no text layer (scans); read once OCR lands.
+          type: array
+          items: { type: integer }
+        refusedPages:
+          type: array
+          items: { type: integer }
+    NovaSource:
+      description: A document or drawing revision page Nova used.
+      type: object
+      required: [sourceType, sourceId, revisionId, revision, title, reference, page]
+      properties:
+        sourceType: { type: string, enum: [document, drawing] }
+        sourceId:
+          description: The document (`doc_`) or drawing sheet (`dsh_`).
+          type: string
+        revisionId:
+          description: The document revision (`rev_`) or drawing revision (`drv_`).
+          type: string
+        revision: { type: string }
+        title: { type: string }
+        reference: { type: [string, 'null'], description: Document or sheet number }
+        page: { type: integer, minimum: 1 }
+    NovaCitation:
+      allOf:
+        - $ref: '#/components/schemas/NovaSource'
+        - type: object
+          required: [quote]
+          properties:
+            quote: { type: string, description: The exact words the answer relies on }
+    NovaAnswer:
+      type: object
+      required: [runId, found, answer, citations, closestMatches]
+      properties:
+        runId:
+          description: For feedback (`air_`); null when no model call was needed.
+          type: [string, 'null']
+        found: { type: boolean }
+        answer: { type: string }
+        citations:
+          type: array
+          items: { $ref: '#/components/schemas/NovaCitation' }
+        closestMatches:
+          description: When not found, the nearest passages so the user can check themselves.
+          type: array
+          items: { $ref: '#/components/schemas/NovaSource' }
+    NovaIndexReport:
+      type: object
+      required: [indexed, unchanged, noText, unsupported, chunks]
+      properties:
+        indexed: { type: integer }
+        unchanged: { type: integer }
+        noText:
+          description: Revisions with no text layer (scans); indexed once OCR lands.
+          type: integer
+        unsupported: { type: integer, description: Files that aren't PDFs }
+        chunks: { type: integer }
     CreateUploadRequest:
       type: object
       additionalProperties: false

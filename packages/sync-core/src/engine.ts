@@ -221,7 +221,7 @@ export class SyncEngine {
     const count = (s: OutboxEntry['status']) => outbox.filter((e) => e.status === s).length;
     return {
       phase: this.drains.some((d) => d.projectId === null) ? 'draining' : this.phase,
-      pending: count('pending'),
+      pending: count('pending') + count('held'),
       needsAttention: count('needs_attention'),
       pendingReview: count('pending_review'),
       drains: [...this.drains],
@@ -319,10 +319,13 @@ export class SyncEngine {
         }
         // In drain mode the server holds parents for review, so their children go with them.
         const waiting = parents.filter(
-          (p) => p.status === 'pending' || (p.status === 'pending_review' && !drain),
+          (p) =>
+            p.status === 'pending' ||
+            p.status === 'held' ||
+            (p.status === 'pending_review' && !drain),
         );
         // Keep queue order behind a parent this pass will send; skip past one it won't.
-        if (waiting.some((p) => eligible(p))) break;
+        if (waiting.some((p) => p.status === 'pending' && eligible(p))) break;
         if (waiting.length > 0) continue;
         batch.push(entry);
         inBatch.add(entity);
@@ -417,7 +420,9 @@ export class SyncEngine {
    * Lost access (X14): purge the scope at once, unless it holds unsent work, which drains first (X38).
    */
   private async handleRevoked(revokedScopes: RevokedScope[]): Promise<void> {
-    const outbox = await this.store.listOutbox({ status: 'pending' });
+    const outbox = (await this.store.listOutbox()).filter(
+      (e) => e.status === 'pending' || e.status === 'held',
+    );
     for (const revoked of revokedScopes) {
       if (this.revoked.some((r) => sameRevokedScope(r, revoked))) continue;
       this.revoked.push(revoked);
