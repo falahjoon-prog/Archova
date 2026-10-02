@@ -9,8 +9,17 @@ async function sha256Hex(file: Blob): Promise<string> {
   return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** Waits between checks while a new file is scanned for malware: quick at first, then every 5 s, about 2 minutes in all. */
-const SCAN_WAITS_MS = [1000, 2000, 3000, ...Array<number>(23).fill(5000)];
+/**
+ * Waits between checks while a new file is scanned for malware: quick at first, then every 15 s. Large drawing sets
+ * can take minutes, and the server only marks a file `failed` after 15 minutes, so this keeps going for about 16.
+ */
+const SCAN_WAITS_MS = [
+  1000,
+  2000,
+  3000,
+  ...Array<number>(11).fill(5000),
+  ...Array<number>(60).fill(15_000),
+];
 
 function blocked(status: number, code: string, detail: string): ApiError {
   return new ApiError(status, {
