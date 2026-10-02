@@ -89,6 +89,15 @@ export const PROBLEM_CODES = {
   'rfi_response.not_found': 422,
   'ai.induction.no_documents': 422,
   'ai.translation.language_unavailable': 422,
+  // diary
+  'diary.not_found': 404,
+  'diary.future_date': 422,
+  'diary.range_too_long': 422,
+  'diary.locked': 409,
+  'diary.not_submitted': 409,
+  'diary.already_submitted': 409,
+  'diary_line.not_found': 404,
+  'diary.edit_reason_required': 422,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

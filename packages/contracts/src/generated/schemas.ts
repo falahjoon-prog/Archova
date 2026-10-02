@@ -174,6 +174,77 @@ export const CreateCompanyRequestSchema = z.object({
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
 
+export const DiaryDelayTypeSchema = z.enum(["weather", "client", "design", "subcontractor", "authority", "industrial", "other"]);
+export type DiaryDelayType = z.infer<typeof DiaryDelayTypeSchema>;
+
+export const CreateDiaryDelayRequestSchema = z.object({
+  "type": DiaryDelayTypeSchema,
+  "description": z.string().min(1).max(2000),
+  "hours": z.number().min(0).max(9999),
+  "affectedCompanyIds": z.array(CompanyRefSchema).max(100).optional(),
+  "isEotCandidate": z.boolean().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryDelayRequest = z.infer<typeof CreateDiaryDelayRequestSchema>;
+
+export const CreateDiaryDeliveryRequestSchema = z.object({
+  "supplierCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "supplierName": z.string().max(200).nullable().optional(),
+  "description": z.string().min(1).max(500),
+  "receivedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "docketNumber": z.string().max(100).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryDeliveryRequest = z.infer<typeof CreateDiaryDeliveryRequestSchema>;
+
+export const CreateDiaryEventRequestSchema = z.object({
+  "kind": z.enum(["inspection", "incident", "near_miss", "toolbox_talk", "inspector_visit", "instruction", "other"]),
+  "at": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "description": z.string().min(1).max(2000),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryEventRequest = z.infer<typeof CreateDiaryEventRequestSchema>;
+
+export const CreateDiaryLabourRequestSchema = z.object({
+  "companyId": CompanyRefSchema,
+  "trade": z.string().max(100).nullable().optional(),
+  "headcount": z.number().int().min(0).max(10000).nullable().optional(),
+  "hours": z.number().min(0).max(9999).nullable().optional(),
+  "notes": z.string().max(2000).nullable().optional(),
+  "editReason": z.string().max(1000).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryLabourRequest = z.infer<typeof CreateDiaryLabourRequestSchema>;
+
+export const CreateDiaryPlantRequestSchema = z.object({
+  "companyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "description": z.string().min(1).max(500),
+  "quantity": z.number().int().min(0).max(10000).optional(),
+  "hours": z.number().min(0).max(9999).nullable().optional(),
+  "status": z.enum(["working", "idle", "broken_down"]).optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryPlantRequest = z.infer<typeof CreateDiaryPlantRequestSchema>;
+
+export const CreateDiaryStandDownRequestSchema = z.object({
+  "startTime": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")),
+  "endTime": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "affectedCompanyIds": z.array(CompanyRefSchema).max(100).optional(),
+  "reason": z.string().max(1000).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryStandDownRequest = z.infer<typeof CreateDiaryStandDownRequestSchema>;
+
+export const CreateDiaryVisitorRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "company": z.string().max(200).nullable().optional(),
+  "purpose": z.string().max(500).nullable().optional(),
+  "timeIn": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "timeOut": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type CreateDiaryVisitorRequest = z.infer<typeof CreateDiaryVisitorRequestSchema>;
+
 export const DocumentStatusSchema = z.enum(["draft", "for_review", "approved", "for_construction", "superseded", "void"]);
 export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
 
@@ -345,6 +416,193 @@ export const CreateUploadRequestSchema = z.object({
   "capture": CaptureSchema.optional(),
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
+
+export const DiaryAmendmentSchema = z.object({
+  "id": z.string(),
+  "targetType": z.enum(["entry", "labour", "plant", "delivery", "delay", "visitor", "event", "stand_down"]),
+  "targetId": z.string(),
+  "action": z.enum(["create", "update", "delete"]),
+  "changes": z.record(z.string(), z.array(z.unknown()).min(2).max(2)),
+  "reason": z.string(),
+  "amendedBy": z.union([UserRefSchema, z.null()]),
+  "amendedAt": z.string().datetime({ offset: true }),
+});
+export type DiaryAmendment = z.infer<typeof DiaryAmendmentSchema>;
+
+export const DiaryDelaySchema = z.object({
+  "id": z.string().regex(new RegExp("^ddy_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "type": DiaryDelayTypeSchema,
+  "description": z.string().min(1).max(2000),
+  "hours": z.number().min(0).max(9999),
+  "affectedCompanyIds": z.array(CompanyRefSchema).max(100),
+  "isEotCandidate": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryDelay = z.infer<typeof DiaryDelaySchema>;
+
+export const DiaryDeliverySchema = z.object({
+  "id": z.string().regex(new RegExp("^ddv_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "supplierCompanyId": z.union([CompanyRefSchema, z.null()]),
+  "supplierName": z.string().max(200).nullable(),
+  "description": z.string().min(1).max(500),
+  "receivedAt": z.string().datetime({ offset: true }).nullable(),
+  "docketNumber": z.string().max(100).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryDelivery = z.infer<typeof DiaryDeliverySchema>;
+
+export const DiaryStatusSchema = z.enum(["draft", "submitted", "signed_off"]);
+export type DiaryStatus = z.infer<typeof DiaryStatusSchema>;
+
+export const DiaryWeatherSchema = z.object({
+  "minTempC": z.number().nullable().optional(),
+  "maxTempC": z.number().nullable().optional(),
+  "rainfallMm": z.number().min(0).nullable().optional(),
+  "windKmh": z.number().min(0).nullable().optional(),
+  "windDirection": z.string().max(10).nullable().optional(),
+  "conditions": z.object({
+  "am": z.string().max(100).nullable().optional(),
+  "midday": z.string().max(100).nullable().optional(),
+  "pm": z.string().max(100).nullable().optional(),
+}).strict().nullable().optional(),
+}).strict();
+export type DiaryWeather = z.infer<typeof DiaryWeatherSchema>;
+
+export const DiaryTotalsSchema = z.object({
+  "labourCompanies": z.number().int(),
+  "labourHeadcount": z.number().int(),
+  "labourHours": z.number(),
+  "delayHours": z.number(),
+});
+export type DiaryTotals = z.infer<typeof DiaryTotalsSchema>;
+
+export const DiaryEntrySchema = z.object({
+  "id": z.string().regex(new RegExp("^dia_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "date": z.string().date(),
+  "status": DiaryStatusSchema,
+  "weather": z.union([DiaryWeatherSchema, z.null()]),
+  "weatherStationId": z.string().nullable(),
+  "weatherOverride": z.union([DiaryWeatherSchema, z.null()]),
+  "weatherNotes": z.string().nullable(),
+  "siteConditions": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "fileIds": z.array(FileRefSchema),
+  "submittedBy": z.union([UserRefSchema, z.null()]),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "submitReceivedAt": z.string().datetime({ offset: true }).nullable(),
+  "isLate": z.boolean(),
+  "lateAfter": z.string().datetime({ offset: true }),
+  "signedOffBy": z.union([UserRefSchema, z.null()]),
+  "signedOffAt": z.string().datetime({ offset: true }).nullable(),
+  "totals": DiaryTotalsSchema,
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryEntry = z.infer<typeof DiaryEntrySchema>;
+
+export const DiaryLabourSchema = z.object({
+  "id": z.string().regex(new RegExp("^dlb_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "companyId": CompanyRefSchema,
+  "trade": z.string().max(100).nullable(),
+  "headcount": z.number().int().min(0).max(10000).nullable(),
+  "hours": z.number().min(0).max(9999).nullable(),
+  "notes": z.string().max(2000).nullable(),
+  "editReason": z.string().max(1000).nullable(),
+  "source": z.enum(["manual", "attendance"]),
+  "attendanceHeadcount": z.number().int().nullable(),
+  "attendanceHours": z.number().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryLabour = z.infer<typeof DiaryLabourSchema>;
+
+export const DiaryPlantSchema = z.object({
+  "id": z.string().regex(new RegExp("^dpl_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "companyId": z.union([CompanyRefSchema, z.null()]),
+  "description": z.string().min(1).max(500),
+  "quantity": z.number().int().min(0).max(10000),
+  "hours": z.number().min(0).max(9999).nullable(),
+  "status": z.enum(["working", "idle", "broken_down"]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryPlant = z.infer<typeof DiaryPlantSchema>;
+
+export const DiaryVisitorSchema = z.object({
+  "id": z.string().regex(new RegExp("^dvi_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "name": z.string().min(1).max(200),
+  "company": z.string().max(200).nullable(),
+  "purpose": z.string().max(500).nullable(),
+  "timeIn": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable(),
+  "timeOut": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryVisitor = z.infer<typeof DiaryVisitorSchema>;
+
+export const DiaryEventSchema = z.object({
+  "id": z.string().regex(new RegExp("^dev_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "kind": z.enum(["inspection", "incident", "near_miss", "toolbox_talk", "inspector_visit", "instruction", "other"]),
+  "at": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable(),
+  "description": z.string().min(1).max(2000),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryEvent = z.infer<typeof DiaryEventSchema>;
+
+export const DiaryStandDownSchema = z.object({
+  "id": z.string().regex(new RegExp("^dsd_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "entryId": z.string(),
+  "startTime": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")),
+  "endTime": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable(),
+  "affectedCompanyIds": z.array(CompanyRefSchema).max(100),
+  "reason": z.string().max(1000).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DiaryStandDown = z.infer<typeof DiaryStandDownSchema>;
+
+export const DiaryEntryDetailSchema = z.object({
+  "entry": DiaryEntrySchema,
+  "labour": z.array(DiaryLabourSchema),
+  "plant": z.array(DiaryPlantSchema),
+  "deliveries": z.array(DiaryDeliverySchema),
+  "delays": z.array(DiaryDelaySchema),
+  "visitors": z.array(DiaryVisitorSchema),
+  "events": z.array(DiaryEventSchema),
+  "standDowns": z.array(DiaryStandDownSchema),
+  "amendments": z.array(DiaryAmendmentSchema),
+});
+export type DiaryEntryDetail = z.infer<typeof DiaryEntryDetailSchema>;
+
+export const DiaryEntryListSchema = z.object({
+  "data": z.array(DiaryEntrySchema),
+});
+export type DiaryEntryList = z.infer<typeof DiaryEntryListSchema>;
 
 export const DocumentRevisionSchema = z.object({
   "id": z.string(),
@@ -837,6 +1095,16 @@ export const RfiReasonRequestSchema = z.object({
 }).strict();
 export type RfiReasonRequest = z.infer<typeof RfiReasonRequestSchema>;
 
+export const SaveDiaryEntryRequestSchema = z.object({
+  "weatherOverride": z.union([DiaryWeatherSchema, z.null()]).optional(),
+  "weatherNotes": z.string().max(2000).nullable().optional(),
+  "siteConditions": z.string().max(2000).nullable().optional(),
+  "notes": z.string().max(20000).nullable().optional(),
+  "fileIds": z.array(FileRefSchema).max(200).optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type SaveDiaryEntryRequest = z.infer<typeof SaveDiaryEntryRequestSchema>;
+
 export const SessionInfoSchema = z.object({
   "user": UserSchema,
   "csrfToken": z.string(),
@@ -850,6 +1118,11 @@ export const SignupRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const SubmitDiaryEntryRequestSchema = z.object({
+  "clientAt": z.string().datetime({ offset: true }).optional(),
+}).strict();
+export type SubmitDiaryEntryRequest = z.infer<typeof SubmitDiaryEntryRequestSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),
@@ -982,6 +1255,74 @@ export const UpdateAiSettingsRequestSchema = z.object({
   "retentionDays": z.number().int().min(0).max(90).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateAiSettingsRequest = z.infer<typeof UpdateAiSettingsRequestSchema>;
+
+export const UpdateDiaryDelayRequestSchema = z.object({
+  "type": DiaryDelayTypeSchema.optional(),
+  "description": z.string().min(1).max(2000).optional(),
+  "hours": z.number().min(0).max(9999).optional(),
+  "affectedCompanyIds": z.array(CompanyRefSchema).max(100).optional(),
+  "isEotCandidate": z.boolean().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryDelayRequest = z.infer<typeof UpdateDiaryDelayRequestSchema>;
+
+export const UpdateDiaryDeliveryRequestSchema = z.object({
+  "supplierCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "supplierName": z.string().max(200).nullable().optional(),
+  "description": z.string().min(1).max(500).optional(),
+  "receivedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "docketNumber": z.string().max(100).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryDeliveryRequest = z.infer<typeof UpdateDiaryDeliveryRequestSchema>;
+
+export const UpdateDiaryEventRequestSchema = z.object({
+  "kind": z.enum(["inspection", "incident", "near_miss", "toolbox_talk", "inspector_visit", "instruction", "other"]).optional(),
+  "at": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "description": z.string().min(1).max(2000).optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryEventRequest = z.infer<typeof UpdateDiaryEventRequestSchema>;
+
+export const UpdateDiaryLabourRequestSchema = z.object({
+  "companyId": CompanyRefSchema.optional(),
+  "trade": z.string().max(100).nullable().optional(),
+  "headcount": z.number().int().min(0).max(10000).nullable().optional(),
+  "hours": z.number().min(0).max(9999).nullable().optional(),
+  "notes": z.string().max(2000).nullable().optional(),
+  "editReason": z.string().max(1000).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryLabourRequest = z.infer<typeof UpdateDiaryLabourRequestSchema>;
+
+export const UpdateDiaryPlantRequestSchema = z.object({
+  "companyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "description": z.string().min(1).max(500).optional(),
+  "quantity": z.number().int().min(0).max(10000).optional(),
+  "hours": z.number().min(0).max(9999).nullable().optional(),
+  "status": z.enum(["working", "idle", "broken_down"]).optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryPlantRequest = z.infer<typeof UpdateDiaryPlantRequestSchema>;
+
+export const UpdateDiaryStandDownRequestSchema = z.object({
+  "startTime": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).optional(),
+  "endTime": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "affectedCompanyIds": z.array(CompanyRefSchema).max(100).optional(),
+  "reason": z.string().max(1000).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryStandDownRequest = z.infer<typeof UpdateDiaryStandDownRequestSchema>;
+
+export const UpdateDiaryVisitorRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "company": z.string().max(200).nullable().optional(),
+  "purpose": z.string().max(500).nullable().optional(),
+  "timeIn": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "timeOut": z.string().regex(new RegExp("^([01][0-9]|2[0-3]):[0-5][0-9]$")).nullable().optional(),
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+}).strict();
+export type UpdateDiaryVisitorRequest = z.infer<typeof UpdateDiaryVisitorRequestSchema>;
 
 export const UpdateDocumentRequestSchema = z.object({
   "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),

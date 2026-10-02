@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: sync
+  - name: diary
 paths:
   /v1/auth/signup:
     post:
@@ -1602,6 +1603,738 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDiaryEntries
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.read
+      summary: Diary days in a date range (at most 93 days), with labour and delay totals. Days with no entry are absent.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: Entries, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEntryList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    get:
+      operationId: getDiaryEntry
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.read
+      summary: One day's diary with every section and its amendments.
+      responses:
+        '200':
+          description: The day
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEntryDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveDiaryEntry
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Create the day, or save its header (weather override, site conditions, notes, photos).
+      description: Send `If-Match` once the day exists. After submit, a change is an amendment and needs `amendmentReason` (X42).
+      parameters:
+        - { name: If-Match, in: header, required: false, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveDiaryEntryRequest' }
+      responses:
+        '200':
+          description: Saved
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEntryDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: submitDiaryEntry
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Submit and lock the day (DIA-AC7). Late submits are accepted and flagged.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitDiaryEntryRequest' }
+      responses:
+        '200':
+          description: Submitted
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEntryDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/sign-off:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: signOffDiaryEntry
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.sign_off
+      summary: PM sign-off of a submitted day (DIA-US9).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Signed off
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEntryDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/copy-from/{fromDate}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - { name: fromDate, in: path, required: true, schema: { type: string, format: date } }
+    post:
+      operationId: copyDiaryLabour
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Start the day's labour from another day's companies and trades, with headcount and hours blank (DIA-AC3).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: Copied
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEntryDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryLabour
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a labour line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryLabourRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryLabour' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^dlb_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryLabour
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a labour line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryLabourRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryLabour' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryLabour
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a labour line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryPlant
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a plant line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryPlantRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryPlant' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^dpl_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryPlant
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a plant line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryPlantRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryPlant' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryPlant
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a plant line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryDelivery
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a delivery line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryDeliveryRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryDelivery' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ddv_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryDelivery
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a delivery line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryDeliveryRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryDelivery' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryDelivery
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a delivery line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryDelay
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a delay line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryDelayRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryDelay' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ddy_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryDelay
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a delay line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryDelayRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryDelay' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryDelay
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a delay line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryVisitor
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a visitor line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryVisitorRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryVisitor' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^dvi_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryVisitor
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a visitor line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryVisitorRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryVisitor' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryVisitor
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a visitor line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryEvent
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a event line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryEventRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^dev_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryEvent
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a event line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryEventRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryEvent' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryEvent
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a event line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: createDiaryStandDown
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Add a stand down line. Creates the day as a draft if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDiaryStandDownRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryStandDown' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+      - name: lineId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^dsd_[0-9A-Za-z]{26}$' }
+    patch:
+      operationId: updateDiaryStandDown
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Change a stand down line.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDiaryStandDownRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DiaryStandDown' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteDiaryStandDown
+      tags: [diary]
+      x-module: diary
+      x-permission: diary.entries.write
+      summary: Remove a stand down line. After submit it stays in the record as a removal amendment.
+      parameters:
+        - {
+            name: amendmentReason,
+            in: query,
+            required: false,
+            schema: { type: string, minLength: 1, maxLength: 1000 },
+          }
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
@@ -3236,3 +3969,596 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    DiaryStatus:
+      type: string
+      enum: [draft, submitted, signed_off]
+    DiaryDelayType:
+      type: string
+      enum: [weather, client, design, subcontractor, authority, industrial, other]
+    DiaryWeather:
+      type: object
+      additionalProperties: false
+      properties:
+        minTempC: { type: [number, 'null'] }
+        maxTempC: { type: [number, 'null'] }
+        rainfallMm: { type: [number, 'null'], minimum: 0 }
+        windKmh: { type: [number, 'null'], minimum: 0 }
+        windDirection: { type: [string, 'null'], maxLength: 10 }
+        conditions:
+          type: [object, 'null']
+          additionalProperties: false
+          properties:
+            am: { type: [string, 'null'], maxLength: 100 }
+            midday: { type: [string, 'null'], maxLength: 100 }
+            pm: { type: [string, 'null'], maxLength: 100 }
+    DiaryTotals:
+      type: object
+      required: [labourCompanies, labourHeadcount, labourHours, delayHours]
+      properties:
+        labourCompanies: { type: integer }
+        labourHeadcount: { type: integer }
+        labourHours: { type: number }
+        delayHours: { type: number }
+    DiaryEntry:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          date,
+          status,
+          weather,
+          weatherStationId,
+          weatherOverride,
+          weatherNotes,
+          siteConditions,
+          notes,
+          fileIds,
+          submittedBy,
+          submittedAt,
+          submitReceivedAt,
+          isLate,
+          lateAfter,
+          signedOffBy,
+          signedOffAt,
+          totals,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dia_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        date: { type: string, format: date }
+        status: { $ref: '#/components/schemas/DiaryStatus' }
+        weather:
+          description: Observations filled from the weather source (X44). Read-only.
+          oneOf: [{ $ref: '#/components/schemas/DiaryWeather' }, { type: 'null' }]
+        weatherStationId: { type: [string, 'null'] }
+        weatherOverride:
+          description: The site manager's correction. Both values are kept (DIA-AC2).
+          oneOf: [{ $ref: '#/components/schemas/DiaryWeather' }, { type: 'null' }]
+        weatherNotes: { type: [string, 'null'] }
+        siteConditions: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        fileIds: { type: array, items: { $ref: '#/components/schemas/FileRef' } }
+        submittedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        submittedAt:
+          type: [string, 'null']
+          format: date-time
+          description: When the day was submitted, from the device clock when it was earlier than the server's.
+        submitReceivedAt: { type: [string, 'null'], format: date-time }
+        isLate: { type: boolean }
+        lateAfter:
+          type: string
+          format: date-time
+          description: Submits after this instant are late (10am the next day in the project's zone).
+        signedOffBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        signedOffAt: { type: [string, 'null'], format: date-time }
+        totals: { $ref: '#/components/schemas/DiaryTotals' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    DiaryEntryList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/DiaryEntry' } }
+    DiaryAmendment:
+      type: object
+      required: [id, targetType, targetId, action, changes, reason, amendedBy, amendedAt]
+      properties:
+        id: { type: string }
+        targetType:
+          {
+            type: string,
+            enum: [entry, labour, plant, delivery, delay, visitor, event, stand_down],
+          }
+        targetId: { type: string }
+        action: { type: string, enum: [create, update, delete] }
+        changes:
+          type: object
+          description: '`{field: [before, after]}`'
+          additionalProperties: { type: array, minItems: 2, maxItems: 2 }
+        reason: { type: string }
+        amendedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        amendedAt: { type: string, format: date-time }
+    DiaryEntryDetail:
+      type: object
+      required: [entry, labour, plant, deliveries, delays, visitors, events, standDowns, amendments]
+      properties:
+        entry: { $ref: '#/components/schemas/DiaryEntry' }
+        labour: { type: array, items: { $ref: '#/components/schemas/DiaryLabour' } }
+        plant: { type: array, items: { $ref: '#/components/schemas/DiaryPlant' } }
+        deliveries: { type: array, items: { $ref: '#/components/schemas/DiaryDelivery' } }
+        delays: { type: array, items: { $ref: '#/components/schemas/DiaryDelay' } }
+        visitors: { type: array, items: { $ref: '#/components/schemas/DiaryVisitor' } }
+        events: { type: array, items: { $ref: '#/components/schemas/DiaryEvent' } }
+        standDowns: { type: array, items: { $ref: '#/components/schemas/DiaryStandDown' } }
+        amendments:
+          description: Changes made after submit, oldest first. Removed lines are listed here, not in the sections.
+          type: array
+          items: { $ref: '#/components/schemas/DiaryAmendment' }
+    SaveDiaryEntryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        weatherOverride:
+          { oneOf: [{ $ref: '#/components/schemas/DiaryWeather' }, { type: 'null' }] }
+        weatherNotes: { type: [string, 'null'], maxLength: 2000 }
+        siteConditions: { type: [string, 'null'], maxLength: 2000 }
+        notes: { type: [string, 'null'], maxLength: 20000 }
+        fileIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/FileRef' }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    SubmitDiaryEntryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        clientAt:
+          type: string
+          format: date-time
+          description: When the site manager pressed submit on the device; used as the record time if not in the future.
+    DiaryLabour:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryId,
+          companyId,
+          trade,
+          headcount,
+          hours,
+          notes,
+          editReason,
+          source,
+          attendanceHeadcount,
+          attendanceHours,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dlb_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        trade: { type: [string, 'null'], maxLength: 100 }
+        headcount: { type: [integer, 'null'], minimum: 0, maximum: 10000 }
+        hours: { type: [number, 'null'], minimum: 0, maximum: 9999 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        editReason:
+          type: [string, 'null']
+          maxLength: 1000
+          description: Required when changing headcount or hours on a line pre-filled from site attendance (ATT-AC6).
+        source: { type: string, enum: [manual, attendance] }
+        attendanceHeadcount: { type: [integer, 'null'] }
+        attendanceHours: { type: [number, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryLabourRequest:
+      type: object
+      additionalProperties: false
+      required: [companyId]
+      properties:
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        trade: { type: [string, 'null'], maxLength: 100 }
+        headcount: { type: [integer, 'null'], minimum: 0, maximum: 10000 }
+        hours: { type: [number, 'null'], minimum: 0, maximum: 9999 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        editReason:
+          type: [string, 'null']
+          maxLength: 1000
+          description: Required when changing headcount or hours on a line pre-filled from site attendance (ATT-AC6).
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryLabourRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        trade: { type: [string, 'null'], maxLength: 100 }
+        headcount: { type: [integer, 'null'], minimum: 0, maximum: 10000 }
+        hours: { type: [number, 'null'], minimum: 0, maximum: 9999 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        editReason:
+          type: [string, 'null']
+          maxLength: 1000
+          description: Required when changing headcount or hours on a line pre-filled from site attendance (ATT-AC6).
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    DiaryPlant:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryId,
+          companyId,
+          description,
+          quantity,
+          hours,
+          status,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dpl_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: integer, minimum: 0, maximum: 10000 }
+        hours: { type: [number, 'null'], minimum: 0, maximum: 9999 }
+        status: { type: string, enum: [working, idle, broken_down] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryPlantRequest:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: integer, minimum: 0, maximum: 10000 }
+        hours: { type: [number, 'null'], minimum: 0, maximum: 9999 }
+        status: { type: string, enum: [working, idle, broken_down] }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryPlantRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: integer, minimum: 0, maximum: 10000 }
+        hours: { type: [number, 'null'], minimum: 0, maximum: 9999 }
+        status: { type: string, enum: [working, idle, broken_down] }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    DiaryDelivery:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryId,
+          supplierCompanyId,
+          supplierName,
+          description,
+          receivedAt,
+          docketNumber,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^ddv_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        supplierCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        supplierName: { type: [string, 'null'], maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        receivedAt: { type: [string, 'null'], format: date-time }
+        docketNumber: { type: [string, 'null'], maxLength: 100 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryDeliveryRequest:
+      type: object
+      additionalProperties: false
+      required: [description]
+      properties:
+        supplierCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        supplierName: { type: [string, 'null'], maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        receivedAt: { type: [string, 'null'], format: date-time }
+        docketNumber: { type: [string, 'null'], maxLength: 100 }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryDeliveryRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        supplierCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        supplierName: { type: [string, 'null'], maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        receivedAt: { type: [string, 'null'], format: date-time }
+        docketNumber: { type: [string, 'null'], maxLength: 100 }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    DiaryDelay:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryId,
+          type,
+          description,
+          hours,
+          affectedCompanyIds,
+          isEotCandidate,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^ddy_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        type: { $ref: '#/components/schemas/DiaryDelayType' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        hours: { type: number, minimum: 0, maximum: 9999 }
+        affectedCompanyIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        isEotCandidate:
+          type: boolean
+          description: Defaults to true for weather, client, design and authority delays (DIA-AC4).
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryDelayRequest:
+      type: object
+      additionalProperties: false
+      required: [type, description, hours]
+      properties:
+        type: { $ref: '#/components/schemas/DiaryDelayType' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        hours: { type: number, minimum: 0, maximum: 9999 }
+        affectedCompanyIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        isEotCandidate:
+          type: boolean
+          description: Defaults to true for weather, client, design and authority delays (DIA-AC4).
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryDelayRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        type: { $ref: '#/components/schemas/DiaryDelayType' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        hours: { type: number, minimum: 0, maximum: 9999 }
+        affectedCompanyIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        isEotCandidate:
+          type: boolean
+          description: Defaults to true for weather, client, design and authority delays (DIA-AC4).
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    DiaryVisitor:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryId,
+          name,
+          company,
+          purpose,
+          timeIn,
+          timeOut,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dvi_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        company: { type: [string, 'null'], maxLength: 200 }
+        purpose: { type: [string, 'null'], maxLength: 500 }
+        timeIn: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        timeOut: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryVisitorRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        company: { type: [string, 'null'], maxLength: 200 }
+        purpose: { type: [string, 'null'], maxLength: 500 }
+        timeIn: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        timeOut: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryVisitorRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        company: { type: [string, 'null'], maxLength: 200 }
+        purpose: { type: [string, 'null'], maxLength: 500 }
+        timeIn: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        timeOut: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    DiaryEvent:
+      type: object
+      required: [id, projectId, entryId, kind, at, description, createdAt, updatedAt, version]
+      properties:
+        id: { type: string, pattern: '^dev_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        kind:
+          {
+            type: string,
+            enum:
+              [inspection, incident, near_miss, toolbox_talk, inspector_visit, instruction, other],
+          }
+        at: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryEventRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, description]
+      properties:
+        kind:
+          {
+            type: string,
+            enum:
+              [inspection, incident, near_miss, toolbox_talk, inspector_visit, instruction, other],
+          }
+        at: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryEventRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          {
+            type: string,
+            enum:
+              [inspection, incident, near_miss, toolbox_talk, inspector_visit, instruction, other],
+          }
+        at: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        description: { type: string, minLength: 1, maxLength: 2000 }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    DiaryStandDown:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entryId,
+          startTime,
+          endTime,
+          affectedCompanyIds,
+          reason,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^dsd_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        entryId: { type: string }
+        startTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        endTime: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        affectedCompanyIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        reason: { type: [string, 'null'], maxLength: 1000 }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateDiaryStandDownRequest:
+      type: object
+      additionalProperties: false
+      required: [startTime]
+      properties:
+        startTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        endTime: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        affectedCompanyIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        reason: { type: [string, 'null'], maxLength: 1000 }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).
+    UpdateDiaryStandDownRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        startTime: { type: string, pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        endTime: { type: [string, 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$' }
+        affectedCompanyIds:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        reason: { type: [string, 'null'], maxLength: 1000 }
+        amendmentReason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required once the day is submitted; recorded with the amendment (X42).

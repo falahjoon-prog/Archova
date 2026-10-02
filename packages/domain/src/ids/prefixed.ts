@@ -30,6 +30,14 @@ export const ID_PREFIXES = {
   aiRun: 'air',
   aiSuggestion: 'ais',
   rfiResponse: 'rfr',
+  diaryLabour: 'dlb',
+  diaryPlant: 'dpl',
+  diaryDelivery: 'ddv',
+  diaryDelay: 'ddy',
+  diaryVisitor: 'dvi',
+  diaryEvent: 'dev',
+  diaryStandDown: 'dsd',
+  diaryAmendment: 'dam',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
