@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { assertAustralianModelId, isAustralianRegion } from '@archova/mod-ai';
 
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
 const list = z.string().transform((v) =>
@@ -26,6 +27,13 @@ const Env = z.object({
   API_FILES_REGION: z.string().default('ap-southeast-2'),
   API_S3_ENDPOINT: z.string().url().optional(),
   API_FILES_SCANNER: z.enum(['none']).default('none'),
+  // Nova (ai/02): Bedrock in Australia when deployed; the fake provider locally and in tests.
+  API_AI_PROVIDER: z.enum(['fake', 'bedrock']).default('fake'),
+  API_AI_REGION: z.string().default('ap-southeast-2'),
+  API_AI_BEDROCK_ENDPOINT: z.string().url().optional(),
+  API_AI_MODEL_FAST: z.string().optional(),
+  API_AI_MODEL_STANDARD: z.string().optional(),
+  API_AI_MODEL_ADVANCED: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -55,8 +63,29 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       endpoint: e.API_S3_ENDPOINT,
       scanner: e.API_FILES_SCANNER,
     },
+    ai: {
+      provider: e.API_AI_PROVIDER,
+      region: e.API_AI_REGION,
+      endpoint: e.API_AI_BEDROCK_ENDPOINT,
+      models: {
+        fast: e.API_AI_MODEL_FAST ?? '',
+        standard: e.API_AI_MODEL_STANDARD ?? '',
+        advanced: e.API_AI_MODEL_ADVANCED ?? '',
+      },
+    },
     logLevel: e.LOG_LEVEL,
   };
+  if (config.ai.provider === 'bedrock') {
+    const unset = (['fast', 'standard', 'advanced'] as const).filter((t) => !config.ai.models[t]);
+    if (unset.length)
+      throw new Error(
+        `API_AI_PROVIDER=bedrock needs model ids for: ${unset.map((t) => `API_AI_MODEL_${t.toUpperCase()}`).join(', ')}`,
+      );
+    if (!isAustralianRegion(config.ai.region))
+      throw new Error(`API_AI_REGION must be an Australian region (X25), not ${config.ai.region}`);
+    for (const t of ['fast', 'standard', 'advanced'] as const)
+      assertAustralianModelId(config.ai.models[t]);
+  }
   if (config.env === 'production') {
     const missing: string[] = [];
     if (!config.jwtPrivateJwk) missing.push('API_JWT_PRIVATE_JWK');
@@ -64,6 +93,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (config.files.store !== 's3') missing.push('API_FILES_STORE=s3');
     if (config.files.scanner === 'none')
       missing.push('a malware scanner (ClamAV in the files worker)');
+    if (config.ai.provider !== 'bedrock') missing.push('API_AI_PROVIDER=bedrock (Nova)');
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
     if (missing.length)

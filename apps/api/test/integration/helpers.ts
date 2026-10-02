@@ -8,6 +8,7 @@ import {
   type Database,
   type RedisClient,
 } from '@archova/kernel';
+import { createFakeProvider, type FakeProvider } from '@archova/mod-ai';
 import { createMemoryObjectStore, hexToBase64, noScanner, quarantineKey } from '@archova/mod-files';
 import {
   TEST_PASSWORD,
@@ -30,6 +31,8 @@ export interface TestContext {
   adminDb: Database;
   redis: RedisClient | null;
   store: ReturnType<typeof createMemoryObjectStore>;
+  /** Nova's model provider; tests script replies per task with `ai.on(task, ...)`. */
+  ai: FakeProvider;
   close(): Promise<void>;
 }
 
@@ -47,6 +50,7 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
   const redisUrl = testRedisUrl();
   const redis = opts.redis !== false && redisUrl ? createRedis(redisUrl) : null;
   const store = createMemoryObjectStore();
+  const ai = createFakeProvider();
   const app = await buildApp({
     config,
     database,
@@ -54,6 +58,7 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
     logger: createLogger('test', 'silent'),
     store,
     scanner: noScanner,
+    aiProvider: ai,
   });
   await app.ready();
   return {
@@ -62,6 +67,7 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
     adminDb,
     redis,
     store,
+    ai,
     async close() {
       await app.close();
       await database.close();

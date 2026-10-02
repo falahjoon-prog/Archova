@@ -66,6 +66,14 @@ export const PROBLEM_CODES = {
   'transmittal.already_sent': 409,
   'transmittal.empty': 422,
   'transmittal.not_recipient': 403,
+  // ai (Nova)
+  'ai.disabled': 403,
+  'ai.feature_disabled': 403,
+  'ai.allowance_used': 403,
+  'ai.unavailable': 503,
+  'ai.invalid_output': 502,
+  'ai.cancelled': 408,
+  'ai.run.not_found': 404,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

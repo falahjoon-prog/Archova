@@ -1,4 +1,4 @@
--- Composed from modules/documents/db/migrations/20261002100000_documents.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/documents/db/migrations/20261002110000_documents.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- documents: folders, documents, drawing register, markups and transmittals
 -- (backend schema/documents-drawings-specs.md, product/02). Sheet geometry arrives with the estimating
 -- subset (X30); hyperlinks, pins, tiles and spec books with the files worker and AI title-block reading.

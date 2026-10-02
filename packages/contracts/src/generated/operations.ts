@@ -252,6 +252,21 @@ export const AcknowledgeTransmittalParams = z.object({
   "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeTransmittalBody = s.AcknowledgeTransmittalRequestSchema;
+export const GetAiSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdateAiSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdateAiSettingsBody = s.UpdateAiSettingsRequestSchema;
+export const GetAiUsageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SubmitAiFeedbackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "runId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")),
+});
+export const SubmitAiFeedbackBody = s.AiFeedbackRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -902,6 +917,54 @@ export const operations = {
     params: AcknowledgeTransmittalParams,
     query: null,
     body: AcknowledgeTransmittalBody,
+  },
+  getAiSettings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/ai/settings',
+    module: "ai",
+    auth: "required",
+    permission: "ai.settings.read",
+    internal: false,
+    contentType: null,
+    params: GetAiSettingsParams,
+    query: null,
+    body: null,
+  },
+  updateAiSettings: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/ai/settings',
+    module: "ai",
+    auth: "required",
+    permission: "ai.settings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateAiSettingsParams,
+    query: null,
+    body: UpdateAiSettingsBody,
+  },
+  getAiUsage: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/ai/usage',
+    module: "ai",
+    auth: "required",
+    permission: "ai.usage.read",
+    internal: false,
+    contentType: null,
+    params: GetAiUsageParams,
+    query: null,
+    body: null,
+  },
+  submitAiFeedback: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/ai/runs/{runId}/feedback',
+    module: "ai",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SubmitAiFeedbackParams,
+    query: null,
+    body: SubmitAiFeedbackBody,
   },
 } as const satisfies Record<string, OperationDef>;
 

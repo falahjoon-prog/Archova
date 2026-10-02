@@ -41,6 +41,7 @@ export function createPlatformModule(
       resolveTenantAccess: orgs.resolveTenantAccess,
       getProjectMembership: members.getProjectMembership,
       getProject: projects.get,
+      getOrg: orgs.getOrg,
     },
   };
 }

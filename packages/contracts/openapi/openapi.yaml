@@ -28,6 +28,7 @@ tags:
   - name: files
   - name: oauth
   - name: documents
+  - name: ai
 paths:
   /v1/auth/signup:
     post:
@@ -1064,6 +1065,83 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TransmittalRecipient' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/ai/settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getAiSettings
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.settings.read
+      summary: Nova settings for this org (ai/04 §8). Defaults apply until an admin changes them.
+      responses:
+        '200':
+          description: Settings
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateAiSettings
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.settings.manage
+      summary: Turn Nova or single features on or off, set a monthly credit cap and body retention.
+      description: Send `If-Match` with the ETag from `getAiSettings` (`"0"` before the first change).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateAiSettingsRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/ai/usage:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getAiUsage
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.usage.read
+      summary: Nova credits used this month by feature, against the allowance (ai/05 §6).
+      responses:
+        '200':
+          description: Usage
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiUsage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/ai/runs/{runId}/feedback:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: runId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^air_[0-9A-Za-z]{26}$' }
+    put:
+      operationId: submitAiFeedback
+      tags: [ai]
+      x-module: ai
+      summary: Thumbs up or down on a Nova output (ai/06 §5). Only the person who asked can rate it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AiFeedbackRequest' }
+      responses:
+        '204': { description: Saved }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -1548,6 +1626,71 @@ components:
         limits:
           type: object
           additionalProperties: { type: [integer, 'null'] }
+    AiSettings:
+      type: object
+      required:
+        [aiEnabled, featuresEnabled, monthlyCreditCap, externalAiEnabled, retentionDays, version]
+      properties:
+        aiEnabled: { type: boolean }
+        featuresEnabled:
+          description: Features left on; null means every feature.
+          type: [array, 'null']
+          items: { $ref: '#/components/schemas/AiFeature' }
+        monthlyCreditCap:
+          description: The org's own monthly cap below the plan allowance; null means none.
+          type: [number, 'null']
+        externalAiEnabled:
+          description: Whether invited external companies can use Nova on this org's projects.
+          type: boolean
+        retentionDays:
+          description: Days prompt and response bodies are kept for review (0–90).
+          type: integer
+        version: { type: integer }
+    UpdateAiSettingsRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        aiEnabled: { type: boolean }
+        featuresEnabled:
+          type: [array, 'null']
+          maxItems: 50
+          items: { $ref: '#/components/schemas/AiFeature' }
+        monthlyCreditCap: { type: [number, 'null'], minimum: 0, maximum: 100000000 }
+        externalAiEnabled: { type: boolean }
+        retentionDays: { type: integer, minimum: 0, maximum: 90 }
+    AiFeature:
+      description: A Nova feature an admin can switch off (ai/01 §2).
+      type: string
+      enum: [ask, drawing_register, rfi_draft, diary_summary, defect_tagging, minutes, estimating]
+    AiUsage:
+      type: object
+      required: [periodStart, timezone, allowance, used, remaining, byFeature]
+      properties:
+        periodStart: { type: string, format: date }
+        timezone: { type: string }
+        allowance: { type: [number, 'null'], description: null means unlimited }
+        used: { type: number }
+        remaining: { type: [number, 'null'] }
+        byFeature:
+          type: array
+          items:
+            type: object
+            required: [feature, credits, runs]
+            properties:
+              feature: { type: string }
+              credits: { type: number }
+              runs: { type: integer }
+    AiFeedbackRequest:
+      type: object
+      additionalProperties: false
+      required: [rating]
+      properties:
+        rating: { type: string, enum: [up, down] }
+        reason:
+          type: [string, 'null']
+          enum: [wrong, missing, not_useful, wrong_source, other, null]
+        comment: { type: [string, 'null'], maxLength: 2000 }
     CreateUploadRequest:
       type: object
       additionalProperties: false
