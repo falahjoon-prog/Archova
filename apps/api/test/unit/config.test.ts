@@ -32,6 +32,6 @@ describe('config', () => {
     );
     expect(
       loadConfig({ ...base, API_FILES_SCANNER: 'clamav', API_FILES_STORE: 's3' }).files.clamav,
-    ).toEqual({ host: 'clamav', port: 3310, timeoutMs: 120_000 });
+    ).toEqual({ host: 'clamav', port: 3310, timeoutMs: 30_000 });
   });
 });

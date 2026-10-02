@@ -31,8 +31,9 @@ const Env = z.object({
   API_FILES_SCANNER: z.enum(['none', 'guardduty', 'clamav']).default('none'),
   API_CLAMAV_HOST: z.string().default('clamav'),
   API_CLAMAV_PORT: z.coerce.number().int().default(3310),
-  // Until apps/worker scans in the background, the upload waits this long; slower scans finish on a later read.
-  API_CLAMAV_TIMEOUT_MS: z.coerce.number().int().default(120_000),
+  // Until apps/worker scans in the background, the scan holds the upload's transaction, so keep this short; slower
+  // scans are retried on later reads and fail closed after SCAN_TIMEOUT_MS.
+  API_CLAMAV_TIMEOUT_MS: z.coerce.number().int().default(30_000),
   // Nova (ai/02): Bedrock in Australia when deployed; the fake provider locally and in tests.
   API_AI_PROVIDER: z.enum(['fake', 'bedrock']).default('fake'),
   API_AI_REGION: z.string().default('ap-southeast-2'),
