@@ -8,4 +8,5 @@ COPY --chmod=0755 backup.sh /usr/local/bin/backup.sh
 COPY crontab /etc/crontab
 USER 65532:65532
 ENV TZ=Australia/Sydney
-ENTRYPOINT ["supercronic", "-passthrough-logs", "/etc/crontab"]
+# Full path: as PID 1 supercronic re-executes itself to reap child processes, which fails with a bare name.
+ENTRYPOINT ["/usr/bin/supercronic", "-passthrough-logs", "/etc/crontab"]

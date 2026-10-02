@@ -110,7 +110,7 @@ jobs:
         run: |
           docker build -t archova/backup:ci backup
           docker build -t archova/aws-signing-helper:ci signing-helper
-          docker run --rm --entrypoint sh archova/backup:ci -c 'pg_dump --version && age --version && rclone version | head -1 && supercronic -test /etc/crontab'
+          docker run --rm --entrypoint sh archova/backup:ci -c 'pg_dump --version && age --version && rclone version | head -1 && /usr/bin/supercronic -test /etc/crontab'
           docker run --rm archova/aws-signing-helper:ci version
       - name: Compose file and Caddyfile
         run: |
