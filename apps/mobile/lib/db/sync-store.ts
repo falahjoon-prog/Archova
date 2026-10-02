@@ -124,6 +124,37 @@ export class SqliteSyncStore implements SyncStore {
     return queued;
   }
 
+  /**
+   * A local record with no command yet, inside the caller's transaction: a photo whose `photos.create` is
+   * queued only once its file is stored. It stays pending, so pulls don't overwrite it.
+   */
+  async writeLocalIn(
+    tx: SqlExecutor,
+    record: { entityType: string; id: string; projectId: string | null; data: unknown },
+  ): Promise<void> {
+    await tx.runAsync(
+      `INSERT INTO records (entity_type, id, project_id, module, version, data, pending)
+       VALUES (?, ?, ?, ?, NULL, ?, 1)
+       ON CONFLICT (entity_type, id) DO UPDATE SET data = excluded.data, pending = 1`,
+      [
+        record.entityType,
+        record.id,
+        record.projectId,
+        this.options.moduleOf(record.entityType),
+        JSON.stringify(record.data),
+      ],
+    );
+  }
+
+  /** Queue a command inside the caller's transaction; `held` until its file is stored. */
+  enqueueIn(
+    tx: SqlExecutor,
+    entry: NewOutboxEntry,
+    options: { held?: boolean } = {},
+  ): Promise<OutboxEntry> {
+    return this.insertEntry(tx, entry, options.held === true);
+  }
+
   async get(entityType: string, id: string): Promise<LocalRecordView | undefined> {
     const row = await this.db.getFirstAsync<RecordRow>(
       'SELECT * FROM records WHERE entity_type = ? AND id = ?',
@@ -137,8 +168,32 @@ export class SqliteSyncStore implements SyncStore {
     };
   }
 
-  async enqueue(entry: NewOutboxEntry): Promise<OutboxEntry> {
-    return this.insertEntry(this.db, entry);
+  async enqueue(entry: NewOutboxEntry, options: { held?: boolean } = {}): Promise<OutboxEntry> {
+    return this.insertEntry(this.db, entry, options.held === true);
+  }
+
+  async release(mutationId: string, payloadPatch: Record<string, unknown>): Promise<void> {
+    await this.db.withExclusiveTransactionAsync((tx) =>
+      this.releaseIn(tx, mutationId, payloadPatch),
+    );
+  }
+
+  /** `release` inside the caller's transaction (the file queue completing an upload). */
+  async releaseIn(
+    tx: SqlExecutor,
+    mutationId: string,
+    payloadPatch: Record<string, unknown>,
+  ): Promise<void> {
+    const row = await tx.getFirstAsync<OutboxRow>(
+      `SELECT * FROM outbox WHERE mutation_id = ? AND status = 'held'`,
+      [mutationId],
+    );
+    if (!row) return;
+    const payload = { ...(JSON.parse(row.payload) as object), ...payloadPatch };
+    await tx.runAsync(`UPDATE outbox SET status = 'pending', payload = ? WHERE seq = ?`, [
+      JSON.stringify(payload),
+      row.seq,
+    ]);
   }
 
   async listOutbox(filter: { status?: OutboxStatus } = {}): Promise<OutboxEntry[]> {
@@ -167,7 +222,7 @@ export class SqliteSyncStore implements SyncStore {
             await tx.runAsync('DELETE FROM outbox WHERE seq = ?', [row.seq]);
             await tx.runAsync(
               `UPDATE outbox SET base_version = ?
-               WHERE status = 'pending' AND entity_type = ? AND entity_id = ? AND base_version IS ?`,
+               WHERE status IN ('pending', 'held') AND entity_type = ? AND entity_id = ? AND base_version IS ?`,
               [result.version, row.entity_type, row.entity_id, row.base_version],
             );
             if (record) {
@@ -350,11 +405,15 @@ export class SqliteSyncStore implements SyncStore {
     return rows.map((r) => r.k);
   }
 
-  private async insertEntry(tx: SqlExecutor, entry: NewOutboxEntry): Promise<OutboxEntry> {
+  private async insertEntry(
+    tx: SqlExecutor,
+    entry: NewOutboxEntry,
+    held = false,
+  ): Promise<OutboxEntry> {
     await tx.runAsync(
       `INSERT INTO outbox (mutation_id, command, entity_type, entity_id, project_id, module, base_version,
                            client_at, payload, depends_on, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         entry.mutationId,
         entry.command,
@@ -366,6 +425,7 @@ export class SqliteSyncStore implements SyncStore {
         entry.clientAt,
         JSON.stringify(entry.payload ?? null),
         JSON.stringify(entry.dependsOn),
+        held ? 'held' : 'pending',
       ],
     );
     const row = await tx.getFirstAsync<OutboxRow>('SELECT * FROM outbox WHERE mutation_id = ?', [
@@ -392,7 +452,7 @@ export class SqliteSyncStore implements SyncStore {
   private async revert(tx: SqlExecutor, row: OutboxRow) {
     const others = await tx.getFirstAsync<{ n: number }>(
       `SELECT count(*) AS n FROM outbox
-       WHERE entity_type = ? AND entity_id = ? AND seq <> ? AND status = 'pending'`,
+       WHERE entity_type = ? AND entity_id = ? AND seq <> ? AND status IN ('pending', 'held')`,
       [row.entity_type, row.entity_id, row.seq],
     );
     if ((others?.n ?? 0) > 0) return;
@@ -412,7 +472,7 @@ export class SqliteSyncStore implements SyncStore {
       `UPDATE records SET pending = EXISTS (
          SELECT 1 FROM outbox
          WHERE outbox.entity_type = records.entity_type AND outbox.entity_id = records.id
-           AND outbox.status IN ('pending', 'pending_review'))
+           AND outbox.status IN ('pending', 'held', 'pending_review'))
        WHERE entity_type = ? AND id = ?`,
       [entityType, entityId],
     );

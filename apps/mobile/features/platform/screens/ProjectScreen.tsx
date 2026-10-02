@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { ListItem, Screen } from '@archova/ui-native';
 import { StateMessage, useCurrentOrg } from '../../../shared';
 import { useProject } from '../hooks';
@@ -10,9 +11,15 @@ export function ProjectScreen({
   projectId: string;
   orgId?: string | undefined;
 }) {
-  const { orgId: currentOrgId } = useCurrentOrg();
+  const { orgId: currentOrgId, setProjectId } = useCurrentOrg();
   const orgId = orgIdParam ?? currentOrgId;
   const project = useProject(orgId, projectId);
+  const loaded = project.isSuccess;
+
+  // Opening a project makes it the current one for capture.
+  useEffect(() => {
+    if (loaded) setProjectId(projectId);
+  }, [loaded, projectId, setProjectId]);
 
   if (!orgId) {
     return (

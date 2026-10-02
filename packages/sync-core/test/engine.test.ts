@@ -146,6 +146,49 @@ describe('push', () => {
     expect(await store.listOutbox()).toHaveLength(0);
   });
 
+  it('waits for a held parent, then sends both', async () => {
+    const { server, store, clock, engine } = setup();
+    const photoId = 'pho_1';
+    await store.enqueue(
+      {
+        mutationId: 'photo',
+        command: 'photos.create',
+        entityType: 'photo',
+        entityId: photoId,
+        projectId: PROJECT_A,
+        baseVersion: null,
+        clientAt: clock.iso(),
+        payload: { projectId: PROJECT_A },
+        dependsOn: [],
+      },
+      { held: true },
+    );
+    await store.enqueue({
+      mutationId: 'ready',
+      command: 'defects.update',
+      entityType: 'defect',
+      entityId: 'd1',
+      projectId: PROJECT_A,
+      baseVersion: 1,
+      clientAt: clock.iso(),
+      payload: { projectId: PROJECT_A },
+      dependsOn: ['photo'],
+    });
+    const unrelated = await createDefect(store, clock, { title: 'Unrelated' });
+    await engine.sync({ pull: false });
+    expect(server.pushLog.flatMap((p) => p.mutations.map((m) => m.mutationId))).toEqual([
+      unrelated.mutationId,
+    ]);
+    expect((await engine.status()).pending).toBe(2);
+
+    await store.release('photo', { fileId: 'fil_1' });
+    await engine.sync({ pull: false });
+    expect(server.pushLog.slice(1).map((p) => p.mutations.map((m) => m.mutationId))).toEqual([
+      ['photo'],
+      ['ready'],
+    ]);
+  });
+
   it('does not send a child whose parent failed', async () => {
     const { server, store, clock, engine } = setup();
     await store.write(

@@ -72,16 +72,23 @@ export class MemorySyncStore implements SyncStore {
     return this.records.get(recordKey(entityType, id));
   }
 
-  async enqueue(entry: NewOutboxEntry): Promise<OutboxEntry> {
+  async enqueue(entry: NewOutboxEntry, options: { held?: boolean } = {}): Promise<OutboxEntry> {
     const full: OutboxEntry = {
       ...entry,
       dependsOn: [...entry.dependsOn],
       seq: this.nextSeq++,
-      status: 'pending',
+      status: options.held ? 'held' : 'pending',
       attempts: 0,
     };
     this.outbox.push(full);
     return { ...full };
+  }
+
+  async release(mutationId: string, payloadPatch: Record<string, unknown>): Promise<void> {
+    const entry = this.outbox.find((e) => e.mutationId === mutationId && e.status === 'held');
+    if (!entry) return;
+    entry.status = 'pending';
+    entry.payload = { ...(entry.payload as object), ...payloadPatch };
   }
 
   async listOutbox(filter: { status?: OutboxStatus } = {}): Promise<OutboxEntry[]> {
@@ -100,7 +107,7 @@ export class MemorySyncStore implements SyncStore {
           this.outbox = this.outbox.filter((e) => e !== entry);
           for (const later of this.outbox) {
             if (
-              later.status === 'pending' &&
+              (later.status === 'pending' || later.status === 'held') &&
               later.entityType === entry.entityType &&
               later.entityId === entry.entityId &&
               later.baseVersion === entry.baseVersion
@@ -236,7 +243,7 @@ export class MemorySyncStore implements SyncStore {
         e !== entry &&
         e.entityType === entry.entityType &&
         e.entityId === entry.entityId &&
-        e.status === 'pending',
+        (e.status === 'pending' || e.status === 'held'),
     );
     if (othersPending) return;
     if (record.server) {
@@ -254,7 +261,7 @@ export class MemorySyncStore implements SyncStore {
       (e) =>
         e.entityType === entityType &&
         e.entityId === entityId &&
-        (e.status === 'pending' || e.status === 'pending_review'),
+        (e.status === 'pending' || e.status === 'held' || e.status === 'pending_review'),
     );
   }
 }
