@@ -9,7 +9,8 @@
     "start": "next start -p 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:a11y": "playwright test"
   },
   "dependencies": {
     "@archova/api-client": "workspace:*",
@@ -28,7 +29,9 @@
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
+    "@axe-core/playwright": "^4.13.0",
     "@next/eslint-plugin-next": "^15.5.0",
+    "@playwright/test": "~1.56.1",
     "@types/node": "^22.18.0",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
