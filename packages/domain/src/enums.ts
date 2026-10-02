@@ -21,8 +21,11 @@ export type MembershipStatus = (typeof MEMBERSHIP_STATUSES)[number];
 export const ORG_KINDS = ['builder', 'subcontractor_free'] as const;
 export type OrgKind = (typeof ORG_KINDS)[number];
 
-/** Modules that are part of every plan. Licensed modules come from `billing` entitlements. */
-export const CORE_MODULES = ['platform', 'access', 'files', 'identity'] as const;
+/**
+ * Modules that are part of every plan. Licensed modules come from `billing` entitlements. `sync` carries the
+ * mobile offline store; each scope it pulls and each command it pushes is licensed by its own module (john, 2 Oct).
+ */
+export const CORE_MODULES = ['platform', 'access', 'files', 'identity', 'sync'] as const;
 
 /**
  * Default IANA zone for a project in each state, applied when the project gives a state but no zone.

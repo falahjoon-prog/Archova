@@ -11,6 +11,7 @@ import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-docum
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { createPlatformModule } from '@archova/mod-platform';
+import { createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
 export const MODULE_PERMISSIONS = [AI_PERMISSIONS, DOCUMENTS_PERMISSIONS];
@@ -62,7 +63,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
 
-  const all = [identity, platform, access, billing, files, ai, documents];
+  const sync = createSyncModule();
+
+  const all = [identity, platform, access, billing, files, ai, documents, sync];
   const routes: RouteTable = {};
   for (const m of all) {
     for (const [id, handler] of Object.entries(m.routes)) {
@@ -79,6 +82,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files,
     ai,
     documents,
+    sync,
     routes,
   };
 }
