@@ -5,6 +5,7 @@
 // Env: SEED_APP_ORIGIN (e.g. https://demo.archova.com.au), SEED_PASSWORD (the demo login's password),
 // SEED_EMAIL (default demo@archova.com.au), SEED_NAME (default "Demo Builder").
 import { createHash, randomUUID } from 'node:crypto';
+import { addDays, isoWeekday, localDateOf, type LocalDate, zonedToUtc } from '@archova/time';
 import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
 import { makePdf } from './pdf';
 
@@ -349,6 +350,231 @@ for (const p of PROJECTS) {
 
   console.log(
     `Seeded ${p.name}: ${documents.length} documents (2 revisions each), ${sheets.length} drawings (A-101 at rev B), 1 transmittal, 1 RFI`,
+  );
+}
+
+// Site diary: the last five working days on each active project, in the project's own time zone (X34): weather,
+// labour from three subcontractors, a rain delay, and the oldest day submitted. Skipped for a project that already
+// has diary days in that range, so re-runs don't duplicate lines.
+const WEATHER = [
+  {
+    minTempC: 14,
+    maxTempC: 23,
+    rainfallMm: 0,
+    windKmh: 12,
+    windDirection: 'NE',
+    am: 'Sunny',
+    pm: 'Sunny',
+  },
+  {
+    minTempC: 15,
+    maxTempC: 21,
+    rainfallMm: 18,
+    windKmh: 30,
+    windDirection: 'S',
+    am: 'Showers',
+    pm: 'Heavy rain',
+  },
+  {
+    minTempC: 12,
+    maxTempC: 19,
+    rainfallMm: 2,
+    windKmh: 22,
+    windDirection: 'SW',
+    am: 'Overcast',
+    pm: 'Clearing',
+  },
+  {
+    minTempC: 13,
+    maxTempC: 24,
+    rainfallMm: 0,
+    windKmh: 10,
+    windDirection: 'E',
+    am: 'Sunny',
+    pm: 'Fine',
+  },
+  {
+    minTempC: 16,
+    maxTempC: 26,
+    rainfallMm: 0,
+    windKmh: 15,
+    windDirection: 'NE',
+    am: 'Fine',
+    pm: 'Hot',
+  },
+];
+const LABOUR: Array<{ key: CompanyKey; trade: string; headcount: number; hours: number }> = [
+  { key: 'conc', trade: 'Concrete', headcount: 6, hours: 48 },
+  { key: 'elec', trade: 'Electrical', headcount: 3, hours: 24 },
+  { key: 'hyd', trade: 'Plumbing', headcount: 2, hours: 16 },
+];
+
+for (const [i, p] of PROJECTS.entries()) {
+  if (p.status !== 'active') continue;
+  const pp = `${o()}/projects/${projectIds[i]}`;
+  const days: LocalDate[] = [];
+  for (
+    let d = addDays(localDateOf(new Date(), p.timezone), -1);
+    days.length < 5;
+    d = addDays(d, -1)
+  )
+    if (isoWeekday(d) <= 5) days.unshift(d);
+  const existing = await s.ok<{ data: unknown[] }>(
+    'GET',
+    `${pp}/diary?from=${days[0]}&to=${days[days.length - 1]}`,
+  );
+  if (existing.data.length) {
+    console.log(`${p.name} already has diary days; skipped.`);
+    continue;
+  }
+  for (const [n, date] of days.entries()) {
+    const w = WEATHER[n % WEATHER.length]!;
+    const rain = w.rainfallMm > 10;
+    await s.ok('PUT', `${pp}/diary/${date}`, {
+      weatherOverride: {
+        minTempC: w.minTempC,
+        maxTempC: w.maxTempC,
+        rainfallMm: w.rainfallMm,
+        windKmh: w.windKmh,
+        windDirection: w.windDirection,
+        conditions: { am: w.am, midday: null, pm: w.pm },
+      },
+      siteConditions: rain ? 'Wet. Excavation pumped out; access road boggy.' : 'Dry, good access.',
+      notes: rain
+        ? 'Slab pour on level 1 postponed to tomorrow. Sample data only.'
+        : 'Work progressing to programme. Sample data only.',
+    });
+    for (const l of LABOUR)
+      await s.ok('POST', `${pp}/diary/${date}/labour`, {
+        companyId: company[l.key],
+        trade: l.trade,
+        headcount: rain && l.key === 'conc' ? 4 : l.headcount,
+        hours: rain && l.key === 'conc' ? 14 : l.hours,
+      });
+    if (rain)
+      await s.ok('POST', `${pp}/diary/${date}/delays`, {
+        type: 'weather',
+        description:
+          'Heavy rain from 11am; concrete pour postponed and crew stood down for the afternoon.',
+        hours: 3.5,
+        affectedCompanyIds: [company.conc],
+      });
+  }
+  // The oldest day is submitted and locked; the rest stay drafts.
+  await s.ok('GET', `${pp}/diary/${days[0]}`);
+  const submitted = await s.call(
+    'POST',
+    `${pp}/diary/${days[0]}/submit`,
+    {},
+    { 'if-match': s.etag ?? '' },
+  );
+  if (submitted.status >= 300)
+    console.warn(
+      `Submitting the sample diary day -> ${submitted.status} ${JSON.stringify(submitted.json)}`,
+    );
+  console.log(
+    `Seeded ${p.name} diary: ${days[0]} to ${days[days.length - 1]}, one weather delay, first day submitted`,
+  );
+}
+
+// Site sign-ins (X54): today's register on each active project, so "who's on site" has people on it. Crews from
+// the three subcontractors are still on site; a plumber left early, an architect visited and a delivery came and
+// went. The delivery driver's company is typed at the gate, so it waits for confirmation (ATT-AC2). Past days
+// are left to the diary's own labour lines. Skipped for a project that already has sign-ins today; anyone still
+// signed in from an earlier run is signed out at 3:30pm that day first (until the worker auto-closes sessions).
+const CREW: Array<{
+  role: string;
+  key: CompanyKey | null;
+  other?: string;
+  kind: 'worker' | 'visitor' | 'delivery';
+  in: string;
+  out?: string;
+}> = [
+  { role: 'Worker Concrete 1', key: 'conc', kind: 'worker', in: '06:45' },
+  { role: 'Worker Concrete 2', key: 'conc', kind: 'worker', in: '06:47' },
+  { role: 'Worker Concrete 3', key: 'conc', kind: 'worker', in: '06:52' },
+  { role: 'Worker Concrete 4', key: 'conc', kind: 'worker', in: '06:58' },
+  { role: 'Electrician 1', key: 'elec', kind: 'worker', in: '07:02' },
+  { role: 'Electrician 2', key: 'elec', kind: 'worker', in: '07:05' },
+  { role: 'Plumber 1', key: 'hyd', kind: 'worker', in: '07:10' },
+  { role: 'Plumber 2', key: 'hyd', kind: 'worker', in: '07:12', out: '11:00' },
+  {
+    role: 'Delivery Driver',
+    key: null,
+    other: 'Sample Readymix Co',
+    kind: 'delivery',
+    in: '08:30',
+    out: '08:50',
+  },
+  { role: 'Architect Visitor', key: 'arch', kind: 'visitor', in: '10:00', out: '11:15' },
+];
+
+const workerIds = new Map<string, string>();
+let crewNo = 0;
+for (const [i, p] of PROJECTS.entries()) {
+  if (p.status !== 'active') continue;
+  // Workers belong to the builder, not the project, so each project gets its own crew.
+  const crew = String.fromCharCode(65 + crewNo++);
+  const pp = `${o()}/projects/${projectIds[i]}`;
+  const today = localDateOf(new Date(), p.timezone);
+  const signedIn = await s.ok<{ data: unknown[] }>(
+    'GET',
+    `${pp}/attendance/sessions?date=${today}`,
+  );
+  if (signedIn.data.length) {
+    console.log(`${p.name} already has sign-ins today; skipped.`);
+    continue;
+  }
+  const sites = await s.ok<{ data: Array<{ id: string }> }>('GET', `${pp}/attendance/sites`);
+  let siteId = sites.data[0]?.id;
+  if (!siteId) {
+    siteId = (await s.ok<{ id: string }>('POST', `${pp}/attendance/sites`, { name: 'Main site' }))
+      .id;
+    // The gate's QR code is shown only once; reissue it from the web app to print a poster.
+    await s.ok('POST', `${pp}/attendance/sites/${siteId}/gates`, { name: 'Front gate' });
+  }
+  if (!workerIds.size)
+    for (const w of (
+      await s.ok<{ data: Array<{ id: string; fullName: string }> }>('GET', `${pp}/workers`)
+    ).data)
+      workerIds.set(w.fullName, w.id);
+  const at = (time: string) => zonedToUtc(today, time, p.timezone).toISOString();
+  for (const c of CREW) {
+    const name = `Sample ${c.role} ${crew}`;
+    let workerId = workerIds.get(name);
+    if (!workerId) {
+      workerId = (
+        await s.ok<{ id: string }>('POST', `${pp}/workers`, {
+          fullName: name,
+          kind: c.kind,
+          ...(c.key ? { companyId: company[c.key] } : { companyNameOther: c.other }),
+        })
+      ).id;
+      workerIds.set(name, workerId);
+    }
+    const signIn = { workerId, siteId, kind: 'sign_in', clientAt: at(c.in) };
+    const r = await s.ok<{ outcome: string; session: { localDate: string } | null }>(
+      'POST',
+      `${pp}/attendance/events`,
+      signIn,
+    );
+    if (r.outcome === 'already_on_site') {
+      await s.ok('POST', `${pp}/attendance/events`, {
+        workerId,
+        kind: 'sign_out',
+        clientAt: zonedToUtc(r.session!.localDate, '15:30', p.timezone).toISOString(),
+      });
+      await s.ok('POST', `${pp}/attendance/events`, signIn);
+    }
+    if (c.out)
+      await s.ok('POST', `${pp}/attendance/events`, {
+        workerId,
+        kind: 'sign_out',
+        clientAt: at(c.out),
+      });
+  }
+  console.log(
+    `Seeded ${p.name} sign-ins for ${today}: ${CREW.filter((c) => !c.out).length} on site, ${CREW.filter((c) => c.out).length} signed out`,
   );
 }
 

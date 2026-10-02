@@ -1,0 +1,50 @@
+#cloud-config
+# First boot of an Archova app server (Ubuntu 24.04). The deploy pipeline does everything after this over SSH:
+# it writes /etc/archova/*.env, copies host/ to /opt/archova and runs docker compose.
+hostname: archova-app
+package_update: true
+package_upgrade: true
+packages:
+  - docker.io
+  - docker-compose-v2
+  - unattended-upgrades
+  - fail2ban
+  - chrony
+
+users:
+  - name: deploy
+    groups: [docker]
+    shell: /bin/bash
+    lock_passwd: true
+    ssh_authorized_keys:
+%{ for k in ssh_keys ~}
+      - ${k}
+%{ endfor ~}
+
+ssh_pwauth: false
+disable_root: true
+
+write_files:
+  # Security updates install themselves; the server reboots at 3am Sydney time if one needs it, one server at a time
+  # (the second waits an hour) so the NodeBalancer always has one.
+  - path: /etc/apt/apt.conf.d/52archova
+    content: |
+      Unattended-Upgrade::Automatic-Reboot "true";
+      Unattended-Upgrade::Automatic-Reboot-Time "${primary ? "03:00" : "04:00"}";
+  - path: /etc/docker/daemon.json
+    content: |
+      {"log-driver": "local", "log-opts": {"max-size": "20m", "max-file": "5"}, "live-restore": true}
+  - path: /etc/ssh/sshd_config.d/archova.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      AllowUsers deploy
+  - path: /etc/archova/role
+    content: "${primary ? "primary" : "secondary"}\n"
+
+runcmd:
+  - timedatectl set-timezone Australia/Sydney
+  - install -d -o deploy -g deploy -m 0750 /opt/archova
+  - install -d -o root -g deploy -m 0750 /etc/archova
+  - systemctl restart ssh docker
+  - systemctl enable --now fail2ban unattended-upgrades chrony

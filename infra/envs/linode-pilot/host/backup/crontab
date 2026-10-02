@@ -1,0 +1,2 @@
+# 1am Sydney, every night.
+0 1 * * * /usr/local/bin/backup.sh

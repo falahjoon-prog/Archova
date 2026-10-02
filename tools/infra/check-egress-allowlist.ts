@@ -13,8 +13,9 @@ let checked = 0;
 for (const env of readdirSync(ENVS).sort()) {
   const file = join(ENVS, env, 'egress-allowlist.yaml');
   if (!existsSync(join(ENVS, env, 'main.tf'))) continue;
+  // Every AWS cell needs one; other environments (the Linode option) are checked when they have one.
   const usesCell = readFileSync(join(ENVS, env, 'main.tf'), 'utf8').includes('cells/cell');
-  if (!usesCell) continue;
+  if (!usesCell && !existsSync(file)) continue;
   if (!existsSync(file)) {
     console.error(`infra/envs/${env}: egress-allowlist.yaml is missing`);
     failed = true;
