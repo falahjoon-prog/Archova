@@ -48,6 +48,17 @@ variable "serverless_max_acu" {
   default = 4
 }
 
+variable "serverless_auto_pause_seconds" {
+  description = "With serverless_min_acu = 0, pause the cluster after this many idle seconds (demo only). Null keeps it running."
+  type        = number
+  default     = null
+
+  validation {
+    condition     = var.serverless_auto_pause_seconds == null || (coalesce(var.serverless_auto_pause_seconds, 300) >= 300 && coalesce(var.serverless_auto_pause_seconds, 300) <= 86400)
+    error_message = "Auto-pause takes 300 to 86400 seconds."
+  }
+}
+
 variable "io_optimized" {
   description = "Aurora I/O-Optimized storage (staging, prod)."
   type        = bool

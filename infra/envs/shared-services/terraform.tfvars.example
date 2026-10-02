@@ -4,6 +4,7 @@ workload_accounts = {
   staging      = "333333333333"
   "prod-cell1" = "444444444444"
   loadtest     = "555555555555"
+  demo         = "666666666666"
 }
 subdomain_name_servers = {
   dev     = ["ns-1.awsdns-00.org", "ns-2.awsdns-00.com"]

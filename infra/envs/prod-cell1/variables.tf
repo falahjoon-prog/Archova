@@ -29,13 +29,3 @@ variable "backup_vault_arns" {
   type        = list(string)
   default     = []
 }
-
-variable "state_bucket_arn" {
-  description = "Terraform state bucket in shared-services (output of envs/shared-services)."
-  type        = string
-}
-
-variable "state_kms_key_arn" {
-  description = "KMS key that encrypts the state bucket."
-  type        = string
-}

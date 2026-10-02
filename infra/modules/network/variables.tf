@@ -48,6 +48,12 @@ variable "interface_endpoints" {
   default     = ["ecr.api", "ecr.dkr", "logs", "secretsmanager", "kms", "sts", "ssm", "bedrock-runtime", "textract"]
 }
 
+variable "interface_endpoint_az_count" {
+  description = "AZs that get an interface endpoint ENI. Null means every AZ; the demo uses 1 (each ENI is billed hourly)."
+  type        = number
+  default     = null
+}
+
 variable "restricted_allowlist" {
   description = "Exact HTTPS hostnames the restricted subnets (api, ai-worker) may reach, from egress-allowlist.yaml. Everything else from those subnets is dropped and logged."
   type        = list(string)

@@ -1,0 +1,85 @@
+# One-time bootstrap for each Archova AWS account (infra/README.md "First-time setup").
+#
+# Creates the GitHub Actions OIDC identity provider and the two roles the infra workflow uses, so no AWS keys ever
+# leave AWS and Terraform never manages the role it runs as:
+#
+#   archova-github-terraform-plan    pull requests in falahjoon-prog/Archova; read-only, plans posted on the PR
+#   archova-github-terraform-apply   only the GitHub environment <Environment>-infra, which needs john's approval
+#
+# Launch it once per account in ap-southeast-2: CloudFormation > Create stack > Upload a template file, stack name
+# archova-github, Environment = the account's environment (shared-services, demo, dev, staging, prod-cell1).
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Archova GitHub Actions OIDC provider and Terraform roles
+
+Parameters:
+  Environment:
+    Type: String
+    Description: The environment this account holds. Its GitHub environment is <Environment>-infra.
+    AllowedValues: [shared-services, demo, dev, staging, prod-cell1, loadtest]
+  Repository:
+    Type: String
+    Default: falahjoon-prog/Archova
+    Description: GitHub owner/repository allowed to assume the roles. Case-sensitive.
+
+Resources:
+  GitHubOidc:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList: [sts.amazonaws.com]
+
+  TerraformApply:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: archova-github-terraform-apply
+      Description: Terraform apply from GitHub Actions, only through the approved <env>-infra environment
+      MaxSessionDuration: 7200
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/AdministratorAccess]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Ref GitHubOidc }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:environment:${Environment}-infra
+
+  TerraformPlan:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: archova-github-terraform-plan
+      Description: Read-only Terraform plan from GitHub Actions pull requests
+      ManagedPolicyArns: [arn:aws:iam::aws:policy/ReadOnlyAccess]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Federated: !Ref GitHubOidc }
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+                token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:pull_request
+      Policies:
+        # State lives in the shared-services bucket; its bucket and key policies limit each account to its own
+        # envs/<env>/ prefix. Plans take an S3 lock file, so they may write *.tflock and nothing else.
+        - PolicyName: terraform-state
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: [s3:PutObject, s3:DeleteObject]
+                Resource: arn:aws:s3:::archova-shared-tfstate-*/*.tflock
+              - Effect: Allow
+                Action: [kms:Decrypt, kms:Encrypt, kms:GenerateDataKey]
+                Resource: '*'
+                Condition:
+                  StringEquals: { kms:ViaService: s3.ap-southeast-2.amazonaws.com }
+
+Outputs:
+  ApplyRoleArn:
+    Value: !GetAtt TerraformApply.Arn
+  PlanRoleArn:
+    Value: !GetAtt TerraformPlan.Arn

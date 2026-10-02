@@ -85,6 +85,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:egress
 
+  # Plans and applies need only the account ids as repository variables (AWS_ACCOUNT_SHARED, AWS_ACCOUNT_DEMO,
+  # AWS_ACCOUNT_DEV, ...): roles come from infra/bootstrap/github-actions.yaml and every other name is derived from
+  # the shared-services account id. An environment whose account variable is unset is skipped.
   plan:
     name: Plan ${{ matrix.env }}
     needs: [static, egress]
@@ -99,31 +102,49 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - { env: shared-services, vars: SHARED }
+          - { env: demo, vars: DEMO }
           - { env: dev, vars: DEV }
           - { env: staging, vars: STAGING }
           - { env: prod-cell1, vars: PROD }
     env:
+      ACCOUNT: ${{ vars[format('AWS_ACCOUNT_{0}', matrix.vars)] }}
+      SHARED: ${{ vars.AWS_ACCOUNT_SHARED }}
       TF_VAR_account_id: ${{ vars[format('AWS_ACCOUNT_{0}', matrix.vars)] }}
       TF_VAR_dns_zone_id: ${{ vars[format('DNS_ZONE_{0}', matrix.vars)] }}
-      TF_VAR_image_registry: ${{ vars.IMAGE_REGISTRY }}
-      TF_VAR_state_bucket_arn: ${{ vars.TF_STATE_BUCKET_ARN }}
-      TF_VAR_state_kms_key_arn: ${{ vars.TF_STATE_KMS_KEY_ARN }}
-      TF_VAR_dns_role_arn: ${{ vars.DNS_PROD_ROLE_ARN }}
+      TF_VAR_image_registry: ${{ vars.AWS_ACCOUNT_SHARED }}.dkr.ecr.ap-southeast-2.amazonaws.com
+      TF_VAR_dns_role_arn: arn:aws:iam::${{ vars.AWS_ACCOUNT_SHARED }}:role/archova-shared-dns-records
       TF_VAR_backup_vault_arns: ${{ vars.BACKUP_VAULT_ARNS || '[]' }}
     steps:
       - uses: actions/checkout@v4
+        if: env.ACCOUNT != ''
       - uses: hashicorp/setup-terraform@v3
+        if: env.ACCOUNT != ''
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
       - uses: aws-actions/configure-aws-credentials@v4
+        if: env.ACCOUNT != ''
         with:
-          role-to-assume: ${{ vars[format('AWS_PLAN_ROLE_{0}', matrix.vars)] }}
+          role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/archova-github-terraform-plan
           aws-region: ap-southeast-2
+      - name: derived settings
+        if: env.ACCOUNT != ''
+        run: |
+          echo "TF_STATE_BUCKET=archova-shared-tfstate-${SHARED:6:6}" >> "$GITHUB_ENV"
+          echo "TF_VAR_workload_accounts=$(jq -cn \
+            --arg dev '${{ vars.AWS_ACCOUNT_DEV }}' --arg staging '${{ vars.AWS_ACCOUNT_STAGING }}' \
+            --arg prod '${{ vars.AWS_ACCOUNT_PROD }}' --arg demo '${{ vars.AWS_ACCOUNT_DEMO }}' \
+            '{dev: $dev, staging: $staging, "prod-cell1": $prod, demo: $demo} | with_entries(select(.value != ""))')" >> "$GITHUB_ENV"
       - name: plan
+        if: env.ACCOUNT != ''
         working-directory: infra/envs/${{ matrix.env }}
         run: |
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          if ! aws s3api head-bucket --bucket "$TF_STATE_BUCKET" 2>/dev/null; then
+            echo "::notice::No state bucket yet: the first apply of shared-services creates it."
+            exit 0
+          fi
+          terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET"
           set +e
           terraform plan -input=false -lock-timeout=5m -no-color -detailed-exitcode > plan.txt 2>&1
           code=$?
@@ -135,7 +156,7 @@ jobs:
             exit 1
           fi
       - name: Post plan on the PR
-        if: github.event_name == 'pull_request'
+        if: env.ACCOUNT != '' && github.event_name == 'pull_request' && hashFiles(format('infra/envs/{0}/plan.txt', matrix.env)) != ''
         uses: actions/github-script@v7
         with:
           script: |
@@ -144,15 +165,16 @@ jobs:
             const body = `### Terraform plan: \`${{ matrix.env }}\`\n\n<details><summary>Show plan</summary>\n\n\`\`\`\n${plan.slice(-60000)}\n\`\`\`\n</details>`;
             await github.rest.issues.createComment({ ...context.repo, issue_number: context.issue.number, body });
 
-  # Merge to main applies dev, then staging and prod after approval on their GitHub environments
-  # (dev-infra, staging-infra, prod-infra). The org layer is applied by hand (infrastructure/03 §7).
+  # Merge to main applies each environment after approval on its GitHub environment <env>-infra (create them with
+  # john as required reviewer before setting INFRA_AWS_READY). shared-services goes first: it holds the state
+  # bucket, the image registry and the apex DNS zone. The org layer is applied by hand (infrastructure/03 §7).
   apply:
     name: Apply ${{ matrix.env }}
     needs: [static, egress]
-    if: vars.INFRA_AWS_READY == 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: vars.INFRA_AWS_READY == 'true' && (github.event_name == 'workflow_dispatch' || github.event_name == 'push') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    environment: ${{ matrix.environment }}
+    environment: ${{ matrix.env }}-infra
     permissions:
       contents: read
       id-token: write
@@ -160,29 +182,51 @@ jobs:
       max-parallel: 1
       matrix:
         include:
-          - { env: dev, vars: DEV, environment: dev-infra }
-          - { env: staging, vars: STAGING, environment: staging-infra }
-          - { env: prod-cell1, vars: PROD, environment: prod-infra }
+          - { env: shared-services, vars: SHARED }
+          - { env: demo, vars: DEMO }
+          - { env: dev, vars: DEV }
+          - { env: staging, vars: STAGING }
+          - { env: prod-cell1, vars: PROD }
     env:
+      ACCOUNT: ${{ vars[format('AWS_ACCOUNT_{0}', matrix.vars)] }}
+      SHARED: ${{ vars.AWS_ACCOUNT_SHARED }}
       TF_VAR_account_id: ${{ vars[format('AWS_ACCOUNT_{0}', matrix.vars)] }}
       TF_VAR_dns_zone_id: ${{ vars[format('DNS_ZONE_{0}', matrix.vars)] }}
-      TF_VAR_image_registry: ${{ vars.IMAGE_REGISTRY }}
-      TF_VAR_state_bucket_arn: ${{ vars.TF_STATE_BUCKET_ARN }}
-      TF_VAR_state_kms_key_arn: ${{ vars.TF_STATE_KMS_KEY_ARN }}
-      TF_VAR_dns_role_arn: ${{ vars.DNS_PROD_ROLE_ARN }}
+      TF_VAR_image_registry: ${{ vars.AWS_ACCOUNT_SHARED }}.dkr.ecr.ap-southeast-2.amazonaws.com
+      TF_VAR_dns_role_arn: arn:aws:iam::${{ vars.AWS_ACCOUNT_SHARED }}:role/archova-shared-dns-records
       TF_VAR_backup_vault_arns: ${{ vars.BACKUP_VAULT_ARNS || '[]' }}
     steps:
       - uses: actions/checkout@v4
+        if: env.ACCOUNT != ''
       - uses: hashicorp/setup-terraform@v3
+        if: env.ACCOUNT != ''
         with:
           terraform_version: ${{ env.TF_VERSION }}
           terraform_wrapper: false
       - uses: aws-actions/configure-aws-credentials@v4
+        if: env.ACCOUNT != ''
         with:
-          role-to-assume: ${{ vars[format('AWS_APPLY_ROLE_{0}', matrix.vars)] }}
+          role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/archova-github-terraform-apply
           aws-region: ap-southeast-2
+      - name: derived settings
+        if: env.ACCOUNT != ''
+        run: |
+          echo "TF_STATE_BUCKET=archova-shared-tfstate-${SHARED:6:6}" >> "$GITHUB_ENV"
+          echo "TF_VAR_workload_accounts=$(jq -cn \
+            --arg dev '${{ vars.AWS_ACCOUNT_DEV }}' --arg staging '${{ vars.AWS_ACCOUNT_STAGING }}' \
+            --arg prod '${{ vars.AWS_ACCOUNT_PROD }}' --arg demo '${{ vars.AWS_ACCOUNT_DEMO }}' \
+            '{dev: $dev, staging: $staging, "prod-cell1": $prod, demo: $demo} | with_entries(select(.value != ""))')" >> "$GITHUB_ENV"
       - name: apply
+        if: env.ACCOUNT != ''
         working-directory: infra/envs/${{ matrix.env }}
         run: |
-          terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+          # First run of shared-services: the state bucket doesn't exist yet. Apply with local state, then move the
+          # state into the bucket that apply created.
+          if [ "${{ matrix.env }}" = "shared-services" ] && ! aws s3api head-bucket --bucket "$TF_STATE_BUCKET" 2>/dev/null; then
+            terraform init -input=false -backend=false
+            terraform apply -input=false -auto-approve
+            terraform init -input=false -migrate-state -force-copy -backend-config="bucket=$TF_STATE_BUCKET"
+            exit 0
+          fi
+          terraform init -input=false -backend-config="bucket=$TF_STATE_BUCKET"
           terraform apply -input=false -lock-timeout=5m -auto-approve

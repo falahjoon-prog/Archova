@@ -4,5 +4,3 @@ dns_zone_id    = "Z0123456789ABCDEFGHIJ"
 image_registry = "222222222222.dkr.ecr.ap-southeast-2.amazonaws.com"
 dns_role_arn      = "arn:aws:iam::222222222222:role/archova-shared-dns-prod"
 backup_vault_arns = ["arn:aws:backup:ap-southeast-2:333333333333:backup-vault:archova-prod", "arn:aws:backup:ap-southeast-4:333333333333:backup-vault:archova-prod"]
-state_bucket_arn  = "arn:aws:s3:::archova-shared-tfstate-222222"
-state_kms_key_arn = "arn:aws:kms:ap-southeast-2:222222222222:key/00000000-0000-0000-0000-000000000000"

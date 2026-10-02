@@ -1,12 +1,12 @@
 # --- Identity --------------------------------------------------------------------------------------------------
 
 variable "env" {
-  description = "dev, staging, prod, loadtest."
+  description = "dev, staging, prod, loadtest, demo."
   type        = string
 
   validation {
-    condition     = contains(["dev", "staging", "prod", "loadtest"], var.env)
-    error_message = "env is dev, staging, prod or loadtest."
+    condition     = contains(["dev", "staging", "prod", "loadtest", "demo"], var.env)
+    error_message = "env is dev, staging, prod, loadtest or demo."
   }
 }
 
@@ -62,6 +62,12 @@ variable "firewall_endpoint_count" {
   type = number
 }
 
+variable "interface_endpoint_az_count" {
+  description = "AZs with interface endpoint ENIs; null for all (see modules/network)."
+  type        = number
+  default     = null
+}
+
 variable "nat_eip_allocation_ids" {
   description = "Prod's published egress IPs, allocated outside the cell so they are never released."
   type        = list(string)
@@ -90,6 +96,7 @@ variable "aurora" {
     instance_count        = number
     serverless_min_acu    = optional(number, 0.5)
     serverless_max_acu    = optional(number, 4)
+    auto_pause_seconds    = optional(number)
     io_optimized          = bool
     backup_retention_days = number
     enable_proxy          = optional(bool, true)
@@ -175,12 +182,9 @@ variable "log_retention_days" {
 # --- CI/CD -----------------------------------------------------------------------------------------------------
 
 variable "ci" {
-  description = "GitHub Actions roles in this account (infrastructure/03): plan on pull requests, apply and deploy behind GitHub environments. Null skips them (e.g. loadtest, driven by Owen)."
+  description = "GitHub Actions deploy role in this account (infrastructure/03). The OIDC provider comes from infra/bootstrap. Null skips it (e.g. loadtest, driven by Owen)."
   type = object({
-    repository           = optional(string, "falahjoon-prog/Archova")
-    create_oidc_provider = optional(bool, true)
-    state_bucket_arn     = string
-    state_kms_key_arn    = string
+    repository = optional(string, "falahjoon-prog/Archova")
   })
   default = null
 }

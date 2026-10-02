@@ -62,10 +62,7 @@ module "cell" {
   enable_execute_command = true
   deletion_protection    = false
   force_destroy_buckets  = true
-  ci = {
-    state_bucket_arn  = var.state_bucket_arn
-    state_kms_key_arn = var.state_kms_key_arn
-  }
+  ci                     = {}
 
   log_retention_days = 30
 }
