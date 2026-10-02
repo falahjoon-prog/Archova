@@ -76,6 +76,12 @@ main:focus {
 }
 
 /* Signed-in shell */
+/* Full height, so the Ask Nova panel reaches the bottom of the window on short pages. */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
 .app-shell__bar {
   display: flex;
   flex-wrap: wrap;
@@ -139,6 +145,7 @@ main:focus {
   color: var(--c-text-secondary);
 }
 .app-shell__body {
+  flex: 1;
   display: flex;
   align-items: stretch;
 }
@@ -451,6 +458,7 @@ main:focus {
 
 /* Drawing viewer */
 .drawing-viewer {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -504,8 +512,8 @@ main:focus {
 .drawing-viewer__body {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
   gap: var(--space-4);
-  min-height: 560px;
 }
 .drawing-viewer__panel {
   padding: var(--space-4);
@@ -558,10 +566,14 @@ main:focus {
 .pdf-sheet--new canvas {
   filter: sepia(1) saturate(6) hue-rotate(180deg);
 }
-@media (max-width: 1023px) {
+/* By the viewer's own width, so opening Ask Nova moves the side panel under the sheet instead of shrinking it. */
+@container (max-width: 960px) {
   .drawing-viewer__body,
   .drawing-viewer__side-by-side {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .drawing-viewer__panel {
+    max-height: none;
   }
 }
 
