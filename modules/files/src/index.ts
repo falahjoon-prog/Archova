@@ -10,6 +10,7 @@ export {
   createMemoryObjectStore,
   createS3ObjectStore,
   type ObjectStore,
+  type S3Credentials,
   type S3StoreConfig,
 } from './infra/object-store';
 export {

@@ -30,6 +30,7 @@ const store =
         bucket: config.files.bucket,
         region: config.files.region,
         ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
+        ...(config.files.credentials ? { credentials: config.files.credentials } : {}),
       })
     : createMemoryObjectStore();
 
@@ -37,6 +38,7 @@ const bucket = {
   bucket: config.files.bucket,
   region: config.files.region,
   ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
+  ...(config.files.credentials ? { credentials: config.files.credentials } : {}),
 };
 const scanner =
   config.files.scanner === 'guardduty'

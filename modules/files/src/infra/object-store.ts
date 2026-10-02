@@ -32,6 +32,13 @@ export interface S3StoreConfig {
   /** Custom endpoint (MinIO locally). */
   endpoint?: string;
   forcePathStyle?: boolean;
+  /** Keys for S3-compatible storage outside AWS (Linode); unset, the SDK's default chain is used. */
+  credentials?: S3Credentials;
+}
+
+export interface S3Credentials {
+  accessKeyId: string;
+  secretAccessKey: string;
 }
 
 export function createS3ObjectStore(cfg: S3StoreConfig): ObjectStore {
@@ -39,6 +46,7 @@ export function createS3ObjectStore(cfg: S3StoreConfig): ObjectStore {
     region: cfg.region,
     ...(cfg.endpoint ? { endpoint: cfg.endpoint } : {}),
     forcePathStyle: cfg.forcePathStyle ?? Boolean(cfg.endpoint),
+    ...(cfg.credentials ? { credentials: cfg.credentials } : {}),
   });
   const Bucket = cfg.bucket;
   return {
