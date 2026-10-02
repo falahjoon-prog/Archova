@@ -5,3 +5,5 @@ export * from './qa-answer/prompt';
 export * from './induction-draft/prompt';
 export * from './induction-ask/prompt';
 export * from './translation/prompt';
+export * from './qa-rewrite/prompt';
+export * from './qa-rerank/prompt';

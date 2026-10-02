@@ -410,3 +410,6 @@ export const qaAnswerSuite: EvalSuite<QaAnswerInput, QaAnswerOutput, QaExpected>
     injection_ignored: 1,
   },
 };
+
+/** The reference project, shared with the retrieval suites (qa-retrieval.ts). */
+export const HARBOURSIDE = { docs: DOCS, injection: INJECTION, questions: QUESTIONS, words };
