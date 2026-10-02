@@ -1985,6 +1985,344 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Site inductions on the project, with their published versions (IND-US1). */
+        get: operations["listInductions"];
+        put?: never;
+        /**
+         * Start a site induction from the company template: the nine required sections (compliance/04 §2), empty, and the default pass mark.
+         * @description One induction per site, or one for the whole project when `siteId` is left out.
+         */
+        post: operations["createInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        /** The induction with its working draft, section approvals, what still blocks publishing, and its versions. */
+        get: operations["getInduction"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename the induction, change how long a completion stays current, or archive it. */
+        patch: operations["updateInduction"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save the working draft (sections, quiz, pass mark).
+         * @description Pass `aiSuggestionId` when the content comes from a Nova draft (IND-AC13): every section then needs a person's approval before publishing, and editing a section clears its approval.
+         */
+        put: operations["saveInductionDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/draft/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve one section of the draft as read and checked (IND-AC13). The approver is recorded on the version. */
+        post: operations["approveInductionSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Publish the draft as a new, unchangeable version (IND-AC2), and choose whether workers must redo it (IND-AC10).
+         * @description Refused with `induction.incomplete` while a required section is empty or the quiz breaks the rules, and with `induction.not_approved` while a Nova-drafted section is unapproved.
+         */
+        post: operations["publishInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/versions/{versionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        /** A published version exactly as workers saw it, with the quiz answers. */
+        get: operations["getInductionVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Who is inducted: every worker with their latest completion, version, score, credentials on file and status (IND-AC9).
+         * @description Subcontractors see only their own workers.
+         */
+        get: operations["listInductionRegister"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start, or pick up again, the induction on the current version (IND-AC4).
+         * @description Without `workerId` the caller takes the induction themselves. A site manager passes `workerId` to take a worker through it on a tablet at the gate (IND-AC8).
+         */
+        post: operations["startInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        /** One induction in progress or done: content (without quiz answers), progress, quiz and credentials. */
+        get: operations["getInductionCompletion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that a section was seen to the end (video watched, every slide paged, SWMS opened) and the time spent. */
+        post: operations["recordInductionProgress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/quiz-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit the quiz. Every attempt is kept; a failed one lists the sections to review (IND-AC5).
+         * @description Opens once every section has been seen (`induction.sections_not_viewed` before then).
+         */
+        post: operations["submitInductionQuiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload a white card or licence while doing the induction (IND-AC7). Stored as "recorded". */
+        post: operations["addInductionCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Declare and sign (IND-AC6). Seals the record: the signature, time, device time, IP and the hash of the version signed.
+         * @description Needs a passed quiz and a white card on record.
+         */
+        post: operations["signInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+            };
+            cookie?: never;
+        };
+        /** A worker's white card and licences. Only the builder's site managers and the worker's own company see them (IND-AC12). */
+        get: operations["listWorkerCredentials"];
+        put?: never;
+        /** Record a white card or licence for a worker (the subbie office or site manager). */
+        post: operations["addWorkerCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}/credentials/{credentialId}/sight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+                credentialId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a card as sighted: a site manager has seen the real card (shown as "sighted by [name] on [date]", never "verified"). */
+        post: operations["sightWorkerCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3582,6 +3920,313 @@ export interface components {
             workerId: string;
             /** @enum {string} */
             status: "accounted_for" | "missing" | "not_on_site";
+        };
+        /**
+         * @description The nine required sections of a site-specific induction (compliance/04 §2), plus `extra` for anything the builder adds. The declaration is fixed text, not a section.
+         * @enum {string}
+         */
+        InductionSectionKey: "who_and_access" | "layout_and_amenities" | "emergencies_and_first_aid" | "site_hazards" | "high_risk_work_and_permits" | "ppe" | "site_rules" | "incident_reporting" | "consultation" | "extra";
+        InductionSlide: {
+            title: string;
+            points: string[];
+            /** @description What the narrator says on this slide. */
+            script: string[];
+        };
+        InductionSlidesBlock: {
+            /** @enum {string} */
+            type: "slides";
+            slides: components["schemas"]["InductionSlide"][];
+        };
+        InductionTextBlock: {
+            /** @enum {string} */
+            type: "text";
+            body: string;
+        };
+        InductionFileBlock: {
+            /**
+             * @description A video (watched to the end), a PDF or slide deck (paged through), or an image such as the site map.
+             * @enum {string}
+             */
+            type: "video" | "document" | "image";
+            fileId: components["schemas"]["FileRef"];
+            title?: string | null;
+        };
+        InductionSwmsBlock: {
+            /** @enum {string} */
+            type: "swms";
+            documentId: string;
+            /** @description Filled in from the document register; ignored on input. */
+            title?: string | null;
+        };
+        InductionBlock: components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
+        InductionSection: {
+            key: components["schemas"]["InductionSectionKey"];
+            title: string;
+            blocks: components["schemas"]["InductionBlock"][];
+        };
+        InductionQuestion: {
+            /** @description Kept across edits so attempts point at the same question; given by the server when left out. */
+            id?: string;
+            section: components["schemas"]["InductionSectionKey"];
+            question: string;
+            options: string[];
+            answerIndex: number;
+            /** @description Must be answered correctly to pass. Always on for emergency and high-risk work questions. */
+            critical: boolean;
+        };
+        InductionContent: {
+            sections: components["schemas"]["InductionSection"][];
+            quiz: components["schemas"]["InductionQuestion"][];
+            /** @description Overall percentage needed, on top of every critical question right. Default 80 (IND-AC5). */
+            passMark: number;
+        };
+        InductionProblem: {
+            path: string;
+            message: string;
+        };
+        InductionApproval: {
+            /** @description Index of the section in the draft. */
+            section: number;
+            approvedBy: components["schemas"]["UserRef"];
+            /** Format: date-time */
+            approvedAt: string;
+            /** @description False once the section has been edited since it was approved. */
+            current: boolean;
+        };
+        InductionVersionSummary: {
+            id: string;
+            number: number;
+            contentHash: string;
+            /**
+             * @description `all`: every worker must complete this version before their next sign-in, after the grace days. `none`: a minor change; earlier completions stay current.
+             * @enum {string}
+             */
+            redo: "all" | "none";
+            graceDays: number;
+            /** Format: date-time */
+            requiredFrom: string;
+            changeNote: string | null;
+            aiGenerated: boolean;
+            /** Format: date-time */
+            publishedAt: string;
+            publishedBy: components["schemas"]["UserRef"] | null;
+        };
+        InductionVersion: components["schemas"]["InductionVersionSummary"] & {
+            inductionId: string;
+            content: components["schemas"]["InductionContent"];
+            declarationText: string;
+            /** @description The people who approved Nova-drafted sections, if any. */
+            approvedBy: components["schemas"]["UserRef"][];
+        };
+        Induction: {
+            id: string;
+            projectId: string;
+            siteId: string | null;
+            title: string;
+            /** @enum {string} */
+            status: "draft" | "published" | "archived";
+            /** @description How long a completion stays current before re-induction (compliance/04 §4, default 12). */
+            validityMonths: number;
+            draft: components["schemas"]["InductionContent"];
+            /** @description Set when the draft came from a Nova suggestion; every section then needs approving. */
+            draftAiSuggestionId: string | null;
+            approvals: components["schemas"]["InductionApproval"][];
+            /** @description What stops the draft being published now. Empty when it can be. */
+            problems: components["schemas"]["InductionProblem"][];
+            currentVersion: components["schemas"]["InductionVersionSummary"] | null;
+            /** @description The version workers must have completed to sign in today. */
+            requiredVersion: components["schemas"]["InductionVersionSummary"] | null;
+            /** @description Newest first. */
+            versions: components["schemas"]["InductionVersionSummary"][];
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        InductionList: {
+            data: components["schemas"]["Induction"][];
+        };
+        CreateInductionRequest: {
+            title: string;
+            siteId?: string;
+            validityMonths?: number;
+        };
+        UpdateInductionRequest: {
+            title?: string;
+            validityMonths?: number;
+            /** @enum {string} */
+            status?: "archived";
+        };
+        SaveInductionDraftRequest: {
+            content: components["schemas"]["InductionContent"];
+            /** @description The Nova `induction.draft` suggestion this content was built from. */
+            aiSuggestionId?: string;
+        };
+        ApproveInductionSectionRequest: {
+            section: number;
+        };
+        PublishInductionRequest: {
+            /** @enum {string} */
+            redo: "all" | "none";
+            graceDays?: number;
+            changeNote?: string;
+        };
+        StartInductionRequest: {
+            siteId?: string;
+            /** @description A site manager taking a worker through it on a tablet. */
+            workerId?: string;
+        };
+        InductionWorkerQuestion: {
+            id: string;
+            section: components["schemas"]["InductionSectionKey"];
+            question: string;
+            options: string[];
+        };
+        InductionWorkerContent: {
+            sections: components["schemas"]["InductionSection"][];
+            quiz: components["schemas"]["InductionWorkerQuestion"][];
+            passMark: number;
+            declarationText: string;
+            /** @description Shown with every SWMS: opening it here is awareness, not sign-on to the SWMS. */
+            swmsNotice: string;
+        };
+        InductionQuizSummary: {
+            attempts: number;
+            failedAttempts: number;
+            passed: boolean;
+            lastScore: number | null;
+        };
+        InductionCompletion: {
+            id: string;
+            inductionId: string;
+            versionId: string;
+            versionNumber: number;
+            worker: components["schemas"]["Worker"];
+            /** @enum {string} */
+            status: "in_progress" | "completed";
+            /** @enum {string} */
+            method: "self" | "assisted";
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            /** @description Indexes of the sections seen to the end. */
+            sectionsViewed: number[];
+            quiz: components["schemas"]["InductionQuizSummary"];
+            credentials: components["schemas"]["WorkerCredential"][];
+            content: components["schemas"]["InductionWorkerContent"];
+        };
+        InductionProgressRequest: {
+            section: number;
+            seconds?: number;
+        };
+        SubmitInductionQuizRequest: {
+            answers: {
+                questionId: string;
+                answerIndex: number;
+            }[];
+        };
+        InductionQuizResult: {
+            attempt: number;
+            /** @description Percentage of questions answered correctly. */
+            score: number;
+            passed: boolean;
+            criticalMissed: boolean;
+            /** @description Indexes of the sections the missed questions came from. */
+            reviewSections: number[];
+            /** @description True after 3 failed attempts; the site manager is told (compliance/04 §3). */
+            seeSiteOffice: boolean;
+        };
+        SignInductionRequest: {
+            typedName: string;
+            signature: {
+                /** @enum {string} */
+                format: "svg";
+                /** @description The finger signature as SVG path data. */
+                data: string;
+            };
+            /** @description Must be true. */
+            fitForWork: boolean;
+            /** @description Must be true. */
+            agreed: boolean;
+            /**
+             * Format: date-time
+             * @description The device's clock when they tapped "I agree".
+             */
+            clientAt?: string;
+        };
+        /** @enum {string} */
+        WorkerCredentialKind: "white_card" | "high_risk_licence" | "trade_licence" | "other";
+        WorkerCredential: {
+            id: string;
+            workerId: string;
+            kind: components["schemas"]["WorkerCredentialKind"];
+            number: string;
+            issuingState: components["schemas"]["AuState"] | null;
+            licenceClass: string | null;
+            /** Format: date */
+            issuedOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            fileIds: components["schemas"]["FileRef"][];
+            /**
+             * @description "Recorded" as the worker entered it, or "sighted" once a site manager has seen the card. Never "verified" (IND-AC7).
+             * @enum {string}
+             */
+            status: "recorded" | "sighted";
+            sightedBy: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            sightedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WorkerCredentialList: {
+            data: components["schemas"]["WorkerCredential"][];
+        };
+        CreateWorkerCredentialRequest: {
+            kind: components["schemas"]["WorkerCredentialKind"];
+            number: string;
+            issuingState?: components["schemas"]["AuState"];
+            licenceClass?: string;
+            /** Format: date */
+            issuedOn?: string;
+            /** Format: date */
+            expiresOn?: string;
+            /** @description Photos of the card, front and back. */
+            fileIds: components["schemas"]["FileRef"][];
+        };
+        InductionRegisterEntry: {
+            worker: components["schemas"]["Worker"];
+            /** @enum {string} */
+            status: "current" | "needs_reinduction" | "expired" | "in_progress" | "not_inducted";
+            completion: {
+                id: string;
+                versionNumber: number;
+                /** Format: date-time */
+                completedAt: string | null;
+                /** Format: date */
+                expiresOn: string | null;
+                score: number | null;
+                /** @enum {string} */
+                method: "self" | "assisted";
+            } | null;
+            /** @description What's on file. Card numbers and photos stay on the worker's credential list. */
+            credentials: {
+                kind: components["schemas"]["WorkerCredentialKind"];
+                /** @enum {string} */
+                status: "recorded" | "sighted";
+                /** Format: date */
+                expiresOn: string | null;
+            }[];
+        };
+        InductionRegister: {
+            inductionId: string | null;
+            requiredVersion: number | null;
+            data: components["schemas"]["InductionRegisterEntry"][];
         };
     };
     responses: {
@@ -7041,6 +7686,533 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RollCall"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInductions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createInduction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Induction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInduction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Induction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateInduction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Induction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveInductionDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveInductionDraftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Induction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveInductionSection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApproveInductionSectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Induction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishInduction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionVersion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+                versionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionVersion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInductionRegister: {
+        parameters: {
+            query?: {
+                siteId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionRegister"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startInduction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionCompletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordInductionProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InductionProgressRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitInductionQuiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitInductionQuizRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionQuizResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addInductionCredential: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkerCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerCredential"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signInduction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWorkerCredentials: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerCredentialList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addWorkerCredential: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkerCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerCredential"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sightWorkerCredential: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                workerId: string;
+                credentialId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerCredential"];
                 };
             };
             default: components["responses"]["Problem"];

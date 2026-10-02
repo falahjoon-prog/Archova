@@ -11,4 +11,6 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'workforce.attendance.manage', scope: 'project', tool: 'workforce', level: 'admin' },
   { key: 'workforce.attendance.override', scope: 'project', tool: 'workforce', level: 'admin' },
   { key: 'workforce.workers.view_personal', scope: 'project', tool: 'workforce', level: 'admin' },
+  // Site managers build and publish the site induction (product/14 I1, I7).
+  { key: 'workforce.inductions.manage', scope: 'project', tool: 'workforce', level: 'admin' },
 ];

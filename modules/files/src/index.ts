@@ -26,7 +26,12 @@ export { assertFileReady } from './application/files-service';
 
 export function createFilesModule(
   services: KernelServices,
-  deps: { access: AccessService; store: ObjectStore; scanner: MalwareScanner },
+  deps: {
+    access: AccessService;
+    store: ObjectStore;
+    scanner: MalwareScanner;
+    uploadPermissions?: Readonly<Record<string, string>>;
+  },
 ) {
   const service = createFilesService({ ...deps, logger: services.logger });
   return {

@@ -7,10 +7,20 @@ import {
   parseIfMatch,
   requireTenant,
   type Database,
+  type Logger,
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import { aiContent, type InductionService } from '../application/inductions';
+import {
+  fromContentDto,
+  toCompletionDto,
+  toCredentialDto,
+  toInductionDto,
+  toRegisterDto,
+  toVersionDto,
+} from './induction-mappers';
 import {
   toEntryDto,
   toGateDto,
@@ -34,10 +44,41 @@ const ref = (kind: IdKind, value: string, path: string) => {
 };
 const project = (p: { projectId: string }) => id('project', p.projectId, 'project.not_found');
 const date = (v: string | undefined) => (v ? new Date(v) : undefined);
+const induction = (p: { inductionId: string }) =>
+  id('induction', p.inductionId, 'induction.not_found');
+const completion = (p: { completionId: string }) =>
+  id('inductionCompletion', p.completionId, 'induction.completion_not_found');
+const credentialInput = (b: {
+  kind: 'white_card' | 'high_risk_licence' | 'trade_licence' | 'other';
+  number: string;
+  issuingState?: string;
+  licenceClass?: string;
+  issuedOn?: string;
+  expiresOn?: string;
+  fileIds: string[];
+}) => ({
+  ...b,
+  fileIds: b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)),
+});
 const companyOrNull = (v: string | null | undefined, path: string) =>
   v === undefined ? undefined : v === null ? null : ref('company', v, path);
 
-export function workforceRoutes(database: Database, svc: AttendanceService) {
+/** Work done after a commit, outside the transaction. */
+export interface InductionHooks {
+  logger?: Pick<Logger, 'warn'>;
+  /** Index a published version for worker Q&A (`ai.api.indexInductionVersion`); idempotent, retried on the next publish. */
+  onVersionPublished?: (
+    ctx: TenantContext,
+    content: ReturnType<typeof aiContent>,
+  ) => Promise<unknown>;
+}
+
+export function workforceRoutes(
+  database: Database,
+  svc: AttendanceService,
+  ind: InductionService,
+  hooks: InductionHooks = {},
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -314,6 +355,208 @@ export function workforceRoutes(database: Database, svc: AttendanceService) {
         ),
       );
       return { status: 200, body: toRollCallDto(r.call, r.marks) };
+    },
+
+    // ------------------------------------------------------------------------------------- inductions
+
+    listInductions: async (input) => {
+      const rows = await read(input, (s) => ind.list(s, project(input.params)));
+      return { status: 200, body: { data: rows.map(toInductionDto) } };
+    },
+    createInduction: async (input) => {
+      const b = input.body;
+      const d = await tx(input, (s) =>
+        ind.create(s, project(input.params), {
+          title: b.title,
+          ...(b.siteId ? { siteId: ref('workforceSite', b.siteId, 'siteId') } : {}),
+          ...(b.validityMonths ? { validityMonths: b.validityMonths } : {}),
+        }),
+      );
+      return { status: 201, body: toInductionDto(d), headers: { etag: etag(d.row.version) } };
+    },
+    getInduction: async (input) => {
+      const d = await read(input, (s) =>
+        ind.get(s, project(input.params), induction(input.params)),
+      );
+      return { status: 200, body: toInductionDto(d), headers: { etag: etag(d.row.version) } };
+    },
+    updateInduction: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const d = await tx(input, (s) =>
+        ind.update(s, project(input.params), induction(input.params), expected, input.body),
+      );
+      return { status: 200, body: toInductionDto(d), headers: { etag: etag(d.row.version) } };
+    },
+    saveInductionDraft: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const b = input.body;
+      const content = fromContentDto(b.content);
+      const d = await tx(input, (s) =>
+        ind.saveDraft(s, project(input.params), induction(input.params), expected, {
+          content,
+          ...(b.aiSuggestionId
+            ? { aiSuggestionId: ref('aiSuggestion', b.aiSuggestionId, 'aiSuggestionId') }
+            : {}),
+        }),
+      );
+      return { status: 200, body: toInductionDto(d), headers: { etag: etag(d.row.version) } };
+    },
+    approveInductionSection: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const d = await tx(input, (s) =>
+        ind.approveSection(
+          s,
+          project(input.params),
+          induction(input.params),
+          expected,
+          input.body.section,
+        ),
+      );
+      return { status: 200, body: toInductionDto(d), headers: { etag: etag(d.row.version) } };
+    },
+    publishInduction: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const ctx = requireTenant(input);
+      const r = await tx(input, (s) =>
+        ind.publish(s, project(input.params), induction(input.params), expected, input.body),
+      );
+      if (hooks.onVersionPublished)
+        await hooks
+          .onVersionPublished(ctx, aiContent(r.version))
+          .catch((err: unknown) =>
+            hooks.logger?.warn(
+              { orgId: ctx.orgId, versionId: r.version.id, err },
+              'induction version not indexed for Nova; it is indexed again on the next publish',
+            ),
+          );
+      return {
+        status: 201,
+        body: toVersionDto(r.version),
+        headers: { etag: etag(r.induction.version) },
+      };
+    },
+    getInductionVersion: async (input) => {
+      const v = await read(input, (s) =>
+        ind.getVersion(
+          s,
+          project(input.params),
+          induction(input.params),
+          id('inductionVersion', input.params.versionId, 'induction.version_not_found'),
+        ),
+      );
+      return { status: 200, body: toVersionDto(v) };
+    },
+    listInductionRegister: async (input) => {
+      const r = await read(input, (s) =>
+        ind.register(
+          s,
+          project(input.params),
+          input.query.siteId ? ref('workforceSite', input.query.siteId, 'siteId') : undefined,
+        ),
+      );
+      return { status: 200, body: toRegisterDto(r, r.viewer) };
+    },
+    startInduction: async (input) => {
+      const b = input.body ?? {};
+      const v = await tx(input, (s) =>
+        ind.start(s, project(input.params), {
+          ...(b.siteId ? { siteId: ref('workforceSite', b.siteId, 'siteId') } : {}),
+          ...(b.workerId ? { workerId: ref('worker', b.workerId, 'workerId') } : {}),
+        }),
+      );
+      return { status: 200, body: toCompletionDto(v) };
+    },
+    getInductionCompletion: async (input) => {
+      const v = await read(input, (s) =>
+        ind.getCompletion(s, project(input.params), completion(input.params)),
+      );
+      return { status: 200, body: toCompletionDto(v) };
+    },
+    recordInductionProgress: async (input) => {
+      const v = await tx(input, (s) =>
+        ind.recordProgress(s, project(input.params), completion(input.params), input.body),
+      );
+      return { status: 200, body: toCompletionDto(v) };
+    },
+    submitInductionQuiz: async (input) => {
+      const r = await tx(input, (s) =>
+        ind.submitQuiz(s, project(input.params), completion(input.params), input.body.answers),
+      );
+      return {
+        status: 200,
+        body: {
+          attempt: r.attempt,
+          score: r.score,
+          passed: r.passed,
+          criticalMissed: !r.criticalOk,
+          reviewSections: r.reviewSections,
+          seeSiteOffice: r.seeSiteOffice,
+        },
+      };
+    },
+    addInductionCredential: async (input) => {
+      const row = await tx(input, (s) =>
+        ind.addInductionCredential(
+          s,
+          project(input.params),
+          completion(input.params),
+          credentialInput(input.body),
+        ),
+      );
+      return { status: 201, body: toCredentialDto(row) };
+    },
+    signInduction: async (input) => {
+      const b = input.body;
+      const v = await tx(input, (s) =>
+        ind.sign(
+          s,
+          project(input.params),
+          completion(input.params),
+          {
+            typedName: b.typedName,
+            signature: b.signature,
+            fitForWork: b.fitForWork,
+            agreed: b.agreed,
+            ...(b.clientAt ? { clientAt: date(b.clientAt)! } : {}),
+          },
+          { ip: input.ip, userAgent: input.userAgent },
+        ),
+      );
+      return { status: 200, body: toCompletionDto(v) };
+    },
+    listWorkerCredentials: async (input) => {
+      const rows = await read(input, (s) =>
+        ind.listCredentials(
+          s,
+          project(input.params),
+          id('worker', input.params.workerId, 'worker.not_found'),
+        ),
+      );
+      return { status: 200, body: { data: rows.map(toCredentialDto) } };
+    },
+    addWorkerCredential: async (input) => {
+      const row = await tx(input, (s) =>
+        ind.addCredential(
+          s,
+          project(input.params),
+          id('worker', input.params.workerId, 'worker.not_found'),
+          credentialInput(input.body),
+        ),
+      );
+      return { status: 201, body: toCredentialDto(row), headers: { etag: etag(row.version) } };
+    },
+    sightWorkerCredential: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        ind.sightCredential(
+          s,
+          project(input.params),
+          id('worker', input.params.workerId, 'worker.not_found'),
+          id('workerCredential', input.params.credentialId, 'credential.not_found'),
+          expected,
+        ),
+      );
+      return { status: 200, body: toCredentialDto(row), headers: { etag: etag(row.version) } };
     },
   });
 }

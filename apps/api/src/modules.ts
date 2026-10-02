@@ -51,6 +51,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     store: opts.files.store,
     scanner: opts.files.scanner,
+    // Anyone who can sign in on a project can upload their own white card and licence photos.
+    uploadPermissions: { workforce: 'workforce.attendance.sign_in_self' },
   });
 
   const documents = createDocumentsModule(services, {
@@ -91,6 +93,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     identity: identity.api,
+    files: files.api,
+    documents: documents.api,
+    hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
   });
 
   const all = [
