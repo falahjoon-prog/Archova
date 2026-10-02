@@ -15,10 +15,21 @@ export const DISCIPLINES = {
 } as const;
 export type Discipline = keyof typeof DISCIPLINES;
 
+/** Other codes AU sheet numbers commonly use for a discipline, e.g. "H-101" for hydraulic. */
+const DISCIPLINE_ALIASES: Record<string, Discipline> = { H: 'HY' };
+
+/** The DISCIPLINES code for a code the register holds, allowing common aliases; null if it isn't one. */
+function disciplineCode(code: string | null): Discipline | null {
+  if (!code) return null;
+  if (code in DISCIPLINES) return code as Discipline;
+  return DISCIPLINE_ALIASES[code] ?? null;
+}
+
 /** "Architectural" for a known code; anything else the register holds is shown as entered. */
 export function disciplineLabel(code: string | null): string {
   if (!code) return '—';
-  return (DISCIPLINES as Record<string, string>)[code] ?? code;
+  const known = disciplineCode(code);
+  return known ? DISCIPLINES[known] : code;
 }
 
 /** Drawing status labels used on AU sets (product 02). "For construction" gets its own filter. */
