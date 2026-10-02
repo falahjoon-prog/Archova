@@ -27,6 +27,22 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-web-browser',
     // SQLCipher for the per-organisation device database (mobile 02 §2.3); lib/db refuses to open without it.
     ['expo-sqlite', { useSQLCipher: true }],
+    [
+      'expo-camera',
+      {
+        cameraPermission:
+          'Archova uses the camera to take site photos for defects and the site diary.',
+        microphonePermission: false,
+        recordAudioAndroid: false,
+      },
+    ],
+    [
+      'expo-location',
+      {
+        locationWhenInUsePermission:
+          'Archova records where a site photo was taken so it can be placed on the project.',
+      },
+    ],
   ],
   experiments: {
     typedRoutes: false,

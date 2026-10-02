@@ -195,6 +195,24 @@ export function syncStoreConformance(
       expect((await t.store.listOutbox()).map((e) => e.mutationId)).toEqual(['m1']);
     });
 
+    it('holds an entry until it is released with its file id', async () => {
+      const t = await create();
+      await t.store.enqueue(
+        {
+          ...entry('m1', { command: 'photos.create', baseVersion: null }),
+          entityType: 'photo',
+          entityId: 'p1',
+        },
+        { held: true },
+      );
+      expect(await t.store.listOutbox()).toMatchObject([{ mutationId: 'm1', status: 'held' }]);
+      expect(await t.store.listOutbox({ status: 'pending' })).toEqual([]);
+      await t.store.release('m1', { fileId: 'fil_1' });
+      expect(await t.store.listOutbox()).toMatchObject([
+        { mutationId: 'm1', status: 'pending', payload: { n: 'm1', fileId: 'fil_1' } },
+      ]);
+    });
+
     it('tracks checkpoints and applies deletes', async () => {
       const t = await create();
       expect(await t.store.getCheckpoints(['a', 'b'])).toEqual({});
