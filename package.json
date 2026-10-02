@@ -23,7 +23,8 @@
     "db:migrate": "tsx tools/db/migrate.ts",
     "db:lint": "tsx tools/db/lint-migrations.ts",
     "db:reset": "tsx tools/db/bootstrap.ts --reset && tsx tools/db/migrate.ts",
-    "check:boundaries": "tsx tools/boundaries/check-boundaries.ts"
+    "check:boundaries": "tsx tools/boundaries/check-boundaries.ts",
+    "check:egress": "tsx tools/infra/check-egress-allowlist.ts && tsx --test tools/infra/egress-allowlist.test.ts"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

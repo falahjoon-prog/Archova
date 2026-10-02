@@ -53,6 +53,46 @@ export const AiSettingsSchema = z.object({
 });
 export type AiSettings = z.infer<typeof AiSettingsSchema>;
 
+export const AiSuggestionStatusSchema = z.enum(["pending", "accepted", "edited", "rejected"]);
+export type AiSuggestionStatus = z.infer<typeof AiSuggestionStatusSchema>;
+
+export const AiSuggestionSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string().nullable(),
+  "task": z.string(),
+  "targetType": z.string(),
+  "targetId": z.string().nullable(),
+  "status": AiSuggestionStatusSchema,
+  "confidence": z.number().nullable(),
+  "payload": z.record(z.string(), z.unknown()),
+  "runId": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type AiSuggestion = z.infer<typeof AiSuggestionSchema>;
+
+export const DrawingSheetFieldsSchema = z.object({
+  "number": z.string().max(100).nullable().optional(),
+  "title": z.string().max(300).nullable().optional(),
+  "revision": z.string().max(20).nullable().optional(),
+  "discipline": z.enum(["architectural", "structural", "civil", "hydraulic", "mechanical", "electrical", "fire", "landscape", "interiors", "survey", "other"]).nullable().optional(),
+  "revisionDate": z.string().date().nullable().optional(),
+  "scale": z.string().max(50).nullable().optional(),
+}).strict();
+export type DrawingSheetFields = z.infer<typeof DrawingSheetFieldsSchema>;
+
+export const AiSuggestionDecisionSchema = z.object({
+  "decision": z.enum(["accepted", "edited", "rejected"]),
+  "fields": DrawingSheetFieldsSchema.optional(),
+}).strict();
+export type AiSuggestionDecision = z.infer<typeof AiSuggestionDecisionSchema>;
+
+export const AiSuggestionPageSchema = z.object({
+  "data": z.array(AiSuggestionSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type AiSuggestionPage = z.infer<typeof AiSuggestionPageSchema>;
+
 export const AiUsageSchema = z.object({
   "periodStart": z.string().date(),
   "timezone": z.string(),
@@ -368,6 +408,14 @@ export const DraftDrawingRevisionInputSchema = z.object({
   "drawingDate": z.string().date().optional(),
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
+
+export const DrawingRegisterExtractionSchema = z.object({
+  "suggestions": z.array(AiSuggestionSchema),
+  "pageCount": z.number().int(),
+  "skippedPages": z.array(z.number().int()),
+  "refusedPages": z.array(z.number().int()),
+});
+export type DrawingRegisterExtraction = z.infer<typeof DrawingRegisterExtractionSchema>;
 
 export const SupersededBySchema = z.object({
   "revisionId": z.string(),

@@ -45,6 +45,34 @@ export const MIGRATIONS: readonly string[] = [
     updated_at TEXT NOT NULL
   ) WITHOUT ROWID;
   `,
+  // 2: file queue (mobile 03 §3.1). `upload_key` is the createUpload idempotency key, renewed with the session;
+  // `release_mutation` is the held outbox entry (e.g. `photos.create`) released with the file id once stored.
+  `
+  CREATE TABLE file_queue (
+    id                TEXT PRIMARY KEY,
+    project_id        TEXT,
+    module            TEXT NOT NULL,
+    local_uri         TEXT NOT NULL,
+    filename          TEXT NOT NULL,
+    mime              TEXT NOT NULL,
+    size_bytes        INTEGER NOT NULL,
+    sha256            TEXT NOT NULL,
+    capture           TEXT,
+    state             TEXT NOT NULL,
+    upload_key        TEXT NOT NULL,
+    upload_id         TEXT,
+    upload_url        TEXT,
+    upload_headers    TEXT,
+    upload_expires_at TEXT,
+    file_id           TEXT,
+    release_mutation  TEXT,
+    attempts          INTEGER NOT NULL DEFAULT 0,
+    last_error        TEXT,
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL
+  ) WITHOUT ROWID;
+  CREATE INDEX file_queue_state ON file_queue (state, created_at);
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

@@ -1,0 +1,11 @@
+account_id = "222222222222"
+workload_accounts = {
+  dev          = "111111111111"
+  staging      = "333333333333"
+  "prod-cell1" = "444444444444"
+  loadtest     = "555555555555"
+}
+subdomain_name_servers = {
+  dev     = ["ns-1.awsdns-00.org", "ns-2.awsdns-00.com"]
+  staging = ["ns-3.awsdns-00.org", "ns-4.awsdns-00.com"]
+}

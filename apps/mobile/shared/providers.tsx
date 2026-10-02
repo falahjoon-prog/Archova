@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@archova/api-client';
+import { DeviceDataProvider } from './device-data';
 import { OrgProvider } from './org';
 import { SessionProvider } from './session';
 
@@ -17,13 +18,15 @@ function makeQueryClient() {
   });
 }
 
-/** App-wide providers: TanStack Query (online-only reads), session, current org. */
+/** App-wide providers: TanStack Query (online-only reads), session, current org, its device data. */
 export function AppProviders({ children }: { children: ReactNode }) {
   const [queryClient] = useState(makeQueryClient);
   return (
     <QueryClientProvider client={queryClient}>
       <SessionProvider>
-        <OrgProvider>{children}</OrgProvider>
+        <OrgProvider>
+          <DeviceDataProvider>{children}</DeviceDataProvider>
+        </OrgProvider>
       </SessionProvider>
     </QueryClientProvider>
   );

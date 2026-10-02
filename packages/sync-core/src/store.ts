@@ -6,6 +6,11 @@ import type { PullChange, PushResult, RevokedScope, SyncProblem } from './wire';
 export type OutboxStatus =
   /** Waiting to be sent. */
   | 'pending'
+  /**
+   * Queued but not sendable yet: waiting for its file to reach storage (a photo's `photos.create`). Counts as
+   * unsent; anything that depends on it waits too. `release` makes it pending.
+   */
+  | 'held'
   /** The server could not apply it (conflict, rejected, or its parent failed). Shown under "Needs attention". */
   | 'needs_attention'
   /** Sent after access ended; an admin will accept or reject it (X38). */
@@ -55,7 +60,10 @@ export interface SyncStore {
    * Queue a command. Features call this in the same local transaction as their optimistic write
    * (02 §2.4), so the app's implementation joins the caller's transaction.
    */
-  enqueue(entry: NewOutboxEntry): Promise<OutboxEntry>;
+  enqueue(entry: NewOutboxEntry, options?: { held?: boolean }): Promise<OutboxEntry>;
+
+  /** Make a held entry sendable, merging `payloadPatch` (for example the stored file's id) into its payload. */
+  release(mutationId: string, payloadPatch: Record<string, unknown>): Promise<void>;
 
   /** Entries in queue order, optionally filtered by status. */
   listOutbox(filter?: { status?: OutboxStatus }): Promise<OutboxEntry[]>;

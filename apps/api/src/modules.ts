@@ -54,6 +54,10 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const ai = createAiModule(services, {
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
+    readFile: (scope, fileId, maxBytes) => files.api.readFileBytes(scope, fileId, maxBytes),
+    assert: async (scope, key, target) => {
+      await access!.api.assert(scope, key, target);
+    },
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
 

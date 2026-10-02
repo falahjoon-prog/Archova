@@ -29,7 +29,7 @@ Ava's conventions doc is the source; infra needs these minimums:
 - **Per-tenant usage** (storage, AI tokens, seats, API calls) is a billing concern and flows through domain events to the billing module (Sam), not through Prometheus.
 
 ### Trace sampling
-Tail sampling in the collector: keep 100% of traces with errors or latency above the route's p99 target, 100% for the synthetic canary org, and 5% of everything else. Tunable without a deploy.
+Tail sampling in the collector: keep 100% of traces with errors or latency above the route's p99 target, 100% for the synthetic tenant, and 5% of everything else. Tunable without a deploy.
 
 ## 3. Dashboards (Managed Grafana)
 
@@ -61,6 +61,7 @@ Alerts route through **PagerDuty** (or incident.io; decide at setup). Two classe
 | Database | Writer unavailable, failover occurred, replica lag > 30 s, free storage/ACU or connection saturation > 90% |
 | Valkey (queue cluster) | Memory > 85% (queue cluster is `noeviction`, so full means rejected jobs), failover |
 | Security high | GuardDuty high-severity finding, root/break-glass login, CloudTrail disabled attempt (routes to Sam and Owen) |
+| AI egress blocked | Network Firewall dropped traffic from the restricted subnets (api, ai-worker) to an AI-related domain not on the allow-list, or any decrypt of the BYO AI-provider KMS key by an unexpected principal (routes to Sam and Owen) |
 | Backup failure | AWS Backup job failed for prod Aurora or the cross-region copy failed twice in a row |
 
 ### Tickets
@@ -68,7 +69,15 @@ SLO slow burn (≥ 2× over 24 h), dead-letter queue non-empty, certificate expi
 
 ## 5. Synthetic checks
 
-Run from CloudWatch Synthetics in Sydney every 5 minutes (login every minute), against a dedicated **canary org** in production:
+**Production synthetic tenant (X40, with Ari).** A hidden org, `archova-synthetic`, exists in every production cell. It and its companion canary org are excluded from billing, metering, analytics, customer counts and search suggestions across orgs, and flagged so support never contacts it. It holds fixed seed projects and fake people (no real email addresses; email goes to a sink domain we own). It is used for:
+- **post-deploy checks for every module** (RFIs, documents and drawings, diary, defects, transmittals, meetings, photos, claims once shipped, workforce sign-in, AI features), run as the last step of each production deploy; a failure triggers automatic rollback while the old task set is still kept;
+- **cross-tenant canaries**: a second synthetic org holds marker records; the leakage suite (Quinn, Sam, Ben) checks those markers never appear for the first org in API responses, files, cache, search, vectors, realtime channels, queues, email or logs;
+- **Nova checks** (Ari, [ai/06 §9](../ai/06-evaluation.md)): after every deploy **and hourly**, known questions with expected citations, one task per Nova feature, and canary queries from the second synthetic org, all through the full gateway and the AU-only egress path. Ari supplies the synthetic data and expected answers.
+- **Paging:** any cross-tenant canary hit (AI or otherwise) pages the on-call immediately as a SEV1 security incident, with Sam; a failed known-answer check opens a ticket for Ari, or pages if more than one feature fails at once.
+
+Data it creates is cleaned up by the checks themselves and by a nightly purge. Ari owns the AI scenarios; Owen owns the tenant, schedules and alerting.
+
+Run from CloudWatch Synthetics in Sydney every 5 minutes (login every minute), against the synthetic tenant:
 
 1. Load the web app and sign in.
 2. Open a project, list RFIs, create an RFI with an attachment, then delete it.
@@ -100,4 +109,4 @@ Paid on-call allowance and a day off after a heavy night are policy, not favours
 - **Incident channel** per incident; one person leads, one communicates, others investigate.
 - **Blameless postmortem** for every SEV1/SEV2 within 5 business days: timeline, impact (tenants, minutes, SOPA deadlines affected), root cause, what went well, actions with owners and dates.
 - **Security incidents** follow Sam's incident response plan, including Notifiable Data Breaches (Privacy Act) assessment within the 30-day window.
-- SOPA deadline note: if an outage could have stopped a customer serving a payment schedule on time, the incident report says so explicitly, and john decides on customer communication. The product may need an "outage certificate" export for adjudication evidence (raised with Sam and Ben).
+- SOPA deadline note: if an outage could have stopped a customer serving a payment schedule on time, the incident report says so explicitly, and john decides on customer communication. Incident records carry the affected window, services and tenants in a structured form so the product's **service availability statement** export for adjudication (Sam, security-licensing 07 §6a) can draw on them.

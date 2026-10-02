@@ -74,6 +74,7 @@ export const PROBLEM_CODES = {
   'ai.invalid_output': 502,
   'ai.cancelled': 408,
   'ai.run.not_found': 404,
+  'ai.suggestion.not_found': 404,
   // rfis
   'rfi.not_found': 404,
   'rfi.invalid_transition': 409,
