@@ -16,6 +16,7 @@ import type {
 import type { MarkupShape } from '@archova/markup';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
+import { projectPeople } from '@/shared/lib/people';
 import { uploadFile } from '@/shared/lib/uploads';
 import type {
   DrawingMarkup,
@@ -112,7 +113,11 @@ export function fromApiShape(s: ApiShape): MarkupShape | null {
 }
 
 /** One row per shape, as the viewer lists them; the id carries the markup and shape so actions find both. */
-export function toMarkups(m: ApiMarkup, viewer: { id: string; name: string }): DrawingMarkup[] {
+export function toMarkups(
+  m: ApiMarkup,
+  viewer: { id: string; name: string },
+  people: Map<string, string> = new Map(),
+): DrawingMarkup[] {
   return m.shapes.flatMap((s) => {
     const shape = fromApiShape(s);
     if (!shape || shape.kind === 'pin') return [];
@@ -121,7 +126,7 @@ export function toMarkups(m: ApiMarkup, viewer: { id: string; name: string }): D
         id: `${m.id}~${s.id}`,
         revisionId: m.revisionId,
         ownerId: m.ownerId,
-        ownerName: m.ownerId === viewer.id ? viewer.name : null,
+        ownerName: m.ownerId === viewer.id ? viewer.name : (people.get(m.ownerId) ?? null),
         ownerCompanyId: m.ownerCompanyId,
         visibility: m.visibility,
         shape,
@@ -369,7 +374,11 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
     },
 
     async listMarkups(projectId, revisionId, viewer) {
-      return (await listApiMarkups(projectId, revisionId)).flatMap((m) => toMarkups(m, viewer));
+      const [markups, people] = await Promise.all([
+        listApiMarkups(projectId, revisionId),
+        projectPeople(orgId, projectId),
+      ]);
+      return markups.flatMap((m) => toMarkups(m, viewer, people));
     },
 
     async createMarkup(projectId, revisionId, input, actor) {

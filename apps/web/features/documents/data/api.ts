@@ -9,6 +9,7 @@ import type {
 } from '@archova/contracts';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
+import { projectPeople } from '@/shared/lib/people';
 import { uploadFile } from '@/shared/lib/uploads';
 import type { DocumentRevision, Folder, NewRevisionInput, ProjectDocument } from '../lib/types';
 import type { DocumentsSource } from './source';
@@ -33,7 +34,11 @@ export function toDocument(d: ApiDocument): ProjectDocument {
   };
 }
 
-export function toRevision(r: ApiRevision, fileName: string): DocumentRevision {
+export function toRevision(
+  r: ApiRevision,
+  fileName: string,
+  people: Map<string, string> = new Map(),
+): DocumentRevision {
   return {
     id: r.id,
     documentId: r.documentId,
@@ -44,7 +49,7 @@ export function toRevision(r: ApiRevision, fileName: string): DocumentRevision {
     issuedFor: r.issuedFor,
     issuedDate: r.issuedDate ?? r.createdAt.slice(0, 10),
     notes: r.notes,
-    createdBy: null,
+    createdBy: r.createdBy ? (people.get(r.createdBy) ?? null) : null,
   };
 }
 
@@ -91,8 +96,11 @@ export function createDocumentsApi(orgId: string): DocumentsSource {
           params: { path: { orgId, projectId, documentId } },
         }),
       );
-      const names = await Promise.all(detail.revisions.map((r) => fileName(r.fileId)));
-      return detail.revisions.map((r, i) => toRevision(r, names[i]!));
+      const [names, people] = await Promise.all([
+        Promise.all(detail.revisions.map((r) => fileName(r.fileId))),
+        projectPeople(orgId, projectId),
+      ]);
+      return detail.revisions.map((r, i) => toRevision(r, names[i]!, people));
     },
 
     async addRevision(projectId, documentId, input: NewRevisionInput) {
