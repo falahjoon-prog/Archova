@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
 
 export interface NavItem {
@@ -10,19 +10,26 @@ export interface NavItem {
   label: string;
 }
 
-/** Signed-in app frame: skip link, top bar with org name, primary nav and account actions. No data fetching. */
+/**
+ * Signed-in app frame: skip link, top bar with org name, primary nav and account actions, and the
+ * assistant panel slot that every signed-in screen gets (Ask Nova, X27). No data fetching.
+ */
 export function AppShell({
   orgName,
   nav,
   actions,
+  assistant,
   children,
 }: {
   orgName: string;
   nav: readonly NavItem[];
   actions?: ReactNode;
+  /** The panel and its toggle label; omitted where the assistant doesn't apply. */
+  assistant?: { label: string; panel: ReactNode };
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const [assistantOpen, setAssistantOpen] = useState(false);
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -55,11 +62,36 @@ export function AppShell({
             })}
           </ul>
         </nav>
-        <div className="app-shell__actions">{actions}</div>
+        <div className="app-shell__actions">
+          {assistant ? (
+            <button
+              type="button"
+              className="app-shell__assistant-toggle ac-focusable"
+              aria-expanded={assistantOpen}
+              aria-controls="assistant-panel"
+              onClick={() => setAssistantOpen((o) => !o)}
+            >
+              {assistant.label}
+            </button>
+          ) : null}
+          {actions}
+        </div>
       </header>
-      <main id="main" className="app-shell__main" tabIndex={-1}>
-        {children}
-      </main>
+      <div className="app-shell__body">
+        <main id="main" className="app-shell__main" tabIndex={-1}>
+          {children}
+        </main>
+        {assistant ? (
+          <aside
+            id="assistant-panel"
+            className="app-shell__assistant"
+            aria-label={assistant.label}
+            hidden={!assistantOpen}
+          >
+            {assistant.panel}
+          </aside>
+        ) : null}
+      </div>
     </div>
   );
 }

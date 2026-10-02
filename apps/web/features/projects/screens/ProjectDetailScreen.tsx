@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo } from 'react';
 import { can, type EffectivePermissions } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
+import { usePublishAssistantScope } from '@/features/assistant';
 import { Card, PageHeader } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -21,6 +22,7 @@ import { AU_STATE_NAMES, isAuState, statusLabel } from '../lib/labels';
 
 export function ProjectDetailScreen({ projectId }: { projectId: string }) {
   const org = useCurrentOrg();
+  usePublishAssistantScope({ projectId });
   const project = useProject(org.orgId, projectId);
   const members = useProjectMembers(org.orgId, projectId);
   const permissions = useProjectPermissions(org.orgId, projectId);

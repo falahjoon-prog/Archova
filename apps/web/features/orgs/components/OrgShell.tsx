@@ -3,6 +3,7 @@
 import { notFound } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
+import { AssistantPanel, AssistantScopeProvider } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -45,18 +46,21 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
         kind: membership.kind,
       }}
     >
-      <AppShell
-        orgName={membership.orgName}
-        nav={[{ href: webRoutes.projects(orgSlug), label: 'Projects' }]}
-        actions={
-          <>
-            <span className="app-shell__user">{me.data.user.name}</span>
-            <SignOutButton />
-          </>
-        }
-      >
-        {children}
-      </AppShell>
+      <AssistantScopeProvider>
+        <AppShell
+          orgName={membership.orgName}
+          assistant={{ label: 'Ask Nova', panel: <AssistantPanel /> }}
+          nav={[{ href: webRoutes.projects(orgSlug), label: 'Projects' }]}
+          actions={
+            <>
+              <span className="app-shell__user">{me.data.user.name}</span>
+              <SignOutButton />
+            </>
+          }
+        >
+          {children}
+        </AppShell>
+      </AssistantScopeProvider>
     </CurrentOrgProvider>
   );
 }

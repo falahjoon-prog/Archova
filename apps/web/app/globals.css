@@ -138,10 +138,53 @@ main:focus {
 .app-shell__user {
   color: var(--c-text-secondary);
 }
+.app-shell__body {
+  display: flex;
+  align-items: stretch;
+}
 .app-shell__main {
+  flex: 1;
+  min-width: 0;
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-8) var(--space-6);
+}
+.app-shell__assistant-toggle {
+  min-height: calc(var(--space-10) + var(--space-1));
+  padding: 0 var(--space-3);
+  color: var(--c-action-primary);
+  font: inherit;
+  font-weight: 600;
+  background: transparent;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.app-shell__assistant {
+  width: 380px;
+  flex-shrink: 0;
+  padding: var(--space-6);
+  background: var(--c-surface);
+  border-left: 1px solid var(--c-border-divider);
+}
+.app-shell__assistant[hidden] {
+  display: none;
+}
+@media (max-width: 900px) {
+  .app-shell__assistant {
+    position: fixed;
+    inset: 0 0 0 auto;
+    width: min(100vw, 380px);
+    z-index: 10;
+  }
+}
+.assistant-panel__title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-md);
+}
+.assistant-panel__body {
+  margin: 0;
+  color: var(--c-text-secondary);
 }
 .sign-out {
   display: flex;

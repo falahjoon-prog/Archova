@@ -38,6 +38,10 @@ function RootNavigator() {
           name="project/[projectId]"
           options={{ headerShown: true, title: 'Project' }}
         />
+        <Stack.Screen
+          name="assistant"
+          options={{ presentation: 'modal', headerShown: true, title: 'Ask Nova' }}
+        />
       </Stack.Protected>
       <Stack.Protected guard={status === 'signed_out'}>
         <Stack.Screen name="(auth)" />
