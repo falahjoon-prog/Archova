@@ -11,6 +11,7 @@ import {
 } from '@archova/markup';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import type { NewMeasurement, TakeoffMeasurement } from '../lib/takeoff-types';
+import { quotesSource } from './quotes-source';
 
 const A1: SheetSize = { widthMm: 841, heightMm: 594 };
 
@@ -168,19 +169,34 @@ export const takeoffSource = {
   },
 
   /** EST-AC11: send measured quantities to a tender package's scope. */
+  /** Sends measurements to a tender package: one scope line per tag and unit (EST-US8, EST-AC11). */
   async sendToPackage(
     projectId: string,
     ids: readonly string[],
     packageId: string,
   ): Promise<number> {
-    let n = 0;
-    for (const row of stores.get(projectId).rows) {
-      if (ids.includes(row.id)) {
-        row.packageId = packageId;
-        n += 1;
-      }
+    const rows = stores.get(projectId).rows.filter((row) => ids.includes(row.id));
+    if (rows.some((row) => !row.scaleConfirmed)) {
+      problem(
+        422,
+        'takeoff.scale_unconfirmed',
+        'Confirm the scale before sending quantities to a package.',
+      );
     }
-    return delay(n);
+    const totals = new Map<
+      string,
+      { tag: string; quantity: number; unit: TakeoffMeasurement['unit'] }
+    >();
+    for (const row of rows) {
+      const tag = row.label || row.trade || 'Untagged';
+      const key = `${tag}|${row.unit}`;
+      const t = totals.get(key) ?? { tag, quantity: 0, unit: row.unit };
+      t.quantity += row.quantity;
+      totals.set(key, t);
+    }
+    await quotesSource.addTakeoffLines(projectId, packageId, [...totals.values()]);
+    for (const row of rows) row.packageId = packageId;
+    return delay(rows.length);
   },
 };
 

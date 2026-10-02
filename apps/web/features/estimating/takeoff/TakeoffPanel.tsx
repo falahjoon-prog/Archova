@@ -21,6 +21,7 @@ import type { ViewerExtensionProps, ViewerToolBinding } from '@/shared/drawing-v
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { measurementsToCsv } from '../data/takeoff-source';
+import { usePackages } from '../hooks/useQuotes';
 import { useMeasurements, useTakeoffMutations } from '../hooks/useTakeoff';
 import { TRADES, type NewMeasurement, type TakeoffMeasurement } from '../lib/takeoff-types';
 import { ScaleSection } from './ScaleSection';
@@ -61,6 +62,9 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
   const measurements = useMeasurements(project.projectId, [sheet.revisionId, ...olderRevisionIds]);
   const mutations = useTakeoffMutations(project.projectId);
   const saved = (measurements.data ?? []).filter((m) => m.revisionId === sheet.revisionId);
+  const packages = usePackages();
+  const [packageId, setPackageId] = useState('');
+  const unsent = saved.filter((m) => !m.packageId && m.scaleConfirmed);
   const older = (measurements.data ?? []).filter((m) => m.revisionId !== sheet.revisionId);
   const olderRev = (id: string) => sheet.revisions.find((r) => r.id === id)?.rev ?? '?';
 
@@ -466,6 +470,38 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
                 <MeasurementRow key={m.id} m={m} onDelete={() => mutations.remove.mutate(m.id)} />
               ))}
             </ul>
+            <div className="stack">
+              <Select
+                label="Send to tender package"
+                value={packageId}
+                placeholder="Choose a package"
+                options={(packages.data ?? [])
+                  .filter((p) => p.status !== 'awarded' && p.status !== 'cancelled')
+                  .map((p) => ({ value: p.id, label: `${p.name} (${p.trade})` }))}
+                onChange={(e) => setPackageId(e.target.value)}
+              />
+              <div>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!packageId || !unsent.length || mutations.sendToPackage.isPending}
+                  onClick={() =>
+                    mutations.sendToPackage.mutate({ ids: unsent.map((m) => m.id), packageId })
+                  }
+                >
+                  Send {unsent.length} {unsent.length === 1 ? 'measurement' : 'measurements'}
+                </Button>
+              </div>
+              {mutations.sendToPackage.isSuccess ? (
+                <p className="u-caption u-m-0" role="status">
+                  Sent as scope lines, one per tag and unit.
+                </p>
+              ) : null}
+              <ErrorAlert
+                error={mutations.sendToPackage.error}
+                title="We couldn't send the quantities"
+              />
+            </div>
           </>
         )}
       </section>

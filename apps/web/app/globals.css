@@ -819,3 +819,29 @@ section.diary-section .diary-section__summary {
     grid-template-columns: 1fr;
   }
 }
+
+/* Quote comparison */
+.comparison-wrap {
+  overflow-x: auto;
+}
+.comparison th[scope='row'] {
+  position: sticky;
+  left: 0;
+  background: var(--c-surface);
+  min-width: 16rem;
+}
+.comparison__quote {
+  min-width: 12rem;
+  text-align: right;
+}
+.comparison__cell {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-1);
+}
+.source-snippet {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--c-ai);
+  font-family: var(--font-mono, monospace);
+}

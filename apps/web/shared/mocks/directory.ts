@@ -27,6 +27,8 @@ export const MOCK_COMPANIES: readonly MockCompany[] = [
   { id: 'cmp_elec', name: 'Brightwire Electrical', trade: 'Electrical', role: 'subcontractor' },
   { id: 'cmp_plumb', name: 'Bayside Hydraulics', trade: 'Hydraulics', role: 'subcontractor' },
   { id: 'cmp_tile', name: 'Ironbark Tiling', trade: 'Tiling', role: 'subcontractor' },
+  { id: 'cmp_tile2', name: 'Harbour Tile Co', trade: 'Tiling', role: 'subcontractor' },
+  { id: 'cmp_tile3', name: 'Granite & Grout', trade: 'Tiling', role: 'subcontractor' },
   { id: 'cmp_form', name: 'Cornerstone Formwork', trade: 'Formwork', role: 'subcontractor' },
   { id: 'cmp_paint', name: 'Coastline Painting', trade: 'Painting', role: 'subcontractor' },
   {
