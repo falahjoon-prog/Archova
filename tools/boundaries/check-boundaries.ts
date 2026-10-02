@@ -3,7 +3,9 @@
 //  - backend code never depends on client packages;
 //  - pure shared packages never depend on React, Next.js, React Native, Node-only or database libraries;
 //  - no app depends on another app;
-//  - no source file reaches outside its own package with a relative import (use the package's public index).
+//  - no source file reaches outside its own package with a relative import (use the package's public index);
+//  - AI vendor SDKs are imported only by the provider adapter in the `ai` module, and no self-hosted model
+//    runtime is used anywhere (X25, X26; ai/02 §5).
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,6 +89,15 @@ const APPS = new Set([
   '@archova/docs-site',
 ]);
 
+// AI services we reach only through the `ai` module's provider adapter (Bedrock AU today).
+const AI_VENDOR_SDK =
+  /^(openai|@anthropic-ai\/.+|@aws-sdk\/client-(bedrock.*|textract|transcribe.*|comprehend.*|rekognition)|@google\/(generative-ai|genai)|@google-cloud\/(vertexai|aiplatform)|@azure\/openai|@azure-rest\/ai-.+|cohere-ai|@mistralai\/.+|ai|@ai-sdk\/.+|langchain|@langchain\/.+|llamaindex|groq-sdk|together-ai|replicate|@huggingface\/inference)(\/.*)?$/;
+// Self-hosted or in-process models are ruled out (john, 2 Oct 2026).
+const SELF_HOSTED_MODEL =
+  /^(ollama|node-llama-cpp|onnxruntime-(node|web|react-native)|@xenova\/transformers|@huggingface\/transformers|@tensorflow\/tfjs.*|@mlc-ai\/.+)(\/.*)?$/;
+const AI_MODULE = '@archova/mod-ai';
+const AI_ADAPTER_DIR = join(ROOT, 'modules/ai/src/infra/providers') + '/';
+
 const problems: string[] = [];
 const pkgs = workspaces();
 
@@ -100,6 +111,10 @@ for (const p of pkgs) {
       problems.push(`${p.name} is a pure package and must not depend on ${d}`);
     }
     if (APPS.has(d)) problems.push(`${p.name} must not depend on app ${d}`);
+    if (AI_VENDOR_SDK.test(d) && p.name !== AI_MODULE)
+      problems.push(`${p.name} must not depend on AI vendor SDK ${d}; use the ai module (X26)`);
+    if (SELF_HOSTED_MODEL.test(d))
+      problems.push(`${p.name} must not depend on ${d}: no self-hosted models (X26)`);
   }
 }
 
@@ -127,6 +142,12 @@ for (const p of pkgs) {
             `${relative(ROOT, file)} imports ${spec}, outside ${p.name}; import the package instead`,
           );
         }
+      } else if (AI_VENDOR_SDK.test(spec) && !file.startsWith(AI_ADAPTER_DIR)) {
+        problems.push(
+          `${relative(ROOT, file)} imports ${spec}; only the ai module's provider adapter (modules/ai/src/infra/providers) may import AI vendor SDKs (X26)`,
+        );
+      } else if (SELF_HOSTED_MODEL.test(spec)) {
+        problems.push(`${relative(ROOT, file)} imports ${spec}: no self-hosted models (X26)`);
       } else if (/^@archova\/mod-[a-z-]+\//.test(spec)) {
         problems.push(
           `${relative(ROOT, file)} imports ${spec}; modules are imported only through their public index`,

@@ -7,4 +7,6 @@ Read [README.md](README.md) first, then the doc for the area you're touching und
 - Add a backend module as `modules/<name>` with the layout in `docs/architecture/repo-structure.md §2`, export handlers with `defineRoutes`, register it in `apps/api/src/modules.ts`.
 - Add migrations in `modules/<name>/db/migrations/<yyyymmddhhmmss>_<name>.sql`, call `kernel.enable_tenant_rls('<schema>.<table>')` for every tenant table, then `pnpm db:compose`. Migrations are forward-only; never edit one that has been merged.
 - Every use case runs in `database.withTenantTx(ctx, scope => ...)`; repositories use `scope.tx` only. Never open a connection or run session-level `SET`.
+- AI goes only through the `ai` module: vendor SDKs (Bedrock, OpenAI, Anthropic, ...) may be imported only in `modules/ai/src/infra/providers/`, all AI processing stays in Australia, and no self-hosted models (X25, X26; `pnpm check:boundaries` enforces the imports). The Ask Nova panel slot is in the web `AppShell` and the mobile tab header; screens publish their context with `usePublishAssistantScope`.
+- Times and places follow `docs/architecture/conventions.md` §Time and §Location (X34): use `@archova/time`, never hand-rolled offsets.
 - Conventional Commits (`feat(platform): ...`), squash merge into `main`.
