@@ -17,7 +17,7 @@
     "@archova/kernel": "workspace:*",
     "@archova/mod-access": "workspace:*",
     "@archova/mod-identity": "workspace:*",
-    "drizzle-orm": "^0.44.0"
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
