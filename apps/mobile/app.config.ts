@@ -21,7 +21,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: 'com.archova.app',
   },
-  plugins: ['expo-router', 'expo-secure-store', 'expo-web-browser'],
+  plugins: [
+    'expo-router',
+    'expo-secure-store',
+    'expo-web-browser',
+    // SQLCipher for the per-organisation device database (mobile 02 §2.3); lib/db refuses to open without it.
+    ['expo-sqlite', { useSQLCipher: true }],
+  ],
   experiments: {
     typedRoutes: false,
   },

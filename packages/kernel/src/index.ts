@@ -8,3 +8,4 @@ export * from './redis';
 export * from './versioning';
 export * from './http';
 export * from './time';
+export * from './counters';

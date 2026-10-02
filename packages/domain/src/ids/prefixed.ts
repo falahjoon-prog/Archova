@@ -20,6 +20,13 @@ export const ID_PREFIXES = {
   diary: 'dia',
   claim: 'clm',
   event: 'evt',
+  folder: 'fld',
+  drawingSet: 'dst',
+  drawingSheet: 'dsh',
+  drawingRevision: 'drv',
+  markup: 'mku',
+  transmittal: 'trm',
+  transmittalRecipient: 'trr',
   aiRun: 'air',
   aiSuggestion: 'ais',
 } as const;
