@@ -49,7 +49,8 @@ resource "aws_vpc_endpoint" "interface" {
   subnet_ids          = slice(aws_subnet.private[*].id, 0, coalesce(var.interface_endpoint_az_count, var.az_count))
   security_group_ids  = [aws_security_group.endpoints.id]
   policy              = each.key == "bedrock-runtime" ? data.aws_iam_policy_document.bedrock_au_only.json : null
-  tags                = merge(local.tags, { Name = "${var.name}-${each.key}" })
+  # Nova's endpoints count towards AI spend (Ari); the rest are platform.
+  tags = merge(local.tags, { Name = "${var.name}-${each.key}" }, contains(["bedrock-runtime", "textract"], each.key) ? { "cost-centre" = "ai" } : {})
 }
 
 # Layer 2 (X25): through this endpoint, Bedrock can only run Sydney/Melbourne foundation models and the AU

@@ -61,6 +61,19 @@ data "aws_iam_policy_document" "api" {
     resources = local.bedrock_au_resources
   }
 
+  # Nova reads scanned drawings and documents with Textract in Sydney (Ari, ai/02). DetectDocumentText has no
+  # resource-level permissions, so the region is pinned instead.
+  statement {
+    sid       = "TextractInSydney"
+    actions   = ["textract:DetectDocumentText"]
+    resources = ["*"]
+    condition {
+      test     = "StringEquals"
+      variable = "aws:RequestedRegion"
+      values   = [local.region]
+    }
+  }
+
   # X28: assume a customer's BYO Bedrock role. Their trust policy requires our per-org ExternalId.
   statement {
     sid       = "AssumeCustomerByoRoles"

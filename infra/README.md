@@ -119,6 +119,21 @@ Estimated monthly cost, Sydney prices, light use (US$; A$ at about 1.55):
 
 With the Network Firewall (as in dev, staging and prod) it would be about US$535–600 (A$830–930).
 
+## Pilot size
+
+`envs/prod-cell1` has two sizes, set with `size` in its tfvars ([09-pilot-hosting-options](../docs/infrastructure/09-pilot-hosting-options.md) §4):
+
+|                         | lean (pilots, default)                                  | full (from the first paying builder) |
+| ----------------------- | ------------------------------------------------------- | ------------------------------------ |
+| NAT and egress firewall | one of each                                             | one per AZ (three)                   |
+| Interface endpoints     | one AZ                                                  | every AZ                             |
+| Aurora                  | one Serverless v2 writer (1–8 ACU), no reader, no proxy | r7g.large writer + reader, RDS Proxy |
+| Valkey                  | one t4g.small node                                      | split queue and cache, with replicas |
+| api / web tasks         | 2 × 0.5 vCPU each                                       | 3 × 1 vCPU each, morning ramp        |
+| About, per month        | A$1,300–1,950 before Nova                               | see 07-cost-estimates                |
+
+Both keep WAF blocking, the egress firewall, GuardDuty scanning, 35-day point-in-time restore and backup copies in Sydney and Melbourne. Lean runs in one AZ for NAT and endpoints, so an AZ outage can stop it until the AZ recovers. Changing `size` and applying moves between them with no data move (Aurora adds a reader; check the plan for Valkey, since a rebuilt node starts empty and signs everyone out once).
+
 ## Differences from the docs
 
 - **One state file per environment**, not per layer. Deploys never go through Terraform (it ignores task definitions and desired counts), and the database has deletion protection, so a services change can't remove data. Split into layers when a second person applies infra.
