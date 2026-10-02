@@ -1,0 +1,201 @@
+# 04. API: endpoint catalogue
+
+**Owner:** Ben (endpoints, spec) · **Status:** Draft v1 · **Last updated:** 2 Oct 2026 · Back to [README](README.md)
+
+API style, URL design and standard behaviours are fixed in Ava's [api.md](../architecture/api.md) and not repeated here: REST + JSON, `/v1`, org in the path, camelCase JSON, prefixed UUIDv7 ids, cursor pagination (`limit`, `cursor` → `nextCursor`), `filter[...]`, `sort`, `fields`, `include`, `ETag`/`If-Match` (missing → 428, mismatch → 412), `Idempotency-Key` on POST, RFC 9457 problems with stable `code`s, money as `{ "amount": "12345.67", "currency": "AUD" }`, rate-limit headers, `/v2` for breaking changes. Browser traffic goes to `app.<domain>/v1` with the session cookie; mobile and integrations to `api.<domain>/v1` with bearer tokens ([ADR-0004](../architecture/adr/0004-web-session-and-api-routing.md)).
+
+## 1. Contract workflow
+
+1. New or changed endpoint → edit `packages/contracts/openapi/<module>.yaml` first; PR reviewed by Felix/Mia for anything they consume.
+2. `pnpm gen` → TS types, zod validators (used by Fastify and by the clients), `api-client`.
+3. CI: generated code fresh; `oasdiff` blocks breaking changes in `/v1`; every operation has an `operationId`, a module tag, the permission key it requires, and `x-entitlement`.
+4. `packages/contracts` also exports, generated from module declarations: **problem `code` list** (`rfi.already_closed`, `claim.schedule_overdue` …), **permission key list**, **event schemas** (`packages/contracts/events/`). This is Felix's ask.
+5. Internal-only operations carry `x-internal: true` and are left out of the public docs.
+
+## 2. Notation
+
+`{o}` = `/v1/orgs/{orgId}` · `{p}` = `{o}/projects/{projectId}`
+
+Standard resource pattern (applies to every "CRUD" row below, not repeated):
+
+| Method | Path | Notes |
+|---|---|---|
+| GET | `…/things` | list; filters per resource listed in the spec |
+| POST | `…/things` | create; `Idempotency-Key` |
+| GET | `…/things/{id}` | detail, `ETag` |
+| PATCH | `…/things/{id}` | partial update; `If-Match` |
+| DELETE | `…/things/{id}` | soft delete; `If-Match` |
+| GET | `…/things/{id}/activity` | audit trail (permission-filtered) |
+| GET, POST | `…/things/{id}/comments` | `collaboration` |
+| GET, POST, DELETE | `…/things/{id}/attachments` | link an `uploadId` or existing file |
+| POST | `…/things/export` | async CSV/PDF → `jobRun` |
+
+Workflow transitions are explicit `POST` sub-resources (`…/close`), never a status field PATCH.
+
+## 3. Endpoints by module
+
+### identity, me
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/v1/me` | user profile + memberships across orgs (fans out via the global directory) |
+| PATCH | `/v1/me` | name, locale, timezone |
+| GET, DELETE | `/v1/me/sessions`, `/v1/me/sessions/{id}` | device list, sign out a device |
+| PUT, DELETE | `/v1/me/devices/{deviceId}` | register / revoke push token (`orgId`, `platform`, `pushToken`, `appVersion`, `locale`, `timezone`) |
+| CRUD | `/v1/me/tokens` | personal access tokens |
+| | `/v1/auth/*`, `/oauth/*`, `/scim/v2/*` | sign-in, OAuth 2.1, SSO, SCIM: specified by Sam in [01](../security-licensing/01-authentication-sso.md) |
+
+### platform, access
+| Method | Path | Purpose |
+|---|---|---|
+| GET, PATCH | `{o}` | org profile and settings |
+| CRUD | `{o}/members`; `POST {o}/members/invite` | memberships (seat limit checked on invite) |
+| CRUD | `{o}/companies`, `{o}/companies/{id}/contacts` | directory |
+| CRUD | `{o}/permission-templates` | tool levels + granular keys |
+| CRUD | `{o}/projects` | list returns only projects the caller can access |
+| CRUD | `{p}/members` | add people/companies, assign template |
+| GET | `{p}/permissions` | effective permission summary for the caller (UI gating) |
+| GET | `{p}/members/{id}/access-explanation` | "why does this person have access" (Sam 02 §8) |
+| CRUD | `{p}/locations`, `{o}/cost-codes`, `{o}/custom-fields`, `{o}/saved-views` | |
+
+### billing
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `{o}/entitlements` | modules, limits, state (web/mobile render from this) |
+| GET | `{o}/billing/subscription` | plan, term, ACV declared vs tracked, usage vs limits |
+| POST | `{o}/billing/checkout`, `{o}/billing/portal` | provider-hosted flows |
+| GET | `{o}/billing/invoices` | |
+| POST | `/v1/webhooks/billing/{provider}` | provider events (signature-verified) |
+
+### files, collaboration, notifications, search
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `{o}/uploads` | `{filename, mime, sizeBytes, sha256, projectId}` → `uploadId` + presigned PUT, or multipart part URLs above 100 MB ([06](06-file-storage.md)) |
+| POST | `{o}/uploads/{uploadId}/complete` | multipart completion |
+| GET | `{o}/files/{fileId}` | status, metadata, renditions available |
+| GET | `{o}/files/{fileId}/download?rendition=original\|preview\|thumb` | permission check on the parent record → 302 to 5-minute signed URL; logged |
+| GET, POST | `{o}/notifications`, `{o}/notifications/read` | inbox |
+| GET, PUT | `/v1/me/notification-preferences` | SOPA kinds cannot be turned off |
+| GET | `{o}/search?q=&projectId=&types=` | cross-module search, permission-filtered |
+| GET | `{o}/job-runs/{id}` | progress of exports/imports/bulk ops |
+
+### documents (documents, drawings, specs, transmittals)
+| Method | Path | Purpose |
+|---|---|---|
+| CRUD | `{p}/folders`, `{p}/documents` | |
+| POST | `{p}/documents/{id}/revisions` | new revision from `uploadId`; previous becomes superseded |
+| CRUD | `{p}/transmittals`; `POST …/{id}/send`; `POST …/{id}/acknowledge` | send creates an evidence record |
+| POST | `{p}/drawing-sets` | upload a set → split + AI title-block suggestions (async) |
+| GET | `{p}/drawing-sets/{id}/review` | detected sheets awaiting confirmation |
+| POST | `{p}/drawing-sets/{id}/publish` | confirm numbers/titles/revisions → current |
+| GET | `{p}/drawings?discipline=&current=true` | drawing register |
+| GET | `{p}/drawings/{sheetId}/revisions` | history |
+| GET | `{o}/drawing-revisions/{id}/tiles/{z}/{x}/{y}` | 302 to signed CloudFront tile |
+| CRUD | `{o}/drawing-revisions/{id}/markups` | visibility `private\|company\|project` |
+| POST | `{o}/drawing-revisions/{id}/markups/carry-forward` | copy published markups + open pins to the new revision |
+| CRUD | `{o}/drawing-revisions/{id}/hyperlinks` | |
+| GET | `{o}/drawing-revisions/{id}/pins?types=defect,rfi` | records pinned on this sheet |
+| CRUD | `{p}/spec-books`, `{p}/spec-sections` | |
+
+### rfis
+| Method | Path | Purpose |
+|---|---|---|
+| CRUD | `{p}/rfis` | filters: status, ball-in-court, assignee, due, location, drawing |
+| POST | `{p}/rfis/{id}/open`, `/close`, `/reopen`, `/void` | transitions |
+| POST | `{p}/rfis/{id}/responses` | `isOfficial` needs `rfis.rfi.respond_official` |
+| POST | `{p}/rfis/{id}/ai-draft` | AI draft response with citations → `aiSuggestion` (never sent automatically) |
+
+### submittals, correspondence, meetings
+| Method | Path | Purpose |
+|---|---|---|
+| CRUD | `{p}/submittal-packages`, `{p}/submittals` | |
+| POST | `{p}/submittals/{id}/submit`, `/respond`, `/revise` | workflow steps |
+| CRUD | `{o}/correspondence-types`, `{p}/correspondence`; `POST …/{id}/send`, `/respond` | evidential types create evidence records |
+| CRUD | `{p}/meeting-series`, `{p}/meetings`, `{p}/meetings/{id}/items`, `/attendees` | |
+| POST | `{p}/meetings/{id}/issue-minutes` | locks, PDFs, emails |
+| POST | `{p}/meetings/{id}/next` | next meeting with open items carried |
+
+### diary, defects, photos
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `{p}/diary?from=&to=` | entries in range |
+| PUT | `{p}/diary/{date}` | upsert the day header |
+| CRUD | `{p}/diary/{date}/labour`, `/plant`, `/deliveries`, `/delays`, `/visitors`, `/events` | child lines are separate records (line-level merge for offline) |
+| POST | `{p}/diary/{date}/submit`, `/sign-off`, `/amend` | after sign-off, edits are amendments |
+| POST | `{p}/diary/{date}/copy-from/{otherDate}` | |
+| CRUD | `{p}/defects`; `POST {p}/defects/bulk` | walkthrough bulk create/assign |
+| POST | `{p}/defects/{id}/assign`, `/ready-for-review`, `/close`, `/reject`, `/dispute` | with evidence `fileIds` |
+| CRUD | `{p}/photos`, `{p}/albums` | |
+
+### quality, safety (phase 2)
+`{o}/inspection-templates`, `{p}/inspections` (+ `/responses`, `/submit`, `/sign`), `{p}/observations`, `{p}/action-items`, `{p}/incidents`, `{p}/swms`, `{p}/inductions`, `{p}/permits`, each CRUD with workflow actions as `POST` sub-resources.
+
+### financials (phase 3)
+| Method | Path | Purpose |
+|---|---|---|
+| CRUD | `{p}/budget`, `{p}/budget/lines`; `POST {p}/budget/lock`; `GET {p}/budget/report?period=` | margin lines need `budget.view_margin` |
+| CRUD | `{p}/contracts`, `{p}/contracts/{c}/sov-items` | |
+| CRUD | `{p}/change-events`, `{p}/contracts/{c}/variations`; `POST …/{id}/submit`, `/approve`, `/reject` | |
+| CRUD | `{p}/contracts/{c}/payment-claims` | drafts only |
+| GET | `{p}/contracts/{c}/payment-claims/{id}/preview` | totals, retention, GST, computed due dates |
+| POST | `{p}/contracts/{c}/payment-claims/{id}/submit` | step-up auth; freezes, renders PDF with state wording, evidence record, notifies payer |
+| POST | `{p}/contracts/{c}/payment-claims/{id}/schedule` | issue payment schedule (reasons required if less than claimed) |
+| POST | `{p}/contracts/{c}/payment-claims/{id}/payments` | record payment |
+| GET | `{p}/sopa/deadlines` | upcoming schedule/payment deadlines |
+| GET | `{p}/contracts/{c}/evidence-pack` | async ZIP with manifest of hashes (Sam 07 §5) |
+| GET | `/v1/reference/sopa-rules?state=` | rules in force |
+
+### ai
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `{p}/ai/ask` | Q&A, streamed (SSE), citations |
+| GET, POST | `{o}/ai/conversations`, `…/{id}/messages` | |
+| GET | `{p}/ai/suggestions?targetType=&status=pending` | |
+| POST | `{p}/ai/suggestions/{id}/accept`, `/reject` | accept calls the owning module's command |
+| POST | `{o}/ai/requests/{id}/feedback` | |
+
+### integrations, reporting (phase 2)
+`CRUD {o}/webhooks`, `GET {o}/webhooks/{id}/deliveries`, `POST {o}/webhooks/{id}/test`, `CRUD {o}/integrations/connections`, `GET {o}/integrations/{provider}/connect` (OAuth start), `GET /v1/integrations/{provider}/callback`; `CRUD {o}/reports`, `POST {o}/reports/{id}/run`.
+
+## 4. Mobile sync
+
+Endpoints from [api.md §7](../architecture/api.md#7-mobile-sync-endpoints); client behaviour in Mia's [02-offline-sync.md](../mobile/02-offline-sync.md).
+
+**Pull:** `GET {o}/sync/pull?scopes=project:{id}:diary,defects;org&since={seq}&limit=500`
+
+```
+{
+  "changes": [
+    { "entityType": "defect", "id": "dfx_…", "op": "upsert", "version": 7, "data": { …DTO… } },
+    { "entityType": "diary_labour", "id": "…", "op": "delete", "version": 3 }
+  ],
+  "revokedScopes": [ { "projectId": "prj_…", "module": null }, { "projectId": "prj_…", "module": "financials" } ],
+  "nextSince": "18345",
+  "hasMore": false
+}
+```
+
+- Reads `shared.change_feed` by `(org_id, seq)` from a replica, joins the current rows in batches per entity type, and applies `access.listFilter` (company scoping, privacy) before returning.
+- **`revokedScopes` is on every response** (X14): computed from `access_revoked` change-feed rows and a check of current membership against the requested scopes. `module: null` means the whole project. The device purges that data and stops requesting the scope.
+- Records that left the caller's visibility for another reason (reassigned to a different company) come back as `op: "delete"`.
+- First load per scope is the same endpoint with `since=0`, paginated.
+
+**Push:** `POST {o}/sync/push`
+
+```
+{ "mutations": [
+  { "mutationId": "<uuidv7, also the idempotency key>", "command": "defects.markReadyForReview",
+    "entityId": "dfx_…", "baseVersion": 6, "clientAt": "2026-10-02T21:14:03Z", "payload": { "note": "…", "fileIds": ["…"] } } ] }
+→ { "results": [ { "mutationId": "…", "status": "applied" | "conflict" | "rejected",
+                  "version": 7, "server": { …current DTO… }, "problem": { "code": "…" } } ] }
+```
+
+- Max 100 mutations per call, applied in order, each in its own transaction (one failure doesn't roll back the batch).
+- `command` names map one-to-one onto module use cases (the same ones the REST endpoints call), so permission checks, state machines and audit are identical online and offline.
+- Conflict rule: field-level merge when the fields changed since `baseVersion` don't overlap; otherwise `conflict` with the server copy. Append-only records (comments, photos, defect events, diary lines) never conflict.
+- A mutation may reference a file still uploading; the record shows "processing" until `files.object.ready.v1`.
+- Data created offline for a module that was since unlicensed: accepted if `clientAt` is before the licence change, else `rejected` with `entitlement-required` (Sam 06 §4).
+- Too-old app → `426` `app.upgrade_required`.
+
+## 5. Webhooks out (phase 2)
+
+Per [api.md §6](../architecture/api.md#6-webhooks-phase-2): body is the event envelope, Standard Webhooks headers (`Webhook-Id`, `Webhook-Timestamp`, `Webhook-Signature`), at-least-once, retries up to 72 h, then auto-disable with email. Only events for entitled modules, and only records the subscription owner's permissions allow.
