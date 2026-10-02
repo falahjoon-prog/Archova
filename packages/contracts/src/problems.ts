@@ -80,6 +80,7 @@ export const PROBLEM_CODES = {
   'ai.run.not_found': 404,
   'ai.suggestion.not_found': 404,
   'ai.induction.no_documents': 422,
+  'ai.translation.language_unavailable': 422,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

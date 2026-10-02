@@ -82,7 +82,7 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   'induction.draft': 'ai.induction.draft',
 };
 
-async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
+export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
   const out = new Array<R>(items.length);
   let next = 0;
   const worker = async () => {
