@@ -27,6 +27,7 @@ tags:
   - name: billing
   - name: files
   - name: oauth
+  - name: documents
 paths:
   /v1/auth/signup:
     post:
@@ -495,6 +496,574 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DownloadLink' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/folders:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFolders
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Every folder in the project the caller can open, flat; clients build the tree from `parentId`.
+      responses:
+        '200':
+          description: Folders
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFolder
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Create a folder. Private folders need `documents.folders.restrict`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateFolderRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Folder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/folders/{folderId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/FolderId'
+    patch:
+      operationId: updateFolder
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateFolderRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Folder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      parameters:
+        - { name: folderId, in: query, schema: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' } }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of documents in folders the caller can open
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Register a document with its first revision.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDocumentRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: getDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      responses:
+        '200':
+          description: The document with every revision, newest first
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDocument
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDocumentRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DocumentId'
+    post:
+      operationId: addDocumentRevision
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Add a revision from an uploaded file. It becomes current; the previous one is superseded.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DocumentRevisionInput' }
+      responses:
+        '201':
+          description: The document with its new current revision
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DocumentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-sets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDrawingSets
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Drawing sets, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingSetPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDrawingSet
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: Start registering an issue of drawings. Sheets are added for review, then published together.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDrawingSetRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingSet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingSetId'
+    get:
+      operationId: getDrawingSetReview
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: The sheets in a set and the conflicts that publishing would hit (DOC-AC3).
+      responses:
+        '200':
+          description: Review table
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingSetReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingSetId'
+    post:
+      operationId: addDrawingSetRevision
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: Add a sheet to an unpublished set, as read from its title block.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DraftDrawingRevisionInput' }
+      responses:
+        '201':
+          description: Draft revision
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingRevision' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions/{drawingRevisionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingSetId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    patch:
+      operationId: updateDraftDrawingRevision
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: Correct a sheet before the set is published (DOC-AC2).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDraftDrawingRevisionRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingRevision' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: removeDraftDrawingRevision
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: Take a sheet out of an unpublished set.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingSetId'
+    post:
+      operationId: publishDrawingSet
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: |
+        Make every sheet in the set current and supersede the previous revisions in one step (DOC-AC4).
+        Fails with `drawing_set.publish_conflicts` until new sheets are confirmed and older revisions have a reason.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublishDrawingSetRequest' }
+      responses:
+        '200':
+          description: Published
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingSetReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDrawings
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: The drawing register, each sheet with its current revision (DOC-AC5).
+      parameters:
+        - { name: discipline, in: query, schema: { type: string, maxLength: 20 } }
+        - { name: issuedFor, in: query, schema: { $ref: '#/components/schemas/IssuedFor' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of sheets ordered by sheet number
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingSheetPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawings/{drawingSheetId}/revisions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingSheetId'
+    get:
+      operationId: listDrawingSheetRevisions
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: Every published revision of a sheet, newest first.
+      responses:
+        '200':
+          description: History
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingRevisionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    get:
+      operationId: getDrawingRevision
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: One revision. A superseded one names its successor for the banner (DOC-AC6).
+      responses:
+        '200':
+          description: The revision
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingRevision' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    get:
+      operationId: listMarkups
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: Markups on this revision the caller can see (own, own company's, published).
+      responses:
+        '200':
+          description: Markups
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MarkupList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createMarkup
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.markups.create
+      summary: Mark up a sheet. `project` visibility publishes it and needs `documents.markups.publish`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMarkupRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Markup' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups/{markupId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+      - $ref: '#/components/parameters/MarkupId'
+    patch:
+      operationId: updateMarkup
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.markups.create
+      summary: |
+        Change the author's own markup. Publishing (`visibility: project`) is one-way; a published markup only
+        accepts `locationConfirmed` after it was carried forward to a new revision (DOC-AC7, DOC-AC8).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMarkupRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Markup' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteMarkup
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.markups.create
+      summary: Delete the author's own unpublished markup.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '204':
+          description: Deleted
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/transmittals:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTransmittals
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.read
+      summary: All transmittals for people who issue them; otherwise the ones the caller received.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Transmittals, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTransmittal
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.manage
+      summary: Draft a transmittal. `currentSetDisciplines` adds every current drawing of those disciplines (DOC-AC12).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTransmittalRequest' }
+      responses:
+        '201':
+          description: Draft
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TransmittalId'
+    get:
+      operationId: getTransmittal
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.read
+      responses:
+        '200':
+          description: The transmittal with items and per-recipient receipts
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/send:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TransmittalId'
+    post:
+      operationId: sendTransmittal
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.manage
+      summary: Number and send the transmittal. It can't change afterwards (DOC-AC10).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: Sent
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/acknowledge:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TransmittalId'
+    post:
+      operationId: acknowledgeTransmittal
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.read
+      summary: A recipient records that they opened, downloaded or acknowledged it (DOC-AC11). First time wins.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcknowledgeTransmittalRequest' }
+      responses:
+        '200':
+          description: The caller's receipt
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalRecipient' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -512,6 +1081,41 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    FolderId:
+      name: folderId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' }
+    DocumentId:
+      name: documentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^doc_[0-9A-Za-z]{26}$' }
+    DrawingSetId:
+      name: drawingSetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dst_[0-9A-Za-z]{26}$' }
+    DrawingSheetId:
+      name: drawingSheetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dsh_[0-9A-Za-z]{26}$' }
+    DrawingRevisionId:
+      name: drawingRevisionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+    MarkupId:
+      name: markupId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^mku_[0-9A-Za-z]{26}$' }
+    TransmittalId:
+      name: transmittalId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^trm_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -994,3 +1598,577 @@ components:
       properties:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
+    FileRef:
+      type: string
+      pattern: '^fil_[0-9A-Za-z]{26}$'
+    UserRef:
+      type: string
+      pattern: '^usr_[0-9A-Za-z]{26}$'
+    CompanyRef:
+      type: string
+      pattern: '^cmp_[0-9A-Za-z]{26}$'
+    Folder:
+      type: object
+      required:
+        [id, projectId, parentId, name, isPrivate, allowedUserIds, allowedCompanyIds, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        parentId: { type: [string, 'null'] }
+        name: { type: string }
+        isPrivate: { type: boolean }
+        allowedUserIds:
+          type: array
+          items: { type: string }
+        allowedCompanyIds:
+          type: array
+          items: { type: string }
+        version: { type: integer }
+    FolderList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Folder' }
+    CreateFolderRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        parentId: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' }
+        isPrivate: { type: boolean }
+        allowedUserIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/UserRef' }
+        allowedCompanyIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/CompanyRef' }
+    UpdateFolderRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        isPrivate: { type: boolean }
+        allowedUserIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/UserRef' }
+        allowedCompanyIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/CompanyRef' }
+    DocumentStatus:
+      type: string
+      enum: [draft, for_review, approved, for_construction, superseded, void]
+    DocumentRevision:
+      type: object
+      required:
+        [id, documentId, rev, fileId, status, issuedFor, issuedDate, notes, createdAt, createdBy]
+      properties:
+        id: { type: string }
+        documentId: { type: string }
+        rev: { type: string }
+        fileId: { type: string }
+        status: { type: string, enum: [current, superseded] }
+        issuedFor: { type: [string, 'null'] }
+        issuedDate: { type: [string, 'null'], format: date }
+        notes: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        createdBy: { type: [string, 'null'] }
+    Document:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          folderId,
+          title,
+          docNumber,
+          discipline,
+          docType,
+          status,
+          currentRevision,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        folderId: { type: string }
+        title: { type: string }
+        docNumber: { type: [string, 'null'] }
+        discipline: { type: [string, 'null'] }
+        docType: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/DocumentStatus' }
+        currentRevision:
+          { oneOf: [{ $ref: '#/components/schemas/DocumentRevision' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    DocumentDetail:
+      type: object
+      required: [document, revisions]
+      properties:
+        document: { $ref: '#/components/schemas/Document' }
+        revisions:
+          type: array
+          items: { $ref: '#/components/schemas/DocumentRevision' }
+    DocumentPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Document' }
+        nextCursor: { type: [string, 'null'] }
+    DocumentRevisionInput:
+      type: object
+      additionalProperties: false
+      required: [rev, fileId]
+      properties:
+        rev: { type: string, minLength: 1, maxLength: 20 }
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        issuedFor: { type: string, maxLength: 100 }
+        issuedDate: { type: string, format: date }
+        notes: { type: string, maxLength: 2000 }
+    CreateDocumentRequest:
+      type: object
+      additionalProperties: false
+      required: [folderId, title, revision]
+      properties:
+        folderId: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        docNumber: { type: string, minLength: 1, maxLength: 100 }
+        discipline: { type: string, maxLength: 20 }
+        docType: { type: string, maxLength: 100 }
+        status: { $ref: '#/components/schemas/DocumentStatus' }
+        revision: { $ref: '#/components/schemas/DocumentRevisionInput' }
+    UpdateDocumentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        folderId: { type: string, pattern: '^fld_[0-9A-Za-z]{26}$' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        docNumber: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        discipline: { type: [string, 'null'], maxLength: 20 }
+        docType: { type: [string, 'null'], maxLength: 100 }
+        status: { $ref: '#/components/schemas/DocumentStatus' }
+    IssuedFor:
+      type: string
+      enum: [preliminary, for_tender, for_approval, for_construction]
+    DrawingSet:
+      type: object
+      required:
+        [id, projectId, name, issuedDate, receivedDate, status, publishedAt, createdAt, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        issuedDate: { type: [string, 'null'], format: date }
+        receivedDate: { type: [string, 'null'], format: date }
+        status: { type: string, enum: [processing, review, published] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    DrawingSetPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DrawingSet' }
+        nextCursor: { type: [string, 'null'] }
+    CreateDrawingSetRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        issuedDate: { type: string, format: date }
+        receivedDate: { type: string, format: date }
+    SupersededBy:
+      type: object
+      description: The revision that replaced this one, for the "Superseded by Rev D on 14/10/2026" banner
+      required: [revisionId, rev, at]
+      properties:
+        revisionId: { type: string }
+        rev: { type: string }
+        at: { type: string, format: date-time }
+    DrawingRevision:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          setId,
+          sheetId,
+          sheetNumber,
+          title,
+          discipline,
+          rev,
+          issuedFor,
+          fileId,
+          pageIndex,
+          status,
+          drawingDate,
+          publishReason,
+          publishedAt,
+          supersededBy,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        setId: { type: string }
+        sheetId: { type: [string, 'null'] }
+        sheetNumber: { type: string }
+        title: { type: string }
+        discipline: { type: [string, 'null'] }
+        rev: { type: string }
+        issuedFor:
+          {
+            type: [string, 'null'],
+            enum: [preliminary, for_tender, for_approval, for_construction, null],
+          }
+        fileId: { type: string }
+        pageIndex: { type: integer }
+        status: { type: string, enum: [draft, current, superseded] }
+        drawingDate: { type: [string, 'null'], format: date }
+        publishReason: { type: [string, 'null'] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        supersededBy: { oneOf: [{ $ref: '#/components/schemas/SupersededBy' }, { type: 'null' }] }
+        version: { type: integer }
+    DrawingRevisionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DrawingRevision' }
+    DraftDrawingRevisionInput:
+      type: object
+      additionalProperties: false
+      required: [sheetNumber, title, rev, fileId]
+      properties:
+        sheetNumber: { type: string, minLength: 1, maxLength: 50 }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        discipline: { type: string, maxLength: 20 }
+        rev: { type: string, minLength: 1, maxLength: 20 }
+        issuedFor: { $ref: '#/components/schemas/IssuedFor' }
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        pageIndex: { type: integer, minimum: 0, maximum: 10000 }
+        drawingDate: { type: string, format: date }
+    UpdateDraftDrawingRevisionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        sheetNumber: { type: string, minLength: 1, maxLength: 50 }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        discipline: { type: [string, 'null'], maxLength: 20 }
+        rev: { type: string, minLength: 1, maxLength: 20 }
+        issuedFor:
+          {
+            type: [string, 'null'],
+            enum: [preliminary, for_tender, for_approval, for_construction, null],
+          }
+        pageIndex: { type: integer, minimum: 0, maximum: 10000 }
+        drawingDate: { type: [string, 'null'], format: date }
+    PublishConflict:
+      type: object
+      required: [revisionId, sheetNumber, kind, blocking, currentRev]
+      properties:
+        revisionId: { type: string }
+        sheetNumber: { type: string }
+        kind:
+          { type: string, enum: [duplicate_in_set, revision_exists, older_than_current, new_sheet] }
+        blocking: { type: boolean }
+        currentRev: { type: [string, 'null'] }
+    DrawingSetReview:
+      type: object
+      required: [set, revisions, conflicts]
+      properties:
+        set: { $ref: '#/components/schemas/DrawingSet' }
+        revisions:
+          type: array
+          items: { $ref: '#/components/schemas/DrawingRevision' }
+        conflicts:
+          type: array
+          items: { $ref: '#/components/schemas/PublishConflict' }
+    PublishDrawingSetRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        confirmNewSheets: { type: boolean }
+        reasons:
+          type: array
+          maxItems: 2000
+          items:
+            type: object
+            additionalProperties: false
+            required: [revisionId, reason]
+            properties:
+              revisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+              reason: { type: string, minLength: 1, maxLength: 500 }
+    DrawingSheet:
+      type: object
+      required:
+        [id, projectId, sheetNumber, title, discipline, area, currentRevision, updatedAt, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        sheetNumber: { type: string }
+        title: { type: string }
+        discipline: { type: [string, 'null'] }
+        area: { type: [string, 'null'] }
+        currentRevision:
+          { oneOf: [{ $ref: '#/components/schemas/DrawingRevision' }, { type: 'null' }] }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    DrawingSheetPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DrawingSheet' }
+        nextCursor: { type: [string, 'null'] }
+    MarkupVisibility:
+      type: string
+      enum: [private, company, project]
+    MarkupPoint:
+      type: object
+      additionalProperties: false
+      required: [x, y]
+      properties:
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+    MarkupShape:
+      type: object
+      description: One shape in normalised sheet coordinates (`@archova/markup`); fields depend on `kind`
+      additionalProperties: false
+      required: [id, kind]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        kind: { type: string, enum: [pen, line, arrow, rect, ellipse, cloud, text, pin] }
+        points:
+          type: array
+          maxItems: 5000
+          items: { $ref: '#/components/schemas/MarkupPoint' }
+        from: { $ref: '#/components/schemas/MarkupPoint' }
+        to: { $ref: '#/components/schemas/MarkupPoint' }
+        at: { $ref: '#/components/schemas/MarkupPoint' }
+        text: { type: string, maxLength: 2000 }
+        entityType: { type: string, maxLength: 50 }
+        entityId: { type: string, maxLength: 64 }
+        strokeWidth: { type: number, minimum: 0, maximum: 100 }
+        color: { type: string, pattern: '^#[0-9a-fA-F]{6}$' }
+    Markup:
+      type: object
+      required:
+        [
+          id,
+          revisionId,
+          ownerId,
+          ownerCompanyId,
+          visibility,
+          shapes,
+          copiedFromId,
+          needsLocationCheck,
+          publishedAt,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        revisionId: { type: string }
+        ownerId: { type: string }
+        ownerCompanyId: { type: [string, 'null'] }
+        visibility: { $ref: '#/components/schemas/MarkupVisibility' }
+        shapes:
+          type: array
+          items: { $ref: '#/components/schemas/MarkupShape' }
+        copiedFromId: { type: [string, 'null'] }
+        needsLocationCheck:
+          {
+            type: boolean,
+            description: 'Carried forward from a superseded revision; show "check location"',
+          }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    MarkupList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Markup' }
+    CreateMarkupRequest:
+      type: object
+      additionalProperties: false
+      required: [shapes]
+      properties:
+        visibility: { $ref: '#/components/schemas/MarkupVisibility' }
+        shapes:
+          type: array
+          maxItems: 2000
+          items: { $ref: '#/components/schemas/MarkupShape' }
+    UpdateMarkupRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        visibility: { $ref: '#/components/schemas/MarkupVisibility' }
+        shapes:
+          type: array
+          maxItems: 2000
+          items: { $ref: '#/components/schemas/MarkupShape' }
+        locationConfirmed:
+          { type: boolean, description: "true confirms a carried-forward markup's location" }
+    TransmittalPurpose:
+      type: string
+      enum: [for_information, for_review, for_construction, for_tender, other]
+    Transmittal:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          subject,
+          purpose,
+          fromCompanyId,
+          responseDue,
+          message,
+          status,
+          sentAt,
+          sentBy,
+          createdAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: [integer, 'null'], description: 'Issued on send, per project' }
+        subject: { type: string }
+        purpose: { $ref: '#/components/schemas/TransmittalPurpose' }
+        fromCompanyId: { type: [string, 'null'] }
+        responseDue: { type: [string, 'null'], format: date }
+        message: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, sent] }
+        sentAt: { type: [string, 'null'], format: date-time }
+        sentBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        version: { type: integer }
+    TransmittalItem:
+      type: object
+      required: [revisionType, revisionId, title, number, rev]
+      properties:
+        revisionType: { type: string, enum: [document, drawing] }
+        revisionId: { type: string }
+        title: { type: string }
+        number: { type: [string, 'null'], description: 'Sheet or document number' }
+        rev: { type: string }
+    TransmittalRecipient:
+      type: object
+      required:
+        [
+          id,
+          userId,
+          companyId,
+          email,
+          name,
+          role,
+          deliveredAt,
+          openedAt,
+          downloadedAt,
+          acknowledgedAt,
+        ]
+      properties:
+        id: { type: string }
+        userId: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+        email: { type: string }
+        name: { type: [string, 'null'] }
+        role: { type: string, enum: [to, cc] }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+        openedAt: { type: [string, 'null'], format: date-time }
+        downloadedAt: { type: [string, 'null'], format: date-time }
+        acknowledgedAt: { type: [string, 'null'], format: date-time }
+    TransmittalDetail:
+      type: object
+      required: [transmittal, items, recipients]
+      properties:
+        transmittal: { $ref: '#/components/schemas/Transmittal' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TransmittalItem' }
+        recipients:
+          type: array
+          items: { $ref: '#/components/schemas/TransmittalRecipient' }
+    TransmittalPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Transmittal' }
+        nextCursor: { type: [string, 'null'] }
+    CreateTransmittalRequest:
+      type: object
+      additionalProperties: false
+      required: [subject, purpose, recipients]
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 300 }
+        purpose: { $ref: '#/components/schemas/TransmittalPurpose' }
+        fromCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        responseDue: { type: string, format: date }
+        message: { type: string, maxLength: 10000 }
+        recipients:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [email]
+            properties:
+              email: { $ref: '#/components/schemas/Email' }
+              name: { type: string, maxLength: 200 }
+              companyId: { $ref: '#/components/schemas/CompanyRef' }
+              role: { type: string, enum: [to, cc] }
+        items:
+          type: array
+          maxItems: 2000
+          items:
+            type: object
+            additionalProperties: false
+            required: [revisionType, revisionId]
+            properties:
+              revisionType: { type: string, enum: [document, drawing] }
+              revisionId:
+                {
+                  type: string,
+                  pattern: '^(rev|drv)_[0-9A-Za-z]{26}$',
+                  description: 'rev_ or drv_',
+                }
+        currentSetDisciplines:
+          type: array
+          maxItems: 20
+          items: { type: string, minLength: 1, maxLength: 20 }
+    AcknowledgeTransmittalRequest:
+      type: object
+      additionalProperties: false
+      required: [event]
+      properties:
+        event: { type: string, enum: [opened, downloaded, acknowledged] }

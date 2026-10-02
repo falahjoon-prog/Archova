@@ -1,0 +1,445 @@
+import { sql } from 'drizzle-orm';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { decodeId } from '@archova/domain';
+import {
+  addMember,
+  createOrg,
+  createProject,
+  createTestContext,
+  signUp,
+  uploadFile,
+  type TestContext,
+} from './helpers';
+
+let t: TestContext;
+beforeAll(async () => {
+  t = await createTestContext();
+});
+afterAll(() => t.close());
+
+async function setup() {
+  const owner = await signUp(t.app, 'doc-owner');
+  const org = await createOrg(owner.browser, 'Docs Builder');
+  const project = await createProject(owner.browser, org.id, { name: 'Tower B', state: 'NSW' });
+  const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+  return { owner, org, project, base };
+}
+
+async function publishSet(
+  s: Awaited<ReturnType<typeof setup>>,
+  name: string,
+  sheets: Array<{ sheetNumber: string; rev: string; discipline?: string; title?: string }>,
+  body: Record<string, unknown> = { confirmNewSheets: true },
+) {
+  const set = (await s.owner.browser.post(`${s.base}/drawing-sets`, { name })).json();
+  const revs: Array<{ id: string; version: number }> = [];
+  for (const sh of sheets) {
+    const fileId = await uploadFile(
+      t,
+      s.owner.browser,
+      s.org.id,
+      s.project.id,
+      `${sh.sheetNumber}.pdf`,
+    );
+    const r = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/revisions`, {
+      title: `Sheet ${sh.sheetNumber}`,
+      ...sh,
+      fileId,
+    });
+    expect(r.statusCode).toBe(201);
+    revs.push(r.json());
+  }
+  const res = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/publish`, body);
+  return { set, revs, res };
+}
+
+describe('documents and folders (DOC-US9)', () => {
+  it('registers a document, adds a revision and supersedes the old one', async () => {
+    const s = await setup();
+    const folder = await s.owner.browser.post(`${s.base}/folders`, { name: 'Certificates' });
+    expect(folder.statusCode).toBe(201);
+    const fileA = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'cc.pdf');
+    const created = await s.owner.browser.post(`${s.base}/documents`, {
+      folderId: folder.json().id,
+      title: 'Construction certificate',
+      docNumber: 'CC-001',
+      revision: { rev: 'A', fileId: fileA, issuedFor: 'Approval' },
+    });
+    expect(created.statusCode).toBe(201);
+    const doc = created.json().document;
+    expect(doc).toMatchObject({
+      docNumber: 'CC-001',
+      currentRevision: { rev: 'A', status: 'current' },
+    });
+
+    const fileB = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'cc-b.pdf');
+    const next = await s.owner.browser.post(`${s.base}/documents/${doc.id}/revisions`, {
+      rev: 'B',
+      fileId: fileB,
+    });
+    expect(next.statusCode).toBe(201);
+    expect(
+      next.json().revisions.map((r: { rev: string; status: string }) => [r.rev, r.status]),
+    ).toEqual([
+      ['B', 'current'],
+      ['A', 'superseded'],
+    ]);
+    const again = await s.owner.browser.post(`${s.base}/documents/${doc.id}/revisions`, {
+      rev: 'b',
+      fileId: fileB,
+    });
+    expect(again.json().code).toBe('document.revision_exists');
+
+    const dupe = await s.owner.browser.post(`${s.base}/documents`, {
+      folderId: folder.json().id,
+      title: 'Other',
+      docNumber: 'CC-001',
+      revision: { rev: 'A', fileId: fileA },
+    });
+    expect(dupe.json().code).toBe('document.number_taken');
+
+    const patched = await s.owner.browser.patch(
+      `${s.base}/documents/${doc.id}`,
+      { status: 'approved' },
+      { 'if-match': next.headers.etag as string },
+    );
+    expect(patched.statusCode).toBe(200);
+    const stale = await s.owner.browser.patch(
+      `${s.base}/documents/${doc.id}`,
+      { status: 'void' },
+      { 'if-match': next.headers.etag as string },
+    );
+    expect(stale.statusCode).toBe(412);
+
+    const search = await s.owner.browser.get(`${s.base}/documents?q=certificate`);
+    expect(search.json().data.map((d: { id: string }) => d.id)).toEqual([doc.id]);
+  });
+
+  it('rejects files from another project', async () => {
+    const s = await setup();
+    const other = await createProject(s.owner.browser, s.org.id, { name: 'Other job' });
+    const folder = (await s.owner.browser.post(`${s.base}/folders`, { name: 'Reports' })).json();
+    const foreign = await uploadFile(t, s.owner.browser, s.org.id, other.id, 'x.pdf');
+    const res = await s.owner.browser.post(`${s.base}/documents`, {
+      folderId: folder.id,
+      title: 'Geotech',
+      revision: { rev: 'A', fileId: foreign },
+    });
+    expect(res.json().code).toBe('file.not_in_project');
+  });
+
+  it('hides private folders and their documents from people not allowed in', async () => {
+    const s = await setup();
+    const sub = await signUp(t.app, 'doc-sub');
+    await addMember(s.owner.browser, s.org.id, s.project.id, sub.email, 'Subcontractor');
+    const open = (await s.owner.browser.post(`${s.base}/folders`, { name: 'Drawings' })).json();
+    const legal = (
+      await s.owner.browser.post(`${s.base}/folders`, { name: 'Contracts', isPrivate: true })
+    ).json();
+    const fileId = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'contract.pdf');
+    const secret = (
+      await s.owner.browser.post(`${s.base}/documents`, {
+        folderId: legal.id,
+        title: 'Head contract',
+        revision: { rev: '0', fileId },
+      })
+    ).json().document;
+
+    const folders = (await sub.browser.get(`${s.base}/folders`)).json().data;
+    expect(folders.map((f: { id: string }) => f.id)).toEqual([open.id]);
+    expect((await sub.browser.get(`${s.base}/documents`)).json().data).toEqual([]);
+    expect((await sub.browser.get(`${s.base}/documents/${secret.id}`)).statusCode).toBe(404);
+    // Subcontractors read documents but can't create folders.
+    expect((await sub.browser.post(`${s.base}/folders`, { name: 'Mine' })).statusCode).toBe(403);
+  });
+});
+
+describe('drawing register (DOC-AC3–AC6)', () => {
+  it('publishes a set, supersedes on the next issue and shows the banner data', async () => {
+    const s = await setup();
+    const first = await publishSet(s, 'IFC Set 1', [
+      { sheetNumber: 'A-101', rev: 'A', discipline: 'A' },
+      { sheetNumber: 'S-001', rev: 'A', discipline: 'S' },
+    ]);
+    expect(first.res.statusCode).toBe(200);
+    expect(first.res.json().set.status).toBe('published');
+
+    const register = (await s.owner.browser.get(`${s.base}/drawings`)).json().data;
+    expect(
+      register.map((x: { sheetNumber: string; currentRevision: { rev: string } }) => [
+        x.sheetNumber,
+        x.currentRevision.rev,
+      ]),
+    ).toEqual([
+      ['A-101', 'A'],
+      ['S-001', 'A'],
+    ]);
+
+    const second = await publishSet(s, 'IFC Set 2', [
+      { sheetNumber: 'a-101', rev: 'B', discipline: 'A' },
+    ]);
+    expect(second.res.statusCode).toBe(200);
+    const old = (
+      await s.owner.browser.get(`${s.base}/drawing-revisions/${first.revs[0]!.id}`)
+    ).json();
+    expect(old.status).toBe('superseded');
+    expect(old.supersededBy).toMatchObject({ revisionId: second.revs[0]!.id, rev: 'B' });
+
+    const sheetId = register[0].id;
+    const history = (await s.owner.browser.get(`${s.base}/drawings/${sheetId}/revisions`)).json()
+      .data;
+    expect(history.map((r: { rev: string }) => r.rev)).toEqual(['B', 'A']);
+
+    const archOnly = (await s.owner.browser.get(`${s.base}/drawings?discipline=S`)).json().data;
+    expect(archOnly.map((x: { sheetNumber: string }) => x.sheetNumber)).toEqual(['S-001']);
+  });
+
+  it('blocks publishing until conflicts are resolved', async () => {
+    const s = await setup();
+    await publishSet(s, 'Set 1', [{ sheetNumber: 'A-101', rev: 'C' }]);
+
+    const blocked = await publishSet(s, 'Set 2', [{ sheetNumber: 'A-101', rev: 'C' }]);
+    expect(blocked.res.statusCode).toBe(422);
+    expect(blocked.res.json()).toMatchObject({
+      code: 'drawing_set.publish_conflicts',
+      conflicts: [{ kind: 'revision_exists', blocking: true }],
+    });
+
+    const older = await publishSet(
+      s,
+      'Set 3',
+      [
+        { sheetNumber: 'A-101', rev: 'B' },
+        { sheetNumber: 'A-102', rev: 'A' },
+      ],
+      {},
+    );
+    expect(older.res.statusCode).toBe(422);
+    const kinds = older.res
+      .json()
+      .conflicts.map((c: { kind: string }) => c.kind)
+      .sort();
+    expect(kinds).toEqual(['new_sheet', 'older_than_current']);
+    const review = (
+      await s.owner.browser.get(`${s.base}/drawing-sets/${older.set.id}/review`)
+    ).json();
+    expect(review.conflicts).toHaveLength(2);
+
+    const ok = await s.owner.browser.post(`${s.base}/drawing-sets/${older.set.id}/publish`, {
+      confirmNewSheets: true,
+      reasons: [{ revisionId: older.revs[0]!.id, reason: 'Rev C withdrawn by architect' }],
+    });
+    expect(ok.statusCode).toBe(200);
+    const rev = (
+      await s.owner.browser.get(`${s.base}/drawing-revisions/${older.revs[0]!.id}`)
+    ).json();
+    expect(rev).toMatchObject({ status: 'current', publishReason: 'Rev C withdrawn by architect' });
+
+    const again = await s.owner.browser.post(`${s.base}/drawing-sets/${older.set.id}/publish`, {});
+    expect(again.json().code).toBe('drawing_set.already_published');
+  });
+
+  it('lets reviewers fix and remove draft sheets before publishing', async () => {
+    const s = await setup();
+    const set = (await s.owner.browser.post(`${s.base}/drawing-sets`, { name: 'Review' })).json();
+    const fileId = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'x.pdf');
+    const draft = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/revisions`, {
+      sheetNumber: 'A-1O1',
+      title: 'Ground floor',
+      rev: 'a',
+      fileId,
+    });
+    expect(draft.json()).toMatchObject({ sheetNumber: 'A-1O1', rev: 'A', status: 'draft' });
+    const fixed = await s.owner.browser.patch(
+      `${s.base}/drawing-sets/${set.id}/revisions/${draft.json().id}`,
+      { sheetNumber: 'A-101' },
+      { 'if-match': draft.headers.etag as string },
+    );
+    expect(fixed.json().sheetNumber).toBe('A-101');
+    const del = await s.owner.browser.del(
+      `${s.base}/drawing-sets/${set.id}/revisions/${draft.json().id}`,
+    );
+    expect(del.statusCode).toBe(204);
+    const empty = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/publish`, {});
+    expect(empty.json().code).toBe('drawing_set.empty');
+  });
+});
+
+describe('markups (DOC-AC7, DOC-AC8, X12)', () => {
+  it('keeps private and company markups to their people and carries published ones forward', async () => {
+    const s = await setup();
+    const sub = await signUp(t.app, 'mk-sub');
+    const mate = await signUp(t.app, 'mk-mate');
+    const { companyId } = await addMember(
+      s.owner.browser,
+      s.org.id,
+      s.project.id,
+      sub.email,
+      'Subcontractor',
+    );
+    const templates = (
+      await s.owner.browser.get(`/v1/orgs/${s.org.id}/permission-templates`)
+    ).json().data;
+    await s.owner.browser.post(`${s.base}/members`, {
+      email: mate.email,
+      companyId,
+      permissionTemplateId: templates.find((x: { name: string }) => x.name === 'Subcontractor').id,
+    });
+    const { revs } = await publishSet(s, 'Set 1', [{ sheetNumber: 'E-001', rev: 'A' }]);
+    const url = `${s.base}/drawing-revisions/${revs[0]!.id}/markups`;
+    const rect = { id: 's1', kind: 'rect', from: { x: 0.1, y: 0.1 }, to: { x: 0.2, y: 0.2 } };
+
+    const mine = await sub.browser.post(url, { shapes: [rect] });
+    expect(mine.json()).toMatchObject({ visibility: 'private', ownerCompanyId: companyId });
+    const team = await sub.browser.post(url, { visibility: 'company', shapes: [rect] });
+    expect(team.statusCode).toBe(201);
+    // Subcontractors have documents:read, so they can't publish to the project.
+    expect(
+      (await sub.browser.post(url, { visibility: 'project', shapes: [rect] })).statusCode,
+    ).toBe(403);
+    const bad = await sub.browser.post(url, {
+      shapes: [{ id: 'x', kind: 'rect', from: { x: 0, y: 0 } }],
+    });
+    expect(bad.json().code).toBe('markup.invalid_shape');
+
+    const seenByMate = (await mate.browser.get(url)).json().data.map((m: { id: string }) => m.id);
+    expect(seenByMate).toEqual([team.json().id]);
+    const seenByOwner = (await s.owner.browser.get(url)).json().data;
+    expect(seenByOwner).toEqual([]);
+
+    const pub = await s.owner.browser.post(url, { visibility: 'project', shapes: [rect] });
+    expect(pub.statusCode).toBe(201);
+    const edit = await s.owner.browser.patch(
+      `${url}/${pub.json().id}`,
+      { shapes: [] },
+      { 'if-match': pub.headers.etag as string },
+    );
+    expect(edit.json().code).toBe('markup.published');
+    expect(
+      (
+        await mate.browser.patch(`${url}/${team.json().id}`, { shapes: [] }, { 'if-match': '"1"' })
+      ).json().code,
+    ).toBe('markup.not_owner');
+
+    const next = await publishSet(s, 'Set 2', [{ sheetNumber: 'E-001', rev: 'B' }]);
+    const carried = (
+      await s.owner.browser.get(`${s.base}/drawing-revisions/${next.revs[0]!.id}/markups`)
+    ).json().data;
+    expect(carried).toHaveLength(1);
+    expect(carried[0]).toMatchObject({ copiedFromId: pub.json().id, needsLocationCheck: true });
+    const confirmed = await s.owner.browser.patch(
+      `${s.base}/drawing-revisions/${next.revs[0]!.id}/markups/${carried[0].id}`,
+      { locationConfirmed: true },
+      { 'if-match': `"${carried[0].version}"` },
+    );
+    expect(confirmed.json().needsLocationCheck).toBe(false);
+  });
+});
+
+describe('transmittals (DOC-AC10–AC12)', () => {
+  it('drafts with the current set for a discipline, sends once, and records receipts', async () => {
+    const s = await setup();
+    const sub = await signUp(t.app, 'tx-sub');
+    await addMember(s.owner.browser, s.org.id, s.project.id, sub.email, 'Subcontractor');
+    await publishSet(s, 'IFC', [
+      { sheetNumber: 'E-001', rev: '0', discipline: 'E' },
+      { sheetNumber: 'E-002', rev: '0', discipline: 'E' },
+      { sheetNumber: 'A-001', rev: '0', discipline: 'A' },
+    ]);
+
+    const draft = await s.owner.browser.post(`${s.base}/transmittals`, {
+      subject: 'Electrical IFC',
+      purpose: 'for_construction',
+      recipients: [{ email: sub.email }, { email: 'consultant@example.com', role: 'cc' }],
+      currentSetDisciplines: ['E'],
+    });
+    expect(draft.statusCode).toBe(201);
+    const tr = draft.json();
+    expect(tr.transmittal).toMatchObject({ status: 'draft', number: null });
+    expect(tr.items.map((i: { number: string }) => i.number)).toEqual(['E-001', 'E-002']);
+    expect(tr.recipients.find((r: { email: string }) => r.email === sub.email).userId).toBe(
+      sub.userId,
+    );
+
+    // Drafts are invisible to recipients.
+    expect((await sub.browser.get(`${s.base}/transmittals/${tr.transmittal.id}`)).statusCode).toBe(
+      404,
+    );
+
+    const sent = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/send`,
+      undefined,
+      {
+        'if-match': draft.headers.etag as string,
+      },
+    );
+    expect(sent.statusCode).toBe(200);
+    expect(sent.json().transmittal).toMatchObject({ status: 'sent', number: 1 });
+    const twice = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/send`,
+      undefined,
+      {
+        'if-match': sent.headers.etag as string,
+      },
+    );
+    expect(twice.json().code).toBe('transmittal.already_sent');
+
+    // The trigger keeps a sent transmittal immutable even outside the API.
+    const orgUuid = decodeId('org', s.org.id)!;
+    await expect(
+      t.database.withTenantTx(
+        {
+          orgId: orgUuid,
+          userId: decodeId('user', s.owner.userId)!,
+          principalType: 'member',
+          orgRole: 'owner',
+          entitlements: { plan: 'x', state: 'active', modules: [], limits: {} },
+          requestId: 'test',
+        },
+        ({ tx }) => tx.execute(sql`update documents.transmittals set subject = 'changed'`),
+      ),
+    ).rejects.toThrow();
+
+    const inbox = (await sub.browser.get(`${s.base}/transmittals`)).json().data;
+    expect(inbox.map((x: { id: string }) => x.id)).toEqual([tr.transmittal.id]);
+    const ack = await sub.browser.post(`${s.base}/transmittals/${tr.transmittal.id}/acknowledge`, {
+      event: 'acknowledged',
+    });
+    expect(ack.statusCode).toBe(200);
+    expect(ack.json().acknowledgedAt).toBeTruthy();
+    expect(ack.json().openedAt).toBeTruthy();
+    const ownerAck = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/acknowledge`,
+      {
+        event: 'opened',
+      },
+    );
+    expect(ownerAck.json().code).toBe('transmittal.not_recipient');
+
+    const empty = await s.owner.browser.post(`${s.base}/transmittals`, {
+      subject: 'Nothing',
+      purpose: 'for_information',
+      recipients: [{ email: sub.email }],
+    });
+    const none = await s.owner.browser.post(
+      `${s.base}/transmittals/${empty.json().transmittal.id}/send`,
+      undefined,
+      { 'if-match': empty.headers.etag as string },
+    );
+    expect(none.json().code).toBe('transmittal.empty');
+  });
+});
+
+describe('tenant isolation', () => {
+  it("never shows one org's drawings to another org, even with a guessed id", async () => {
+    const a = await setup();
+    const b = await setup();
+    const { revs } = await publishSet(a, 'Set', [{ sheetNumber: 'A-101', rev: 'A' }]);
+    const res = await b.owner.browser.get(`${b.base}/drawing-revisions/${revs[0]!.id}`);
+    expect(res.statusCode).toBe(404);
+    const cross = await b.owner.browser.get(
+      `/v1/orgs/${a.org.id}/projects/${a.project.id}/drawings`,
+    );
+    expect(cross.statusCode).toBe(404);
+  });
+});

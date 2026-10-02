@@ -1,4 +1,6 @@
+import { createHash } from 'node:crypto';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
+import { decodeId } from '@archova/domain';
 import {
   createDatabase,
   createLogger,
@@ -6,7 +8,7 @@ import {
   type Database,
   type RedisClient,
 } from '@archova/kernel';
-import { createMemoryObjectStore, noScanner } from '@archova/mod-files';
+import { createMemoryObjectStore, hexToBase64, noScanner, quarantineKey } from '@archova/mod-files';
 import {
   TEST_PASSWORD,
   testAppUrl,
@@ -123,6 +125,10 @@ export class Browser {
     this.request('POST', url, body ?? {}, headers);
   patch = (url: string, body?: unknown, headers?: Record<string, string>) =>
     this.request('PATCH', url, body ?? {}, headers);
+  put = (url: string, body?: unknown, headers?: Record<string, string>) =>
+    this.request('PUT', url, body ?? {}, headers);
+  del = (url: string, headers?: Record<string, string>) =>
+    this.request('DELETE', url, undefined, headers);
 }
 
 export async function signUp(app: FastifyInstance, label = 'user') {
@@ -153,4 +159,57 @@ export async function createProject(
   if (res.statusCode !== 201)
     throw new Error(`createProject failed: ${res.statusCode} ${res.body}`);
   return res.json() as { id: string; version: number; timezone: string };
+}
+
+/** Uploads a small file into a project through the real presign → PUT → complete flow and returns its id. */
+export async function uploadFile(
+  t: TestContext,
+  browser: Browser,
+  orgId: string,
+  projectId: string,
+  filename = 'A-101.pdf',
+  module = 'documents',
+) {
+  const content = `${filename} ${Math.random()}`;
+  const sha256 = createHash('sha256').update(content).digest('hex');
+  const created = await browser.post(`/v1/orgs/${orgId}/uploads`, {
+    filename,
+    mime: 'application/pdf',
+    sizeBytes: content.length,
+    sha256,
+    module,
+    projectId,
+  });
+  if (created.statusCode !== 201)
+    throw new Error(`upload failed: ${created.statusCode} ${created.body}`);
+  const uploadId = (created.json() as { id: string }).id;
+  t.store.put(quarantineKey(decodeId('upload', uploadId)!), content.length, hexToBase64(sha256));
+  const done = await browser.post(`/v1/orgs/${orgId}/uploads/${uploadId}/complete`);
+  if (done.statusCode !== 200) throw new Error(`complete failed: ${done.statusCode} ${done.body}`);
+  return (done.json() as { id: string }).id;
+}
+
+/** Adds `email` to the project under a seeded template, with a new company of `companyType`. */
+export async function addMember(
+  owner: Browser,
+  orgId: string,
+  projectId: string,
+  email: string,
+  template: string,
+  companyName = 'Sparky Electrical',
+) {
+  const company = (
+    await owner.post(`/v1/orgs/${orgId}/companies`, { name: companyName, type: 'subcontractor' })
+  ).json() as { id: string };
+  const templates = (await owner.get(`/v1/orgs/${orgId}/permission-templates`)).json()
+    .data as Array<{ id: string; name: string }>;
+  const tpl = templates.find((x) => x.name === template);
+  if (!tpl) throw new Error(`no template ${template}`);
+  const res = await owner.post(`/v1/orgs/${orgId}/projects/${projectId}/members`, {
+    email,
+    companyId: company.id,
+    permissionTemplateId: tpl.id,
+  });
+  if (res.statusCode !== 201) throw new Error(`addMember failed: ${res.statusCode} ${res.body}`);
+  return { companyId: company.id };
 }
