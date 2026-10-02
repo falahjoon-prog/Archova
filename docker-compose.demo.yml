@@ -2,6 +2,7 @@
 # Then open http://demo.localhost:8080 and sign in as demo@archova.com.au (password: DEMO_PASSWORD below).
 # Everything runs in Docker: no AWS, no internet after the first build. Nova answers with canned sample replies
 # (the fake provider), uploads are not malware-scanned, and each start resets to fresh sample data. Sample data only; never put real project data here.
+# To share it through a tunnel, set DEMO_ORIGIN to the public https address first (see the guide).
 # Guide: docs/infrastructure/laptop-demo.md
 name: archova-demo
 
@@ -48,14 +49,14 @@ services:
       API_PORT: '4000'
       API_DATABASE_URL: postgres://app_rw:app_rw@postgres:5432/archova
       API_REDIS_URL: redis://valkey:6379
-      API_APP_ORIGINS: http://demo.localhost:8080
+      API_APP_ORIGINS: ${DEMO_ORIGIN:-http://demo.localhost:8080}
       API_PUBLIC_HOSTS: api.demo.localhost:8080
-      API_WEB_SIGN_IN_URL: http://demo.localhost:8080/login
+      API_WEB_SIGN_IN_URL: ${DEMO_ORIGIN:-http://demo.localhost:8080}/login
       API_FILES_STORE: s3
       API_FILES_BUCKET: archova-local-files
       API_FILES_REGION: ap-southeast-2
       # Browsers and the api both reach file storage through the proxy below, so presigned links work in both.
-      API_S3_ENDPOINT: http://demo.localhost:8080
+      API_S3_ENDPOINT: ${DEMO_ORIGIN:-http://demo.localhost:8080}
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
       API_AI_PROVIDER: fake
@@ -80,7 +81,7 @@ services:
     build: { context: ., target: demo-tools }
     depends_on: [proxy]
     environment:
-      SEED_APP_ORIGIN: http://demo.localhost:8080
+      SEED_APP_ORIGIN: ${DEMO_ORIGIN:-http://demo.localhost:8080}
       SEED_PASSWORD: *demo-password
     extra_hosts: ['demo.localhost:host-gateway']
     entrypoint: ['/bin/sh', '-c']

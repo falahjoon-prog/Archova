@@ -9,7 +9,7 @@ How it differs from the hosted demo:
 - **Nova** replies with canned sample answers. It doesn't call a real AI model.
 - **Uploads** aren't scanned for malware.
 - **Each start** resets everything to fresh sample data, so anything you add is gone after a restart.
-- **Only this computer** can open it, at http://demo.localhost:8080.
+- **Only this computer** can open it, at http://demo.localhost:8080, unless you share it through a tunnel (below).
 
 Use sample data only. Don't put real project data into it.
 
@@ -42,6 +42,38 @@ Use sample data only. Don't put real project data into it.
 - **Stop:** press `Ctrl+C` in PowerShell, or run `docker compose -f docker-compose.demo.yml down`.
 - **Get the latest version:** run `git pull` in the folder, then start it again with the command in step 3.
 - **Remove everything:** run `docker compose -f docker-compose.demo.yml down -v --rmi local`.
+
+## Share it from your computer (for showing people only)
+
+A free Cloudflare quick tunnel gives your running demo a public https link, such as `https://some-words.trycloudflare.com`, that anyone can open. Your computer has to stay on and awake while people use it.
+
+1. Install cloudflared once. In PowerShell:
+   ```powershell
+   winget install --id Cloudflare.cloudflared
+   ```
+2. Open a **second** PowerShell window and start the tunnel:
+   ```powershell
+   cloudflared tunnel --url http://localhost:8080
+   ```
+   It prints a link ending in `.trycloudflare.com`. Copy it, and leave this window open.
+3. In the **first** window, start the demo with that link. Use your own link, and stop the demo first if it's already running:
+   ```powershell
+   cd $HOME\Archova
+   $env:DEMO_ORIGIN = "https://some-words.trycloudflare.com"
+   docker compose -f docker-compose.demo.yml up --build
+   ```
+4. Once the log shows `Done`, send people the link and the demo sign-in.
+5. When you're finished, press `Ctrl+C` in both windows. The link stops working, and you get a new link next time.
+
+**Using demo.archova.com.au instead** needs a named Cloudflare Tunnel, and that only works if the archova.com.au DNS is managed by Cloudflare. That would change where the domain points when we move to AWS, so ask Jeff first.
+
+**Never use this for real pilot data.** It is for showing sample data only:
+- There are no backups. Every restart wipes it.
+- Uploads aren't malware-scanned, and the api runs in development mode, so anyone with the link can sign up.
+- Traffic passes through Cloudflare's worldwide network, not only Australia.
+- It depends on your computer and home internet staying up.
+
+Real builders' data goes on the hosted pilot (AWS Sydney), with encryption, backups, scanning and Australian-only processing.
 
 ## If something goes wrong
 
