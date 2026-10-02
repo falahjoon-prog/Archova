@@ -79,7 +79,12 @@ describe('ClamAV scanner (infrastructure/09, security-licensing/09 §4)', () => 
     expect(await createClamAvScanner(cfg, s3).scan('quarantine/u1')).toBe('infected');
     expect(sent[0]!.input).toEqual({ Bucket: 'files', Key: 'quarantine/u1' });
 
-    const down = createClamAvScanner({ ...cfg, port: 1, timeoutMs: 1000 }, s3);
+    const errors: string[] = [];
+    const down = createClamAvScanner(
+      { ...cfg, port: 1, timeoutMs: 1000, onError: (_err, key) => errors.push(key) },
+      s3,
+    );
     expect(await down.scan('quarantine/u1')).toBe('pending');
+    expect(errors).toEqual(['quarantine/u1']);
   });
 });

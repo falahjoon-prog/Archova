@@ -31,6 +31,8 @@ const Env = z.object({
   API_FILES_SCANNER: z.enum(['none', 'guardduty', 'clamav']).default('none'),
   API_CLAMAV_HOST: z.string().default('clamav'),
   API_CLAMAV_PORT: z.coerce.number().int().default(3310),
+  // Until apps/worker scans in the background, the upload waits this long; slower scans finish on a later read.
+  API_CLAMAV_TIMEOUT_MS: z.coerce.number().int().default(120_000),
   // Nova (ai/02): Bedrock in Australia when deployed; the fake provider locally and in tests.
   API_AI_PROVIDER: z.enum(['fake', 'bedrock']).default('fake'),
   API_AI_REGION: z.string().default('ap-southeast-2'),
@@ -70,7 +72,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       region: e.API_FILES_REGION,
       endpoint: e.API_S3_ENDPOINT,
       scanner: e.API_FILES_SCANNER,
-      clamav: { host: e.API_CLAMAV_HOST, port: e.API_CLAMAV_PORT },
+      clamav: {
+        host: e.API_CLAMAV_HOST,
+        port: e.API_CLAMAV_PORT,
+        timeoutMs: e.API_CLAMAV_TIMEOUT_MS,
+      },
     },
     ai: {
       provider: e.API_AI_PROVIDER,

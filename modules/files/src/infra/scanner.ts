@@ -78,6 +78,8 @@ export interface ClamAvScannerConfig {
   port: number;
   /** Give up after this long and leave the file `pending`; the next read scans it again. */
   timeoutMs?: number;
+  /** Called when a scan couldn't run (clamd down, storage error), so on-call sees why files stay `scanning`. */
+  onError?: (err: unknown, key: string) => void;
 }
 
 /** Maps clamd's INSTREAM reply to a verdict. Anything but a clean or a FOUND reply fails closed. */
@@ -151,7 +153,8 @@ export function createClamAvScanner(
         const body = obj.Body as AsyncIterable<Uint8Array> | undefined;
         if (!body) return 'pending';
         return clamdVerdict(await instream(cfg.host, cfg.port, body, cfg.timeoutMs ?? 30_000));
-      } catch {
+      } catch (err) {
+        cfg.onError?.(err, key);
         return 'pending';
       }
     },
