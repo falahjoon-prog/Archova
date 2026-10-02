@@ -265,6 +265,14 @@ resource "linode_object_storage_key" "backup" {
   }
 }
 
+# The application's database roles (tools/db/roles-lib.ts). The deploy pipeline creates them as the admin user
+# before migrations run, as db-roles does on AWS; Linode's default database holds the app.
+resource "random_password" "db_role" {
+  for_each = toset(["app_migrator", "app_rw", "app_platform", "app_admin"])
+  length   = 40
+  special  = false
+}
+
 # --- Valkey ------------------------------------------------------------------------------------------------------
 
 resource "random_password" "valkey" {

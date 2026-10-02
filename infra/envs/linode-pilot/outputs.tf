@@ -47,11 +47,22 @@ output "host_secrets" {
     database_admin_user = linode_database_postgresql_v2.main.root_username
     database_admin_pass = linode_database_postgresql_v2.main.root_password
     database_ca         = linode_database_postgresql_v2.main.ca_cert
+    database_name       = "defaultdb"
+    database_roles      = { for k, v in random_password.db_role : k => v.result }
     valkey_password     = random_password.valkey.result
     valkey_host         = local.app_ips[0]
     files_key_id        = linode_object_storage_key.api.access_key
     files_key_secret    = linode_object_storage_key.api.secret_key
     backup_key_id       = linode_object_storage_key.backup.access_key
     backup_key_secret   = linode_object_storage_key.backup.secret_key
+  }
+}
+
+output "deploy" {
+  description = "Everything else the deploy pipeline needs (tools/infra/linode-host-files.ts)."
+  value = {
+    app_firewall_id      = linode_firewall.app.id
+    backup_age_recipient = var.backup_age_recipient
+    ai_models            = var.ai_models
   }
 }

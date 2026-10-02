@@ -87,3 +87,28 @@ variable "roles_anywhere_ca_pem" {
   description = "Public certificate of the offline CA that issues the app servers' client certificates (docs/infrastructure/10 step 3). Never the CA's key."
   type        = string
 }
+
+variable "backup_age_recipient" {
+  description = "Public half of the offline backup key (`age-keygen`, docs/infrastructure/10 step 4). The private half stays in the password manager."
+  type        = string
+
+  validation {
+    condition     = can(regex("^age1[0-9a-z]{58}$", var.backup_age_recipient))
+    error_message = "An age public key starts with age1."
+  }
+}
+
+variable "ai_models" {
+  description = "Bedrock AU inference profiles for Nova, as in prod-cell1. Enable model access in the archova-prod account first."
+  type        = object({ fast = string, standard = string, advanced = string })
+  default = {
+    fast     = "au.anthropic.claude-haiku-4-5-20251001-v1:0"
+    standard = "au.anthropic.claude-sonnet-5"
+    advanced = "au.anthropic.claude-opus-5-5"
+  }
+
+  validation {
+    condition     = alltrue([for m in values(var.ai_models) : startswith(m, "au.")])
+    error_message = "Nova uses Australian inference profiles only (X25)."
+  }
+}

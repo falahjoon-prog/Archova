@@ -45,6 +45,7 @@ write_files:
 runcmd:
   - timedatectl set-timezone Australia/Sydney
   - install -d -o deploy -g deploy -m 0750 /opt/archova
-  - install -d -o root -g deploy -m 0750 /etc/archova
+  # Written by the deploy pipeline (env files, CoreDNS config); the client certificate goes in pki/ by hand.
+  - install -d -o deploy -g deploy -m 0700 /etc/archova /etc/archova/pki
   - systemctl restart ssh docker
   - systemctl enable --now fail2ban unattended-upgrades chrony
