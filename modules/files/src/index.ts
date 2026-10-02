@@ -23,8 +23,9 @@ export function createFilesModule(
   return {
     definition: defineModule({ name: 'files' }),
     routes: filesRoutes(services.database, service),
-    api: { getFile: service.get },
+    api: { getFile: service.get, readFileBytes: service.readBytes },
   };
 }
 
 export type FilesModule = ReturnType<typeof createFilesModule>;
+export type FilesApi = FilesModule['api'];

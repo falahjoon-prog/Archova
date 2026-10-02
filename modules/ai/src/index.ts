@@ -3,6 +3,7 @@
 import type { ModelTier } from '@archova/ai-prompts';
 import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createAdminService } from './application/admin';
+import { createDrawingRegisterService, type ReadableFile } from './application/drawing-register';
 import { createGateway } from './application/gateway';
 import { aiRoutes } from './api/routes';
 import type { ModelProvider } from './domain/provider';
@@ -24,6 +25,7 @@ export {
 } from './domain/routing';
 export { ProviderError, type ModelProvider, type ModelRequest } from './domain/provider';
 export {
+  DEFAULT_FAKE_RESPONDERS,
   createFakeProvider,
   fakeEmbedding,
   type FakeProvider,
@@ -31,6 +33,14 @@ export {
   type ProviderConfig,
 } from './infra/providers';
 export type { TaskRun, RunOptions, Gateway } from './application/gateway';
+export type { ReadableFile, SheetSuggestionPayload } from './application/drawing-register';
+export {
+  compareRevisions,
+  matchToRegister,
+  reviewTitleBlock,
+  selectTitleBlockText,
+  type TextItem,
+} from './domain/titleblock';
 
 export interface AiConfig {
   provider: ProviderConfig;
@@ -63,6 +73,10 @@ export function createAiModule(
     config: AiConfig;
     /** The org's IANA zone (X34), from `platform`. */
     orgTimeZone: (scope: TenantScope) => Promise<string>;
+    /** files.readFileBytes: the caller's read check applies. */
+    readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
+    /** access.assert */
+    assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
     /** Tests pass a fake provider directly. */
     provider?: ModelProvider;
   },
@@ -77,12 +91,22 @@ export function createAiModule(
     orgTimeZone: deps.orgTimeZone,
   });
   const admin = createAdminService({ orgTimeZone: deps.orgTimeZone });
+  const drawingRegister = createDrawingRegisterService({
+    database: services.database,
+    gateway,
+    readFile: deps.readFile,
+    assert: deps.assert,
+  });
   return {
     definition: defineModule({ name: 'ai', permissions: AI_PERMISSIONS }),
-    routes: aiRoutes(services.database, admin),
+    routes: aiRoutes(services.database, admin, drawingRegister),
     permissions: AI_PERMISSIONS,
     provider,
-    api: { runTask: gateway.runTask, getSettings: admin.getSettings },
+    api: {
+      runTask: gateway.runTask,
+      getSettings: admin.getSettings,
+      extractDrawingRegister: drawingRegister.extract,
+    },
   };
 }
 

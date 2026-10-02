@@ -24,7 +24,9 @@
 | Infra | Terraform plan/apply via Actions with OIDC |
 | Mobile | Expo EAS Build, EAS Submit, EAS Update |
 | Feature flags | AWS AppConfig |
-| E2E tests | Playwright (web), Maestro (mobile) |
+| E2E tests | Playwright (web), Maestro (mobile only, X36) |
+| Accessibility | axe-core in component tests, Storybook stories and Playwright journey pages (Uma, Quinn) |
+| DAST | OWASP ZAP: baseline scan on previews, authenticated full scan on staging (Sam, Quinn) |
 | Load tests | k6 (see [04](04-scaling-and-load.md#7-load-testing-plan)) |
 
 ## 3. Pull request pipeline
@@ -43,8 +45,20 @@ Runs on every PR. Required to pass before merge.
 | Build | Affected images built and pushed to ECR with tag `pr-<n>-<sha>` | < 6 min |
 | Preview | Deploy web + api to a preview environment, post URL on the PR | < 5 min |
 | E2E smoke | Playwright smoke suite against the preview | < 5 min |
+| Accessibility (`a11y`) | axe-core on every Storybook story and component test for changed UI, plus on each Playwright smoke journey page; blocks merge; **fails on serious or critical issues** (Uma's design/05 §4, Quinn's qa/08) | < 3 min (parallel with E2E) |
+| DAST baseline | OWASP ZAP baseline scan against the preview, for PRs touching `apps/api` or `apps/web`; fails on high-risk alerts, with a reviewed suppression file for false positives. This is the named **a11y/DAST gate**: both block merge (Sam, qa/03 §4) | < 5 min (parallel) |
 
 Target: **under 15 minutes wall clock** for a typical PR.
+
+### Scheduled security and quality jobs
+
+| Job | When | Owner |
+|---|---|---|
+| Authenticated DAST (ZAP full scan) against staging with **two seeded tenants**, so cross-tenant access attempts are part of the scan (Sam 09 §7) | Weekly, results to Sam; **open high findings block production release** until fixed or formally accepted by Sam | Sam (findings), Owen (pipeline) |
+| Fuzzing of upload parsing (PDF, images) and markup geometry input | Nightly, in the worker test suite | Ben, Quinn |
+| Full axe-core run across all Playwright journeys | Nightly | Quinn, Uma |
+| OWASP ASVS Level 2 checklist per module | Before each module ships; the module's release PR links the completed checklist and CI fails a release tag if the link is missing | Sam |
+| Contract tests against the oldest supported mobile build's spec (`packages/contracts/history/`, 6-month window, X39) | Every PR touching the API | Ben, Quinn |
 
 ## 4. Main-branch pipeline (deploy)
 
@@ -82,8 +96,8 @@ Rules:
 |---|---|
 | PR touching `apps/mobile` or shared packages | Typecheck, unit tests, EAS Build (development profile), Maestro smoke tests on an emulator |
 | Merge to `main` | EAS Build `preview` profile → internal distribution (TestFlight internal, Play internal track) |
-| Release tag `mobile-vX.Y.Z` | EAS Build `production` → EAS Submit to App Store Connect and Google Play (staged rollout 10% → 50% → 100% on Play; phased release on iOS) |
-| JS-only fix | EAS Update to the matching runtime version's `production` channel, rolled out to 10% first, with automatic rollback if the crash-free rate drops |
+| Release tag `mobile-vX.Y.Z` | EAS Build `production` → EAS Submit to App Store Connect and Google Play. **Staged rollout per Mia (X37): Play 5% → 20% → 50% → 100%; App Store phased release.** Each step advances only if crash-free sessions are ≥ 99.5%; below that the rollout halts automatically (Play halt via the Publishing API, App Store phased release paused) and Mia is paged |
+| JS-only fix | EAS Update to the matching runtime version's `production` channel, rolled out in the same 5% → 20% → 50% → 100% steps, with automatic rollback if crash-free sessions drop below 99.5% |
 
 - **API compatibility:** mobile apps in the field may be weeks old. The API keeps `/v1` backwards compatible, and the server can return a "minimum supported app version" so very old builds prompt an update. Mia owns the in-app handling.
 - **Signing keys** (Apple distribution certificate, Android upload key) are held by EAS credentials, with an offline encrypted backup held by john and Owen.
