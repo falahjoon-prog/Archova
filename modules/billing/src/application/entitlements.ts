@@ -20,6 +20,8 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'photos',
     'meetings',
     'correspondence',
+    // Nova is on every plan with a monthly credit allowance (X27); null = unlimited during the trial.
+    'ai',
   ],
   limits: {
     'limit.active_projects': null,

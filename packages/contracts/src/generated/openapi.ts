@@ -403,6 +403,472 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Every folder in the project the caller can open, flat; clients build the tree from `parentId`. */
+        get: operations["listFolders"];
+        put?: never;
+        /** Create a folder. Private folders need `documents.folders.restrict`. */
+        post: operations["createFolder"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/folders/{folderId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                folderId: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateFolder"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listDocuments"];
+        put?: never;
+        /** Register a document with its first revision. */
+        post: operations["createDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateDocument"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a revision from an uploaded file. It becomes current; the previous one is superseded. */
+        post: operations["addDocumentRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-sets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["listDrawingSets"];
+        put?: never;
+        /** Start registering an issue of drawings. Sheets are added for review, then published together. */
+        post: operations["createDrawingSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+            };
+            cookie?: never;
+        };
+        /** The sheets in a set and the conflicts that publishing would hit (DOC-AC3). */
+        get: operations["getDrawingSetReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a sheet to an unpublished set, as read from its title block. */
+        post: operations["addDrawingSetRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions/{drawingRevisionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a sheet out of an unpublished set. */
+        delete: operations["removeDraftDrawingRevision"];
+        options?: never;
+        head?: never;
+        /** Correct a sheet before the set is published (DOC-AC2). */
+        patch: operations["updateDraftDrawingRevision"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Make every sheet in the set current and supersede the previous revisions in one step (DOC-AC4).
+         *     Fails with `drawing_set.publish_conflicts` until new sheets are confirmed and older revisions have a reason.
+         */
+        post: operations["publishDrawingSet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The drawing register, each sheet with its current revision (DOC-AC5). */
+        get: operations["listDrawings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawings/{drawingSheetId}/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSheetId: components["parameters"]["DrawingSheetId"];
+            };
+            cookie?: never;
+        };
+        /** Every published revision of a sheet, newest first. */
+        get: operations["listDrawingSheetRevisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        /** One revision. A superseded one names its successor for the banner (DOC-AC6). */
+        get: operations["getDrawingRevision"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        /** Markups on this revision the caller can see (own, own company's, published). */
+        get: operations["listMarkups"];
+        put?: never;
+        /** Mark up a sheet. `project` visibility publishes it and needs `documents.markups.publish`. */
+        post: operations["createMarkup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups/{markupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+                markupId: components["parameters"]["MarkupId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete the author's own unpublished markup. */
+        delete: operations["deleteMarkup"];
+        options?: never;
+        head?: never;
+        /**
+         * Change the author's own markup. Publishing (`visibility: project`) is one-way; a published markup only
+         *     accepts `locationConfirmed` after it was carried forward to a new revision (DOC-AC7, DOC-AC8).
+         */
+        patch: operations["updateMarkup"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/transmittals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** All transmittals for people who issue them; otherwise the ones the caller received. */
+        get: operations["listTransmittals"];
+        put?: never;
+        /** Draft a transmittal. `currentSetDisciplines` adds every current drawing of those disciplines (DOC-AC12). */
+        post: operations["createTransmittal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getTransmittal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Number and send the transmittal. It can't change afterwards (DOC-AC10). */
+        post: operations["sendTransmittal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A recipient records that they opened, downloaded or acknowledged it (DOC-AC11). First time wins. */
+        post: operations["acknowledgeTransmittal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/ai/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Nova settings for this org (ai/04 §8). Defaults apply until an admin changes them. */
+        get: operations["getAiSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Turn Nova or single features on or off, set a monthly credit cap and body retention.
+         * @description Send `If-Match` with the ETag from `getAiSettings` (`"0"` before the first change).
+         */
+        patch: operations["updateAiSettings"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Nova credits used this month by feature, against the allowance (ai/05 §6). */
+        get: operations["getAiUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/ai/runs/{runId}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                runId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Thumbs up or down on a Nova output (ai/06 §5). Only the person who asked can rate it. */
+        put: operations["submitAiFeedback"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -690,6 +1156,51 @@ export interface components {
                 [key: string]: number | null;
             };
         };
+        AiSettings: {
+            aiEnabled: boolean;
+            /** @description Features left on; null means every feature. */
+            featuresEnabled: components["schemas"]["AiFeature"][] | null;
+            /** @description The org's own monthly cap below the plan allowance; null means none. */
+            monthlyCreditCap: number | null;
+            /** @description Whether invited external companies can use Nova on this org's projects. */
+            externalAiEnabled: boolean;
+            /** @description Days prompt and response bodies are kept for review (0–90). */
+            retentionDays: number;
+            version: number;
+        };
+        UpdateAiSettingsRequest: {
+            aiEnabled?: boolean;
+            featuresEnabled?: components["schemas"]["AiFeature"][] | null;
+            monthlyCreditCap?: number | null;
+            externalAiEnabled?: boolean;
+            retentionDays?: number;
+        };
+        /**
+         * @description A Nova feature an admin can switch off (ai/01 §2).
+         * @enum {string}
+         */
+        AiFeature: "ask" | "drawing_register" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating";
+        AiUsage: {
+            /** Format: date */
+            periodStart: string;
+            timezone: string;
+            /** @description null means unlimited */
+            allowance: number | null;
+            used: number;
+            remaining: number | null;
+            byFeature: {
+                feature: string;
+                credits: number;
+                runs: number;
+            }[];
+        };
+        AiFeedbackRequest: {
+            /** @enum {string} */
+            rating: "up" | "down";
+            /** @enum {string|null} */
+            reason?: "wrong" | "missing" | "not_useful" | "wrong_source" | "other" | null;
+            comment?: string | null;
+        };
         CreateUploadRequest: {
             filename: string;
             mime: string;
@@ -732,6 +1243,357 @@ export interface components {
             /** Format: date-time */
             expiresAt: string;
         };
+        FileRef: string;
+        UserRef: string;
+        CompanyRef: string;
+        Folder: {
+            id: string;
+            projectId: string;
+            parentId: string | null;
+            name: string;
+            isPrivate: boolean;
+            allowedUserIds: string[];
+            allowedCompanyIds: string[];
+            version: number;
+        };
+        FolderList: {
+            data: components["schemas"]["Folder"][];
+        };
+        CreateFolderRequest: {
+            name: string;
+            parentId?: string;
+            isPrivate?: boolean;
+            allowedUserIds?: components["schemas"]["UserRef"][];
+            allowedCompanyIds?: components["schemas"]["CompanyRef"][];
+        };
+        UpdateFolderRequest: {
+            name?: string;
+            isPrivate?: boolean;
+            allowedUserIds?: components["schemas"]["UserRef"][];
+            allowedCompanyIds?: components["schemas"]["CompanyRef"][];
+        };
+        /** @enum {string} */
+        DocumentStatus: "draft" | "for_review" | "approved" | "for_construction" | "superseded" | "void";
+        DocumentRevision: {
+            id: string;
+            documentId: string;
+            rev: string;
+            fileId: string;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            issuedFor: string | null;
+            /** Format: date */
+            issuedDate: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: string | null;
+        };
+        Document: {
+            id: string;
+            projectId: string;
+            folderId: string;
+            title: string;
+            docNumber: string | null;
+            discipline: string | null;
+            docType: string | null;
+            status: components["schemas"]["DocumentStatus"];
+            currentRevision: components["schemas"]["DocumentRevision"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        DocumentDetail: {
+            document: components["schemas"]["Document"];
+            revisions: components["schemas"]["DocumentRevision"][];
+        };
+        DocumentPage: {
+            data: components["schemas"]["Document"][];
+            nextCursor: string | null;
+        };
+        DocumentRevisionInput: {
+            rev: string;
+            fileId: components["schemas"]["FileRef"];
+            issuedFor?: string;
+            /** Format: date */
+            issuedDate?: string;
+            notes?: string;
+        };
+        CreateDocumentRequest: {
+            folderId: string;
+            title: string;
+            docNumber?: string;
+            discipline?: string;
+            docType?: string;
+            status?: components["schemas"]["DocumentStatus"];
+            revision: components["schemas"]["DocumentRevisionInput"];
+        };
+        UpdateDocumentRequest: {
+            folderId?: string;
+            title?: string;
+            docNumber?: string | null;
+            discipline?: string | null;
+            docType?: string | null;
+            status?: components["schemas"]["DocumentStatus"];
+        };
+        /** @enum {string} */
+        IssuedFor: "preliminary" | "for_tender" | "for_approval" | "for_construction";
+        DrawingSet: {
+            id: string;
+            projectId: string;
+            name: string;
+            /** Format: date */
+            issuedDate: string | null;
+            /** Format: date */
+            receivedDate: string | null;
+            /** @enum {string} */
+            status: "processing" | "review" | "published";
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        DrawingSetPage: {
+            data: components["schemas"]["DrawingSet"][];
+            nextCursor: string | null;
+        };
+        CreateDrawingSetRequest: {
+            name: string;
+            /** Format: date */
+            issuedDate?: string;
+            /** Format: date */
+            receivedDate?: string;
+        };
+        /** @description The revision that replaced this one, for the "Superseded by Rev D on 14/10/2026" banner */
+        SupersededBy: {
+            revisionId: string;
+            rev: string;
+            /** Format: date-time */
+            at: string;
+        };
+        DrawingRevision: {
+            id: string;
+            projectId: string;
+            setId: string;
+            sheetId: string | null;
+            sheetNumber: string;
+            title: string;
+            discipline: string | null;
+            rev: string;
+            /** @enum {string|null} */
+            issuedFor: "preliminary" | "for_tender" | "for_approval" | "for_construction" | null;
+            fileId: string;
+            pageIndex: number;
+            /** @enum {string} */
+            status: "draft" | "current" | "superseded";
+            /** Format: date */
+            drawingDate: string | null;
+            publishReason: string | null;
+            /** Format: date-time */
+            publishedAt: string | null;
+            supersededBy: components["schemas"]["SupersededBy"] | null;
+            version: number;
+        };
+        DrawingRevisionList: {
+            data: components["schemas"]["DrawingRevision"][];
+        };
+        DraftDrawingRevisionInput: {
+            sheetNumber: string;
+            title: string;
+            discipline?: string;
+            rev: string;
+            issuedFor?: components["schemas"]["IssuedFor"];
+            fileId: components["schemas"]["FileRef"];
+            pageIndex?: number;
+            /** Format: date */
+            drawingDate?: string;
+        };
+        UpdateDraftDrawingRevisionRequest: {
+            sheetNumber?: string;
+            title?: string;
+            discipline?: string | null;
+            rev?: string;
+            /** @enum {string|null} */
+            issuedFor?: "preliminary" | "for_tender" | "for_approval" | "for_construction" | null;
+            pageIndex?: number;
+            /** Format: date */
+            drawingDate?: string | null;
+        };
+        PublishConflict: {
+            revisionId: string;
+            sheetNumber: string;
+            /** @enum {string} */
+            kind: "duplicate_in_set" | "revision_exists" | "older_than_current" | "new_sheet";
+            blocking: boolean;
+            currentRev: string | null;
+        };
+        DrawingSetReview: {
+            set: components["schemas"]["DrawingSet"];
+            revisions: components["schemas"]["DrawingRevision"][];
+            conflicts: components["schemas"]["PublishConflict"][];
+        };
+        PublishDrawingSetRequest: {
+            confirmNewSheets?: boolean;
+            reasons?: {
+                revisionId: string;
+                reason: string;
+            }[];
+        };
+        DrawingSheet: {
+            id: string;
+            projectId: string;
+            sheetNumber: string;
+            title: string;
+            discipline: string | null;
+            area: string | null;
+            currentRevision: components["schemas"]["DrawingRevision"] | null;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        DrawingSheetPage: {
+            data: components["schemas"]["DrawingSheet"][];
+            nextCursor: string | null;
+        };
+        /** @enum {string} */
+        MarkupVisibility: "private" | "company" | "project";
+        MarkupPoint: {
+            x: number;
+            y: number;
+        };
+        /** @description One shape in normalised sheet coordinates (`@archova/markup`); fields depend on `kind` */
+        MarkupShape: {
+            id: string;
+            /** @enum {string} */
+            kind: "pen" | "line" | "arrow" | "rect" | "ellipse" | "cloud" | "text" | "pin";
+            points?: components["schemas"]["MarkupPoint"][];
+            from?: components["schemas"]["MarkupPoint"];
+            to?: components["schemas"]["MarkupPoint"];
+            at?: components["schemas"]["MarkupPoint"];
+            text?: string;
+            entityType?: string;
+            entityId?: string;
+            strokeWidth?: number;
+            color?: string;
+        };
+        Markup: {
+            id: string;
+            projectId: string;
+            revisionId: string;
+            ownerId: string;
+            ownerCompanyId: string | null;
+            visibility: components["schemas"]["MarkupVisibility"];
+            shapes: components["schemas"]["MarkupShape"][];
+            copiedFromId: string | null;
+            /** @description Carried forward from a superseded revision; show "check location" */
+            needsLocationCheck: boolean;
+            /** Format: date-time */
+            publishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        MarkupList: {
+            data: components["schemas"]["Markup"][];
+        };
+        CreateMarkupRequest: {
+            visibility?: components["schemas"]["MarkupVisibility"];
+            shapes: components["schemas"]["MarkupShape"][];
+        };
+        UpdateMarkupRequest: {
+            visibility?: components["schemas"]["MarkupVisibility"];
+            shapes?: components["schemas"]["MarkupShape"][];
+            /** @description true confirms a carried-forward markup's location */
+            locationConfirmed?: boolean;
+        };
+        /** @enum {string} */
+        TransmittalPurpose: "for_information" | "for_review" | "for_construction" | "for_tender" | "other";
+        Transmittal: {
+            id: string;
+            projectId: string;
+            /** @description Issued on send, per project */
+            number: number | null;
+            subject: string;
+            purpose: components["schemas"]["TransmittalPurpose"];
+            fromCompanyId: string | null;
+            /** Format: date */
+            responseDue: string | null;
+            message: string | null;
+            /** @enum {string} */
+            status: "draft" | "sent";
+            /** Format: date-time */
+            sentAt: string | null;
+            sentBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            version: number;
+        };
+        TransmittalItem: {
+            /** @enum {string} */
+            revisionType: "document" | "drawing";
+            revisionId: string;
+            title: string;
+            /** @description Sheet or document number */
+            number: string | null;
+            rev: string;
+        };
+        TransmittalRecipient: {
+            id: string;
+            userId: string | null;
+            companyId: string | null;
+            email: string;
+            name: string | null;
+            /** @enum {string} */
+            role: "to" | "cc";
+            /** Format: date-time */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            openedAt: string | null;
+            /** Format: date-time */
+            downloadedAt: string | null;
+            /** Format: date-time */
+            acknowledgedAt: string | null;
+        };
+        TransmittalDetail: {
+            transmittal: components["schemas"]["Transmittal"];
+            items: components["schemas"]["TransmittalItem"][];
+            recipients: components["schemas"]["TransmittalRecipient"][];
+        };
+        TransmittalPage: {
+            data: components["schemas"]["Transmittal"][];
+            nextCursor: string | null;
+        };
+        CreateTransmittalRequest: {
+            subject: string;
+            purpose: components["schemas"]["TransmittalPurpose"];
+            fromCompanyId?: components["schemas"]["CompanyRef"];
+            /** Format: date */
+            responseDue?: string;
+            message?: string;
+            recipients: {
+                email: components["schemas"]["Email"];
+                name?: string;
+                companyId?: components["schemas"]["CompanyRef"];
+                /** @enum {string} */
+                role?: "to" | "cc";
+            }[];
+            items?: {
+                /** @enum {string} */
+                revisionType: "document" | "drawing";
+                /** @description rev_ or drv_ */
+                revisionId: string;
+            }[];
+            currentSetDisciplines?: string[];
+        };
+        AcknowledgeTransmittalRequest: {
+            /** @enum {string} */
+            event: "opened" | "downloaded" | "acknowledged";
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -748,6 +1610,13 @@ export interface components {
         OrgId: string;
         ProjectId: string;
         FileId: string;
+        FolderId: string;
+        DocumentId: string;
+        DrawingSetId: string;
+        DrawingSheetId: string;
+        DrawingRevisionId: string;
+        MarkupId: string;
+        TransmittalId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -1413,6 +2282,889 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFolders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Folders */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createFolder: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateFolder: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                folderId: components["parameters"]["FolderId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateFolderRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Folder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDocuments: {
+        parameters: {
+            query?: {
+                folderId?: string;
+                q?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of documents in folders the caller can open */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The document with every revision, newest first */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addDocumentRevision: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DocumentRevisionInput"];
+            };
+        };
+        responses: {
+            /** @description The document with its new current revision */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DocumentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDrawingSets: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Drawing sets, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingSetPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDrawingSet: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDrawingSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingSet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDrawingSetReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Review table */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingSetReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addDrawingSetRevision: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftDrawingRevisionInput"];
+            };
+        };
+        responses: {
+            /** @description Draft revision */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRevision"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeDraftDrawingRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDraftDrawingRevision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDraftDrawingRevisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRevision"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishDrawingSet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSetId: components["parameters"]["DrawingSetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishDrawingSetRequest"];
+            };
+        };
+        responses: {
+            /** @description Published */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingSetReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDrawings: {
+        parameters: {
+            query?: {
+                discipline?: string;
+                issuedFor?: components["schemas"]["IssuedFor"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of sheets ordered by sheet number */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingSheetPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDrawingSheetRevisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingSheetId: components["parameters"]["DrawingSheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description History */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRevisionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDrawingRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The revision */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRevision"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMarkups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Markups */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MarkupList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMarkup: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMarkupRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Markup"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteMarkup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+                markupId: components["parameters"]["MarkupId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMarkup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+                markupId: components["parameters"]["MarkupId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMarkupRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Markup"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTransmittals: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Transmittals, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTransmittal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTransmittalRequest"];
+            };
+        };
+        responses: {
+            /** @description Draft */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTransmittal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The transmittal with items and per-recipient receipts */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendTransmittal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sent */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acknowledgeTransmittal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcknowledgeTransmittalRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's receipt */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalRecipient"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settings */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAiSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAiSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAiUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiUsage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitAiFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiFeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

@@ -17,27 +17,30 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-access": "workspace:*",
+    "@archova/mod-ai": "workspace:*",
     "@archova/mod-billing": "workspace:*",
+    "@archova/mod-documents": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/formbody": "^8.0.2",
-    "fastify": "^5.6.0",
-    "zod": "^3.25.0",
+    "@node-rs/argon2": "^2.0.2",
     "drizzle-orm": "^0.44.0",
-    "@node-rs/argon2": "^2.0.2"
+    "fastify": "^5.6.0",
+    "zod": "^3.25.0"
   },
   "devDependencies": {
+    "@archova/ai-prompts": "workspace:*",
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
     "@archova/testing": "workspace:*",
     "@types/node": "^22.18.0",
+    "esbuild": "^0.25.0",
     "eslint": "^9.39.0",
     "ioredis": "^5.8.0",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
-    "vitest": "^3.2.0",
-    "esbuild": "^0.25.0"
+    "vitest": "^3.2.0"
   }
 }
