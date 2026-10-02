@@ -9,6 +9,7 @@ import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import { createDiarySummaryService } from './application/diary-summary';
+import { createRfiDraftService } from './application/rfi-draft';
 import { createDrawingRegisterService, type ReadableFile } from './application/drawing-register';
 import { createGateway } from './application/gateway';
 import { aiRoutes } from './api/routes';
@@ -19,6 +20,7 @@ import {
   type ModelPrice,
   type RoutingTable,
 } from './domain/routing';
+import type { SimilarRfi } from './domain/rfi-draft';
 import type { TranslationLanguage } from './domain/translation';
 import { createProvider, type ProviderConfig } from './infra/providers';
 import { AI_PERMISSIONS } from './permissions';
@@ -58,6 +60,14 @@ export type { AskAnswer, AnswerSource } from './application/ask';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
+export type { RfiDraft } from './application/rfi-draft';
+export {
+  reviewRfiDraft,
+  similarityPhrases,
+  suggestAssignees,
+  type ReviewedRfiDraft,
+  type SimilarRfi,
+} from './domain/rfi-draft';
 export {
   diaryFacts,
   reviewDiarySummary,
@@ -141,6 +151,12 @@ export function createAiModule(
     sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
     /** documents.api.aiAccessScopes: what the caller may retrieve. */
     accessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
+    /** rfis.api.findSimilar: RFIs the caller can see on the same subject (F3). */
+    similarRfis: (
+      scope: TenantScope,
+      projectId: string,
+      input: { phrases: string[]; limit: number },
+    ) => Promise<SimilarRfi[]>;
     /** Tests pass a fake provider directly. */
     provider?: ModelProvider;
     /** Tests pass an enabled test language; defaults to TRANSLATION_LANGUAGES. */
@@ -186,6 +202,13 @@ export function createAiModule(
     assert: deps.assert,
     accessScopes: deps.accessScopes,
   });
+  const rfiDrafts = createRfiDraftService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    accessScopes: deps.accessScopes,
+    similarRfis: deps.similarRfis,
+  });
   const diarySummary = createDiarySummaryService({ database: services.database, gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
@@ -202,6 +225,7 @@ export function createAiModule(
       askService,
       projectIndex,
       inductionDrafts,
+      rfiDrafts,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -212,6 +236,8 @@ export function createAiModule(
       ask: askService.ask,
       indexProject: projectIndex.indexProject,
       draftInduction: inductionDrafts.draft,
+      /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
+      draftRfi: rfiDrafts.draft,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
       summariseDiaryDay: diarySummary.summariseDay,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */

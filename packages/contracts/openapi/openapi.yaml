@@ -1260,6 +1260,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftRfiWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: rfis.rfis.create
+      summary: Nova drafts an RFI from a note typed on site (F3).
+      description: |
+        Nova turns the note into an RFI subject and question, citing the drawings and spec clauses it refers to
+        from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
+        the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
+        neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
+        saved: the draft fills the RFI form and the person edits and sends it. Costs one Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [note]
+              properties:
+                note: { type: string, minLength: 1, maxLength: 4000 }
+      responses:
+        '200':
+          description: The draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaRfiDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3469,6 +3502,70 @@ components:
           description: When not found, the nearest passages so the user can check themselves.
           type: array
           items: { $ref: '#/components/schemas/NovaSource' }
+    NovaRfiDraft:
+      type: object
+      required:
+        [
+          runId,
+          subject,
+          question,
+          discipline,
+          references,
+          gaps,
+          unsupportedNumbers,
+          similarRfis,
+          suggestedAssigneeIds,
+        ]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        subject: { type: string }
+        question: { type: string }
+        discipline:
+          description: The consultant discipline that should answer; null when the note doesn't say enough.
+          type: [string, 'null']
+          enum:
+            [
+              architectural,
+              structural,
+              civil,
+              hydraulic,
+              mechanical,
+              electrical,
+              fire,
+              landscape,
+              interiors,
+              survey,
+              other,
+              null,
+            ]
+        references:
+          description: Drawings and spec clauses the question refers to, each with the words that make it relevant.
+          type: array
+          items: { $ref: '#/components/schemas/NovaCitation' }
+        gaps:
+          description: Details a complete RFI states that the note didn't give, for the form to prompt.
+          type: array
+          items: { type: string, enum: [location, drawing_reference, proposed_solution, impact] }
+        unsupportedNumbers:
+          description: Numbers in the subject or question found in neither the note nor a cited passage.
+          type: array
+          items: { type: string }
+        similarRfis:
+          description: RFIs already raised on this project on the same subject, best match first.
+          type: array
+          items:
+            type: object
+            required: [id, number, subject, status]
+            properties:
+              id: { type: string, description: The RFI (`rfi_`) }
+              number:
+                { type: [string, 'null'], description: As the register shows it, e.g. RFI-014 }
+              subject: { type: string }
+              status: { type: string, enum: [open, answered, closed] }
+        suggestedAssigneeIds:
+          description: People (`usr_`) asked the most similar RFIs. The person picks the assignee.
+          type: array
+          items: { type: string }
     NovaIndexReport:
       type: object
       required: [indexed, unchanged, noText, ocrPages, unsupported, chunks]

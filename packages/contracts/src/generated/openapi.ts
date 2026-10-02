@@ -966,6 +966,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts an RFI from a note typed on site (F3).
+         * @description Nova turns the note into an RFI subject and question, citing the drawings and spec clauses it refers to
+         *     from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
+         *     the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
+         *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
+         *     saved: the draft fills the RFI form and the person edits and sends it. Costs one Nova credit.
+         */
+        post: operations["draftRfiWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts": {
         parameters: {
             query?: never;
@@ -2390,6 +2417,35 @@ export interface components {
             citations: components["schemas"]["NovaCitation"][];
             /** @description When not found, the nearest passages so the user can check themselves. */
             closestMatches: components["schemas"]["NovaSource"][];
+        };
+        NovaRfiDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            subject: string;
+            question: string;
+            /**
+             * @description The consultant discipline that should answer; null when the note doesn't say enough.
+             * @enum {string|null}
+             */
+            discipline: "architectural" | "structural" | "civil" | "hydraulic" | "mechanical" | "electrical" | "fire" | "landscape" | "interiors" | "survey" | "other" | null;
+            /** @description Drawings and spec clauses the question refers to, each with the words that make it relevant. */
+            references: components["schemas"]["NovaCitation"][];
+            /** @description Details a complete RFI states that the note didn't give, for the form to prompt. */
+            gaps: ("location" | "drawing_reference" | "proposed_solution" | "impact")[];
+            /** @description Numbers in the subject or question found in neither the note nor a cited passage. */
+            unsupportedNumbers: string[];
+            /** @description RFIs already raised on this project on the same subject, best match first. */
+            similarRfis: {
+                /** @description The RFI (`rfi_`) */
+                id: string;
+                /** @description As the register shows it */
+                number: string | null;
+                subject: string;
+                /** @enum {string} */
+                status: "open" | "answered" | "closed";
+            }[];
+            /** @description People (`usr_`) asked the most similar RFIs. The person picks the assignee. */
+            suggestedAssigneeIds: string[];
         };
         NovaIndexReport: {
             indexed: number;
@@ -5272,6 +5328,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftRfiWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    note: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaRfiDraft"];
                 };
             };
             default: components["responses"]["Problem"];

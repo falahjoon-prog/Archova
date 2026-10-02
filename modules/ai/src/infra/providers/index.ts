@@ -7,6 +7,7 @@ import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
+import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
 import { createFakeProvider, type FakeResponder } from './fake';
 import { createTextractOcr } from './textract';
@@ -25,6 +26,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.translate': fakeTranslate,
   'translation.check': fakeTranslationCheck,
   'diary.summary': heuristicDiarySummary,
+  'rfi.draft': heuristicRfiDraft,
 };
 
 export {
