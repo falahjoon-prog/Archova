@@ -3,6 +3,7 @@ import {
   DEFAULT_PERMISSION_TEMPLATES,
   FOUNDATION_REGISTRY,
   NO_PERMISSIONS,
+  TOOLS,
   evaluate,
   type EffectivePermissions,
 } from '../src/permissions';
@@ -89,7 +90,7 @@ describe('evaluate', () => {
 
   it('seeds every tool in every default template', () => {
     for (const t of DEFAULT_PERMISSION_TEMPLATES) {
-      expect(Object.keys(t.toolLevels).length).toBe(13);
+      expect(Object.keys(t.toolLevels).length).toBe(TOOLS.length);
     }
   });
 });

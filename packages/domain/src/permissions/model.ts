@@ -22,6 +22,7 @@ export const TOOLS = [
   'variations',
   'payment_claims',
   'directory',
+  'workforce',
   'project_admin',
 ] as const;
 export type Tool = (typeof TOOLS)[number];

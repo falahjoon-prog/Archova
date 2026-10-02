@@ -98,6 +98,17 @@ export const PROBLEM_CODES = {
   'diary.already_submitted': 409,
   'diary_line.not_found': 404,
   'diary.edit_reason_required': 422,
+  // workforce
+  'workforce_site.not_found': 404,
+  'workforce_site.name_taken': 409,
+  'workforce_site.inactive': 409,
+  'gate.not_found': 404,
+  'gate.name_taken': 409,
+  'gate.invalid_code': 422,
+  'worker.not_found': 404,
+  'attendance.not_on_site': 409,
+  'roll_call.not_found': 404,
+  'roll_call.ended': 409,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

@@ -569,6 +569,110 @@ export const DeleteDiaryStandDownParams = z.object({
 export const DeleteDiaryStandDownQuery = z.object({
   "amendmentReason": z.string().min(1).max(1000).optional(),
 });
+export const ListAttendanceSitesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateAttendanceSiteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateAttendanceSiteBody = s.CreateAttendanceSiteRequestSchema;
+export const UpdateAttendanceSiteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+});
+export const UpdateAttendanceSiteBody = s.UpdateAttendanceSiteRequestSchema;
+export const CreateGateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+});
+export const CreateGateBody = s.CreateGateRequestSchema;
+export const UpdateGateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "gateId": z.string().regex(new RegExp("^wgt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateGateBody = s.UpdateGateRequestSchema;
+export const ReissueGateCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "gateId": z.string().regex(new RegExp("^wgt_[0-9A-Za-z]{26}$")),
+});
+export const ListWorkersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListWorkersQuery = z.object({
+  "companyId": s.CompanyRefSchema.optional(),
+  "kind": z.enum(["worker", "visitor", "delivery"]).optional(),
+  "q": z.string().min(1).max(100).optional(),
+});
+export const CreateWorkerParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateWorkerBody = s.CreateWorkerRequestSchema;
+export const UpdateWorkerParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateWorkerBody = s.UpdateWorkerRequestSchema;
+export const SignInSelfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SignInSelfBody = s.SelfSignInRequestSchema;
+export const SignOutSelfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SignOutSelfBody = s.SelfSignOutRequestSchema;
+export const RecordAttendanceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const RecordAttendanceBody = s.RecordAttendanceRequestSchema;
+export const GetOnSiteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetOnSiteQuery = z.object({
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+});
+export const ListAttendanceSessionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListAttendanceSessionsQuery = z.object({
+  "date": z.string().date(),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+  "companyId": s.CompanyRefSchema.optional(),
+});
+export const StartRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const StartRollCallBody = s.StartRollCallRequestSchema;
+export const GetRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
+export const MarkRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
+export const MarkRollCallBody = s.MarkRollCallRequestSchema;
+export const EndRollCallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rollCallId": z.string().regex(new RegExp("^rlc_[0-9A-Za-z]{26}$")),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -1794,6 +1898,222 @@ export const operations = {
     contentType: null,
     params: DeleteDiaryStandDownParams,
     query: DeleteDiaryStandDownQuery,
+    body: null,
+  },
+  listAttendanceSites: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sites',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: null,
+    params: ListAttendanceSitesParams,
+    query: null,
+    body: null,
+  },
+  createAttendanceSite: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sites',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateAttendanceSiteParams,
+    query: null,
+    body: CreateAttendanceSiteBody,
+  },
+  updateAttendanceSite: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sites/{siteId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateAttendanceSiteParams,
+    query: null,
+    body: UpdateAttendanceSiteBody,
+  },
+  createGate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sites/{siteId}/gates',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateGateParams,
+    query: null,
+    body: CreateGateBody,
+  },
+  updateGate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/gates/{gateId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateGateParams,
+    query: null,
+    body: UpdateGateBody,
+  },
+  reissueGateCode: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/gates/{gateId}/reissue',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: null,
+    params: ReissueGateCodeParams,
+    query: null,
+    body: null,
+  },
+  listWorkers: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/workers',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.workers.manage",
+    internal: false,
+    contentType: null,
+    params: ListWorkersParams,
+    query: ListWorkersQuery,
+    body: null,
+  },
+  createWorker: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/workers',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.workers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateWorkerParams,
+    query: null,
+    body: CreateWorkerBody,
+  },
+  updateWorker: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/workers/{workerId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.workers.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateWorkerParams,
+    query: null,
+    body: UpdateWorkerBody,
+  },
+  signInSelf: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sign-in',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SignInSelfParams,
+    query: null,
+    body: SignInSelfBody,
+  },
+  signOutSelf: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sign-out',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: "application/json",
+    params: SignOutSelfParams,
+    query: null,
+    body: SignOutSelfBody,
+  },
+  recordAttendance: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/events',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordAttendanceParams,
+    query: null,
+    body: RecordAttendanceBody,
+  },
+  getOnSite: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/on-site',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: null,
+    params: GetOnSiteParams,
+    query: GetOnSiteQuery,
+    body: null,
+  },
+  listAttendanceSessions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/sessions',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: null,
+    params: ListAttendanceSessionsParams,
+    query: ListAttendanceSessionsQuery,
+    body: null,
+  },
+  startRollCall: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: "application/json",
+    params: StartRollCallParams,
+    query: null,
+    body: StartRollCallBody,
+  },
+  getRollCall: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: null,
+    params: GetRollCallParams,
+    query: null,
+    body: null,
+  },
+  markRollCall: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/marks',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: "application/json",
+    params: MarkRollCallParams,
+    query: null,
+    body: MarkRollCallBody,
+  },
+  endRollCall: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls/{rollCallId}/end',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.manage",
+    internal: false,
+    contentType: null,
+    params: EndRollCallParams,
+    query: null,
     body: null,
   },
 } as const satisfies Record<string, OperationDef>;
