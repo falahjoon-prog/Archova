@@ -8,6 +8,7 @@ skip-check:
   - CKV_AWS_338 # log retention >= 1 year: prod uses 365; dev, staging and loadtest are shorter by design
   - CKV2_AWS_50 # Valkey Multi-AZ: on wherever replicas > 0 (staging, prod)
   - CKV_AWS_150 # ALB deletion protection: var.deletion_protection (on in staging and prod)
+  - CKV_AWS_344 # Network Firewall deletion protection: var.deletion_protection (on in staging and prod)
   - CKV2_AWS_8 # AWS Backup plan for Aurora: the backup module covers prod; dev and loadtest rely on PITR
   # Checkov cannot see these settings through dynamic blocks or write-only arguments.
   - CKV_AWS_31 # Valkey AUTH: set with auth_token_wo (write-only, not in state)
