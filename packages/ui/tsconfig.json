@@ -1,0 +1,4 @@
+{
+  "extends": "@archova/config-ts/react-library.json",
+  "include": ["src", "test", "vitest.config.ts"]
+}

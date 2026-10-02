@@ -1,0 +1,39 @@
+{
+  "name": "archova",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint && pnpm check:boundaries",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration --concurrency=1",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "gen": "tsx tools/codegen/generate-contracts.ts",
+    "gen:check": "tsx tools/codegen/generate-contracts.ts --check",
+    "db:compose": "tsx tools/db/compose.ts",
+    "db:compose:check": "tsx tools/db/compose.ts --check",
+    "db:bootstrap": "tsx tools/db/bootstrap.ts",
+    "db:migrate": "tsx tools/db/migrate.ts",
+    "db:lint": "tsx tools/db/lint-migrations.ts",
+    "db:reset": "tsx tools/db/bootstrap.ts --reset && tsx tools/db/migrate.ts",
+    "check:boundaries": "tsx tools/boundaries/check-boundaries.ts"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@types/node": "^22.18.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.6.0",
+    "tsx": "^4.20.0",
+    "turbo": "^2.5.0",
+    "typescript": "~5.9.3",
+    "@archova/tools": "workspace:*"
+  }
+}

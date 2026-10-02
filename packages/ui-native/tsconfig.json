@@ -1,0 +1,10 @@
+{
+  "extends": "@archova/config-ts/base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "jsx": "react-jsx",
+    "customConditions": ["react-native"],
+    "types": []
+  },
+  "include": ["src"]
+}

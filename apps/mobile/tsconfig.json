@@ -1,0 +1,14 @@
+{
+  "extends": ["expo/tsconfig.base", "@archova/config-ts/base.json"],
+  "compilerOptions": {
+    "lib": ["ES2023", "DOM"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "customConditions": ["react-native"],
+    "allowJs": false,
+    "types": []
+  },
+  "include": ["**/*.ts", "**/*.tsx", "expo-env.d.ts"],
+  "exclude": ["node_modules", "metro.config.js", "ios", "android", "dist"]
+}

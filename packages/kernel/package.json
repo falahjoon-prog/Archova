@@ -1,0 +1,33 @@
+{
+  "name": "@archova/kernel",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@archova/contracts": "workspace:*",
+    "@archova/domain": "workspace:*",
+    "@archova/time": "workspace:*",
+    "drizzle-orm": "^0.44.0",
+    "ioredis": "^5.8.0",
+    "pg": "^8.16.0",
+    "pino": "^9.11.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.0",
+    "eslint": "^9.39.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

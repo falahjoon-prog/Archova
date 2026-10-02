@@ -1,0 +1,5 @@
+{
+  "extends": "@archova/config-ts/node.json",
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}

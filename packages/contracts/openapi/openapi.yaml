@@ -1,0 +1,996 @@
+openapi: 3.1.0
+info:
+  title: Archova API
+  version: 1.0.0
+  description: |
+    Contract-first source of truth for the Archova API (ADR-0002). Server validation, TypeScript types,
+    zod schemas and the web/mobile api-client are generated from this file with `pnpm gen`.
+
+    Standard behaviours (docs/architecture/api.md §3): prefixed UUIDv7 ids, cursor pagination,
+    RFC 9457 problem responses with a stable `code`, ETag/If-Match on updates, Idempotency-Key on POST.
+servers:
+  - url: https://app.{domain}
+    description: Browser (same-origin, `__Host-sid` cookie only)
+    variables:
+      domain: { default: example.com }
+  - url: https://api.{domain}
+    description: Mobile, public API and integrations (bearer only)
+    variables:
+      domain: { default: example.com }
+tags:
+  - name: auth
+  - name: me
+  - name: orgs
+  - name: projects
+  - name: companies
+  - name: access
+  - name: billing
+  - name: files
+  - name: oauth
+paths:
+  /v1/auth/signup:
+    post:
+      operationId: signup
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Create an account with email and password and start a web session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignupRequest' }
+      responses:
+        '201':
+          description: Account created; `__Host-sid` and `__Host-csrf` cookies set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionInfo' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      x-module: identity
+      x-auth: none
+      summary: Sign in with email and password and start a web session.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Signed in; `__Host-sid` and `__Host-csrf` cookies set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionInfo' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      x-module: identity
+      summary: Revoke the current session.
+      responses:
+        '204': { description: Signed out }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/auth/session:
+    get:
+      operationId: getSession
+      tags: [auth]
+      x-module: identity
+      summary: The current session, with a fresh CSRF token for cookie clients.
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionInfo' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/oauth/authorize:
+    get:
+      operationId: oauthAuthorize
+      tags: [oauth]
+      x-module: identity
+      x-auth: none
+      x-internal: true
+      summary: OAuth 2.1 authorisation endpoint (code + PKCE S256) for first-party mobile clients.
+      description: |
+        Requires a signed-in web session on `app.<domain>`. Redirects to the client's registered redirect URI
+        with `code` and `state`. Unauthenticated users are redirected to the web sign-in page.
+      parameters:
+        - { name: response_type, in: query, required: true, schema: { type: string, enum: [code] } }
+        - { name: client_id, in: query, required: true, schema: { type: string } }
+        - { name: redirect_uri, in: query, required: true, schema: { type: string } }
+        - {
+            name: code_challenge,
+            in: query,
+            required: true,
+            schema: { type: string, minLength: 43, maxLength: 128 },
+          }
+        - {
+            name: code_challenge_method,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [S256] },
+          }
+        - { name: state, in: query, required: true, schema: { type: string, maxLength: 512 } }
+      responses:
+        '302': { description: Redirect to the client with an authorisation code }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/oauth/token:
+    post:
+      operationId: oauthToken
+      tags: [oauth]
+      x-module: identity
+      x-auth: none
+      summary: Exchange an authorisation code or rotate a refresh token.
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/TokenRequest' }
+      responses:
+        '200':
+          description: Tokens
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/oauth/revoke:
+    post:
+      operationId: oauthRevoke
+      tags: [oauth]
+      x-module: identity
+      x-auth: none
+      summary: Revoke a refresh token and its session (RFC 7009).
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/RevokeRequest' }
+      responses:
+        '200': { description: Revoked (also returned for unknown tokens) }
+        default: { $ref: '#/components/responses/Problem' }
+  /.well-known/jwks.json:
+    get:
+      operationId: getJwks
+      tags: [oauth]
+      x-module: identity
+      x-auth: none
+      summary: Public keys for verifying access tokens.
+      responses:
+        '200':
+          description: JWK set
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Jwks' }
+  /v1/me:
+    get:
+      operationId: getMe
+      tags: [me]
+      x-module: platform
+      summary: The current user and every org they can open.
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Me' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs:
+    post:
+      operationId: createOrg
+      tags: [orgs]
+      x-module: platform
+      summary: Create an organisation. The caller becomes its owner.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOrgRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Org' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getOrg
+      tags: [orgs]
+      x-module: platform
+      responses:
+        '200':
+          description: The organisation
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Org' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/entitlements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getEntitlements
+      tags: [billing]
+      x-module: billing
+      summary: Modules and limits this org is licensed for (X23).
+      responses:
+        '200':
+          description: Entitlements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Entitlements' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listProjects
+      tags: [projects]
+      x-module: platform
+      summary: Projects the caller can see in this org.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of projects
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createProject
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.create
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateProjectRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProject
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      responses:
+        '200':
+          description: The project
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateProject
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateProjectRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Project' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/members:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectMembers
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.project_members.read
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of project members
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectMemberPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addProjectMember
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.project_members.manage
+      summary: Add an existing user to the project with a company and permission template.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddProjectMemberRequest' }
+      responses:
+        '201':
+          description: Added
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/permissions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getProjectPermissions
+      tags: [access]
+      x-module: access
+      summary: The caller's effective permissions on this project, for hiding UI.
+      responses:
+        '200':
+          description: Effective permissions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EffectivePermissions' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/permission-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPermissionTemplates
+      tags: [access]
+      x-module: access
+      x-permission: access.templates.read
+      responses:
+        '200':
+          description: Permission templates
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/PermissionTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/companies:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.read
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of companies
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CompanyPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCompany
+      tags: [companies]
+      x-module: platform
+      x-permission: platform.companies.manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCompanyRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Company' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/uploads:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: createUpload
+      tags: [files]
+      x-module: files
+      summary: Start an upload. Returns a presigned URL; the file goes straight to storage, never through the API.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUploadRequest' }
+      responses:
+        '201':
+          description: Upload session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Upload' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/uploads/{uploadId}/complete:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: uploadId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^upl_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: completeUpload
+      tags: [files]
+      x-module: files
+      summary: Tell the API the client finished uploading. Verifies, scans and stores the file.
+      responses:
+        '200':
+          description: The stored file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileObject' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/files/{fileId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getFile
+      tags: [files]
+      x-module: files
+      responses:
+        '200':
+          description: File metadata
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileObject' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/files/{fileId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getFileDownload
+      tags: [files]
+      x-module: files
+      summary: A short-lived signed URL for downloading the file.
+      responses:
+        '200':
+          description: Signed URL (5 minutes)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadLink' }
+        default: { $ref: '#/components/responses/Problem' }
+components:
+  parameters:
+    OrgId:
+      name: orgId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^org_[0-9A-Za-z]{26}$' }
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+    FileId:
+      name: fileId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string, maxLength: 200 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string, maxLength: 255 }
+    IfMatch:
+      name: If-Match
+      in: header
+      required: true
+      description: The ETag from the last read. Missing → 428, stale → 412.
+      schema: { type: string }
+  headers:
+    ETag:
+      description: Row version, quoted (`"3"`).
+      schema: { type: string }
+  responses:
+    Problem:
+      description: RFC 9457 problem
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+  schemas:
+    Problem:
+      type: object
+      required: [type, title, status, code]
+      properties:
+        type: { type: string }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        code:
+          { type: string, description: 'Stable machine-readable code, e.g. `rfi.already_closed`' }
+        traceId: { type: string }
+        errors:
+          type: array
+          items:
+            type: object
+            required: [path, message]
+            properties:
+              path: { type: string }
+              message: { type: string }
+    Email:
+      type: string
+      format: email
+      maxLength: 320
+    Password:
+      type: string
+      minLength: 10
+      maxLength: 256
+    User:
+      type: object
+      required: [id, email, name, locale, timezone]
+      properties:
+        id: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        email: { $ref: '#/components/schemas/Email' }
+        name: { type: string }
+        locale: { type: string }
+        timezone: { type: [string, 'null'] }
+    SignupRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password, name]
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        password: { $ref: '#/components/schemas/Password' }
+        name: { type: string, minLength: 1, maxLength: 200 }
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        password: { type: string, minLength: 1, maxLength: 256 }
+    SessionInfo:
+      type: object
+      required: [user, csrfToken, expiresAt]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        csrfToken:
+          {
+            type: string,
+            description: 'Echo in `X-CSRF-Token` on unsafe cookie requests (ADR-0004 §5)',
+          }
+        expiresAt: { type: string, format: date-time }
+    TokenRequest:
+      type: object
+      required: [grant_type, client_id]
+      properties:
+        grant_type: { type: string, enum: [authorization_code, refresh_token] }
+        client_id: { type: string }
+        code: { type: string }
+        redirect_uri: { type: string }
+        code_verifier: { type: string, minLength: 43, maxLength: 128 }
+        refresh_token: { type: string }
+    TokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in, refresh_token]
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, enum: [Bearer] }
+        expires_in: { type: integer }
+        refresh_token: { type: string }
+    RevokeRequest:
+      type: object
+      required: [token, client_id]
+      properties:
+        token: { type: string }
+        client_id: { type: string }
+    Jwks:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items: { type: object, additionalProperties: true }
+    MembershipSummary:
+      type: object
+      required: [orgId, orgName, orgSlug, role, kind]
+      properties:
+        orgId: { type: string }
+        orgName: { type: string }
+        orgSlug: { type: string }
+        role:
+          {
+            type: [string, 'null'],
+            enum: [owner, admin, billing_admin, member, null],
+            description: 'Null for external collaborators',
+          }
+        kind: { type: string, enum: [member, external] }
+    Me:
+      type: object
+      required: [user, memberships]
+      properties:
+        user: { $ref: '#/components/schemas/User' }
+        memberships:
+          type: array
+          items: { $ref: '#/components/schemas/MembershipSummary' }
+    Org:
+      type: object
+      required: [id, name, slug, country, timezone, kind, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        legalName: { type: [string, 'null'] }
+        abn: { type: [string, 'null'] }
+        slug: { type: string }
+        country: { type: string }
+        timezone: { type: string }
+        kind: { type: string, enum: [builder, subcontractor_free] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    Abn:
+      type: string
+      pattern: '^[0-9]{11}$'
+    CreateOrgRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        legalName: { type: string, maxLength: 200 }
+        slug: { type: string, pattern: '^[a-z0-9](?:[a-z0-9-]{1,46})[a-z0-9]$' }
+        abn: { $ref: '#/components/schemas/Abn' }
+        country:
+          { type: string, pattern: '^[A-Z]{2}$', description: 'ISO 3166-1 alpha-2; default AU' }
+        timezone:
+          { type: string, maxLength: 64, description: 'IANA time zone; default Australia/Sydney' }
+    AuState:
+      type: string
+      enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT]
+    ProjectStatus:
+      type: string
+      enum: [tender, active, on_hold, closed, archived]
+    Address:
+      type: object
+      additionalProperties: false
+      properties:
+        line1: { type: string, maxLength: 200 }
+        line2: { type: string, maxLength: 200 }
+        suburb: { type: string, maxLength: 100 }
+        state: { $ref: '#/components/schemas/AuState' }
+        postcode: { type: string, maxLength: 10 }
+        country: { type: string, maxLength: 2 }
+    GeoPoint:
+      type: object
+      description: WGS 84 decimal degrees (X32)
+      additionalProperties: false
+      required: [lat, lng]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+    GeoFix:
+      type: object
+      description: A recorded position and how good it was
+      additionalProperties: false
+      required: [lat, lng, source]
+      properties:
+        lat: { type: number, minimum: -90, maximum: 90 }
+        lng: { type: number, minimum: -180, maximum: 180 }
+        accuracyM: { type: [number, 'null'], minimum: 0 }
+        headingDeg: { type: [number, 'null'], minimum: 0, maximum: 360 }
+        source: { type: string, enum: [device, exif, manual, geocoded] }
+    Capture:
+      type: object
+      description: When and where a photo or file was captured, as the device reported it
+      additionalProperties: false
+      properties:
+        takenAt: { type: string, format: date-time }
+        timeZone: { type: string, maxLength: 64, description: 'IANA zone the device was in' }
+        location: { $ref: '#/components/schemas/GeoFix' }
+    Project:
+      type: object
+      required:
+        [
+          id,
+          orgId,
+          name,
+          number,
+          status,
+          state,
+          timezone,
+          address,
+          siteLocation,
+          geofenceRadiusM,
+          startDate,
+          endDate,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        orgId: { type: string }
+        name: { type: string }
+        number: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+        state: { type: [string, 'null'], enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT, null] }
+        timezone:
+          { type: string, description: 'IANA time zone; local dates and deadlines use it (X32)' }
+        address: { oneOf: [{ $ref: '#/components/schemas/Address' }, { type: 'null' }] }
+        siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
+        geofenceRadiusM: { type: [integer, 'null'] }
+        startDate: { type: [string, 'null'], format: date }
+        endDate: { type: [string, 'null'], format: date }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateProjectRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        number: { type: string, maxLength: 50 }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+        state: { $ref: '#/components/schemas/AuState' }
+        timezone: { type: string, maxLength: 64 }
+        address: { $ref: '#/components/schemas/Address' }
+        siteLocation: { $ref: '#/components/schemas/GeoPoint' }
+        geofenceRadiusM: { type: integer, minimum: 10, maximum: 10000 }
+        startDate: { type: string, format: date }
+        endDate: { type: string, format: date }
+    UpdateProjectRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        number: { type: [string, 'null'], maxLength: 50 }
+        status: { $ref: '#/components/schemas/ProjectStatus' }
+        state: { $ref: '#/components/schemas/AuState' }
+        timezone: { type: string, maxLength: 64 }
+        address: { $ref: '#/components/schemas/Address' }
+        siteLocation: { oneOf: [{ $ref: '#/components/schemas/GeoPoint' }, { type: 'null' }] }
+        geofenceRadiusM: { type: [integer, 'null'], minimum: 10, maximum: 10000 }
+        startDate: { type: [string, 'null'], format: date }
+        endDate: { type: [string, 'null'], format: date }
+    ProjectPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Project' }
+        nextCursor: { type: [string, 'null'] }
+    CompanyType:
+      type: string
+      enum: [builder, subcontractor, consultant, client, supplier]
+    Company:
+      type: object
+      required:
+        [id, name, abn, type, trades, email, phone, isOwnCompany, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        abn: { type: [string, 'null'] }
+        type: { $ref: '#/components/schemas/CompanyType' }
+        trades:
+          type: array
+          items: { type: string }
+        email: { type: [string, 'null'] }
+        phone: { type: [string, 'null'] }
+        isOwnCompany: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CreateCompanyRequest:
+      type: object
+      additionalProperties: false
+      required: [name, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        abn: { $ref: '#/components/schemas/Abn' }
+        type: { $ref: '#/components/schemas/CompanyType' }
+        trades:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 100 }
+        email: { $ref: '#/components/schemas/Email' }
+        phone: { type: string, maxLength: 50 }
+    CompanyPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Company' }
+        nextCursor: { type: [string, 'null'] }
+    PermissionLevel:
+      type: string
+      enum: [none, read, standard, admin]
+    ToolLevels:
+      type: object
+      additionalProperties: { $ref: '#/components/schemas/PermissionLevel' }
+    PermissionTemplate:
+      type: object
+      required: [id, name, description, toolLevels, granular, companyScopedTools, isSeeded, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        description: { type: string }
+        toolLevels: { $ref: '#/components/schemas/ToolLevels' }
+        granular:
+          type: array
+          items: { type: string }
+        companyScopedTools:
+          type: array
+          items: { type: string }
+        isSeeded: { type: boolean }
+        version: { type: integer }
+    ProjectMember:
+      type: object
+      required:
+        [id, projectId, userId, name, email, companyId, permissionTemplateId, isExternal, status]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        email: { type: string }
+        companyId: { type: string }
+        permissionTemplateId: { type: string }
+        isExternal: { type: boolean }
+        status: { type: string, enum: [active, removed] }
+    AddProjectMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [email, companyId, permissionTemplateId]
+      properties:
+        email: { $ref: '#/components/schemas/Email' }
+        companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        permissionTemplateId: { type: string, pattern: '^ptp_[0-9A-Za-z]{26}$' }
+    ProjectMemberPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ProjectMember' }
+        nextCursor: { type: [string, 'null'] }
+    EffectivePermissions:
+      type: object
+      required:
+        [
+          orgRole,
+          isExternal,
+          projectId,
+          companyId,
+          isProjectMember,
+          toolLevels,
+          granular,
+          denied,
+          companyScopedTools,
+        ]
+      properties:
+        orgRole: { type: [string, 'null'], enum: [owner, admin, billing_admin, member, null] }
+        isExternal: { type: boolean }
+        projectId: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+        isProjectMember: { type: boolean }
+        toolLevels: { $ref: '#/components/schemas/ToolLevels' }
+        granular:
+          type: array
+          items: { type: string }
+        denied:
+          type: array
+          items: { type: string }
+        companyScopedTools:
+          type: array
+          items: { type: string }
+    Entitlements:
+      type: object
+      required: [orgId, plan, state, modules, limits]
+      properties:
+        orgId: { type: string }
+        plan: { type: string }
+        state: { type: string, enum: [trialing, active, past_due, read_only, cancelled] }
+        modules:
+          type: array
+          items: { type: string }
+        limits:
+          type: object
+          additionalProperties: { type: [integer, 'null'] }
+    CreateUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [filename, mime, sizeBytes, sha256, module]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 255 }
+        mime: { type: string, maxLength: 255 }
+        sizeBytes: { type: integer, minimum: 1, maximum: 5368709120 }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        module:
+          {
+            type: string,
+            pattern: '^[a-z_]{2,32}$',
+            description: 'Owning module, e.g. `documents`, `photos`',
+          }
+        capture: { $ref: '#/components/schemas/Capture' }
+    Upload:
+      type: object
+      required: [id, status, uploadUrl, uploadMethod, uploadHeaders, expiresAt]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [pending, uploaded, expired] }
+        uploadUrl: { type: string }
+        uploadMethod: { type: string, enum: [PUT] }
+        uploadHeaders:
+          type: object
+          additionalProperties: { type: string }
+        expiresAt: { type: string, format: date-time }
+    FileObject:
+      type: object
+      required:
+        [id, projectId, module, filename, mime, sizeBytes, sha256, status, capture, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: [string, 'null'] }
+        module: { type: string }
+        filename: { type: string }
+        mime: { type: string }
+        sizeBytes: { type: integer }
+        sha256: { type: string }
+        status: { type: string, enum: [scanning, ready, infected, failed] }
+        capture: { oneOf: [{ $ref: '#/components/schemas/Capture' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+    DownloadLink:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }

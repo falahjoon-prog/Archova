@@ -1,0 +1,50 @@
+{
+  "name": "@archova/mobile",
+  "version": "0.0.0",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "start": "expo start",
+    "ios": "expo start --ios",
+    "android": "expo start --android",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@archova/api-client": "workspace:*",
+    "@archova/auth-client": "workspace:*",
+    "@archova/contracts": "workspace:*",
+    "@archova/design-tokens": "workspace:*",
+    "@archova/query": "workspace:*",
+    "@archova/routes": "workspace:*",
+    "@archova/ui-native": "workspace:*",
+    "@tanstack/react-query": "^5.90.0",
+    "expo": "~57.0.26",
+    "expo-constants": "~57.0.20",
+    "expo-crypto": "~57.0.3",
+    "expo-linking": "~57.0.11",
+    "expo-router": "~57.0.24",
+    "expo-secure-store": "~57.0.4",
+    "expo-status-bar": "~57.0.1",
+    "expo-web-browser": "~57.0.3",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0",
+    "react-native-gesture-handler": "~2.32.0",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@react-native/metro-config": "0.86.3",
+    "@types/react": "~19.2.2",
+    "eslint": "^9.39.0",
+    "globals": "^16.4.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}
