@@ -1,0 +1,126 @@
+# Production images (infrastructure/03 §2, §3): build api, web and migrate for linux/arm64, lint the Dockerfile,
+# scan each image with Trivy, attach an SBOM, and run the accessibility gate against the built web app. Once the
+# AWS accounts exist (repository variable INFRA_AWS_READY = true) images are pushed to ECR in shared-services
+# (pr-<n>-<sha> on pull requests, <sha> on main) and signed with cosign.
+name: Images
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  hadolint:
+    name: Dockerfile lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.1.0
+        with:
+          dockerfile: Dockerfile
+          failure-threshold: warning
+
+  build:
+    name: Image ${{ matrix.target }}
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [api, web, migrate]
+    env:
+      PUSH: ${{ vars.INFRA_AWS_READY == 'true' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) }}
+      TAG: ${{ github.event_name == 'pull_request' && format('pr-{0}-{1}', github.event.number, github.event.pull_request.head.sha) || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.target }}
+          platforms: linux/arm64
+          load: true
+          tags: archova/${{ matrix.target }}:${{ env.TAG }}
+          cache-from: type=gha,scope=${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.target }}
+          provenance: false
+      - name: Trivy (fixable high and critical fail the build)
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: archova/${{ matrix.target }}:${{ env.TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          format: table
+      - name: SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: archova/${{ matrix.target }}:${{ env.TAG }}
+          format: spdx-json
+          artifact-name: sbom-${{ matrix.target }}.spdx.json
+
+      # --- Push and sign (once AWS exists) ---------------------------------------------------------------------
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: env.PUSH == 'true'
+        with:
+          role-to-assume: ${{ vars.AWS_ECR_ROLE_ARN }}
+          aws-region: ap-southeast-2
+      - id: ecr
+        if: env.PUSH == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Push
+        id: push
+        if: env.PUSH == 'true'
+        env:
+          REPO: ${{ steps.ecr.outputs.registry }}/archova/${{ matrix.target }}
+        run: |
+          docker tag "archova/${{ matrix.target }}:$TAG" "$REPO:$TAG"
+          docker push "$REPO:$TAG"
+          echo "digest=$(docker inspect --format='{{index .RepoDigests 0}}' "$REPO:$TAG")" >> "$GITHUB_OUTPUT"
+      - uses: sigstore/cosign-installer@v3
+        if: env.PUSH == 'true'
+      - name: Sign (keyless, GitHub OIDC)
+        if: env.PUSH == 'true'
+        run: cosign sign --yes "${{ steps.push.outputs.digest }}"
+
+  a11y:
+    name: Accessibility (axe, serious and critical fail)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build web (standalone, as in the image)
+        run: pnpm turbo run build --filter=@archova/web
+      - name: Start web
+        run: |
+          cp -r apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static
+          PORT=3000 HOSTNAME=127.0.0.1 node apps/web/.next/standalone/apps/web/server.js &
+          npx --yes wait-on@8 --timeout 60000 http://127.0.0.1:3000/login
+      - run: pnpm --filter @archova/web exec playwright install --with-deps chromium
+      - name: axe on journey pages
+        run: pnpm --filter @archova/web test:a11y
+        env:
+          A11Y_BASE_URL: http://127.0.0.1:3000
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: a11y-report
+          path: apps/web/test-results
