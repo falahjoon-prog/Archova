@@ -149,3 +149,22 @@ export const indexEntries = ai.table(
   },
   (t) => [primaryKey({ columns: [t.orgId, t.revisionId, t.pipelineVersion] })],
 );
+
+/** Cached safety translations (F26, ai/12 §3): one per source version, language, glossary and prompt version. */
+export const translations = ai.table('ai_translations', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id'),
+  sourceType: text('source_type').$type<'induction_version'>().notNull(),
+  sourceId: uuid('source_id').notNull(),
+  sourceHash: text('source_hash').notNull(),
+  language: text('language').notNull(),
+  glossaryVersion: integer('glossary_version').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  payload: jsonb('payload').$type<unknown>().notNull(),
+  translationHash: text('translation_hash').notNull(),
+  backTranslationScore: real('back_translation_score').notNull(),
+  status: text('status').$type<'ready'>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});

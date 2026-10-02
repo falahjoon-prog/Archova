@@ -18,6 +18,10 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // A worker's question during an induction, charged to the builder's org. Priced like background work until Priya
   // sets the price and the per-induction daily cap (ai/12 §5).
   'induction.ask': 0.25,
+  // Safety translation (F26, ai/12 I4): per slide or quiz question, once per version and language (cached), so a
+  // 20-slide induction costs about 5 credits per language. The back-translation check is covered. Priya to confirm.
+  'translation.translate': 0.25,
+  'translation.check': 0,
   'rfi.draft': 1,
   'diary.summary': 0.5,
   'defect.tag': 0.1,

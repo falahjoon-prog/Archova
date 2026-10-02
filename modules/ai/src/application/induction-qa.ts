@@ -23,6 +23,8 @@ export interface InductionVersionContent {
   /** Version number, shown as "v3". */
   version: number;
   slides: ReadonlyArray<{ title: string; points: readonly string[]; script: readonly string[] }>;
+  /** The quiz, for translation (I4); Q&A never reads it. */
+  quiz?: ReadonlyArray<{ id: string; question: string; options: readonly string[] }>;
 }
 
 export interface InductionQaDeps {
