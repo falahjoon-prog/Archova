@@ -1975,6 +1975,7 @@ components:
       required:
         [
           id,
+          projectId,
           revisionId,
           ownerId,
           ownerCompanyId,
@@ -1989,6 +1990,7 @@ components:
         ]
       properties:
         id: { type: string }
+        projectId: { type: string }
         revisionId: { type: string }
         ownerId: { type: string }
         ownerCompanyId: { type: [string, 'null'] }

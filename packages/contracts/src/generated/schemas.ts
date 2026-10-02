@@ -450,6 +450,7 @@ export type LoginRequest = z.infer<typeof LoginRequestSchema>;
 
 export const MarkupSchema = z.object({
   "id": z.string(),
+  "projectId": z.string(),
   "revisionId": z.string(),
   "ownerId": z.string(),
   "ownerCompanyId": z.string().nullable(),

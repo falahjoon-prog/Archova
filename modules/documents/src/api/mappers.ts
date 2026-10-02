@@ -136,6 +136,7 @@ export const toDrawingSheetDto = (x: {
 
 export const toMarkupDto = (m: typeof drawingMarkups.$inferSelect): Markup => ({
   id: encodeId('markup', m.id),
+  projectId: encodeId('project', m.projectId),
   revisionId: encodeId('drawingRevision', m.revisionId),
   ownerId: encodeId('user', m.ownerId),
   ownerCompanyId: companyOrNull(m.ownerCompanyId),

@@ -1374,6 +1374,7 @@ export interface components {
         };
         Markup: {
             id: string;
+            projectId: string;
             revisionId: string;
             ownerId: string;
             ownerCompanyId: string | null;
