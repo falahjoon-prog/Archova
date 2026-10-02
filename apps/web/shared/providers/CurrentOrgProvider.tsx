@@ -8,6 +8,8 @@ export interface CurrentOrg {
   orgName: string;
   role: 'owner' | 'admin' | 'billing_admin' | 'member' | null;
   kind: 'member' | 'external';
+  /** The signed-in user, for "assigned to me" views and the actor on records. */
+  user: { id: string; name: string };
 }
 
 const CurrentOrgContext = createContext<CurrentOrg | null>(null);

@@ -44,6 +44,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
         orgName: membership.orgName,
         role: membership.role,
         kind: membership.kind,
+        user: { id: me.data.user.id, name: me.data.user.name },
       }}
     >
       <AssistantScopeProvider>

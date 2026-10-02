@@ -28,6 +28,14 @@ export {
   type DataTableProps,
   type SortState,
 } from './patterns/DataTable';
+export {
+  DrawingCanvas,
+  toOverlay,
+  type CanvasPoint,
+  type CanvasPointerEvent,
+  type DrawingCanvasHandle,
+  type DrawingCanvasProps,
+} from './patterns/DrawingCanvas';
 export { DescriptionList, type DescriptionItem } from './patterns/DescriptionList';
 export { EmptyState, type EmptyStateProps } from './patterns/EmptyState';
 export { FilterBar } from './patterns/FilterBar';

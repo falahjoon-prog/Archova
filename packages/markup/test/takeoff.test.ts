@@ -75,7 +75,19 @@ describe('length, area and perimeter', () => {
   });
 
   it('counts markers and formats quantities with AU units', () => {
-    expect(takeoffQuantity({ kind: 'count', points: [{ x: 0, y: 0 }, { x: 1, y: 1 }] }, A1, 100)).toBe(2);
+    expect(
+      takeoffQuantity(
+        {
+          kind: 'count',
+          points: [
+            { x: 0, y: 0 },
+            { x: 1, y: 1 },
+          ],
+        },
+        A1,
+        100,
+      ),
+    ).toBe(2);
     expect(formatQuantity(1234.567, 'm2')).toBe('1,234.57 m²');
     expect(formatQuantity(12.3, 'm')).toBe('12.30 m');
     expect(formatQuantity(7, 'ea')).toBe('7 ea');
@@ -89,8 +101,14 @@ describe('snapping', () => {
   ]);
 
   it('prefers endpoints, then midpoints, then edges', () => {
-    expect(snapPoint(index, { x: 0.502, y: 0.103 }, 0.01)).toMatchObject({ kind: 'endpoint', point: { x: 0.5, y: 0.1 } });
-    expect(snapPoint(index, { x: 0.301, y: 0.104 }, 0.01)).toMatchObject({ kind: 'midpoint', point: { x: 0.3, y: 0.1 } });
+    expect(snapPoint(index, { x: 0.502, y: 0.103 }, 0.01)).toMatchObject({
+      kind: 'endpoint',
+      point: { x: 0.5, y: 0.1 },
+    });
+    expect(snapPoint(index, { x: 0.301, y: 0.104 }, 0.01)).toMatchObject({
+      kind: 'midpoint',
+      point: { x: 0.3, y: 0.1 },
+    });
     const edge = snapPoint(index, { x: 0.2, y: 0.105 }, 0.01);
     expect(edge?.kind).toBe('edge');
     expect(edge?.point.y).toBeCloseTo(0.1, 9);

@@ -10,6 +10,8 @@ export interface CurrentProject {
   timezone: string;
   /** AU state or territory; drives business days and public holidays. */
   state: string | null;
+  /** The caller's company on this project (from the permissions summary); scopes company markups and subbie views. */
+  companyId: string | null;
 }
 
 const CurrentProjectContext = createContext<CurrentProject | null>(null);

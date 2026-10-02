@@ -20,7 +20,11 @@ export const TAKEOFF_KINDS = ['length', 'area', 'count'] as const;
 export type TakeoffKind = (typeof TAKEOFF_KINDS)[number];
 export type TakeoffUnit = 'm' | 'm2' | 'ea';
 
-export const UNIT_FOR_KIND: Record<TakeoffKind, TakeoffUnit> = { length: 'm', area: 'm2', count: 'ea' };
+export const UNIT_FOR_KIND: Record<TakeoffKind, TakeoffUnit> = {
+  length: 'm',
+  area: 'm2',
+  count: 'ea',
+};
 
 /** Takeoff geometry: a polyline, a polygon with optional cut-outs, or count markers. */
 export type TakeoffGeometry =
@@ -29,7 +33,9 @@ export type TakeoffGeometry =
   | { kind: 'count'; points: Point[] };
 
 /** Common AU drawing scales offered in "set scale". */
-export const STANDARD_SCALES: readonly ScaleRatio[] = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+export const STANDARD_SCALES: readonly ScaleRatio[] = [
+  1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000,
+];
 
 /** Parses "1:100", "1 : 100" or "100" into 100. Returns null for anything else. */
 export function parseScale(text: string): ScaleRatio | null {
@@ -53,7 +59,11 @@ export function paperDistanceMm(a: Point, b: Point, sheet: SheetSize): number {
 }
 
 /** Real-world length in metres of a polyline. */
-export function polylineLengthM(points: readonly Point[], sheet: SheetSize, scale: ScaleRatio): number {
+export function polylineLengthM(
+  points: readonly Point[],
+  sheet: SheetSize,
+  scale: ScaleRatio,
+): number {
   let mm = 0;
   for (let i = 1; i < points.length; i++) mm += paperDistanceMm(points[i - 1]!, points[i]!, sheet);
   return (mm * scale) / 1000;
@@ -66,7 +76,11 @@ export function perimeterM(points: readonly Point[], sheet: SheetSize, scale: Sc
 }
 
 /** Unsigned polygon area in square metres (shoelace formula on paper millimetres). */
-export function polygonAreaM2(points: readonly Point[], sheet: SheetSize, scale: ScaleRatio): number {
+export function polygonAreaM2(
+  points: readonly Point[],
+  sheet: SheetSize,
+  scale: ScaleRatio,
+): number {
   if (points.length < 3) return 0;
   let twice = 0;
   for (let i = 0; i < points.length; i++) {
@@ -91,7 +105,11 @@ export function areaWithDeductionsM2(
 }
 
 /** The quantity of a takeoff in its unit (m, m², each). */
-export function takeoffQuantity(geometry: TakeoffGeometry, sheet: SheetSize, scale: ScaleRatio): number {
+export function takeoffQuantity(
+  geometry: TakeoffGeometry,
+  sheet: SheetSize,
+  scale: ScaleRatio,
+): number {
   switch (geometry.kind) {
     case 'length':
       return polylineLengthM(geometry.points, sheet, scale);
@@ -106,9 +124,15 @@ export function takeoffQuantity(geometry: TakeoffGeometry, sheet: SheetSize, sca
  * Two-point calibration: the user draws a line over a known dimension and types its real length. Returns the
  * scale denominator that makes the line that long.
  */
-export function calibrateScale(a: Point, b: Point, knownLengthM: number, sheet: SheetSize): ScaleRatio {
+export function calibrateScale(
+  a: Point,
+  b: Point,
+  knownLengthM: number,
+  sheet: SheetSize,
+): ScaleRatio {
   const mm = paperDistanceMm(a, b, sheet);
-  if (mm <= 0 || !(knownLengthM > 0)) throw new RangeError('Calibration needs two distinct points and a positive length');
+  if (mm <= 0 || !(knownLengthM > 0))
+    throw new RangeError('Calibration needs two distinct points and a positive length');
   return (knownLengthM * 1000) / mm;
 }
 
@@ -198,7 +222,11 @@ export function snapPoint(index: SnapIndex, p: Point, tolerance: number): SnapRe
   const consider = (point: Point, kind: SnapKind) => {
     const distance = Math.hypot(point.x - p.x, point.y - p.y);
     if (distance > tolerance) return;
-    if (!best || rank[kind] < rank[best.kind] || (rank[kind] === rank[best.kind] && distance < best.distance)) {
+    if (
+      !best ||
+      rank[kind] < rank[best.kind] ||
+      (rank[kind] === rank[best.kind] && distance < best.distance)
+    ) {
       best = { point, kind, distance };
     }
   };

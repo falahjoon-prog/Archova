@@ -56,6 +56,7 @@ export function ProjectShell({ projectId, children }: { projectId: string; child
         number: p.number ?? null,
         timezone: p.timezone,
         state: p.state ?? null,
+        companyId: perms?.companyId ?? null,
       }}
     >
       <div className="project-shell">
