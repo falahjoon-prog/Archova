@@ -1,0 +1,25 @@
+{
+  "name": "@archova/testing",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@archova/tools": "workspace:*",
+    "pg": "^8.16.0"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.0",
+    "eslint": "^9.39.0",
+    "typescript": "~5.9.3"
+  }
+}
