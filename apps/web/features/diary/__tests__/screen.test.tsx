@@ -2,7 +2,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nav, renderInProject } from '@/test/render';
+import { nav, renderInProject, enterText } from '@/test/render';
 import { diarySource, resetDiaryPreview } from '../data/source';
 import { DiaryDayScreen } from '../screens/DiaryDayScreen';
 
@@ -65,7 +65,7 @@ describe('DiaryDayScreen', () => {
     expect(within(amend).getByText(/Labour · Cornerstone Formwork headcount/)).toBeTruthy();
     await user.click(within(amend).getByRole('button', { name: 'Save amendment' }));
     expect(within(amend).getByText('Give a reason for the amendment.')).toBeTruthy();
-    await user.type(within(amend).getByLabelText('Reason'), 'Recounted at knock-off');
+    await enterText(user, within(amend).getByLabelText('Reason'), 'Recounted at knock-off');
     await user.click(within(amend).getByRole('button', { name: 'Save amendment' }));
     expect(await screen.findByRole('link', { name: 'Amended ×1' })).toBeTruthy();
     expect(screen.getByText('Reason: Recounted at knock-off')).toBeTruthy();
@@ -97,7 +97,7 @@ describe('DiaryDayScreen', () => {
     const user = userEvent.setup();
     renderInProject(<DiaryDayScreen />);
     await screen.findByRole('link', { name: /^Today/ });
-    await user.type(await screen.findByRole('textbox', { name: 'Notes' }), 'Crane booked');
+    await enterText(user, await screen.findByRole('textbox', { name: 'Notes' }), 'Crane booked');
     await act(async () => {
       await new Promise((r) => setTimeout(r, 1700));
     });

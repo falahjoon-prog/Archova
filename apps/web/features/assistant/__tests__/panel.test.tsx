@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { renderInProject } from '@/test/render';
+import { renderInProject, enterText } from '@/test/render';
 import { resetRfisPreview } from '@/features/rfis';
 import { AssistantPanel } from '../components/AssistantPanel';
 import { usePublishAssistantScope, type AssistantScope } from '../components/AssistantScope';
@@ -55,7 +55,8 @@ describe('Ask Nova panel', () => {
     expect(screen.getByRole('list', { name: 'Answering about' }).textContent).toContain(
       'Harbour St Tower',
     );
-    await user.type(screen.getByLabelText('Question'), 'Which RFIs are overdue?{Enter}');
+    await enterText(user, screen.getByLabelText('Question'), 'Which RFIs are overdue?');
+    await user.keyboard('{Enter}');
     const answer = await screen.findByRole('region', { name: 'Answer from Nova' });
     await waitFor(() => expect(within(answer).getByRole('link', { name: 'RFI-003' })).toBeTruthy());
     expect(within(answer).getByRole('link', { name: 'RFI-003' }).getAttribute('href')).toBe(
@@ -73,7 +74,8 @@ describe('Ask Nova panel', () => {
     });
     const chips = await screen.findByRole('list', { name: 'Answering about' });
     expect(within(chips).getByText('RFI-004')).toBeTruthy();
-    await user.type(screen.getByLabelText('Question'), 'Who has this?{Enter}');
+    await enterText(user, screen.getByLabelText('Question'), 'Who has this?');
+    await user.keyboard('{Enter}');
     const answer = await screen.findByRole('region', { name: 'Answer from Nova' });
     await waitFor(() => expect(answer.textContent).toContain('waiting on Brightwire Electrical'));
 
@@ -86,7 +88,8 @@ describe('Ask Nova panel', () => {
   it('says plainly when the answer is not in the project', async () => {
     const user = userEvent.setup();
     renderPanel();
-    await user.type(screen.getByLabelText('Question'), 'What is the crane lift plan?{Enter}');
+    await enterText(user, screen.getByLabelText('Question'), 'What is the crane lift plan?');
+    await user.keyboard('{Enter}');
     const nf = await screen.findByRole('region', { name: 'Not found' });
     await waitFor(() => expect(nf.textContent).toContain("couldn't find that"));
   });

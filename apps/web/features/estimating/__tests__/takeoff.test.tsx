@@ -2,7 +2,7 @@
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { nav, renderInProject } from '@/test/render';
+import { nav, renderInProject, enterText } from '@/test/render';
 import { DrawingViewerScreen } from '@/features/drawings';
 import { resetTakeoffPreview } from '../data/takeoff-source';
 import { takeoffViewerExtension } from '../index';
@@ -107,7 +107,7 @@ describe('Measure in the drawing viewer (journey 11)', () => {
     expect(await screen.findByText(/confirmed by Test User/)).toBeTruthy();
 
     await user.click(screen.getByRole('button', { name: 'Length' }));
-    await user.type(screen.getByLabelText('Label'), 'Grid A wall');
+    await enterText(user, screen.getByLabelText('Label'), 'Grid A wall');
     const canvas = screen.getByRole('application');
     // 84.1 px = 84.1 mm on an A1 sheet = 8.41 m at 1:100 (points away from walls, so no snapping).
     await user.pointer([

@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nav, renderInProject } from '@/test/render';
+import { nav, renderInProject, enterText } from '@/test/render';
 import { resetRfisPreview } from '../data/source';
 import { RfiDetailScreen } from '../screens/RfiDetailScreen';
 import { RfiListScreen } from '../screens/RfiListScreen';
@@ -66,8 +66,9 @@ describe('RfiNewScreen', () => {
     expect(screen.getByText('Choose who should answer.')).toBeTruthy();
     expect(nav.pushed).toEqual([]);
 
-    await user.type(screen.getByLabelText(/Subject/), 'Bin store door hardware');
-    await user.type(
+    await enterText(user, screen.getByLabelText(/Subject/), 'Bin store door hardware');
+    await enterText(
+      user,
       screen.getByRole('textbox', { name: /^Question/ }),
       'Which closer is specified',
     );
@@ -80,7 +81,8 @@ describe('RfiNewScreen', () => {
   it('only changes the question when the Nova wording is accepted', async () => {
     const user = userEvent.setup();
     await renderNewRfi();
-    await user.type(
+    await enterText(
+      user,
       screen.getByRole('textbox', { name: /^Question/ }),
       'which closer is specified',
     );
@@ -98,7 +100,7 @@ describe('RfiNewScreen', () => {
   it('finds similar RFIs before submitting (RFI-US3)', async () => {
     const user = userEvent.setup();
     await renderNewRfi();
-    await user.type(screen.getByLabelText(/Subject/), 'Bin store door closer');
+    await enterText(user, screen.getByLabelText(/Subject/), 'Bin store door closer');
     await user.click(screen.getByRole('button', { name: 'Check for similar RFIs' }));
     expect(await screen.findByText('Similar RFIs on this project')).toBeTruthy();
     expect(screen.getByRole('link', { name: 'RFI-003' })).toBeTruthy();
@@ -156,7 +158,7 @@ describe('RfiDetailScreen', () => {
     const dialog = screen.getByRole('dialog');
     await user.click(within(dialog).getByRole('button', { name: 'Void RFI' }));
     expect(within(dialog).getByText('Give a reason for voiding.')).toBeTruthy();
-    await user.type(within(dialog).getByLabelText('Reason'), 'Raised in error');
+    await enterText(user, within(dialog).getByLabelText('Reason'), 'Raised in error');
     await user.click(within(dialog).getByRole('button', { name: 'Void RFI' }));
     expect(await screen.findByText('This RFI is void')).toBeTruthy();
   });

@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nav, renderInProject } from '@/test/render';
+import { nav, renderInProject, enterText } from '@/test/render';
 import { resetQuotesPreview } from '../data/quotes-source';
 import { PackageScreen } from '../screens/PackageScreen';
 
@@ -57,7 +57,7 @@ describe('PackageScreen', () => {
       name: 'Select preferred quote',
     }) as HTMLButtonElement;
     expect(confirm.disabled).toBe(true);
-    await user.type(within(dialog).getByLabelText('Reason'), 'Earlier start on site');
+    await enterText(user, within(dialog).getByLabelText('Reason'), 'Earlier start on site');
     await user.click(confirm);
     expect(await screen.findByText('Selected Harbour Tile Co')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Select Ironbark Tiling' })).toBeNull();

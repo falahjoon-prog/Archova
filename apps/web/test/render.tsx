@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { UserEvent } from '@testing-library/user-event';
 import { render, type RenderOptions } from '@testing-library/react';
 import type { ReactElement, ReactNode } from 'react';
 import { AssistantScopeProvider } from '@/features/assistant';
@@ -62,3 +63,12 @@ export const navigationMock = {
     throw new Error('notFound');
   },
 };
+
+/**
+ * Enters free text in one input event. `user.type` sends a key at a time, and on a loaded CI runner the caret
+ * drifted between keystrokes and scrambled the text; tests that aren't about typing use this instead.
+ */
+export async function enterText(user: UserEvent, field: HTMLElement, text: string) {
+  await user.click(field);
+  await user.paste(text);
+}

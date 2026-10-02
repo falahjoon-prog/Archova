@@ -2,7 +2,7 @@
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { nav, renderInProject } from '@/test/render';
+import { nav, renderInProject, enterText } from '@/test/render';
 import { defectsSource, resetDefectsPreview } from '../data/source';
 import { DefectDetailScreen } from '../screens/DefectDetailScreen';
 import { DefectListScreen } from '../screens/DefectListScreen';
@@ -52,7 +52,11 @@ describe('DefectNewScreen', () => {
   it('applies Nova’s trade and company only when accepted, then saves', async () => {
     const user = userEvent.setup();
     renderInProject(<DefectNewScreen />);
-    await user.type(screen.getByLabelText("What's wrong"), 'Scuffed paint on the corridor wall');
+    await enterText(
+      user,
+      screen.getByLabelText("What's wrong"),
+      'Scuffed paint on the corridor wall',
+    );
     await user.click(screen.getByRole('button', { name: 'Suggest title and trade' }));
     const suggestion = await screen.findByRole('region', { name: 'Drafted by Nova' });
     expect((screen.getByLabelText(/Responsible company/) as HTMLSelectElement).value).toBe('');
