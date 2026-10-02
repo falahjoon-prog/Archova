@@ -1,0 +1,199 @@
+/*
+ * @archova/ui primitives. Every colour, size and radius comes from the design-token CSS variables
+ * emitted by @archova/design-tokens `toCssVariables()` (rendered by <ThemeStyle />). No raw hex values here.
+ */
+
+.ac-button,
+.ac-input {
+  font: inherit;
+  font-size: var(--font-sm);
+  line-height: 1.43;
+  /* 44 px minimum touch target (accessibility 05). */
+  min-height: calc(var(--space-10) + var(--space-1));
+  border-radius: var(--radius-md);
+}
+
+.ac-button:focus-visible,
+.ac-input:focus-visible,
+.ac-focusable:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Button */
+.ac-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+  font-weight: 500;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    background-color 100ms ease-out,
+    border-color 100ms ease-out;
+}
+.ac-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.ac-button[aria-busy='true'] {
+  cursor: progress;
+}
+.ac-button--primary {
+  background: var(--c-action-primary);
+  color: var(--c-action-primary-text);
+}
+.ac-button--primary:not(:disabled):hover {
+  background: var(--c-action-primary-hover);
+}
+.ac-button--secondary {
+  background: var(--c-surface);
+  color: var(--c-text);
+  border-color: var(--c-border-control);
+}
+.ac-button--secondary:not(:disabled):hover {
+  border-color: var(--c-text);
+}
+
+/* Field frame */
+.ac-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.ac-field__label {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  color: var(--c-text);
+}
+.ac-field__hint {
+  margin: 0;
+  font-size: var(--font-xs);
+  color: var(--c-text-muted);
+}
+.ac-field__error {
+  margin: 0;
+  font-size: var(--font-xs);
+  font-weight: 500;
+  color: var(--c-status-danger);
+}
+
+/* Inputs and selects */
+.ac-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0 var(--space-3);
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--radius-sm);
+}
+.ac-input::placeholder {
+  color: var(--c-text-muted);
+}
+.ac-input[aria-invalid='true'] {
+  border-color: var(--c-status-danger);
+  border-width: 2px;
+}
+.ac-select {
+  padding-right: var(--space-8);
+}
+
+/* Alert */
+.ac-alert {
+  display: flex;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--ac-alert-colour);
+  border-left-width: 4px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--ac-alert-colour) 8%, var(--c-surface));
+  color: var(--c-text);
+  font-size: var(--font-sm);
+}
+.ac-alert--danger {
+  --ac-alert-colour: var(--c-status-danger);
+}
+.ac-alert--info {
+  --ac-alert-colour: var(--c-status-info);
+}
+.ac-alert--success {
+  --ac-alert-colour: var(--c-status-success);
+}
+.ac-alert__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--space-5);
+  height: var(--space-5);
+  border-radius: var(--radius-full);
+  background: var(--ac-alert-colour);
+  color: var(--c-surface);
+  font-size: var(--font-xs);
+  font-weight: 700;
+}
+.ac-alert__title {
+  margin: 0 0 var(--space-1);
+  font-weight: 600;
+}
+
+/* Card */
+.ac-card {
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+}
+.ac-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+.ac-card__title {
+  margin: 0;
+  font-size: var(--font-md);
+  font-weight: 600;
+  color: var(--c-text);
+}
+
+/* Page header */
+.ac-page-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.ac-page-header__eyebrow {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-xs);
+  color: var(--c-text-secondary);
+}
+.ac-page-header__title {
+  margin: 0;
+  font-size: var(--font-2xl);
+  line-height: 1.33;
+  font-weight: 600;
+  color: var(--c-text);
+}
+.ac-page-header__description {
+  margin: var(--space-1) 0 0;
+  color: var(--c-text-secondary);
+}
+.ac-page-header__actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ac-button {
+    transition: none;
+  }
+}
