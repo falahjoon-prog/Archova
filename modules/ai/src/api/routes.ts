@@ -9,10 +9,12 @@ import {
   type Database,
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
+import type { AnswerSource, AskService } from '../application/ask';
 import type {
   DrawingRegisterService,
   SheetSuggestionPayload,
 } from '../application/drawing-register';
+import type { ProjectIndexService } from '../application/project-index';
 import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
@@ -43,6 +45,22 @@ export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestio
   decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
 });
 
+const toSourceDto = (s: AnswerSource) => ({
+  sourceType: s.sourceType,
+  sourceId:
+    s.sourceType === 'document'
+      ? encodeId('document', s.sourceId)
+      : encodeId('drawingSheet', s.sourceId),
+  revisionId:
+    s.sourceType === 'document'
+      ? encodeId('revision', s.revisionId)
+      : encodeId('drawingRevision', s.revisionId),
+  revision: s.revision,
+  title: s.title,
+  reference: s.reference,
+  page: s.page,
+});
+
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
   if (!uuid) throw new AppError('project.not_found');
@@ -62,6 +80,8 @@ export function aiRoutes(
   database: Database,
   admin: AdminService,
   drawingRegister: DrawingRegisterService,
+  askService: AskService,
+  projectIndex: ProjectIndexService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -114,6 +134,27 @@ export function aiRoutes(
           refusedPages: r.refusedPages,
         },
       };
+    },
+    askNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const a = await askService.ask(requireTenant(input), projectId, {
+        question: input.body.question,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: a.runId ? encodeId('aiRun', a.runId) : null,
+          found: a.found,
+          answer: a.answer,
+          citations: a.citations.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
+          closestMatches: a.closestMatches.map(toSourceDto),
+        },
+      };
+    },
+    indexProjectForNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const report = await projectIndex.indexProject(requireTenant(input), projectId);
+      return { status: 200, body: report };
     },
     listAiSuggestions: async (input) => {
       const projectId = projectUuid(input.params.projectId);
