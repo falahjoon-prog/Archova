@@ -5,6 +5,7 @@
 // Env: SEED_APP_ORIGIN (e.g. https://demo.archova.com.au), SEED_PASSWORD (the demo login's password),
 // SEED_EMAIL (default demo@archova.com.au), SEED_NAME (default "Demo Builder").
 import { createHash, randomUUID } from 'node:crypto';
+import { addDays, isoWeekday, localDateOf, type LocalDate } from '@archova/time';
 import { COMPANIES, type CompanyKey, ORG, PROJECTS } from './data';
 import { makePdf } from './pdf';
 
@@ -349,6 +350,130 @@ for (const p of PROJECTS) {
 
   console.log(
     `Seeded ${p.name}: ${documents.length} documents (2 revisions each), ${sheets.length} drawings (A-101 at rev B), 1 transmittal, 1 RFI`,
+  );
+}
+
+// Site diary: the last five working days on each active project, in the project's own time zone (X34): weather,
+// labour from three subcontractors, a rain delay, and the oldest day submitted. Skipped for a project that already
+// has diary days in that range, so re-runs don't duplicate lines.
+const WEATHER = [
+  {
+    minTempC: 14,
+    maxTempC: 23,
+    rainfallMm: 0,
+    windKmh: 12,
+    windDirection: 'NE',
+    am: 'Sunny',
+    pm: 'Sunny',
+  },
+  {
+    minTempC: 15,
+    maxTempC: 21,
+    rainfallMm: 18,
+    windKmh: 30,
+    windDirection: 'S',
+    am: 'Showers',
+    pm: 'Heavy rain',
+  },
+  {
+    minTempC: 12,
+    maxTempC: 19,
+    rainfallMm: 2,
+    windKmh: 22,
+    windDirection: 'SW',
+    am: 'Overcast',
+    pm: 'Clearing',
+  },
+  {
+    minTempC: 13,
+    maxTempC: 24,
+    rainfallMm: 0,
+    windKmh: 10,
+    windDirection: 'E',
+    am: 'Sunny',
+    pm: 'Fine',
+  },
+  {
+    minTempC: 16,
+    maxTempC: 26,
+    rainfallMm: 0,
+    windKmh: 15,
+    windDirection: 'NE',
+    am: 'Fine',
+    pm: 'Hot',
+  },
+];
+const LABOUR: Array<{ key: CompanyKey; trade: string; headcount: number; hours: number }> = [
+  { key: 'conc', trade: 'Concrete', headcount: 6, hours: 48 },
+  { key: 'elec', trade: 'Electrical', headcount: 3, hours: 24 },
+  { key: 'hyd', trade: 'Plumbing', headcount: 2, hours: 16 },
+];
+
+for (const [i, p] of PROJECTS.entries()) {
+  if (p.status !== 'active') continue;
+  const pp = `${o()}/projects/${projectIds[i]}`;
+  const days: LocalDate[] = [];
+  for (
+    let d = addDays(localDateOf(new Date(), p.timezone), -1);
+    days.length < 5;
+    d = addDays(d, -1)
+  )
+    if (isoWeekday(d) <= 5) days.unshift(d);
+  const existing = await s.ok<{ data: unknown[] }>(
+    'GET',
+    `${pp}/diary?from=${days[0]}&to=${days[days.length - 1]}`,
+  );
+  if (existing.data.length) {
+    console.log(`${p.name} already has diary days; skipped.`);
+    continue;
+  }
+  for (const [n, date] of days.entries()) {
+    const w = WEATHER[n % WEATHER.length]!;
+    const rain = w.rainfallMm > 10;
+    await s.ok('PUT', `${pp}/diary/${date}`, {
+      weatherOverride: {
+        minTempC: w.minTempC,
+        maxTempC: w.maxTempC,
+        rainfallMm: w.rainfallMm,
+        windKmh: w.windKmh,
+        windDirection: w.windDirection,
+        conditions: { am: w.am, midday: null, pm: w.pm },
+      },
+      siteConditions: rain ? 'Wet. Excavation pumped out; access road boggy.' : 'Dry, good access.',
+      notes: rain
+        ? 'Slab pour on level 1 postponed to tomorrow. Sample data only.'
+        : 'Work progressing to programme. Sample data only.',
+    });
+    for (const l of LABOUR)
+      await s.ok('POST', `${pp}/diary/${date}/labour`, {
+        companyId: company[l.key],
+        trade: l.trade,
+        headcount: rain && l.key === 'conc' ? 4 : l.headcount,
+        hours: rain && l.key === 'conc' ? 14 : l.hours,
+      });
+    if (rain)
+      await s.ok('POST', `${pp}/diary/${date}/delays`, {
+        type: 'weather',
+        description:
+          'Heavy rain from 11am; concrete pour postponed and crew stood down for the afternoon.',
+        hours: 3.5,
+        affectedCompanyIds: [company.conc],
+      });
+  }
+  // The oldest day is submitted and locked; the rest stay drafts.
+  await s.ok('GET', `${pp}/diary/${days[0]}`);
+  const submitted = await s.call(
+    'POST',
+    `${pp}/diary/${days[0]}/submit`,
+    {},
+    { 'if-match': s.etag ?? '' },
+  );
+  if (submitted.status >= 300)
+    console.warn(
+      `Submitting the sample diary day -> ${submitted.status} ${JSON.stringify(submitted.json)}`,
+    );
+  console.log(
+    `Seeded ${p.name} diary: ${days[0]} to ${days[days.length - 1]}, one weather delay, first day submitted`,
   );
 }
 
