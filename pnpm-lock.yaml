@@ -751,6 +751,10 @@ importers:
         version: 3.2.7(@types/node@22.20.5)(jsdom@26.1.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
 
   packages/sync-core:
+    dependencies:
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../domain
     devDependencies:
       '@archova/config-eslint':
         specifier: workspace:*
