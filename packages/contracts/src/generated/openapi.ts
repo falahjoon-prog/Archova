@@ -965,6 +965,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a site induction (slides, script and quiz) from the project's documents (F33).
+         * @description Nova searches the project documents the caller can open for each required induction section
+         *     (compliance/04 §2), then drafts slides, a speaker script and a quiz. Every point and quiz answer cites its
+         *     source. A section the documents don't support comes back `missing` with what to add; nothing is invented.
+         *     Points whose citation or numbers can't be checked against the source are removed and listed in
+         *     `warnings`. The declaration and fixed safety sentences come from the reference table, not the model.
+         *     The result is a pending suggestion (task `induction.draft`): the builder edits it in the induction editor
+         *     and accepts or rejects it with the suggestion decision endpoint. Costs 3 Nova credits.
+         */
+        post: operations["draftInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/index": {
         parameters: {
             query?: never;
@@ -3487,6 +3516,36 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftInduction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    siteName: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
                 };
             };
             default: components["responses"]["Problem"];

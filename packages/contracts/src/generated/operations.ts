@@ -297,6 +297,13 @@ export const AskNovaParams = z.object({
 export const AskNovaBody = z.object({
   "question": z.string().min(1).max(1000),
 }).strict();
+export const DraftInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftInductionBody = z.object({
+  "siteName": z.string().min(1).max(200),
+}).strict();
 export const IndexProjectForNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1047,6 +1054,18 @@ export const operations = {
     params: AskNovaParams,
     query: null,
     body: AskNovaBody,
+  },
+  draftInduction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "ai.induction.draft",
+    internal: false,
+    contentType: "application/json",
+    params: DraftInductionParams,
+    query: null,
+    body: DraftInductionBody,
   },
   indexProjectForNova: {
     method: 'POST',

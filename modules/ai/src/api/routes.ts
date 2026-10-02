@@ -14,11 +14,32 @@ import type {
   DrawingRegisterService,
   SheetSuggestionPayload,
 } from '../application/drawing-register';
+import type {
+  DraftCitation,
+  InductionDraftPayload,
+  InductionDraftService,
+} from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
 import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
 function payloadDto(task: string, payload: unknown): Record<string, unknown> {
+  if (task === 'induction.draft') {
+    const p = payload as InductionDraftPayload;
+    const cite = (c: DraftCitation) => ({ ...c, ...sourceIds(c) });
+    return {
+      ...p,
+      sections: p.sections.map((s) => ({
+        ...s,
+        slides: s.slides.map((sl) => ({
+          title: sl.title,
+          points: sl.points.map((x) => ({ text: x.text, citations: x.citations.map(cite) })),
+          script: sl.script.map((x) => ({ text: x.text, citations: x.citations.map(cite) })),
+        })),
+      })),
+      quiz: p.quiz.map((q) => ({ ...q, citations: q.citations.map(cite) })),
+    };
+  }
   if (task === 'drawing.titleblock') {
     const p = payload as SheetSuggestionPayload;
     return { ...p, fileId: encodeId('file', p.fileId) };
@@ -26,7 +47,16 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
   return payload as Record<string, unknown>;
 }
 
-const TARGET_KINDS = { file_page: 'file' } as const;
+/** Document or drawing ids in a citation, as public ids. */
+function sourceIds(c: { sourceType: string; sourceId: string; revisionId: string | null }) {
+  const doc = c.sourceType === 'document';
+  return {
+    sourceId: encodeId(doc ? 'document' : 'drawingSheet', c.sourceId),
+    revisionId: c.revisionId ? encodeId(doc ? 'revision' : 'drawingRevision', c.revisionId) : null,
+  };
+}
+
+const TARGET_KINDS = { file_page: 'file', project: 'project' } as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
   id: encodeId('aiSuggestion', r.id),
@@ -82,6 +112,7 @@ export function aiRoutes(
   drawingRegister: DrawingRegisterService,
   askService: AskService,
   projectIndex: ProjectIndexService,
+  inductionDrafts: InductionDraftService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -150,6 +181,13 @@ export function aiRoutes(
           closestMatches: a.closestMatches.map(toSourceDto),
         },
       };
+    },
+    draftInduction: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const row = await inductionDrafts.draft(requireTenant(input), projectId, {
+        siteName: input.body.siteName,
+      });
+      return { status: 201, body: toSuggestionDto(row) };
     },
     indexProjectForNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);

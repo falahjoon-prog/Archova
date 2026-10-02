@@ -1,12 +1,11 @@
 // F2 Ask the project (ai/03 §4): scope → search (keyword and vector, merged) → answer with citations → check.
 // The access-scope filter is part of each SQL query, under RLS, so passages the user can't open never reach the
 // model (ai/04 §3). An answer without a valid citation becomes "not found" with the closest matches as links.
-import { and, cosineDistance, eq, inArray, sql } from 'drizzle-orm';
 import { qaAnswerPrompt, type PromptPassage } from '@archova/ai-prompts';
 import type { Database, TenantContext, TenantScope } from '@archova/kernel';
-import { keywordQuery, reciprocalRankFusion } from '../domain/retrieval';
-import { chunks, type ChunkSourceType } from '../infra/tables';
+import type { ChunkSourceType } from '../infra/tables';
 import type { Gateway } from './gateway';
+import { searchChunks, toPassage } from './search';
 
 export interface AskDeps {
   database: Database;
@@ -36,8 +35,6 @@ export interface AskAnswer {
   closestMatches: AnswerSource[];
 }
 
-/** Candidates from each search (ai/03 §4 step 3). */
-const SEARCH_LIMIT = 50;
 /** Passages sent to the model (ai/03 §4 step 4: ~8–12). Re-ranking arrives with the qa.rewrite task. */
 const PASSAGES = 10;
 const CLOSEST = 3;
@@ -71,23 +68,20 @@ export function createAskService(deps: AskDeps) {
     });
     const rows = await database.withTenantTx(
       ctx,
-      (scope) => retrieve(scope, projectId, scopes, question, vectors[0]!),
+      (scope) =>
+        searchChunks(scope, {
+          projectId,
+          scopes,
+          query: question,
+          vector: vectors[0]!,
+          limit: PASSAGES,
+        }),
       { readOnly: true },
     );
     // Nothing the user can see matches: no model call, no credit.
     if (rows.length === 0) return notFound(null, []);
 
-    const passages: PromptPassage[] = rows.map((r, i) => ({
-      id: `p${i + 1}`,
-      source: {
-        type: r.sourceType,
-        id: r.sourceId,
-        revisionId: r.revisionId,
-        page: r.page,
-        title: `${r.reference ? `${r.reference} ` : ''}${r.title}, rev ${r.revisionLabel}`,
-      },
-      text: r.text,
-    }));
+    const passages: PromptPassage[] = rows.map((r, i) => toPassage(r, `p${i + 1}`));
     const byPassage = new Map(passages.map((p, i) => [p.id, rows[i]!]));
 
     const run = await deps.gateway.runTask(
@@ -109,59 +103,6 @@ export function createAskService(deps: AskDeps) {
       })),
       closestMatches: [],
     };
-  }
-
-  /** Keyword and vector search inside the user's scopes, merged by reciprocal rank fusion. */
-  async function retrieve(
-    scope: TenantScope,
-    projectId: string,
-    scopes: string[],
-    question: string,
-    vector: number[],
-  ) {
-    const visible = and(
-      eq(chunks.orgId, scope.ctx.orgId),
-      eq(chunks.projectId, projectId),
-      eq(chunks.status, 'current'),
-      inArray(chunks.accessScope, scopes),
-    );
-    const terms = keywordQuery(question);
-    const tsq = sql`websearch_to_tsquery('english', ${terms})`;
-    const keyword = terms
-      ? await scope.tx
-          .select({ id: chunks.id })
-          .from(chunks)
-          .where(and(visible, sql`${sql.identifier('tsv')} @@ ${tsq}`))
-          .orderBy(sql`ts_rank_cd(${sql.identifier('tsv')}, ${tsq}) desc`, chunks.id)
-          .limit(SEARCH_LIMIT)
-      : [];
-    const semantic = await scope.tx
-      .select({ id: chunks.id })
-      .from(chunks)
-      .where(visible)
-      .orderBy(cosineDistance(chunks.embedding, vector), chunks.id)
-      .limit(SEARCH_LIMIT);
-    const ids = reciprocalRankFusion([keyword.map((r) => r.id), semantic.map((r) => r.id)]).slice(
-      0,
-      PASSAGES,
-    );
-    if (ids.length === 0) return [];
-    const found = await scope.tx
-      .select({
-        id: chunks.id,
-        sourceType: chunks.sourceType,
-        sourceId: chunks.sourceId,
-        revisionId: chunks.revisionId,
-        revisionLabel: chunks.revisionLabel,
-        title: chunks.title,
-        reference: chunks.reference,
-        page: chunks.page,
-        text: chunks.text,
-      })
-      .from(chunks)
-      .where(and(visible, inArray(chunks.id, ids)));
-    const byId = new Map(found.map((r) => [r.id, r]));
-    return ids.map((id) => byId.get(id)).filter((r) => r !== undefined);
   }
 
   return { ask };
