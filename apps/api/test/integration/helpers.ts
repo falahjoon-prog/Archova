@@ -18,6 +18,7 @@ import {
   uniqueEmail,
 } from '@archova/testing';
 import { buildApp } from '../../src/app';
+import type { Modules } from '../../src/modules';
 import { loadConfig } from '../../src/config';
 
 export const APP_HOST = 'app.archova.test';
@@ -33,6 +34,8 @@ export interface TestContext {
   store: ReturnType<typeof createMemoryObjectStore>;
   /** Nova's model provider; tests script replies per task with `ai.on(task, ...)`. */
   ai: FakeProvider;
+  /** The loaded modules, for driving internal commands such as imports (X49). */
+  modules: Modules;
   close(): Promise<void>;
 }
 
@@ -51,7 +54,11 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
   const redis = opts.redis !== false && redisUrl ? createRedis(redisUrl) : null;
   const store = createMemoryObjectStore();
   const ai = createFakeProvider();
+  let modules: Modules | null = null;
   const app = await buildApp({
+    onModules: (m) => {
+      modules = m;
+    },
     config,
     database,
     redis,
@@ -68,6 +75,7 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
     redis,
     store,
     ai,
+    modules: modules!,
     async close() {
       await app.close();
       await database.close();

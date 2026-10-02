@@ -7,7 +7,7 @@ import { FAKE_MODELS, type ModelProvider } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore } from '@archova/mod-files';
 import type { ApiConfig } from './config';
-import { loadModules } from './modules';
+import { loadModules, type Modules } from './modules';
 import { registerOperations } from './pipeline';
 import { idempotencyStore } from './plugins/idempotency';
 import { registerProblemHandler } from './plugins/problem';
@@ -22,6 +22,8 @@ export interface AppDeps {
   entitlements?: EntitlementProvider;
   /** Tests inject a fake model provider with scripted responses. */
   aiProvider?: ModelProvider;
+  /** Hands the loaded modules to the caller, e.g. tests that drive import commands (X49) directly. */
+  onModules?: (modules: Modules) => void;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -68,6 +70,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       },
     },
   );
+
+  deps.onModules?.(modules);
 
   // Load balancer health checks; outside the contract and the host rules.
   app.get('/health/live', async () => ({ status: 'ok' }));

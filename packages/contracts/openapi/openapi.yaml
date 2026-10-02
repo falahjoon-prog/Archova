@@ -29,6 +29,7 @@ tags:
   - name: oauth
   - name: documents
   - name: ai
+  - name: rfis
 paths:
   /v1/auth/signup:
     post:
@@ -1142,6 +1143,234 @@ paths:
       responses:
         '204': { description: Saved }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listRfis
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      summary: The RFI register, filtered to what the caller may see (RFI-AC9).
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/RfiStatus' } }
+        - {
+            name: ballInCourt,
+            in: query,
+            description: 'Only RFIs waiting on this user',
+            schema: { $ref: '#/components/schemas/UserRef' },
+          }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { name: costImpact, in: query, schema: { type: string, enum: [yes, no, tbc] } }
+        - {
+            name: drawingRevisionId,
+            in: query,
+            schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
+          }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.create
+      summary: Draft an RFI. It gets a number when it is opened (RFI-AC1).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRfiRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    get:
+      operationId: getRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.create
+      summary: Edit a draft, open or answered RFI. Due date and assignee changes are audited (RFI-AC10).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRfiRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/open:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    post:
+      operationId: openRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.open
+      summary: Send the RFI, which issues its number and puts the ball with the assignees. Builder staff only.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    post:
+      operationId: addRfiResponse
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.respond
+      summary: Respond. A response from an assignee answers the RFI and passes the ball back to the builder.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRfiResponseRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    post:
+      operationId: closeRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.close
+      summary: Close with exactly one official response (RFI-AC7).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CloseRfiRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/reopen:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    post:
+      operationId: reopenRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.close
+      summary: Reopen a closed RFI; a reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RfiReasonRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    post:
+      operationId: voidRfi
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.close
+      summary: Void an open or answered RFI; a reason is required. Its number is never reused.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RfiReasonRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -1194,6 +1423,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^trm_[0-9A-Za-z]{26}$' }
+    RfiId:
+      name: rfiId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -2317,3 +2551,220 @@ components:
       required: [event]
       properties:
         event: { type: string, enum: [opened, downloaded, acknowledged] }
+    RfiStatus:
+      type: string
+      enum: [draft, open, answered, closed, void]
+    CostImpact:
+      type: string
+      enum: [yes, no, tbc]
+    DrawingPin:
+      type: object
+      description: Where on a drawing revision the item sits, normalised 0..1 sheet coordinates
+      additionalProperties: false
+      required: [drawingRevisionId, x, y]
+      properties:
+        drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
+    RfiAssignee:
+      type: object
+      required: [userId, companyId, isBallInCourt, respondedAt]
+      properties:
+        userId: { type: string }
+        companyId: { type: [string, 'null'] }
+        isBallInCourt: { type: boolean }
+        respondedAt: { type: [string, 'null'], format: date-time }
+    BallInCourt:
+      type: object
+      required: [side, userIds]
+      properties:
+        side: { type: [string, 'null'], enum: [assignees, builder, null] }
+        userIds:
+          type: array
+          items: { type: string }
+    Rfi:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          subject,
+          question,
+          status,
+          isPrivate,
+          managerId,
+          raisedByCompanyId,
+          receivedFromCompanyId,
+          assignees,
+          ballInCourt,
+          distributionUserIds,
+          distributionCompanyIds,
+          dueDate,
+          isOverdue,
+          openedAt,
+          answeredAt,
+          closedAt,
+          voidReason,
+          costImpact,
+          costEstimate,
+          scheduleImpactDays,
+          delayDays,
+          pin,
+          officialResponseId,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: [integer, 'null'], description: 'Issued when the RFI is opened' }
+        numberLabel: { type: [string, 'null'], description: 'RFI-007' }
+        subject: { type: string }
+        question: { type: string }
+        status: { $ref: '#/components/schemas/RfiStatus' }
+        isPrivate: { type: boolean }
+        managerId: { type: [string, 'null'] }
+        raisedByCompanyId: { type: [string, 'null'] }
+        receivedFromCompanyId: { type: [string, 'null'] }
+        assignees:
+          type: array
+          items: { $ref: '#/components/schemas/RfiAssignee' }
+        ballInCourt: { $ref: '#/components/schemas/BallInCourt' }
+        distributionUserIds:
+          type: array
+          items: { type: string }
+        distributionCompanyIds:
+          type: array
+          items: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue:
+          { type: boolean, description: "Open and past its due date in the project's time zone" }
+        openedAt: { type: [string, 'null'], format: date-time }
+        answeredAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        voidReason: { type: [string, 'null'] }
+        costImpact: { type: [string, 'null'], enum: [yes, no, tbc, null] }
+        costEstimate:
+          { type: [string, 'null'], description: 'Decimal string in the project currency (AUD)' }
+        scheduleImpactDays: { type: [integer, 'null'] }
+        delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
+        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        officialResponseId: { type: [string, 'null'] }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    RfiResponse:
+      type: object
+      required: [id, rfiId, authorId, body, fileIds, isOfficial, createdAt]
+      properties:
+        id: { type: string }
+        rfiId: { type: string }
+        authorId: { type: [string, 'null'] }
+        body: { type: string }
+        fileIds:
+          type: array
+          items: { type: string }
+        isOfficial: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    RfiDetail:
+      type: object
+      required: [rfi, responses]
+      properties:
+        rfi: { $ref: '#/components/schemas/Rfi' }
+        responses:
+          type: array
+          items: { $ref: '#/components/schemas/RfiResponse' }
+    RfiPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Rfi' }
+        nextCursor: { type: [string, 'null'] }
+    CreateRfiRequest:
+      type: object
+      additionalProperties: false
+      required: [subject]
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 300 }
+        question: { type: string, maxLength: 20000 }
+        isPrivate: { type: boolean }
+        managerId: { $ref: '#/components/schemas/UserRef' }
+        receivedFromCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        assigneeIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/UserRef' }
+        distributionUserIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/UserRef' }
+        distributionCompanyIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate:
+          {
+            type: string,
+            format: date,
+            description: 'Defaults to 5 business days after today in the project zone when opened',
+          }
+        costImpact: { $ref: '#/components/schemas/CostImpact' }
+        costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
+        scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+    UpdateRfiRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        subject: { type: string, minLength: 1, maxLength: 300 }
+        question: { type: string, maxLength: 20000 }
+        isPrivate: { type: boolean }
+        managerId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        assigneeIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/UserRef' }
+        distributionUserIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/UserRef' }
+        distributionCompanyIds:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate: { type: [string, 'null'], format: date }
+        costImpact: { type: [string, 'null'], enum: [yes, no, tbc, null] }
+        costEstimate: { type: [string, 'null'], pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
+        scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+    CreateRfiResponseRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 20000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    CloseRfiRequest:
+      type: object
+      additionalProperties: false
+      required: [officialResponseId]
+      properties:
+        officialResponseId: { type: string, pattern: '^rfr_[0-9A-Za-z]{26}$' }
+    RfiReasonRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }

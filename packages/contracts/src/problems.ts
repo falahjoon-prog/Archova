@@ -74,6 +74,13 @@ export const PROBLEM_CODES = {
   'ai.invalid_output': 502,
   'ai.cancelled': 408,
   'ai.run.not_found': 404,
+  // rfis
+  'rfi.not_found': 404,
+  'rfi.invalid_transition': 409,
+  'rfi.incomplete': 422,
+  'rfi.assignee_not_on_project': 422,
+  'rfi.response_not_allowed': 403,
+  'rfi_response.not_found': 422,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

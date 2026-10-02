@@ -29,6 +29,7 @@ export const ID_PREFIXES = {
   transmittalRecipient: 'trr',
   aiRun: 'air',
   aiSuggestion: 'ais',
+  rfiResponse: 'rfr',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

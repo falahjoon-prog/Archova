@@ -869,6 +869,153 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The RFI register, filtered to what the caller may see (RFI-AC9). */
+        get: operations["listRfis"];
+        put?: never;
+        /** Draft an RFI. It gets a number when it is opened (RFI-AC1). */
+        post: operations["createRfi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getRfi"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft, open or answered RFI. Due date and assignee changes are audited (RFI-AC10). */
+        patch: operations["updateRfi"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the RFI, which issues its number and puts the ball with the assignees. Builder staff only. */
+        post: operations["openRfi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Respond. A response from an assignee answers the RFI and passes the ball back to the builder. */
+        post: operations["addRfiResponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close with exactly one official response (RFI-AC7). */
+        post: operations["closeRfi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reopen a closed RFI; a reason is required. */
+        post: operations["reopenRfi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void an open or answered RFI; a reason is required. Its number is never reused. */
+        post: operations["voidRfi"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1594,6 +1741,137 @@ export interface components {
             /** @enum {string} */
             event: "opened" | "downloaded" | "acknowledged";
         };
+        /** @enum {string} */
+        RfiStatus: "draft" | "open" | "answered" | "closed" | "void";
+        /** @enum {string} */
+        CostImpact: "yes" | "no" | "tbc";
+        /** @description Where on a drawing revision the item sits, normalised 0..1 sheet coordinates */
+        DrawingPin: {
+            drawingRevisionId: string;
+            x: number;
+            y: number;
+        };
+        RfiAssignee: {
+            userId: string;
+            companyId: string | null;
+            isBallInCourt: boolean;
+            /** Format: date-time */
+            respondedAt: string | null;
+        };
+        BallInCourt: {
+            /** @enum {string|null} */
+            side: "assignees" | "builder" | null;
+            userIds: string[];
+        };
+        Rfi: {
+            id: string;
+            projectId: string;
+            /** @description Issued when the RFI is opened */
+            number: number | null;
+            /** @description RFI-007 */
+            numberLabel: string | null;
+            subject: string;
+            question: string;
+            status: components["schemas"]["RfiStatus"];
+            isPrivate: boolean;
+            managerId: string | null;
+            raisedByCompanyId: string | null;
+            receivedFromCompanyId: string | null;
+            assignees: components["schemas"]["RfiAssignee"][];
+            ballInCourt: components["schemas"]["BallInCourt"];
+            distributionUserIds: string[];
+            distributionCompanyIds: string[];
+            /** Format: date */
+            dueDate: string | null;
+            /** @description Open and past its due date in the project's time zone */
+            isOverdue: boolean;
+            /** Format: date-time */
+            openedAt: string | null;
+            /** Format: date-time */
+            answeredAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            voidReason: string | null;
+            /** @enum {string|null} */
+            costImpact: "yes" | "no" | "tbc" | null;
+            /** @description Decimal string in the project currency (AUD) */
+            costEstimate: string | null;
+            scheduleImpactDays: number | null;
+            /** @description Days of delay caused by a late answer */
+            delayDays: number | null;
+            pin: components["schemas"]["DrawingPin"] | null;
+            officialResponseId: string | null;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        RfiResponse: {
+            id: string;
+            rfiId: string;
+            authorId: string | null;
+            body: string;
+            fileIds: string[];
+            isOfficial: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        RfiDetail: {
+            rfi: components["schemas"]["Rfi"];
+            responses: components["schemas"]["RfiResponse"][];
+        };
+        RfiPage: {
+            data: components["schemas"]["Rfi"][];
+            nextCursor: string | null;
+        };
+        CreateRfiRequest: {
+            subject: string;
+            question?: string;
+            isPrivate?: boolean;
+            managerId?: components["schemas"]["UserRef"];
+            receivedFromCompanyId?: components["schemas"]["CompanyRef"];
+            assigneeIds?: components["schemas"]["UserRef"][];
+            distributionUserIds?: components["schemas"]["UserRef"][];
+            distributionCompanyIds?: components["schemas"]["CompanyRef"][];
+            /**
+             * Format: date
+             * @description Defaults to 5 business days after today in the project zone when opened
+             */
+            dueDate?: string;
+            costImpact?: components["schemas"]["CostImpact"];
+            costEstimate?: string;
+            scheduleImpactDays?: number;
+            pin?: components["schemas"]["DrawingPin"];
+        };
+        UpdateRfiRequest: {
+            subject?: string;
+            question?: string;
+            isPrivate?: boolean;
+            managerId?: components["schemas"]["UserRef"] | null;
+            assigneeIds?: components["schemas"]["UserRef"][];
+            distributionUserIds?: components["schemas"]["UserRef"][];
+            distributionCompanyIds?: components["schemas"]["CompanyRef"][];
+            /** Format: date */
+            dueDate?: string | null;
+            /** @enum {string|null} */
+            costImpact?: "yes" | "no" | "tbc" | null;
+            costEstimate?: string | null;
+            scheduleImpactDays?: number | null;
+            delayDays?: number | null;
+            pin?: components["schemas"]["DrawingPin"] | null;
+        };
+        CreateRfiResponseRequest: {
+            body: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        CloseRfiRequest: {
+            officialResponseId: string;
+        };
+        RfiReasonRequest: {
+            reason: string;
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -1617,6 +1895,7 @@ export interface components {
         DrawingRevisionId: string;
         MarkupId: string;
         TransmittalId: string;
+        RfiId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -3165,6 +3444,290 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRfis: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["RfiStatus"];
+                /** @description Only RFIs waiting on this user */
+                ballInCourt?: components["schemas"]["UserRef"];
+                overdue?: "true" | "false";
+                costImpact?: "yes" | "no" | "tbc";
+                drawingRevisionId?: string;
+                q?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createRfi: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRfiRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRfi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateRfi: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRfiRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openRfi: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addRfiResponse: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRfiResponseRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    closeRfi: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CloseRfiRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reopenRfi: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfiReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidRfi: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RfiReasonRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiDetail"];
+                };
             };
             default: components["responses"]["Problem"];
         };

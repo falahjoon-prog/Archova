@@ -267,6 +267,65 @@ export const SubmitAiFeedbackParams = z.object({
   "runId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")),
 });
 export const SubmitAiFeedbackBody = s.AiFeedbackRequestSchema;
+export const ListRfisParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListRfisQuery = z.object({
+  "status": s.RfiStatusSchema.optional(),
+  "ballInCourt": s.UserRefSchema.optional(),
+  "overdue": z.enum(["true", "false"]).optional(),
+  "costImpact": z.enum(["yes", "no", "tbc"]).optional(),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateRfiBody = s.CreateRfiRequestSchema;
+export const GetRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateRfiBody = s.UpdateRfiRequestSchema;
+export const OpenRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const AddRfiResponseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const AddRfiResponseBody = s.CreateRfiResponseRequestSchema;
+export const CloseRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const CloseRfiBody = s.CloseRfiRequestSchema;
+export const ReopenRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const ReopenRfiBody = s.RfiReasonRequestSchema;
+export const VoidRfiParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const VoidRfiBody = s.RfiReasonRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -965,6 +1024,114 @@ export const operations = {
     params: SubmitAiFeedbackParams,
     query: null,
     body: SubmitAiFeedbackBody,
+  },
+  listRfis: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: ListRfisParams,
+    query: ListRfisQuery,
+    body: null,
+  },
+  createRfi: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateRfiParams,
+    query: null,
+    body: CreateRfiBody,
+  },
+  getRfi: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: GetRfiParams,
+    query: null,
+    body: null,
+  },
+  updateRfi: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateRfiParams,
+    query: null,
+    body: UpdateRfiBody,
+  },
+  openRfi: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/open',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.open",
+    internal: false,
+    contentType: null,
+    params: OpenRfiParams,
+    query: null,
+    body: null,
+  },
+  addRfiResponse: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/responses',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.respond",
+    internal: false,
+    contentType: "application/json",
+    params: AddRfiResponseParams,
+    query: null,
+    body: AddRfiResponseBody,
+  },
+  closeRfi: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.close",
+    internal: false,
+    contentType: "application/json",
+    params: CloseRfiParams,
+    query: null,
+    body: CloseRfiBody,
+  },
+  reopenRfi: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/reopen',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.close",
+    internal: false,
+    contentType: "application/json",
+    params: ReopenRfiParams,
+    query: null,
+    body: ReopenRfiBody,
+  },
+  voidRfi: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/void',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.close",
+    internal: false,
+    contentType: "application/json",
+    params: VoidRfiParams,
+    query: null,
+    body: VoidRfiBody,
   },
 } as const satisfies Record<string, OperationDef>;
 
