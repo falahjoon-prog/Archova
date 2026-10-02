@@ -12,8 +12,15 @@ export {
   type ObjectStore,
   type S3StoreConfig,
 } from './infra/object-store';
-export { noScanner, type MalwareScanner } from './infra/scanner';
+export {
+  createGuardDutyScanner,
+  guardDutyVerdict,
+  noScanner,
+  type MalwareScanner,
+  type ScanVerdict,
+} from './infra/scanner';
 export { hexToBase64, quarantineKey } from './domain/rules';
+export { assertFileReady } from './application/files-service';
 
 export function createFilesModule(
   services: KernelServices,

@@ -9,7 +9,13 @@ import {
   type RedisClient,
 } from '@archova/kernel';
 import { DEFAULT_FAKE_RESPONDERS, createFakeProvider, type FakeProvider } from '@archova/mod-ai';
-import { createMemoryObjectStore, hexToBase64, noScanner, quarantineKey } from '@archova/mod-files';
+import {
+  createMemoryObjectStore,
+  hexToBase64,
+  noScanner,
+  quarantineKey,
+  type MalwareScanner,
+} from '@archova/mod-files';
 import {
   TEST_PASSWORD,
   testAppUrl,
@@ -39,7 +45,9 @@ export interface TestContext {
   close(): Promise<void>;
 }
 
-export async function createTestContext(opts: { redis?: boolean } = {}): Promise<TestContext> {
+export async function createTestContext(
+  opts: { redis?: boolean; scanner?: MalwareScanner } = {},
+): Promise<TestContext> {
   const config = loadConfig({
     NODE_ENV: 'test',
     API_DATABASE_URL: testAppUrl(),
@@ -64,7 +72,7 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
     redis,
     logger: createLogger('test', 'silent'),
     store,
-    scanner: noScanner,
+    scanner: opts.scanner ?? noScanner,
     aiProvider: ai,
   });
   await app.ready();

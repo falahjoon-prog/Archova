@@ -16,7 +16,16 @@ describe('config', () => {
 
   it('refuses to start in production without keys, Redis, S3, a scanner and https origins', () => {
     expect(() => loadConfig({ ...base, NODE_ENV: 'production' })).toThrow(
-      /API_JWT_PRIVATE_JWK.*API_REDIS_URL.*API_FILES_STORE=s3.*malware scanner.*https/,
+      /API_JWT_PRIVATE_JWK.*API_REDIS_URL.*API_FILES_STORE=s3.*API_FILES_SCANNER=guardduty.*https/,
     );
+  });
+
+  it('needs S3 for the GuardDuty scanner, which reads object tags', () => {
+    expect(() => loadConfig({ ...base, API_FILES_SCANNER: 'guardduty' })).toThrow(
+      /API_FILES_STORE=s3/,
+    );
+    expect(
+      loadConfig({ ...base, API_FILES_SCANNER: 'guardduty', API_FILES_STORE: 's3' }).files.scanner,
+    ).toBe('guardduty');
   });
 });

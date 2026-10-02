@@ -1,6 +1,6 @@
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
-import type { FilesModule } from '@archova/mod-files';
+import { assertFileReady, type FilesModule } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
 
 /** Other modules' public interfaces `documents` uses (no cross-module SQL). */
@@ -23,8 +23,7 @@ export function createContext(deps: DocumentsDeps) {
       throw new AppError('file.not_in_project', 'That file belongs to another project.', [
         { path: 'fileId', message: 'File is not in this project' },
       ]);
-    if (f.status !== 'ready')
-      throw new AppError('file.not_ready', 'That file is still being checked or was blocked.');
+    assertFileReady(f);
     return f;
   }
 

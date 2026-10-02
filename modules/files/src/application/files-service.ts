@@ -1,11 +1,11 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { CreateUploadRequest } from '@archova/contracts';
 import { AppError, resolveTimeZone, type Logger, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fileObjects, uploadSessions } from '../infra/tables';
 import type { ObjectStore } from '../infra/object-store';
-import type { MalwareScanner } from '../infra/scanner';
+import type { MalwareScanner, ScanVerdict } from '../infra/scanner';
 import {
   ALLOWED_MIME_TYPES,
   DOWNLOAD_URL_TTL_S,
@@ -17,6 +17,35 @@ import {
   storageKey,
 } from '../domain/rules';
 import { captureToRow, pickCapture } from '../domain/capture';
+
+type FileRow = typeof fileObjects.$inferSelect;
+
+/** What a scan verdict makes the file (backend 06 §3). */
+const FILE_STATUS = {
+  clean: 'ready',
+  infected: 'infected',
+  unscannable: 'failed',
+  pending: 'scanning',
+} as const satisfies Record<ScanVerdict, FileRow['status']>;
+
+/** No scan result after this long fails closed (security-licensing/09 §4). */
+const SCAN_TIMEOUT_MS = 15 * 60_000;
+
+/**
+ * Nothing reads a file before it's `ready` (security-licensing/09 §4). `file.not_ready` (409) means still being
+ * scanned, so retry; `file.blocked` (422) is final: infected or couldn't be scanned.
+ */
+export function assertFileReady(f: Pick<FileRow, 'status'>) {
+  if (f.status === 'scanning')
+    throw new AppError('file.not_ready', 'This file is still being checked. Try again shortly.');
+  if (f.status !== 'ready')
+    throw new AppError(
+      'file.blocked',
+      f.status === 'infected'
+        ? 'This file was blocked because it may contain malware.'
+        : "This file couldn't be checked for malware, so it can't be used. Upload it again; password-protected files can't be checked.",
+    );
+}
 
 export interface FilesDeps {
   access: AccessService;
@@ -127,7 +156,8 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
 
   async function complete(scope: TenantScope, uploadId: string) {
     const session = await getUploadSession(scope, uploadId);
-    if (session.status === 'uploaded' && session.fileId) return getFileRow(scope, session.fileId);
+    if (session.status === 'uploaded' && session.fileId)
+      return settle(scope, await getFileRow(scope, session.fileId));
     if (session.expiresAt < new Date())
       throw new AppError('upload.expired', 'This upload expired. Start it again.');
 
@@ -147,13 +177,8 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
       module: session.module,
       fileId,
     });
-    if (verdict === 'clean') {
-      await store.copy(session.quarantineKey, key);
-      await store.delete(session.quarantineKey);
-    } else {
-      // Infected: kept in quarantine for 30 days for investigation, never downloadable (backend 06 §3).
-      logger.warn({ orgId: scope.ctx.orgId, uploadId }, 'infected upload quarantined');
-    }
+    if (verdict === 'clean') await release(session.quarantineKey, key);
+    else logVerdict(scope, verdict, { uploadId });
 
     const [dupe] = await scope.tx
       .select({ id: fileObjects.id })
@@ -179,7 +204,7 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
         mime: session.mime,
         sizeBytes: session.sizeBytes,
         sha256: session.sha256,
-        status: verdict === 'clean' ? 'ready' : 'infected',
+        status: FILE_STATUS[verdict],
         dedupeOf: dupe?.id ?? null,
         ...pickCapture(session),
         createdBy: scope.ctx.userId,
@@ -190,17 +215,76 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
       .update(uploadSessions)
       .set({ status: 'uploaded', fileId, updatedBy: scope.ctx.userId })
       .where(eq(uploadSessions.id, uploadId));
-    if (verdict === 'clean') {
-      scope.events.add({
-        type: 'files.object.ready.v1',
-        projectId: session.projectId,
-        entityType: 'file',
-        entityId: fileId,
-        entityVersion: 1,
-        data: { fileId, projectId: session.projectId, module: session.module, mime: session.mime },
-      });
-    }
+    if (verdict === 'clean') emitReady(scope, row!);
     return row!;
+  }
+
+  async function readOnly(scope: TenantScope) {
+    const r = await scope.tx.execute<{ ro: string }>(
+      sql`select current_setting('transaction_read_only') as ro`,
+    );
+    return r.rows[0]?.ro === 'on';
+  }
+
+  /** Clean: copy out of quarantine to the org key, then drop the quarantine copy. */
+  async function release(from: string, to: string) {
+    await store.copy(from, to);
+    await store.delete(from);
+  }
+
+  function logVerdict(scope: TenantScope, verdict: ScanVerdict, ids: Record<string, string>) {
+    // Infected and unscannable files stay in quarantine for 30 days for investigation, never served
+    // (security-licensing/09 §4). Notifying the uploader and admins comes with the notifications module.
+    if (verdict === 'infected')
+      logger.warn({ orgId: scope.ctx.orgId, ...ids }, 'infected upload quarantined');
+    if (verdict === 'unscannable')
+      logger.warn({ orgId: scope.ctx.orgId, ...ids }, 'upload could not be scanned');
+  }
+
+  function emitReady(scope: TenantScope, f: FileRow) {
+    scope.events.add({
+      type: 'files.object.ready.v1',
+      projectId: f.projectId,
+      entityType: 'file',
+      entityId: f.id,
+      entityVersion: f.version,
+      data: { fileId: f.id, projectId: f.projectId, module: f.module, mime: f.mime },
+    });
+  }
+
+  /**
+   * A file still `scanning` (the engine hadn't tagged it when the upload completed) is settled on the next read:
+   * clean files move out of quarantine and become `ready`; no result after SCAN_TIMEOUT_MS fails closed.
+   * The files worker takes this over with a sweep when apps/worker lands.
+   */
+  async function settle(scope: TenantScope, f: FileRow): Promise<FileRow> {
+    if (f.status !== 'scanning' || (await readOnly(scope))) return f;
+    let verdict = await scanner.scan(f.storageKey);
+    if (verdict === 'pending' && Date.now() - f.createdAt.getTime() > SCAN_TIMEOUT_MS)
+      verdict = 'unscannable';
+    if (verdict === 'pending') return f;
+    const key = storageKey({
+      orgId: f.orgId,
+      projectId: f.projectId,
+      module: f.module,
+      fileId: f.id,
+    });
+    if (verdict === 'clean') await release(f.storageKey, key);
+    else logVerdict(scope, verdict, { fileId: f.id });
+    const [row] = await scope.tx
+      .update(fileObjects)
+      .set({
+        status: FILE_STATUS[verdict],
+        storageKey: verdict === 'clean' ? key : f.storageKey,
+        version: f.version + 1,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(fileObjects.id, f.id), eq(fileObjects.status, 'scanning')))
+      .returning();
+    // Another request settled it first.
+    if (!row) return getFileRow(scope, f.id);
+    if (verdict === 'clean') emitReady(scope, row);
+    return row;
   }
 
   /**
@@ -210,13 +294,12 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
   async function get(scope: TenantScope, fileId: string) {
     const f = await getFileRow(scope, fileId);
     await authorise(scope, f.projectId, 'read');
-    return f;
+    return settle(scope, f);
   }
 
   async function downloadUrl(scope: TenantScope, fileId: string) {
     const f = await get(scope, fileId);
-    if (f.status !== 'ready')
-      throw new AppError('file.not_ready', 'This file is not available for download.');
+    assertFileReady(f);
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
       expiresInS: DOWNLOAD_URL_TTL_S,
@@ -230,8 +313,7 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
    */
   async function readBytes(scope: TenantScope, fileId: string, maxBytes: number) {
     const f = await get(scope, fileId);
-    if (f.status !== 'ready')
-      throw new AppError('file.not_ready', 'This file is not available yet.');
+    assertFileReady(f);
     if (f.sizeBytes > maxBytes)
       throw new AppError('validation_failed', 'This file is too large to process here.', [
         { path: 'fileId', message: `Larger than ${Math.round(maxBytes / 1e6)} MB` },
