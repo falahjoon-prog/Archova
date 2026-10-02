@@ -19,13 +19,15 @@
     "@archova/kernel": "workspace:*",
     "@archova/time": "workspace:*",
     "@aws-sdk/client-bedrock-runtime": "^3.1145.0",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.2",
+    "pdfjs-dist": "^5.7.284"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
     "@types/node": "^22.18.0",
     "eslint": "^9.39.0",
+    "pdf-lib": "^1.17.1",
     "tsx": "^4.20.0",
     "typescript": "~5.9.3",
     "vitest": "^3.2.0"
