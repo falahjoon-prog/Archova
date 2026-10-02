@@ -6,7 +6,7 @@ import {
   type Database,
   type RedisClient,
 } from '@archova/kernel';
-import { createFakeProvider, type FakeProvider } from '@archova/mod-ai';
+import { DEFAULT_FAKE_RESPONDERS, createFakeProvider, type FakeProvider } from '@archova/mod-ai';
 import { createMemoryObjectStore, noScanner } from '@archova/mod-files';
 import {
   TEST_PASSWORD,
@@ -48,7 +48,7 @@ export async function createTestContext(opts: { redis?: boolean } = {}): Promise
   const redisUrl = testRedisUrl();
   const redis = opts.redis !== false && redisUrl ? createRedis(redisUrl) : null;
   const store = createMemoryObjectStore();
-  const ai = createFakeProvider();
+  const ai = createFakeProvider({ ...DEFAULT_FAKE_RESPONDERS });
   const app = await buildApp({
     config,
     database,

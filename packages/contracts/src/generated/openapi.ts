@@ -465,6 +465,76 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-register/extractions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova reads the title block of every sheet in an uploaded drawing PDF or image (F1).
+         * @description Each sheet becomes a pending suggestion with the drawing number, title, revision, discipline, date and scale,
+         *     the fields a person must check (`flagged`), and how it matches the register (new drawing, new revision...).
+         *     Nothing is added to the register until a person accepts. Re-running a file replaces its pending suggestions.
+         *     Pages without a text layer (scans) are listed in `skippedPages` until OCR lands.
+         */
+        post: operations["extractDrawingRegister"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Nova suggestions on this project, newest first. */
+        get: operations["listAiSuggestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept, edit or reject a Nova suggestion (ai/04 §7).
+         * @description Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`).
+         */
+        post: operations["decideAiSuggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -796,6 +866,53 @@ export interface components {
             /** @enum {string|null} */
             reason?: "wrong" | "missing" | "not_useful" | "wrong_source" | "other" | null;
             comment?: string | null;
+        };
+        /** @enum {string} */
+        AiSuggestionStatus: "pending" | "accepted" | "edited" | "rejected";
+        AiSuggestion: {
+            id: string;
+            projectId: string | null;
+            /** @description Nova task, e.g. `drawing.titleblock` */
+            task: string;
+            targetType: string;
+            targetId: string | null;
+            status: components["schemas"]["AiSuggestionStatus"];
+            confidence: number | null;
+            /** @description Task-specific content. For `drawing.titleblock` see DrawingSheetFields. */
+            payload: {
+                [key: string]: unknown;
+            };
+            runId: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            decidedAt: string | null;
+        };
+        AiSuggestionPage: {
+            data: components["schemas"]["AiSuggestion"][];
+            nextCursor: string | null;
+        };
+        DrawingSheetFields: {
+            number?: string | null;
+            title?: string | null;
+            revision?: string | null;
+            /** @enum {string|null} */
+            discipline?: "architectural" | "structural" | "civil" | "hydraulic" | "mechanical" | "electrical" | "fire" | "landscape" | "interiors" | "survey" | "other" | null;
+            /** Format: date */
+            revisionDate?: string | null;
+            scale?: string | null;
+        };
+        AiSuggestionDecision: {
+            /** @enum {string} */
+            decision: "accepted" | "edited" | "rejected";
+            fields?: components["schemas"]["DrawingSheetFields"];
+        };
+        DrawingRegisterExtraction: {
+            suggestions: components["schemas"]["AiSuggestion"][];
+            pageCount: number;
+            /** @description Pages with no text layer (scans); read once OCR lands. */
+            skippedPages: number[];
+            refusedPages: number[];
         };
         CreateUploadRequest: {
             filename: string;
@@ -1624,6 +1741,94 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    extractDrawingRegister: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Suggestions, one per sheet */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingRegisterExtraction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAiSuggestions: {
+        parameters: {
+            query?: {
+                task?: string;
+                status?: components["schemas"]["AiSuggestionStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of suggestions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestionPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideAiSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiSuggestionDecision"];
+            };
+        };
+        responses: {
+            /** @description The decided suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
             };
             default: components["responses"]["Problem"];
         };

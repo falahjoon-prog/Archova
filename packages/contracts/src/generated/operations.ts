@@ -104,6 +104,29 @@ export const SubmitAiFeedbackParams = z.object({
   "runId": z.string().regex(new RegExp("^air_[0-9A-Za-z]{26}$")),
 });
 export const SubmitAiFeedbackBody = s.AiFeedbackRequestSchema;
+export const ExtractDrawingRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExtractDrawingRegisterBody = z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict();
+export const ListAiSuggestionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListAiSuggestionsQuery = z.object({
+  "task": z.string().max(64).optional(),
+  "status": s.AiSuggestionStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const DecideAiSuggestionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const DecideAiSuggestionBody = s.AiSuggestionDecisionSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -478,6 +501,42 @@ export const operations = {
     params: SubmitAiFeedbackParams,
     query: null,
     body: SubmitAiFeedbackBody,
+  },
+  extractDrawingRegister: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-register/extractions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.drawing_register.extract",
+    internal: false,
+    contentType: "application/json",
+    params: ExtractDrawingRegisterParams,
+    query: null,
+    body: ExtractDrawingRegisterBody,
+  },
+  listAiSuggestions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.suggestions.read",
+    internal: false,
+    contentType: null,
+    params: ListAiSuggestionsParams,
+    query: ListAiSuggestionsQuery,
+    body: null,
+  },
+  decideAiSuggestion: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision',
+    module: "ai",
+    auth: "required",
+    permission: "ai.suggestions.read",
+    internal: false,
+    contentType: "application/json",
+    params: DecideAiSuggestionParams,
+    query: null,
+    body: DecideAiSuggestionBody,
   },
 } as const satisfies Record<string, OperationDef>;
 
