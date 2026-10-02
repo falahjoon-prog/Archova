@@ -14,6 +14,9 @@ import {
   type DataTableColumn,
 } from '@archova/ui';
 import { DocumentsIcon } from '@archova/ui/icons';
+import { fileDownloadUrl } from '@/shared/lib/uploads';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -28,8 +31,19 @@ import {
 } from '../hooks/useDocuments';
 import { DOCUMENT_STATUS_LABELS, type ProjectDocument } from '../lib/types';
 
+const EMPTY_FORM = { rev: '', file: null, notes: '' };
+
+/**
+ * Downloads on a short-lived signed URL; the API checks the caller can read the file. Navigating rather than
+ * opening a window, which browsers block after an await.
+ */
+async function download(orgId: string, fileId: string) {
+  window.location.assign(await fileDownloadUrl(orgId, fileId));
+}
+
 /** Non-drawing documents in folders with versions (DOC-US9). Drawings have their own register. */
 export function DocumentsScreen() {
+  const org = useCurrentOrg();
   const project = useCurrentProject();
   usePublishAssistantScope({
     projectId: project.projectId,
@@ -43,7 +57,7 @@ export function DocumentsScreen() {
   const revisions = useDocumentRevisions(project.projectId, selected?.id ?? null);
   const addRevision = useAddRevision(project.projectId);
   const [uploading, setUploading] = useState<ProjectDocument | null>(null);
-  const [form, setForm] = useState({ rev: '', fileName: '', notes: '' });
+  const [form, setForm] = useState<{ rev: string; file: File | null; notes: string }>(EMPTY_FORM);
 
   const columns: DataTableColumn<ProjectDocument>[] = [
     {
@@ -94,7 +108,7 @@ export function DocumentsScreen() {
           variant="secondary"
           onClick={() => {
             setUploading(d);
-            setForm({ rev: '', fileName: '', notes: '' });
+            setForm(EMPTY_FORM);
           }}
         >
           New revision
@@ -109,7 +123,7 @@ export function DocumentsScreen() {
         title="Documents"
         description="Reports, certificates, contracts and specifications, with every version kept."
       />
-      <PreviewDataNotice tool="Documents" />
+      {previewDataOnly ? <PreviewDataNotice tool="Documents" /> : null}
       <ErrorAlert error={folders.error ?? docs.error} title="We couldn't load documents" />
       <div className="documents-layout">
         <nav aria-label="Folders" className="documents-folders">
@@ -177,10 +191,21 @@ export function DocumentsScreen() {
                           <StatusPill tone="neutral">Superseded</StatusPill>
                         )}
                         <span className="u-mono">{r.fileName}</span>
+                        {r.fileId ? (
+                          <Button
+                            size="sm"
+                            variant="tertiary"
+                            aria-label={`Download Rev ${r.rev}`}
+                            onClick={() => void download(org.orgId, r.fileId!)}
+                          >
+                            Download
+                          </Button>
+                        ) : null}
                       </div>
                       <span className="u-caption">
-                        {formatLocalDate(r.issuedDate)} · {r.createdBy}
-                        {r.notes ? ` · ${r.notes}` : ''}
+                        {[r.issuedDate ? formatLocalDate(r.issuedDate) : null, r.createdBy, r.notes]
+                          .filter(Boolean)
+                          .join(' · ')}
                       </span>
                     </li>
                   ))}
@@ -202,14 +227,15 @@ export function DocumentsScreen() {
             </Button>
             <Button
               loading={addRevision.isPending}
-              disabled={!form.rev.trim() || !form.fileName}
+              disabled={!form.rev.trim() || !form.file}
               onClick={() =>
                 uploading &&
+                form.file &&
                 addRevision.mutate(
                   {
                     documentId: uploading.id,
                     rev: form.rev.trim(),
-                    fileName: form.fileName,
+                    file: form.file,
                     notes: form.notes,
                   },
                   { onSuccess: () => setUploading(null) },
@@ -234,7 +260,7 @@ export function DocumentsScreen() {
             id="doc-file"
             type="file"
             className="file-input"
-            onChange={(e) => setForm({ ...form, fileName: e.target.files?.[0]?.name ?? '' })}
+            onChange={(e) => setForm({ ...form, file: e.target.files?.[0] ?? null })}
           />
         </div>
         <Textarea

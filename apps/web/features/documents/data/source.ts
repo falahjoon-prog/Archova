@@ -1,8 +1,9 @@
 // Documents data source, mirroring `CRUD {p}/folders`, `CRUD {p}/documents` and
 // `POST {p}/documents/{id}/revisions` (backend 04 §3). Preview: in-memory store with the AU project template folders.
+// `api.ts` is the same interface against the API; `useDocumentsSource` picks one (shared/lib/data-mode).
 
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
-import type { DocumentRevision, Folder, ProjectDocument } from '../lib/types';
+import type { DocumentRevision, Folder, NewRevisionInput, ProjectDocument } from '../lib/types';
 
 interface Store {
   folders: Folder[];
@@ -32,6 +33,7 @@ function seed(): Store {
         id: `${id}_r${i}`,
         documentId: id,
         rev,
+        fileId: null,
         fileName,
         status: i === revs.length - 1 ? 'current' : 'superseded',
         issuedFor: null,
@@ -86,6 +88,8 @@ function seed(): Store {
 
 const stores = projectStores<Store>(seed);
 
+export type DocumentsSource = typeof documentsSource;
+
 export const documentsSource = {
   async listFolders(projectId: string): Promise<Folder[]> {
     return delay(stores.get(projectId).folders);
@@ -108,7 +112,7 @@ export const documentsSource = {
   async addRevision(
     projectId: string,
     documentId: string,
-    input: { rev: string; fileName: string; notes: string },
+    input: NewRevisionInput,
     actor: { name: string },
   ): Promise<ProjectDocument> {
     const s = stores.get(projectId);
@@ -126,7 +130,8 @@ export const documentsSource = {
       id: mockId('drv'),
       documentId,
       rev: input.rev,
-      fileName: input.fileName,
+      fileId: null,
+      fileName: input.file.name,
       status: 'current',
       issuedFor: null,
       issuedDate: nowIso().slice(0, 10),

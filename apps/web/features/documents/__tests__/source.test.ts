@@ -8,7 +8,7 @@ describe('documents preview source', () => {
     const doc = await documentsSource.addRevision(
       'p',
       'doc_geo',
-      { rev: 'B', fileName: 'geo-B.pdf', notes: '' },
+      { rev: 'B', file: new File(['%PDF'], 'geo-B.pdf'), notes: '' },
       { name: 'Test' },
     );
     expect(doc.currentRev).toBe('B');
@@ -21,7 +21,7 @@ describe('documents preview source', () => {
       documentsSource.addRevision(
         'p',
         'doc_geo',
-        { rev: 'B', fileName: 'x.pdf', notes: '' },
+        { rev: 'B', file: new File(['%PDF'], 'x.pdf'), notes: '' },
         { name: 'Test' },
       ),
     ).rejects.toMatchObject({ status: 409 });

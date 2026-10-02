@@ -1,4 +1,5 @@
-// `documents.folders`, `documents.documents` and `documents.document_revisions` (backend schema), camelCase.
+// Folders, documents and their revisions as the documents screen uses them. The API source maps the contract's
+// `Folder`, `Document` and `DocumentRevision` onto these; the preview store holds them directly.
 
 export interface Folder {
   id: string;
@@ -15,24 +16,27 @@ export interface ProjectDocument {
   folderId: string;
   title: string;
   docNumber: string | null;
-  docType: string;
+  docType: string | null;
   status: DocumentStatus;
   currentRev: string;
   currentRevisionId: string;
   updatedAt: string;
-  updatedBy: string;
+  /** Who added the current revision, when known by name. */
+  updatedBy: string | null;
 }
 
 export interface DocumentRevision {
   id: string;
   documentId: string;
   rev: string;
+  /** The stored file to download; null in the preview. */
+  fileId: string | null;
   fileName: string;
   status: 'current' | 'superseded';
   issuedFor: string | null;
-  issuedDate: string;
+  issuedDate: string | null;
   notes: string | null;
-  createdBy: string;
+  createdBy: string | null;
 }
 
 export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
@@ -43,3 +47,9 @@ export const DOCUMENT_STATUS_LABELS: Record<DocumentStatus, string> = {
   superseded: 'Superseded',
   void: 'Void',
 };
+
+export interface NewRevisionInput {
+  rev: string;
+  file: File;
+  notes: string;
+}
