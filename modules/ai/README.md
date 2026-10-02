@@ -25,6 +25,10 @@ The gateway checks that Nova is on for the org, feature and caller, checks the m
 
 `POST …/ai/induction-drafts` searches the caller's visible documents once per required induction section (compliance/04 §2), then `induction.draft` writes slides, a script and a quiz. `src/domain/induction.ts` checks the draft before it is stored: items whose citation doesn't quote a passage, whose numbers aren't in their source, or that use a banned word are removed and listed in `warnings`; empty sections become `missing`; critical quiz flags are forced. The declaration and fixed safety sentences come from `INDUCTION_FIXED_TEXT`, not the model. The draft is a pending `ai_suggestions` row; `workforce` creates the induction version when the builder accepts (docs/ai/12).
 
+## Induction Q&A (I3)
+
+`api.indexInductionVersion` chunks a published induction version's slides and script (one page per slide) into `ai_chunks` with `source_type = induction` and scope `induction:<version id>`. `api.askInduction` searches that scope only and runs `induction.ask` (0.25 credit, feature `inductions`). An answer without a valid citation, or a question with nothing retrieved, returns `INDUCTION_ASK_SUPERVISOR` ("ask your supervisor or the site office"). Ask Nova never retrieves induction chunks, because `documents` never grants an `induction:` scope, and the project indexer only reconciles `document` and `drawing` chunks. These are module API calls with no route: `workforce` calls them on publish, and from the worker's route after the X45 access-link check.
+
 ## Providers
 
 | `API_AI_PROVIDER` | Use                                                                                                                                                                                                                                                                                            |

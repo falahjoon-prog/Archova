@@ -308,6 +308,18 @@ export const IndexProjectForNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const SyncPullParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SyncPullQuery = z.object({
+  "scopes": z.string().min(3).max(4000),
+  "since": z.string().regex(new RegExp("^[0-9]{1,20}$")),
+  "limit": z.coerce.number().int().min(1).max(500).default(500),
+});
+export const SyncPushParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SyncPushBody = s.SyncPushRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -1078,6 +1090,30 @@ export const operations = {
     params: IndexProjectForNovaParams,
     query: null,
     body: null,
+  },
+  syncPull: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/sync/pull',
+    module: "sync",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: SyncPullParams,
+    query: SyncPullQuery,
+    body: null,
+  },
+  syncPush: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/sync/push',
+    module: "sync",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SyncPushParams,
+    query: null,
+    body: SyncPushBody,
   },
 } as const satisfies Record<string, OperationDef>;
 

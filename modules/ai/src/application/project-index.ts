@@ -46,6 +46,9 @@ export interface IndexReport {
   chunks: number;
 }
 
+/** The source types this service indexes and reconciles. */
+const DOCUMENT_SOURCES: Array<'document' | 'drawing'> = ['document', 'drawing'];
+
 const MAX_FILE_BYTES = 200 * 1024 * 1024;
 /** Revisions processed at once; each holds one file in memory. */
 const CONCURRENCY = 2;
@@ -208,7 +211,12 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
    */
   async function reconcile(scope: TenantScope, projectId: string, sources: SourceRevision[]) {
     const live = sources.map((s) => s.revisionId);
-    const inProject = and(eq(chunks.orgId, scope.ctx.orgId), eq(chunks.projectId, projectId));
+    // Only what `documents` supplies: induction chunks (induction-qa.ts) are kept in step by their own versions.
+    const inProject = and(
+      eq(chunks.orgId, scope.ctx.orgId),
+      eq(chunks.projectId, projectId),
+      inArray(chunks.sourceType, DOCUMENT_SOURCES),
+    );
     await scope.tx
       .delete(chunks)
       .where(and(inProject, live.length ? notInArray(chunks.revisionId, live) : sql`true`));
@@ -220,6 +228,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       .where(
         and(
           eq(indexEntries.projectId, projectId),
+          inArray(indexEntries.sourceType, DOCUMENT_SOURCES),
           live.length ? notInArray(indexEntries.revisionId, live) : sql`true`,
         ),
       );

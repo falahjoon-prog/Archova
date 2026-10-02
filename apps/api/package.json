@@ -23,6 +23,7 @@
     "@archova/mod-files": "workspace:*",
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-platform": "workspace:*",
+    "@archova/mod-sync": "workspace:*",
     "@fastify/cookie": "^11.0.2",
     "@fastify/formbody": "^8.0.2",
     "@node-rs/argon2": "^2.0.2",

@@ -1020,6 +1020,55 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/sync/pull": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Changes to the requested scopes since a checkpoint, for the mobile offline store (backend 04 §4).
+         * @description Reads the change feed after `since` for each scope, filtered to what the caller can see.
+         *     `revokedScopes` is on every response (X14): the device purges that data and stops asking for it.
+         *     The first load of a scope is `since=0`, paginated with `hasMore`.
+         */
+        get: operations["syncPull"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/sync/push": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply commands queued offline, in order, each in its own transaction (backend 04 §4).
+         * @description `command` names a module use case (`defects.markReadyForReview`); permissions, state machines and
+         *     audit are the same as the REST endpoint. `mutationId` is the idempotency key: a replay returns the
+         *     stored result. A rejection with `access.revoked` is not stored, so the drain-grant retry (X38) can
+         *     return `pending_review`.
+         */
+        post: operations["syncPush"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1827,6 +1876,73 @@ export interface components {
         AcknowledgeTransmittalRequest: {
             /** @enum {string} */
             event: "opened" | "downloaded" | "acknowledged";
+        };
+        SyncChange: {
+            entityType: string;
+            id: string;
+            /** @enum {string} */
+            op: "upsert" | "delete";
+            version: number;
+            /** @description The record's DTO; absent on deletes. */
+            data?: {
+                [key: string]: unknown;
+            };
+        };
+        RevokedScope: {
+            projectId: string;
+            /** @description `null` means the whole project. */
+            module: string | null;
+        };
+        SyncPullResponse: {
+            changes: components["schemas"]["SyncChange"][];
+            revokedScopes: components["schemas"]["RevokedScope"][];
+            nextSince: string;
+            hasMore: boolean;
+        };
+        SyncMutation: {
+            /**
+             * Format: uuid
+             * @description UUIDv7 made on the device; also the idempotency key.
+             */
+            mutationId: string;
+            /** @description A module use case, e.g. `defects.markReadyForReview`. */
+            command: string;
+            entityId: string;
+            /** @description The version the change was made against; `null` for a create. */
+            baseVersion: number | null;
+            /**
+             * Format: date-time
+             * @description When the user made the change on the device.
+             */
+            clientAt: string;
+            payload: {
+                [key: string]: unknown;
+            };
+        };
+        SyncPushRequest: {
+            mutations: components["schemas"]["SyncMutation"][];
+        };
+        SyncProblem: {
+            code: string;
+            detail?: string;
+        };
+        SyncPushResult: {
+            mutationId: string;
+            /**
+             * @description `pending_review` is sent in drain mode after access ended; an admin accepts or rejects it (X38).
+             * @enum {string}
+             */
+            status: "applied" | "conflict" | "rejected" | "pending_review";
+            /** @description The record's version after `applied`, or the server's version on `conflict`. */
+            version?: number;
+            /** @description The current DTO, on `conflict`. */
+            server?: {
+                [key: string]: unknown;
+            };
+            problem?: components["schemas"]["SyncProblem"];
+        };
+        SyncPushResponse: {
+            results: components["schemas"]["SyncPushResult"][];
         };
     };
     responses: {
@@ -3572,6 +3688,64 @@ export interface operations {
                     "application/json": components["schemas"]["NovaIndexReport"];
                 };
             };
+            default: components["responses"]["Problem"];
+        };
+    };
+    syncPull: {
+        parameters: {
+            query: {
+                /** @description Scopes separated by `;`. A project segment lists its modules: `project:{projectId}:diary,defects;org`. */
+                scopes: string;
+                /** @description The `nextSince` from the last pull of these scopes, or `0`. */
+                since: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description A page of changes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncPullResponse"];
+                };
+            };
+            426: components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    syncPush: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SyncPushRequest"];
+            };
+        };
+        responses: {
+            /** @description One result per mutation, in request order */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncPushResponse"];
+                };
+            };
+            426: components["responses"]["Problem"];
             default: components["responses"]["Problem"];
         };
     };
