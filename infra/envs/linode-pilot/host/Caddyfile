@@ -1,0 +1,32 @@
+# Behind the NodeBalancer, which ends TLS. Same routing as CloudFront on AWS (infra/modules/edge).
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static 10.60.1.0/24 192.168.255.0/24
+	}
+}
+
+:80 {
+	@http header X-Forwarded-Proto http
+	redir @http https://{host}{uri} 308
+
+	header {
+		Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+		-Server
+	}
+
+	@api host {$API_HOST}
+	handle @api {
+		reverse_proxy api:4000
+	}
+
+	@app_api path /v1/* /.well-known/* /health/*
+	handle @app_api {
+		reverse_proxy api:4000
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

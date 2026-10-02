@@ -85,6 +85,63 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm check:egress
 
+  # The Linode option's server bundle (infra/envs/linode-pilot/host): lint and build its two images, check the compose
+  # file and Caddyfile, and prove the allow-list resolver answers listed hosts and blocks AI vendors (X25).
+  linode-host:
+    name: Linode host bundle
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: infra/envs/linode-pilot/host
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: infra/envs/linode-pilot/host/backup/Dockerfile
+          failure-threshold: warning
+      - uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: infra/envs/linode-pilot/host/signing-helper/Dockerfile
+          failure-threshold: warning
+      - name: shellcheck
+        run: shellcheck backup/backup.sh
+      - name: Build the backup and signing-helper images
+        run: |
+          docker build -t archova/backup:ci backup
+          docker build -t archova/aws-signing-helper:ci signing-helper
+          docker run --rm --entrypoint sh archova/backup:ci -c 'pg_dump --version && age --version && rclone version | head -1 && supercronic -test /etc/crontab'
+          docker run --rm archova/aws-signing-helper:ci version
+      - name: Compose file and Caddyfile
+        run: |
+          sudo mkdir -p /etc/archova
+          for f in api web backup valkey migrate roles-anywhere; do sudo touch "/etc/archova/$f.env"; done
+          VPC_IP=10.60.1.10 APP_HOST=app.example API_HOST=api.example IMAGE_REGISTRY=ghcr.io/x API_DIGEST=sha256:1 \
+            WEB_DIGEST=sha256:2 MIGRATE_DIGEST=sha256:3 RA_TRUST_ANCHOR_ARN=t RA_PROFILE_ARN=p RA_ROLE_ARN=r \
+            docker compose --profile primary config -q
+          docker run --rm -e APP_HOST=app.example -e API_HOST=api.example -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
+            caddy:2.10 caddy validate --config /etc/caddy/Caddyfile
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - name: Allow-list resolver
+        run: |
+          pnpm -s infra:linode-corefile > /tmp/Corefile
+          docker network create --subnet 172.30.0.0/24 dnstest
+          docker run -d --name coredns --network dnstest --ip 172.30.0.53 -v /tmp/Corefile:/etc/coredns/Corefile:ro \
+            coredns/coredns:1.12.4 -conf /etc/coredns/Corefile
+          sleep 2
+          docker run --rm --network dnstest --dns 172.30.0.53 alpine:3.22 sh -c '
+            nslookup bedrock-runtime.ap-southeast-2.amazonaws.com >/dev/null || { echo "Bedrock Sydney should resolve"; exit 1; }
+            for h in api.openai.com api.anthropic.com example.com; do
+              if nslookup "$h" >/dev/null 2>&1; then echo "$h should be blocked"; exit 1; fi
+            done
+            echo "allow-list resolver OK"'
+
   # Plans and applies need only the account ids as repository variables (AWS_ACCOUNT_SHARED, AWS_ACCOUNT_DEMO,
   # AWS_ACCOUNT_DEV, ...): roles come from infra/bootstrap/github-actions.yaml and every other name is derived from
   # the shared-services account id. An environment whose account variable is unset is skipped.

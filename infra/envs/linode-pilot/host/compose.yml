@@ -1,0 +1,145 @@
+# One Archova app server on Linode (infrastructure/10). The deploy pipeline copies this folder to /opt/archova,
+# writes /etc/archova/*.env and the CoreDNS config, then runs:
+#   docker compose --profile "$(cat /etc/archova/role)" up -d
+# The primary server (the first one) also runs Valkey and the nightly backup.
+#
+# Every app container resolves names through the allow-list resolver only (X25): a host that isn't in
+# egress-allowlist.yaml doesn't resolve. Container names (api, clamav, ...) still resolve through Docker's own DNS,
+# which forwards everything else to it.
+
+x-allowlist-dns: &allowlist-dns
+  dns: [172.30.0.53]
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  coredns:
+    <<: *restart
+    image: coredns/coredns:1.12.4
+    command: ['-conf', '/etc/coredns/Corefile']
+    volumes: ['/etc/archova/Corefile:/etc/coredns/Corefile:ro']
+    networks:
+      app: { ipv4_address: 172.30.0.53 }
+
+  # Routes by host and path like CloudFront does on AWS. TLS ends at the NodeBalancer; it sends X-Forwarded-Proto.
+  caddy:
+    <<: [*restart, *allowlist-dns]
+    image: caddy:2.10
+    ports: ['${VPC_IP:?}:80:80']
+    volumes: ['./Caddyfile:/etc/caddy/Caddyfile:ro']
+    environment:
+      APP_HOST: ${APP_HOST:?}
+      API_HOST: ${API_HOST:?}
+    depends_on: [api, web]
+    networks: [app]
+
+  api:
+    <<: [*restart, *allowlist-dns]
+    image: ${IMAGE_REGISTRY:?}/api@${API_DIGEST:?}
+    env_file: [/etc/archova/api.env]
+    environment:
+      API_FILES_SCANNER: clamav
+      API_CLAMAV_HOST: clamav
+      # Nova's AWS credentials come from the signing helper below, which shares this container's network and
+      # answers like the EC2 metadata service.
+      AWS_EC2_METADATA_SERVICE_ENDPOINT: http://127.0.0.1:9911
+      AWS_REGION: ap-southeast-2
+      NODE_EXTRA_CA_CERTS: /etc/ssl/db-ca.pem
+    volumes: ['/etc/archova/db-ca.pem:/etc/ssl/db-ca.pem:ro']
+    healthcheck:
+      test:
+        [
+          'CMD',
+          '/nodejs/bin/node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+    depends_on: [coredns, clamav]
+    networks: [app]
+
+  # IAM Roles Anywhere (aws.tf): swaps the server's client certificate for one-hour AWS sessions.
+  aws-signing-helper:
+    <<: *restart
+    build: ./signing-helper
+    image: archova/aws-signing-helper:local
+    network_mode: 'service:api'
+    env_file: [/etc/archova/roles-anywhere.env]
+    volumes: ['/etc/archova/pki:/pki:ro']
+    command:
+      - serve
+      - --certificate=/pki/app.crt
+      - --private-key=/pki/app.key
+      - --trust-anchor-arn=${RA_TRUST_ANCHOR_ARN:?}
+      - --profile-arn=${RA_PROFILE_ARN:?}
+      - --role-arn=${RA_ROLE_ARN:?}
+      - --region=ap-southeast-2
+      - --port=9911
+
+  web:
+    <<: [*restart, *allowlist-dns]
+    image: ${IMAGE_REGISTRY:?}/web@${WEB_DIGEST:?}
+    env_file: [/etc/archova/web.env]
+    depends_on: [coredns]
+    networks: [app]
+
+  # Malware scanning in place of GuardDuty (security-licensing/09 §4). Signatures update from ClamAV's mirror,
+  # which is on the allow-list as platform traffic.
+  clamav:
+    <<: [*restart, *allowlist-dns]
+    image: clamav/clamav:1.4
+    volumes:
+      - clamav-db:/var/lib/clamav
+      - ./clamd.conf:/etc/clamav/clamd.conf:ro
+    depends_on: [coredns]
+    networks: [app]
+
+  valkey:
+    <<: *restart
+    profiles: [primary]
+    image: valkey/valkey:8.1
+    command:
+      [
+        'sh',
+        '-c',
+        'exec valkey-server --requirepass "$$VALKEY_PASSWORD" --maxmemory 512mb --maxmemory-policy noeviction --appendonly yes',
+      ]
+    env_file: [/etc/archova/valkey.env]
+    ports: ['${VPC_IP:?}:6379:6379']
+    volumes: ['valkey-data:/data']
+    networks: [app]
+
+  # Nightly at 1am Sydney: encrypted Postgres dump and an uploads sync to Melbourne (backup/backup.sh).
+  backup:
+    <<: [*restart, *allowlist-dns]
+    profiles: [primary]
+    build: ./backup
+    image: archova/backup:local
+    env_file: [/etc/archova/backup.env]
+    volumes: ['/etc/archova/db-ca.pem:/etc/ssl/db-ca.pem:ro']
+    depends_on: [coredns]
+    networks: [app]
+
+  # One-off: database roles and migrations, run by the deploy pipeline before the api rolls.
+  migrate:
+    profiles: [tools]
+    <<: *allowlist-dns
+    image: ${IMAGE_REGISTRY:?}/migrate@${MIGRATE_DIGEST:?}
+    env_file: [/etc/archova/migrate.env]
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/db-ca.pem
+    volumes: ['/etc/archova/db-ca.pem:/etc/ssl/db-ca.pem:ro']
+    depends_on: [coredns]
+    networks: [app]
+
+networks:
+  app:
+    ipam:
+      config: [{ subnet: 172.30.0.0/24 }]
+
+volumes:
+  clamav-db:
+  valkey-data:

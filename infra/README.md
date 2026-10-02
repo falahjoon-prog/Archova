@@ -22,7 +22,8 @@ infra/
 ├── cells/cell/          one complete stack ("a cell"): composes the modules
 ├── envs/                one root stack per environment, each with its egress-allowlist.yaml
 │   ├── dev/  staging/  prod-cell1/  loadtest/
-│   └── shared-services/ Terraform state, ECR, image-build role, the archova.com.au zone
+│   ├── shared-services/ Terraform state, ECR, image-build role, the archova.com.au zone
+│   └── linode-pilot/    the Linode option for the pilots (docs/infrastructure/10), not chosen yet
 ├── org/                 SCPs and tag policy (applied by hand from the management account)
 ├── .tflint.hcl
 └── .checkov.yaml        every skipped check has a reason
