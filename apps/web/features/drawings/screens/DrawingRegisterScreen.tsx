@@ -19,6 +19,7 @@ import { usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
@@ -28,6 +29,8 @@ import {
   DISCIPLINES,
   ISSUED_FOR,
   ISSUED_FOR_LABELS,
+  disciplineLabel,
+  issuedForLabel,
   type Discipline,
   type DrawingRevision,
   type DrawingSheet,
@@ -75,7 +78,7 @@ export function DrawingRegisterScreen() {
       id: 'discipline',
       header: 'Discipline',
       sortValue: (s) => s.discipline,
-      cell: (s) => DISCIPLINES[s.discipline],
+      cell: (s) => disciplineLabel(s.discipline),
     },
     {
       id: 'rev',
@@ -86,13 +89,13 @@ export function DrawingRegisterScreen() {
       id: 'status',
       header: 'Status',
       sortValue: (s) => s.currentIssuedFor,
-      cell: (s) => ISSUED_FOR_LABELS[s.currentIssuedFor],
+      cell: (s) => issuedForLabel(s.currentIssuedFor),
     },
     {
       id: 'date',
       header: 'Drawing date',
       sortValue: (s) => s.currentDrawingDate,
-      cell: (s) => formatLocalDate(s.currentDrawingDate),
+      cell: (s) => (s.currentDrawingDate ? formatLocalDate(s.currentDrawingDate) : '—'),
     },
   ];
 
@@ -111,12 +114,12 @@ export function DrawingRegisterScreen() {
     },
     { id: 'title', header: 'Title', cell: (r) => r.title },
     { id: 'rev', header: 'Revision', cell: (r) => <RevisionBadge rev={r.rev} status={r.status} /> },
-    { id: 'status', header: 'Status', cell: (r) => ISSUED_FOR_LABELS[r.issuedFor] },
+    { id: 'status', header: 'Status', cell: (r) => issuedForLabel(r.issuedFor) },
     {
       id: 'date',
       header: 'Drawing date',
       sortValue: (r) => r.drawingDate,
-      cell: (r) => formatLocalDate(r.drawingDate),
+      cell: (r) => (r.drawingDate ? formatLocalDate(r.drawingDate) : '—'),
     },
   ];
 
@@ -142,7 +145,7 @@ export function DrawingRegisterScreen() {
           </Link>
         }
       />
-      <PreviewDataNotice tool="Drawings" />
+      {previewDataOnly ? <PreviewDataNotice tool="Drawings" /> : null}
       <FilterBar
         actions={
           <Switch

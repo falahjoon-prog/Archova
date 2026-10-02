@@ -314,7 +314,14 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
         </Alert>
       ) : null}
 
-      {sheet.isCurrent ? (
+      {sheet.isCurrent && !g ? (
+        <Alert tone="info" title="Measuring isn't ready for this sheet">
+          Archova hasn&apos;t read this sheet&apos;s scale and linework yet, so quantities
+          can&apos;t be trusted. Measure and count open up once it has.
+        </Alert>
+      ) : null}
+
+      {sheet.isCurrent && g ? (
         <ScaleSection
           sheet={sheet}
           timezone={project.timezone}

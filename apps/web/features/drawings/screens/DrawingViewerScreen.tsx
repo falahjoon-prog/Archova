@@ -36,12 +36,15 @@ import { formatInstant } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { drawingsSource } from '../data/source';
 import { MarkupLayer, MarkupShapeSvg, PinLayer } from '../components/overlay';
+import { PdfSheet, type SheetSize } from '../components/PdfSheet';
 import { RevisionBadge } from '../components/RevisionBadge';
 import { SheetArtworkSvg } from '../components/SheetArtworkSvg';
 import { SidePanel } from '../components/SidePanel';
 import { SupersededBanner } from '../components/SupersededBanner';
+import type { DrawingRevision } from '../lib/types';
 import {
   useConfirmScale,
   useGeometry,
@@ -50,6 +53,9 @@ import {
   usePins,
   useSheet,
 } from '../hooks/useDrawings';
+
+/** Until a PDF page reports its size, sheets are assumed A1 landscape, the usual AU drawing size. */
+const A1: SheetSize = { widthMm: 841, heightMm: 594 };
 
 type MarkupTool = 'rect' | 'cloud' | 'arrow' | 'text';
 type ViewerMode = 'pan' | 'select' | MarkupTool;
@@ -104,6 +110,7 @@ export function DrawingViewerScreen({
   const [textAt, setTextAt] = useState<Point | null>(null);
   const [text, setText] = useState('');
   const canvasRef = useRef<DrawingCanvasHandle>(null);
+  const [pdfSizes, setPdfSizes] = useState<Record<string, SheetSize>>({});
 
   const artwork = useMemo(
     () => (revisionId ? drawingsSource.artwork(project.projectId, revisionId) : null),
@@ -128,7 +135,11 @@ export function DrawingViewerScreen({
   }
 
   const s = sheet.data.sheet;
-  const aspect = revision.widthMm / revision.heightMm;
+  const size: SheetSize =
+    revision.widthMm && revision.heightMm
+      ? { widthMm: revision.widthMm, heightMm: revision.heightMm }
+      : (pdfSizes[revision.id] ?? A1);
+  const aspect = size.widthMm / size.heightMm;
   const tz = project.timezone;
   const revHref = (id: string) => webRoutes.drawing(org.orgSlug, project.projectId, s.id, id);
 
@@ -143,7 +154,7 @@ export function DrawingViewerScreen({
     isCurrent: revision.status === 'current',
     currentRevisionId: revision.status === 'superseded' ? (current?.id ?? null) : null,
     currentRev: revision.status === 'superseded' ? (current?.rev ?? null) : null,
-    size: { widthMm: revision.widthMm, heightMm: revision.heightMm },
+    size,
     geometry: geometry.data ?? null,
     confirmScale: async (scale) => {
       await confirmScale.mutateAsync(scale);
@@ -198,27 +209,43 @@ export function DrawingViewerScreen({
           },
         };
 
-  const comparing = Boolean(compareRevision && compareArtwork);
+  /** The preview's drawn artwork, or the revision's PDF page. */
+  const sheetImage = (rev: DrawingRevision, tone: 'ink' | 'old' | 'new' = 'ink') => {
+    const art =
+      rev.id === revisionId ? artwork : rev.id === compareRevision?.id ? compareArtwork : null;
+    if (art) return <SheetArtworkSvg art={art} tone={tone} />;
+    if (!rev.fileId) return null;
+    return (
+      <PdfSheet
+        orgId={org.orgId}
+        fileId={rev.fileId}
+        pageIndex={rev.pageIndex}
+        tone={tone}
+        onSize={(sz) => setPdfSizes((m) => (m[rev.id] ? m : { ...m, [rev.id]: sz }))}
+      />
+    );
+  };
+
+  const comparing = Boolean(compareRevision && (compareArtwork || compareRevision.fileId));
   const compareMode = params.compareMode === 'side' ? 'side' : 'overlay';
   const label = `${s.sheetNumber} ${s.title}, Rev ${revision.rev}`;
 
-  const background = artwork ? (
-    comparing && compareMode === 'overlay' && compareArtwork ? (
+  const background =
+    comparing && compareMode === 'overlay' && compareRevision ? (
       <div className="drawing-compare-overlay">
         <svg
-          viewBox={`0 0 ${artwork.widthMm} ${artwork.heightMm}`}
+          viewBox={`0 0 ${size.widthMm} ${size.heightMm}`}
           preserveAspectRatio="none"
           aria-hidden="true"
         >
           <rect width="100%" height="100%" fill="white" />
         </svg>
-        <SheetArtworkSvg art={compareArtwork} tone="old" />
-        <SheetArtworkSvg art={artwork} tone="new" />
+        {sheetImage(compareRevision, 'old')}
+        {sheetImage(revision, 'new')}
       </div>
     ) : (
-      <SheetArtworkSvg art={artwork} />
-    )
-  ) : null;
+      sheetImage(revision)
+    );
 
   const overlay = (
     <>
@@ -290,7 +317,7 @@ export function DrawingViewerScreen({
         currentHref={current ? revHref(current.id) : '#'}
         formatDate={(iso) => formatInstant(iso, tz)}
       />
-      <PreviewDataNotice tool="The drawing viewer" />
+      {previewDataOnly ? <PreviewDataNotice tool="The drawing viewer" /> : null}
       <ErrorAlert
         error={markupMutations.create.error ?? geometry.error}
         title="Something went wrong on this sheet"
@@ -358,14 +385,14 @@ export function DrawingViewerScreen({
         </div>
       ) : null}
 
-      {comparing && compareMode === 'side' && compareArtwork ? (
+      {comparing && compareMode === 'side' && compareRevision ? (
         <div className="drawing-viewer__side-by-side">
           <figure className="u-m-0">
             <figcaption className="u-caption">Rev {compareRevision?.rev}</figcaption>
             <DrawingCanvas
               label={`${s.sheetNumber} Rev ${compareRevision?.rev}`}
               aspect={aspect}
-              background={<SheetArtworkSvg art={compareArtwork} />}
+              background={sheetImage(compareRevision)}
               mode="pan"
             />
           </figure>
@@ -374,7 +401,7 @@ export function DrawingViewerScreen({
             <DrawingCanvas
               label={label}
               aspect={aspect}
-              background={artwork ? <SheetArtworkSvg art={artwork} /> : null}
+              background={sheetImage(revision)}
               mode="pan"
             />
           </figure>

@@ -108,7 +108,7 @@ export function SidePanel({
                     {describeShape(m)} <StatusPill tone={v.tone}>{v.label}</StatusPill>
                   </div>
                   <div className="u-caption">
-                    {m.ownerName} · {formatInstant(m.createdAt, timezone)}
+                    {m.ownerName ?? 'Project member'} · {formatInstant(m.createdAt, timezone)}
                   </div>
                   {mine && m.visibility !== 'project' ? (
                     <div className="row-actions">

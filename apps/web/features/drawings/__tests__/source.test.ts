@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { compareRevs, drawingsSource, publishBlockers, resetDrawingsPreview } from '../data/source';
 
+const pdf = (name: string) => new File(['%PDF'], name, { type: 'application/pdf' });
+
 const P = 'prj_test';
 const me = { id: 'usr_me', name: 'Test User', companyId: 'cmp_builder' };
 
@@ -27,7 +29,7 @@ describe('drawings preview source', () => {
     const set = await drawingsSource.createSet(P, {
       name: 'IFC 4',
       issuedFor: 'for_construction',
-      fileNames: ['A-101_RevD.pdf', 'scan-0003.pdf'],
+      files: [pdf('A-101_RevD.pdf'), pdf('scan-0003.pdf')],
     });
     const [known, unknown] = set.sheets;
     expect(known?.conflict).toBe('none');
@@ -57,7 +59,7 @@ describe('drawings preview source', () => {
     const set = await drawingsSource.createSet(P, {
       name: 'Re-issue',
       issuedFor: 'for_construction',
-      fileNames: ['A-101_RevB.pdf', 'A-102_RevA.pdf'],
+      files: [pdf('A-101_RevB.pdf'), pdf('A-102_RevA.pdf')],
     });
     expect(set.sheets[0]?.conflict).toBe('same_revision_exists');
     expect(set.sheets[1]?.conflict).toBe('older_revision');
@@ -80,7 +82,7 @@ describe('drawings preview source', () => {
     expect(
       (await drawingsSource.listMarkups(P, 'rev_a101_c', other)).some((m) => m.id === mine.id),
     ).toBe(false);
-    await drawingsSource.setMarkupVisibility(P, mine.id, 'company', me);
+    await drawingsSource.setMarkupVisibility(P, mine.revisionId, mine.id, 'company', me);
     expect(
       (await drawingsSource.listMarkups(P, 'rev_a101_c', other)).some((m) => m.id === mine.id),
     ).toBe(true);
@@ -88,8 +90,10 @@ describe('drawings preview source', () => {
     expect(
       (await drawingsSource.listMarkups(P, 'rev_a101_c', subbie)).some((m) => m.id === mine.id),
     ).toBe(false);
-    await drawingsSource.setMarkupVisibility(P, mine.id, 'project', me);
-    await expect(drawingsSource.deleteMarkup(P, mine.id, me)).rejects.toMatchObject({
+    await drawingsSource.setMarkupVisibility(P, mine.revisionId, mine.id, 'project', me);
+    await expect(
+      drawingsSource.deleteMarkup(P, mine.revisionId, mine.id, me),
+    ).rejects.toMatchObject({
       status: 409,
     });
   });

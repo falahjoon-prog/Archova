@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import { Alert, Button, Card, PageHeader, Select, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useCreateDrawingSet } from '../hooks/useDrawings';
@@ -20,7 +21,7 @@ export function DrawingUploadScreen() {
   const create = useCreateDrawingSet(project.projectId);
   const [name, setName] = useState('');
   const [issuedFor, setIssuedFor] = useState<IssuedFor>('for_construction');
-  const [files, setFiles] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const onSubmit = (e: FormEvent) => {
@@ -31,7 +32,7 @@ export function DrawingUploadScreen() {
     setErrors(next);
     if (Object.keys(next).length) return;
     create.mutate(
-      { name: name.trim(), issuedFor, fileNames: files },
+      { name: name.trim(), issuedFor, files },
       {
         onSuccess: (set) =>
           router.push(`${webRoutes.drawings(org.orgSlug, project.projectId)}/sets/${set.id}`),
@@ -52,7 +53,7 @@ export function DrawingUploadScreen() {
         title="Upload drawings"
         description="Drop a multi-sheet PDF or many files. Nova reads each title block, then you check and publish."
       />
-      <PreviewDataNotice tool="Drawing upload" />
+      {previewDataOnly ? <PreviewDataNotice tool="Drawing upload" /> : null}
       <Card>
         <form className="stack" onSubmit={onSubmit} noValidate>
           <div className="form-row">
@@ -74,8 +75,10 @@ export function DrawingUploadScreen() {
               Drawing files
             </label>
             <p className="ac-field__hint" id="drawing-files-hint">
-              PDF, up to 2 GB per upload. Name files like A-101_RevD.pdf and the preview reads the
-              number and revision.
+              {previewDataOnly
+                ? 'PDF. Name files like A-101_RevD.pdf and the preview reads the number and revision.'
+                : // Nova reads files inline up to 150 MB until the AI worker takes over larger sets.
+                  'PDF, up to 150 MB per file. Nova reads every sheet, which can take a minute for a large set.'}
             </p>
             <input
               id="drawing-files"
@@ -87,7 +90,7 @@ export function DrawingUploadScreen() {
                 errors.files ? 'drawing-files-hint drawing-files-error' : 'drawing-files-hint'
               }
               aria-invalid={errors.files ? true : undefined}
-              onChange={(e) => setFiles(Array.from(e.target.files ?? []).map((f) => f.name))}
+              onChange={(e) => setFiles(Array.from(e.target.files ?? []))}
             />
             {errors.files ? (
               <p className="ac-field__error" id="drawing-files-error">

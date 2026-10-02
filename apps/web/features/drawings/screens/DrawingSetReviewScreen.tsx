@@ -6,13 +6,14 @@ import { webRoutes } from '@archova/routes';
 import { Alert, Button, PageHeader, SkeletonRows, StatusPill, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { publishBlockers } from '../data/source';
 import { useDrawingSet, usePublishDrawingSet, useReviewSheetUpdate } from '../hooks/useDrawings';
 import {
-  CONFIDENCE_THRESHOLD,
-  ISSUED_FOR_LABELS,
+  issuedForLabel,
+  needsCheck,
   type ReadField,
   type ReviewSheet,
   type SheetConflict,
@@ -26,6 +27,7 @@ const CONFLICTS: Record<
   new_sheet: { tone: 'info', label: 'New sheet' },
   same_revision_exists: { tone: 'danger', label: 'Revision already in register' },
   older_revision: { tone: 'warning', label: 'Older than current revision' },
+  duplicate_in_set: { tone: 'danger', label: 'In this set twice' },
 };
 
 type FieldKey = 'sheetNumber' | 'title' | 'rev' | 'discipline';
@@ -52,7 +54,7 @@ export function DrawingSetReviewScreen({ setId }: { setId: string }) {
 
   const field = (row: ReviewSheet, key: FieldKey, label: string) => {
     const f: ReadField = row[key];
-    const low = f.confidence < CONFIDENCE_THRESHOLD && !f.touched;
+    const low = needsCheck(f);
     return (
       <TextField
         key={`${row.id}-${key}-${f.value}`}
@@ -85,7 +87,7 @@ export function DrawingSetReviewScreen({ setId }: { setId: string }) {
       </nav>
       <PageHeader
         title={`Review ${data.name}`}
-        description={`${data.sheets.length} sheet${data.sheets.length === 1 ? '' : 's'} · ${ISSUED_FOR_LABELS[data.issuedFor]}`}
+        description={`${data.sheets.length} sheet${data.sheets.length === 1 ? '' : 's'} · ${issuedForLabel(data.issuedFor)}`}
         actions={
           published ? (
             <Button onClick={() => router.push(webRoutes.drawings(org.orgSlug, project.projectId))}>
@@ -102,7 +104,7 @@ export function DrawingSetReviewScreen({ setId }: { setId: string }) {
           )
         }
       />
-      <PreviewDataNotice tool="Drawing upload" />
+      {previewDataOnly ? <PreviewDataNotice tool="Drawing upload" /> : null}
       {published ? (
         <Alert tone="success" title="Published">
           New revisions are current and the revisions they replace are marked superseded.

@@ -1,12 +1,12 @@
-// Drawings data source. Mirrors the documents module's endpoints (backend 04 §3) one method per call, so the
-// API-backed version is a drop-in: `getSheet` → GET {p}/drawings/{sheetId} + /revisions, `confirmScale` →
-// POST {o}/drawing-revisions/{id}/sheets/{sheetNo}/confirm-scale, and so on. Preview: in-memory store.
+// Drawings data source, preview edition: an in-memory store behind the same interface as the API source in
+// `api.ts` (one method per screen need). `useDrawingsSource` picks one (shared/lib/data-mode). The preview also has
+// what the API doesn't yet: sheet geometry and scale for measuring, and drawn sheet artwork instead of PDFs.
 
 import type { MarkupShape, MarkupVisibility } from '@archova/markup';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { buildArtwork, type SheetArtwork } from '../lib/artwork';
 import {
-  CONFIDENCE_THRESHOLD,
+  needsCheck,
   type Discipline,
   type DrawingMarkup,
   type DrawingPin,
@@ -33,6 +33,16 @@ export interface SheetDetail {
   sheet: DrawingSheet;
   revisions: DrawingRevision[];
 }
+
+export interface NewDrawingSetInput {
+  name: string;
+  issuedFor: IssuedFor;
+  files: File[];
+}
+
+export type ReviewSheetPatch = Partial<
+  Record<'sheetNumber' | 'title' | 'rev' | 'discipline', string>
+> & { reason?: string };
 
 export interface Actor {
   id: string;
@@ -64,6 +74,8 @@ function toSheet(s: DrawingsStore, row: DrawingsStore['sheets'][number]): Drawin
     revisionCount: revs.length,
   };
 }
+
+export type DrawingsSource = Omit<typeof drawingsSource, 'artwork'>;
 
 export const drawingsSource = {
   async listSheets(projectId: string, filters: DrawingFilters = {}): Promise<DrawingSheet[]> {
@@ -177,6 +189,7 @@ export const drawingsSource = {
       shape: input.shape,
       createdAt: nowIso(),
       copiedFromId: null,
+      version: null,
     };
     stores.get(projectId).markups.push(markup);
     return delay(markup);
@@ -184,6 +197,7 @@ export const drawingsSource = {
 
   async setMarkupVisibility(
     projectId: string,
+    _revisionId: string,
     markupId: string,
     visibility: MarkupVisibility,
     actor: Actor,
@@ -196,7 +210,12 @@ export const drawingsSource = {
     return delay(m);
   },
 
-  async deleteMarkup(projectId: string, markupId: string, actor: Actor): Promise<void> {
+  async deleteMarkup(
+    projectId: string,
+    _revisionId: string,
+    markupId: string,
+    actor: Actor,
+  ): Promise<void> {
     const s = stores.get(projectId);
     const m = s.markups.find((x) => x.id === markupId);
     if (m && m.ownerId !== actor.id)
@@ -217,14 +236,9 @@ export const drawingsSource = {
    * POST {p}/drawing-sets: in production files go through presigned uploads first and the worker splits sheets and
    * reads title blocks. The preview "reads" each file name as one sheet, with deliberately mixed confidence.
    */
-  async createSet(
-    projectId: string,
-    input: { name: string; issuedFor: IssuedFor; fileNames: string[] },
-  ): Promise<DrawingSet> {
+  async createSet(projectId: string, input: NewDrawingSetInput): Promise<DrawingSet> {
     const s = stores.get(projectId);
-    const sheets: ReviewSheet[] = input.fileNames.map((fileName, i) =>
-      readTitleBlock(s, fileName, i),
-    );
+    const sheets: ReviewSheet[] = input.files.map((file, i) => readTitleBlock(s, file.name, i));
     const set: DrawingSet = {
       id: mockId('dst'),
       name: input.name,
@@ -247,9 +261,7 @@ export const drawingsSource = {
     projectId: string,
     setId: string,
     sheetId: string,
-    patch: Partial<Record<'sheetNumber' | 'title' | 'rev' | 'discipline', string>> & {
-      reason?: string;
-    },
+    patch: ReviewSheetPatch,
   ): Promise<DrawingSet> {
     const s = stores.get(projectId);
     const set = s.sets.find((x) => x.id === setId);
@@ -306,6 +318,8 @@ export const drawingsSource = {
         supersededByRev: null,
         widthMm: 841,
         heightMm: 594,
+        fileId: null,
+        pageIndex: 0,
         createdAt: at,
       });
       const spec = {
@@ -342,7 +356,7 @@ export function publishBlockers(set: DrawingSet): string[] {
   const out: string[] = [];
   for (const row of set.sheets) {
     const fields = [row.sheetNumber, row.title, row.rev, row.discipline];
-    if (fields.some((f) => f.confidence < CONFIDENCE_THRESHOLD && !f.touched)) {
+    if (fields.some(needsCheck)) {
       out.push(
         `Check the highlighted fields for ${row.sheetNumber.value || row.fileName} before publishing.`,
       );
@@ -350,6 +364,11 @@ export function publishBlockers(set: DrawingSet): string[] {
     if (row.conflict === 'same_revision_exists') {
       out.push(
         `${row.sheetNumber.value} Rev ${row.rev.value} is already in the register. Change the revision or remove the sheet.`,
+      );
+    }
+    if (row.conflict === 'duplicate_in_set') {
+      out.push(
+        `${row.sheetNumber.value} Rev ${row.rev.value} is in this set twice. Remove one of them.`,
       );
     }
     if (row.conflict === 'older_revision' && !row.reason.trim()) {

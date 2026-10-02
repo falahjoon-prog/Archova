@@ -170,6 +170,8 @@ export function seedDrawings(): DrawingsStore {
         supersededByRev: next?.rev ?? null,
         widthMm: A1.widthMm,
         heightMm: A1.heightMm,
+        fileId: null,
+        pageIndex: 0,
         createdAt: `${r.date}T00:30:00Z`,
       });
       const spec: ArtworkSpec = {
@@ -284,6 +286,7 @@ export function seedDrawings(): DrawingsStore {
       },
       createdAt: '2026-09-23T02:00:00Z',
       copiedFromId: null,
+      version: null,
     },
     {
       id: 'mku_2',
@@ -295,6 +298,7 @@ export function seedDrawings(): DrawingsStore {
       shape: { kind: 'text', at: { x: 445 / 841, y: 285 / 594 }, text: 'New bike store, Rev C' },
       createdAt: '2026-09-23T02:01:00Z',
       copiedFromId: null,
+      version: null,
     },
   ];
 
