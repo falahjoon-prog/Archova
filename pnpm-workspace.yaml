@@ -7,3 +7,10 @@ onlyBuiltDependencies:
   - '@node-rs/argon2'
   - esbuild
   - sharp
+overrides:
+  # Next 15 pins postcss 8.4.31, which has GHSA-6g55-p6wh-862q and GHSA-r28c-9q8g-f849 (build time only).
+  'postcss@<8.5.18': '^8.5.18'
+auditConfig:
+  ignoreGhsas:
+    # node-forge in Expo's CLI (mobile build tooling, never shipped in an app or image); no patched release yet.
+    - GHSA-86w9-cpqp-85rv
