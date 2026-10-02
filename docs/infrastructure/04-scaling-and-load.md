@@ -32,6 +32,8 @@ These are design assumptions, to be replaced with measured numbers from pilots.
 
 ## 2. Service level objectives
 
+**This section and §1 are the single source for load targets and SLOs (cross-team decision X35):** design load 3,000 req/s sustained, 6,000 req/s burst, 20,000 sockets. The SLOs below are what alerts and release gates use. Ava's tighter figures (reads p95 200 ms, writes p95 400 ms) are **engineering budgets**: CI and load-test reports warn when a route exceeds them, but they don't block a release.
+
 | SLO | Target | Measured by |
 |---|---|---|
 | API availability | 99.9% monthly (≈ 43 min error budget) | Successful (non-5xx) requests ÷ all requests at the ALB, excluding client errors |
