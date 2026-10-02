@@ -6,6 +6,7 @@ import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
+import { rfiDraftSuite } from './suites/rfi-draft';
 import { translationSuite } from './suites/translation';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- suites differ in input, output and expected types
@@ -20,4 +21,5 @@ export const SUITES: readonly AnySuite[] = [
   inductionAskSuite,
   translationSuite,
   diarySummarySuite,
+  rfiDraftSuite,
 ];

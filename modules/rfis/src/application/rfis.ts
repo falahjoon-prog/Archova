@@ -17,6 +17,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 import {
   ballInCourt,
   canSeeRfi,
+  formatRfiNumber,
   missingToOpen,
   nextStatus,
   type RfiAction,
@@ -184,6 +185,57 @@ export function createRfiService(deps: RfisDeps) {
       .limit(opts.limit + 1);
     const page = toPage(rows, opts.limit, (r) => ({ id: r.id }));
     return { data: await withAssignees(scope, page.data, date), nextCursor: page.nextCursor };
+  }
+
+  /**
+   * Nova F3 "similar RFIs" (RFI-US3): RFIs already raised on the project that the caller can see and that match
+   * any of the phrases, best match first. Drafts and voided RFIs are left out. Empty without RFI read access.
+   */
+  async function findSimilar(
+    scope: TenantScope,
+    projectId: string,
+    input: { phrases: string[]; limit: number },
+  ) {
+    const phrases = input.phrases
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .slice(0, 8);
+    if (!phrases.length || !(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return [];
+    const v = await viewer(scope, projectId);
+    const tsq = sql.join(
+      phrases.map((p) => sql`plainto_tsquery('english', ${p})`),
+      sql` || `,
+    );
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} not in ('draft', 'void')`,
+      sql`rfis.rfis.search @@ (${tsq})`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(rfis)
+      .where(and(...conditions))
+      .orderBy(sql`ts_rank_cd(rfis.rfis.search, ${tsq}) desc`, desc(rfis.id))
+      .limit(input.limit);
+    const ids = rows.map((r) => r.id);
+    const asked = ids.length
+      ? await scope.tx
+          .select({ rfiId: assignees.rfiId, userId: assignees.userId })
+          .from(assignees)
+          .where(inArray(assignees.rfiId, ids))
+          .orderBy(asc(assignees.createdAt), asc(assignees.id))
+      : [];
+    return rows.map((r) => ({
+      id: r.id,
+      number: r.number === null ? null : formatRfiNumber(r.number),
+      subject: r.subject,
+      status: r.status,
+      assigneeUserIds: asked.filter((a) => a.rfiId === r.id).map((a) => a.userId),
+    }));
   }
 
   async function getVisible(scope: TenantScope, projectId: string, rfiId: string) {
@@ -737,6 +789,7 @@ export function createRfiService(deps: RfisDeps) {
     reopen,
     voidRfi,
     importRfi,
+    findSimilar,
     ballInCourt,
   };
 }

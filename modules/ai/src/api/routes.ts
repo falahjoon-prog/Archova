@@ -21,6 +21,7 @@ import type {
   InductionDraftService,
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
+import type { RfiDraftService } from '../application/rfi-draft';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
 
@@ -141,6 +142,7 @@ export function aiRoutes(
   askService: AskService,
   projectIndex: ProjectIndexService,
   inductionDrafts: InductionDraftService,
+  rfiDrafts: RfiDraftService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -207,6 +209,29 @@ export function aiRoutes(
           answer: a.answer,
           citations: a.citations.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
           closestMatches: a.closestMatches.map(toSourceDto),
+        },
+      };
+    },
+    draftRfiWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const d = await rfiDrafts.draft(requireTenant(input), projectId, { note: input.body.note });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          subject: d.subject,
+          question: d.question,
+          discipline: d.discipline,
+          references: d.references.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
+          gaps: d.gaps,
+          unsupportedNumbers: d.unsupportedNumbers,
+          similarRfis: d.similarRfis.map((r) => ({
+            id: encodeId('rfi', r.id),
+            number: r.number,
+            subject: r.subject,
+            status: r.status,
+          })),
+          suggestedAssigneeIds: d.suggestedAssigneeIds.map((id) => encodeId('user', id)),
         },
       };
     },

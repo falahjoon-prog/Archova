@@ -11,6 +11,8 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
     api: {
       /** X49 import command; called by the integrations import job only. */
       importRfi: service.importRfi,
+      /** Nova F3: RFIs the caller can see on the same subject, with who was asked. Called by `ai` only. */
+      findSimilar: service.findSimilar,
     },
   };
 }

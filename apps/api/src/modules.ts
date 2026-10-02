@@ -60,6 +60,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
   });
 
+  const rfis = createRfisModule(services, {
+    access: access.api,
+    platform: platform.api,
+    documents: documents.api,
+    files: files.api,
+  });
+
   const ai = createAiModule(services, {
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
@@ -69,14 +76,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
     sources: (scope, projectId) => documents.api.aiSources(scope, projectId),
     accessScopes: (scope, projectId) => documents.api.aiAccessScopes(scope, projectId),
+    similarRfis: (scope, projectId, input) => rfis.api.findSimilar(scope, projectId, input),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
-  });
-
-  const rfis = createRfisModule(services, {
-    access: access.api,
-    platform: platform.api,
-    documents: documents.api,
-    files: files.api,
   });
 
   const diary = createDiaryModule(services, {

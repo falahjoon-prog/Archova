@@ -127,7 +127,7 @@ export interface ReviewedSummary {
 }
 
 /** Numbers, times and dates: every one must appear in the facts the sentence cites. */
-function numbersIn(text: string): string[] {
+export function numbersIn(text: string): string[] {
   return (text.match(/\d+(?:[.:/,-]\d+)*/g) ?? []).map((n) => n.replace(/,/g, ''));
 }
 

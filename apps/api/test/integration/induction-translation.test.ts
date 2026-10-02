@@ -42,6 +42,7 @@ beforeAll(async () => {
       assert: async () => undefined,
       sources: async () => [],
       accessScopes: async () => [],
+      similarRfis: async () => [],
       provider: t.ai,
       translationLanguages: [TEST_LANGUAGE, { ...TEST_LANGUAGE, code: 'x-off', enabled: false }],
     },

@@ -23,6 +23,7 @@ beforeAll(async () => {
       assert: async () => undefined,
       sources: async () => [],
       accessScopes: async () => [],
+      similarRfis: async () => [],
       provider: t.ai,
     },
   ).api;

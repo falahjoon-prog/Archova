@@ -1040,6 +1040,24 @@ export const NovaIndexReportSchema = z.object({
 });
 export type NovaIndexReport = z.infer<typeof NovaIndexReportSchema>;
 
+export const NovaRfiDraftSchema = z.object({
+  "runId": z.string(),
+  "subject": z.string(),
+  "question": z.string(),
+  "discipline": z.enum(["architectural", "structural", "civil", "hydraulic", "mechanical", "electrical", "fire", "landscape", "interiors", "survey", "other"]).nullable(),
+  "references": z.array(NovaCitationSchema),
+  "gaps": z.array(z.enum(["location", "drawing_reference", "proposed_solution", "impact"])),
+  "unsupportedNumbers": z.array(z.string()),
+  "similarRfis": z.array(z.object({
+  "id": z.string(),
+  "number": z.string().nullable(),
+  "subject": z.string(),
+  "status": z.enum(["open", "answered", "closed"]),
+})),
+  "suggestedAssigneeIds": z.array(z.string()),
+});
+export type NovaRfiDraft = z.infer<typeof NovaRfiDraftSchema>;
+
 export const OnSiteSchema = z.object({
   "total": z.number().int(),
   "companies": z.array(z.object({
