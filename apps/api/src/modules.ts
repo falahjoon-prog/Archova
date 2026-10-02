@@ -7,9 +7,13 @@ import {
   createBillingModule,
   type EntitlementProvider,
 } from '@archova/mod-billing';
+import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { createPlatformModule } from '@archova/mod-platform';
+
+/** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
+export const MODULE_PERMISSIONS = [AI_PERMISSIONS, DOCUMENTS_PERMISSIONS];
 
 export interface ModuleOptions {
   identity: IdentityConfig;
@@ -31,12 +35,19 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
       platform.api.getProjectMembership(scope, projectId, userId),
-    extraPermissions: [AI_PERMISSIONS],
+    extraPermissions: MODULE_PERMISSIONS,
   });
   const files = createFilesModule(services, {
     access: access.api,
     store: opts.files.store,
     scanner: opts.files.scanner,
+  });
+
+  const documents = createDocumentsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    identity: identity.api,
   });
 
   const ai = createAiModule(services, {
@@ -49,7 +60,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
 
-  const all = [identity, platform, access, billing, files, ai];
+  const all = [identity, platform, access, billing, files, ai, documents];
   const routes: RouteTable = {};
   for (const m of all) {
     for (const [id, handler] of Object.entries(m.routes)) {
@@ -65,6 +76,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     billing,
     files,
     ai,
+    documents,
     routes,
   };
 }

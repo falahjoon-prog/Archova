@@ -5,6 +5,11 @@ import { z } from 'zod';
 export const AbnSchema = z.string().regex(new RegExp("^[0-9]{11}$"));
 export type Abn = z.infer<typeof AbnSchema>;
 
+export const AcknowledgeTransmittalRequestSchema = z.object({
+  "event": z.enum(["opened", "downloaded", "acknowledged"]),
+}).strict();
+export type AcknowledgeTransmittalRequest = z.infer<typeof AcknowledgeTransmittalRequestSchema>;
+
 export const EmailSchema = z.string().email().max(320);
 export type Email = z.infer<typeof EmailSchema>;
 
@@ -142,6 +147,9 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
+export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
+export type CompanyRef = z.infer<typeof CompanyRefSchema>;
+
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "abn": AbnSchema.optional(),
@@ -151,6 +159,81 @@ export const CreateCompanyRequestSchema = z.object({
   "phone": z.string().max(50).optional(),
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
+
+export const DocumentStatusSchema = z.enum(["draft", "for_review", "approved", "for_construction", "superseded", "void"]);
+export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
+
+export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
+export type FileRef = z.infer<typeof FileRefSchema>;
+
+export const DocumentRevisionInputSchema = z.object({
+  "rev": z.string().min(1).max(20),
+  "fileId": FileRefSchema,
+  "issuedFor": z.string().max(100).optional(),
+  "issuedDate": z.string().date().optional(),
+  "notes": z.string().max(2000).optional(),
+}).strict();
+export type DocumentRevisionInput = z.infer<typeof DocumentRevisionInputSchema>;
+
+export const CreateDocumentRequestSchema = z.object({
+  "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")),
+  "title": z.string().min(1).max(300),
+  "docNumber": z.string().min(1).max(100).optional(),
+  "discipline": z.string().max(20).optional(),
+  "docType": z.string().max(100).optional(),
+  "status": DocumentStatusSchema.optional(),
+  "revision": DocumentRevisionInputSchema,
+}).strict();
+export type CreateDocumentRequest = z.infer<typeof CreateDocumentRequestSchema>;
+
+export const CreateDrawingSetRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "issuedDate": z.string().date().optional(),
+  "receivedDate": z.string().date().optional(),
+}).strict();
+export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
+
+export const UserRefSchema = z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$"));
+export type UserRef = z.infer<typeof UserRefSchema>;
+
+export const CreateFolderRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "parentId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),
+  "isPrivate": z.boolean().optional(),
+  "allowedUserIds": z.array(UserRefSchema).max(200).optional(),
+  "allowedCompanyIds": z.array(CompanyRefSchema).max(200).optional(),
+}).strict();
+export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
+
+export const MarkupVisibilitySchema = z.enum(["private", "company", "project"]);
+export type MarkupVisibility = z.infer<typeof MarkupVisibilitySchema>;
+
+export const MarkupPointSchema = z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict();
+export type MarkupPoint = z.infer<typeof MarkupPointSchema>;
+
+export const MarkupShapeSchema = z.object({
+  "id": z.string().min(1).max(64),
+  "kind": z.enum(["pen", "line", "arrow", "rect", "ellipse", "cloud", "text", "pin"]),
+  "points": z.array(MarkupPointSchema).max(5000).optional(),
+  "from": MarkupPointSchema.optional(),
+  "to": MarkupPointSchema.optional(),
+  "at": MarkupPointSchema.optional(),
+  "text": z.string().max(2000).optional(),
+  "entityType": z.string().max(50).optional(),
+  "entityId": z.string().max(64).optional(),
+  "strokeWidth": z.number().min(0).max(100).optional(),
+  "color": z.string().regex(new RegExp("^#[0-9a-fA-F]{6}$")).optional(),
+}).strict();
+export type MarkupShape = z.infer<typeof MarkupShapeSchema>;
+
+export const CreateMarkupRequestSchema = z.object({
+  "visibility": MarkupVisibilitySchema.optional(),
+  "shapes": z.array(MarkupShapeSchema).max(2000),
+}).strict();
+export type CreateMarkupRequest = z.infer<typeof CreateMarkupRequestSchema>;
 
 export const CreateOrgRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -185,6 +268,29 @@ export const CreateProjectRequestSchema = z.object({
 }).strict();
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 
+export const TransmittalPurposeSchema = z.enum(["for_information", "for_review", "for_construction", "for_tender", "other"]);
+export type TransmittalPurpose = z.infer<typeof TransmittalPurposeSchema>;
+
+export const CreateTransmittalRequestSchema = z.object({
+  "subject": z.string().min(1).max(300),
+  "purpose": TransmittalPurposeSchema,
+  "fromCompanyId": CompanyRefSchema.optional(),
+  "responseDue": z.string().date().optional(),
+  "message": z.string().max(10000).optional(),
+  "recipients": z.array(z.object({
+  "email": EmailSchema,
+  "name": z.string().max(200).optional(),
+  "companyId": CompanyRefSchema.optional(),
+  "role": z.enum(["to", "cc"]).optional(),
+}).strict()).min(1).max(200),
+  "items": z.array(z.object({
+  "revisionType": z.enum(["document", "drawing"]),
+  "revisionId": z.string().regex(new RegExp("^(rev|drv)_[0-9A-Za-z]{26}$")),
+}).strict()).max(2000).optional(),
+  "currentSetDisciplines": z.array(z.string().min(1).max(20)).max(20).optional(),
+}).strict();
+export type CreateTransmittalRequest = z.infer<typeof CreateTransmittalRequestSchema>;
+
 export const CreateUploadRequestSchema = z.object({
   "filename": z.string().min(1).max(255),
   "mime": z.string().max(255),
@@ -196,11 +302,68 @@ export const CreateUploadRequestSchema = z.object({
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
 
+export const DocumentRevisionSchema = z.object({
+  "id": z.string(),
+  "documentId": z.string(),
+  "rev": z.string(),
+  "fileId": z.string(),
+  "status": z.enum(["current", "superseded"]),
+  "issuedFor": z.string().nullable(),
+  "issuedDate": z.string().date().nullable(),
+  "notes": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "createdBy": z.string().nullable(),
+});
+export type DocumentRevision = z.infer<typeof DocumentRevisionSchema>;
+
+export const DocumentSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "folderId": z.string(),
+  "title": z.string(),
+  "docNumber": z.string().nullable(),
+  "discipline": z.string().nullable(),
+  "docType": z.string().nullable(),
+  "status": DocumentStatusSchema,
+  "currentRevision": z.union([DocumentRevisionSchema, z.null()]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Document = z.infer<typeof DocumentSchema>;
+
+export const DocumentDetailSchema = z.object({
+  "document": DocumentSchema,
+  "revisions": z.array(DocumentRevisionSchema),
+});
+export type DocumentDetail = z.infer<typeof DocumentDetailSchema>;
+
+export const DocumentPageSchema = z.object({
+  "data": z.array(DocumentSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type DocumentPage = z.infer<typeof DocumentPageSchema>;
+
 export const DownloadLinkSchema = z.object({
   "url": z.string(),
   "expiresAt": z.string().datetime({ offset: true }),
 });
 export type DownloadLink = z.infer<typeof DownloadLinkSchema>;
+
+export const IssuedForSchema = z.enum(["preliminary", "for_tender", "for_approval", "for_construction"]);
+export type IssuedFor = z.infer<typeof IssuedForSchema>;
+
+export const DraftDrawingRevisionInputSchema = z.object({
+  "sheetNumber": z.string().min(1).max(50),
+  "title": z.string().min(1).max(300),
+  "discipline": z.string().max(20).optional(),
+  "rev": z.string().min(1).max(20),
+  "issuedFor": IssuedForSchema.optional(),
+  "fileId": FileRefSchema,
+  "pageIndex": z.number().int().min(0).max(10000).optional(),
+  "drawingDate": z.string().date().optional(),
+}).strict();
+export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
 
 export const DrawingRegisterExtractionSchema = z.object({
   "suggestions": z.array(AiSuggestionSchema),
@@ -209,6 +372,93 @@ export const DrawingRegisterExtractionSchema = z.object({
   "refusedPages": z.array(z.number().int()),
 });
 export type DrawingRegisterExtraction = z.infer<typeof DrawingRegisterExtractionSchema>;
+
+export const SupersededBySchema = z.object({
+  "revisionId": z.string(),
+  "rev": z.string(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type SupersededBy = z.infer<typeof SupersededBySchema>;
+
+export const DrawingRevisionSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "setId": z.string(),
+  "sheetId": z.string().nullable(),
+  "sheetNumber": z.string(),
+  "title": z.string(),
+  "discipline": z.string().nullable(),
+  "rev": z.string(),
+  "issuedFor": z.enum(["preliminary", "for_tender", "for_approval", "for_construction"]).nullable(),
+  "fileId": z.string(),
+  "pageIndex": z.number().int(),
+  "status": z.enum(["draft", "current", "superseded"]),
+  "drawingDate": z.string().date().nullable(),
+  "publishReason": z.string().nullable(),
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+  "supersededBy": z.union([SupersededBySchema, z.null()]),
+  "version": z.number().int(),
+});
+export type DrawingRevision = z.infer<typeof DrawingRevisionSchema>;
+
+export const DrawingRevisionListSchema = z.object({
+  "data": z.array(DrawingRevisionSchema),
+});
+export type DrawingRevisionList = z.infer<typeof DrawingRevisionListSchema>;
+
+export const DrawingSetSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "issuedDate": z.string().date().nullable(),
+  "receivedDate": z.string().date().nullable(),
+  "status": z.enum(["processing", "review", "published"]),
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DrawingSet = z.infer<typeof DrawingSetSchema>;
+
+export const DrawingSetPageSchema = z.object({
+  "data": z.array(DrawingSetSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type DrawingSetPage = z.infer<typeof DrawingSetPageSchema>;
+
+export const PublishConflictSchema = z.object({
+  "revisionId": z.string(),
+  "sheetNumber": z.string(),
+  "kind": z.enum(["duplicate_in_set", "revision_exists", "older_than_current", "new_sheet"]),
+  "blocking": z.boolean(),
+  "currentRev": z.string().nullable(),
+});
+export type PublishConflict = z.infer<typeof PublishConflictSchema>;
+
+export const DrawingSetReviewSchema = z.object({
+  "set": DrawingSetSchema,
+  "revisions": z.array(DrawingRevisionSchema),
+  "conflicts": z.array(PublishConflictSchema),
+});
+export type DrawingSetReview = z.infer<typeof DrawingSetReviewSchema>;
+
+export const DrawingSheetSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "sheetNumber": z.string(),
+  "title": z.string(),
+  "discipline": z.string().nullable(),
+  "area": z.string().nullable(),
+  "currentRevision": z.union([DrawingRevisionSchema, z.null()]),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type DrawingSheet = z.infer<typeof DrawingSheetSchema>;
+
+export const DrawingSheetPageSchema = z.object({
+  "data": z.array(DrawingSheetSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type DrawingSheetPage = z.infer<typeof DrawingSheetPageSchema>;
 
 export const PermissionLevelSchema = z.enum(["none", "read", "standard", "admin"]);
 export type PermissionLevel = z.infer<typeof PermissionLevelSchema>;
@@ -252,6 +502,23 @@ export const FileObjectSchema = z.object({
 });
 export type FileObject = z.infer<typeof FileObjectSchema>;
 
+export const FolderSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "parentId": z.string().nullable(),
+  "name": z.string(),
+  "isPrivate": z.boolean(),
+  "allowedUserIds": z.array(z.string()),
+  "allowedCompanyIds": z.array(z.string()),
+  "version": z.number().int(),
+});
+export type Folder = z.infer<typeof FolderSchema>;
+
+export const FolderListSchema = z.object({
+  "data": z.array(FolderSchema),
+});
+export type FolderList = z.infer<typeof FolderListSchema>;
+
 export const JwksSchema = z.object({
   "keys": z.array(z.record(z.string(), z.unknown())),
 });
@@ -262,6 +529,28 @@ export const LoginRequestSchema = z.object({
   "password": z.string().min(1).max(256),
 }).strict();
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
+
+export const MarkupSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "revisionId": z.string(),
+  "ownerId": z.string(),
+  "ownerCompanyId": z.string().nullable(),
+  "visibility": MarkupVisibilitySchema,
+  "shapes": z.array(MarkupShapeSchema),
+  "copiedFromId": z.string().nullable(),
+  "needsLocationCheck": z.boolean(),
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Markup = z.infer<typeof MarkupSchema>;
+
+export const MarkupListSchema = z.object({
+  "data": z.array(MarkupSchema),
+});
+export type MarkupList = z.infer<typeof MarkupListSchema>;
 
 export const UserSchema = z.object({
   "id": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")),
@@ -375,6 +664,15 @@ export const ProjectPageSchema = z.object({
 });
 export type ProjectPage = z.infer<typeof ProjectPageSchema>;
 
+export const PublishDrawingSetRequestSchema = z.object({
+  "confirmNewSheets": z.boolean().optional(),
+  "reasons": z.array(z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "reason": z.string().min(1).max(500),
+}).strict()).max(2000).optional(),
+}).strict();
+export type PublishDrawingSetRequest = z.infer<typeof PublishDrawingSetRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
@@ -413,6 +711,59 @@ export const TokenResponseSchema = z.object({
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
 
+export const TransmittalSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int().nullable(),
+  "subject": z.string(),
+  "purpose": TransmittalPurposeSchema,
+  "fromCompanyId": z.string().nullable(),
+  "responseDue": z.string().date().nullable(),
+  "message": z.string().nullable(),
+  "status": z.enum(["draft", "sent"]),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "sentBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Transmittal = z.infer<typeof TransmittalSchema>;
+
+export const TransmittalItemSchema = z.object({
+  "revisionType": z.enum(["document", "drawing"]),
+  "revisionId": z.string(),
+  "title": z.string(),
+  "number": z.string().nullable(),
+  "rev": z.string(),
+});
+export type TransmittalItem = z.infer<typeof TransmittalItemSchema>;
+
+export const TransmittalRecipientSchema = z.object({
+  "id": z.string(),
+  "userId": z.string().nullable(),
+  "companyId": z.string().nullable(),
+  "email": z.string(),
+  "name": z.string().nullable(),
+  "role": z.enum(["to", "cc"]),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+  "openedAt": z.string().datetime({ offset: true }).nullable(),
+  "downloadedAt": z.string().datetime({ offset: true }).nullable(),
+  "acknowledgedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type TransmittalRecipient = z.infer<typeof TransmittalRecipientSchema>;
+
+export const TransmittalDetailSchema = z.object({
+  "transmittal": TransmittalSchema,
+  "items": z.array(TransmittalItemSchema),
+  "recipients": z.array(TransmittalRecipientSchema),
+});
+export type TransmittalDetail = z.infer<typeof TransmittalDetailSchema>;
+
+export const TransmittalPageSchema = z.object({
+  "data": z.array(TransmittalSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type TransmittalPage = z.infer<typeof TransmittalPageSchema>;
+
 export const UpdateAiSettingsRequestSchema = z.object({
   "aiEnabled": z.boolean().optional(),
   "featuresEnabled": z.array(AiFeatureSchema).max(50).nullable().optional(),
@@ -421,6 +772,42 @@ export const UpdateAiSettingsRequestSchema = z.object({
   "retentionDays": z.number().int().min(0).max(90).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateAiSettingsRequest = z.infer<typeof UpdateAiSettingsRequestSchema>;
+
+export const UpdateDocumentRequestSchema = z.object({
+  "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),
+  "title": z.string().min(1).max(300).optional(),
+  "docNumber": z.string().min(1).max(100).nullable().optional(),
+  "discipline": z.string().max(20).nullable().optional(),
+  "docType": z.string().max(100).nullable().optional(),
+  "status": DocumentStatusSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateDocumentRequest = z.infer<typeof UpdateDocumentRequestSchema>;
+
+export const UpdateDraftDrawingRevisionRequestSchema = z.object({
+  "sheetNumber": z.string().min(1).max(50).optional(),
+  "title": z.string().min(1).max(300).optional(),
+  "discipline": z.string().max(20).nullable().optional(),
+  "rev": z.string().min(1).max(20).optional(),
+  "issuedFor": z.enum(["preliminary", "for_tender", "for_approval", "for_construction"]).nullable().optional(),
+  "pageIndex": z.number().int().min(0).max(10000).optional(),
+  "drawingDate": z.string().date().nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateDraftDrawingRevisionRequest = z.infer<typeof UpdateDraftDrawingRevisionRequestSchema>;
+
+export const UpdateFolderRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "isPrivate": z.boolean().optional(),
+  "allowedUserIds": z.array(UserRefSchema).max(200).optional(),
+  "allowedCompanyIds": z.array(CompanyRefSchema).max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateFolderRequest = z.infer<typeof UpdateFolderRequestSchema>;
+
+export const UpdateMarkupRequestSchema = z.object({
+  "visibility": MarkupVisibilitySchema.optional(),
+  "shapes": z.array(MarkupShapeSchema).max(2000).optional(),
+  "locationConfirmed": z.boolean().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateMarkupRequest = z.infer<typeof UpdateMarkupRequestSchema>;
 
 export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

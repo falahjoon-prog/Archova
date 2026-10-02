@@ -64,3 +64,12 @@ One module, `documents`, per [backend-modules §2](../../architecture/backend-mo
 **documents.spec_sections**
 - `book_id`, `section_number text` (`03 30 00`), `title text`, `division text`, `page_from int`, `page_to int`
 - `revision text`, `status text CHECK (current|superseded)`, `search tsvector`
+
+## As built (phase 1, first increment)
+
+- `drawing_revisions` also has `status = 'draft'` for sheets in an unpublished set. A draft carries the title-block values (`sheet_number`, `title`, `discipline`, `issued_for`) and has no `sheet_id` until the set is published; `publish_reason` records why an older revision was made current; `superseded_by_id` feeds the "Superseded by Rev D" banner.
+- `drawing_markups` adds `needs_location_check` and `published_at`. Published (`project`) markups can't be edited or deleted; carry-forward happens automatically when a set is published.
+- `folders` uses `parent_id` only (no `ltree` yet); privacy is inherited down the tree in code.
+- `transmittal_recipients` stores recipients without an account by email; their access links (X45) come with `shared.access_links`. Transmittal numbers come from `shared.counters` on send.
+- Markups and drawing revisions use project paths (`{p}/drawing-revisions/{id}/…`) rather than `{o}/…`, so the API pipeline checks the project permission before the handler (ADR-0007).
+- Not yet built: `sheet_geometry` (with the estimating subset), hyperlinks, pins, tiles, spec books and sections, and the files-worker split and title-block reading.

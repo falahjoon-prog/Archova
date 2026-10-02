@@ -89,6 +89,169 @@ export const GetFileDownloadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 });
+export const ListFoldersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateFolderParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateFolderBody = s.CreateFolderRequestSchema;
+export const UpdateFolderParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")),
+});
+export const UpdateFolderBody = s.UpdateFolderRequestSchema;
+export const ListDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDocumentsQuery = z.object({
+  "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")).optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDocumentBody = s.CreateDocumentRequestSchema;
+export const GetDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDocumentBody = s.UpdateDocumentRequestSchema;
+export const AddDocumentRevisionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
+export const AddDocumentRevisionBody = s.DocumentRevisionInputSchema;
+export const ListDrawingSetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDrawingSetsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateDrawingSetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDrawingSetBody = s.CreateDrawingSetRequestSchema;
+export const GetDrawingSetReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingSetId": z.string().regex(new RegExp("^dst_[0-9A-Za-z]{26}$")),
+});
+export const AddDrawingSetRevisionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingSetId": z.string().regex(new RegExp("^dst_[0-9A-Za-z]{26}$")),
+});
+export const AddDrawingSetRevisionBody = s.DraftDrawingRevisionInputSchema;
+export const UpdateDraftDrawingRevisionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingSetId": z.string().regex(new RegExp("^dst_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDraftDrawingRevisionBody = s.UpdateDraftDrawingRevisionRequestSchema;
+export const RemoveDraftDrawingRevisionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingSetId": z.string().regex(new RegExp("^dst_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const PublishDrawingSetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingSetId": z.string().regex(new RegExp("^dst_[0-9A-Za-z]{26}$")),
+});
+export const PublishDrawingSetBody = s.PublishDrawingSetRequestSchema;
+export const ListDrawingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDrawingsQuery = z.object({
+  "discipline": z.string().max(20).optional(),
+  "issuedFor": s.IssuedForSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const ListDrawingSheetRevisionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingSheetId": z.string().regex(new RegExp("^dsh_[0-9A-Za-z]{26}$")),
+});
+export const GetDrawingRevisionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const ListMarkupsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const CreateMarkupParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const CreateMarkupBody = s.CreateMarkupRequestSchema;
+export const UpdateMarkupParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "markupId": z.string().regex(new RegExp("^mku_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMarkupBody = s.UpdateMarkupRequestSchema;
+export const DeleteMarkupParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "markupId": z.string().regex(new RegExp("^mku_[0-9A-Za-z]{26}$")),
+});
+export const ListTransmittalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListTransmittalsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateTransmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTransmittalBody = s.CreateTransmittalRequestSchema;
+export const GetTransmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
+});
+export const SendTransmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
+});
+export const AcknowledgeTransmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
+});
+export const AcknowledgeTransmittalBody = s.AcknowledgeTransmittalRequestSchema;
 export const GetAiSettingsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -453,6 +616,330 @@ export const operations = {
     params: GetFileDownloadParams,
     query: null,
     body: null,
+  },
+  listFolders: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/folders',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: ListFoldersParams,
+    query: null,
+    body: null,
+  },
+  createFolder: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/folders',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateFolderParams,
+    query: null,
+    body: CreateFolderBody,
+  },
+  updateFolder: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/folders/{folderId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateFolderParams,
+    query: null,
+    body: UpdateFolderBody,
+  },
+  listDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: ListDocumentsParams,
+    query: ListDocumentsQuery,
+    body: null,
+  },
+  createDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDocumentParams,
+    query: null,
+    body: CreateDocumentBody,
+  },
+  getDocument: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: GetDocumentParams,
+    query: null,
+    body: null,
+  },
+  updateDocument: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDocumentParams,
+    query: null,
+    body: UpdateDocumentBody,
+  },
+  addDocumentRevision: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/documents/{documentId}/revisions',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddDocumentRevisionParams,
+    query: null,
+    body: AddDocumentRevisionBody,
+  },
+  listDrawingSets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: ListDrawingSetsParams,
+    query: ListDrawingSetsQuery,
+    body: null,
+  },
+  createDrawingSet: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDrawingSetParams,
+    query: null,
+    body: CreateDrawingSetBody,
+  },
+  getDrawingSetReview: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/review',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: GetDrawingSetReviewParams,
+    query: null,
+    body: null,
+  },
+  addDrawingSetRevision: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddDrawingSetRevisionParams,
+    query: null,
+    body: AddDrawingSetRevisionBody,
+  },
+  updateDraftDrawingRevision: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions/{drawingRevisionId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDraftDrawingRevisionParams,
+    query: null,
+    body: UpdateDraftDrawingRevisionBody,
+  },
+  removeDraftDrawingRevision: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/revisions/{drawingRevisionId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: null,
+    params: RemoveDraftDrawingRevisionParams,
+    query: null,
+    body: null,
+  },
+  publishDrawingSet: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-sets/{drawingSetId}/publish',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: PublishDrawingSetParams,
+    query: null,
+    body: PublishDrawingSetBody,
+  },
+  listDrawings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawings',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: ListDrawingsParams,
+    query: ListDrawingsQuery,
+    body: null,
+  },
+  listDrawingSheetRevisions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawings/{drawingSheetId}/revisions',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: ListDrawingSheetRevisionsParams,
+    query: null,
+    body: null,
+  },
+  getDrawingRevision: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: GetDrawingRevisionParams,
+    query: null,
+    body: null,
+  },
+  listMarkups: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: ListMarkupsParams,
+    query: null,
+    body: null,
+  },
+  createMarkup: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups',
+    module: "documents",
+    auth: "required",
+    permission: "documents.markups.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMarkupParams,
+    query: null,
+    body: CreateMarkupBody,
+  },
+  updateMarkup: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups/{markupId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.markups.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMarkupParams,
+    query: null,
+    body: UpdateMarkupBody,
+  },
+  deleteMarkup: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups/{markupId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.markups.create",
+    internal: false,
+    contentType: null,
+    params: DeleteMarkupParams,
+    query: null,
+    body: null,
+  },
+  listTransmittals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.read",
+    internal: false,
+    contentType: null,
+    params: ListTransmittalsParams,
+    query: ListTransmittalsQuery,
+    body: null,
+  },
+  createTransmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTransmittalParams,
+    query: null,
+    body: CreateTransmittalBody,
+  },
+  getTransmittal: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.read",
+    internal: false,
+    contentType: null,
+    params: GetTransmittalParams,
+    query: null,
+    body: null,
+  },
+  sendTransmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/send',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.manage",
+    internal: false,
+    contentType: null,
+    params: SendTransmittalParams,
+    query: null,
+    body: null,
+  },
+  acknowledgeTransmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/acknowledge',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.read",
+    internal: false,
+    contentType: "application/json",
+    params: AcknowledgeTransmittalParams,
+    query: null,
+    body: AcknowledgeTransmittalBody,
   },
   getAiSettings: {
     method: 'GET',
