@@ -9,7 +9,8 @@
     "start": "next start -p 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:a11y": "playwright test"
   },
   "dependencies": {
     "@archova/api-client": "workspace:*",
@@ -25,14 +26,16 @@
     "@archova/ui": "workspace:*",
     "@tanstack/react-query": "^5.90.0",
     "next": "^15.5.0",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^6.2.108",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
+    "@axe-core/playwright": "^4.13.0",
     "@next/eslint-plugin-next": "^15.5.0",
+    "@playwright/test": "~1.56.1",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.7",
     "@types/node": "^22.18.0",

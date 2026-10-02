@@ -15,7 +15,7 @@
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
     "@archova/time": "workspace:*",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.2",
     "ioredis": "^5.8.0",
     "pg": "^8.16.0",
     "pino": "^9.11.0",

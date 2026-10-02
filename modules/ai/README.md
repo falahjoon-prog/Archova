@@ -21,6 +21,10 @@ The gateway checks that Nova is on for the org, feature and caller, checks the m
 
 `POST …/ai/ask` gets the caller's scopes from `documents.api.aiAccessScopes`, runs keyword (Postgres full-text) and vector (pgvector, exact) searches filtered to those scopes inside the query, merges them by reciprocal rank fusion and sends the top 10 passages to `qa.answer`. An answer without a valid citation becomes "not found" with the closest matches. Postgres needs the `vector` extension (`pgvector/pgvector:pg16` locally and in CI; RDS ships it).
 
+## Induction drafts (F33)
+
+`POST …/ai/induction-drafts` searches the caller's visible documents once per required induction section (compliance/04 §2), then `induction.draft` writes slides, a script and a quiz. `src/domain/induction.ts` checks the draft before it is stored: items whose citation doesn't quote a passage, whose numbers aren't in their source, or that use a banned word are removed and listed in `warnings`; empty sections become `missing`; critical quiz flags are forced. The declaration and fixed safety sentences come from `INDUCTION_FIXED_TEXT`, not the model. The draft is a pending `ai_suggestions` row; `workforce` creates the induction version when the builder accepts (docs/ai/12).
+
 ## Providers
 
 | `API_AI_PROVIDER` | Use                                                                                                                                                                                                                                                                                            |

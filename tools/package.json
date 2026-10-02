@@ -12,10 +12,11 @@
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@types/node": "^22.18.0",
-    "@types/pg": "^8.15.0",
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.0",
+    "esbuild": "^0.25.12",
     "eslint": "^9.39.0",
     "typescript": "~5.9.3"
   },

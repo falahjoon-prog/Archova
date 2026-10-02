@@ -6,6 +6,8 @@ const apiInternalUrl = process.env.WEB_API_INTERNAL_URL ?? 'http://localhost:400
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Self-contained server for the production image (Dockerfile, infrastructure/01 §5).
+  output: 'standalone',
   poweredByHeader: false,
   // The monorepo root (scripts run with cwd apps/web), so output tracing doesn't guess from stray lockfiles.
   outputFileTracingRoot: path.resolve(process.cwd(), '../..'),

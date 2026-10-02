@@ -1,5 +1,6 @@
 # Database migrations run as a one-off ECS task with the new image before new code takes traffic
-# (infrastructure/03 §5): `pnpm db:migrate` as app_migrator, straight to the writer (not through RDS Proxy).
+# (infrastructure/03 §5): the migrate image runs tools/db/migrate.js (pnpm db:migrate, bundled) as
+# app_migrator, straight to the writer (not through RDS Proxy).
 
 resource "aws_security_group" "migrate" {
   name        = "${local.name}-migrate"
@@ -81,7 +82,7 @@ resource "aws_ecs_task_definition" "migrate" {
     image                  = var.images["migrate"]
     essential              = true
     readonlyRootFilesystem = true
-    command                = ["db:migrate"]
+    command                = ["--enable-source-maps", "tools/db/migrate.js"]
     secrets = [
       { name = "MIGRATOR_DATABASE_URL", valueFrom = "${module.aurora.role_secret_arns["app_migrator"]}:url::" },
     ]
