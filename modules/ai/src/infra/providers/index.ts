@@ -3,6 +3,7 @@
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
+import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { createFakeProvider, type FakeResponder } from './fake';
 
 /**
@@ -11,6 +12,7 @@ import { createFakeProvider, type FakeResponder } from './fake';
  */
 export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = {
   'drawing.titleblock': heuristicTitleBlock,
+  'qa.answer': heuristicQaAnswer,
 };
 
 export { createFakeProvider, fakeEmbedding, type FakeProvider, type FakeResponder } from './fake';

@@ -18,6 +18,15 @@ export interface ModelRoute {
 
 export type RoutingTable = Readonly<Record<ModelTier, ModelRoute>>;
 
+/** The embedding model and its price in US dollars per million input tokens. */
+export interface EmbeddingRoute {
+  model: string;
+  pricePerMTok: number;
+}
+
+/** Titan Text Embeddings V2 list price (ai/02 §6); confirm the Sydney price with the model id. */
+export const DEFAULT_EMBEDDING_PRICE = 0.02;
+
 /**
  * First-party list prices from ai/02 §4 (late Sept 2026). Bedrock AU prices must be confirmed before budgets are
  * final (ai/02 §3); set them per environment with the model ids.

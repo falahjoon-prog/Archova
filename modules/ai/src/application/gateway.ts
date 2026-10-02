@@ -18,8 +18,8 @@ import {
 import { localDateOf } from '@archova/time';
 import type { CheckedCitation } from '../domain/citations';
 import { TASK_CREDITS, creditsFor, decideBudget } from '../domain/credits';
-import type { ModelProvider } from '../domain/provider';
-import type { RoutingTable } from '../domain/routing';
+import { ProviderError, type ModelProvider } from '../domain/provider';
+import type { EmbeddingRoute, RoutingTable } from '../domain/routing';
 import { orgSettings, requests, usageLedger } from '../infra/tables';
 import { invokePrompt, type CallRecord } from './invoke';
 
@@ -27,6 +27,8 @@ export interface GatewayDeps {
   database: Database;
   provider: ModelProvider;
   routing: RoutingTable;
+  /** Embedding model for retrieval (ai/02 §6); one model per index, so changing it means re-indexing. */
+  embedding: EmbeddingRoute;
   redis: RedisClient | null;
   logger: Logger;
   /** The org's IANA zone, for the ledger day (X34). Supplied by `platform`. */
@@ -60,6 +62,17 @@ export type TaskRun<O> =
       fallback: boolean;
     }
   | { runId: string; status: 'refused'; credits: 0; costMicros: number };
+
+export interface EmbedOptions {
+  /** Documents are embedded when indexed; questions when asked. */
+  purpose: 'document' | 'query';
+  /** Feature the embeddings serve, for the feature switch and the ledger (`ask`). */
+  feature: string;
+  projectId?: string | null;
+}
+
+/** Texts per provider call; Titan takes one at a time anyway, Cohere up to 96. */
+const EMBED_BATCH = 64;
 
 const DEFAULT_RATE_LIMIT = { runs: 30, windowS: 600 };
 const DEFAULT_TIMEOUTS = { interactiveMs: 60_000, backgroundMs: 180_000 };
@@ -209,6 +222,58 @@ export function createGateway(deps: GatewayDeps) {
     }
   }
 
+  /**
+   * Embeds texts for retrieval. Background work at 0 credits (ai/05 §4) but still behind the org and feature
+   * switches, and logged and costed like any model call.
+   */
+  async function embed(
+    ctx: TenantContext,
+    texts: readonly string[],
+    opts: EmbedOptions,
+  ): Promise<{ model: string; vectors: number[][] }> {
+    const task = opts.purpose === 'query' ? 'embed.query' : 'embed.document';
+    const prompt = { id: task, feature: opts.feature, version: 1, kind: 'background' as const };
+    const ro = { readOnly: true } as const;
+    const { day } = await deps.database.withTenantTx(ctx, (s) => admit(s, prompt, 0), ro);
+    const { model, pricePerMTok } = deps.embedding;
+    const vectors: number[][] = [];
+    const calls: CallRecord[] = [];
+    let failure: ProviderError | null = null;
+    for (let i = 0; i < texts.length && !failure; i += EMBED_BATCH) {
+      const batch = texts.slice(i, i + EMBED_BATCH);
+      const started = Date.now();
+      try {
+        const res = await deps.provider.embed({
+          model,
+          texts: batch,
+          purpose: opts.purpose,
+          timeoutMs: timeouts.backgroundMs,
+        });
+        if (res.vectors.length !== batch.length)
+          throw new ProviderError('invalid_request', 'Embedding count mismatch');
+        vectors.push(...res.vectors);
+        calls.push(embedCall(model, res.usage.inputTokens, pricePerMTok, started, null));
+      } catch (e) {
+        failure = e instanceof ProviderError ? e : new ProviderError('unavailable', String(e));
+        calls.push(embedCall(model, 0, pricePerMTok, started, failure.kind));
+      }
+    }
+    const totalCost = calls.reduce((n, c) => n + c.costMicros, 0);
+    await deps.database.withTenantTx(ctx, (scope) =>
+      record(scope, {
+        prompt,
+        runId: uuidv7(),
+        projectId: opts.projectId ?? null,
+        day,
+        calls,
+        credits: 0,
+        totalCost,
+      }),
+    );
+    if (failure) throw new AppError('ai.unavailable', 'Nova is busy right now. Try again shortly.');
+    return { model, vectors };
+  }
+
   async function record(
     scope: TenantScope,
     r: {
@@ -271,7 +336,28 @@ export function createGateway(deps: GatewayDeps) {
       });
   }
 
-  return { runTask, creditsUsedSince };
+  return { runTask, embed, creditsUsedSince };
+}
+
+function embedCall(
+  model: string,
+  inputTokens: number,
+  pricePerMTok: number,
+  started: number,
+  errorKind: string | null,
+): CallRecord {
+  return {
+    id: uuidv7(),
+    tier: 'embedding',
+    model,
+    attempt: 1,
+    usage: { inputTokens, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    // tokens × $/MTok is micro-dollars
+    costMicros: Math.round(inputTokens * pricePerMTok),
+    latencyMs: Date.now() - started,
+    outcome: errorKind ? 'error' : 'ok',
+    errorKind,
+  };
 }
 
 export type Gateway = ReturnType<typeof createGateway>;
