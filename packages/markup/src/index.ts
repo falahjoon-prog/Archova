@@ -1,5 +1,4 @@
 // Drawing markup schema and geometry (ADR-0006), shared by web, mobile and backend PDF export.
-// Phase 0 defines the shape contract only; Felix, Mia and Ben build geometry and hit-testing in phase 1.
 
 /** Markup visibility (X12): private to the author, the author's company, or the whole project. */
 export const MARKUP_VISIBILITIES = ['private', 'company', 'project'] as const;
@@ -32,3 +31,5 @@ export const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
 export function normalisePoint(p: Point): Point {
   return { x: clamp01(p.x), y: clamp01(p.y) };
 }
+
+export * from './takeoff';
