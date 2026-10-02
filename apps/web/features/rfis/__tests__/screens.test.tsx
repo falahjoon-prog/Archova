@@ -137,7 +137,7 @@ describe('RfiDetailScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Send response' }));
     expect(await screen.findByText('Started from a Nova draft')).toBeTruthy();
     expect(screen.getAllByText('Answered').length).toBeGreaterThan(0);
-    expect(screen.getByText('Waiting on: Harbourline Constructions · Dana Okafor')).toBeTruthy();
+    expect(screen.getByText('Waiting on: Harbour Line Constructions · Dana Okafor')).toBeTruthy();
   });
 
   it('closes an answered RFI with the chosen official response (RFI-AC7)', async () => {

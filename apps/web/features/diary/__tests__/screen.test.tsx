@@ -41,7 +41,7 @@ describe('DiaryDayScreen', () => {
     await screen.findByLabelText('Cornerstone Formwork headcount');
     await screen.findByRole('link', { name: /^Today/ });
     for (const [company, n] of [
-      ['Harbourline Constructions', '2'],
+      ['Harbour Line Constructions', '2'],
       ['Cornerstone Formwork', '5'],
       ['Brightwire Electrical', '3'],
     ] as const) {
