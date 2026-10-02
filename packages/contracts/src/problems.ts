@@ -42,6 +42,14 @@ export const PROBLEM_CODES = {
   'upload.not_received': 409,
   'file.not_found': 404,
   'file.not_ready': 409,
+  // ai (Nova)
+  'ai.disabled': 403,
+  'ai.feature_disabled': 403,
+  'ai.allowance_used': 403,
+  'ai.unavailable': 503,
+  'ai.invalid_output': 502,
+  'ai.cancelled': 408,
+  'ai.run.not_found': 404,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

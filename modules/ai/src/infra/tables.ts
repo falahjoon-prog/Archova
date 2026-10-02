@@ -1,0 +1,107 @@
+import {
+  boolean,
+  date,
+  integer,
+  jsonb,
+  numeric,
+  pgSchema,
+  real,
+  smallint,
+  text,
+  timestamp,
+  uuid,
+  bigint,
+} from 'drizzle-orm/pg-core';
+import type { ModelTier } from '@archova/ai-prompts';
+
+export const ai = pgSchema('ai');
+
+const audit = {
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+};
+
+export const orgSettings = ai.table('ai_org_settings', {
+  orgId: uuid('org_id').primaryKey(),
+  aiEnabled: boolean('ai_enabled').notNull().default(true),
+  featuresEnabled: text('features_enabled').array(),
+  monthlyCreditCap: numeric('monthly_credit_cap', { precision: 12, scale: 2, mode: 'number' }),
+  externalAiEnabled: boolean('external_ai_enabled').notNull().default(true),
+  retentionDays: integer('retention_days').notNull().default(30),
+  ...audit,
+});
+
+export type RequestOutcome = 'ok' | 'refused' | 'error' | 'fallback';
+
+export const requests = ai.table('ai_requests', {
+  id: uuid('id').notNull(),
+  runId: uuid('run_id').notNull(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id'),
+  userId: uuid('user_id'),
+  task: text('task').notNull(),
+  feature: text('feature').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  provider: text('provider').notNull(),
+  model: text('model').notNull(),
+  tier: text('tier').$type<ModelTier>().notNull(),
+  attempt: smallint('attempt').notNull(),
+  tokensIn: integer('tokens_in').notNull().default(0),
+  tokensOut: integer('tokens_out').notNull().default(0),
+  cacheRead: integer('cache_read').notNull().default(0),
+  cacheWrite: integer('cache_write').notNull().default(0),
+  costMicros: bigint('cost_micros', { mode: 'number' }).notNull().default(0),
+  credits: numeric('credits', { precision: 10, scale: 2, mode: 'number' }).notNull().default(0),
+  latencyMs: integer('latency_ms').notNull(),
+  outcome: text('outcome').$type<RequestOutcome>().notNull(),
+  errorKind: text('error_kind'),
+  inputRef: text('input_ref'),
+  outputRef: text('output_ref'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const usageLedger = ai.table('ai_usage_ledger', {
+  orgId: uuid('org_id').notNull(),
+  day: date('day', { mode: 'string' }).notNull(),
+  feature: text('feature').notNull(),
+  credits: numeric('credits', { precision: 12, scale: 2, mode: 'number' }).notNull().default(0),
+  costMicros: bigint('cost_micros', { mode: 'number' }).notNull().default(0),
+  runs: integer('runs').notNull().default(0),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SuggestionStatus = 'pending' | 'accepted' | 'edited' | 'rejected';
+
+export const suggestions = ai.table('ai_suggestions', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id'),
+  targetType: text('target_type').notNull(),
+  targetId: uuid('target_id'),
+  task: text('task').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  payload: jsonb('payload').$type<unknown>().notNull(),
+  confidence: real('confidence'),
+  status: text('status').$type<SuggestionStatus>().notNull().default('pending'),
+  runId: uuid('run_id').notNull(),
+  decidedBy: uuid('decided_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  ...audit,
+});
+
+export type FeedbackReason = 'wrong' | 'missing' | 'not_useful' | 'wrong_source' | 'other';
+
+export const feedback = ai.table('ai_feedback', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  runId: uuid('run_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  rating: smallint('rating').notNull(),
+  reason: text('reason').$type<FeedbackReason>(),
+  comment: text('comment'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

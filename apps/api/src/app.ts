@@ -3,6 +3,7 @@ import formbody from '@fastify/formbody';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { sql } from 'drizzle-orm';
 import type { Database, Logger, RedisClient } from '@archova/kernel';
+import { FAKE_MODELS, type ModelProvider } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore } from '@archova/mod-files';
 import type { ApiConfig } from './config';
@@ -19,6 +20,8 @@ export interface AppDeps {
   store: ObjectStore;
   scanner: MalwareScanner;
   entitlements?: EntitlementProvider;
+  /** Tests inject a fake model provider with scripted responses. */
+  aiProvider?: ModelProvider;
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -49,6 +52,20 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       },
       files: { store: deps.store, scanner: deps.scanner },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
+      ai: {
+        config:
+          config.ai.provider === 'bedrock'
+            ? {
+                provider: {
+                  kind: 'bedrock',
+                  region: config.ai.region,
+                  ...(config.ai.endpoint ? { endpoint: config.ai.endpoint } : {}),
+                },
+                models: config.ai.models,
+              }
+            : { provider: { kind: 'fake' }, models: FAKE_MODELS },
+        ...(deps.aiProvider ? { provider: deps.aiProvider } : {}),
+      },
     },
   );
 

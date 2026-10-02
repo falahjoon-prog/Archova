@@ -1,5 +1,6 @@
 // Composition root: the list of modules this app loads (backend 01 §2). Adding a module means adding it here.
 import type { Database, KernelServices, RouteTable } from '@archova/kernel';
+import { AI_PERMISSIONS, createAiModule, type AiConfig, type ModelProvider } from '@archova/mod-ai';
 import { createAccessModule } from '@archova/mod-access';
 import {
   TRIAL_ENTITLEMENTS,
@@ -14,6 +15,7 @@ export interface ModuleOptions {
   identity: IdentityConfig;
   files: { store: ObjectStore; scanner: MalwareScanner };
   entitlements?: EntitlementProvider;
+  ai: { config: AiConfig; provider?: ModelProvider };
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -29,6 +31,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
       platform.api.getProjectMembership(scope, projectId, userId),
+    extraPermissions: [AI_PERMISSIONS],
   });
   const files = createFilesModule(services, {
     access: access.api,
@@ -36,7 +39,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     scanner: opts.files.scanner,
   });
 
-  const all = [identity, platform, access, billing, files];
+  const ai = createAiModule(services, {
+    config: opts.ai.config,
+    orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
+    ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
+  });
+
+  const all = [identity, platform, access, billing, files, ai];
   const routes: RouteTable = {};
   for (const m of all) {
     for (const [id, handler] of Object.entries(m.routes)) {
@@ -51,6 +60,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access,
     billing,
     files,
+    ai,
     routes,
   };
 }
