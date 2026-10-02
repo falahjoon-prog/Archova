@@ -3,6 +3,7 @@
 // Web URLs use the org slug; API paths use prefixed ids.
 
 const enc = encodeURIComponent;
+const p = (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`;
 
 export const webRoutes = {
   login: (next?: string) => (next ? `/login?next=${enc(next)}` : '/login'),
@@ -14,6 +15,27 @@ export const webRoutes = {
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,
+
+  // Project tools (frontend 03 §1). Entity segments are API ids; pages show the human number.
+  documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
+  drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
+  /** A sheet in the viewer; without `revisionId` it opens the current revision. */
+  drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
+    `${p(orgSlug, projectId)}/drawings/${enc(sheetId)}${revisionId ? `?rev=${enc(revisionId)}` : ''}`,
+  rfis: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis`,
+  newRfi: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis/new`,
+  rfi: (orgSlug: string, projectId: string, rfiId: string) =>
+    `${p(orgSlug, projectId)}/rfis/${enc(rfiId)}`,
+  /** The diary for a project-local date (`YYYY-MM-DD`); without a date it opens today. */
+  diary: (orgSlug: string, projectId: string, date?: string) =>
+    `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
+  defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  defect: (orgSlug: string, projectId: string, defectId: string) =>
+    `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
+  tenderPackages: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/packages`,
+  tenderPackage: (orgSlug: string, projectId: string, packageId: string) =>
+    `${p(orgSlug, projectId)}/estimating/packages/${enc(packageId)}`,
 } as const;
 
 /** Mobile (expo-router) paths. Feature names match web and backend modules one to one. */

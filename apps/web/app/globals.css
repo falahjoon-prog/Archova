@@ -325,3 +325,85 @@ main:focus {
   white-space: nowrap;
   border: 0;
 }
+
+/* Project shell: tool sidebar + content (design 03 §2) */
+.project-shell {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-8);
+  align-items: start;
+}
+.project-shell__content {
+  min-width: 0;
+}
+.project-nav {
+  position: sticky;
+  top: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.project-nav ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.project-nav__group-label {
+  margin: 0 0 var(--space-1);
+  padding: 0 var(--space-3);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--c-text-secondary);
+}
+.project-nav__link {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: calc(var(--space-10) + var(--space-1));
+  padding: 0 var(--space-3);
+  color: var(--c-text-secondary);
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--radius-md);
+}
+.project-nav__link:hover {
+  color: var(--c-text);
+  background: color-mix(in srgb, var(--c-text) 6%, transparent);
+}
+.project-nav__link[aria-current='page'] {
+  color: var(--c-action-primary);
+  background: color-mix(in srgb, var(--c-action-primary) 10%, var(--c-surface));
+}
+.project-nav__label {
+  flex: 1;
+}
+@media (max-width: 1023px) {
+  .project-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-4);
+  }
+  .project-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: var(--space-2);
+    border-bottom: 1px solid var(--c-border-divider);
+  }
+  .project-nav ul {
+    flex-direction: row;
+  }
+  .project-nav__group-label {
+    display: none;
+  }
+  .project-nav__link {
+    white-space: nowrap;
+  }
+}
+.app-shell__main {
+  max-width: 1440px;
+}

@@ -1,0 +1,55 @@
+// The one icon set (design 02 §6): Lucide outline icons, 20 px on web, 1.5 px stroke. Each module has a fixed
+// icon so people learn "the RFI icon" once; screens import module icons from here, not from lucide directly.
+export {
+  AlertOctagon,
+  AlertTriangle,
+  ArrowLeft,
+  Calendar,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  Circle,
+  CircleDot,
+  Copy,
+  Download,
+  FileText,
+  Filter,
+  Hand,
+  Info,
+  Layers,
+  MapPin,
+  Maximize,
+  Minus,
+  MousePointer2,
+  Pentagon,
+  Plus,
+  RefreshCw,
+  Ruler,
+  Search,
+  Send,
+  Sparkles,
+  Square,
+  ThumbsDown,
+  ThumbsUp,
+  Undo2,
+  X,
+  ZoomIn,
+  ZoomOut,
+  type LucideIcon,
+  type LucideProps,
+} from 'lucide-react';
+
+export {
+  BookOpen as DiaryIcon,
+  ClipboardCheck as DefectsIcon,
+  FileStack as DocumentsIcon,
+  Home as HomeIcon,
+  Map as DrawingsIcon,
+  MessageCircleQuestion as RfisIcon,
+  Scale as EstimatingIcon,
+  Sparkles as NovaIcon,
+} from 'lucide-react';
+
+/** Default icon props: 20 px, 1.5 px stroke, hidden from assistive tech (the label carries the meaning). */
+export const iconProps = { size: 20, strokeWidth: 1.5, 'aria-hidden': true } as const;

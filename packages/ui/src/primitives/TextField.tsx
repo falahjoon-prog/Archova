@@ -7,12 +7,15 @@ export interface TextFieldProps extends Omit<ComponentPropsWithRef<'input'>, 'ch
   hint?: ReactNode;
   /** Error text shown under the field; also sets `aria-invalid`. */
   error?: ReactNode;
+  /** Marks the value as filled by Nova until the user edits it (frontend 02 §7.2, inline fill). */
+  aiFilled?: boolean;
 }
 
 export function TextField({
   label,
   hint,
   error,
+  aiFilled,
   id,
   className,
   'aria-describedby': extra,
@@ -23,11 +26,19 @@ export function TextField({
   const hintId = `${inputId}-hint`;
   const errorId = `${inputId}-error`;
   return (
-    <Field id={inputId} label={label} hint={hint} error={error} hintId={hintId} errorId={errorId}>
+    <Field
+      id={inputId}
+      label={label}
+      hint={hint}
+      error={error}
+      hintId={hintId}
+      errorId={errorId}
+      aiFilled={aiFilled}
+    >
       <input
         {...rest}
         id={inputId}
-        className={cx('ac-input', className)}
+        className={cx('ac-input', aiFilled && 'ac-input--ai', className)}
         aria-invalid={error ? true : undefined}
         aria-describedby={describedBy({
           hint: Boolean(hint) && hintId,

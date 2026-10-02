@@ -3,9 +3,12 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   resolve: { alias: { '@': fileURLToPath(new URL('./', import.meta.url)) } },
+  esbuild: { jsx: 'automatic' },
   test: {
     environment: 'node',
     include: ['**/__tests__/**/*.test.{ts,tsx}'],
     exclude: ['node_modules', '.next'],
+    // Component tests opt in with `// @vitest-environment jsdom`.
+    setupFiles: ['./test/setup.ts'],
   },
 });
