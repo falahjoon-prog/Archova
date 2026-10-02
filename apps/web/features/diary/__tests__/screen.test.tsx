@@ -39,6 +39,7 @@ describe('DiaryDayScreen', () => {
     const user = userEvent.setup();
     renderInProject(<DiaryDayScreen />);
     await screen.findByLabelText('Cornerstone Formwork headcount');
+    await screen.findByRole('link', { name: /^Today/ });
     for (const [company, n] of [
       ['Harbourline Constructions', '2'],
       ['Cornerstone Formwork', '5'],
@@ -95,6 +96,7 @@ describe('DiaryDayScreen', () => {
   it('autosaves the draft to the server after a pause', async () => {
     const user = userEvent.setup();
     renderInProject(<DiaryDayScreen />);
+    await screen.findByRole('link', { name: /^Today/ });
     await user.type(await screen.findByRole('textbox', { name: 'Notes' }), 'Crane booked');
     await act(async () => {
       await new Promise((r) => setTimeout(r, 1700));

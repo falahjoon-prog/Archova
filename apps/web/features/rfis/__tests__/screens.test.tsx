@@ -44,10 +44,19 @@ describe('RfiListScreen', () => {
   });
 });
 
+/**
+ * Renders the form and waits for the drawing picker to load, so typing doesn't race the first data render on a
+ * busy CI runner (a keystroke was lost there once).
+ */
+async function renderNewRfi() {
+  renderInProject(<RfiNewScreen />);
+  await screen.findByRole('option', { name: /A-101/ });
+}
+
 describe('RfiNewScreen', () => {
   it('defaults the due date to 5 business days and blocks submit until required fields are set', async () => {
     const user = userEvent.setup();
-    renderInProject(<RfiNewScreen />);
+    await renderNewRfi();
     const due = screen.getByLabelText(/Due date/) as HTMLInputElement;
     expect(due.value).toBe('2026-10-09');
     expect(screen.getByText('5 business days from today')).toBeTruthy();
@@ -70,7 +79,7 @@ describe('RfiNewScreen', () => {
 
   it('only changes the question when the Nova wording is accepted', async () => {
     const user = userEvent.setup();
-    renderInProject(<RfiNewScreen />);
+    await renderNewRfi();
     await user.type(
       screen.getByRole('textbox', { name: /^Question/ }),
       'which closer is specified',
@@ -88,7 +97,7 @@ describe('RfiNewScreen', () => {
 
   it('finds similar RFIs before submitting (RFI-US3)', async () => {
     const user = userEvent.setup();
-    renderInProject(<RfiNewScreen />);
+    await renderNewRfi();
     await user.type(screen.getByLabelText(/Subject/), 'Bin store door closer');
     await user.click(screen.getByRole('button', { name: 'Check for similar RFIs' }));
     expect(await screen.findByText('Similar RFIs on this project')).toBeTruthy();
