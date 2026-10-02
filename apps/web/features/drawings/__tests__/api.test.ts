@@ -125,6 +125,26 @@ describe('drawings API source', () => {
         },
       ],
     }));
+    // RFIs pinned on the revision itself: RFI-003 is already a markup pin, RFI-004 isn't.
+    fake.on('GET', `${P}/rfis`, () => ({
+      data: [
+        {
+          id: 'rfi_3',
+          numberLabel: 'RFI-003',
+          subject: 'Slab edge',
+          status: 'open',
+          pin: { drawingRevisionId: 'drv_c', x: 0.5, y: 0.5 },
+        },
+        {
+          id: 'rfi_4',
+          numberLabel: 'RFI-004',
+          subject: 'Lighting circuit',
+          status: 'open',
+          pin: { drawingRevisionId: 'drv_c', x: 0.4, y: 0.47 },
+        },
+      ],
+      nextCursor: null,
+    }));
     const source = createDrawingsApi('org_1');
     const markups = await source.listMarkups('prj_1', 'drv_c', me);
     expect(markups).toHaveLength(1);
@@ -132,7 +152,19 @@ describe('drawings API source', () => {
     const pins = await source.listPins('prj_1', 'drv_c');
     expect(pins).toEqual([
       expect.objectContaining({ entityId: 'rfi_3', label: 'RFI-003', checkLocation: true }),
+      expect.objectContaining({
+        entityType: 'rfi',
+        entityId: 'rfi_4',
+        label: 'RFI-004',
+        title: 'Lighting circuit',
+        x: 0.4,
+        y: 0.47,
+        checkLocation: false,
+      }),
     ]);
+    expect(fake.callsTo('GET', `${P}/rfis`)[0]!.init.params?.query).toMatchObject({
+      drawingRevisionId: 'drv_c',
+    });
 
     fake.on('PATCH', `${P}/drawing-revisions/{drawingRevisionId}/markups/{markupId}`, () => ({}));
     await source.confirmPinLocation('prj_1', 'drv_c', pins[0]!.id);

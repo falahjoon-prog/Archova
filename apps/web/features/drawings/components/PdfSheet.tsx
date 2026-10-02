@@ -41,9 +41,10 @@ export function PdfSheet({
     let cancelRender: (() => void) | undefined;
     setState('loading');
     (async () => {
-      const pdfjs = await import('pdfjs-dist');
+      // The legacy build: the modern one calls Map.getOrInsertComputed, which many browsers don't have yet.
+      const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
       pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-        'pdfjs-dist/build/pdf.worker.min.mjs',
+        'pdfjs-dist/legacy/build/pdf.worker.min.mjs',
         import.meta.url,
       ).toString();
       const url = await fileDownloadUrl(orgId, fileId);
@@ -64,8 +65,11 @@ export function PdfSheet({
       cancelRender = () => task.cancel();
       await task.promise;
       if (!cancelled) setState('ready');
-    })().catch(() => {
-      if (!cancelled) setState('error');
+    })().catch((e: unknown) => {
+      if (cancelled) return;
+      // eslint-disable-next-line no-console -- there's no error reporting yet, and this is the only trace of the cause.
+      console.error('Drawing sheet failed to render', e);
+      setState('error');
     });
     return () => {
       cancelled = true;
