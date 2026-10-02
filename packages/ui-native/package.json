@@ -1,0 +1,32 @@
+{
+  "name": "@archova/ui-native",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@archova/design-tokens": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "*",
+    "react-native": "*"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@types/react": "~19.2.2",
+    "eslint": "^9.39.0",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}
