@@ -18,9 +18,10 @@ import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { todayIn } from '@/shared/lib/format';
-import { MOCK_COMPANIES } from '@/shared/mocks/directory';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
@@ -39,6 +40,7 @@ export function RfiListScreen() {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const actor = useActor();
+  const dir = useProjectDirectory();
   usePublishAssistantScope({
     projectId: project.projectId,
     record: { type: 'rfis', id: 'register' },
@@ -81,7 +83,7 @@ export function RfiListScreen() {
     {
       id: 'waiting',
       header: 'Ball in court',
-      cell: (r) => ballInCourtLabel(r, actor) ?? <span className="u-muted">—</span>,
+      cell: (r) => ballInCourtLabel(r, actor, dir) ?? <span className="u-muted">—</span>,
     },
     {
       id: 'due',
@@ -106,7 +108,7 @@ export function RfiListScreen() {
           </Link>
         }
       />
-      <PreviewDataNotice tool="RFIs" />
+      {previewDataOnly ? <PreviewDataNotice tool="RFIs" /> : null}
       <FilterBar label="Filter RFIs">
         <TextField
           label="Search"
@@ -126,7 +128,7 @@ export function RfiListScreen() {
           label="Waiting on"
           value={params.waiting}
           placeholder="Anyone"
-          options={MOCK_COMPANIES.map((c) => ({ value: c.id, label: c.name }))}
+          options={dir.companies.map((c) => ({ value: c.id, label: c.name }))}
           onChange={(e) => setParams({ waiting: e.target.value })}
         />
         <Checkbox

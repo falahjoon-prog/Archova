@@ -1,5 +1,5 @@
 // `rfis.rfis`, `rfis.assignees` and `rfis.responses` (backend schema/rfis-submittals-correspondence.md) as the web
-// app uses them. Replaced by `@archova/contracts` types when the rfis endpoints land.
+// app uses them. `data/api.ts` maps the API's shapes onto these, so the screens serve both sources.
 
 import type { Citation } from '@archova/ui';
 
@@ -56,6 +56,8 @@ export interface Rfi {
   createdAt: string;
   answeredAt: string | null;
   closedAt: string | null;
+  /** Server version for If-Match; absent on preview records. */
+  version?: number;
 }
 
 export interface RfiInput {

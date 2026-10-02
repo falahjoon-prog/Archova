@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { PageHeader } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -36,7 +37,7 @@ export function RfiNewScreen() {
         title="New RFI"
         description="The number is issued when you submit. Drafts stay with you until then."
       />
-      <PreviewDataNotice tool="RFIs" />
+      {previewDataOnly ? <PreviewDataNotice tool="RFIs" /> : null}
       <RfiForm
         initial={emptyRfiInput(todayIn(project.timezone))}
         busy={create.isPending}

@@ -8,11 +8,11 @@ import { webRoutes } from '@archova/routes';
 import { useSheetPicker } from '@/features/drawings';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { businessDaysBetween, dueInBusinessDays, todayIn } from '@/shared/lib/format';
-import { MOCK_COMPANIES, companyName } from '@/shared/mocks/directory';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { RfiStatusPill } from '../components/RfiChips';
-import { assignablePeople } from '../data/source';
 import { useRfiNova } from '../hooks/useRfis';
 import { submitErrors } from '../lib/lifecycle';
 import { formatRfiNumber, type CostImpact, type NovaDraft, type RfiInput } from '../lib/types';
@@ -50,6 +50,7 @@ export interface RfiFormProps {
  * until the user accepts (P6), and Nova never submits.
  */
 export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiFormProps) {
+  const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const today = todayIn(project.timezone);
@@ -218,9 +219,9 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
             placeholder="Choose a person"
             error={errors.assigneeId}
             required
-            options={assignablePeople.map((p) => ({
+            options={dir.people.map((p) => ({
               value: p.id,
-              label: `${p.name} · ${companyName(p.companyId)}`,
+              label: `${p.name} · ${dir.companyName(p.companyId)}`,
             }))}
             onChange={(e) => set('assigneeId', e.target.value || null)}
           />
@@ -242,21 +243,23 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
         <fieldset className="fieldset">
           <legend>Distribution</legend>
           <div className="check-grid">
-            {MOCK_COMPANIES.filter((c) => c.role !== 'builder').map((c) => (
-              <Checkbox
-                key={c.id}
-                label={c.name}
-                checked={v.distributionCompanyIds.includes(c.id)}
-                onChange={(e) =>
-                  set(
-                    'distributionCompanyIds',
-                    e.target.checked
-                      ? [...v.distributionCompanyIds, c.id]
-                      : v.distributionCompanyIds.filter((id) => id !== c.id),
-                  )
-                }
-              />
-            ))}
+            {dir.companies
+              .filter((c) => !c.isBuilder)
+              .map((c) => (
+                <Checkbox
+                  key={c.id}
+                  label={c.name}
+                  checked={v.distributionCompanyIds.includes(c.id)}
+                  onChange={(e) =>
+                    set(
+                      'distributionCompanyIds',
+                      e.target.checked
+                        ? [...v.distributionCompanyIds, c.id]
+                        : v.distributionCompanyIds.filter((id) => id !== c.id),
+                    )
+                  }
+                />
+              ))}
           </div>
         </fieldset>
         <Checkbox
@@ -272,34 +275,39 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
           References and impact
         </h2>
         <div className="form-row">
-          <Select
-            label="Drawing"
-            value={v.drawing?.sheetId ?? ''}
-            placeholder={sheets.isPending ? 'Loading drawings…' : 'No drawing'}
-            options={sheets.options.map((s) => ({
-              value: s.sheetId,
-              label: `${s.label} · ${s.title}`,
-            }))}
-            onChange={(e) => {
-              const s = sheets.options.find((o) => o.sheetId === e.target.value);
-              set(
-                'drawing',
-                s ? { sheetId: s.sheetId, revisionId: s.revisionId, label: s.label } : null,
-              );
-            }}
-          />
-          <TextField
-            label="Spec section"
-            placeholder="0331 Structural concrete"
-            value={v.specSection ?? ''}
-            onChange={(e) => set('specSection', e.target.value || null)}
-          />
-          <TextField
-            label="Location"
-            placeholder="Level 2, grid C"
-            value={v.location ?? ''}
-            onChange={(e) => set('location', e.target.value || null)}
-          />
+          {/* The API pins an RFI to a point on a sheet from the viewer, and has no spec or location fields yet. */}
+          {previewDataOnly ? (
+            <>
+              <Select
+                label="Drawing"
+                value={v.drawing?.sheetId ?? ''}
+                placeholder={sheets.isPending ? 'Loading drawings…' : 'No drawing'}
+                options={sheets.options.map((s) => ({
+                  value: s.sheetId,
+                  label: `${s.label} · ${s.title}`,
+                }))}
+                onChange={(e) => {
+                  const s = sheets.options.find((o) => o.sheetId === e.target.value);
+                  set(
+                    'drawing',
+                    s ? { sheetId: s.sheetId, revisionId: s.revisionId, label: s.label } : null,
+                  );
+                }}
+              />
+              <TextField
+                label="Spec section"
+                placeholder="0331 Structural concrete"
+                value={v.specSection ?? ''}
+                onChange={(e) => set('specSection', e.target.value || null)}
+              />
+              <TextField
+                label="Location"
+                placeholder="Level 2, grid C"
+                value={v.location ?? ''}
+                onChange={(e) => set('location', e.target.value || null)}
+              />
+            </>
+          ) : null}
           <Select
             label="Cost impact"
             value={v.costImpact ?? ''}

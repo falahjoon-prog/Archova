@@ -2,7 +2,7 @@
 // `POST {p}/rfis/{id}/responses` and `POST {p}/rfis/{id}/ai-draft` (backend 04 §3). Preview: in-memory store;
 // the Nova calls return canned drafts with citations so the review flow can be exercised.
 
-import { MOCK_PEOPLE, companyName, personCompanyId, personName } from '@/shared/mocks/directory';
+import { companyName, personCompanyId, personName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { canTransition, submitErrors, type RfiAction } from '../lib/lifecycle';
 import type { NovaDraft, Rfi, RfiInput, RfiStatus } from '../lib/types';
@@ -435,8 +435,7 @@ export const rfisSource = {
   },
 };
 
-/** People an RFI can be assigned to, grouped by company in the picker. */
-export const assignablePeople = MOCK_PEOPLE;
+export type RfisSource = typeof rfisSource;
 
 export function resetRfisPreview() {
   stores.reset();

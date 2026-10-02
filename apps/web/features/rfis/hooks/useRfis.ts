@@ -1,13 +1,23 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { queryKeys } from '@archova/query';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useActor } from '@/shared/providers/useActor';
-import { rfisSource, type RfiFilters } from '../data/source';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { createRfisApi } from '../data/api';
+import { rfisSource as previewSource, type RfiFilters, type RfisSource } from '../data/source';
 import type { Rfi, RfiInput } from '../lib/types';
 
+/** The API once the rfis endpoints are reachable; the in-browser preview store in preview mode and tests. */
+export function useRfisSource(): RfisSource {
+  const { orgId } = useCurrentOrg();
+  return useMemo(() => (previewDataOnly ? previewSource : createRfisApi(orgId)), [orgId]);
+}
+
 export function useRfiList(projectId: string, filters: RfiFilters) {
+  const rfisSource = useRfisSource();
   const { orgId } = useCurrentOrg();
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'rfis', { ...filters }),
@@ -16,6 +26,7 @@ export function useRfiList(projectId: string, filters: RfiFilters) {
 }
 
 export function useRfi(projectId: string, rfiId: string) {
+  const rfisSource = useRfisSource();
   const { orgId } = useCurrentOrg();
   return useQuery({
     queryKey: queryKeys.toolItem(orgId, projectId, 'rfis', rfiId),
@@ -28,6 +39,7 @@ export function useRfi(projectId: string, rfiId: string) {
  * of the contractual record, so none of them is optimistic (frontend 02 §3).
  */
 export function useRfiMutations(projectId: string) {
+  const rfisSource = useRfisSource();
   const { orgId } = useCurrentOrg();
   const actor = useActor();
   const qc = useQueryClient();
@@ -75,6 +87,7 @@ export function useRfiMutations(projectId: string) {
 
 /** Nova calls are explicit user actions, never background (P6); results are suggestions until accepted. */
 export function useRfiNova(projectId: string) {
+  const rfisSource = useRfisSource();
   return {
     draftResponse: useMutation({
       mutationFn: (rfiId: string) => rfisSource.novaDraftResponse(projectId, rfiId),

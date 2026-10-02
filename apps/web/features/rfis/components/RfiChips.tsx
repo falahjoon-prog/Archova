@@ -1,5 +1,5 @@
 import { StatusPill, type StatusTone } from '@archova/ui';
-import { companyName, personName } from '@/shared/mocks/directory';
+import type { ProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { businessDaysBetween, formatLocalDate } from '@/shared/lib/format';
 import { isOverdue } from '../lib/lifecycle';
 import { STATUS_LABELS, type Rfi, type RfiStatus } from '../lib/types';
@@ -20,10 +20,14 @@ export function RfiStatusPill({ status }: { status: RfiStatus }) {
 export function ballInCourtLabel(
   rfi: Pick<Rfi, 'ballInCourtId' | 'ballInCourtCompanyId'>,
   me: { id: string; name: string },
+  dir: Pick<ProjectDirectory, 'personName' | 'companyName'>,
 ): string | null {
   if (!rfi.ballInCourtId && !rfi.ballInCourtCompanyId) return null;
-  const person = rfi.ballInCourtId === me.id ? `${me.name} (you)` : personName(rfi.ballInCourtId);
-  return `Waiting on: ${companyName(rfi.ballInCourtCompanyId)} · ${person}`;
+  const person =
+    rfi.ballInCourtId === me.id ? `${me.name} (you)` : dir.personName(rfi.ballInCourtId);
+  return rfi.ballInCourtCompanyId
+    ? `Waiting on: ${dir.companyName(rfi.ballInCourtCompanyId)} · ${person}`
+    : `Waiting on: ${person}`;
 }
 
 /** Due date with the business-day count, and the danger chip once overdue (F1.4 states). */

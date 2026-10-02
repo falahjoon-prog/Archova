@@ -19,9 +19,11 @@ import { webRoutes } from '@archova/routes';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
-import { companyName, personName } from '@/shared/mocks/directory';
+import { useSheetPicker } from '@/features/drawings';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
@@ -84,7 +86,7 @@ function DraftView({ rfi }: { rfi: Rfi }) {
         title={`Draft: ${rfi.subject}`}
         description="Drafts have no number until you submit (RFI-001 onwards, never reused)."
       />
-      <PreviewDataNotice tool="RFIs" />
+      {previewDataOnly ? <PreviewDataNotice tool="RFIs" /> : null}
       <RfiForm
         key={rfi.id}
         initial={toInput(rfi)}
@@ -100,6 +102,7 @@ function DraftView({ rfi }: { rfi: Rfi }) {
 }
 
 function RfiView({ rfi }: { rfi: Rfi }) {
+  const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const actor = useActor();
@@ -116,7 +119,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 
   const askNova = useAskNova();
   const primary = primaryAction(rfi.status);
-  const bic = ballInCourtLabel(rfi, actor);
+  const bic = ballInCourtLabel(rfi, actor, dir);
 
   const startRespond = () => {
     setParams({ tab: 'responses' });
@@ -193,7 +196,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
           </>
         }
       />
-      <PreviewDataNotice tool="RFIs" />
+      {previewDataOnly ? <PreviewDataNotice tool="RFIs" /> : null}
       {rfi.status === 'answered' && rfi.costImpact === 'yes' ? (
         <Alert tone="warning" title="Potential variation">
           This RFI is flagged with a cost impact, so it&apos;s on the potential variations list.
@@ -332,8 +335,21 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 }
 
 function Details({ rfi }: { rfi: Rfi }) {
+  const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
+  const sheets = useSheetPicker(project.projectId);
+  // API records carry the pinned revision only; the register names its sheet when it's the current revision.
+  const pinned = rfi.drawing;
+  const match =
+    pinned && !pinned.sheetId
+      ? sheets.options.find((o) => o.revisionId === pinned.revisionId)
+      : null;
+  const drawing = pinned?.sheetId
+    ? pinned
+    : match
+      ? { sheetId: match.sheetId, revisionId: match.revisionId, label: match.label }
+      : null;
   return (
     <div className="stack-lg">
       <section aria-labelledby="rfi-q" className="stack">
@@ -347,23 +363,25 @@ function Details({ rfi }: { rfi: Rfi }) {
           {
             label: 'Assignee',
             value: rfi.assigneeId
-              ? `${personName(rfi.assigneeId)} · ${companyName(rfi.assigneeCompanyId)}`
+              ? `${dir.personName(rfi.assigneeId)} · ${dir.companyName(rfi.assigneeCompanyId)}`
               : '—',
           },
           {
             label: 'Drawing',
-            value: rfi.drawing ? (
+            value: drawing ? (
               <Link
                 className="link"
                 href={webRoutes.drawing(
                   org.orgSlug,
                   project.projectId,
-                  rfi.drawing.sheetId,
-                  rfi.drawing.revisionId,
+                  drawing.sheetId,
+                  drawing.revisionId,
                 )}
               >
-                {rfi.drawing.label}
+                {drawing.label}
               </Link>
+            ) : rfi.drawing ? (
+              'Pinned on an earlier revision'
             ) : (
               '—'
             ),
@@ -382,7 +400,7 @@ function Details({ rfi }: { rfi: Rfi }) {
           {
             label: 'Distribution',
             value: rfi.distributionCompanyIds.length
-              ? rfi.distributionCompanyIds.map(companyName).join(', ')
+              ? rfi.distributionCompanyIds.map(dir.companyName).join(', ')
               : '—',
           },
           { label: 'Raised', value: formatInstant(rfi.createdAt, project.timezone) },
@@ -394,6 +412,7 @@ function Details({ rfi }: { rfi: Rfi }) {
 }
 
 function Responses({ rfi }: { rfi: Rfi }) {
+  const dir = useProjectDirectory();
   const project = useCurrentProject();
   if (rfi.responses.length === 0) return <p className="u-muted u-m-0">No responses yet.</p>;
   return (
@@ -403,7 +422,7 @@ function Responses({ rfi }: { rfi: Rfi }) {
           <div className="row-actions">
             <strong>{r.authorName}</strong>
             <span className="u-caption">
-              {companyName(r.authorCompanyId)} · {formatInstant(r.createdAt, project.timezone)}
+              {dir.companyName(r.authorCompanyId)} · {formatInstant(r.createdAt, project.timezone)}
             </span>
             {r.isOfficial ? <StatusPill tone="success">Official response</StatusPill> : null}
             {r.aiSuggestionId ? <StatusPill tone="ai">Started from a Nova draft</StatusPill> : null}
