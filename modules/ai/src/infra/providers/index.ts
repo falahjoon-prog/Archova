@@ -15,6 +15,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'drawing.titleblock': heuristicTitleBlock,
   'qa.answer': heuristicQaAnswer,
   'induction.draft': heuristicInductionDraft,
+  'induction.ask': heuristicQaAnswer,
 };
 
 export { createFakeProvider, fakeEmbedding, type FakeProvider, type FakeResponder } from './fake';
