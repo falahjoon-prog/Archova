@@ -87,7 +87,7 @@ main:focus {
 }
 .app-shell__brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: var(--space-3);
 }
 .app-shell__logo {
@@ -1106,4 +1106,30 @@ section.diary-section .diary-section__summary {
 }
 fieldset.worker-card > legend {
   padding: 0 var(--space-1);
+}
+
+/* Keystone logo: light lockup on light themes, reversed on dark (same rules as the colour tokens). */
+.brand-logo {
+  display: inline-flex;
+  align-items: center;
+}
+.brand-logo__light {
+  display: block;
+}
+.brand-logo__dark {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .brand-logo__light {
+    display: none;
+  }
+  :root:not([data-theme='light']) .brand-logo__dark {
+    display: block;
+  }
+}
+:root[data-theme='dark'] .brand-logo__light {
+  display: none;
+}
+:root[data-theme='dark'] .brand-logo__dark {
+  display: block;
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, type ReactNode } from 'react';
 import { webRoutes } from '@archova/routes';
+import { BrandLogo } from './BrandLogo';
 
 export interface NavItem {
   href: string;
@@ -58,7 +59,7 @@ export function AppShell({
       <header className="app-shell__bar">
         <div className="app-shell__brand">
           <Link className="app-shell__logo ac-focusable" href={webRoutes.orgPicker()}>
-            Archova
+            <BrandLogo />
           </Link>
           <span className="app-shell__org" title="Organisation">
             {orgName}
@@ -125,7 +126,9 @@ export function CentredShell({ children }: { children: ReactNode }) {
         Skip to content
       </a>
       <main id="main" className="centred-shell__main" tabIndex={-1}>
-        <p className="centred-shell__brand">Archova</p>
+        <p className="centred-shell__brand">
+          <BrandLogo height={32} />
+        </p>
         {children}
       </main>
     </div>
