@@ -8,6 +8,7 @@ import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
+import { createDiarySummaryService } from './application/diary-summary';
 import { createDrawingRegisterService, type ReadableFile } from './application/drawing-register';
 import { createGateway } from './application/gateway';
 import { aiRoutes } from './api/routes';
@@ -56,6 +57,14 @@ export type { ReadableFile, SheetSuggestionPayload } from './application/drawing
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { InductionDraftPayload } from './application/induction-draft';
+export type { DiarySummaryPayload } from './application/diary-summary';
+export {
+  diaryFacts,
+  reviewDiarySummary,
+  type DiaryDayForSummary,
+  type ReviewedSummary,
+  type SummarySource,
+} from './domain/diary-summary';
 export type {
   InductionTranslation,
   TranslatedQuestion,
@@ -177,6 +186,7 @@ export function createAiModule(
     assert: deps.assert,
     accessScopes: deps.accessScopes,
   });
+  const diarySummary = createDiarySummaryService({ database: services.database, gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -202,6 +212,8 @@ export function createAiModule(
       ask: askService.ask,
       indexProject: projectIndex.indexProject,
       draftInduction: inductionDrafts.draft,
+      /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
+      summariseDiaryDay: diarySummary.summariseDay,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
       indexInductionVersion: inductionQa.indexVersion,
       /** For `workforce`'s worker route, after the access link check: answer from that version only. */

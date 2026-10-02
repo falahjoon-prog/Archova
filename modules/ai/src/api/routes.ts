@@ -9,6 +9,7 @@ import {
   type Database,
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
+import type { DiarySummaryPayload } from '../application/diary-summary';
 import type { AnswerSource, AskService } from '../application/ask';
 import type {
   DrawingRegisterService,
@@ -20,6 +21,7 @@ import type {
   InductionDraftService,
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
+import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
@@ -40,6 +42,15 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       quiz: p.quiz.map((q) => ({ ...q, citations: q.citations.map(cite) })),
     };
   }
+  if (task === 'diary.summary') {
+    const p = payload as DiarySummaryPayload;
+    return {
+      ...p,
+      sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
+      possibleDelay: { ...p.possibleDelay, sources: p.possibleDelay.sources.map(diarySource) },
+      unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
   if (task === 'drawing.titleblock') {
     const p = payload as SheetSuggestionPayload;
     return { ...p, fileId: encodeId('file', p.fileId) };
@@ -56,7 +67,24 @@ function sourceIds(c: { sourceType: string; sourceId: string; revisionId: string
   };
 }
 
-const TARGET_KINDS = { file_page: 'file', project: 'project' } as const;
+const DIARY_LINE_KINDS = {
+  labour: 'diaryLabour',
+  plant: 'diaryPlant',
+  delivery: 'diaryDelivery',
+  delay: 'diaryDelay',
+  visitor: 'diaryVisitor',
+  stand_down: 'diaryStandDown',
+} as const;
+
+/** A diary line as its public id (event kinds such as `inspection` are diary events); weather and totals as is. */
+const diarySource = (s: SummarySource) => ({
+  kind: s.kind,
+  id: s.id
+    ? encodeId(DIARY_LINE_KINDS[s.kind as keyof typeof DIARY_LINE_KINDS] ?? 'diaryEvent', s.id)
+    : null,
+});
+
+const TARGET_KINDS = { file_page: 'file', project: 'project', diary_entry: 'diary' } as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
   id: encodeId('aiSuggestion', r.id),

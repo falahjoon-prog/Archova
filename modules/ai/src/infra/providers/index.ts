@@ -2,6 +2,7 @@
 // everywhere else, so tests and local runs never call a real model (and need no AWS credentials).
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
+import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
@@ -23,6 +24,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'induction.ask': heuristicQaAnswer,
   'translation.translate': fakeTranslate,
   'translation.check': fakeTranslationCheck,
+  'diary.summary': heuristicDiarySummary,
 };
 
 export {

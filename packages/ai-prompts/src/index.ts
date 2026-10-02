@@ -7,3 +7,4 @@ export * from './induction-ask/prompt';
 export * from './translation/prompt';
 export * from './qa-rewrite/prompt';
 export * from './qa-rerank/prompt';
+export * from './diary-summary/prompt';
