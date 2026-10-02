@@ -46,6 +46,7 @@ export const PROBLEM_CODES = {
   'upload.not_received': 409,
   'file.not_found': 404,
   'file.not_ready': 409,
+  'file.blocked': 422,
   'file.not_in_project': 422,
   // documents
   'folder.not_found': 404,

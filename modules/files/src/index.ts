@@ -20,6 +20,7 @@ export {
   type ScanVerdict,
 } from './infra/scanner';
 export { hexToBase64, quarantineKey } from './domain/rules';
+export { assertFileReady } from './application/files-service';
 
 export function createFilesModule(
   services: KernelServices,

@@ -54,7 +54,7 @@ Malware scanning follows security-licensing/09 §4: Amazon GuardDuty Malware Pro
 | `THREATS_FOUND` | `infected` | never |
 | `UNSUPPORTED`, `FAILED`, `ACCESS_DENIED`, anything else | `failed` ("couldn't be scanned") | never |
 
-Infected and unscannable objects stay in quarantine for 30 days for investigation; the uploader and org admins are notified. Clients poll `GET {o}/files/{fileId}` until the status leaves `scanning`; records that reference a file (revisions, attachments) need it `ready`.
+Infected and unscannable objects stay in quarantine for 30 days for investigation; the uploader and org admins are notified. Clients poll `GET {o}/files/{fileId}` until the status leaves `scanning`; records that reference a file (revisions, attachments) need it `ready`. Using a file that is still `scanning` returns 409 `file.not_ready` (retry); an `infected` or `failed` file returns 422 `file.blocked` (final).
 - **Nothing downstream reads a file before `ready`.** That covers download, preview, thumbnails, OCR, tiles, AI indexing, mobile sync, access-link delivery and evidence sealing. All of them read through the `files` module, which refuses any file that isn't `ready`.
 - **Every upload path** goes through the same scan: app and mobile uploads, email-in attachments, access-link uploads and imports (Sam 09).
 - **On `THREATS_FOUND`**, a security audit event is also written.

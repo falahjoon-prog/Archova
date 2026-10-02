@@ -31,6 +31,22 @@ const FILE_STATUS = {
 /** No scan result after this long fails closed (security-licensing/09 §4). */
 const SCAN_TIMEOUT_MS = 15 * 60_000;
 
+/**
+ * Nothing reads a file before it's `ready` (security-licensing/09 §4). `file.not_ready` (409) means still being
+ * scanned, so retry; `file.blocked` (422) is final: infected or couldn't be scanned.
+ */
+export function assertFileReady(f: Pick<FileRow, 'status'>) {
+  if (f.status === 'scanning')
+    throw new AppError('file.not_ready', 'This file is still being checked. Try again shortly.');
+  if (f.status !== 'ready')
+    throw new AppError(
+      'file.blocked',
+      f.status === 'infected'
+        ? 'This file was blocked because it may contain malware.'
+        : "This file couldn't be checked for malware, so it can't be used. Upload it again; password-protected files can't be checked.",
+    );
+}
+
 export interface FilesDeps {
   access: AccessService;
   store: ObjectStore;
@@ -283,8 +299,7 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
 
   async function downloadUrl(scope: TenantScope, fileId: string) {
     const f = await get(scope, fileId);
-    if (f.status !== 'ready')
-      throw new AppError('file.not_ready', 'This file is not available for download.');
+    assertFileReady(f);
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
       expiresInS: DOWNLOAD_URL_TTL_S,
@@ -298,8 +313,7 @@ export function createFilesService({ access, store, scanner, logger }: FilesDeps
    */
   async function readBytes(scope: TenantScope, fileId: string, maxBytes: number) {
     const f = await get(scope, fileId);
-    if (f.status !== 'ready')
-      throw new AppError('file.not_ready', 'This file is not available yet.');
+    assertFileReady(f);
     if (f.sizeBytes > maxBytes)
       throw new AppError('validation_failed', 'This file is too large to process here.', [
         { path: 'fileId', message: `Larger than ${Math.round(maxBytes / 1e6)} MB` },
