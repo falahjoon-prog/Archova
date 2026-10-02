@@ -13,8 +13,14 @@ set -eu -o pipefail
 : "${BACKUP_ENDPOINT:?}" "${BACKUP_BUCKET:?}" "${BACKUP_KEY_ID:?}" "${BACKUP_KEY_SECRET:?}"
 export PGSSLMODE=verify-full PGSSLROOTCERT=/etc/ssl/db-ca.pem PGPORT="${PGPORT:-5432}"
 
+ping_monitor() {
+  if [ -n "${BACKUP_ALERT_URL:-}" ]; then
+    wget -q -O /dev/null "$BACKUP_ALERT_URL$1" || true
+  fi
+}
+
 fail() {
-  [ -n "${BACKUP_ALERT_URL:-}" ] && wget -q -O /dev/null "$BACKUP_ALERT_URL/fail" || true
+  ping_monitor /fail
   echo "backup failed: $1" >&2
   exit 1
 }
@@ -33,5 +39,5 @@ pg_dump --format=custom --no-owner --no-privileges \
 echo "uploads sync"
 rclone sync "src:$FILES_BUCKET" "dst:$BACKUP_BUCKET/files" --fast-list --checksum --transfers 8 || fail "uploads sync"
 
-[ -n "${BACKUP_ALERT_URL:-}" ] && wget -q -O /dev/null "$BACKUP_ALERT_URL" || true
+ping_monitor ""
 echo "backup done $stamp"
