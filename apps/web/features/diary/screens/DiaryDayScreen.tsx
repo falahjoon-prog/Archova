@@ -23,12 +23,10 @@ import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
-import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
 import { mockId } from '@/shared/mocks/runtime';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
-import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DiaryEditor } from '../components/DiaryEditor';
 import { DiaryReadView } from '../components/DiaryReadView';
 import { possibleDelay } from '../data/source';
@@ -58,7 +56,7 @@ export function DiaryDayScreen({ date }: { date?: string }) {
   return (
     <div className="stack-lg">
       <DayHeader day={day} today={today} entry={entry.data} />
-      {previewDataOnly ? <PreviewDataNotice tool="The site diary" /> : null}
+      <PreviewDataNotice tool="The site diary" />
       <div className="diary-layout">
         <DayStrip day={day} today={today} />
         <div className="stack-lg">
@@ -182,7 +180,6 @@ function DayStrip({ day, today }: { day: LocalDate; today: LocalDate }) {
 
 function DayBody({ entry }: { entry: DiaryEntry }) {
   const project = useCurrentProject();
-  const { companyName } = useProjectDirectory();
   const m = useDiaryMutations(entry.date);
   const [mode, setMode] = useState<'edit' | 'view' | 'amend'>(
     entry.status === 'draft' ? 'edit' : 'view',
@@ -219,10 +216,10 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
     setDirty(true);
   };
 
-  const problems = submitProblems(content, companyName);
+  const problems = submitProblems(content);
   const totals = labourTotals(content);
-  const changes = mode === 'amend' ? diffContent(entry.content, content, companyName) : [];
-  const delayFlag = delayDismissed ? null : possibleDelay(content, entry.weather, companyName);
+  const changes = mode === 'amend' ? diffContent(entry.content, content) : [];
+  const delayFlag = delayDismissed ? null : possibleDelay(content, entry.weather);
 
   const nova =
     mode === 'view' ? null : (
@@ -249,7 +246,6 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
             {m.summary.isPending ? 'Writing…' : "Write today's summary"}
           </Button>
         </div>
-        <ErrorAlert error={m.summary.error} title="Nova couldn't write a summary" />
         {summary ? (
           <NovaSuggestion
             title="Today's summary"
@@ -500,9 +496,6 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
 
 /** Submission, amendments (who, what, why, when) and sign-off, newest last (DIA-AC7, DIA-AC8). */
 function History({ entry, timeZone }: { entry: DiaryEntry; timeZone: string }) {
-  const { companyName } = useProjectDirectory();
-  // API amendments carry company ids; name them from the directory.
-  const named = (v: string) => v.replace(/\bcmp_[0-9A-Za-z]+/g, (id) => companyName(id));
   const entries = [
     ...(entry.submittedAt
       ? [
@@ -525,7 +518,7 @@ function History({ entry, timeZone }: { entry: DiaryEntry; timeZone: string }) {
           <ul className="u-m-0">
             {a.changes.map((c, i) => (
               <li key={i}>
-                {c.field}: {named(c.before)} → {named(c.after)}
+                {c.field}: {c.before} → {c.after}
               </li>
             ))}
           </ul>

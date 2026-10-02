@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { Button, Checkbox, Select, Switch, TextField, Textarea } from '@archova/ui';
 import { Plus, Trash2 } from '@archova/ui/icons';
-import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { MOCK_COMPANIES, companyName } from '@/shared/mocks/directory';
 import { mockId } from '@/shared/mocks/runtime';
 import { eotByDefault, labourTotals } from '../lib/entry';
 import {
@@ -15,6 +15,8 @@ import {
   type Weather,
 } from '../lib/types';
 import { WeatherSummary } from './WeatherSummary';
+
+const companyOptions = MOCK_COMPANIES.map((c) => ({ value: c.id, label: c.name }));
 
 const num = (v: string): number | null => (v === '' ? null : Math.max(0, Number(v)));
 
@@ -32,8 +34,6 @@ export interface DiaryEditorProps {
  * amendments work line by line, the same as the mobile sync.
  */
 export function DiaryEditor({ value, onChange, weather, photosToday, nova }: DiaryEditorProps) {
-  const { companies, companyName } = useProjectDirectory();
-  const companyOptions = companies.map((c) => ({ value: c.id, label: c.name }));
   const set = <K extends keyof DiaryContent>(key: K, v: DiaryContent[K]) =>
     onChange({ ...value, [key]: v });
   const totals = labourTotals(value);
@@ -209,7 +209,7 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
               ...value.labour,
               {
                 id: mockId('lab'),
-                companyId: (companies.find((c) => c.isBuilder) ?? companies[0])?.id ?? '',
+                companyId: 'cmp_builder',
                 trade: '',
                 headcount: null,
                 hours: null,
@@ -505,12 +505,11 @@ function CompanyChecks({
   value: string[];
   onChange: (ids: string[]) => void;
 }) {
-  const { companies } = useProjectDirectory();
   return (
     <fieldset className="fieldset">
       <legend>{legend}</legend>
       <div className="check-grid">
-        {companies.map((c) => (
+        {MOCK_COMPANIES.map((c) => (
           <Checkbox
             key={c.id}
             label={c.name}

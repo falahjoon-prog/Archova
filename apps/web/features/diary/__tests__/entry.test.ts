@@ -1,4 +1,3 @@
-import { companyName } from '@/shared/mocks/directory';
 import { describe, expect, it } from 'vitest';
 import { emptyContent } from '../data/source';
 import {
@@ -63,7 +62,7 @@ describe('diary rules', () => {
       ],
     };
     expect(labourTotals(c)).toEqual({ headcount: 6, hours: 54 });
-    expect(submitProblems(c, companyName)).toEqual([
+    expect(submitProblems(c)).toEqual([
       'Delay 1 needs hours and a description.',
       'Add a headcount for Brightwire Electrical, or remove the line.',
     ]);
@@ -79,7 +78,7 @@ describe('diary rules', () => {
       notes: 'Late finish',
       labour: [{ ...before.labour[0]!, headcount: 4 }],
     };
-    expect(diffContent(before, after, companyName)).toEqual([
+    expect(diffContent(before, after)).toEqual([
       { field: 'Notes', before: 'blank', after: 'Late finish' },
       { field: 'Labour · Brightwire Electrical headcount', before: '3', after: '4' },
     ]);

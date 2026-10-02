@@ -1,27 +1,17 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo } from 'react';
 import type { LocalDate } from '@archova/time';
 import { queryKeys } from '@archova/query';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
-import { previewDataOnly } from '@/shared/lib/data-mode';
-import { createDiaryApi } from '../data/api';
-import { diarySource as previewSource, type DiarySource } from '../data/source';
+import { diarySource } from '../data/source';
 import type { DiaryContent, DiaryEntry, Weather } from '../lib/types';
-
-/** The API once the diary endpoints are reachable; the in-browser preview store in preview mode and tests. */
-export function useDiarySource(): DiarySource {
-  const { orgId } = useCurrentOrg();
-  return useMemo(() => (previewDataOnly ? previewSource : createDiaryApi(orgId)), [orgId]);
-}
 
 export function useDiaryDay(date: LocalDate, today: LocalDate) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
-  const diarySource = useDiarySource();
   return useQuery({
     queryKey: queryKeys.toolItem(orgId, projectId, 'diary', date),
     queryFn: () => diarySource.getDay(projectId, date, today),
@@ -31,7 +21,6 @@ export function useDiaryDay(date: LocalDate, today: LocalDate) {
 export function useDiaryRange(from: LocalDate, to: LocalDate) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
-  const diarySource = useDiarySource();
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'diary', { from, to }),
     queryFn: () => diarySource.list(projectId, from, to),
@@ -46,7 +35,6 @@ export function useDiaryMutations(date: LocalDate) {
   const { orgId } = useCurrentOrg();
   const { projectId, timezone } = useCurrentProject();
   const actor = useActor();
-  const diarySource = useDiarySource();
   const qc = useQueryClient();
   const settle = (entry: DiaryEntry) => {
     qc.setQueryData(queryKeys.toolItem(orgId, projectId, 'diary', date), entry);

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { companyName } from '@/shared/mocks/directory';
 import { labourTotals } from '../lib/entry';
 import { DELAY_TYPE_LABELS, type DiaryContent, type DiaryPhoto, type Weather } from '../lib/types';
 import { WeatherSummary } from './WeatherSummary';
@@ -14,7 +14,6 @@ export function DiaryReadView({
   weather: Weather | null;
   photos: DiaryPhoto[];
 }) {
-  const { companyName } = useProjectDirectory();
   const totals = labourTotals(content);
   const attached = photos.filter((p) => content.photoIds.includes(p.id));
   return (
