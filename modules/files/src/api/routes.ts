@@ -56,17 +56,14 @@ export function filesRoutes(database: Database, files: FilesService) {
     },
     getFile: async (input) => {
       const id = fileUuid(input.params.fileId);
-      const row = await database.withTenantTx(requireTenant(input), (s) => files.get(s, id), {
-        readOnly: true,
-      });
+      // Not read-only: reading a file still `scanning` settles it (files-service `settle`).
+      const row = await database.withTenantTx(requireTenant(input), (s) => files.get(s, id));
       return { status: 200, body: toFileDto(row) };
     },
     getFileDownload: async (input) => {
       const id = fileUuid(input.params.fileId);
-      const link = await database.withTenantTx(
-        requireTenant(input),
-        (s) => files.downloadUrl(s, id),
-        { readOnly: true },
+      const link = await database.withTenantTx(requireTenant(input), (s) =>
+        files.downloadUrl(s, id),
       );
       return {
         status: 200,

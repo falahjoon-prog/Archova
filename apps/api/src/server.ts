@@ -1,5 +1,10 @@
 import { createDatabase, createLogger, createRedis } from '@archova/kernel';
-import { createMemoryObjectStore, createS3ObjectStore, noScanner } from '@archova/mod-files';
+import {
+  createGuardDutyScanner,
+  createMemoryObjectStore,
+  createS3ObjectStore,
+  noScanner,
+} from '@archova/mod-files';
 import { buildApp } from './app';
 import { loadConfig } from './config';
 
@@ -27,7 +32,16 @@ const store =
       })
     : createMemoryObjectStore();
 
-const app = await buildApp({ config, database, redis, logger, store, scanner: noScanner });
+const scanner =
+  config.files.scanner === 'guardduty'
+    ? createGuardDutyScanner({
+        bucket: config.files.bucket,
+        region: config.files.region,
+        ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
+      })
+    : noScanner;
+
+const app = await buildApp({ config, database, redis, logger, store, scanner });
 
 const shutdown = async () => {
   await app.close();
