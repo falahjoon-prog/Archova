@@ -11,13 +11,6 @@ type Init = {
 };
 type Handler = (init: Init) => unknown;
 
-const STATUS = Symbol('status');
-
-/** Return from a handler to answer with a problem response instead of data. */
-export function fakeProblem(status: number, code: string) {
-  return { [STATUS]: status, status, code, detail: code };
-}
-
 /**
  * A stand-in for the generated API client in API-source tests: routes are registered by method and path template,
  * every call is recorded, and responses come back in the client's `{ data, response }` shape for `unwrap`.
@@ -37,9 +30,6 @@ export function createFakeApi() {
         };
       }
       const data = handler(init);
-      if (data && typeof data === 'object' && STATUS in data) {
-        return { error: data, response: new Response(null, { status: data[STATUS] as number }) };
-      }
       return data === undefined
         ? { data: undefined, response: new Response(null, { status: 204 }) }
         : { data, response: new Response(null, { status: 200 }) };

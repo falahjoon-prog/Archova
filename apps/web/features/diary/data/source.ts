@@ -12,7 +12,6 @@ import {
   isLateSubmission,
   labourTotals,
   submitProblems,
-  type CompanyNamer,
 } from '../lib/entry';
 import type { DiaryContent, DiaryEntry, DiaryPhoto, Weather } from '../lib/types';
 
@@ -254,7 +253,7 @@ export const diarySource = {
     const store = stores.get(projectId);
     const e = store.get(date) ?? newDraft(store, date);
     if (e.status !== 'draft') problem(409, 'diary.locked', 'This day is already submitted.');
-    const problems = submitProblems(content, companyName);
+    const problems = submitProblems(content);
     if (problems.length) problem(422, 'validation', problems[0]!);
     const now = new Date();
     e.content = structuredClone(content);
@@ -277,9 +276,9 @@ export const diarySource = {
     const e = find(projectId, date);
     if (e.status === 'draft') problem(409, 'diary.not_submitted', 'Drafts are edited directly.');
     if (!reason.trim()) problem(422, 'validation', 'Give a reason for the amendment.');
-    const problems = submitProblems(content, companyName);
+    const problems = submitProblems(content);
     if (problems.length) problem(422, 'validation', problems[0]!);
-    const changes = diffContent(e.content, content, companyName);
+    const changes = diffContent(e.content, content);
     if (!changes.length) problem(422, 'diary.no_changes', 'Nothing has changed.');
     e.original ??= structuredClone(e.content);
     e.content = structuredClone(content);
@@ -319,9 +318,9 @@ export const diarySource = {
         { id: 'c_lab', label: 'Labour', href: '#diary-labour' },
       ]);
     }
-    if (weather && weather.rainMm !== null) {
+    if (weather) {
       sentences.push([
-        `${weather.conditions.at7am ?? 'No conditions recorded'} in the morning, ${weather.rainMm} mm of rain recorded at ${weather.stationName ?? 'the nearest station'}.`,
+        `${weather.conditions.at7am} in the morning, ${weather.rainMm} mm of rain recorded at ${weather.stationName}.`,
         { id: 'c_wx', label: 'Weather', href: '#diary-weather' },
       ]);
     }
@@ -353,21 +352,15 @@ export const diarySource = {
   },
 };
 
-export type DiarySource = typeof diarySource;
-
 /** "Possible delay" flag (F1.7 step 3): rain over 10 mm or a stand-down with no weather delay recorded. */
-export function possibleDelay(
-  content: DiaryContent,
-  weather: Weather | null,
-  companyName: CompanyNamer,
-): string | null {
+export function possibleDelay(content: DiaryContent, weather: Weather | null): string | null {
   const hasWeatherDelay = content.delays.some((d) => d.type === 'weather');
   if (hasWeatherDelay) return null;
   if (content.standDown.active) {
     return `The site was stood down${content.standDown.companyIds.length ? ` (${content.standDown.companyIds.map(companyName).join(', ')})` : ''} but no weather delay is recorded.`;
   }
-  if (weather && weather.rainMm !== null && weather.rainMm >= 10) {
-    return `${weather.rainMm} mm of rain was recorded at ${weather.stationName ?? 'the nearest station'}, but no weather delay is recorded.`;
+  if (weather && weather.rainMm >= 10) {
+    return `${weather.rainMm} mm of rain was recorded at ${weather.stationName}, but no weather delay is recorded.`;
   }
   return null;
 }
