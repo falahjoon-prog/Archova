@@ -1,15 +1,18 @@
 'use client';
 
+import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { addDays, parseLocalDate } from '@archova/time';
 import { Alert, Button, CitationChip, NovaFeedback, Textarea } from '@archova/ui';
 import { NovaIcon, X } from '@archova/ui/icons';
 import { AppLink } from '@/shared/layout/AppLink';
 import { resolveCitation } from '@/shared/lib/citations';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { askNova, sendAnswerFeedback } from '../data/ask';
 import { previewAnswer, streamText, type NovaAnswer } from '../data/preview-answers';
-import { useAiUsage } from '../hooks/useAiUsage';
+import { AI_USAGE_KEY, useAiUsage } from '../hooks/useAiUsage';
 import { useAssistantPanelState, useAssistantScope, type AssistantScope } from './AssistantScope';
 
 interface Turn {
@@ -42,11 +45,18 @@ function recordLabel(r: NonNullable<AssistantScope['record']>): string {
   return RECORD_LABELS[r.type] ?? 'This page';
 }
 
-const SUGGESTIONS = [
-  'Which RFIs are overdue?',
-  'Which defects are ready for inspection?',
-  'How many wet days have we had this month?',
-];
+/** Starters that work with what Nova can read: the preview's records, or the project's documents and drawings. */
+const SUGGESTIONS = previewDataOnly
+  ? [
+      'Which RFIs are overdue?',
+      'Which defects are ready for inspection?',
+      'How many wet days have we had this month?',
+    ]
+  : [
+      'What fire rating do the stair walls need?',
+      'Which drawings show the bin store?',
+      'What does the spec say about waterproofing wet areas?',
+    ];
 
 /** "allowance resets on 1 Nov 2026": a month after the period start. */
 function resetDate(periodStart: string): string {
@@ -66,6 +76,7 @@ export function AssistantPanel() {
   const scope = useAssistantScope();
   const panel = useAssistantPanelState();
   const usage = useAiUsage();
+  const qc = useQueryClient();
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
   const [dropped, setDropped] = useState<{ record: boolean; project: boolean }>({
@@ -108,12 +119,16 @@ export function AssistantPanel() {
     abort.current = controller;
     update(id, { status: 'thinking', shown: '', answer: null, feedback: null });
     try {
-      // The preview answers in the browser; in production this is the SSE stream from the ai module.
-      const answer = await previewAnswer(
-        question,
-        s,
-        todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
-      );
+      // Without a project there is nothing to search; the preview answers from the screens' own data.
+      const answer =
+        previewDataOnly || !s.projectId
+          ? await previewAnswer(
+              question,
+              s,
+              todayIn(s.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone),
+            )
+          : await askNova(org.orgId, s.projectId, question, controller.signal);
+      if (answer.runId) void qc.invalidateQueries({ queryKey: AI_USAGE_KEY(org.orgId) });
       if (controller.signal.aborted) return update(id, { status: 'stopped' });
       update(id, { status: 'streaming', answer });
       const end = await streamText(
@@ -196,7 +211,12 @@ export function AssistantPanel() {
               orgSlug={org.orgSlug}
               onStop={() => abort.current?.abort()}
               onRetry={() => void run(t.id, t.question, t.scope)}
-              onFeedback={(v) => update(t.id, { feedback: v })}
+              onFeedback={(v) => {
+                update(t.id, { feedback: v });
+                // Only answers the API produced can be rated; the preview's are kept on screen.
+                if (t.answer?.runId)
+                  void sendAnswerFeedback(org.orgId, t.answer.runId, v).catch(() => {});
+              }}
             />
           </li>
         ))}
@@ -323,8 +343,14 @@ function AnswerBlock({
         <NovaIcon size={14} aria-hidden="true" /> {a?.kind === 'not_found' ? 'Not found' : 'Nova'}
       </p>
       <p className="u-m-0">{turn.shown}</p>
+      {turn.status === 'done' && a?.kind === 'not_found' && a.citations.length ? (
+        <p className="u-caption u-m-0">Closest matches, so you can check yourself:</p>
+      ) : null}
       {turn.status === 'done' && a && a.citations.length ? (
-        <ul className="ac-nova__source-list" aria-label="Sources">
+        <ul
+          className="ac-nova__source-list"
+          aria-label={a.kind === 'not_found' ? 'Closest matches' : 'Sources'}
+        >
           {a.citations.map((c) => (
             <li key={c.id}>
               <CitationChip citation={resolveCitation(c, orgSlug, projectId)} linkAs={AppLink} />

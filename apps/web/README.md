@@ -25,9 +25,10 @@ no rewrite: CloudFront/ALB routes `/v1/*` on the app origin straight to `apps/ap
 
 ## Environment variables
 
-| Variable               | Default                 | Used for                                                                                   |
-| ---------------------- | ----------------------- | ------------------------------------------------------------------------------------------ |
-| `WEB_API_INTERNAL_URL` | `http://localhost:4000` | Target of the development `/v1` and `/.well-known` rewrites. Ignored in production builds. |
+| Variable                   | Default                 | Used for                                                                                                                                                                                                                        |
+| -------------------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WEB_API_INTERNAL_URL`     | `http://localhost:4000` | Target of the development `/v1` and `/.well-known` rewrites. Ignored in production builds.                                                                                                                                      |
+| `NEXT_PUBLIC_PREVIEW_DATA` | unset                   | `1` runs every module on in-browser sample data, for design reviews without an API. Unset, documents, drawings and Ask Nova call the API and the modules without endpoints yet stay on sample data (`shared/lib/data-mode.ts`). |
 
 The browser needs no API URL: it always calls same-origin `/v1/...`.
 
