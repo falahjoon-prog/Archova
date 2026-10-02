@@ -1293,6 +1293,33 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaRfiDraft' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    post:
+      operationId: compareDrawingRevision
+      tags: [ai]
+      x-module: ai
+      x-permission: documents.drawings.read
+      summary: Nova says what changed on a drawing revision since the one it superseded (F21).
+      description: |
+        Software compares the text on this revision's sheet with the revision it superseded (scanned sheets are
+        read with OCR) and lists every line added, removed or changed, with where it sits on the sheet. Nova puts
+        those changes into plain words; an item that cites no real change or adds a number is removed, and changes
+        no item describes are listed in `unexplainedChangeIds`. Linework and clouds aren't compared yet: use the
+        overlay for those. Open RFIs the caller can see that are pinned to either revision are listed, with
+        `nearChange` when a change sits near the pin. The wording is worked out once per revision pair and shared,
+        costing half a Nova credit the first time and nothing after; no text changes means no model call. A POST
+        because the first call does that work.
+      responses:
+        '200':
+          description: What changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaDrawingCompare' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3822,7 +3849,17 @@ components:
     AiFeature:
       description: A Nova feature an admin can switch off (ai/01 §2).
       type: string
-      enum: [ask, drawing_register, rfi_draft, diary_summary, defect_tagging, minutes, estimating]
+      enum:
+        [
+          ask,
+          drawing_register,
+          drawing_compare,
+          rfi_draft,
+          diary_summary,
+          defect_tagging,
+          minutes,
+          estimating,
+        ]
     AiUsage:
       type: object
       required: [periodStart, timezone, allowance, used, remaining, byFeature]
@@ -4044,6 +4081,74 @@ components:
           description: People (`usr_`) asked the most similar RFIs. The person picks the assignee.
           type: array
           items: { type: string }
+    NovaDrawingChange:
+      type: object
+      required: [id, kind, before, after, titleBlock, x, y]
+      properties:
+        id: { type: string, description: Cited by items, e.g. c3 }
+        kind: { type: string, enum: [added, removed, changed] }
+        before: { type: [string, 'null'] }
+        after: { type: [string, 'null'] }
+        titleBlock: { type: boolean }
+        x: { type: number, minimum: 0, maximum: 1, description: Normalised, origin top-left }
+        y: { type: number, minimum: 0, maximum: 1 }
+    NovaDrawingCompare:
+      type: object
+      required:
+        [
+          runId,
+          revisionId,
+          againstRevisionId,
+          sheetNumber,
+          fromRev,
+          toRev,
+          headline,
+          items,
+          changes,
+          unexplainedChangeIds,
+          truncated,
+          scanned,
+          affectedRfis,
+        ]
+      properties:
+        runId:
+          description: For feedback (`air_`); null when no text changed.
+          type: [string, 'null']
+        revisionId: { type: string }
+        againstRevisionId: { type: string, description: The revision this one superseded }
+        sheetNumber: { type: string }
+        fromRev: { type: string }
+        toRev: { type: string }
+        headline: { type: string }
+        items:
+          type: array
+          items:
+            type: object
+            required: [text, changeIds]
+            properties:
+              text: { type: string }
+              changeIds: { type: array, items: { type: string } }
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/NovaDrawingChange' }
+        unexplainedChangeIds:
+          description: Changes no item describes; show them as found.
+          type: array
+          items: { type: string }
+        truncated: { type: boolean, description: More changes were found than listed }
+        scanned:
+          { type: boolean, description: A sheet was read with OCR; check against the drawing }
+        affectedRfis:
+          type: array
+          items:
+            type: object
+            required: [id, number, subject, status, nearChange]
+            properties:
+              id: { type: string }
+              number: { type: [string, 'null'] }
+              subject: { type: string }
+              status: { type: string, enum: [open, answered] }
+              nearChange: { type: boolean, description: A change sits near the RFI's pin }
     NovaIndexReport:
       type: object
       required: [indexed, unchanged, noText, ocrPages, unsupported, chunks]

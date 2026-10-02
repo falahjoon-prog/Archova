@@ -79,6 +79,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     sources: (scope, projectId) => documents.api.aiSources(scope, projectId),
     accessScopes: (scope, projectId) => documents.api.aiAccessScopes(scope, projectId),
     similarRfis: (scope, projectId, input) => rfis.api.findSimilar(scope, projectId, input),
+    getDrawingRevision: (scope, projectId, id) =>
+      documents.api.getDrawingRevision(scope, projectId, id),
+    getPreviousDrawingRevision: (scope, projectId, id) =>
+      documents.api.getPreviousDrawingRevision(scope, projectId, id),
+    openRfisOnDrawing: (scope, projectId, ids) => rfis.api.openOnDrawing(scope, projectId, ids),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
 

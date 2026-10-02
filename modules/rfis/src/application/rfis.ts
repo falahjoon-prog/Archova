@@ -238,6 +238,37 @@ export function createRfiService(deps: RfisDeps) {
     }));
   }
 
+  /**
+   * Nova F21: open and answered RFIs pinned to any of these drawing revisions that the caller can see, with their
+   * pins, so a revision change can list what it affects. Empty without RFI read access.
+   */
+  async function openOnDrawing(scope: TenantScope, projectId: string, revisionIds: string[]) {
+    if (!revisionIds.length || !(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      inArray(rfis.status, ['open', 'answered']),
+      inArray(rfis.drawingRevisionId, revisionIds),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(rfis)
+      .where(and(...conditions))
+      .orderBy(asc(rfis.number), asc(rfis.id))
+      .limit(100);
+    return rows.map((r) => ({
+      id: r.id,
+      number: r.number === null ? null : formatRfiNumber(r.number),
+      subject: r.subject,
+      status: r.status,
+      pin: r.pinX !== null && r.pinY !== null ? { x: r.pinX, y: r.pinY } : null,
+    }));
+  }
+
   async function getVisible(scope: TenantScope, projectId: string, rfiId: string) {
     const [row] = await scope.tx
       .select()
@@ -790,6 +821,7 @@ export function createRfiService(deps: RfisDeps) {
     voidRfi,
     importRfi,
     findSimilar,
+    openOnDrawing,
     ballInCourt,
   };
 }

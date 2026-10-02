@@ -45,6 +45,8 @@ export function createDocumentsModule(
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */
       getDocumentRef: documents.ref,
+      /** For Nova revision compare (F21): the revision this one superseded on its sheet, or null. */
+      getPreviousDrawingRevision: drawings.getPreviousRevision,
       /** For Nova (ai/03 §3): every published document and drawing revision, with its access scope. */
       aiSources: aiSources.aiSources,
       /** For Nova retrieval (ai/04 §3): the access scopes the caller holds in a project. */

@@ -10,6 +10,11 @@ import { createInductionTranslationService } from './application/induction-trans
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
+import {
+  createDrawingCompareService,
+  type DrawingRevisionRef,
+  type RfiOnDrawing,
+} from './application/drawing-compare';
 import { createDrawingRegisterService, type ReadableFile } from './application/drawing-register';
 import { createGateway } from './application/gateway';
 import { aiRoutes } from './api/routes';
@@ -61,6 +66,19 @@ export type { IndexReport, SourceRevision } from './application/project-index';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { RfiDraft } from './application/rfi-draft';
+export type {
+  DrawingCompare,
+  DrawingComparePayload,
+  DrawingRevisionRef,
+  RfiOnDrawing,
+} from './application/drawing-compare';
+export {
+  diffSheets,
+  reviewCompare,
+  sheetLines,
+  type SheetChange,
+  type SheetLine,
+} from './domain/drawing-compare';
 export {
   reviewRfiDraft,
   similarityPhrases,
@@ -157,6 +175,23 @@ export function createAiModule(
       projectId: string,
       input: { phrases: string[]; limit: number },
     ) => Promise<SimilarRfi[]>;
+    /** documents.api.getDrawingRevision and getPreviousDrawingRevision (F21). */
+    getDrawingRevision: (
+      scope: TenantScope,
+      projectId: string,
+      id: string,
+    ) => Promise<DrawingRevisionRef>;
+    getPreviousDrawingRevision: (
+      scope: TenantScope,
+      projectId: string,
+      id: string,
+    ) => Promise<DrawingRevisionRef | null>;
+    /** rfis.api.openOnDrawing: open RFIs the caller can see pinned to these revisions (F21). */
+    openRfisOnDrawing: (
+      scope: TenantScope,
+      projectId: string,
+      revisionIds: string[],
+    ) => Promise<RfiOnDrawing[]>;
     /** Tests pass a fake provider directly. */
     provider?: ModelProvider;
     /** Tests pass an enabled test language; defaults to TRANSLATION_LANGUAGES. */
@@ -209,6 +244,15 @@ export function createAiModule(
     accessScopes: deps.accessScopes,
     similarRfis: deps.similarRfis,
   });
+  const drawingCompare = createDrawingCompareService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    getRevision: deps.getDrawingRevision,
+    getPreviousRevision: deps.getPreviousDrawingRevision,
+    openRfisOnDrawing: deps.openRfisOnDrawing,
+  });
   const diarySummary = createDiarySummaryService({ database: services.database, gateway });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
@@ -226,6 +270,7 @@ export function createAiModule(
       projectIndex,
       inductionDrafts,
       rfiDrafts,
+      drawingCompare,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -238,6 +283,8 @@ export function createAiModule(
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
+      /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
+      compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
       summariseDiaryDay: diarySummary.summariseDay,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */

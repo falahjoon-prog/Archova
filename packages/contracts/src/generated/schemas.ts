@@ -33,7 +33,7 @@ export const AddressSchema = z.object({
 }).strict();
 export type Address = z.infer<typeof AddressSchema>;
 
-export const AiFeatureSchema = z.enum(["ask", "drawing_register", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating"]);
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
 export const AiFeedbackRequestSchema = z.object({
@@ -1282,6 +1282,43 @@ export const NovaAnswerSchema = z.object({
   "closestMatches": z.array(NovaSourceSchema),
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
+
+export const NovaDrawingChangeSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["added", "removed", "changed"]),
+  "before": z.string().nullable(),
+  "after": z.string().nullable(),
+  "titleBlock": z.boolean(),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+});
+export type NovaDrawingChange = z.infer<typeof NovaDrawingChangeSchema>;
+
+export const NovaDrawingCompareSchema = z.object({
+  "runId": z.string().nullable(),
+  "revisionId": z.string(),
+  "againstRevisionId": z.string(),
+  "sheetNumber": z.string(),
+  "fromRev": z.string(),
+  "toRev": z.string(),
+  "headline": z.string(),
+  "items": z.array(z.object({
+  "text": z.string(),
+  "changeIds": z.array(z.string()),
+})),
+  "changes": z.array(NovaDrawingChangeSchema),
+  "unexplainedChangeIds": z.array(z.string()),
+  "truncated": z.boolean(),
+  "scanned": z.boolean(),
+  "affectedRfis": z.array(z.object({
+  "id": z.string(),
+  "number": z.string().nullable(),
+  "subject": z.string(),
+  "status": z.enum(["open", "answered"]),
+  "nearChange": z.boolean(),
+})),
+});
+export type NovaDrawingCompare = z.infer<typeof NovaDrawingCompareSchema>;
 
 export const NovaIndexReportSchema = z.object({
   "indexed": z.number().int(),

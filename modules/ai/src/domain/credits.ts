@@ -24,6 +24,9 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'translation.translate': 0.25,
   'translation.check': 0,
   'rfi.draft': 1,
+  // F21: one sheet's text changes put into words; cached per revision pair, so opening it again is free. Priya to
+  // confirm.
+  'drawing.compare': 0.5,
   'diary.summary': 0.5,
   'defect.tag': 0.1,
   'minutes.extract': 1.5,

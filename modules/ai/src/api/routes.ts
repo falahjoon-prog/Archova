@@ -22,6 +22,7 @@ import type {
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiDraftService } from '../application/rfi-draft';
+import type { DrawingCompareService } from '../application/drawing-compare';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
 
@@ -143,6 +144,7 @@ export function aiRoutes(
   projectIndex: ProjectIndexService,
   inductionDrafts: InductionDraftService,
   rfiDrafts: RfiDraftService,
+  drawingCompare: DrawingCompareService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -232,6 +234,30 @@ export function aiRoutes(
             status: r.status,
           })),
           suggestedAssigneeIds: d.suggestedAssigneeIds.map((id) => encodeId('user', id)),
+        },
+      };
+    },
+    compareDrawingRevision: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const revisionId = decodeId('drawingRevision', input.params.drawingRevisionId);
+      if (!revisionId) throw new AppError('drawing_revision.not_found');
+      const c = await drawingCompare.compare(requireTenant(input), projectId, revisionId);
+      return {
+        status: 200,
+        body: {
+          runId: c.runId ? encodeId('aiRun', c.runId) : null,
+          revisionId: encodeId('drawingRevision', c.revisionId),
+          againstRevisionId: encodeId('drawingRevision', c.againstRevisionId),
+          sheetNumber: c.sheetNumber,
+          fromRev: c.fromRev,
+          toRev: c.toRev,
+          headline: c.headline,
+          items: c.items,
+          changes: c.changes,
+          unexplainedChangeIds: c.unexplained,
+          truncated: c.truncated,
+          scanned: c.scanned,
+          affectedRfis: c.affectedRfis.map((r) => ({ ...r, id: encodeId('rfi', r.id) })),
         },
       };
     },

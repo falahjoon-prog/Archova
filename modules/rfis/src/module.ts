@@ -13,6 +13,8 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
       importRfi: service.importRfi,
       /** Nova F3: RFIs the caller can see on the same subject, with who was asked. Called by `ai` only. */
       findSimilar: service.findSimilar,
+      /** Nova F21: open RFIs the caller can see pinned to these drawing revisions. Called by `ai` only. */
+      openOnDrawing: service.openOnDrawing,
     },
   };
 }
