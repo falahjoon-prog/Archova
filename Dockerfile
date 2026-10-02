@@ -4,7 +4,7 @@
 # Images run as non-root on distroless Node 22 and trust the Amazon RDS CA bundle for TLS to Aurora.
 
 ARG NODE_IMAGE=node:22-slim
-ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian12:nonroot
+ARG RUNTIME_IMAGE=gcr.io/distroless/nodejs22-debian13:nonroot
 
 # --- Install and build ------------------------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS build
