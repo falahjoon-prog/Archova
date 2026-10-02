@@ -24,6 +24,9 @@ const MODULE_OF: Record<string, string> = {
   defect_event: 'defects',
   diary_entry: 'diary',
   diary_labour: 'diary',
+  diary_plant: 'diary',
+  diary_delivery: 'diary',
+  diary_delay: 'diary',
 };
 const moduleOf = (entityType: string) => MODULE_OF[entityType] ?? entityType;
 
