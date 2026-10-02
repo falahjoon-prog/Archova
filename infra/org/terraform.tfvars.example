@@ -1,0 +1,4 @@
+management_account_id = "999999999999"
+workloads_ou_id       = "ou-abcd-11111111"
+infrastructure_ou_id  = "ou-abcd-22222222"
+security_ou_id        = "ou-abcd-33333333"

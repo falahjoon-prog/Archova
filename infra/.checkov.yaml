@@ -1,0 +1,38 @@
+# checkov policy scan for infra/ (infrastructure/03 §3, §7). Each skip says why it does not apply or where the
+# gap is tracked. Everything not listed here must pass.
+framework:
+  - terraform
+skip-check:
+  # Sizing and retention vary by environment on purpose (infrastructure/02 §3): dev keeps logs 30 days, Valkey
+  # has no replica in dev, deletion protection is off in dev and loadtest.
+  - CKV_AWS_338 # log retention >= 1 year: prod uses 365; dev, staging and loadtest are shorter by design
+  - CKV2_AWS_50 # Valkey Multi-AZ: on wherever replicas > 0 (staging, prod)
+  - CKV_AWS_150 # ALB deletion protection: var.deletion_protection (on in staging and prod)
+  - CKV_AWS_344 # Network Firewall deletion protection: var.deletion_protection (on in staging and prod)
+  - CKV2_AWS_8 # AWS Backup plan for Aurora: the backup module covers prod; dev and loadtest rely on PITR
+  # Checkov cannot see these settings through dynamic blocks or write-only arguments.
+  - CKV_AWS_31 # Valkey AUTH: set with auth_token_wo (write-only, not in state)
+  - CKV2_AWS_31 # WAF logging: aws_wafv2_web_acl_logging_configuration per ACL in modules/cloudfront-waf/waf.tf
+  - CKV2_AWS_47 # Log4j rules: AWSManagedRulesKnownBadInputsRuleSet is attached through a dynamic block
+  - CKV2_AWS_5 # Security groups attached by ECS RunTask (migrate) or behind count (RDS Proxy)
+  # Design choices recorded in docs/infrastructure.
+  - CKV2_AWS_28 # ALB WAF: WAF sits on CloudFront; the ALB only accepts CloudFront with the secret origin header
+  - CKV_AWS_378 # HTTP to targets: TLS ends at the ALB inside the VPC; tasks have no certificates
+  - CKV_AWS_374 # CloudFront geo restriction: customers and their subcontractors travel; the console ACL is AU-only (X56)
+  - CKV_AWS_305 # Default root object: origins are the Next.js app and the API, not a static site
+  - CKV_AWS_310 # CloudFront origin failover: region failover is DNS-led and manual (infrastructure/06 §3)
+  - CKV2_AWS_19 # EIPs belong to NAT gateways (published egress IPs), not EC2 instances
+  - CKV2_AWS_34 # SSM parameters hold non-secret config only; secrets live in Secrets Manager
+  - CKV2_AWS_62 # S3 event notifications: added per bucket when a consumer exists (files worker, email-in)
+  - CKV2_AWS_27 # Postgres statement logging: slow statements (> 1 s) and lock waits are logged; full logging would capture tenant data
+  - CKV_AWS_394 # AZ data source: subnets are created by index and AZ names are stable per account
+  # Key and resource policies: "*" in a KMS key policy means "this key".
+  - CKV_AWS_109
+  - CKV_AWS_111
+  - CKV_AWS_356
+  # Tracked gaps (infra/README.md "Not built yet"):
+  - CKV_AWS_144 # S3 replication to Melbourne for files, audit archive and state: next infra PR with the backup account
+  - CKV2_AWS_57 # Rotation for app role and Valkey secrets: rotation Lambda with the deploy pipeline; the Aurora master rotates (RDS-managed)
+  - CKV_AWS_86 # CloudFront access logs: standard logging v2 to the log-archive account
+  - CKV2_AWS_38 # DNSSEC on the apex zone: after the domain is registered
+  - CKV2_AWS_39 # Public zone query logs must go to us-east-1; revisit with DNSSEC

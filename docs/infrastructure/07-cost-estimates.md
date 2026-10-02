@@ -12,9 +12,9 @@ AI figures are taken from Ari's model in [docs/ai/05-cost-control.md](../ai/05-c
 
 | Stage | Users | Infra (AWS + tooling) | AI (Ari's base case, range in brackets) | Total / month, base case | Total per user |
 |---|---|---|---|---|---|
-| **Pilot** (phases 0–1) | < 1,000 | ~$4,000–6,000 | up to ~$1,500 ($600–3,000) | **~$5k–7.5k** (≈ AUD 8–12k) | n/a (fixed-cost floor) |
-| **Growth** | ~10,000 | ~$14,000–17,000 | ~$15,000 ($6,000–29,000) | **~$29k–32k** (≈ AUD 45–50k) | ~$3.00 |
-| **Target** | ~100,000 | ~$55,000 list, **~$42,000–45,000 with commitments** | **~$151,000** ($57,000–294,000); Ari's target ~$100,000 | **~$195k–205k** (≈ AUD 300–320k); ~$145k–155k if Ari's target is met | ~$2.00 (~$1.45 at Ari's target) |
+| **Pilot** (phases 0–1) | < 1,000 | ~$6,000–7,000 | up to ~$1,500 ($600–3,000) | **~$6.5k–8.5k** (≈ AUD 10–13k) | n/a (fixed-cost floor) |
+| **Growth** | ~10,000 | ~$15,000–18,000 | ~$15,000 ($6,000–29,000) | **~$30k–33k** (≈ AUD 47–51k) | ~$3.00 |
+| **Target** | ~100,000 | ~$57,000 list, **~$44,000–47,000 with commitments** | **~$151,000** ($57,000–294,000); Ari's target ~$100,000 | **~$195k–205k** (≈ AUD 300–320k; ~$197k at the midpoint, so the ~$195k planning figure holds); ~$145k–155k if Ari's target is met | ~$2.00 (~$1.45 at Ari's target) |
 
 AI at the pilot and growth stages is Ari's per-user figure scaled linearly. Real pilot usage will replace these numbers at the end of phase 1.
 
@@ -33,20 +33,20 @@ Key messages:
 | Aurora PostgreSQL (I/O-Optimized) | 1 writer + 1 reader `db.r7g.large`, ~50 GB | ~700 |
 | RDS Proxy | | ~60 |
 | ElastiCache Valkey | 2 clusters × (primary + replica) `cache.t4g.medium` | ~230 |
-| NAT gateways | 3 + light data | ~150 |
+| NAT gateways + AWS Network Firewall (AI egress allow-list, 3 endpoints; NAT charges partly waived) | | ~1,100 |
 | ALB, CloudFront, S3 (~1 TB), WAF | | ~200 |
 | Observability (CloudWatch logs/metrics, Managed Prometheus, Grafana, X-Ray, Synthetics) | | ~250 |
 | Security services (GuardDuty incl. S3 malware scan, Security Hub, Config, CloudTrail) | | ~150 |
 | Backups (cross-region copies) and replication | | ~80 |
 | SES, Secrets Manager, KMS, Route 53, misc | | ~60 |
-| **Production subtotal** | | **~$2,400** |
-| Staging (same topology, smaller; workers on Spot) | | ~900–1,200 |
-| Dev + preview environments (Aurora Serverless v2, scale to zero out of hours) | | ~300–500 |
+| **Production subtotal** | | **~$3,350** |
+| Staging (same topology, smaller; workers on Spot; 1 firewall endpoint) | | ~1,200–1,500 |
+| Dev + preview environments (Aurora Serverless v2, scale to zero out of hours; 1 firewall endpoint) | | ~600–800 |
 | Shared services, security tooling and log-archive accounts | | ~150–250 |
-| **AWS total** | | **~$3,800–4,400** |
+| **AWS total** | | **~$5,300–5,900** |
 | Tooling: GitHub Team + Actions, Sentry, PagerDuty, status page, Expo EAS Production, Apple/Google developer accounts | | ~400–700 |
 | AWS Business Support (minimum $100, ~10% of spend) | | ~400 |
-| **Infra total** | | **~$4,600–5,500** |
+| **Infra total** | | **~$6,100–7,000** |
 
 Ways to go cheaper during pilots if needed: single-AZ staging, turn staging off out of hours (~-$500), Aurora Serverless v2 for staging, one NAT gateway in prod (accepting an AZ egress dependency). Not recommended for production.
 
@@ -62,17 +62,17 @@ Ways to go cheaper during pilots if needed: single-AZ staging, turn staging off 
 | OpenSearch | 3 × `r7g.large.search` + storage | ~560 |
 | S3 | ~20 TB stored (tiered), requests, Melbourne replica | ~750 |
 | CloudFront | ~10 TB delivered | ~1,100 |
-| NAT, ALB, data transfer | | ~400 |
+| NAT, Network Firewall, ALB, data transfer | | ~1,400 |
 | WAF | | ~250 |
 | Observability | | ~800 |
 | Security services | | ~500 |
 | Backups | | ~400 |
 | SES (~3M emails/month), misc | | ~450 |
-| **Production subtotal** | | **~$8,700** |
+| **Production subtotal** | | **~$9,700** |
 | Staging, dev, previews, shared accounts | | ~2,300 |
 | Tooling | | ~800 |
 | AWS Business Support | | ~1,100 |
-| **Infra total** | | **~$13,000–15,000**, budget **$14–17k** with headroom |
+| **Infra total** | | **~$14,000–16,000**, budget **$15–18k** with headroom |
 
 ## 4. Target stage (~100,000 users)
 
@@ -85,19 +85,19 @@ Ways to go cheaper during pilots if needed: single-AZ staging, turn staging off 
 | OpenSearch | 6 data nodes `r7g.xlarge.search` + 3 masters + storage | ~2,500 |
 | S3 | ~200 TB stored after a year at this scale (Intelligent-Tiering / Glacier IR mix), requests, Melbourne replica and replication transfer | ~7,000 |
 | CloudFront | ~80 TB delivered per month (drawings, photos, tiles) | ~8,000 |
-| NAT, ALB, inter-AZ and other data transfer | | ~1,500 |
+| NAT, Network Firewall, ALB, inter-AZ and other data transfer | | ~3,000 |
 | WAF | ~2–3B requests/month | ~1,800 |
 | Observability | ~2.5 TB logs/month (Infrequent Access class for verbose logs), metrics, traces, synthetics, RUM | ~4,000 |
 | Security services | incl. malware scanning of non-image uploads | ~2,000 |
 | Backups + Aurora Global Database secondary in Melbourne | | ~3,000 |
 | SES | ~20–30M emails/month (digests reduce this) + dedicated IPs | ~2,000 |
 | Misc (KMS, Secrets, Route 53, AppConfig, EventBridge) | | ~500 |
-| **Production subtotal** | | **~$44,000** |
+| **Production subtotal** | | **~$45,500** |
 | Staging (production-shaped, smaller), dev, previews, load-test runs, shared and security accounts | | ~5,000 |
 | Tooling (more seats, Sentry volume, PagerDuty for 24/7 rotation, status page) | | ~2,000 |
 | AWS Business Support (tiered, ~7%) or Enterprise On-Ramp | | ~4,000 |
-| **Infra total, list price** | | **~$55,000** |
-| With 1-year Aurora/ElastiCache/OpenSearch reservations (~30–35% off those), Compute Savings Plan (~20–25% off Fargate), CloudFront committed pricing | | **~$42,000–45,000** |
+| **Infra total, list price** | | **~$57,000** |
+| With 1-year Aurora/ElastiCache/OpenSearch reservations (~30–35% off those), Compute Savings Plan (~20–25% off Fargate), CloudFront committed pricing | | **~$44,000–47,000** |
 
 ## 5. AI usage
 
@@ -117,6 +117,24 @@ What infrastructure contributes:
 - **Hosting cost of AI** (gateway inside `api`, `ai-worker` tasks, pgvector in Aurora, later OpenSearch k-NN) is already in the infrastructure lines above; the AI figures here are model and AI-service spend only.
 - **Cost visibility:** AI spend from Ari's `ai_usage_ledger` and the AWS bill (Bedrock and Textract tagged `cost-centre=ai`) appears on the same cost dashboard as compute and storage, so the per-user cost of the whole platform is one number.
 - **Guardrails:** AWS Budgets alert on Bedrock spend per day; an ops flag pauses non-interactive AI jobs if spend runs ahead of forecast.
+
+## 5b. Owner console and public website
+
+| Item | $/month (all stages) |
+|---|---|
+| Console: `admin` service (2 small tasks), CloudFront, WAF with bot control | ~100–150 |
+| Website: `site` service (2–6 tasks), RDS PostgreSQL `db.t4g.medium` Multi-AZ, S3 media, CloudFront, WAF, backups, staging copy | ~350–500 |
+| **Total** | **~$450–650**, roughly flat as users grow (website traffic follows marketing, not product usage) |
+
+These sit inside the pilot range and are a rounding error at the growth and target stages, so the summary totals are unchanged.
+
+## 5a. Third-party data licences (not yet in the totals)
+
+| Item | Status | Planning note |
+|---|---|---|
+| **Bureau of Meteorology weather data** (site diary weather, delay evidence; X44) | **Quote needed.** BOM's free observation products are not licensed for commercial use, so a paid BOM data service under the BOM Data Licence Agreement (or a licensed reseller) is required ([integrations/12 §2](../integrations/12-vendor-terms-and-registers.md)). BOM doesn't publish prices | Kept out of the totals until a real quote arrives, so the totals don't carry a made-up number. The request has to come from john as the business (scope: real-time automatic weather station observations and daily rainfall, all of Australia, shown to customers inside a SaaS product). If the quote is high, the adapter can switch to a licensed reseller without code changes in feature modules |
+| ABN Lookup (ABR) | Free with a registered GUID | No cost; check the web services agreement for commercial-use and rate limits (Leo) |
+| Inbound email | SES receiving: ~$0.10 per 1,000 emails plus S3; own MX fallback: ~2 small Fargate tasks + an NLB, ~$100–150/month per environment | Within the existing "misc" lines |
 
 ## 6. Cost controls
 
