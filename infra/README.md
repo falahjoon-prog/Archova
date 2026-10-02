@@ -1,6 +1,6 @@
 # infra
 
-Terraform for Archova on AWS (owner: Owen). Design: [docs/infrastructure/](../docs/infrastructure/README.md), especially [01-cloud-setup.md](../docs/infrastructure/01-cloud-setup.md). Domain: **archova.com.au**.
+Terraform for Archova on AWS (owner: Jeff). Design: [docs/infrastructure/](../docs/infrastructure/README.md), especially [01-cloud-setup.md](../docs/infrastructure/01-cloud-setup.md). Domain: **archova.com.au**.
 
 Images are built from the root [Dockerfile](../Dockerfile) (targets `api`, `web`, `migrate`) by [images.yml](../.github/workflows/images.yml), which also scans them, writes an SBOM and, once AWS is ready, pushes and signs them.
 
@@ -44,26 +44,80 @@ Resource names: `archova-<env>-<cell>-<service>` (X24). Buckets add the account'
 
 `api` (and later `ai-worker`) run in the **restricted** subnets. Their only way out is AWS Network Firewall, which passes TLS to the exact hostnames in `envs/<env>/egress-allowlist.yaml` and drops and logs everything else; a drop pages on-call. The private subnets (web, workers) may reach anything except the AI vendor deny-list, and Route 53 DNS Firewall stops every subnet resolving those vendors. Bedrock is reached through a VPC endpoint whose policy allows only Sydney/Melbourne models and the AU inference profile; an SCP says the same org-wide.
 
-To change the list, edit the YAML in each environment and open a PR for Owen and Sam (and Ari for `kind: ai`). `pnpm check:egress` fails if an AI endpoint outside Australia, a wildcard, or an entry without an owner and reason is added.
+To change the list, edit the YAML in each environment and open a PR for Jeff and Sam (and Ari for `kind: ai`). `pnpm check:egress` fails if an AI endpoint outside Australia, a wildcard, or an entry without an owner and reason is added.
 
 ## First-time setup
 
-What john (or whoever holds the AWS root login) needs to do before anything can be applied. Nothing costs money until step 4.
+What john (or whoever holds the AWS root login) does once. Nothing here needs a terminal, and nothing costs money
+until the first apply. Every later change goes through pull requests and the Infra workflow.
 
-1. **AWS Organization.** Create an AWS account to be the management account (billing only), enable IAM Identity Center with MFA, and set up **Control Tower** in ap-southeast-2 with ap-southeast-4 as a governed region. Control Tower creates the Security OU with `log-archive` and `security-tooling`.
-2. **Accounts** through Control Tower Account Factory: `shared-services` and `backup` (Infrastructure OU), `archova-dev`, `archova-staging`, `archova-prod`, later `archova-marketing` and `archova-loadtest` (Workloads OU). Each needs its own email address, e.g. `aws+dev@archova.com.au`.
-3. **Guardrails:** apply `org/` from the management account (Owen, with a second reviewer).
-4. **shared-services:** apply `envs/shared-services` with local state, then move the state into the bucket it created:
-   ```sh
-   cd infra/envs/shared-services
-   terraform init -backend=false && terraform apply      # creates the state bucket, ECR, archova.com.au zone
-   printf 'bucket = "%s"\n' "$(terraform output -raw state_bucket_arn | sed 's/.*://')" > ../backend.hcl
-   terraform init -migrate-state -backend-config=../backend.hcl
-   ```
-5. **Point archova.com.au at Route 53.** `terraform output` in shared-services lists the zone's four name servers. At the registrar (where archova.com.au was bought), open the domain's DNS or name server settings, choose "custom name servers", paste the four `ns-….awsdns-…` names, and save. .au changes usually take effect within a few hours.
-6. **Environment zones:** create `dev.archova.com.au` and `staging.archova.com.au` zones in their accounts and add their name servers to `subdomain_name_servers` in shared-services.
-7. **GitHub:** create the environments `dev`, `staging`, `prod`, `dev-infra`, `staging-infra`, `prod-infra` (staging and prod with required reviewers), set the repository variables the workflow reads (account ids, zone ids, role ARNs from `terraform output github_role_arns`, `TF_STATE_BUCKET`, `IMAGE_REGISTRY`), then set `INFRA_AWS_READY=true`.
-8. **Before the api can start in an environment:** store the ES256 signing key in `archova/archova-<env>-c1/api-jwt-private-jwk`, and run the db-roles task (deploy PR) so the database roles match their secrets.
+1. **AWS Organization.** Sign up for AWS with a new email address; this first account is the management
+   (billing) account. Turn on MFA for the root user, then in **AWS Organizations** choose _Create an organization_.
+   Set an **AWS Budgets** alert on the monthly total (the demo is sized for A$500–1,000 a month, see below).
+2. **Accounts.** In AWS Organizations, _Add an AWS account_ → _Create an AWS account_, once for each of
+   `archova-shared-services` and `archova-demo` (later `archova-dev`, `archova-staging`, `archova-prod`). Each needs
+   its own email address. Note each 12-digit account id. Control Tower, the backup account and the `org/` guardrails
+   come before pilots hold real data.
+3. **Sign-in.** Turn on **IAM Identity Center**, add yourself as a user with MFA, and give that user
+   `AdministratorAccess` on every account. Use it from now on instead of the root user.
+4. **Let GitHub Actions in.** Sign in to each new account in the Sydney region (ap-southeast-2), open
+   **CloudFormation** → _Create stack_ → _Upload a template file_, and choose
+   [bootstrap/github-actions.yaml](bootstrap/github-actions.yaml) from this repository. Name the stack
+   `archova-github`, set **Environment** to `shared-services` or `demo`, tick the IAM acknowledgement and create it.
+   This adds the GitHub sign-in and the plan and apply roles; no keys leave AWS.
+5. **GitHub settings** (repository → Settings):
+   - _Environments_: create `shared-services-infra`, `demo-infra` and `demo`, each with **john** as required
+     reviewer, so nothing is applied or deployed without your click.
+   - _Secrets and variables → Actions → Secrets_: `DEMO_PASSWORD`, the password for the demo login
+     `demo@archova.com.au` (10+ characters, not containing the email).
+   - _Variables_: `AWS_ACCOUNT_SHARED` and `AWS_ACCOUNT_DEMO` (the account ids), then `INFRA_AWS_READY` = `true`.
+6. **First run.** Actions → Infra → _Run workflow_ on `main`. Approve `shared-services-infra`: it creates the state
+   bucket, the image registry and the `archova.com.au` DNS zone.
+7. **Point archova.com.au at AWS.** In the shared-services account open **Route 53** → _Hosted zones_ →
+   `archova.com.au` and copy the four `ns-….awsdns-…` name servers. At the registrar where you bought the domain,
+   open its DNS or name server settings, choose custom name servers, paste the four names and save. .au changes
+   usually take effect within a few hours.
+8. **Turn on Nova's models.** In the demo account, Sydney region: **Amazon Bedrock** → _Model access_ → enable
+   Claude Haiku 4.5, Claude Sonnet 5, Claude Opus 5.5 and Titan Text Embeddings V2. The cell uses their `au.`
+   inference profiles (Ari); check with `aws bedrock list-inference-profiles --region ap-southeast-2`.
+9. **Images, then the demo.** Re-run _Images_ on `main` (it pushes the first images), then re-run _Infra_ and
+   approve `demo-infra`. The _Deploy_ workflow follows every image build on `main`: approve `demo` and it sets up
+   the database roles, runs migrations, deploys, smoke-tests and seeds the sample builder.
+
+Every name the workflows need (roles, state bucket, registry, DNS role) is derived from the account ids, so there
+is nothing else to copy. dev, staging and prod follow the same steps with their own account, CloudFormation
+**Environment** value, GitHub environments and `AWS_ACCOUNT_*` variable.
+
+## Demo
+
+`envs/demo` runs a working Archova at **demo.archova.com.au** (API on `api.demo.archova.com.au`) for john and pilot
+builders to click through. It holds synthetic data only: [tools/demo-seed](../tools/demo-seed) creates the
+sample builder _Harbour Line Constructions_ with three projects, companies, folders, documents, published drawing
+sets with a superseded sheet, markups, a transmittal and Nova's index, through the public API. Sign in as `demo@archova.com.au` with `DEMO_PASSWORD`.
+
+It is the production design at the smallest size: two AZs (the ALB and Aurora need two), one NAT gateway and
+**no egress firewall** (john, 2 Oct 2026: sample data only; Nova is still held in Australia by DNS Firewall, the
+Bedrock endpoint policy and task IAM), interface endpoints in one AZ, Aurora Serverless v2 that pauses after an idle hour (the first
+click after that waits about 15 seconds), one `cache.t4g.micro` Valkey node, 0.5 vCPU api and web tasks, and a
+short blue/green canary.
+
+Estimated monthly cost, Sydney prices, light use (US$; A$ at about 1.55):
+
+| Item                                                                   |                US$/month |
+| ---------------------------------------------------------------------- | -----------------------: |
+| NAT gateway (one)                                                      |                      ~45 |
+| Interface VPC endpoints, 9 in one AZ                                   |                      ~85 |
+| Fargate: api and web, 0.5 vCPU / 1 GB each, always on                  |                      ~30 |
+| Application Load Balancer                                              |                      ~25 |
+| CloudFront and two WAF web ACLs                                        |                      ~25 |
+| Aurora Serverless v2, pausing when idle, plus storage                  |                   ~15–40 |
+| Valkey `cache.t4g.micro`                                               |                      ~15 |
+| KMS keys, Secrets Manager, CloudWatch logs and alarms, Route 53        |                      ~30 |
+| shared-services: state, image registry (with Melbourne copy), DNS zone |                      ~10 |
+| Nova on Bedrock (light demo use)                                       |                   ~10–50 |
+| **Total**                                                              | **~290–355 (A$450–550)** |
+
+With the Network Firewall (as in dev, staging and prod) it would be about US$535–600 (A$830–930).
 
 ## Differences from the docs
 
@@ -76,15 +130,15 @@ What john (or whoever holds the AWS root login) needs to do before anything can 
 
 ## Not built yet
 
-| Item                                                                                                       | Where it lands                   |
-| ---------------------------------------------------------------------------------------------------------- | -------------------------------- |
-| Deploy pipeline (migrate task, blue/green, smoke tests), preview environments per PR, DAST                 | Next PR                          |
-| db-roles task that creates the Postgres roles from their secrets; secret rotation Lambdas                  | With the deploy pipeline         |
-| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                             | As each app is built             |
-| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                  | DR PR, before pilots             |
-| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                      | With the org rollout             |
-| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)          | Later PRs                        |
-| Malware scanning: docs say GuardDuty Malware Protection for S3, the api expects ClamAV in the files worker | Needs a decision (Ava, Ben, Sam) |
+| Item                                                                                                                                                                                                                 | Where it lands          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| Preview environments per PR, DAST (ZAP baseline) against the demo                                                                                                                                                    | Next PR                 |
+| Secret rotation Lambdas for the app roles and Valkey                                                                                                                                                                 | Next PR                 |
+| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                                                                                                                                       | As each app is built    |
+| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                                                                                                                            | DR PR, before pilots    |
+| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                                                                                                                                | With the org rollout    |
+| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)                                                                                                                    | Later PRs               |
+| files-worker service and role (`archova-<env>-c1-files-worker`): moves THREATS_FOUND uploads to `threats/` (30-day hold), DeleteObjectVersion on `orgs/*/credentials/*` for the 7-day ID-image rule; legal-hold role | With Ben's files worker |
 
 ## What the application needs from infra (phase 0)
 

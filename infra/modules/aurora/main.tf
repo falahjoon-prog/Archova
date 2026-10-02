@@ -101,8 +101,9 @@ resource "aws_rds_cluster" "this" {
   dynamic "serverlessv2_scaling_configuration" {
     for_each = local.serverless ? [1] : []
     content {
-      min_capacity = var.serverless_min_acu
-      max_capacity = var.serverless_max_acu
+      min_capacity             = var.serverless_min_acu
+      max_capacity             = var.serverless_max_acu
+      seconds_until_auto_pause = var.serverless_min_acu == 0 ? var.serverless_auto_pause_seconds : null
     }
   }
 

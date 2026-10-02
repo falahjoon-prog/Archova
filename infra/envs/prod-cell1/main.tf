@@ -81,10 +81,7 @@ module "cell" {
   }
 
   deletion_protection = true
-  ci = {
-    state_bucket_arn  = var.state_bucket_arn
-    state_kms_key_arn = var.state_kms_key_arn
-  }
+  ci                  = {}
 
   log_retention_days = 365
 }

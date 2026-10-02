@@ -4,7 +4,7 @@ variable "account_id" {
 }
 
 variable "workload_accounts" {
-  description = "Environment -> account id for the accounts whose state lives here and that pull images: dev, staging, prod-cell1, loadtest."
+  description = "Environment -> account id for the accounts whose state lives here and that pull images: dev, staging, prod-cell1, loadtest, demo."
   type        = map(string)
 }
 

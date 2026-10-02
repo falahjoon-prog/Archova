@@ -19,6 +19,7 @@ output "apex_zone_id" {
   value = var.domain == null ? null : aws_route53_zone.apex[0].zone_id
 }
 
-output "dns_prod_role_arn" {
-  value = var.domain == null ? null : aws_iam_role.dns_prod[0].arn
+output "dns_role_arn" {
+  description = "Role prod and the demo assume to write their records in the apex zone."
+  value       = one(aws_iam_role.dns_records[*].arn)
 }

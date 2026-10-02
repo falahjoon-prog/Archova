@@ -48,9 +48,9 @@ output "interface_endpoint_ids" {
 }
 
 output "restricted_egress_blocked_metric" {
-  description = "CloudWatch metric that counts drops from the restricted subnets."
-  value = {
+  description = "CloudWatch metric that counts drops from the restricted subnets; null without the firewall."
+  value = local.firewall_enabled ? {
     namespace = "Archova/Network"
-    name      = aws_cloudwatch_log_metric_filter.restricted_drops.metric_transformation[0].name
-  }
+    name      = aws_cloudwatch_log_metric_filter.restricted_drops[0].metric_transformation[0].name
+  } : null
 }

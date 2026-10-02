@@ -1,6 +1,6 @@
 # 08 · Runbooks and operational readiness
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 Runbooks are written as the systems are built (phase 0), stored in `docs/runbooks/` in the monorepo next to the code, and linked from every alert in [05](05-observability.md#4-alerting). Each runbook has: symptoms, dashboards to open, diagnosis steps with exact commands, fixes, rollback, escalation, and the date it was last tested.
 
@@ -73,7 +73,7 @@ Cost
 
 1. **Ava:** confirm mobile uses `api.<domain>/realtime` for its socket ([01 §4](01-cloud-setup.md#4-edge-and-traffic-flow)).
 2. **Ben:** confirm all jobs are idempotent and re-creatable from database state (DR assumption).
-3. **Ari and Owen:** confirm which Claude models Bedrock serves in AU, their AU prices and default quotas, then re-run the AI cost model with Bedrock prices.
+3. **Ari and Jeff:** confirm which Claude models Bedrock serves in AU, their AU prices and default quotas, then re-run the AI cost model with Bedrock prices.
 4. **Sam:** legal retention period for claims and audit data (drives yearly backup and Object Lock retention); whether Sentry's US/EU hosting with scrubbing is acceptable or we self-host; DR targets to state in pilot terms.
 5. **Mia:** on-device photo compression target (drives the largest storage and delivery cost line).
 6. **john:** register the Archova domain (needed for DNS, certificates and email sending); budget appetite for the pilot stage (~USD 5k/month) and whether to pursue AWS Activate credits.

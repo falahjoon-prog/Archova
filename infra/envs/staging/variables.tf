@@ -18,13 +18,3 @@ variable "image_registry" {
   description = "ECR registry in shared-services, e.g. 123456789012.dkr.ecr.ap-southeast-2.amazonaws.com."
   type        = string
 }
-
-variable "state_bucket_arn" {
-  description = "Terraform state bucket in shared-services (output of envs/shared-services)."
-  type        = string
-}
-
-variable "state_kms_key_arn" {
-  description = "KMS key that encrypts the state bucket."
-  type        = string
-}

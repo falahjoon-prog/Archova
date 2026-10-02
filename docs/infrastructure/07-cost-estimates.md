@@ -1,6 +1,6 @@
 # 07 · Cost estimates
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 Monthly running costs in **USD at AWS Sydney on-demand list prices** (Sydney is roughly 10–25% dearer than US regions), before savings plans, reserved instances, credits or negotiated discounts. Multiply by about **1.55 for AUD**. These are planning estimates from the load model in [04](04-scaling-and-load.md), accurate to perhaps ±30%; they should be re-checked in the AWS Pricing Calculator once the first load test gives real per-task throughput, and replaced with actuals after the first month in production.
 
@@ -138,10 +138,10 @@ These sit inside the pilot range and are a rounding error at the growth and targ
 
 ## 6. Cost controls
 
-- **AWS Budgets** per account with alerts at 80% and 100% of forecast; **Cost Anomaly Detection** on each service, alerts to Owen and john.
+- **AWS Budgets** per account with alerts at 80% and 100% of forecast; **Cost Anomaly Detection** on each service, alerts to Jeff and john.
 - **Tagging** (`env`, `service`, `cell`, `cost-centre`) enforced by tag policy, so we can see cost per module (files, AI, search) and per environment.
 - **Per-tenant unit economics:** storage, AI tokens and email volume per org are metered through domain events (billing module), so Sam can see which plans are profitable.
 - **Commitments** only after 3 months of steady production usage: Compute Savings Plan for Fargate, reserved nodes for Aurora, ElastiCache and OpenSearch.
 - **Graviton everywhere**, Fargate Spot for retryable workers and non-production, scale-to-zero for dev, VPC endpoints to keep AWS traffic off NAT.
 - **Storage hygiene:** S3 lifecycle rules (Intelligent-Tiering, Glacier IR for superseded revisions and closed projects, expiry for exports and previews), log retention limits, sampling of traces.
-- **Monthly cost review** (30 minutes, Owen and john) against this document, with the estimates here updated to actuals.
+- **Monthly cost review** (30 minutes, Jeff and john) against this document, with the estimates here updated to actuals.

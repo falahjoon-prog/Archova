@@ -39,6 +39,8 @@ locals {
 }
 
 resource "aws_networkfirewall_rule_group" "egress" {
+  count = local.firewall_enabled ? 1 : 0
+
   name     = "${var.name}-egress"
   type     = "STATEFUL"
   capacity = 100 + 2 * length(var.restricted_allowlist) + 4 * length(var.ai_vendor_denylist)
@@ -87,6 +89,8 @@ resource "aws_networkfirewall_rule_group" "egress" {
 }
 
 resource "aws_networkfirewall_firewall_policy" "this" {
+  count = local.firewall_enabled ? 1 : 0
+
   name = "${var.name}-egress"
 
   firewall_policy {
@@ -102,7 +106,7 @@ resource "aws_networkfirewall_firewall_policy" "this" {
 
     stateful_rule_group_reference {
       priority     = 100
-      resource_arn = aws_networkfirewall_rule_group.egress.arn
+      resource_arn = aws_networkfirewall_rule_group.egress[0].arn
     }
   }
 
@@ -115,8 +119,10 @@ resource "aws_networkfirewall_firewall_policy" "this" {
 }
 
 resource "aws_networkfirewall_firewall" "this" {
+  count = local.firewall_enabled ? 1 : 0
+
   name                = var.name
-  firewall_policy_arn = aws_networkfirewall_firewall_policy.this.arn
+  firewall_policy_arn = aws_networkfirewall_firewall_policy.this[0].arn
   vpc_id              = aws_vpc.this.id
   delete_protection   = var.deletion_protection
 
@@ -136,6 +142,8 @@ resource "aws_networkfirewall_firewall" "this" {
 }
 
 resource "aws_cloudwatch_log_group" "firewall_alert" {
+  count = local.firewall_enabled ? 1 : 0
+
   name              = "/archova/${var.name}/network-firewall/alert"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.logs_kms_key_arn
@@ -143,6 +151,8 @@ resource "aws_cloudwatch_log_group" "firewall_alert" {
 }
 
 resource "aws_cloudwatch_log_group" "firewall_flow" {
+  count = local.firewall_enabled ? 1 : 0
+
   name              = "/archova/${var.name}/network-firewall/flow"
   retention_in_days = var.log_retention_days
   kms_key_id        = var.logs_kms_key_arn
@@ -150,14 +160,16 @@ resource "aws_cloudwatch_log_group" "firewall_flow" {
 }
 
 resource "aws_networkfirewall_logging_configuration" "this" {
-  firewall_arn = aws_networkfirewall_firewall.this.arn
+  count = local.firewall_enabled ? 1 : 0
+
+  firewall_arn = aws_networkfirewall_firewall.this[0].arn
 
   logging_configuration {
     log_destination_config {
       log_type             = "ALERT"
       log_destination_type = "CloudWatchLogs"
       log_destination = {
-        logGroup = aws_cloudwatch_log_group.firewall_alert.name
+        logGroup = aws_cloudwatch_log_group.firewall_alert[0].name
       }
     }
 
@@ -165,7 +177,7 @@ resource "aws_networkfirewall_logging_configuration" "this" {
       log_type             = "FLOW"
       log_destination_type = "CloudWatchLogs"
       log_destination = {
-        logGroup = aws_cloudwatch_log_group.firewall_flow.name
+        logGroup = aws_cloudwatch_log_group.firewall_flow[0].name
       }
     }
   }
@@ -174,8 +186,10 @@ resource "aws_networkfirewall_logging_configuration" "this" {
 # Any drop from the restricted subnets means code tried to reach a host that is not approved. Pages on-call
 # (via the observability module's alarm on this metric).
 resource "aws_cloudwatch_log_metric_filter" "restricted_drops" {
+  count = local.firewall_enabled ? 1 : 0
+
   name           = "${var.name}-restricted-egress-blocked"
-  log_group_name = aws_cloudwatch_log_group.firewall_alert.name
+  log_group_name = aws_cloudwatch_log_group.firewall_alert[0].name
   pattern        = "{ $.event.alert.signature_id = 900002 || $.event.alert.signature_id = 900003 }"
 
   metric_transformation {

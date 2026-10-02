@@ -1,0 +1,81 @@
+# Egress allow-list for the restricted subnets (api, ai-worker) in the demo. The demo holds synthetic data only
+# and connects to no customer systems, so it allows the AI and ABN Lookup hosts and none of the integrations.
+# infrastructure/01 §3.1, cross-team decisions X25, X28, X44.
+#
+# Every entry is an exact HTTPS hostname with an owner and a reason. Anything not listed is dropped and logged
+# by AWS Network Firewall, and an AI-looking drop pages Jeff and Sam. Changes need review from Jeff and Sam
+# (and Ari for kind: ai). `pnpm check:egress` fails CI if an AI endpoint outside Australia is added.
+#
+# kind: ai | integration | platform
+# AI entries must name the Australian region they run in.
+
+restricted:
+  # --- AI (X25: Australian endpoints only) ---
+  - host: bedrock-runtime.ap-southeast-2.amazonaws.com
+    kind: ai
+    region: ap-southeast-2
+    owner: Ari
+    used_by: api, ai-worker
+    reason: Default AI provider, AU inference profile only. Normally reached through the VPC endpoint; listed so a misrouted call still only works in Australia.
+  - host: bedrock-runtime.ap-southeast-4.amazonaws.com
+    kind: ai
+    region: ap-southeast-4
+    owner: Ari
+    used_by: api, ai-worker
+    reason: Melbourne half of the AU cross-region inference profile.
+  - host: textract.ap-southeast-2.amazonaws.com
+    kind: ai
+    region: ap-southeast-2
+    owner: Ari
+    used_by: ai-worker
+    reason: OCR, through the VPC endpoint.
+  - host: sts.ap-southeast-2.amazonaws.com
+    kind: platform
+    owner: Jeff
+    used_by: api, ai-worker
+    reason: Assume a customer's BYO Bedrock role (X28); normally through the VPC endpoint.
+
+  # --- Integrations called from the api (Leo, Ben) ---
+  - host: abr.business.gov.au
+    kind: integration
+    owner: Ben
+    used_by: api
+    reason: ABN Lookup web services (X44). GUID in archova/<env>/integrations/abr-guid.
+  # --- BYO Azure OpenAI resources (X28): one exact hostname per approved connection, added only after Ari and
+  # Sam confirm the resource is in australiaeast or australiasoutheast. Never a wildcard. Example:
+  # - host: contoso-ae.openai.azure.com
+  #   kind: ai
+  #   region: australiaeast
+  #   owner: Ari
+  #   used_by: api, ai-worker
+  #   reason: BYO Azure OpenAI for org <orgId>, approved by Ari and Sam on <date>.
+
+# AI vendor domains (and every subdomain) that no subnet may resolve (DNS Firewall) and the private subnets may not
+# reach (Network Firewall), so web, workers and webhook delivery can't be used as a side door. Approved hosts
+# above still resolve: the allow rule is evaluated first.
+ai_vendor_denylist:
+  - openai.com
+  - api.openai.com
+  - chatgpt.com
+  - oaiusercontent.com
+  - openai.azure.com
+  - anthropic.com
+  - claude.ai
+  - generativelanguage.googleapis.com
+  - aiplatform.googleapis.com
+  - gemini.google.com
+  - cohere.com
+  - cohere.ai
+  - mistral.ai
+  - huggingface.co
+  - hf.space
+  - together.xyz
+  - together.ai
+  - groq.com
+  - perplexity.ai
+  - deepseek.com
+  - x.ai
+  - replicate.com
+  - fireworks.ai
+  - openrouter.ai
+  - cognitiveservices.azure.com

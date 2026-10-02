@@ -3,6 +3,12 @@
 # webhook-worker and scheduler are added here as their apps are built (apps/*/README.md).
 
 locals {
+  ai_model_env = var.ai_models == null ? {} : {
+    API_AI_MODEL_FAST     = var.ai_models.fast
+    API_AI_MODEL_STANDARD = var.ai_models.standard
+    API_AI_MODEL_ADVANCED = var.ai_models.advanced
+  }
+
   rollback_alarms = { for s in keys(var.services) : s => ["${local.svc[s]}-5xx-rate", "${local.svc[s]}-p95-latency"] }
 
   service_config = {
@@ -28,7 +34,12 @@ locals {
         API_FILES_STORE  = "s3"
         API_FILES_BUCKET = module.files.id
         API_FILES_REGION = local.region
-        LOG_LEVEL        = "info"
+        # GuardDuty tags each upload in quarantine/ (malware.tf); needs Ben's guardduty adapter.
+        API_FILES_SCANNER = "guardduty"
+        LOG_LEVEL         = "info"
+        # Nova on Bedrock in Sydney (X25); the model ids come from var.ai_models.
+        API_AI_PROVIDER = "bedrock"
+        API_AI_REGION   = local.region
       }
       secrets = {
         API_DATABASE_URL    = "${module.aurora.role_secret_arns["app_rw"]}:url::"
@@ -76,7 +87,7 @@ module "service" {
   cpu                      = each.value.cpu
   memory                   = each.value.memory
   container_port           = local.service_config[each.key].port
-  environment              = local.service_config[each.key].environment
+  environment              = merge(local.service_config[each.key].environment, each.key == "api" ? local.ai_model_env : {})
   secrets                  = local.service_config[each.key].secrets
   secret_arns              = local.service_config[each.key].secret_arns
   secrets_kms_key_arn      = module.kms_secrets.arn
@@ -93,6 +104,7 @@ module "service" {
   log_retention_days       = var.log_retention_days
   ingress_security_groups  = { alb = aws_security_group.alb.id }
   rollback_alarm_names     = local.rollback_alarms[each.key]
+  deployment               = each.value.deployment
 
   load_balancer = {
     listener_arn        = aws_lb_listener.https.arn

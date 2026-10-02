@@ -9,25 +9,26 @@ locals {
 }
 
 module "aurora" {
-  source                 = "../../modules/aurora"
-  name                   = "${local.name}-aurora"
-  vpc_id                 = module.network.vpc_id
-  subnet_ids             = module.network.data_subnet_ids
-  client_security_groups = local.data_clients
-  instance_class         = var.aurora.instance_class
-  instance_count         = var.aurora.instance_count
-  serverless_min_acu     = var.aurora.serverless_min_acu
-  serverless_max_acu     = var.aurora.serverless_max_acu
-  io_optimized           = var.aurora.io_optimized
-  backup_retention_days  = var.aurora.backup_retention_days
-  enable_proxy           = var.aurora.enable_proxy
-  deletion_protection    = var.deletion_protection
-  skip_final_snapshot    = !var.deletion_protection
-  kms_key_arn            = module.kms_db.arn
-  secrets_kms_key_arn    = module.kms_secrets.arn
-  logs_kms_key_arn       = module.kms_logs.arn
-  log_retention_days     = var.log_retention_days
-  tags                   = merge(local.tags, { service = "aurora" })
+  source                        = "../../modules/aurora"
+  name                          = "${local.name}-aurora"
+  vpc_id                        = module.network.vpc_id
+  subnet_ids                    = module.network.data_subnet_ids
+  client_security_groups        = local.data_clients
+  instance_class                = var.aurora.instance_class
+  instance_count                = var.aurora.instance_count
+  serverless_min_acu            = var.aurora.serverless_min_acu
+  serverless_max_acu            = var.aurora.serverless_max_acu
+  serverless_auto_pause_seconds = var.aurora.auto_pause_seconds
+  io_optimized                  = var.aurora.io_optimized
+  backup_retention_days         = var.aurora.backup_retention_days
+  enable_proxy                  = var.aurora.enable_proxy
+  deletion_protection           = var.deletion_protection
+  skip_final_snapshot           = !var.deletion_protection
+  kms_key_arn                   = module.kms_db.arn
+  secrets_kms_key_arn           = module.kms_secrets.arn
+  logs_kms_key_arn              = module.kms_logs.arn
+  log_retention_days            = var.log_retention_days
+  tags                          = merge(local.tags, { service = "aurora" })
 }
 
 # Queue cluster: BullMQ jobs, domain events (X19), sessions, revocation markers and Idempotency-Keys. noeviction,

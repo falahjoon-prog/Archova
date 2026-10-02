@@ -207,9 +207,10 @@ data "aws_iam_policy_document" "ecr_push" {
 }
 
 module "github_oidc" {
-  source      = "../../modules/github-oidc"
-  name_prefix = local.name
-  repository  = var.repository
+  source          = "../../modules/github-oidc"
+  name_prefix     = local.name
+  repository      = var.repository
+  create_provider = false # infra/bootstrap/github-actions.yaml
 
   roles = {
     # Pull requests push pr-<n>-<sha>; main pushes <sha>. Promotion adds prod-<sha> (same digest).
@@ -246,38 +247,43 @@ resource "aws_route53_record" "delegation" {
   records  = each.value
 }
 
-# prod's app. and api. records live in the apex zone; prod's terraform-apply role changes them through this role.
+# prod's and the demo's records live in the apex zone; their Terraform apply roles (infra/bootstrap) change
+# them through this role, which can touch nothing but that zone.
+locals {
+  apex_record_accounts = [for env in ["prod-cell1", "demo"] : var.workload_accounts[env] if contains(keys(var.workload_accounts), env)]
+}
+
 data "aws_iam_policy_document" "dns_trust" {
   statement {
     actions = ["sts:AssumeRole"]
     principals {
       type        = "AWS"
-      identifiers = ["arn:aws:iam::${var.workload_accounts["prod-cell1"]}:role/archova-prod-c1-gha-terraform-apply"]
+      identifiers = [for a in local.apex_record_accounts : "arn:aws:iam::${a}:role/archova-github-terraform-apply"]
     }
   }
 }
 
-resource "aws_iam_role" "dns_prod" {
-  count              = var.domain == null ? 0 : 1
-  name               = "${local.name}-dns-prod"
+resource "aws_iam_role" "dns_records" {
+  count              = var.domain == null || length(local.apex_record_accounts) == 0 ? 0 : 1
+  name               = "${local.name}-dns-records"
   assume_role_policy = data.aws_iam_policy_document.dns_trust.json
 }
 
-data "aws_iam_policy_document" "dns_prod" {
+data "aws_iam_policy_document" "dns_records" {
   count = var.domain == null ? 0 : 1
   statement {
     actions   = ["route53:ChangeResourceRecordSets", "route53:ListResourceRecordSets", "route53:GetHostedZone"]
     resources = [aws_route53_zone.apex[0].arn]
   }
   statement {
-    actions   = ["route53:GetChange", "route53:ListHostedZones"]
+    actions   = ["route53:GetChange", "route53:ListHostedZones", "route53:ListHostedZonesByName"]
     resources = ["*"]
   }
 }
 
-resource "aws_iam_role_policy" "dns_prod" {
-  count  = var.domain == null ? 0 : 1
+resource "aws_iam_role_policy" "dns_records" {
+  count  = length(aws_iam_role.dns_records)
   name   = "apex-zone-records"
-  role   = aws_iam_role.dns_prod[0].id
-  policy = data.aws_iam_policy_document.dns_prod[0].json
+  role   = aws_iam_role.dns_records[0].id
+  policy = data.aws_iam_policy_document.dns_records[0].json
 }

@@ -1,6 +1,6 @@
 # 01 · Cloud setup
 
-**Owner:** Owen · **Status:** Draft v1 · 2 Oct 2026
+**Owner:** Jeff · **Status:** Draft v1 · 2 Oct 2026
 
 ## 1. Regions and data residency
 
@@ -117,7 +117,7 @@ John's hard rule (X25) is that no prompt, document, photo or embedding is sent t
 
 **Layer 3: DNS** — Route 53 Resolver DNS Firewall on each VPC blocks resolution of known AI vendor domains that are not on the allow-list, and logs all queries from the restricted subnets.
 
-Changes to the allow-list are Terraform PRs reviewed by Owen and Sam (and Ari for AI endpoints), with a test in CI that fails if any AI domain outside Australia is added.
+Changes to the allow-list are Terraform PRs reviewed by Jeff and Sam (and Ari for AI endpoints), with a test in CI that fails if any AI domain outside Australia is added.
 
 ## 4. Edge and traffic flow
 
@@ -180,7 +180,7 @@ One ECS cluster per environment. Each row is an ECS service with its own task de
 | `realtime` | WebSocket gateway for notifications and presence | `app.<domain>/realtime`, `api.<domain>/realtime` | Fan-out via Redis pub/sub; separate service per ADR-0004 so long-lived connections don't affect API autoscaling |
 | `worker` | BullMQ consumers: email, PDF, thumbnails, notifications, SOPA due-date checks | — | Several services from one image, split by queue group so heavy jobs (PDF, drawing tiles) cannot starve light ones (email, notifications) |
 | `events-relay` | Transactional outbox → BullMQ on Valkey (X19) | — | Small, 2 tasks for availability |
-| `ai-worker` | Embedding, extraction, OCR (Textract), batch LLM calls | — | Scales on queue depth; concurrency capped per tenant to control spend. Bedrock quota (tokens and requests per minute) is requested by Owen ahead of each phase from Ari's cost model |
+| `ai-worker` | Embedding, extraction, OCR (Textract), batch LLM calls | — | Scales on queue depth; concurrency capped per tenant to control spend. Bedrock quota (tokens and requests per minute) is requested by Jeff ahead of each phase from Ari's cost model |
 | `webhook-worker` | Outbound webhooks to customer endpoints | — | Isolated egress (see §3) |
 | `scheduler` | Cron-style triggers (EventBridge Scheduler → queue) | — | No in-process cron, so scaling out never double-fires jobs |
 

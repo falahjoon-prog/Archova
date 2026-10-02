@@ -1,0 +1,78 @@
+# Deploys images to an environment (infrastructure/03 §4, §5): db-roles, migrations, blue/green for api and web,
+# smoke tests (tools/infra/deploy.sh). Every image built on main goes to the demo (and dev, once it exists);
+# staging and prod are deployed by hand from here, behind their GitHub environments' required reviewers.
+name: Deploy
+
+on:
+  workflow_run:
+    workflows: [Images]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        type: choice
+        options: [demo, dev, staging, prod]
+      tag:
+        description: Image tag (a commit SHA on main that Images has built)
+        required: true
+
+concurrency:
+  group: deploy-${{ github.event.inputs.environment || 'auto' }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ matrix.env }}
+    if: >-
+      vars.INFRA_AWS_READY == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: ${{ matrix.env }}
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        env: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', github.event.inputs.environment) || '["demo","dev"]') }}
+    env:
+      ACCOUNT: ${{ vars[format('AWS_ACCOUNT_{0}', fromJSON('{"demo":"DEMO","dev":"DEV","staging":"STAGING","prod":"PROD"}')[matrix.env])] }}
+      REGISTRY: ${{ vars.AWS_ACCOUNT_SHARED }}.dkr.ecr.ap-southeast-2.amazonaws.com
+      TAG: ${{ github.event.inputs.tag || github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.ACCOUNT != ''
+        with:
+          ref: ${{ env.TAG }}
+      - uses: aws-actions/configure-aws-credentials@v4
+        if: env.ACCOUNT != ''
+        with:
+          role-to-assume: arn:aws:iam::${{ env.ACCOUNT }}:role/archova-${{ matrix.env }}-c1-gha-deploy
+          aws-region: ap-southeast-2
+      - name: Deploy ${{ env.TAG }}
+        if: env.ACCOUNT != ''
+        run: tools/infra/deploy.sh "${{ matrix.env }}" "$REGISTRY" "$TAG"
+
+      # The demo's synthetic sample builder (tools/demo-seed). Re-runs skip what already exists.
+      - uses: pnpm/action-setup@v4
+        if: env.ACCOUNT != '' && matrix.env == 'demo'
+      - uses: actions/setup-node@v4
+        if: env.ACCOUNT != '' && matrix.env == 'demo'
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Seed the demo
+        if: env.ACCOUNT != '' && matrix.env == 'demo'
+        env:
+          SEED_APP_ORIGIN: https://demo.archova.com.au
+          SEED_PASSWORD: ${{ secrets.DEMO_PASSWORD }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm demo:seed

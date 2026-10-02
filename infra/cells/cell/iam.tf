@@ -36,6 +36,13 @@ data "aws_iam_policy_document" "api" {
     resources = ["${module.files.arn}/quarantine/*", "${module.files.arn}/orgs/*", "${module.exports.arn}/*"]
   }
 
+  # Reads GuardDuty's scan tag on complete; CopyObject carries the tag to orgs/.../original.
+  statement {
+    sid       = "FilesScanTags"
+    actions   = ["s3:GetObjectTagging", "s3:PutObjectTagging"]
+    resources = ["${module.files.arn}/quarantine/*", "${module.files.arn}/orgs/*"]
+  }
+
   statement {
     sid       = "FilesKey"
     actions   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]

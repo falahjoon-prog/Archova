@@ -1,0 +1,111 @@
+# Archova on one computer, with sample data: docker compose -f docker-compose.demo.yml up --build
+# Then open http://demo.localhost:8080 and sign in as demo@archova.com.au (password: DEMO_PASSWORD below).
+# Everything runs in Docker: no AWS, no internet after the first build. Nova answers with canned sample replies
+# (the fake provider), uploads are not malware-scanned, and each start resets to fresh sample data. Sample data only; never put real project data here.
+# To share it through a tunnel, set DEMO_ORIGIN to the public https address first (see the guide).
+# Guide: docs/infrastructure/laptop-demo.md
+name: archova-demo
+
+x-demo-password: &demo-password ${DEMO_PASSWORD:-Harbour-Sample-7731}
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      interval: 2s
+      retries: 30
+
+  valkey:
+    image: valkey/valkey:8
+
+  # S3 stand-in for file storage (moto; MinIO no longer publishes images). It keeps files in memory, so every
+  # start resets the demo to fresh sample data (db-setup below rebuilds the database to match).
+  s3:
+    image: motoserver/moto:latest
+
+  # Database roles, extensions and migrations (the same scripts CI uses).
+  db-setup:
+    build: { context: ., target: demo-tools }
+    depends_on:
+      postgres: { condition: service_healthy }
+      s3: { condition: service_started }
+    environment:
+      DB_HOST: postgres
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - pnpm db:reset && node -e "fetch('http://s3:5000/archova-local-files',{method:'PUT'}).then(r=>process.exit(r.ok?0:1))"
+
+  api:
+    build: { context: ., target: api }
+    depends_on:
+      db-setup: { condition: service_completed_successfully }
+      valkey: { condition: service_started }
+    environment:
+      NODE_ENV: development # local signing key, fake Nova, no scanner; production checks are for AWS
+      API_PORT: '4000'
+      API_DATABASE_URL: postgres://app_rw:app_rw@postgres:5432/archova
+      API_REDIS_URL: redis://valkey:6379
+      API_APP_ORIGINS: ${DEMO_ORIGIN:-http://demo.localhost:8080}
+      API_PUBLIC_HOSTS: api.demo.localhost:8080
+      API_WEB_SIGN_IN_URL: ${DEMO_ORIGIN:-http://demo.localhost:8080}/login
+      API_FILES_STORE: s3
+      API_FILES_BUCKET: archova-local-files
+      API_FILES_REGION: ap-southeast-2
+      # Browsers and the api both reach file storage through the proxy below, so presigned links work in both.
+      API_S3_ENDPOINT: ${DEMO_ORIGIN:-http://demo.localhost:8080}
+      AWS_ACCESS_KEY_ID: local
+      AWS_SECRET_ACCESS_KEY: local
+      API_AI_PROVIDER: fake
+      LOG_LEVEL: warn
+    extra_hosts: ['demo.localhost:host-gateway']
+
+  web:
+    build: { context: ., target: web }
+    depends_on: [api]
+
+  # Stands in for CloudFront: /v1 and /.well-known go to the api, file storage to MinIO, the rest to the web app.
+  proxy:
+    image: caddy:2
+    depends_on: [api, web, s3]
+    ports: ['8080:8080']
+    configs:
+      - source: caddyfile
+        target: /etc/caddy/Caddyfile
+
+  # Loads the sample builder, projects, drawings, documents and RFIs.
+  seed:
+    build: { context: ., target: demo-tools }
+    depends_on: [proxy]
+    environment:
+      SEED_APP_ORIGIN: ${DEMO_ORIGIN:-http://demo.localhost:8080}
+      SEED_PASSWORD: *demo-password
+    extra_hosts: ['demo.localhost:host-gateway']
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - until node -e "fetch('http://proxy:8080/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"; do sleep 2; done && pnpm demo:seed
+
+configs:
+  caddyfile:
+    content: |
+      :8080 {
+        @api path /v1/* /.well-known/* /health/*
+        handle @api {
+          reverse_proxy api:4000
+        }
+        @files path /archova-local-files/*
+        handle @files {
+          reverse_proxy s3:5000 {
+            header_up Host s3:5000
+          }
+        }
+        handle {
+          reverse_proxy web:3000
+        }
+      }
+
+volumes:
+  pgdata:

@@ -4,7 +4,7 @@
 resource "aws_s3_bucket" "this" {
   bucket              = var.name
   force_destroy       = var.force_destroy
-  object_lock_enabled = var.object_lock_retention_days != null
+  object_lock_enabled = var.object_lock_enabled || var.object_lock_retention_days != null
   tags                = var.tags
 }
 
@@ -37,7 +37,7 @@ resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
 resource "aws_s3_bucket_versioning" "this" {
   bucket = aws_s3_bucket.this.id
   versioning_configuration {
-    status = var.versioning || var.object_lock_retention_days != null ? "Enabled" : "Suspended"
+    status = var.versioning || var.object_lock_enabled || var.object_lock_retention_days != null ? "Enabled" : "Suspended"
   }
 }
 

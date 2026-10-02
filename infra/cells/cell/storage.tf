@@ -46,15 +46,23 @@ module "files" {
   name                               = "${local.name}-files-${local.acct6}"
   kms_key_arn                        = module.kms_files.arn
   noncurrent_version_expiration_days = 90
+  object_lock_enabled                = true # legal holds only, no default retention (Sam; security-licensing/07 §6)
   intelligent_tiering_after_days     = 30
-  expire_prefixes                    = { "quarantine/" = 2 }
+  expire_prefixes                    = { "quarantine/" = 2, "threats/" = 30 } # threats/: malware.tf
   access_log_bucket                  = module.access_logs.id
   force_destroy                      = var.force_destroy_buckets
+  policy_statements                  = [data.aws_iam_policy_document.files_scanned_only.json, data.aws_iam_policy_document.files_legal_hold_only.json]
   cors_rules = [{
     allowed_methods = ["PUT"]
     allowed_origins = ["https://${var.app_host}"]
     allowed_headers = ["content-type", "x-amz-checksum-sha256"]
     expose_headers  = ["etag"]
+    }, {
+    # The drawing and document viewers load PDFs with pdf.js from the presigned download URL, in byte ranges.
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["https://${var.app_host}"]
+    allowed_headers = ["range"]
+    expose_headers  = ["accept-ranges", "content-length", "content-range", "etag"]
   }]
   tags = merge(local.tags, { service = "files" })
 }

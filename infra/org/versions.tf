@@ -8,7 +8,7 @@ terraform {
     }
   }
 
-  # Applied manually by Owen with a second reviewer, from the management account (infrastructure/03 §7).
+  # Applied manually by Jeff with a second reviewer, from the management account (infrastructure/03 §7).
   backend "s3" {
     key          = "org/org.tfstate"
     region       = "ap-southeast-2"

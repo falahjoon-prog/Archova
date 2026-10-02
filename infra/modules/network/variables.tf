@@ -31,9 +31,14 @@ variable "nat_gateway_count" {
 }
 
 variable "firewall_endpoint_count" {
-  description = "Network Firewall endpoints: 1 in dev, one per AZ in staging and prod (infrastructure/01 §3.1)."
+  description = "Network Firewall endpoints: 1 in dev, one per AZ in staging and prod (infrastructure/01 §3.1). 0 leaves the firewall out, for the demo only (sample data; john, 2 Oct 2026): egress goes straight to the NAT, and AI vendors are still blocked by DNS Firewall, the Bedrock endpoint policy and task IAM."
   type        = number
   default     = 1
+
+  validation {
+    condition     = var.firewall_endpoint_count >= 0 && var.firewall_endpoint_count <= var.az_count
+    error_message = "Use 0 (no firewall) up to one endpoint per AZ."
+  }
 }
 
 variable "nat_eip_allocation_ids" {
@@ -46,6 +51,12 @@ variable "interface_endpoints" {
   description = "AWS services reached through interface VPC endpoints instead of the NAT."
   type        = list(string)
   default     = ["ecr.api", "ecr.dkr", "logs", "secretsmanager", "kms", "sts", "ssm", "bedrock-runtime", "textract"]
+}
+
+variable "interface_endpoint_az_count" {
+  description = "AZs that get an interface endpoint ENI. Null means every AZ; the demo uses 1 (each ENI is billed hourly)."
+  type        = number
+  default     = null
 }
 
 variable "restricted_allowlist" {

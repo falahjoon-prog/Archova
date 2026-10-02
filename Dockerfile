@@ -53,14 +53,21 @@ WORKDIR /app
 ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 NEXT_TELEMETRY_DISABLED=1
 COPY --from=build /repo/apps/web/.next/standalone /app
 COPY --from=build /repo/apps/web/.next/static /app/apps/web/.next/static
+COPY --from=build /repo/apps/web/public /app/apps/web/public
 EXPOSE 3000
 CMD ["apps/web/server.js"]
 
-# --- migrate (one-off ECS task: node tools/db/migrate.js as app_migrator) -----------------------------------------
+# --- migrate (one-off ECS tasks: tools/db/migrate.js as app_migrator; tools/db/roles.js as the master user) ------
 FROM ${RUNTIME_IMAGE} AS migrate
 WORKDIR /app
 ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
 COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
-COPY --from=build /repo/tools/db/dist/migrate.js /repo/tools/db/dist/migrate.js.map /app/tools/db/
+COPY --from=build /repo/tools/db/dist/migrate.js /repo/tools/db/dist/migrate.js.map /repo/tools/db/dist/roles.js /repo/tools/db/dist/roles.js.map /app/tools/db/
 COPY --from=build /repo/db/migrations /app/db/migrations
 CMD ["--enable-source-maps", "tools/db/migrate.js"]
+
+# --- laptop demo tools (docker-compose.demo.yml only; never deployed) ---------------------------------------------
+# The build stage with the repo and its dev tools: sets up the local database and loads the sample data.
+FROM build AS demo-tools
+WORKDIR /repo
+ENTRYPOINT ["pnpm"]
