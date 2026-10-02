@@ -37,6 +37,8 @@ jobs:
         run: pnpm db:lint --static-only
       - name: Workspace boundaries
         run: pnpm check:boundaries
+      - name: Nova evals (fake provider; schema, citation and safety bars gate, ai/06 §4)
+        run: pnpm --filter @archova/mod-ai eval
       - name: Lint, typecheck, unit tests, build
         run: pnpm turbo run lint typecheck test build
 

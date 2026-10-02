@@ -22,6 +22,8 @@ export interface ObjectStore {
   copy(from: string, to: string): Promise<void>;
   delete(key: string): Promise<void>;
   presignGet(key: string, p: { contentDisposition: string; expiresInS: number }): Promise<string>;
+  /** Reads a whole object, for server-side processing (Nova title blocks); null when it doesn't exist. */
+  get(key: string): Promise<Uint8Array | null>;
 }
 
 export interface S3StoreConfig {
@@ -74,6 +76,15 @@ export function createS3ObjectStore(cfg: S3StoreConfig): ObjectStore {
     async delete(key) {
       await s3.send(new DeleteObjectCommand({ Bucket, Key: key }));
     },
+    async get(key) {
+      try {
+        const r = await s3.send(new GetObjectCommand({ Bucket, Key: key }));
+        return r.Body ? await r.Body.transformToByteArray() : null;
+      } catch (e) {
+        if ((e as { name?: string }).name === 'NoSuchKey') return null;
+        throw e;
+      }
+    },
     async presignGet(key, p) {
       return getSignedUrl(
         s3,
@@ -92,9 +103,12 @@ export function createS3ObjectStore(cfg: S3StoreConfig): ObjectStore {
 
 /** In-memory store for tests and local runs without MinIO. `put` simulates the client's direct upload. */
 export function createMemoryObjectStore() {
-  const objects = new Map<string, { size: number; sha256Base64: string | null }>();
+  const objects = new Map<
+    string,
+    { size: number; sha256Base64: string | null; bytes: Uint8Array | null }
+  >();
   const store: ObjectStore & {
-    put(key: string, size: number, sha256Base64: string | null): void;
+    put(key: string, size: number, sha256Base64: string | null, bytes?: Uint8Array): void;
     keys(): string[];
   } = {
     async presignPut(key, p) {
@@ -104,7 +118,11 @@ export function createMemoryObjectStore() {
       };
     },
     async head(key) {
-      return objects.get(key) ?? null;
+      const o = objects.get(key);
+      return o ? { size: o.size, sha256Base64: o.sha256Base64 } : null;
+    },
+    async get(key) {
+      return objects.get(key)?.bytes ?? null;
     },
     async copy(from, to) {
       const o = objects.get(from);
@@ -117,8 +135,8 @@ export function createMemoryObjectStore() {
     async presignGet(key, p) {
       return `memory://download/${key}?disposition=${encodeURIComponent(p.contentDisposition)}&expires=${p.expiresInS}`;
     },
-    put(key, size, sha256Base64) {
-      objects.set(key, { size, sha256Base64 });
+    put(key, size, sha256Base64, bytes) {
+      objects.set(key, { size, sha256Base64, bytes: bytes ?? null });
     },
     keys: () => [...objects.keys()],
   };

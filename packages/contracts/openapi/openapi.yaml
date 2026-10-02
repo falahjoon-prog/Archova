@@ -1142,6 +1142,87 @@ paths:
       responses:
         '204': { description: Saved }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/drawing-register/extractions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: extractDrawingRegister
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.drawing_register.extract
+      summary: Nova reads the title block of every sheet in an uploaded drawing PDF or image (F1).
+      description: |
+        Each sheet becomes a pending suggestion with the drawing number, title, revision, discipline, date and scale,
+        the fields a person must check (`flagged`), and how it matches the register (new drawing, new revision...).
+        Nothing is added to the register until a person accepts. Re-running a file replaces its pending suggestions.
+        Pages without a text layer (scans) are listed in `skippedPages` until OCR lands.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId]
+              properties:
+                fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+      responses:
+        '200':
+          description: Suggestions, one per sheet
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingRegisterExtraction' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/suggestions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listAiSuggestions
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.suggestions.read
+      summary: Nova suggestions on this project, newest first.
+      parameters:
+        - { name: task, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/AiSuggestionStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: A page of suggestions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: decideAiSuggestion
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.suggestions.read
+      summary: Accept, edit or reject a Nova suggestion (ai/04 §7).
+      description: Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AiSuggestionDecision' }
+      responses:
+        '200':
+          description: The decided suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -1691,6 +1772,96 @@ components:
           type: [string, 'null']
           enum: [wrong, missing, not_useful, wrong_source, other, null]
         comment: { type: [string, 'null'], maxLength: 2000 }
+    AiSuggestionStatus:
+      type: string
+      enum: [pending, accepted, edited, rejected]
+    AiSuggestion:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          task,
+          targetType,
+          targetId,
+          status,
+          confidence,
+          payload,
+          runId,
+          createdAt,
+          decidedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: [string, 'null'] }
+        task: { type: string, description: 'Nova task, e.g. `drawing.titleblock`' }
+        targetType: { type: string }
+        targetId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/AiSuggestionStatus' }
+        confidence: { type: [number, 'null'] }
+        payload:
+          description: Task-specific content. For `drawing.titleblock` see DrawingSheetFields.
+          type: object
+          additionalProperties: true
+        runId: { type: string }
+        createdAt: { type: string, format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+    AiSuggestionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AiSuggestion' }
+        nextCursor: { type: [string, 'null'] }
+    DrawingSheetFields:
+      type: object
+      additionalProperties: false
+      properties:
+        number: { type: [string, 'null'], maxLength: 100 }
+        title: { type: [string, 'null'], maxLength: 300 }
+        revision: { type: [string, 'null'], maxLength: 20 }
+        discipline:
+          type: [string, 'null']
+          enum:
+            [
+              architectural,
+              structural,
+              civil,
+              hydraulic,
+              mechanical,
+              electrical,
+              fire,
+              landscape,
+              interiors,
+              survey,
+              other,
+              null,
+            ]
+        revisionDate: { type: [string, 'null'], format: date }
+        scale: { type: [string, 'null'], maxLength: 50 }
+    AiSuggestionDecision:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [accepted, edited, rejected] }
+        fields: { $ref: '#/components/schemas/DrawingSheetFields' }
+    DrawingRegisterExtraction:
+      type: object
+      required: [suggestions, pageCount, skippedPages, refusedPages]
+      properties:
+        suggestions:
+          type: array
+          items: { $ref: '#/components/schemas/AiSuggestion' }
+        pageCount: { type: integer }
+        skippedPages:
+          description: Pages with no text layer (scans); read once OCR lands.
+          type: array
+          items: { type: integer }
+        refusedPages:
+          type: array
+          items: { type: integer }
     CreateUploadRequest:
       type: object
       additionalProperties: false

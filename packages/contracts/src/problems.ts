@@ -74,6 +74,7 @@ export const PROBLEM_CODES = {
   'ai.invalid_output': 502,
   'ai.cancelled': 408,
   'ai.run.not_found': 404,
+  'ai.suggestion.not_found': 404,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

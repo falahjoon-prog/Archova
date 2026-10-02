@@ -64,6 +64,7 @@ export interface EvalReport {
   costMicrosPerCase: number;
   latencyMs: { p50: number; p95: number };
   failures: Array<{ caseId: string; metric: string; score: number }>;
+  gate: 'all' | 'safety';
   passed: boolean;
 }
 
@@ -81,6 +82,11 @@ export async function runSuite<I, O, E>(
     /** Run only the first n cases (CI sample, ai/06 §4). */
     sample?: number;
     concurrency?: number;
+    /**
+     * `all` (default) gates on every bar. `safety` gates only on safety bars (100%) and schema validity: used with
+     * the fake provider, whose quality scores mean nothing.
+     */
+    gate?: 'all' | 'safety';
   },
 ): Promise<EvalReport> {
   const cases = deps.sample ? suite.cases.slice(0, deps.sample) : suite.cases;
@@ -109,6 +115,7 @@ export async function runSuite<I, O, E>(
   const metricNames = [
     ...new Set([...Object.keys(suite.bars), ...results.flatMap((x) => Object.keys(x.scores))]),
   ];
+  const gated = (bar: number | null) => bar !== null && (deps.gate !== 'safety' || bar >= 1);
   const metrics: MetricSummary[] = metricNames.map((metric) => {
     const values = results
       .map((x) => x.scores[metric])
@@ -120,7 +127,7 @@ export async function runSuite<I, O, E>(
       mean,
       cases: values.length,
       bar,
-      passed: bar === null || (mean !== null && mean >= bar - 1e-9),
+      passed: !gated(bar) || (mean !== null && mean >= bar! - 1e-9),
     };
   });
   const failures = results.flatMap((x) =>
@@ -129,6 +136,7 @@ export async function runSuite<I, O, E>(
       .map(([metric, v]) => ({ caseId: x.c.id, metric, score: v as number })),
   );
   const n = results.length || 1;
+  const schemaValidRate = results.filter((x) => x.r.outcome.kind === 'ok').length / n;
   const latencies = results.map((x) => x.r.latencyMs).sort((a, b) => a - b);
   return {
     task: suite.prompt.id,
@@ -137,12 +145,13 @@ export async function runSuite<I, O, E>(
     source: suite.source,
     cases: results.length,
     metrics,
-    schemaValidRate: results.filter((x) => x.r.outcome.kind === 'ok').length / n,
+    schemaValidRate,
     refusalRate: results.filter((x) => x.r.outcome.kind === 'refused').length / n,
     costMicrosPerCase: Math.round(results.reduce((s, x) => s + x.r.costMicros, 0) / n),
     latencyMs: { p50: percentile(latencies, 50), p95: percentile(latencies, 95) },
     failures,
-    passed: metrics.every((m) => m.passed),
+    gate: deps.gate ?? 'all',
+    passed: metrics.every((m) => m.passed) && (deps.gate !== 'safety' || schemaValidRate === 1),
   };
 }
 
@@ -151,7 +160,8 @@ const pct = (v: number | null) => (v === null ? 'n/a' : `${(v * 100).toFixed(1)}
 /** Markdown report for the pull request (ai/06 §4). */
 export function formatReport(r: EvalReport): string {
   const lines = [
-    `### Eval: \`${r.task}\` v${r.promptVersion} (${r.provider}) ${r.passed ? 'passed' : 'FAILED'}`,
+    `### Eval: \`${r.task}\` v${r.promptVersion} (${r.provider}) ${r.passed ? 'passed' : 'FAILED'}` +
+      (r.gate === 'safety' ? ' (safety bars only: quality needs a real model)' : ''),
     '',
     `${r.cases} cases from ${r.source}. Schema-valid ${pct(r.schemaValidRate)}, refusals ${pct(r.refusalRate)}, ` +
       `US$${(r.costMicrosPerCase / 1e6).toFixed(4)} per case, latency p50 ${r.latencyMs.p50} ms / p95 ${r.latencyMs.p95} ms.`,
@@ -160,7 +170,7 @@ export function formatReport(r: EvalReport): string {
     '|---|---|---|---|---|',
     ...r.metrics.map(
       (m) =>
-        `| ${m.metric} | ${pct(m.mean)} | ${m.bar === null ? '' : pct(m.bar)} | ${m.cases} | ${m.passed ? 'ok' : 'below bar'} |`,
+        `| ${m.metric} | ${pct(m.mean)} | ${m.bar === null ? '' : pct(m.bar)} | ${m.cases} | ${m.passed ? (m.bar !== null && m.mean !== null && m.mean < m.bar ? 'not gated' : 'ok') : 'below bar'} |`,
     ),
   ];
   if (r.failures.length) {
