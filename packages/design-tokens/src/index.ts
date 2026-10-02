@@ -10,10 +10,10 @@ export const color = {
     textMuted: '#6B7280',
     borderControl: '#6B7280',
     borderDivider: '#E5E7EB',
-    actionPrimary: '#1F4FC4',
-    actionPrimaryHover: '#183E9C',
+    actionPrimary: '#0B5C5E',
+    actionPrimaryHover: '#083E40',
     actionPrimaryText: '#FFFFFF',
-    focusRing: '#1F4FC4',
+    focusRing: '#0B5C5E',
     statusSuccess: '#157A3D',
     statusWarning: '#A65A00',
     statusDanger: '#B42318',
@@ -30,10 +30,10 @@ export const color = {
     textMuted: '#AEB6C2',
     borderControl: '#AEB6C2',
     borderDivider: '#2A3342',
-    actionPrimary: '#7FA3FF',
-    actionPrimaryHover: '#A5BEFF',
+    actionPrimary: '#5FC3B8',
+    actionPrimaryHover: '#8FD6CE',
     actionPrimaryText: '#0F141C',
-    focusRing: '#7FA3FF',
+    focusRing: '#5FC3B8',
     statusSuccess: '#4ADE80',
     statusWarning: '#FBBF24',
     statusDanger: '#F87171',
@@ -47,14 +47,17 @@ export const color = {
 export type ColorToken = keyof typeof color.light;
 
 /**
- * Logo colours (design/02 §2, brand/archova-logo). Keystone orange is for the keystone and safety highlights only,
- * never body text on white (3.58:1). These are also the seeded brand defaults for the marketing site.
+ * Logo colours, the Verdigris palette (design/02 §2.1, brand/archova-logo). Copper is decorative: the keystone and
+ * small brand marks only, never text and never status. Safety orange (`accentHivis`) is a functional colour, not
+ * brand. These are also the seeded brand defaults for the marketing site.
  */
 export const brand = {
   ink: '#111827',
-  blue: '#1F4FC4',
-  keystone: '#E8590C',
-  blueOnDark: '#7FA3FF',
+  verdigris: '#0B5C5E',
+  verdigrisDeep: '#083E40',
+  verdigrisOnDark: '#5FC3B8',
+  copper: '#B4542A',
+  copperLight: '#E7A977',
 } as const;
 
 /** 4 px base spacing scale. */
