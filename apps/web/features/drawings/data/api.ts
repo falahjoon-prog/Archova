@@ -267,6 +267,41 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
     return new Map(unique.map((id, i) => [id, names[i]!]));
   };
 
+  /** RFIs pinned to this revision (RFI-AC5). */
+  const pinnedRfis = async (projectId: string, revisionId: string): Promise<DrawingPin[]> => {
+    const rfis = await allPages(async (cursor) =>
+      unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/rfis', {
+          params: {
+            path: { orgId, projectId },
+            query: { drawingRevisionId: revisionId, limit: 200, ...(cursor ? { cursor } : {}) },
+          },
+        }),
+      ),
+    ).catch((e: unknown) => {
+      // Someone who can see drawings but not RFIs still gets the sheet and its markups.
+      if (e instanceof ApiError && e.status === 403) return [];
+      throw e;
+    });
+    return rfis.flatMap((r) =>
+      r.pin?.drawingRevisionId === revisionId
+        ? [
+            {
+              id: `rfi~${r.id}`,
+              entityType: 'rfi' as const,
+              entityId: r.id,
+              label: r.numberLabel ?? 'Draft RFI',
+              title: r.subject,
+              status: r.status,
+              x: r.pin.x,
+              y: r.pin.y,
+              checkLocation: false,
+            },
+          ]
+        : [],
+    );
+  };
+
   const titleBlockSuggestions = (projectId: string) =>
     allPages(async (cursor) =>
       unwrap(
@@ -351,7 +386,14 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
     },
 
     async listPins(projectId, revisionId) {
-      return (await listApiMarkups(projectId, revisionId)).flatMap(toPins);
+      const [markups, rfis] = await Promise.all([
+        listApiMarkups(projectId, revisionId),
+        pinnedRfis(projectId, revisionId),
+      ]);
+      const pins = markups.flatMap(toPins);
+      // RFIs carry their own pin; a markup pin for the same RFI wins, since it can be location-checked.
+      const shown = new Set(pins.map((p) => `${p.entityType}:${p.entityId}`));
+      return [...pins, ...rfis.filter((p) => !shown.has(`rfi:${p.entityId}`))];
     },
 
     async confirmPinLocation(projectId, revisionId, pinId) {
