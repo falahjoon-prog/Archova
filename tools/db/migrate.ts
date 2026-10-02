@@ -27,7 +27,9 @@ export async function migrate(connectionString: string, log = console.log): Prom
       .sort();
     let count = 0;
     for (const name of files) {
-      const sqlText = readFileSync(join(COMPOSED_DIR, name), 'utf8');
+      // A Windows checkout can have CRLF line endings: read as LF so the header strips, the
+      // no-transaction marker is seen and the checksum matches the same file applied on Linux.
+      const sqlText = readFileSync(join(COMPOSED_DIR, name), 'utf8').replace(/\r\n/g, '\n');
       // Checksum the body only (the composed header is not part of the migration).
       const body = sqlText.replace(/^-- Composed from .*\n/, '');
       const checksum = createHash('sha256').update(body).digest('hex');

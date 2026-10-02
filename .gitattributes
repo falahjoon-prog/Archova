@@ -1,0 +1,5 @@
+# Keep LF everywhere, including Windows checkouts (tools/db/migrate.ts reads SQL headers line by line).
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.pdf binary
