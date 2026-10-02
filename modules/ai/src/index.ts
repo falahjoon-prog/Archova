@@ -6,6 +6,7 @@ import { createAdminService } from './application/admin';
 import { createAskService } from './application/ask';
 import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
+import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import { createDrawingRegisterService, type ReadableFile } from './application/drawing-register';
 import { createGateway } from './application/gateway';
@@ -17,6 +18,7 @@ import {
   type ModelPrice,
   type RoutingTable,
 } from './domain/routing';
+import type { TranslationLanguage } from './domain/translation';
 import { createProvider, type ProviderConfig } from './infra/providers';
 import { AI_PERMISSIONS } from './permissions';
 
@@ -46,6 +48,18 @@ export type { ReadableFile, SheetSuggestionPayload } from './application/drawing
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { InductionDraftPayload } from './application/induction-draft';
+export type {
+  InductionTranslation,
+  TranslatedQuestion,
+  TranslatedSlide,
+} from './application/induction-translation';
+export {
+  TRANSLATION_LANGUAGES,
+  protectText,
+  restoreText,
+  type Glossary,
+  type TranslationLanguage,
+} from './domain/translation';
 export {
   INDUCTION_ASK_SUPERVISOR,
   type InductionAnswer,
@@ -112,6 +126,8 @@ export function createAiModule(
     accessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** Tests pass a fake provider directly. */
     provider?: ModelProvider;
+    /** Tests pass an enabled test language; defaults to TRANSLATION_LANGUAGES. */
+    translationLanguages?: readonly TranslationLanguage[];
   },
 ) {
   const provider = deps.provider ?? createProvider(deps.config.provider);
@@ -154,6 +170,11 @@ export function createAiModule(
     accessScopes: deps.accessScopes,
   });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
+  const inductionTranslation = createInductionTranslationService({
+    database: services.database,
+    gateway,
+    ...(deps.translationLanguages ? { languages: deps.translationLanguages } : {}),
+  });
   return {
     definition: defineModule({ name: 'ai', permissions: AI_PERMISSIONS }),
     routes: aiRoutes(
@@ -177,6 +198,10 @@ export function createAiModule(
       indexInductionVersion: inductionQa.indexVersion,
       /** For `workforce`'s worker route, after the access link check: answer from that version only. */
       askInduction: inductionQa.ask,
+      /** For `workforce`'s worker route: the version in the worker's language, cached (ai/12 §2 I4). */
+      translateInduction: inductionTranslation.translate,
+      /** Languages a worker may pick: only reviewed ones whose eval passes. */
+      translationLanguages: inductionTranslation.availableLanguages,
     },
   };
 }

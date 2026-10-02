@@ -87,6 +87,7 @@ export const PROBLEM_CODES = {
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
   'ai.induction.no_documents': 422,
+  'ai.translation.language_unavailable': 422,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;
