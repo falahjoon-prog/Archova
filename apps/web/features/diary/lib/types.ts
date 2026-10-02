@@ -1,20 +1,21 @@
 // `diary.*` (backend schema/field.md) as the web app uses it: one entry per project per project-local day, child
-// lines with their own ids, amendments as append-only evidence (X42). Replaced by `@archova/contracts` types when
-// the diary endpoints land.
+// lines with their own ids, amendments as append-only evidence (X42). `data/api.ts` maps the API's shapes onto
+// these, so the screens serve both sources.
 
 import type { LocalDate } from '@archova/time';
 
 export type DiaryStatus = 'draft' | 'submitted' | 'signed_off';
 
+/** Observations for the day; any value the source didn't report is null. */
 export interface Weather {
   /** BOM station used (X44, DIA-AC2). */
-  stationId: string;
-  stationName: string;
-  minC: number;
-  maxC: number;
-  rainMm: number;
-  windKmh: number;
-  conditions: { at7am: string; at12pm: string; at3pm: string };
+  stationId: string | null;
+  stationName: string | null;
+  minC: number | null;
+  maxC: number | null;
+  rainMm: number | null;
+  windKmh: number | null;
+  conditions: { at7am: string | null; at12pm: string | null; at3pm: string | null };
 }
 
 export interface StandDown {
@@ -129,6 +130,8 @@ export interface DiaryEntry {
   signedOffAt: string | null;
   /** Photos taken today on this project, offered for attachment (DIA-AC6). */
   photosToday: DiaryPhoto[];
+  /** Server version for If-Match; absent on preview records and unsaved days. */
+  version?: number;
 }
 
 export interface DiaryDaySummary {
