@@ -61,6 +61,11 @@ export function ProjectScreen({
       {address ? <ListItem title="Address" subtitle={address} /> : null}
       <ListItem title="Time zone" subtitle={p.timezone} />
       <ListItem
+        title="Site diary"
+        subtitle="Today's labour, plant, deliveries and delays, offline"
+        onPress={() => router.push(mobileRoutes.diary(projectId))}
+      />
+      <ListItem
         title="Defects"
         subtitle="Raise, fix and close defects, offline"
         onPress={() => router.push(mobileRoutes.defects(projectId))}
