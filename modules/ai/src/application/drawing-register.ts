@@ -78,6 +78,8 @@ export interface ExtractionResult {
 /** Permission needed to run or decide each suggestion task. */
 const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   [TITLEBLOCK_TASK]: 'ai.drawing_register.extract',
+  // F33: the builder approves or rejects the draft here; edits happen in the induction editor (ai/12 §2 I1).
+  'induction.draft': 'ai.induction.draft',
 };
 
 async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
@@ -272,7 +274,9 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
 
   /**
    * A person accepts, edits or rejects a suggestion (ai/04 §7). Recorded with who and when, and published as
-   * `ai.suggestion.decided.v1` so the owning module applies it with `ai_assisted = true` in its audit event.
+   * `ai.suggestion.decided.v1` for audit and Nova's accept-rate metrics. Nothing applies the event, so a sheet is
+   * never added twice: the web adds the set revision through `documents`, passing `aiSuggestionId`, and `documents`
+   * marks it AI-assisted in its own audit event (agreed with Ben and Felix, 2 Oct 2026).
    */
   async function decide(
     scope: TenantScope,
@@ -301,16 +305,25 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
     await deps.assert(scope, permission, { projectId });
     if (row.status !== 'pending')
       throw new AppError('conflict', 'This suggestion has already been decided.');
+    const isSheet = row.task === TITLEBLOCK_TASK;
+    if (input.decision === 'edited' && !isSheet)
+      throw new AppError('validation_failed', 'Edit this draft in its editor, then accept it.', [
+        { path: 'decision', message: 'Only accepted or rejected' },
+      ]);
     if (input.decision === 'edited' && !input.fields)
       throw new AppError('validation_failed', 'Send the edited fields.', [
         { path: 'fields', message: 'Required when editing' },
       ]);
 
     const payload = row.payload as SheetSuggestionPayload;
-    const accepted = Object.fromEntries(
-      TITLE_BLOCK_FIELDS.map((f) => [f, payload.fields[f].value]),
-    ) as Record<TitleBlockField, string | null>;
-    const decided = input.decision === 'rejected' ? undefined : { ...accepted, ...input.fields };
+    const accepted = isSheet
+      ? (Object.fromEntries(TITLE_BLOCK_FIELDS.map((f) => [f, payload.fields[f].value])) as Record<
+          TitleBlockField,
+          string | null
+        >)
+      : undefined;
+    const decided =
+      input.decision === 'rejected' || !accepted ? undefined : { ...accepted, ...input.fields };
     const [updated] = await scope.tx
       .update(suggestions)
       .set({

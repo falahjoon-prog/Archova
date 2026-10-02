@@ -12,6 +12,7 @@ import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archo
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { createPlatformModule } from '@archova/mod-platform';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
 export const MODULE_PERMISSIONS = [AI_PERMISSIONS, DOCUMENTS_PERMISSIONS, RFIS_PERMISSIONS];
@@ -70,7 +71,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
-  const all = [identity, platform, access, billing, files, ai, documents, rfis];
+  const sync = createSyncModule();
+
+  const all = [identity, platform, access, billing, files, ai, documents, rfis, sync];
   const routes: RouteTable = {};
   for (const m of all) {
     for (const [id, handler] of Object.entries(m.routes)) {
@@ -88,6 +91,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    sync,
     routes,
   };
 }

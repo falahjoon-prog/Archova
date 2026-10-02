@@ -16,7 +16,7 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@node-rs/argon2": "^2.0.2",
-    "drizzle-orm": "^0.44.0",
+    "drizzle-orm": "^0.45.2",
     "jose": "^6.1.0"
   },
   "devDependencies": {

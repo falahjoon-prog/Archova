@@ -19,4 +19,6 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'ai.ask.use', scope: 'project', tool: null, level: 'read' },
   // Indexing reads every document in the project, so it needs document admin.
   { key: 'ai.project_index.run', scope: 'project', tool: 'documents', level: 'admin' },
+  // F33: site managers draft inductions. Moves to the workforce tool when that module and tool exist (X58).
+  { key: 'ai.induction.draft', scope: 'project', tool: 'project_admin', level: 'standard' },
 ];

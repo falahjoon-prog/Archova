@@ -297,10 +297,29 @@ export const AskNovaParams = z.object({
 export const AskNovaBody = z.object({
   "question": z.string().min(1).max(1000),
 }).strict();
+export const DraftInductionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftInductionBody = z.object({
+  "siteName": z.string().min(1).max(200),
+}).strict();
 export const IndexProjectForNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const SyncPullParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SyncPullQuery = z.object({
+  "scopes": z.string().min(3).max(4000),
+  "since": z.string().regex(new RegExp("^[0-9]{1,20}$")),
+  "limit": z.coerce.number().int().min(1).max(500).default(500),
+});
+export const SyncPushParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const SyncPushBody = s.SyncPushRequestSchema;
 export const ListRfisParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1107,6 +1126,18 @@ export const operations = {
     query: null,
     body: AskNovaBody,
   },
+  draftInduction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "ai.induction.draft",
+    internal: false,
+    contentType: "application/json",
+    params: DraftInductionParams,
+    query: null,
+    body: DraftInductionBody,
+  },
   indexProjectForNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/index',
@@ -1118,6 +1149,30 @@ export const operations = {
     params: IndexProjectForNovaParams,
     query: null,
     body: null,
+  },
+  syncPull: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/sync/pull',
+    module: "sync",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: SyncPullParams,
+    query: SyncPullQuery,
+    body: null,
+  },
+  syncPush: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/sync/push',
+    module: "sync",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: SyncPushParams,
+    query: null,
+    body: SyncPushBody,
   },
   listRfis: {
     method: 'GET',

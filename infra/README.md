@@ -2,6 +2,8 @@
 
 Terraform for Archova on AWS (owner: Owen). Design: [docs/infrastructure/](../docs/infrastructure/README.md), especially [01-cloud-setup.md](../docs/infrastructure/01-cloud-setup.md). Domain: **archova.com.au**.
 
+Images are built from the root [Dockerfile](../Dockerfile) (targets `api`, `web`, `migrate`) by [images.yml](../.github/workflows/images.yml), which also scans them, writes an SBOM and, once AWS is ready, pushes and signs them.
+
 Nothing here has been applied. Every stack passes `terraform validate`, `tflint` and `checkov` in CI ([.github/workflows/infra.yml](../.github/workflows/infra.yml)); plans and applies switch on once the AWS accounts exist (see [First-time setup](#first-time-setup)).
 
 ```
@@ -74,16 +76,15 @@ What john (or whoever holds the AWS root login) needs to do before anything can 
 
 ## Not built yet
 
-| Item                                                                                                               | Where it lands                   |
-| ------------------------------------------------------------------------------------------------------------------ | -------------------------------- |
-| Production Dockerfiles for api, web and migrate; image build, scan, SBOM and signing                               | Next PR                          |
-| Deploy pipeline (migrate task, blue/green, smoke tests), preview environments per PR, DAST and accessibility gates | PR after that                    |
-| db-roles task that creates the Postgres roles from their secrets; secret rotation Lambdas                          | With the deploy pipeline         |
-| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                                     | As each app is built             |
-| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                          | DR PR, before pilots             |
-| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                              | With the org rollout             |
-| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)                  | Later PRs                        |
-| Malware scanning: docs say GuardDuty Malware Protection for S3, the api expects ClamAV in the files worker         | Needs a decision (Ava, Ben, Sam) |
+| Item                                                                                                       | Where it lands                   |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Deploy pipeline (migrate task, blue/green, smoke tests), preview environments per PR, DAST                 | Next PR                          |
+| db-roles task that creates the Postgres roles from their secrets; secret rotation Lambdas                  | With the deploy pipeline         |
+| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                             | As each app is built             |
+| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                  | DR PR, before pilots             |
+| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                      | With the org rollout             |
+| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)          | Later PRs                        |
+| Malware scanning: docs say GuardDuty Malware Protection for S3, the api expects ClamAV in the files worker | Needs a decision (Ava, Ben, Sam) |
 
 ## What the application needs from infra (phase 0)
 

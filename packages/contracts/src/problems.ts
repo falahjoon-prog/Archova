@@ -9,6 +9,10 @@ export const PROBLEM_CODES = {
   version_conflict: 412,
   rate_limited: 429,
   internal: 500,
+  /** A contract operation whose handler hasn't been built yet. */
+  not_implemented: 501,
+  /** The app build is older than the support window (X39); the device asks the user to update. */
+  'app.upgrade_required': 426,
   // auth (backend 02 §1)
   'auth.unauthenticated': 401,
   'auth.session_revoked': 401,
@@ -82,6 +86,7 @@ export const PROBLEM_CODES = {
   'rfi.assignee_not_on_project': 422,
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
+  'ai.induction.no_documents': 422,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;
