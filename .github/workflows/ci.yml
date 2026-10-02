@@ -48,7 +48,8 @@ jobs:
     timeout-minutes: 20
     services:
       postgres:
-        image: postgres:16
+        # Postgres 16 with pgvector (Nova retrieval, ai/03 §5), same as docker-compose.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_PASSWORD: postgres
         ports: ['5432:5432']

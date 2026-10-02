@@ -21,6 +21,8 @@ beforeAll(async () => {
         throw new Error('not used');
       },
       assert: async () => undefined,
+      sources: async () => [],
+      accessScopes: async () => [],
       provider: t.ai,
     },
   ).api;

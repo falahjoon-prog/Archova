@@ -9,6 +9,8 @@ import type { TaskKind } from '@archova/ai-prompts';
  */
 export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'drawing.titleblock': 0,
+  'embed.document': 0,
+  'embed.query': 0,
   'qa.rewrite': 0,
   'qa.answer': 1,
   'rfi.draft': 1,

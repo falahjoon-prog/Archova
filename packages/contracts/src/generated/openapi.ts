@@ -939,6 +939,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/ask": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova a question about this project's documents and drawings (F2).
+         * @description Nova searches the current revisions the caller can open (private folders and drawing access apply) and
+         *     answers with a citation to the exact document, revision and page for each claim. When the documents don't
+         *     answer it, `found` is false and `closestMatches` lists the nearest passages instead of a guess. Costs one
+         *     Nova credit when the model is called; nothing when no visible passage matches.
+         */
+        post: operations["askNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/index": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bring Nova's index of this project's documents and drawings up to date.
+         * @description Reads, chunks and embeds every published revision not yet indexed, marks older revisions superseded, applies
+         *     folder moves to access, and drops deleted records. Safe to repeat: finished revisions are skipped. Runs in the
+         *     request for now; the AI worker will run it on each document event once it lands. Embedding is background
+         *     work and costs no credits.
+         */
+        post: operations["indexProjectForNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/sync/pull": {
         parameters: {
             query?: never;
@@ -1366,6 +1418,42 @@ export interface components {
             /** @description Pages with no text layer (scans); read once OCR lands. */
             skippedPages: number[];
             refusedPages: number[];
+        };
+        /** @description A document or drawing revision page Nova used. */
+        NovaSource: {
+            /** @enum {string} */
+            sourceType: "document" | "drawing";
+            /** @description The document (`doc_`) or drawing sheet (`dsh_`). */
+            sourceId: string;
+            /** @description The document revision (`rev_`) or drawing revision (`drv_`). */
+            revisionId: string;
+            revision: string;
+            title: string;
+            /** @description Document or sheet number */
+            reference: string | null;
+            page: number;
+        };
+        NovaCitation: components["schemas"]["NovaSource"] & {
+            /** @description The exact words the answer relies on */
+            quote: string;
+        };
+        NovaAnswer: {
+            /** @description For feedback (`air_`); null when no model call was needed. */
+            runId: string | null;
+            found: boolean;
+            answer: string;
+            citations: components["schemas"]["NovaCitation"][];
+            /** @description When not found, the nearest passages so the user can check themselves. */
+            closestMatches: components["schemas"]["NovaSource"][];
+        };
+        NovaIndexReport: {
+            indexed: number;
+            unchanged: number;
+            /** @description Revisions with no text layer (scans); indexed once OCR lands. */
+            noText: number;
+            /** @description Files that aren't PDFs */
+            unsupported: number;
+            chunks: number;
         };
         CreateUploadRequest: {
             filename: string;
@@ -3485,6 +3573,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    askNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The answer, or "not found" with the closest matches */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    indexProjectForNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What this run did */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaIndexReport"];
                 };
             };
             default: components["responses"]["Problem"];

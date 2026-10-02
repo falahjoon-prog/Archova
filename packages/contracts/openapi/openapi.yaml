@@ -1224,6 +1224,60 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/ask:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: askNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Ask Nova a question about this project's documents and drawings (F2).
+      description: |
+        Nova searches the current revisions the caller can open (private folders and drawing access apply) and
+        answers with a citation to the exact document, revision and page for each claim. When the documents don't
+        answer it, `found` is false and `closestMatches` lists the nearest passages instead of a guess. Costs one
+        Nova credit when the model is called; nothing when no visible passage matches.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '200':
+          description: The answer, or "not found" with the closest matches
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaAnswer' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/index:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: indexProjectForNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.project_index.run
+      summary: Bring Nova's index of this project's documents and drawings up to date.
+      description: |
+        Reads, chunks and embeds every published revision not yet indexed, marks older revisions superseded, applies
+        folder moves to access, and drops deleted records. Safe to repeat: finished revisions are skipped. Runs in the
+        request for now; the AI worker will run it on each document event once it lands. Embedding is background
+        work and costs no credits.
+      responses:
+        '200':
+          description: What this run did
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaIndexReport' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/sync/pull:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1924,6 +1978,56 @@ components:
         refusedPages:
           type: array
           items: { type: integer }
+    NovaSource:
+      description: A document or drawing revision page Nova used.
+      type: object
+      required: [sourceType, sourceId, revisionId, revision, title, reference, page]
+      properties:
+        sourceType: { type: string, enum: [document, drawing] }
+        sourceId:
+          description: The document (`doc_`) or drawing sheet (`dsh_`).
+          type: string
+        revisionId:
+          description: The document revision (`rev_`) or drawing revision (`drv_`).
+          type: string
+        revision: { type: string }
+        title: { type: string }
+        reference: { type: [string, 'null'], description: Document or sheet number }
+        page: { type: integer, minimum: 1 }
+    NovaCitation:
+      allOf:
+        - $ref: '#/components/schemas/NovaSource'
+        - type: object
+          required: [quote]
+          properties:
+            quote: { type: string, description: The exact words the answer relies on }
+    NovaAnswer:
+      type: object
+      required: [runId, found, answer, citations, closestMatches]
+      properties:
+        runId:
+          description: For feedback (`air_`); null when no model call was needed.
+          type: [string, 'null']
+        found: { type: boolean }
+        answer: { type: string }
+        citations:
+          type: array
+          items: { $ref: '#/components/schemas/NovaCitation' }
+        closestMatches:
+          description: When not found, the nearest passages so the user can check themselves.
+          type: array
+          items: { $ref: '#/components/schemas/NovaSource' }
+    NovaIndexReport:
+      type: object
+      required: [indexed, unchanged, noText, unsupported, chunks]
+      properties:
+        indexed: { type: integer }
+        unchanged: { type: integer }
+        noText:
+          description: Revisions with no text layer (scans); indexed once OCR lands.
+          type: integer
+        unsupported: { type: integer, description: Files that aren't PDFs }
+        chunks: { type: integer }
     CreateUploadRequest:
       type: object
       additionalProperties: false

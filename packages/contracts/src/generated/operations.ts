@@ -290,6 +290,17 @@ export const DecideAiSuggestionParams = z.object({
   "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
 });
 export const DecideAiSuggestionBody = s.AiSuggestionDecisionSchema;
+export const AskNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AskNovaBody = z.object({
+  "question": z.string().min(1).max(1000),
+}).strict();
+export const IndexProjectForNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const SyncPullParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1036,6 +1047,30 @@ export const operations = {
     params: DecideAiSuggestionParams,
     query: null,
     body: DecideAiSuggestionBody,
+  },
+  askNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/ask',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: AskNovaParams,
+    query: null,
+    body: AskNovaBody,
+  },
+  indexProjectForNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/index',
+    module: "ai",
+    auth: "required",
+    permission: "ai.project_index.run",
+    internal: false,
+    contentType: null,
+    params: IndexProjectForNovaParams,
+    query: null,
+    body: null,
   },
   syncPull: {
     method: 'GET',
