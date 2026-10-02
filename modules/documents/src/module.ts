@@ -3,6 +3,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
 import type { IdentityApi } from '@archova/mod-identity';
 import type { PlatformApi } from '@archova/mod-platform';
+import { createAiSourceService } from './application/ai-sources';
 import { createContext } from './application/context';
 import { createDocumentService } from './application/documents';
 import { createDrawingService } from './application/drawings';
@@ -27,6 +28,7 @@ export function createDocumentsModule(
   const drawings = createDrawingService(c);
   const markups = createMarkupService(c, drawings);
   const transmittals = createTransmittalService(c, documents, drawings);
+  const aiSources = createAiSourceService(c, folders);
   return {
     definition: defineModule({ name: 'documents', permissions: DOCUMENTS_PERMISSIONS }),
     routes: documentsRoutes({
@@ -41,6 +43,10 @@ export function createDocumentsModule(
     api: {
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
+      /** For Nova (ai/03 §3): every published document and drawing revision, with its access scope. */
+      aiSources: aiSources.aiSources,
+      /** For Nova retrieval (ai/04 §3): the access scopes the caller holds in a project. */
+      aiAccessScopes: aiSources.aiAccessScopes,
     },
   };
 }

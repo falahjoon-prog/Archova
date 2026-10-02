@@ -203,6 +203,39 @@ export async function uploadFile(
   return (done.json() as { id: string }).id;
 }
 
+/** Uploads real bytes (a generated PDF) through the same flow and returns the file id. */
+export async function uploadBytes(
+  t: TestContext,
+  browser: Browser,
+  orgId: string,
+  projectId: string,
+  bytes: Uint8Array,
+  filename = 'document.pdf',
+  mime = 'application/pdf',
+) {
+  const sha256 = createHash('sha256').update(bytes).digest('hex');
+  const created = await browser.post(`/v1/orgs/${orgId}/uploads`, {
+    filename,
+    mime,
+    sizeBytes: bytes.length,
+    sha256,
+    module: 'documents',
+    projectId,
+  });
+  if (created.statusCode !== 201)
+    throw new Error(`upload failed: ${created.statusCode} ${created.body}`);
+  const uploadId = (created.json() as { id: string }).id;
+  t.store.put(
+    quarantineKey(decodeId('upload', uploadId)!),
+    bytes.length,
+    hexToBase64(sha256),
+    bytes,
+  );
+  const done = await browser.post(`/v1/orgs/${orgId}/uploads/${uploadId}/complete`);
+  if (done.statusCode !== 200) throw new Error(`complete failed: ${done.statusCode} ${done.body}`);
+  return (done.json() as { id: string }).id;
+}
+
 /** Adds `email` to the project under a seeded template, with a new company of `companyType`. */
 export async function addMember(
   owner: Browser,

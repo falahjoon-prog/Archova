@@ -64,6 +64,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
                   ...(config.ai.endpoint ? { endpoint: config.ai.endpoint } : {}),
                 },
                 models: config.ai.models,
+                embedding: { model: config.ai.embeddingModel },
               }
             : { provider: { kind: 'fake' }, models: FAKE_MODELS },
         ...(deps.aiProvider ? { provider: deps.aiProvider } : {}),

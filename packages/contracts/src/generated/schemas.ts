@@ -620,6 +620,38 @@ export const MeSchema = z.object({
 });
 export type Me = z.infer<typeof MeSchema>;
 
+export const NovaCitationSchema = z.record(z.string(), z.unknown());
+export type NovaCitation = z.infer<typeof NovaCitationSchema>;
+
+export const NovaSourceSchema = z.object({
+  "sourceType": z.enum(["document", "drawing"]),
+  "sourceId": z.string(),
+  "revisionId": z.string(),
+  "revision": z.string(),
+  "title": z.string(),
+  "reference": z.string().nullable(),
+  "page": z.number().int().min(1),
+});
+export type NovaSource = z.infer<typeof NovaSourceSchema>;
+
+export const NovaAnswerSchema = z.object({
+  "runId": z.string().nullable(),
+  "found": z.boolean(),
+  "answer": z.string(),
+  "citations": z.array(NovaCitationSchema),
+  "closestMatches": z.array(NovaSourceSchema),
+});
+export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
+
+export const NovaIndexReportSchema = z.object({
+  "indexed": z.number().int(),
+  "unchanged": z.number().int(),
+  "noText": z.number().int(),
+  "unsupported": z.number().int(),
+  "chunks": z.number().int(),
+});
+export type NovaIndexReport = z.infer<typeof NovaIndexReportSchema>;
+
 export const OrgSchema = z.object({
   "id": z.string(),
   "name": z.string(),

@@ -36,6 +36,8 @@ export async function bootstrapDatabase(
   try {
     await dbClient.query('create extension if not exists citext');
     await dbClient.query('create extension if not exists pgcrypto');
+    // pgvector for Nova retrieval (ai/03 §5); RDS for PostgreSQL 16 ships it.
+    await dbClient.query('create extension if not exists vector');
     await dbClient.query('revoke create on schema public from public');
   } finally {
     await dbClient.end();
