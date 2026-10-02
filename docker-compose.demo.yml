@@ -86,7 +86,7 @@ services:
     extra_hosts: ['demo.localhost:host-gateway']
     entrypoint: ['/bin/sh', '-c']
     command:
-      - until node -e "fetch('http://demo.localhost:8080/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"; do sleep 2; done && pnpm demo:seed
+      - until node -e "fetch('http://proxy:8080/health/ready').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"; do sleep 2; done && pnpm demo:seed
 
 configs:
   caddyfile:

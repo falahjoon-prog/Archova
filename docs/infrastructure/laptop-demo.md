@@ -77,7 +77,7 @@ Real builders' data goes on the hosted pilot (AWS Sydney), with encryption, back
 
 ## If something goes wrong
 
-- **"port is already allocated":** another program is using port 8080. Close it, or change `'8080:8080'` in `docker-compose.demo.yml` to `'8081:8080'` and open http://demo.localhost:8081. If you change the port, also change `8080` to `8081` in the four `demo.localhost:8080` addresses in that file.
+- **"port is already allocated":** another program is using port 8080. Close it, or change `'8080:8080'` in `docker-compose.demo.yml` to `'8081:8080'`, run `$env:DEMO_ORIGIN = "http://demo.localhost:8081"` before starting, and open http://demo.localhost:8081.
 - **The page doesn't open:** check that Docker Desktop is running and that the log shows the `Done` line. Firefox may need http://demo.localhost:8080 typed in full.
 - **The build fails with "out of memory":** in Docker Desktop, go to _Settings → Resources_ and give it at least 6 GB.
 
