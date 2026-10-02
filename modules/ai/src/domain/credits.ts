@@ -15,6 +15,9 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'qa.answer': 1,
   // One draft reads ~30 passages and writes a full induction: about three questions' worth (ai/12 §2).
   'induction.draft': 3,
+  // A worker's question during an induction, charged to the builder's org. Priced like background work until Priya
+  // sets the price and the per-induction daily cap (ai/12 §5).
+  'induction.ask': 0.25,
   'rfi.draft': 1,
   'diary.summary': 0.5,
   'defect.tag': 0.1,

@@ -5,6 +5,7 @@ import { defineModule, type KernelServices, type TenantScope } from '@archova/ke
 import { createAdminService } from './application/admin';
 import { createAskService } from './application/ask';
 import { createInductionDraftService } from './application/induction-draft';
+import { createInductionQaService } from './application/induction-qa';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import { createDrawingRegisterService, type ReadableFile } from './application/drawing-register';
 import { createGateway } from './application/gateway';
@@ -45,6 +46,11 @@ export type { ReadableFile, SheetSuggestionPayload } from './application/drawing
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { InductionDraftPayload } from './application/induction-draft';
+export {
+  INDUCTION_ASK_SUPERVISOR,
+  type InductionAnswer,
+  type InductionVersionContent,
+} from './application/induction-qa';
 export { INDUCTION_FIXED_TEXT, reviewInductionDraft } from './domain/induction';
 export {
   chunkPages,
@@ -147,6 +153,7 @@ export function createAiModule(
     assert: deps.assert,
     accessScopes: deps.accessScopes,
   });
+  const inductionQa = createInductionQaService({ database: services.database, gateway });
   return {
     definition: defineModule({ name: 'ai', permissions: AI_PERMISSIONS }),
     routes: aiRoutes(
@@ -166,6 +173,10 @@ export function createAiModule(
       ask: askService.ask,
       indexProject: projectIndex.indexProject,
       draftInduction: inductionDrafts.draft,
+      /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
+      indexInductionVersion: inductionQa.indexVersion,
+      /** For `workforce`'s worker route, after the access link check: answer from that version only. */
+      askInduction: inductionQa.ask,
     },
   };
 }
