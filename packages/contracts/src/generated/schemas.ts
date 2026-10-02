@@ -28,6 +28,40 @@ export const AddressSchema = z.object({
 }).strict();
 export type Address = z.infer<typeof AddressSchema>;
 
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating"]);
+export type AiFeature = z.infer<typeof AiFeatureSchema>;
+
+export const AiFeedbackRequestSchema = z.object({
+  "rating": z.enum(["up", "down"]),
+  "reason": z.enum(["wrong", "missing", "not_useful", "wrong_source", "other"]).nullable().optional(),
+  "comment": z.string().max(2000).nullable().optional(),
+}).strict();
+export type AiFeedbackRequest = z.infer<typeof AiFeedbackRequestSchema>;
+
+export const AiSettingsSchema = z.object({
+  "aiEnabled": z.boolean(),
+  "featuresEnabled": z.array(AiFeatureSchema).nullable(),
+  "monthlyCreditCap": z.number().nullable(),
+  "externalAiEnabled": z.boolean(),
+  "retentionDays": z.number().int(),
+  "version": z.number().int(),
+});
+export type AiSettings = z.infer<typeof AiSettingsSchema>;
+
+export const AiUsageSchema = z.object({
+  "periodStart": z.string().date(),
+  "timezone": z.string(),
+  "allowance": z.number().nullable(),
+  "used": z.number(),
+  "remaining": z.number().nullable(),
+  "byFeature": z.array(z.object({
+  "feature": z.string(),
+  "credits": z.number(),
+  "runs": z.number().int(),
+})),
+});
+export type AiUsage = z.infer<typeof AiUsageSchema>;
+
 export const GeoFixSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -330,6 +364,15 @@ export const TokenResponseSchema = z.object({
   "refresh_token": z.string(),
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
+
+export const UpdateAiSettingsRequestSchema = z.object({
+  "aiEnabled": z.boolean().optional(),
+  "featuresEnabled": z.array(AiFeatureSchema).max(50).nullable().optional(),
+  "monthlyCreditCap": z.number().min(0).max(100000000).nullable().optional(),
+  "externalAiEnabled": z.boolean().optional(),
+  "retentionDays": z.number().int().min(0).max(90).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateAiSettingsRequest = z.infer<typeof UpdateAiSettingsRequestSchema>;
 
 export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

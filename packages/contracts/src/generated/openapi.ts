@@ -403,6 +403,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/ai/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Nova settings for this org (ai/04 §8). Defaults apply until an admin changes them. */
+        get: operations["getAiSettings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Turn Nova or single features on or off, set a monthly credit cap and body retention.
+         * @description Send `If-Match` with the ETag from `getAiSettings` (`"0"` before the first change).
+         */
+        patch: operations["updateAiSettings"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/ai/usage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Nova credits used this month by feature, against the allowance (ai/05 §6). */
+        get: operations["getAiUsage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/ai/runs/{runId}/feedback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                runId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Thumbs up or down on a Nova output (ai/06 §5). Only the person who asked can rate it. */
+        put: operations["submitAiFeedback"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -689,6 +751,51 @@ export interface components {
             limits: {
                 [key: string]: number | null;
             };
+        };
+        AiSettings: {
+            aiEnabled: boolean;
+            /** @description Features left on; null means every feature. */
+            featuresEnabled: components["schemas"]["AiFeature"][] | null;
+            /** @description The org's own monthly cap below the plan allowance; null means none. */
+            monthlyCreditCap: number | null;
+            /** @description Whether invited external companies can use Nova on this org's projects. */
+            externalAiEnabled: boolean;
+            /** @description Days prompt and response bodies are kept for review (0–90). */
+            retentionDays: number;
+            version: number;
+        };
+        UpdateAiSettingsRequest: {
+            aiEnabled?: boolean;
+            featuresEnabled?: components["schemas"]["AiFeature"][] | null;
+            monthlyCreditCap?: number | null;
+            externalAiEnabled?: boolean;
+            retentionDays?: number;
+        };
+        /**
+         * @description A Nova feature an admin can switch off (ai/01 §2).
+         * @enum {string}
+         */
+        AiFeature: "ask" | "drawing_register" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating";
+        AiUsage: {
+            /** Format: date */
+            periodStart: string;
+            timezone: string;
+            /** @description null means unlimited */
+            allowance: number | null;
+            used: number;
+            remaining: number | null;
+            byFeature: {
+                feature: string;
+                credits: number;
+                runs: number;
+            }[];
+        };
+        AiFeedbackRequest: {
+            /** @enum {string} */
+            rating: "up" | "down";
+            /** @enum {string|null} */
+            reason?: "wrong" | "missing" | "not_useful" | "wrong_source" | "other" | null;
+            comment?: string | null;
         };
         CreateUploadRequest: {
             filename: string;
@@ -1413,6 +1520,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAiSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settings */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAiSettings: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAiSettingsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getAiUsage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Usage */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiUsage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitAiFeedback: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                runId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AiFeedbackRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

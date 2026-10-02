@@ -38,7 +38,7 @@ apps/
   web/          Next.js App Router web app
   mobile/       Expo app (iOS + Android)
   worker/ realtime/ admin/ docs-site/   not started (see each README)
-modules/        backend domain modules, one Postgres schema each: identity, platform, access, files, billing
+modules/        backend domain modules, one Postgres schema each: identity, platform, access, files, billing, ai
 packages/       shared code: contracts, api-client, domain, query, routes, markup, sync-core, auth-client,
                 ui, ui-native, design-tokens, i18n, time, ai-prompts, kernel, testing, config-*
 db/migrations/  composed migration history (generated; edit the module's own db/migrations)

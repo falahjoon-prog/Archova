@@ -20,6 +20,8 @@ export const ID_PREFIXES = {
   diary: 'dia',
   claim: 'clm',
   event: 'evt',
+  aiRun: 'air',
+  aiSuggestion: 'ais',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
