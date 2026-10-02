@@ -1,0 +1,21 @@
+# Keep the build context small and free of secrets (infrastructure/03 §2).
+**/node_modules
+**/.turbo
+**/.next
+**/dist
+**/coverage
+**/.expo
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.claude
+infra
+docs
+apps/mobile
+apps/admin
+apps/docs-site
+**/.terraform
+*.log
