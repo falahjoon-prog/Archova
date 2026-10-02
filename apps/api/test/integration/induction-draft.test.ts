@@ -1,0 +1,114 @@
+import { PDFDocument, StandardFonts } from 'pdf-lib';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  addMember,
+  createOrg,
+  createProject,
+  createTestContext,
+  signUp,
+  uploadBytes,
+  type TestContext,
+} from './helpers';
+
+let t: TestContext;
+beforeAll(async () => {
+  t = await createTestContext();
+});
+afterAll(() => t.close());
+
+async function pdf(lines: string[]): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const font = await doc.embedFont(StandardFonts.Helvetica);
+  const page = doc.addPage([595, 842]);
+  lines.forEach((text, i) => page.drawText(text, { x: 50, y: 780 - i * 22, size: 11, font }));
+  return doc.save();
+}
+
+describe('Nova induction drafts (F33)', () => {
+  it('drafts from the site documents, flags what they do not cover, and waits for the builder', async () => {
+    const owner = await signUp(t.app, 'ind');
+    const org = await createOrg(owner.browser, 'Induction Builders');
+    const project = await createProject(owner.browser, org.id, { name: 'Riverbend', state: 'VIC' });
+    const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+
+    // Before anything is indexed there is nothing to draft from.
+    const empty = await owner.browser.post(`${base}/ai/induction-drafts`, {
+      siteName: 'Riverbend',
+    });
+    expect(empty.statusCode).toBe(422);
+    expect(empty.json().code).toBe('ai.induction.no_documents');
+
+    const folder = (await owner.browser.post(`${base}/folders`, { name: 'Safety' })).json();
+    for (const [title, lines] of [
+      [
+        'Emergency Plan',
+        [
+          'EMERGENCY PLAN',
+          'On the continuous siren, stop work and go to the assembly point: the oval near the cricket nets.',
+          'In an emergency call 000 and give the site address: 5 Riverbend Drive, Werribee VIC.',
+        ],
+      ],
+      [
+        'Site Rules',
+        [
+          'SITE CONTACTS',
+          'Site manager: Priscilla Tan, mobile 0434 555 661.',
+          'Working hours are 7:00 am to 3:30 pm Monday to Friday.',
+        ],
+      ],
+    ] as const) {
+      const fileId = await uploadBytes(t, owner.browser, org.id, project.id, await pdf([...lines]));
+      const res = await owner.browser.post(`${base}/documents`, {
+        folderId: folder.id,
+        title,
+        revision: { rev: 'A', fileId },
+      });
+      expect(res.statusCode).toBe(201);
+    }
+    expect((await owner.browser.post(`${base}/ai/index`)).json().indexed).toBe(2);
+
+    const res = await owner.browser.post(`${base}/ai/induction-drafts`, { siteName: 'Riverbend' });
+    expect(res.statusCode).toBe(201);
+    const s = res.json();
+    expect(s).toMatchObject({
+      task: 'induction.draft',
+      status: 'pending',
+      targetType: 'project',
+      targetId: project.id,
+      runId: expect.stringMatching(/^air_/),
+    });
+    const sections = new Map(
+      (s.payload.sections as Array<{ section: string; status: string }>).map((x) => [x.section, x]),
+    );
+    expect(sections.size).toBe(9);
+    const emergencies = JSON.stringify(sections.get('emergencies_and_first_aid'));
+    expect(sections.get('emergencies_and_first_aid')).toMatchObject({ status: 'covered' });
+    expect(emergencies).toContain('the oval near the cricket nets');
+    // Citations carry public document ids.
+    expect(emergencies).toMatch(/"sourceId":"doc_/);
+    // Nothing in the documents covers PPE or consultation: flagged, not invented.
+    expect(sections.get('ppe')).toMatchObject({ status: 'missing', slides: [] });
+    expect(sections.get('consultation')).toMatchObject({ status: 'missing' });
+    expect(s.payload.fixedText.declaration).toMatch(/fit for work/);
+    expect(s.payload.quiz.length).toBeGreaterThan(0);
+
+    // Edits happen in the induction editor; here the builder can only accept or reject.
+    const url = `${base}/ai/suggestions/${s.id}/decision`;
+    expect((await owner.browser.post(url, { decision: 'edited' })).statusCode).toBe(422);
+    const accepted = await owner.browser.post(url, { decision: 'accepted' });
+    expect(accepted.statusCode).toBe(200);
+    expect(accepted.json().status).toBe('accepted');
+
+    // Three credits for the draft.
+    const usage = (await owner.browser.get(`/v1/orgs/${org.id}/ai/usage`)).json();
+    expect(usage.byFeature).toEqual(
+      expect.arrayContaining([expect.objectContaining({ feature: 'inductions', credits: 3 })]),
+    );
+
+    // A subcontractor can't draft one.
+    const sub = await signUp(t.app, 'ind-sub');
+    await addMember(owner.browser, org.id, project.id, sub.email, 'Subcontractor');
+    const denied = await sub.browser.post(`${base}/ai/induction-drafts`, { siteName: 'Riverbend' });
+    expect(denied.statusCode).toBe(403);
+  });
+});
