@@ -27,6 +27,7 @@ type Schema = {
   required?: string[];
   additionalProperties?: boolean | Schema;
   oneOf?: Schema[];
+  allOf?: Schema[];
   default?: unknown;
   description?: string;
 };
@@ -62,6 +63,10 @@ function zodFor(s: Schema): string {
   if (s.oneOf) {
     const parts = s.oneOf.map(zodFor);
     return parts.length === 1 ? parts[0]! : `z.union([${parts.join(', ')}])`;
+  }
+  if (s.allOf) {
+    // Composition (`NovaCitation` = `NovaSource` + `quote`): every part must match.
+    return s.allOf.map(zodFor).reduce((a, b) => `z.intersection(${a}, ${b})`);
   }
   const types = Array.isArray(s.type) ? s.type : s.type ? [s.type] : [];
   const nullable = types.includes('null') || (s.enum?.includes(null) ?? false);
@@ -134,6 +139,7 @@ function zodFor(s: Schema): string {
 function deps(s: Schema, acc = new Set<string>()): Set<string> {
   if (s.$ref) acc.add(refName(s.$ref));
   s.oneOf?.forEach((x) => deps(x, acc));
+  s.allOf?.forEach((x) => deps(x, acc));
   if (s.items) deps(s.items, acc);
   if (s.properties) Object.values(s.properties).forEach((x) => deps(x, acc));
   if (s.additionalProperties && typeof s.additionalProperties === 'object')
