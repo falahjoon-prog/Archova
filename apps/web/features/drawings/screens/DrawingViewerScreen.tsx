@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   MARKUP_VISIBILITIES,
   type MarkupShape,
@@ -97,7 +97,7 @@ export function DrawingViewerScreen({
   const [mode, setMode] = useState<ViewerMode>('select');
   const [activeExtension, setActiveExtension] = useState<string | null>(null);
   const [binding, setBinding] = useState<ViewerToolBinding | null>(null);
-  const [extensionOverlay, setExtensionOverlay] = useState<ReactNode>(null);
+  const [overlayTarget, setOverlayTarget] = useState<SVGGElement | null>(null);
   const [visibility, setVisibility] = useState<MarkupVisibility>('private');
   const [draftFrom, setDraftFrom] = useState<Point | null>(null);
   const [hover, setHover] = useState<Point | null>(null);
@@ -148,7 +148,9 @@ export function DrawingViewerScreen({
     confirmScale: async (scale) => {
       await confirmScale.mutateAsync(scale);
     },
+    revisions: revisions.map((r) => ({ id: r.id, rev: r.rev, status: r.status })),
     revisionHref: revHref,
+    compareHref: (other) => `${revHref(revision.id)}&compare=${encodeURIComponent(other)}`,
   };
 
   const extension = extensions.find((e) => e.id === activeExtension) ?? null;
@@ -158,7 +160,6 @@ export function DrawingViewerScreen({
     setDraftFrom(null);
     setActiveExtension(null);
     setBinding(null);
-    setExtensionOverlay(null);
   };
 
   const finishShape = (shape: MarkupShape) => {
@@ -224,7 +225,7 @@ export function DrawingViewerScreen({
       {!comparing ? <MarkupLayer markups={markups.data ?? []} aspect={aspect} /> : null}
       {!comparing ? <PinLayer pins={pins.data ?? []} aspect={aspect} /> : null}
       {draftShape ? <MarkupShapeSvg shape={draftShape} aspect={aspect} preview /> : null}
-      {extension ? extensionOverlay : null}
+      {extension ? <g ref={setOverlayTarget} data-layer={extension.id} /> : null}
     </>
   );
 
@@ -403,7 +404,7 @@ export function DrawingViewerScreen({
                 active
                 activate={() => setActiveExtension(extension.id)}
                 bindTool={setBinding}
-                setOverlay={setExtensionOverlay}
+                overlayTarget={overlayTarget}
               />
             ) : comparing ? (
               <p className="u-muted">

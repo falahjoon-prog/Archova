@@ -2,7 +2,7 @@
 // measure and count register through this interface, so neither feature imports the other's internals. The route
 // composes them: app/…/drawings/[sheetId]/page.tsx passes the extensions into the viewer screen.
 
-import type { ComponentType, KeyboardEvent, ReactNode } from 'react';
+import type { ComponentType, KeyboardEvent } from 'react';
 import type { Segment, SheetSize } from '@archova/markup';
 import type { CanvasPointerEvent } from '@archova/ui';
 
@@ -31,8 +31,12 @@ export interface ViewerSheetContext {
   } | null;
   /** Confirms or sets the sheet's scale (documents owns `confirm-scale`). */
   confirmScale: (scale: string) => Promise<void>;
+  /** Every revision of this sheet, newest first. */
+  revisions: ReadonlyArray<{ id: string; rev: string; status: 'current' | 'superseded' }>;
   /** Builds a link to another revision of this sheet in the viewer. */
   revisionHref: (revisionId: string) => string;
+  /** Builds a link that opens this sheet compared with another revision. */
+  compareHref: (otherRevisionId: string) => string;
 }
 
 /** What an active tool hands the viewer: pointer and key handlers and a layer drawn over the sheet. */
@@ -50,10 +54,16 @@ export interface ViewerExtensionProps {
   active: boolean;
   /** Ask the viewer for the canvas (e.g. when a tool is picked). */
   activate: () => void;
-  /** Hand the viewer this extension's pointer handlers (null when no tool is armed). */
+  /**
+   * Hand the viewer this extension's pointer handlers (null when no tool is armed). Pass stable handlers (read
+   * the latest state from refs) and call it when the armed tool changes, not on every render.
+   */
   bindTool: (binding: ViewerToolBinding | null) => void;
-  /** Overlay drawn above the sheet, in overlay units (normalised × 1000; `toOverlay` from @archova/ui). */
-  setOverlay: (node: ReactNode) => void;
+  /**
+   * SVG group above the sheet for the extension's layer, drawn with `createPortal`. Units are the overlay's:
+   * normalised × 1000 on x and × 1000/aspect on y (`toOverlay` from @archova/ui).
+   */
+  overlayTarget: SVGGElement | null;
 }
 
 export interface ViewerExtension {

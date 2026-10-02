@@ -565,3 +565,40 @@ main:focus {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: var(--space-3);
 }
+
+/* Takeoff panel */
+.panel-subheading {
+  margin: 0;
+  font-size: var(--font-sm);
+  font-weight: 600;
+}
+.takeoff-panel .form-row {
+  grid-template-columns: 1fr;
+}
+.takeoff-active {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--c-action-primary);
+  border-radius: var(--radius-md);
+}
+.takeoff-row {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.takeoff-quantities__head {
+  justify-content: space-between;
+}
+.scale-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-2);
+}
+.scale-ok details {
+  margin-top: var(--space-2);
+}
