@@ -56,6 +56,9 @@ importers:
       '@archova/mod-billing':
         specifier: workspace:*
         version: link:../../modules/billing
+      '@archova/mod-documents':
+        specifier: workspace:*
+        version: link:../../modules/documents
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
@@ -379,6 +382,55 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../../packages/config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../../packages/config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.0
+        version: 3.2.7(@types/node@22.20.5)(jsdom@26.1.0)(lightningcss@1.33.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  modules/documents:
+    dependencies:
+      '@archova/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@archova/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../../packages/kernel
+      '@archova/markup':
+        specifier: workspace:*
+        version: link:../../packages/markup
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../files
+      '@archova/mod-identity':
+        specifier: workspace:*
+        version: link:../identity
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../platform
+      drizzle-orm:
+        specifier: ^0.44.0
+        version: 0.44.7(@types/pg@8.23.1)(pg@8.23.1)
     devDependencies:
       '@archova/config-eslint':
         specifier: workspace:*
