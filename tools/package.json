@@ -1,0 +1,26 @@
+{
+  "name": "@archova/tools",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./db": "./db/index.ts"
+  },
+  "dependencies": {
+    "openapi-typescript": "^7.9.0",
+    "pg": "^8.16.0",
+    "yaml": "^2.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "@types/pg": "^8.15.0",
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "eslint": "^9.39.0",
+    "typescript": "~5.9.3"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  }
+}
