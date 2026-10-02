@@ -57,9 +57,10 @@ module "cell" {
     migrate = "${var.image_registry}/archova/migrate:bootstrap"
   }
 
+  # Short canary and bake: a demo deploy finishes in about ten minutes instead of the production 40.
   services = {
-    api = { cpu = 512, memory = 1024, min = 1, max = 2, desired = 1 }
-    web = { cpu = 512, memory = 1024, min = 1, max = 2, desired = 1 }
+    api = { cpu = 512, memory = 1024, min = 1, max = 2, desired = 1, deployment = local.quick_deploy }
+    web = { cpu = 512, memory = 1024, min = 1, max = 2, desired = 1, deployment = local.quick_deploy }
   }
 
   enable_execute_command = false
@@ -68,6 +69,10 @@ module "cell" {
   ci                     = {}
 
   log_retention_days = 30
+}
+
+locals {
+  quick_deploy = { canary_percent = 50, canary_minutes = 2, bake_minutes = 5 }
 }
 
 output "cell" {

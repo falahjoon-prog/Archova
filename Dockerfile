@@ -56,11 +56,11 @@ COPY --from=build /repo/apps/web/.next/static /app/apps/web/.next/static
 EXPOSE 3000
 CMD ["apps/web/server.js"]
 
-# --- migrate (one-off ECS task: node tools/db/migrate.js as app_migrator) -----------------------------------------
+# --- migrate (one-off ECS tasks: tools/db/migrate.js as app_migrator; tools/db/roles.js as the master user) ------
 FROM ${RUNTIME_IMAGE} AS migrate
 WORKDIR /app
 ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
 COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
-COPY --from=build /repo/tools/db/dist/migrate.js /repo/tools/db/dist/migrate.js.map /app/tools/db/
+COPY --from=build /repo/tools/db/dist/migrate.js /repo/tools/db/dist/migrate.js.map /repo/tools/db/dist/roles.js /repo/tools/db/dist/roles.js.map /app/tools/db/
 COPY --from=build /repo/db/migrations /app/db/migrations
 CMD ["--enable-source-maps", "tools/db/migrate.js"]

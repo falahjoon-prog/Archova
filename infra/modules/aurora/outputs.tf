@@ -31,3 +31,7 @@ output "role_secret_arns" {
   description = "Role name -> Secrets Manager ARN ({username, password, host, port, dbname, url})."
   value       = { for r, s in aws_secretsmanager_secret.role : r => s.arn }
 }
+
+output "database_name" {
+  value = aws_rds_cluster.this.database_name
+}

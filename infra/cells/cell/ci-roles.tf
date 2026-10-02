@@ -9,7 +9,7 @@ locals {
   deploy_passable_roles = concat(
     [for s in keys(var.services) : aws_iam_role.task[s].arn],
     [for s in keys(var.services) : module.service[s].execution_role_arn],
-    [aws_iam_role.task["migrate"].arn, aws_iam_role.migrate_execution.arn],
+    [aws_iam_role.task["migrate"].arn, aws_iam_role.migrate_execution.arn, aws_iam_role.db_roles_execution.arn],
   )
 }
 

@@ -147,6 +147,11 @@ variable "services" {
     desired             = number
     spot                = optional(bool, false)
     requests_per_target = optional(number)
+    deployment = optional(object({
+      canary_percent = number
+      canary_minutes = number
+      bake_minutes   = number
+    }), { canary_percent = 10, canary_minutes = 10, bake_minutes = 30 })
     scheduled_floors = optional(list(object({
       name     = string
       schedule = string
@@ -154,6 +159,24 @@ variable "services" {
       max      = number
     })), [])
   }))
+}
+
+variable "ai_models" {
+  description = "Nova's Bedrock model ids per tier (ai/02 §3): Australian in-region ids or au. inference profiles only (X25). Null leaves them unset, and the api will not start in production until they are."
+  type = object({
+    fast     = string
+    standard = string
+    advanced = string
+  })
+  default = null
+
+  validation {
+    condition = var.ai_models == null || alltrue([
+      for id in values(coalesce(var.ai_models, { fast = "au.x", standard = "au.x", advanced = "au.x" })) :
+      startswith(id, "au.") || !can(regex("^(us|eu|apac|global|jp|ca)\\.", id))
+    ])
+    error_message = "Use au. inference profiles or in-region model ids; us., eu., apac. and global. profiles can leave Australia (X25)."
+  }
 }
 
 variable "enable_execute_command" {
