@@ -10,7 +10,7 @@ import type { Citation } from '@archova/ui';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
 import { mockId } from '@/shared/mocks/runtime';
-import { copyLabour } from '../lib/entry';
+import { copyLabour, needsEditReason } from '../lib/entry';
 import type { Amendment, DiaryContent, DiaryEntry, StandDown, Weather } from '../lib/types';
 import { emptyContent, type DiarySource } from './source';
 
@@ -57,6 +57,12 @@ export function toContent(d: ApiDetail): DiaryContent {
       trade: l.trade ?? '',
       headcount: l.headcount,
       hours: l.hours,
+      ...(l.source === 'attendance'
+        ? {
+            signIn: { headcount: l.attendanceHeadcount, hours: l.attendanceHours },
+            editReason: l.editReason ?? '',
+          }
+        : {}),
     })),
     plant: d.plant.map((l) => ({
       id: l.id,
@@ -210,12 +216,14 @@ const LINES: {
 } = {
   labour: {
     path: 'labour',
-    ready: (l) => !!l.companyId,
+    // A changed sign-in line waits for its reason; the API refuses it without one.
+    ready: (l) => !!l.companyId && !needsEditReason(l),
     body: (l) => ({
       companyId: l.companyId,
       trade: l.trade.trim() || null,
       headcount: l.headcount,
       hours: l.hours,
+      ...(l.signIn ? { editReason: l.editReason?.trim() || null } : {}),
     }),
   },
   plant: {

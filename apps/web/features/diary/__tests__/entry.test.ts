@@ -69,6 +69,29 @@ describe('diary rules', () => {
     ]);
   });
 
+  it('asks for a reason when sign-in numbers are changed', () => {
+    const line = {
+      id: 'a',
+      companyId: 'cmp_elec',
+      trade: '',
+      headcount: 4,
+      hours: 32,
+      signIn: { headcount: 4, hours: 32 },
+      editReason: '',
+    };
+    const c = (l: typeof line) => ({ ...emptyContent(), labour: [l] });
+    expect(submitProblems(c(line), companyName)).toEqual([]);
+    expect(submitProblems(c({ ...line, headcount: 3 }), companyName)).toEqual([
+      "Say why Brightwire Electrical's numbers differ from site sign-in.",
+    ]);
+    expect(
+      submitProblems(
+        c({ ...line, headcount: 3, editReason: 'Apprentice left early' }),
+        companyName,
+      ),
+    ).toEqual([]);
+  });
+
   it('describes amendments line by line', () => {
     const before = {
       ...emptyContent(),

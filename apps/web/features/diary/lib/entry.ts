@@ -29,6 +29,12 @@ export function isLateSubmission(
 }
 
 /** Lines copied into a new day: yesterday's companies and trades, headcount and hours blank (DIA-AC3). */
+/** A sign-in line whose headcount or hours were changed needs a reason before it saves (ATT-AC6). */
+export function needsEditReason(l: DiaryContent['labour'][number]): boolean {
+  if (!l.signIn || l.editReason?.trim()) return false;
+  return l.headcount !== l.signIn.headcount || l.hours !== l.signIn.hours;
+}
+
 export function copyLabour(
   prev: DiaryContent['labour'],
   newId: () => string,
@@ -144,6 +150,8 @@ export function submitProblems(content: DiaryContent, companyName: CompanyNamer)
   content.labour.forEach((l) => {
     if (l.headcount === null)
       problems.push(`Add a headcount for ${companyName(l.companyId)}, or remove the line.`);
+    else if (needsEditReason(l))
+      problems.push(`Say why ${companyName(l.companyId)}'s numbers differ from site sign-in.`);
   });
   return problems;
 }

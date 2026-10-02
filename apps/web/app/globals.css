@@ -807,6 +807,10 @@ section.diary-section .diary-section__summary {
 .diary-section__body {
   padding: 0 var(--space-4) var(--space-4);
 }
+.diary-sign-in {
+  display: block;
+  font-weight: 400;
+}
 .diary-lines .ac-input {
   min-width: 0;
   width: 100%;

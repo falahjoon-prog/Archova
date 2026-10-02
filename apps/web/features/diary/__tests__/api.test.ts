@@ -236,6 +236,42 @@ describe('Site diary API source', () => {
     expect(fake.callsTo('DELETE', `${D}/labour/{lineId}`)).toHaveLength(0);
   });
 
+  it('holds a changed sign-in line until it has a reason, then sends the reason', async () => {
+    const signIn = labour(1, {
+      source: 'attendance',
+      trade: null,
+      headcount: 6,
+      hours: 48,
+      attendanceHeadcount: 6,
+      attendanceHours: 48,
+    });
+    const state = detail({ labour: [signIn], delays: [], standDowns: [] });
+    fake.on('GET', D, () => state);
+    fake.on('PATCH', `${D}/labour/{lineId}`, ({ body }) =>
+      labour(1, { ...signIn, ...(body as Record<string, unknown>) }),
+    );
+    fake.on('PUT', D, () => state);
+    const source = createDiaryApi('org_1');
+    const day = await source.getDay('prj_1', '2026-10-01', '2026-10-02');
+    const line = day.content.labour[0]!;
+    expect(line).toMatchObject({ signIn: { headcount: 6, hours: 48 }, editReason: '' });
+
+    const changed = { ...line, headcount: 5 };
+    await source.saveDraft('prj_1', '2026-10-01', { ...day.content, labour: [changed] });
+    expect(fake.callsTo('PATCH', `${D}/labour/{lineId}`)).toHaveLength(0);
+    expect(fake.callsTo('DELETE', `${D}/labour/{lineId}`)).toHaveLength(0);
+
+    await source.saveDraft('prj_1', '2026-10-01', {
+      ...day.content,
+      labour: [{ ...changed, editReason: ' One left before signing out ' }],
+    });
+    expect(fake.callsTo('PATCH', `${D}/labour/{lineId}`)[0]!.init.body).toMatchObject({
+      headcount: 5,
+      hours: 48,
+      editReason: 'One left before signing out',
+    });
+  });
+
   it('sends the amendment reason with every change after submit', async () => {
     const state = detail({ entry: apiEntry({ status: 'submitted' }) });
     fake.on('GET', D, () => state);
