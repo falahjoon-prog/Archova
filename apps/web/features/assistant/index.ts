@@ -2,6 +2,8 @@
 export { AssistantPanel } from './components/AssistantPanel';
 export {
   AssistantScopeProvider,
+  useAskNova,
+  useAssistantPanelState,
   useAssistantScope,
   usePublishAssistantScope,
   type AssistantScope,

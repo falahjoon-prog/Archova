@@ -34,3 +34,8 @@ export function useCurrentProject(): CurrentProject {
   if (!project) throw new Error('useCurrentProject must be used inside the project layout');
   return project;
 }
+
+/** The project when inside the project layout, otherwise null (for org-level pieces such as the Nova panel). */
+export function useOptionalCurrentProject(): CurrentProject | null {
+  return useContext(CurrentProjectContext);
+}

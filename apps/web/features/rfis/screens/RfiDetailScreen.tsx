@@ -16,7 +16,7 @@ import {
   Textarea,
 } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
-import { usePublishAssistantScope } from '@/features/assistant';
+import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
@@ -37,8 +37,15 @@ type ReasonAction = 'reopen' | 'void';
 /** One RFI (F1.4): item header with ball in court, Details / Responses / Activity, close, reopen and void. */
 export function RfiDetailScreen({ rfiId }: { rfiId: string }) {
   const project = useCurrentProject();
-  usePublishAssistantScope({ projectId: project.projectId, record: { type: 'rfi', id: rfiId } });
   const rfi = useRfi(project.projectId, rfiId);
+  usePublishAssistantScope({
+    projectId: project.projectId,
+    record: {
+      type: 'rfi',
+      id: rfiId,
+      ...(rfi.data ? { label: formatRfiNumber(rfi.data.number) } : {}),
+    },
+  });
 
   if (rfi.isPending) return <SkeletonRows label="Loading RFI…" />;
   if (rfi.isError) return <ErrorAlert error={rfi.error} title="We couldn't open this RFI" />;
@@ -107,6 +114,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState<string | null>(null);
 
+  const askNova = useAskNova();
   const primary = primaryAction(rfi.status);
   const bic = ballInCourtLabel(rfi, actor);
 
@@ -179,6 +187,9 @@ function RfiView({ rfi }: { rfi: Rfi }) {
                 Void
               </Button>
             ) : null}
+            <Button variant="tertiary" onClick={askNova}>
+              Ask Nova about this
+            </Button>
           </>
         }
       />

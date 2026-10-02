@@ -3,7 +3,7 @@ import type { Citation } from '@archova/ui';
 
 /**
  * Nova citations arrive as record references (`drawing:<sheetId>:<revisionId>`, `documents:<documentId>`,
- * `rfi:<rfiId>`) so the source never needs to know the org slug; this turns them into app routes. Anything else is
+ * `rfi:<rfiId>`, `defect:<id>`, `diary:<date>`) so the source never needs to know the org slug; this turns them into app routes. Anything else is
  * passed through unchanged.
  */
 export function resolveCitation(citation: Citation, orgSlug: string, projectId: string): Citation {
@@ -18,6 +18,10 @@ export function resolveCitation(citation: Citation, orgSlug: string, projectId: 
       };
     case 'rfi':
       return a ? { ...citation, href: webRoutes.rfi(orgSlug, projectId, a) } : citation;
+    case 'defect':
+      return a ? { ...citation, href: webRoutes.defect(orgSlug, projectId, a) } : citation;
+    case 'diary':
+      return a ? { ...citation, href: webRoutes.diary(orgSlug, projectId, a) } : citation;
     default:
       return citation;
   }

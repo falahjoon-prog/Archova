@@ -15,7 +15,7 @@ import {
   Textarea,
 } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
-import { usePublishAssistantScope } from '@/features/assistant';
+import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant, todayIn } from '@/shared/lib/format';
@@ -70,11 +70,15 @@ const DIALOG: Record<
 /** One defect (F1.8 steps 3–4): fix evidence, close or reject, dispute, reassign, void. */
 export function DefectDetailScreen({ defectId }: { defectId: string }) {
   const project = useCurrentProject();
+  const defect = useDefect(defectId);
   usePublishAssistantScope({
     projectId: project.projectId,
-    record: { type: 'defect', id: defectId },
+    record: {
+      type: 'defect',
+      id: defectId,
+      ...(defect.data ? { label: formatDefectNumber(defect.data.number) } : {}),
+    },
   });
-  const defect = useDefect(defectId);
   if (defect.isPending) return <SkeletonRows label="Loading defect…" />;
   if (defect.isError)
     return <ErrorAlert error={defect.error} title="We couldn't open this defect" />;
@@ -85,6 +89,7 @@ function DefectView({ d }: { d: Defect }) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const m = useDefectMutations();
+  const askNova = useAskNova();
   const today = todayIn(project.timezone);
   const [pending, setPending] = useState<Pending>(null);
   const [note, setNote] = useState('');
@@ -160,6 +165,9 @@ function DefectView({ d }: { d: Defect }) {
           Void
         </Button>
       ) : null}
+      <Button variant="tertiary" onClick={askNova}>
+        Ask Nova about this
+      </Button>
     </>
   );
 
