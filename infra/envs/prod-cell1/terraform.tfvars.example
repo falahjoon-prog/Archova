@@ -1,5 +1,6 @@
 # Copy to terraform.tfvars (git-ignored) or pass as TF_VAR_* in CI once the accounts exist.
 account_id     = "111111111111"
+size           = "lean" # "full" from the first paying builder
 dns_zone_id    = "Z0123456789ABCDEFGHIJ"
 image_registry = "222222222222.dkr.ecr.ap-southeast-2.amazonaws.com"
 dns_role_arn      = "arn:aws:iam::222222222222:role/archova-shared-dns-prod"

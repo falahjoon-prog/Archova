@@ -3,6 +3,16 @@ variable "account_id" {
   type        = string
 }
 
+variable "size" {
+  description = "lean for the pilots (about A$1,300-1,950 a month before Nova), full from the first paying builder (infrastructure/09)."
+  type        = string
+  default     = "lean"
+  validation {
+    condition     = contains(["lean", "full"], var.size)
+    error_message = "size must be lean or full."
+  }
+}
+
 variable "domain" {
   description = "Product domain (bought by john, 2 Oct 2026)."
   type        = string
