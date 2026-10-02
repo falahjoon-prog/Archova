@@ -463,6 +463,21 @@ export function createDrawingService(c: DocumentsContext) {
     return view!;
   }
 
+  /** The revision `revisionId` superseded on its sheet, or null for a sheet's first issue (Nova F21). */
+  async function getPreviousRevision(scope: TenantScope, projectId: string, revisionId: string) {
+    const [row] = await scope.tx
+      .select()
+      .from(drawingRevisions)
+      .where(
+        and(
+          eq(drawingRevisions.projectId, projectId),
+          eq(drawingRevisions.supersededById, revisionId),
+        ),
+      )
+      .limit(1);
+    return row ?? null;
+  }
+
   /** Current revisions for whole disciplines, for "current set for discipline X" on transmittals (DOC-AC12). */
   async function currentForDisciplines(
     scope: TenantScope,
@@ -515,6 +530,7 @@ export function createDrawingService(c: DocumentsContext) {
     listSheets,
     sheetHistory,
     getRevision,
+    getPreviousRevision,
     currentForDisciplines,
     revisionsByIds,
   };

@@ -30,14 +30,18 @@ const open = (bytes: Uint8Array) =>
 
 export async function readPdfText(
   bytes: Uint8Array,
-  opts: { maxPages?: number } = {},
+  /** `pages`: read only these (1-based) pages, e.g. one sheet of a drawing set. */
+  opts: { maxPages?: number; pages?: readonly number[] } = {},
 ): Promise<{ pageCount: number; pages: PdfPageText[] }> {
   const task = open(bytes);
   try {
     const pdf = await task.promise;
     const limit = Math.min(pdf.numPages, opts.maxPages ?? MAX_PDF_PAGES);
+    const wanted = opts.pages
+      ? opts.pages.filter((n) => n >= 1 && n <= pdf.numPages)
+      : Array.from({ length: limit }, (_, i) => i + 1);
     const pages: PdfPageText[] = [];
-    for (let n = 1; n <= limit; n++) {
+    for (const n of wanted) {
       const page = await pdf.getPage(n);
       const vp = page.getViewport({ scale: 1 });
       const content = await page.getTextContent();

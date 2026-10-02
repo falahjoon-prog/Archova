@@ -24,6 +24,11 @@ beforeAll(async () => {
       sources: async () => [],
       accessScopes: async () => [],
       similarRfis: async () => [],
+      getDrawingRevision: async () => {
+        throw new Error('unused');
+      },
+      getPreviousDrawingRevision: async () => null,
+      openRfisOnDrawing: async () => [],
       provider: t.ai,
     },
   ).api;

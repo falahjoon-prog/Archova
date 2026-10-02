@@ -304,6 +304,11 @@ export const DraftRfiWithNovaParams = z.object({
 export const DraftRfiWithNovaBody = z.object({
   "note": z.string().min(1).max(4000),
 }).strict();
+export const CompareDrawingRevisionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
 export const DraftInductionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1540,6 +1545,18 @@ export const operations = {
     params: DraftRfiWithNovaParams,
     query: null,
     body: DraftRfiWithNovaBody,
+  },
+  compareDrawingRevision: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes',
+    module: "ai",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: CompareDrawingRevisionParams,
+    query: null,
+    body: null,
   },
   draftInduction: {
     method: 'POST',

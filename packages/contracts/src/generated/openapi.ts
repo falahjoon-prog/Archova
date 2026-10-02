@@ -993,6 +993,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova says what changed on a drawing revision since the one it superseded (F21).
+         * @description Software compares the text on this revision's sheet with the revision it superseded (scanned sheets are
+         *     read with OCR) and lists every line added, removed or changed, with where it sits on the sheet. Nova puts
+         *     those changes into plain words; an item that cites no real change or adds a number is removed, and changes
+         *     no item describes are listed in `unexplainedChangeIds`. Linework and clouds aren't compared yet: use the
+         *     overlay for those. Open RFIs the caller can see that are pinned to either revision are listed, with
+         *     `nearChange` when a change sits near the pin. The wording is worked out once per revision pair and shared,
+         *     costing half a Nova credit the first time and nothing after; no text changes means no model call. A POST
+         *     because the first call does that work.
+         */
+        post: operations["compareDrawingRevision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts": {
         parameters: {
             query?: never;
@@ -2660,7 +2691,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -2784,6 +2815,49 @@ export interface components {
             }[];
             /** @description People (`usr_`) asked the most similar RFIs. The person picks the assignee. */
             suggestedAssigneeIds: string[];
+        };
+        NovaDrawingChange: {
+            /** @description Cited by items */
+            id: string;
+            /** @enum {string} */
+            kind: "added" | "removed" | "changed";
+            before: string | null;
+            after: string | null;
+            titleBlock: boolean;
+            /** @description Normalised */
+            x: number;
+            y: number;
+        };
+        NovaDrawingCompare: {
+            /** @description For feedback (`air_`); null when no text changed. */
+            runId: string | null;
+            revisionId: string;
+            /** @description The revision this one superseded */
+            againstRevisionId: string;
+            sheetNumber: string;
+            fromRev: string;
+            toRev: string;
+            headline: string;
+            items: {
+                text: string;
+                changeIds: string[];
+            }[];
+            changes: components["schemas"]["NovaDrawingChange"][];
+            /** @description Changes no item describes; show them as found. */
+            unexplainedChangeIds: string[];
+            /** @description More changes were found than listed */
+            truncated: boolean;
+            /** @description A sheet was read with OCR; check against the drawing */
+            scanned: boolean;
+            affectedRfis: {
+                id: string;
+                number: string | null;
+                subject: string;
+                /** @enum {string} */
+                status: "open" | "answered";
+                /** @description A change sits near the RFI's pin */
+                nearChange: boolean;
+            }[];
         };
         NovaIndexReport: {
             indexed: number;
@@ -6003,6 +6077,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaRfiDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    compareDrawingRevision: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description What changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaDrawingCompare"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -90,6 +90,8 @@ export const PROBLEM_CODES = {
   'ai.induction.no_documents': 422,
   'ai.translation.language_unavailable': 422,
   'ai.diary.nothing_to_summarise': 422,
+  'ai.drawing_compare.no_previous_revision': 422,
+  'ai.drawing_compare.no_text': 422,
   // diary
   'diary.not_found': 404,
   'diary.future_date': 422,

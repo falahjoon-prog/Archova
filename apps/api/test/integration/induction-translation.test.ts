@@ -43,6 +43,11 @@ beforeAll(async () => {
       sources: async () => [],
       accessScopes: async () => [],
       similarRfis: async () => [],
+      getDrawingRevision: async () => {
+        throw new Error('unused');
+      },
+      getPreviousDrawingRevision: async () => null,
+      openRfisOnDrawing: async () => [],
       provider: t.ai,
       translationLanguages: [TEST_LANGUAGE, { ...TEST_LANGUAGE, code: 'x-off', enabled: false }],
     },

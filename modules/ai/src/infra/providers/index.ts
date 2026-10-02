@@ -3,6 +3,7 @@
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
+import { heuristicDrawingCompare } from '../../eval/suites/drawing-compare';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
@@ -27,6 +28,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.check': fakeTranslationCheck,
   'diary.summary': heuristicDiarySummary,
   'rfi.draft': heuristicRfiDraft,
+  'drawing.compare': heuristicDrawingCompare,
 };
 
 export {
