@@ -1216,6 +1216,441 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Diary days in a date range (at most 93 days), with labour and delay totals. Days with no entry are absent. */
+        get: operations["listDiaryEntries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        /** One day's diary with every section and its amendments. */
+        get: operations["getDiaryEntry"];
+        /**
+         * Create the day, or save its header (weather override, site conditions, notes, photos).
+         * @description Send `If-Match` once the day exists. After submit, a change is an amendment and needs `amendmentReason` (X42).
+         */
+        put: operations["saveDiaryEntry"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit and lock the day (DIA-AC7). Late submits are accepted and flagged. */
+        post: operations["submitDiaryEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/sign-off": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** PM sign-off of a submitted day (DIA-US9). */
+        post: operations["signOffDiaryEntry"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/copy-from/{fromDate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                fromDate: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the day's labour from another day's companies and trades, with headcount and hours blank (DIA-AC3). */
+        post: operations["copyDiaryLabour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a labour line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryLabour"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a labour line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryLabour"];
+        options?: never;
+        head?: never;
+        /** Change a labour line. */
+        patch: operations["updateDiaryLabour"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a plant line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryPlant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a plant line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryPlant"];
+        options?: never;
+        head?: never;
+        /** Change a plant line. */
+        patch: operations["updateDiaryPlant"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a delivery line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a delivery line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryDelivery"];
+        options?: never;
+        head?: never;
+        /** Change a delivery line. */
+        patch: operations["updateDiaryDelivery"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a delay line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryDelay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a delay line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryDelay"];
+        options?: never;
+        head?: never;
+        /** Change a delay line. */
+        patch: operations["updateDiaryDelay"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a visitor line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryVisitor"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a visitor line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryVisitor"];
+        options?: never;
+        head?: never;
+        /** Change a visitor line. */
+        patch: operations["updateDiaryVisitor"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a event line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryEvent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a event line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryEvent"];
+        options?: never;
+        head?: never;
+        /** Change a event line. */
+        patch: operations["updateDiaryEvent"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a stand down line. Creates the day as a draft if it doesn't exist. */
+        post: operations["createDiaryStandDown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a stand down line. After submit it stays in the record as a removal amendment. */
+        delete: operations["deleteDiaryStandDown"];
+        options?: never;
+        head?: never;
+        /** Change a stand down line. */
+        patch: operations["updateDiaryStandDown"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2221,6 +2656,358 @@ export interface components {
         };
         RfiReasonRequest: {
             reason: string;
+        };
+        /** @enum {string} */
+        DiaryStatus: "draft" | "submitted" | "signed_off";
+        /** @enum {string} */
+        DiaryDelayType: "weather" | "client" | "design" | "subcontractor" | "authority" | "industrial" | "other";
+        DiaryWeather: {
+            minTempC?: number | null;
+            maxTempC?: number | null;
+            rainfallMm?: number | null;
+            windKmh?: number | null;
+            windDirection?: string | null;
+            conditions?: {
+                am?: string | null;
+                midday?: string | null;
+                pm?: string | null;
+            } | null;
+        };
+        DiaryTotals: {
+            labourCompanies: number;
+            labourHeadcount: number;
+            labourHours: number;
+            delayHours: number;
+        };
+        DiaryEntry: {
+            id: string;
+            projectId: string;
+            /** Format: date */
+            date: string;
+            status: components["schemas"]["DiaryStatus"];
+            /** @description Observations filled from the weather source (X44). Read-only. */
+            weather: components["schemas"]["DiaryWeather"] | null;
+            weatherStationId: string | null;
+            /** @description The site manager's correction. Both values are kept (DIA-AC2). */
+            weatherOverride: components["schemas"]["DiaryWeather"] | null;
+            weatherNotes: string | null;
+            siteConditions: string | null;
+            notes: string | null;
+            fileIds: components["schemas"]["FileRef"][];
+            submittedBy: components["schemas"]["UserRef"] | null;
+            /**
+             * Format: date-time
+             * @description When the day was submitted, from the device clock when it was earlier than the server's.
+             */
+            submittedAt: string | null;
+            /** Format: date-time */
+            submitReceivedAt: string | null;
+            isLate: boolean;
+            /**
+             * Format: date-time
+             * @description Submits after this instant are late (10am the next day in the project's zone).
+             */
+            lateAfter: string;
+            signedOffBy: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            signedOffAt: string | null;
+            totals: components["schemas"]["DiaryTotals"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        DiaryEntryList: {
+            data: components["schemas"]["DiaryEntry"][];
+        };
+        DiaryAmendment: {
+            id: string;
+            /** @enum {string} */
+            targetType: "entry" | "labour" | "plant" | "delivery" | "delay" | "visitor" | "event" | "stand_down";
+            targetId: string;
+            /** @enum {string} */
+            action: "create" | "update" | "delete";
+            /** @description `{field: [before, after]}` */
+            changes: {
+                [key: string]: unknown[];
+            };
+            reason: string;
+            amendedBy: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            amendedAt: string;
+        };
+        DiaryEntryDetail: {
+            entry: components["schemas"]["DiaryEntry"];
+            labour: components["schemas"]["DiaryLabour"][];
+            plant: components["schemas"]["DiaryPlant"][];
+            deliveries: components["schemas"]["DiaryDelivery"][];
+            delays: components["schemas"]["DiaryDelay"][];
+            visitors: components["schemas"]["DiaryVisitor"][];
+            events: components["schemas"]["DiaryEvent"][];
+            standDowns: components["schemas"]["DiaryStandDown"][];
+            /** @description Changes made after submit, oldest first. Removed lines are listed here, not in the sections. */
+            amendments: components["schemas"]["DiaryAmendment"][];
+        };
+        SaveDiaryEntryRequest: {
+            weatherOverride?: components["schemas"]["DiaryWeather"] | null;
+            weatherNotes?: string | null;
+            siteConditions?: string | null;
+            notes?: string | null;
+            fileIds?: components["schemas"]["FileRef"][];
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        SubmitDiaryEntryRequest: {
+            /**
+             * Format: date-time
+             * @description When the site manager pressed submit on the device; used as the record time if not in the future.
+             */
+            clientAt?: string;
+        };
+        DiaryLabour: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            companyId: components["schemas"]["CompanyRef"];
+            trade: string | null;
+            headcount: number | null;
+            hours: number | null;
+            notes: string | null;
+            /** @description Required when changing headcount or hours on a line pre-filled from site attendance (ATT-AC6). */
+            editReason: string | null;
+            /** @enum {string} */
+            source: "manual" | "attendance";
+            attendanceHeadcount: number | null;
+            attendanceHours: number | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryLabourRequest: {
+            companyId: components["schemas"]["CompanyRef"];
+            trade?: string | null;
+            headcount?: number | null;
+            hours?: number | null;
+            notes?: string | null;
+            /** @description Required when changing headcount or hours on a line pre-filled from site attendance (ATT-AC6). */
+            editReason?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryLabourRequest: {
+            companyId?: components["schemas"]["CompanyRef"];
+            trade?: string | null;
+            headcount?: number | null;
+            hours?: number | null;
+            notes?: string | null;
+            /** @description Required when changing headcount or hours on a line pre-filled from site attendance (ATT-AC6). */
+            editReason?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        DiaryPlant: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            companyId: components["schemas"]["CompanyRef"] | null;
+            description: string;
+            quantity: number;
+            hours: number | null;
+            /** @enum {string} */
+            status: "working" | "idle" | "broken_down";
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryPlantRequest: {
+            companyId?: components["schemas"]["CompanyRef"] | null;
+            description: string;
+            quantity?: number;
+            hours?: number | null;
+            /** @enum {string} */
+            status?: "working" | "idle" | "broken_down";
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryPlantRequest: {
+            companyId?: components["schemas"]["CompanyRef"] | null;
+            description?: string;
+            quantity?: number;
+            hours?: number | null;
+            /** @enum {string} */
+            status?: "working" | "idle" | "broken_down";
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        DiaryDelivery: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            supplierCompanyId: components["schemas"]["CompanyRef"] | null;
+            supplierName: string | null;
+            description: string;
+            /** Format: date-time */
+            receivedAt: string | null;
+            docketNumber: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryDeliveryRequest: {
+            supplierCompanyId?: components["schemas"]["CompanyRef"] | null;
+            supplierName?: string | null;
+            description: string;
+            /** Format: date-time */
+            receivedAt?: string | null;
+            docketNumber?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryDeliveryRequest: {
+            supplierCompanyId?: components["schemas"]["CompanyRef"] | null;
+            supplierName?: string | null;
+            description?: string;
+            /** Format: date-time */
+            receivedAt?: string | null;
+            docketNumber?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        DiaryDelay: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            type: components["schemas"]["DiaryDelayType"];
+            description: string;
+            hours: number;
+            affectedCompanyIds: components["schemas"]["CompanyRef"][];
+            /** @description Defaults to true for weather, client, design and authority delays (DIA-AC4). */
+            isEotCandidate: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryDelayRequest: {
+            type: components["schemas"]["DiaryDelayType"];
+            description: string;
+            hours: number;
+            affectedCompanyIds?: components["schemas"]["CompanyRef"][];
+            /** @description Defaults to true for weather, client, design and authority delays (DIA-AC4). */
+            isEotCandidate?: boolean;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryDelayRequest: {
+            type?: components["schemas"]["DiaryDelayType"];
+            description?: string;
+            hours?: number;
+            affectedCompanyIds?: components["schemas"]["CompanyRef"][];
+            /** @description Defaults to true for weather, client, design and authority delays (DIA-AC4). */
+            isEotCandidate?: boolean;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        DiaryVisitor: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            name: string;
+            company: string | null;
+            purpose: string | null;
+            timeIn: string | null;
+            timeOut: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryVisitorRequest: {
+            name: string;
+            company?: string | null;
+            purpose?: string | null;
+            timeIn?: string | null;
+            timeOut?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryVisitorRequest: {
+            name?: string;
+            company?: string | null;
+            purpose?: string | null;
+            timeIn?: string | null;
+            timeOut?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        DiaryEvent: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            /** @enum {string} */
+            kind: "inspection" | "incident" | "near_miss" | "toolbox_talk" | "inspector_visit" | "instruction" | "other";
+            at: string | null;
+            description: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryEventRequest: {
+            /** @enum {string} */
+            kind: "inspection" | "incident" | "near_miss" | "toolbox_talk" | "inspector_visit" | "instruction" | "other";
+            at?: string | null;
+            description: string;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryEventRequest: {
+            /** @enum {string} */
+            kind?: "inspection" | "incident" | "near_miss" | "toolbox_talk" | "inspector_visit" | "instruction" | "other";
+            at?: string | null;
+            description?: string;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        DiaryStandDown: {
+            id: string;
+            projectId: string;
+            entryId: string;
+            startTime: string;
+            endTime: string | null;
+            affectedCompanyIds: components["schemas"]["CompanyRef"][];
+            reason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CreateDiaryStandDownRequest: {
+            startTime: string;
+            endTime?: string | null;
+            affectedCompanyIds?: components["schemas"]["CompanyRef"][];
+            reason?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
+        };
+        UpdateDiaryStandDownRequest: {
+            startTime?: string;
+            endTime?: string | null;
+            affectedCompanyIds?: components["schemas"]["CompanyRef"][];
+            reason?: string | null;
+            /** @description Required once the day is submitted; recorded with the amendment (X42). */
+            amendmentReason?: string;
         };
     };
     responses: {
@@ -4307,6 +5094,852 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDiaryEntries: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entries, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEntryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDiaryEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The day */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEntryDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveDiaryEntry: {
+        parameters: {
+            query?: never;
+            header?: {
+                "If-Match"?: string;
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveDiaryEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Saved */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEntryDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitDiaryEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitDiaryEntryRequest"];
+            };
+        };
+        responses: {
+            /** @description Submitted */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEntryDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signOffDiaryEntry: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed off */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEntryDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    copyDiaryLabour: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                fromDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Copied */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEntryDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryLabour: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryLabourRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryLabour"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryLabour: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryLabour: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryLabourRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryLabour"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryPlant: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryPlantRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryPlant"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryPlant: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryPlant: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryPlantRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryPlant"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryDelivery: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryDelivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryDelivery: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryDelivery: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryDelivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryDelay: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryDelayRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryDelay"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryDelay: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryDelay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryDelayRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryDelay"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryVisitor: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryVisitorRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryVisitor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryVisitor: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryVisitor: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryVisitorRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryVisitor"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryEvent: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryEvent: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryEvent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryEventRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryEvent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDiaryStandDown: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDiaryStandDownRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryStandDown"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteDiaryStandDown: {
+        parameters: {
+            query?: {
+                amendmentReason?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDiaryStandDown: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDiaryStandDownRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DiaryStandDown"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -379,6 +379,196 @@ export const VoidRfiParams = z.object({
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
 });
 export const VoidRfiBody = s.RfiReasonRequestSchema;
+export const ListDiaryEntriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDiaryEntriesQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+});
+export const GetDiaryEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const SaveDiaryEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const SaveDiaryEntryBody = s.SaveDiaryEntryRequestSchema;
+export const SubmitDiaryEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const SubmitDiaryEntryBody = s.SubmitDiaryEntryRequestSchema;
+export const SignOffDiaryEntryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CopyDiaryLabourParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "fromDate": z.string().date(),
+});
+export const CreateDiaryLabourParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryLabourBody = s.CreateDiaryLabourRequestSchema;
+export const UpdateDiaryLabourParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dlb_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryLabourBody = s.UpdateDiaryLabourRequestSchema;
+export const DeleteDiaryLabourParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dlb_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryLabourQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
+export const CreateDiaryPlantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryPlantBody = s.CreateDiaryPlantRequestSchema;
+export const UpdateDiaryPlantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dpl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryPlantBody = s.UpdateDiaryPlantRequestSchema;
+export const DeleteDiaryPlantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dpl_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryPlantQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
+export const CreateDiaryDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryDeliveryBody = s.CreateDiaryDeliveryRequestSchema;
+export const UpdateDiaryDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^ddv_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryDeliveryBody = s.UpdateDiaryDeliveryRequestSchema;
+export const DeleteDiaryDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^ddv_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryDeliveryQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
+export const CreateDiaryDelayParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryDelayBody = s.CreateDiaryDelayRequestSchema;
+export const UpdateDiaryDelayParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^ddy_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryDelayBody = s.UpdateDiaryDelayRequestSchema;
+export const DeleteDiaryDelayParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^ddy_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryDelayQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
+export const CreateDiaryVisitorParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryVisitorBody = s.CreateDiaryVisitorRequestSchema;
+export const UpdateDiaryVisitorParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dvi_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryVisitorBody = s.UpdateDiaryVisitorRequestSchema;
+export const DeleteDiaryVisitorParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dvi_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryVisitorQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
+export const CreateDiaryEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryEventBody = s.CreateDiaryEventRequestSchema;
+export const UpdateDiaryEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dev_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryEventBody = s.UpdateDiaryEventRequestSchema;
+export const DeleteDiaryEventParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dev_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryEventQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
+export const CreateDiaryStandDownParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
+export const CreateDiaryStandDownBody = s.CreateDiaryStandDownRequestSchema;
+export const UpdateDiaryStandDownParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dsd_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDiaryStandDownBody = s.UpdateDiaryStandDownRequestSchema;
+export const DeleteDiaryStandDownParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "lineId": z.string().regex(new RegExp("^dsd_[0-9A-Za-z]{26}$")),
+});
+export const DeleteDiaryStandDownQuery = z.object({
+  "amendmentReason": z.string().min(1).max(1000).optional(),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -1281,6 +1471,330 @@ export const operations = {
     params: VoidRfiParams,
     query: null,
     body: VoidRfiBody,
+  },
+  listDiaryEntries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: ListDiaryEntriesParams,
+    query: ListDiaryEntriesQuery,
+    body: null,
+  },
+  getDiaryEntry: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: GetDiaryEntryParams,
+    query: null,
+    body: null,
+  },
+  saveDiaryEntry: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: SaveDiaryEntryParams,
+    query: null,
+    body: SaveDiaryEntryBody,
+  },
+  submitDiaryEntry: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/submit',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitDiaryEntryParams,
+    query: null,
+    body: SubmitDiaryEntryBody,
+  },
+  signOffDiaryEntry: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/sign-off',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.sign_off",
+    internal: false,
+    contentType: null,
+    params: SignOffDiaryEntryParams,
+    query: null,
+    body: null,
+  },
+  copyDiaryLabour: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/copy-from/{fromDate}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: CopyDiaryLabourParams,
+    query: null,
+    body: null,
+  },
+  createDiaryLabour: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryLabourParams,
+    query: null,
+    body: CreateDiaryLabourBody,
+  },
+  updateDiaryLabour: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryLabourParams,
+    query: null,
+    body: UpdateDiaryLabourBody,
+  },
+  deleteDiaryLabour: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/labour/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryLabourParams,
+    query: DeleteDiaryLabourQuery,
+    body: null,
+  },
+  createDiaryPlant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryPlantParams,
+    query: null,
+    body: CreateDiaryPlantBody,
+  },
+  updateDiaryPlant: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryPlantParams,
+    query: null,
+    body: UpdateDiaryPlantBody,
+  },
+  deleteDiaryPlant: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/plant/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryPlantParams,
+    query: DeleteDiaryPlantQuery,
+    body: null,
+  },
+  createDiaryDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryDeliveryParams,
+    query: null,
+    body: CreateDiaryDeliveryBody,
+  },
+  updateDiaryDelivery: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryDeliveryParams,
+    query: null,
+    body: UpdateDiaryDeliveryBody,
+  },
+  deleteDiaryDelivery: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/deliveries/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryDeliveryParams,
+    query: DeleteDiaryDeliveryQuery,
+    body: null,
+  },
+  createDiaryDelay: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryDelayParams,
+    query: null,
+    body: CreateDiaryDelayBody,
+  },
+  updateDiaryDelay: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryDelayParams,
+    query: null,
+    body: UpdateDiaryDelayBody,
+  },
+  deleteDiaryDelay: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/delays/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryDelayParams,
+    query: DeleteDiaryDelayQuery,
+    body: null,
+  },
+  createDiaryVisitor: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryVisitorParams,
+    query: null,
+    body: CreateDiaryVisitorBody,
+  },
+  updateDiaryVisitor: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryVisitorParams,
+    query: null,
+    body: UpdateDiaryVisitorBody,
+  },
+  deleteDiaryVisitor: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/visitors/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryVisitorParams,
+    query: DeleteDiaryVisitorQuery,
+    body: null,
+  },
+  createDiaryEvent: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryEventParams,
+    query: null,
+    body: CreateDiaryEventBody,
+  },
+  updateDiaryEvent: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryEventParams,
+    query: null,
+    body: UpdateDiaryEventBody,
+  },
+  deleteDiaryEvent: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/events/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryEventParams,
+    query: DeleteDiaryEventQuery,
+    body: null,
+  },
+  createDiaryStandDown: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDiaryStandDownParams,
+    query: null,
+    body: CreateDiaryStandDownBody,
+  },
+  updateDiaryStandDown: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDiaryStandDownParams,
+    query: null,
+    body: UpdateDiaryStandDownBody,
+  },
+  deleteDiaryStandDown: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/stand-downs/{lineId}',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.write",
+    internal: false,
+    contentType: null,
+    params: DeleteDiaryStandDownParams,
+    query: DeleteDiaryStandDownQuery,
+    body: null,
   },
 } as const satisfies Record<string, OperationDef>;
 
