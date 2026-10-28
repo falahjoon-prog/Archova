@@ -40,7 +40,10 @@ async function setup() {
     'Tiles B',
   );
   await addMember(pm.browser, org.id, project.id, outsider.email, 'Subcontractor', 'Sparky');
-  return { pm, tilerA, tilerB, outsider, org, project, base, coA, coB };
+  // A client has no commitments access at all.
+  const viewer = await signUp(t.app, 'est-client');
+  await addMember(pm.browser, org.id, project.id, viewer.email, 'Client', 'Client Co');
+  return { pm, tilerA, tilerB, outsider, viewer, org, project, base, coA, coB };
 }
 
 const etagOf = (res: { headers: Record<string, unknown> }) => res.headers.etag as string;
@@ -341,5 +344,32 @@ describe('tender packages and quotes (product/10)', () => {
       { 'if-match': etagOf(confirmed) },
     );
     expect(edit.json().code).toBe('quote.invalid_state');
+  });
+
+  it('refuses people with no commitments access, on quotes and on quote uploads', async () => {
+    const s = await setup();
+    const pkg = await s.pm.browser.post(`${s.base}/tender-packages`, {
+      name: 'Tiling',
+      trade: 'Tiling',
+      dueAt: '2031-01-15T05:00:00Z',
+      scope,
+    });
+    const id = pkg.json().id;
+    await s.pm.browser.post(`${s.base}/tender-packages/${id}/invites`, {
+      companyIds: [s.coA.companyId],
+    });
+    for (const path of ['', '/quotes']) {
+      const res = await s.viewer.browser.get(`${s.base}/tender-packages/${id}${path}`);
+      expect(res.statusCode).toBe(403);
+    }
+    expect((await s.viewer.browser.get(`${s.base}/tender-packages`)).statusCode).toBe(403);
+    const quote = await s.viewer.browser.post(`${s.base}/tender-packages/${id}/quotes`, {
+      lines: [{ description: 'x', amount: '1.00' }],
+    });
+    expect(quote.statusCode).toBe(403);
+    // No quote PDFs either: the upload permission is the submit permission.
+    await expect(
+      uploadFile(t, s.viewer.browser, s.org.id, s.project.id, 'quote.pdf', 'estimating'),
+    ).rejects.toThrow(/403/);
   });
 });

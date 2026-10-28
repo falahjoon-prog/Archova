@@ -501,8 +501,15 @@ export function createTenderService(deps: EstimatingDeps) {
     return rows.map((r) => ({ ...r, lines: lines.filter((l) => l.quoteId === r.id) }));
   }
 
+  /** Competing prices are the estimator's: builder staff need `quotes.review` to read any quote. */
+  async function assertCanReadQuotes(scope: TenantScope, projectId: string, v: Viewer) {
+    if (v.isInternal && !(await deps.access.can(scope, 'estimating.quotes.review', { projectId })))
+      throw new AppError('access.denied', "You can't see the quotes on this package.");
+  }
+
   async function listQuotes(scope: TenantScope, projectId: string, packageId: string) {
     const { viewer: v } = await load(scope, projectId, packageId);
+    await assertCanReadQuotes(scope, projectId, v);
     const conditions = [eq(quotes.packageId, packageId)];
     if (!v.isInternal) conditions.push(eq(quotes.companyId, v.companyId ?? uuidv7()));
     const rows = await scope.tx
@@ -525,6 +532,7 @@ export function createTenderService(deps: EstimatingDeps) {
       .from(quotes)
       .where(and(eq(quotes.id, quoteId), eq(quotes.packageId, packageId)))
       .limit(1);
+    await assertCanReadQuotes(scope, projectId, v);
     if (!q || (!v.isInternal && q.companyId !== v.companyId)) throw new AppError('quote.not_found');
     return { pkg, quote: q, viewer: v };
   }
