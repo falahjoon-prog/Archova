@@ -128,7 +128,7 @@ export function DataTable<Row>({
           {sorted.length === 0 ? (
             <tr>
               <td colSpan={columns.length} className="ac-table__empty">
-                {empty ?? 'Nothing to show.'}
+                <div className="ac-table__empty-inner">{empty ?? 'Nothing to show.'}</div>
               </td>
             </tr>
           ) : (

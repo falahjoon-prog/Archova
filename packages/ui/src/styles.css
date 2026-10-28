@@ -528,6 +528,7 @@
 
 /* Data table */
 .ac-table-wrap {
+  container-type: inline-size;
   overflow: auto;
   max-width: 100%;
   border: 1px solid var(--c-border-divider);
@@ -601,6 +602,12 @@
 }
 .ac-table__sort-icon.is-asc {
   transform: rotate(180deg);
+}
+/* On a phone the table scrolls sideways; the empty message stays as wide as the screen and in view. */
+.ac-table__empty-inner {
+  position: sticky;
+  left: 0;
+  width: min(100cqw, 100%);
 }
 .ac-table__empty {
   padding: var(--space-8) var(--space-4) !important;
@@ -764,6 +771,16 @@
 }
 .ac-filter-bar__filters > * {
   min-width: 180px;
+}
+/* Phone: each filter takes the full row so the fields line up. */
+@media (max-width: 640px) {
+  .ac-filter-bar__filters {
+    width: 100%;
+  }
+  .ac-filter-bar__filters > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
 }
 .ac-filter-bar__actions {
   display: flex;

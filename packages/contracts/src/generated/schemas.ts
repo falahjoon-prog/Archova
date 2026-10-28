@@ -1737,6 +1737,29 @@ export const ProjectPageSchema = z.object({
 });
 export type ProjectPage = z.infer<typeof ProjectPageSchema>;
 
+export const PublicPriceBookSchema = z.object({
+  "version": z.string(),
+  "effectiveFrom": z.string().datetime({ offset: true }).nullable(),
+  "currency": z.enum(["AUD"]),
+  "gstIncluded": z.boolean(),
+  "plans": z.array(z.object({
+  "code": z.string(),
+  "name": z.string(),
+  "blurb": z.string(),
+  "features": z.array(z.string()),
+  "cta": z.object({
+  "label": z.string(),
+  "href": z.string(),
+}),
+  "price": z.object({
+  "unit": z.enum(["free", "user_month", "year"]),
+  "fromPrice": z.boolean(),
+  "amountCents": z.number().int().nullable(),
+}),
+})),
+});
+export type PublicPriceBook = z.infer<typeof PublicPriceBookSchema>;
+
 export const PublishDrawingSetRequestSchema = z.object({
   "confirmNewSheets": z.boolean().optional(),
   "reasons": z.array(z.object({

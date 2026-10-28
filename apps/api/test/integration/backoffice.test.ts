@@ -1,0 +1,516 @@
+import { sql } from 'drizzle-orm';
+import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { StaffRole } from '@archova/contracts';
+import { createOrg, createTestContext, signUp, type TestContext } from './helpers';
+
+let t: TestContext;
+const HOST = 'localhost:4000';
+const ORIGIN = 'http://localhost:3008';
+const PASSWORD = 'Console-Test-Pw-1';
+
+beforeAll(async () => {
+  t = await createTestContext();
+});
+afterAll(() => t.close());
+
+/** A staff member's browser on the console origin. */
+class Console {
+  cookie: string | null = null;
+  constructor(
+    private app: FastifyInstance,
+    readonly email: string,
+  ) {}
+
+  async call(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, body?: unknown) {
+    const res: LightMyRequestResponse = await this.app.inject({
+      method,
+      url: `/internal/v1${url}`,
+      headers: {
+        host: HOST,
+        ...(method !== 'GET' ? { origin: ORIGIN } : {}),
+        ...(this.cookie ? { cookie: this.cookie } : {}),
+      },
+      ...(body !== undefined ? { payload: body as Record<string, unknown> } : {}),
+    });
+    const set = res.cookies.find((c) => c.name === 'csid');
+    if (set) this.cookie = `csid=${set.value}`;
+    return res;
+  }
+  get = (u: string) => this.call('GET', u);
+  post = (u: string, b?: unknown) => this.call('POST', u, b ?? {});
+  put = (u: string, b: unknown) => this.call('PUT', u, b);
+
+  async signIn() {
+    const res = await this.post('/auth/login', { email: this.email, password: PASSWORD });
+    expect(res.statusCode).toBe(200);
+    return this;
+  }
+}
+
+let n = 0;
+async function staff(roles: StaffRole[], label = 'staff') {
+  const email = `${label}-${++n}-${Date.now()}@archova.test`;
+  await t.modules.backoffice.api.upsertLocalStaff({
+    email,
+    name: `${label} ${n}`,
+    password: PASSWORD,
+    roles,
+  });
+  return new Console(t.app, email).signIn();
+}
+
+const code = (res: LightMyRequestResponse) => (res.json() as { code?: string }).code;
+
+describe('public price book', () => {
+  it('serves the founding price list with no sign-in and never a draft', async () => {
+    const res = await t.app.inject({
+      method: 'GET',
+      url: '/v1/public/price-book',
+      headers: { host: 'app.archova.test' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers.etag).toBeTruthy();
+    const book = res.json() as { version: string; plans: Array<{ code: string; price: unknown }> };
+    expect(book.version).toBe('founding-2026-10');
+    expect(book.plans.map((p) => p.code)).toEqual([
+      'subcontractor',
+      'team',
+      'business',
+      'enterprise',
+    ]);
+    expect(book.plans[1]!.price).toEqual({
+      unit: 'user_month',
+      fromPrice: false,
+      amountCents: 9900,
+    });
+  });
+});
+
+describe('staff sign-in and realms', () => {
+  it('signs in, reads me, and rejects a wrong password', async () => {
+    const c = await staff(['owner']);
+    const me = (await c.get('/me')).json() as {
+      email: string;
+      roles: string[];
+      permissions: string[];
+    };
+    expect(me.email).toBe(c.email);
+    expect(me.roles).toEqual(['owner']);
+    expect(me.permissions).toContain('backoffice.pricing.approve');
+    const bad = await new Console(t.app, c.email).post('/auth/login', {
+      email: c.email,
+      password: 'wrong-password',
+    });
+    expect(bad.statusCode).toBe(401);
+    expect(code(bad)).toBe('auth.invalid_credentials');
+  });
+
+  it('answers 404 on the customer hosts and 401 without a staff session', async () => {
+    const onApp = await t.app.inject({
+      method: 'GET',
+      url: '/internal/v1/me',
+      headers: { host: 'app.archova.test' },
+    });
+    expect(onApp.statusCode).toBe(404);
+    const anon = await new Console(t.app, 'x@y.z').get('/me');
+    expect(anon.statusCode).toBe(401);
+  });
+
+  it('never accepts a customer session as staff, or a staff session on /v1', async () => {
+    const { browser } = await signUp(t.app, 'realm');
+    const sid = [...browser.cookies].map(([k, v]) => `${k}=${v}`).join('; ');
+    const asStaff = await t.app.inject({
+      method: 'GET',
+      url: '/internal/v1/me',
+      headers: { host: HOST, cookie: sid },
+    });
+    expect(asStaff.statusCode).toBe(401);
+    const c = await staff(['owner']);
+    const onV1 = await t.app.inject({
+      method: 'GET',
+      url: '/v1/me',
+      headers: { host: 'app.archova.test', cookie: c.cookie! },
+    });
+    expect(onV1.statusCode).toBe(401);
+  });
+
+  it('blocks a cross-site write', async () => {
+    const c = await staff(['owner']);
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/internal/v1/auth/logout',
+      headers: { host: HOST, origin: 'https://evil.example', cookie: c.cookie! },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(code(res)).toBe('auth.csrf_failed');
+  });
+
+  it('enforces roles: sales cannot edit pricing', async () => {
+    const sales = await staff(['sales']);
+    expect((await sales.get('/orgs')).statusCode).toBe(200);
+    const res = await sales.post('/price-books');
+    expect(res.statusCode).toBe(403);
+    expect(code(res)).toBe('backoffice.permission_denied');
+  });
+});
+
+describe('customers', () => {
+  it('lists orgs from the tenant directory, searches and pages them', async () => {
+    const { browser } = await signUp(t.app, 'dir');
+    const a = await createOrg(browser, 'Zephyr Directory Test Builders');
+    await createOrg(browser, 'Zephyr Directory Other Builders');
+    const c = await staff(['support']);
+    const found = (await c.get('/orgs?q=zephyr%20directory')).json() as {
+      items: Array<{ orgId: string; name: string; plan: string; state: string }>;
+    };
+    expect(found.items.map((o) => o.name)).toEqual([
+      'Zephyr Directory Other Builders',
+      'Zephyr Directory Test Builders',
+    ]);
+    expect(found.items[0]).toMatchObject({ plan: 'trial', state: 'trialing' });
+    const page1 = (await c.get('/orgs?q=zephyr%20directory&limit=1')).json() as {
+      items: unknown[];
+      nextCursor: string | null;
+    };
+    expect(page1.items).toHaveLength(1);
+    const page2 = (
+      await c.get(`/orgs?q=zephyr%20directory&limit=1&cursor=${page1.nextCursor}`)
+    ).json() as {
+      items: Array<{ name: string }>;
+      nextCursor: string | null;
+    };
+    expect(page2.items[0]!.name).toBe('Zephyr Directory Test Builders');
+    expect(page2.nextCursor).toBeNull();
+    const one = await c.get(`/orgs/${a.id}`);
+    expect(one.statusCode).toBe(200);
+    expect((await c.get('/orgs/org_00000000000000000000000000')).statusCode).toBe(404);
+  });
+});
+
+describe('price book publishing', () => {
+  it('needs a second approver, step-up, and 60 days notice for an increase', async () => {
+    const editor = await staff(['billing_ops'], 'editor');
+    const approver = await staff(['pricing_approver'], 'approver');
+
+    const draft = (await editor.post('/price-books')).json() as {
+      id: string;
+      status: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    expect(draft.status).toBe('draft');
+    expect(draft.prices).toHaveLength(4);
+    // A second open draft is refused.
+    expect((await editor.post('/price-books')).statusCode).toBe(409);
+
+    const raise = (cents: number) =>
+      draft.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: cents } : p));
+    await editor.put(`/price-books/${draft.id}`, { effectiveFrom: null, prices: raise(10900) });
+    const preview = (await editor.post(`/price-books/${draft.id}/preview`)).json() as {
+      hasIncrease: boolean;
+      problems: string[];
+      changes: Array<{ planCode: string; kind: string }>;
+    };
+    expect(preview.hasIncrease).toBe(true);
+    expect(preview.changes.find((c) => c.planCode === 'team')!.kind).toBe('increase');
+    const tooSoon = await editor.post(`/price-books/${draft.id}/submit`, {
+      reason: 'Annual review',
+    });
+    expect(tooSoon.statusCode).toBe(422);
+    expect(code(tooSoon)).toBe('backoffice.notice_too_short');
+
+    const when = new Date(Date.now() + 61 * 86_400_000).toISOString();
+    await editor.put(`/price-books/${draft.id}`, { effectiveFrom: when, prices: raise(10900) });
+    const submitted = await editor.post(`/price-books/${draft.id}/submit`, {
+      reason: 'Annual review',
+    });
+    expect(submitted.statusCode).toBe(201);
+    const request = submitted.json() as { id: string; status: string; kind: string };
+    expect(request).toMatchObject({ status: 'pending', kind: 'pricebook.publish' });
+
+    // The draft is locked while it awaits approval.
+    expect(
+      (await editor.put(`/price-books/${draft.id}`, { effectiveFrom: when, prices: raise(11900) }))
+        .statusCode,
+    ).toBe(409);
+    // The requester has no approval right, and cannot approve their own request.
+    const own = await editor.post(`/requests/${request.id}/approve`);
+    expect(own.statusCode).toBe(403);
+    expect(code(own)).toBe('backoffice.permission_denied');
+
+    // A stale password check needs a step-up first.
+    await t.adminDb.db.execute(
+      sql`update backoffice.staff_sessions set auth_time = now() - interval '10 minutes'`,
+    );
+    const stale = await approver.post(`/requests/${request.id}/approve`);
+    expect(stale.statusCode).toBe(403);
+    expect(code(stale)).toBe('auth.step_up_required');
+    expect((await approver.post('/auth/step-up', { password: 'wrong-password' })).statusCode).toBe(
+      401,
+    );
+    expect((await approver.post('/auth/step-up', { password: PASSWORD })).statusCode).toBe(200);
+
+    const done = (await approver.post(`/requests/${request.id}/approve`)).json() as {
+      status: string;
+      result: { outcome: string };
+      approvedBy: { name: string };
+    };
+    expect(done.status).toBe('executed');
+    expect(done.result.outcome).toBe('scheduled');
+
+    const live = async () =>
+      (
+        await t.app.inject({
+          method: 'GET',
+          url: '/v1/public/price-book',
+          headers: { host: 'app.archova.test' },
+        })
+      ).json() as {
+        version: string;
+        plans: Array<{ code: string; price: { amountCents: number } }>;
+      };
+    // Scheduled: the old price stays live until its date.
+    expect((await live()).plans.find((p) => p.code === 'team')!.price.amountCents).toBe(9900);
+
+    // The date arrives: the next read activates it.
+    await t.adminDb.db.execute(
+      sql`update billing.price_books set effective_from = now() - interval '1 minute' where status = 'scheduled'`,
+    );
+    const after = await live();
+    expect(after.plans.find((p) => p.code === 'team')!.price.amountCents).toBe(10900);
+    expect(after.version).not.toBe('founding-2026-10');
+
+    // The action log shows who asked and who approved.
+    const log = (await approver.get('/requests?status=executed')).json() as {
+      items: Array<{
+        id: string;
+        requestedBy: { name: string };
+        approvedBy: { name: string } | null;
+      }>;
+    };
+    const entry = log.items.find((r) => r.id === request.id)!;
+    expect(entry.requestedBy.name).toContain('editor');
+    expect(entry.approvedBy!.name).toContain('approver');
+  });
+
+  it('rejecting or cancelling returns the draft for editing', async () => {
+    const editor = await staff(['billing_ops'], 'editor');
+    const approver = await staff(['pricing_approver'], 'approver');
+    const book = (await editor.post('/price-books')).json() as {
+      id: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    const cut = book.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: 8900 } : p));
+    await editor.put(`/price-books/${book.id}`, { effectiveFrom: null, prices: cut });
+    const r1 = (
+      await editor.post(`/price-books/${book.id}/submit`, { reason: 'Launch offer' })
+    ).json() as { id: string };
+    expect(
+      (await approver.post(`/requests/${r1.id}/reject`, { reason: 'Too deep a cut' })).statusCode,
+    ).toBe(200);
+    expect(
+      ((await editor.get(`/price-books/${book.id}`)).json() as { status: string }).status,
+    ).toBe('draft');
+    const r2 = (
+      await editor.post(`/price-books/${book.id}/submit`, { reason: 'Launch offer again' })
+    ).json() as { id: string };
+    expect(
+      ((await editor.post(`/requests/${r2.id}/cancel`)).json() as { status: string }).status,
+    ).toBe('cancelled');
+    expect((await editor.post(`/requests/${r2.id}/cancel`)).statusCode).toBe(409);
+    // A decrease needs no notice and goes live at once once approved.
+    const r3 = (
+      await editor.post(`/price-books/${book.id}/submit`, { reason: 'Launch offer, final' })
+    ).json() as { id: string };
+    const ok = (await approver.post(`/requests/${r3.id}/approve`)).json() as {
+      result: { outcome: string };
+    };
+    expect(ok.result.outcome).toBe('published');
+    const live = (
+      await t.app.inject({
+        method: 'GET',
+        url: '/v1/public/price-book',
+        headers: { host: 'app.archova.test' },
+      })
+    ).json() as { plans: Array<{ code: string; price: { amountCents: number } }> };
+    expect(live.plans.find((p) => p.code === 'team')!.price.amountCents).toBe(8900);
+  });
+
+  it('solo-owner mode: the only Owner waits out the cooling-off before approving their own change', async () => {
+    await t.adminDb.db.execute(sql`update backoffice.staff_users set status = 'disabled'`);
+    const owner = await staff(['owner'], 'solo');
+    const book = (await owner.post('/price-books')).json() as {
+      id: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    const cut = book.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: 8500 } : p));
+    await owner.put(`/price-books/${book.id}`, { effectiveFrom: null, prices: cut });
+    const req = (
+      await owner.post(`/price-books/${book.id}/submit`, { reason: 'Solo owner change' })
+    ).json() as {
+      id: string;
+      coolingOffUntil: string | null;
+    };
+    expect(req.coolingOffUntil).not.toBeNull();
+    const early = await owner.post(`/requests/${req.id}/approve`);
+    expect(early.statusCode).toBe(409);
+    expect(code(early)).toBe('backoffice.cooling_off');
+    await t.adminDb.db.execute(
+      sql`update backoffice.requests set cooling_off_until = now() - interval '1 minute' where id = ${req.id}`,
+    );
+    const done = (await owner.post(`/requests/${req.id}/approve`)).json() as { status: string };
+    expect(done.status).toBe('executed');
+  });
+});
+
+describe('solo-owner mode is re-checked at approval', () => {
+  it('refuses a self-approval once another approver exists', async () => {
+    await t.adminDb.db.execute(sql`update backoffice.staff_users set status = 'disabled'`);
+    const owner = await staff(['owner'], 'solo2');
+    const book = (await owner.post('/price-books')).json() as {
+      id: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    const cut = book.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: 8000 } : p));
+    await owner.put(`/price-books/${book.id}`, { effectiveFrom: null, prices: cut });
+    const req = (
+      await owner.post(`/price-books/${book.id}/submit`, { reason: 'Solo, then a hire' })
+    ).json() as { id: string };
+    await t.adminDb.db.execute(
+      sql`update backoffice.requests set cooling_off_until = now() - interval '1 minute' where id = ${req.id}`,
+    );
+    await staff(['pricing_approver'], 'newcomer');
+    const res = await owner.post(`/requests/${req.id}/approve`);
+    expect(res.statusCode).toBe(403);
+    expect(code(res)).toBe('backoffice.self_approval');
+    // The request stays pending for the second person.
+    expect(
+      (
+        (await owner.get('/requests?status=pending')).json() as { items: Array<{ id: string }> }
+      ).items.map((r) => r.id),
+    ).toContain(req.id);
+    await owner.post(`/requests/${req.id}/cancel`);
+    await owner.call('DELETE', `/price-books/${book.id}`);
+  });
+
+  it('a failed publish reopens the draft and is recorded, in one transaction', async () => {
+    const editor = await staff(['billing_ops'], 'editor3');
+    const approver = await staff(['pricing_approver'], 'approver3');
+    const book = (await editor.post('/price-books')).json() as {
+      id: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    const cut = book.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: 7000 } : p));
+    await editor.put(`/price-books/${book.id}`, { effectiveFrom: null, prices: cut });
+    const req = (
+      await editor.post(`/price-books/${book.id}/submit`, { reason: 'Will fail' })
+    ).json() as { id: string };
+    // Break the book after submission: a plan it prices is removed from the catalogue's rules (an increase with no notice).
+    await t.adminDb.db.execute(
+      sql`update billing.prices set amount_cents = 99999 where price_book_id = ${book.id} and plan_code = 'team'`,
+    );
+    const done = (await approver.post(`/requests/${req.id}/approve`)).json() as {
+      status: string;
+      result: { error: string };
+    };
+    expect(done.status).toBe('failed');
+    expect(done.result.error).toMatch(/60 days/);
+    expect(
+      ((await editor.get(`/price-books/${book.id}`)).json() as { status: string }).status,
+    ).toBe('draft');
+    await editor.call('DELETE', `/price-books/${book.id}`);
+  });
+});
+
+describe('plans', () => {
+  it('edits a draft, publishes it through approval, and the pricing page follows', async () => {
+    const editor = await staff(['billing_ops'], 'planner');
+    const approver = await staff(['pricing_approver'], 'planner-approver');
+    const plans = (await editor.get('/plans')).json() as {
+      items: Array<{
+        code: string;
+        published: {
+          name: string;
+          blurb: string;
+          features: string[];
+          modules: string[];
+          aiCreditsMonthly: number;
+          ctaLabel: string;
+          ctaHref: string;
+        };
+      }>;
+    };
+    const team = plans.items.find((p) => p.code === 'team')!;
+    const { name: _n, ...rest } = team.published;
+    void _n;
+    const body = { ...rest, name: 'Team Plus', aiCreditsMonthly: 800 };
+    expect((await editor.put('/plans/team/draft', { ...body, modules: ['nope'] })).statusCode).toBe(
+      422,
+    );
+    expect((await editor.put('/plans/team/draft', body)).statusCode).toBe(204);
+    const req = (
+      await editor.post('/plans/team/draft/submit', { reason: 'More Nova credits' })
+    ).json() as { id: string };
+    // Locked while pending.
+    expect((await editor.put('/plans/team/draft', body)).statusCode).toBe(409);
+    const done = (await approver.post(`/requests/${req.id}/approve`)).json() as { status: string };
+    expect(done.status).toBe('executed');
+    const live = (
+      await t.app.inject({
+        method: 'GET',
+        url: '/v1/public/price-book',
+        headers: { host: 'app.archova.test' },
+      })
+    ).json() as { plans: Array<{ code: string; name: string }> };
+    expect(live.plans.find((p) => p.code === 'team')!.name).toBe('Team Plus');
+  });
+
+  it('a new plan stays off the pricing page until a price book prices it', async () => {
+    const editor = await staff(['billing_ops'], 'planner');
+    const draft = {
+      name: 'Starter',
+      blurb: 'For one-project builders.',
+      features: ['Documents'],
+      modules: ['documents'],
+      aiCreditsMonthly: 100,
+      ctaLabel: 'Request a demo',
+      ctaHref: '/demo',
+    };
+    expect((await editor.post('/plans', { code: 'starter', draft })).statusCode).toBe(201);
+    expect((await editor.post('/plans', { code: 'starter', draft })).statusCode).toBe(409);
+    const live = (
+      await t.app.inject({
+        method: 'GET',
+        url: '/v1/public/price-book',
+        headers: { host: 'app.archova.test' },
+      })
+    ).json() as { plans: Array<{ code: string }> };
+    expect(live.plans.map((p) => p.code)).not.toContain('starter');
+    expect((await editor.call('DELETE', '/plans/starter/draft')).statusCode).toBe(204);
+  });
+});

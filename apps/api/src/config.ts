@@ -55,6 +55,15 @@ const Env = z.object({
   API_MESSAGES: z.enum(['log', 'disabled']).default('disabled'),
   // The web origin access links point at; defaults to the first app origin.
   API_LINK_BASE_URL: z.string().url().optional(),
+  // Owner console (backend 09): /internal/v1 answers only on these hosts and for requests from these origins.
+  API_INTERNAL_HOSTS: list.prefault('localhost:4000'),
+  API_ADMIN_ORIGINS: list.prefault('http://localhost:3008'),
+  // Password sign-in for staff: on by default outside production; hosted staff use the staff IdP.
+  API_STAFF_LOCAL_LOGIN: bool.optional(),
+  // Solo-owner mode (Sam 12 §4): how long the only Owner waits before approving their own price book. 24 in production.
+  // Allows password sign-in and a short solo-owner delay in production: the demo cell with synthetic data only.
+  API_STAFF_DEMO_CELL: bool.prefault('false'),
+  API_STAFF_SOLO_COOLING_OFF_HOURS: z.coerce.number().min(0).default(24),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -107,6 +116,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,
+    internal: {
+      hosts: e.API_INTERNAL_HOSTS,
+      origins: e.API_ADMIN_ORIGINS.map((o) => new URL(o).origin),
+      localLogin: e.API_STAFF_LOCAL_LOGIN ?? e.NODE_ENV !== 'production',
+      soloCoolingOffHours: e.API_STAFF_SOLO_COOLING_OFF_HOURS,
+      demoCell: e.API_STAFF_DEMO_CELL,
+    },
     logLevel: e.LOG_LEVEL,
   };
   if (config.ai.provider === 'bedrock') {
@@ -131,6 +147,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error(
       'API_FILES_SCANNER=clamav reads uploads from storage, so it needs API_FILES_STORE=s3',
     );
+  if (config.env === 'production' && !config.internal.demoCell) {
+    if (config.internal.localLogin)
+      throw new Error(
+        'API_STAFF_LOCAL_LOGIN=true is not allowed in production: staff sign in through the staff IdP (set API_STAFF_DEMO_CELL=true for a demo cell with synthetic data only)',
+      );
+    if (config.internal.soloCoolingOffHours < 24)
+      throw new Error(
+        'API_STAFF_SOLO_COOLING_OFF_HOURS must be at least 24 in production (set API_STAFF_DEMO_CELL=true for a demo cell)',
+      );
+  }
   if (config.env === 'production') {
     const missing: string[] = [];
     if (!config.jwtPrivateJwk) missing.push('API_JWT_PRIVATE_JWK');

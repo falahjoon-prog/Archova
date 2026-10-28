@@ -1,0 +1,9 @@
+{
+  "extends": "@archova/config-ts/nextjs.json",
+  "compilerOptions": {
+    "types": ["node"],
+    "paths": { "@/*": ["./*"] }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules", ".next/cache"]
+}
