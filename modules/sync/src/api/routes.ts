@@ -12,8 +12,15 @@ export function syncRoutes(database: Database, pull: PullService) {
         throw new AppError('validation_failed', 'Invalid sync scopes or checkpoint', [
           { path: 'scopes', message: 'Expected project:{projectId}:{module,module};org' },
         ]);
+      // An access-link session never syncs; signed-in members and external collaborators do (Sam, #104).
+      const tenant = requireTenant(input);
+      if (tenant.actor)
+        throw new AppError(
+          'access.denied',
+          'Offline sync is for signed-in people, not link sessions.',
+        );
       const body = await database.withTenantTx(
-        requireTenant(input),
+        tenant,
         (scope) => pull.pull(scope, { scopes, since, limit: q.limit }),
         { readOnly: true },
       );

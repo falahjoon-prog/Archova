@@ -81,6 +81,7 @@ describe('mobile sync pull (backend 04 §4)', () => {
     const subDraft = (await pull(sub, scope)).json();
     expect(subDraft.changes.map((c: { op: string }) => c.op)).toEqual(['delete', 'delete']);
     expect(subDraft.changes[0]).not.toHaveProperty('data');
+    expect(subDraft.changes.map((c: { version: number }) => c.version)).toEqual([0, 0]);
 
     // Issued to the subcontractor: it arrives, newer than the checkpoint, and only the new change is sent.
     const checkpoint = subDraft.nextSince as string;

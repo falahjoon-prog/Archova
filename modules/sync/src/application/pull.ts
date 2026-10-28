@@ -56,7 +56,8 @@ export function createPullService(deps: PullDeps) {
       }
       if (readable.length > 0) allowed.set(p.projectId, readable);
     }
-    if (req.scopes.org) {
+    // Org-wide data is for org members; external collaborators get only their projects (Sam, #104).
+    if (req.scopes.org && scope.ctx.principalType === 'member') {
       const orgModules = deps.sources.filter((s) => s.permission === null).map((s) => s.module);
       if (orgModules.length > 0) allowed.set(null, orgModules);
     }
@@ -136,7 +137,12 @@ export function createPullService(deps: PullDeps) {
       changes.push(
         rec
           ? { entityType: r.entity_type, id, op: 'upsert', version: rec.version, data: rec.data }
-          : { entityType: r.entity_type, id, op: 'delete', version: r.version ?? 0 },
+          : {
+              entityType: r.entity_type,
+              id,
+              op: 'delete',
+              version: rec === undefined && r.op === 'upsert' ? 0 : (r.version ?? 0),
+            },
       );
     }
     return { changes, revokedScopes, nextSince: String(nextSince), hasMore };
