@@ -1,0 +1,39 @@
+{
+  "name": "@archova/admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3200",
+    "build": "next build",
+    "start": "next start -p 3200",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@archova/contracts": "workspace:*",
+    "@archova/design-tokens": "workspace:*",
+    "@archova/time": "workspace:*",
+    "@archova/ui": "workspace:*",
+    "@tanstack/react-query": "^5.90.0",
+    "next": "^15.5.28",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@next/eslint-plugin-next": "^15.5.0",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.39.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "jsdom": "^26.1.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0"
+  }
+}

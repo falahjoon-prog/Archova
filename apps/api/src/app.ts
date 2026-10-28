@@ -15,6 +15,7 @@ import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore } from '@archova/mod-files';
 import type { ApiConfig } from './config';
 import { loadModules, type Modules } from './modules';
+import { registerInternalOperations } from './internal';
 import { registerOperations } from './pipeline';
 import { idempotencyStore } from './plugins/idempotency';
 import { registerProblemHandler } from './plugins/problem';
@@ -52,6 +53,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     void reply.header('referrer-policy', 'no-referrer');
   });
 
+  if (config.internal.localLogin && config.env === 'production')
+    deps.logger.warn(
+      'API_STAFF_LOCAL_LOGIN=true: staff sign in with a password. Use only in the demo cell, not with real customer data.',
+    );
   if (config.messages === 'log' && config.env === 'production')
     deps.logger.warn(
       'API_MESSAGES=log prints one-time codes and phone numbers to the log: demo cell with synthetic data only',
@@ -71,6 +76,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         deps.messages ??
         (config.messages === 'log' ? createLogMessageSender(deps.logger) : disabledMessageSender),
       linkBaseUrl: config.linkBaseUrl,
+      backoffice: {
+        localLogin: config.internal.localLogin,
+        soloCoolingOffHours: config.internal.soloCoolingOffHours,
+      },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
         config:
@@ -111,5 +120,6 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     routes: modules.routes,
     idempotency: deps.redis ? idempotencyStore(deps.redis) : null,
   });
+  registerInternalOperations(app, { config, backoffice: modules.backoffice });
   return app;
 }

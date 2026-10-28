@@ -1,9 +1,9 @@
 // Prices are never typed into the CMS (WEB-AC6, X57). The site reads the published price book from the API
-// (`GET /v1/public/price-book`, owner console slice A1). Until that endpoint ships, or when SITE_API_URL isn't set
-// (local run), it shows the founding price list john approved on 2 Oct 2026, so the page always renders.
+// (`GET /v1/public/price-book`, edited in the owner console). When SITE_API_URL isn't set (plain local run), or the
+// API is unreachable, it shows the founding price list john approved on 2 Oct 2026, so the page always renders.
 
 export interface PricePlan {
-  id: 'subcontractor' | 'team' | 'business' | 'enterprise';
+  id: string;
   name: string;
   /** Headline price, ex GST, already formatted. */
   price: string;
@@ -84,13 +84,72 @@ export const FALLBACK_PRICE_BOOK: PriceBook = {
   ],
 };
 
+/** The published price book as the API returns it (`GET /v1/public/price-book`). */
+export interface ApiPriceBook {
+  version: string;
+  currency: 'AUD';
+  gstIncluded: boolean;
+  plans: Array<{
+    code: string;
+    name: string;
+    blurb: string;
+    features: string[];
+    cta: { label: string; href: string };
+    price: { unit: 'free' | 'user_month' | 'year'; fromPrice: boolean; amountCents: number | null };
+  }>;
+}
+
+const audFormat = (digits: 0 | 2) =>
+  new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    currencyDisplay: 'narrowSymbol',
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+const aud0 = audFormat(0);
+const aud2 = audFormat(2);
+
+export function formatPrice(price: ApiPriceBook['plans'][number]['price']): {
+  price: string;
+  unit: string;
+} {
+  if (price.unit === 'free' || price.amountCents === null) return { price: 'Free', unit: 'always' };
+  // Whole dollars drop the cents (A$99); odd cents keep them (A$99.50). The symbol reads "A$" in en-AU.
+  const dollars = price.amountCents / 100;
+  const money = (Number.isInteger(dollars) ? aud0 : aud2).format(dollars).replace(/^\$/, 'A$');
+  return {
+    price: price.fromPrice ? `From ${money}` : money,
+    unit: price.unit === 'user_month' ? 'per user per month' : 'per year',
+  };
+}
+
+export function fromApi(api: ApiPriceBook): PriceBook {
+  return {
+    version: api.version,
+    source: 'api',
+    gstNote: api.gstIncluded
+      ? 'All prices are in Australian dollars and include GST.'
+      : FALLBACK_PRICE_BOOK.gstNote,
+    plans: api.plans.map((p) => ({
+      id: p.code,
+      name: p.name,
+      blurb: p.blurb,
+      features: p.features,
+      cta: p.cta,
+      ...formatPrice(p.price),
+    })),
+  };
+}
+
 export async function getPriceBook(): Promise<PriceBook> {
   const base = process.env.SITE_API_URL;
   if (!base) return FALLBACK_PRICE_BOOK;
   try {
     const res = await fetch(new URL('/v1/public/price-book', base), { next: { revalidate: 60 } });
     if (!res.ok) return FALLBACK_PRICE_BOOK;
-    return { ...((await res.json()) as PriceBook), source: 'api' };
+    const api = (await res.json()) as ApiPriceBook;
+    return api.plans.length ? fromApi(api) : FALLBACK_PRICE_BOOK;
   } catch {
     return FALLBACK_PRICE_BOOK;
   }

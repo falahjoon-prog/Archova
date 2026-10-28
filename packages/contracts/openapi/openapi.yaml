@@ -222,6 +222,20 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Org' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/public/price-book:
+    get:
+      operationId: getPublicPriceBook
+      tags: [billing]
+      x-module: billing
+      x-auth: none
+      summary: The published price book for the pricing page. Never returns a draft.
+      responses:
+        '200':
+          description: The live price book
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PublicPriceBook' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/entitlements:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4389,6 +4403,39 @@ components:
         companyScopedTools:
           type: array
           items: { type: string }
+    PublicPriceBook:
+      type: object
+      required: [version, effectiveFrom, currency, gstIncluded, plans]
+      properties:
+        version: { type: string }
+        effectiveFrom: { type: [string, 'null'], format: date-time }
+        currency: { type: string, enum: [AUD] }
+        gstIncluded: { type: boolean, description: 'Amounts are ex GST when false.' }
+        plans:
+          type: array
+          items:
+            type: object
+            required: [code, name, blurb, features, cta, price]
+            properties:
+              code: { type: string }
+              name: { type: string }
+              blurb: { type: string }
+              features:
+                type: array
+                items: { type: string }
+              cta:
+                type: object
+                required: [label, href]
+                properties:
+                  label: { type: string }
+                  href: { type: string }
+              price:
+                type: object
+                required: [unit, fromPrice, amountCents]
+                properties:
+                  unit: { type: string, enum: [free, user_month, year] }
+                  fromPrice: { type: boolean }
+                  amountCents: { type: [integer, 'null'] }
     Entitlements:
       type: object
       required: [orgId, plan, state, modules, limits]

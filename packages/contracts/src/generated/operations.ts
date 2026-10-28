@@ -1033,6 +1033,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  getPublicPriceBook: {
+    method: 'GET',
+    path: '/v1/public/price-book',
+    module: "billing",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
   getEntitlements: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/entitlements',

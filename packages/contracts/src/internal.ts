@@ -1,0 +1,413 @@
+// The `/internal/v1` contract: owner-console operations for Archova staff only (ADR-0008, backend 09 §1).
+// Kept apart from the customer OpenAPI spec so the customer clients never see these operations. Only `apps/api`
+// (the `backoffice` module) implements them and only `apps/admin` calls them.
+import { z } from 'zod';
+
+export const STAFF_ROLES = [
+  'owner',
+  'pricing_approver',
+  'billing_ops',
+  'sales',
+  'support',
+  'security_lead',
+  'finance_read',
+] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
+
+/** Modules a plan can include. Only keys that exist in code can be sold (Sam 12 §1). */
+export const PLAN_MODULE_KEYS = [
+  'documents',
+  'rfis',
+  'submittals',
+  'diary',
+  'defects',
+  'photos',
+  'meetings',
+  'correspondence',
+  'workforce',
+  'inductions',
+  'variations',
+  'claims',
+  'estimating',
+  'ai',
+] as const;
+export type PlanModuleKey = (typeof PLAN_MODULE_KEYS)[number];
+
+export const REQUEST_KINDS = ['pricebook.publish', 'plan.publish'] as const;
+export type RequestKind = (typeof REQUEST_KINDS)[number];
+export const REQUEST_STATUSES = [
+  'pending',
+  'approved',
+  'rejected',
+  'executed',
+  'failed',
+  'cancelled',
+] as const;
+export type RequestStatus = (typeof REQUEST_STATUSES)[number];
+
+const slug = z
+  .string()
+  .regex(
+    /^[a-z][a-z0-9_]{1,29}$/,
+    'Lower-case letters, digits and underscores, starting with a letter',
+  );
+const reason = z.string().trim().min(5).max(500);
+const uuid = z.string().uuid();
+
+export const PRICE_UNITS = ['free', 'user_month', 'year'] as const;
+export type PriceUnit = (typeof PRICE_UNITS)[number];
+
+export const PriceInput = z
+  .object({
+    planCode: slug,
+    unit: z.enum(PRICE_UNITS),
+    /** "From A$24,000 a year" style prices (Business, Enterprise). */
+    fromPrice: z.boolean().default(false),
+    /** Whole cents, ex GST. Null only for free plans. */
+    amountCents: z.number().int().min(0).max(100_000_000).nullable(),
+  })
+  .refine((p) => (p.unit === 'free') === (p.amountCents === null), {
+    message: 'Free plans have no amount; every other unit needs one',
+    path: ['amountCents'],
+  });
+export type PriceInput = z.infer<typeof PriceInput>;
+
+export const PlanDraftInput = z.object({
+  name: z.string().trim().min(2).max(60),
+  blurb: z.string().trim().min(2).max(200),
+  features: z.array(z.string().trim().min(2).max(120)).max(12),
+  modules: z.array(z.enum(PLAN_MODULE_KEYS)).max(PLAN_MODULE_KEYS.length),
+  /** Nova credits included each month; null means the plan has no allowance (never for paid plans). */
+  aiCreditsMonthly: z.number().int().min(0).max(10_000_000).nullable(),
+  ctaLabel: z.string().trim().min(2).max(40),
+  ctaHref: z.string().regex(/^\/[a-z0-9/_-]*$/, 'A path on the website, such as /demo'),
+});
+export type PlanDraftInput = z.infer<typeof PlanDraftInput>;
+
+const orgRef = z.string().min(1).max(40);
+
+export type StaffDto = {
+  id: string;
+  email: string;
+  name: string;
+  roles: StaffRole[];
+  permissions: string[];
+  /** When the session last proved the password; step-up actions need this within 5 minutes. */
+  authTime: string;
+  stepUpValidUntil: string | null;
+};
+
+export type PlanVersionDto = {
+  id: string;
+  version: number;
+  status: 'draft' | 'pending_approval' | 'published' | 'retired';
+  name: string;
+  blurb: string;
+  features: string[];
+  modules: string[];
+  aiCreditsMonthly: number | null;
+  ctaLabel: string;
+  ctaHref: string;
+  publishedAt: string | null;
+};
+export type PlanDto = {
+  code: string;
+  sortOrder: number;
+  published: PlanVersionDto | null;
+  draft: PlanVersionDto | null;
+};
+
+export type PriceDto = PriceInput;
+export type PriceBookDto = {
+  id: string;
+  version: string;
+  status: 'draft' | 'pending_approval' | 'scheduled' | 'published' | 'retired';
+  effectiveFrom: string | null;
+  createdBy: string | null;
+  publishedAt: string | null;
+  prices: PriceDto[];
+};
+export type PriceChange = {
+  planCode: string;
+  unit: PriceUnit;
+  before: { amountCents: number | null; fromPrice: boolean } | null;
+  after: { amountCents: number | null; fromPrice: boolean } | null;
+  kind: 'added' | 'removed' | 'increase' | 'decrease' | 'unchanged';
+};
+export type PriceBookPreview = {
+  changes: PriceChange[];
+  hasIncrease: boolean;
+  /** An increase needs at least 60 days' notice (backend 09 §4); null when no increase. */
+  earliestEffectiveFrom: string | null;
+  problems: string[];
+};
+
+export type RequestDto = {
+  id: string;
+  kind: RequestKind;
+  status: RequestStatus;
+  subject: string;
+  reason: string;
+  /** What the requester saw when proposing the change: shown to the approver. */
+  preview: Record<string, unknown> | null;
+  requestedBy: { id: string; name: string };
+  approvedBy: { id: string; name: string } | null;
+  createdAt: string;
+  decidedAt: string | null;
+  executedAt: string | null;
+  /** Solo-owner mode: the earliest time the requester may approve their own request. */
+  coolingOffUntil: string | null;
+  result: Record<string, unknown> | null;
+  orgId: string | null;
+};
+
+export type OrgListItemDto = {
+  orgId: string;
+  name: string;
+  slug: string;
+  plan: string;
+  state: string;
+  seats: number | null;
+  trialEndsAt: string | null;
+  createdAt: string;
+};
+
+export type Page<T> = { items: T[]; nextCursor: string | null };
+
+const noParams = null;
+export interface InternalOperationDef {
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE';
+  path: string;
+  /** `none` only for sign-in. */
+  auth: 'none' | 'staff';
+  /** Permission key checked by the API before the handler runs (declared in the backoffice module). */
+  permission?: string;
+  /** Needs a fresh password check within the last 5 minutes (backend 09 §2). */
+  stepUp?: boolean;
+  params: z.ZodType | null;
+  query: z.ZodType | null;
+  body: z.ZodType | null;
+}
+
+const op = <T extends InternalOperationDef>(d: T) => d;
+const id = z.object({ id: uuid });
+
+export const internalOperations = {
+  login: op({
+    method: 'POST',
+    path: '/internal/v1/auth/login',
+    auth: 'none',
+    params: noParams,
+    query: noParams,
+    body: z.object({ email: z.string().email().max(254), password: z.string().min(1).max(200) }),
+  }),
+  logout: op({
+    method: 'POST',
+    path: '/internal/v1/auth/logout',
+    auth: 'staff',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  stepUp: op({
+    method: 'POST',
+    path: '/internal/v1/auth/step-up',
+    auth: 'staff',
+    params: noParams,
+    query: noParams,
+    body: z.object({ password: z.string().min(1).max(200) }),
+  }),
+  getMe: op({
+    method: 'GET',
+    path: '/internal/v1/me',
+    auth: 'staff',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  listOrgs: op({
+    method: 'GET',
+    path: '/internal/v1/orgs',
+    auth: 'staff',
+    permission: 'backoffice.customers.read',
+    params: noParams,
+    query: z.object({
+      q: z.string().trim().max(100).optional(),
+      cursor: z.string().max(200).optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(25),
+    }),
+    body: null,
+  }),
+  getOrg: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}',
+    auth: 'staff',
+    permission: 'backoffice.customers.read',
+    params: z.object({ orgId: orgRef }),
+    query: noParams,
+    body: null,
+  }),
+  listPlans: op({
+    method: 'GET',
+    path: '/internal/v1/plans',
+    auth: 'staff',
+    permission: 'backoffice.pricing.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  createPlan: op({
+    method: 'POST',
+    path: '/internal/v1/plans',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: noParams,
+    query: noParams,
+    body: z.object({ code: slug, draft: PlanDraftInput }),
+  }),
+  savePlanDraft: op({
+    method: 'PUT',
+    path: '/internal/v1/plans/{code}/draft',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: z.object({ code: slug }),
+    query: noParams,
+    body: PlanDraftInput,
+  }),
+  discardPlanDraft: op({
+    method: 'DELETE',
+    path: '/internal/v1/plans/{code}/draft',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: z.object({ code: slug }),
+    query: noParams,
+    body: null,
+  }),
+  submitPlanDraft: op({
+    method: 'POST',
+    path: '/internal/v1/plans/{code}/draft/submit',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: z.object({ code: slug }),
+    query: noParams,
+    body: z.object({ reason }),
+  }),
+  listPriceBooks: op({
+    method: 'GET',
+    path: '/internal/v1/price-books',
+    auth: 'staff',
+    permission: 'backoffice.pricing.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  createPriceBook: op({
+    method: 'POST',
+    path: '/internal/v1/price-books',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  getPriceBook: op({
+    method: 'GET',
+    path: '/internal/v1/price-books/{id}',
+    auth: 'staff',
+    permission: 'backoffice.pricing.read',
+    params: id,
+    query: noParams,
+    body: null,
+  }),
+  savePriceBook: op({
+    method: 'PUT',
+    path: '/internal/v1/price-books/{id}',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: id,
+    query: noParams,
+    body: z.object({
+      effectiveFrom: z.string().datetime().nullable(),
+      prices: z.array(PriceInput).min(1).max(40),
+    }),
+  }),
+  previewPriceBook: op({
+    method: 'POST',
+    path: '/internal/v1/price-books/{id}/preview',
+    auth: 'staff',
+    permission: 'backoffice.pricing.read',
+    params: id,
+    query: noParams,
+    body: null,
+  }),
+  submitPriceBook: op({
+    method: 'POST',
+    path: '/internal/v1/price-books/{id}/submit',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: id,
+    query: noParams,
+    body: z.object({ reason }),
+  }),
+  discardPriceBook: op({
+    method: 'DELETE',
+    path: '/internal/v1/price-books/{id}',
+    auth: 'staff',
+    permission: 'backoffice.pricing.edit',
+    params: id,
+    query: noParams,
+    body: null,
+  }),
+  listRequests: op({
+    method: 'GET',
+    path: '/internal/v1/requests',
+    auth: 'staff',
+    permission: 'backoffice.requests.read',
+    params: noParams,
+    query: z.object({
+      status: z.enum(REQUEST_STATUSES).optional(),
+      orgId: orgRef.optional(),
+      limit: z.coerce.number().int().min(1).max(100).default(50),
+    }),
+    body: null,
+  }),
+  approveRequest: op({
+    method: 'POST',
+    path: '/internal/v1/requests/{id}/approve',
+    auth: 'staff',
+    permission: 'backoffice.requests.decide',
+    stepUp: true,
+    params: id,
+    query: noParams,
+    body: null,
+  }),
+  rejectRequest: op({
+    method: 'POST',
+    path: '/internal/v1/requests/{id}/reject',
+    auth: 'staff',
+    permission: 'backoffice.requests.decide',
+    params: id,
+    query: noParams,
+    body: z.object({ reason }),
+  }),
+  cancelRequest: op({
+    method: 'POST',
+    path: '/internal/v1/requests/{id}/cancel',
+    auth: 'staff',
+    permission: 'backoffice.requests.read',
+    params: id,
+    query: noParams,
+    body: null,
+  }),
+  listStaff: op({
+    method: 'GET',
+    path: '/internal/v1/staff',
+    auth: 'staff',
+    permission: 'backoffice.staff.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+} as const;
+
+export type InternalOperationId = keyof typeof internalOperations;
