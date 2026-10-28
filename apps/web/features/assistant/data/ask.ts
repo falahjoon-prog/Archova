@@ -12,19 +12,23 @@ import type { NovaAnswer } from './preview-answers';
 type ApiNovaAnswer = components['schemas']['NovaAnswer'];
 type NovaSource = components['schemas']['NovaSource'];
 
-/** "A-201 Rev C, p. 1": the reference people use, falling back to the title. */
+/** "A-201 Rev C, p. 1": the reference people use, falling back to the title. An RFI is "RFI-031 Corridor hardware (closed)". */
 function sourceLabel(s: NovaSource): string {
+  if (s.sourceType === 'rfi') return `${s.reference ?? 'RFI'} ${s.title} (${s.revision})`;
   return `${s.reference ?? s.title} Rev ${s.revision}, p. ${s.page}`;
+}
+
+function sourceHref(s: NovaSource): string {
+  if (s.sourceType === 'drawing') return `drawing:${s.sourceId}:${s.revisionId}`;
+  if (s.sourceType === 'rfi') return `rfi:${s.sourceId}`;
+  return `documents:${s.sourceId}`;
 }
 
 function toCitation(s: NovaSource, i: number): Citation {
   return {
     id: `${s.revisionId}:${s.page}:${i}`,
     label: sourceLabel(s),
-    href:
-      s.sourceType === 'drawing'
-        ? `drawing:${s.sourceId}:${s.revisionId}`
-        : `documents:${s.sourceId}`,
+    href: sourceHref(s),
   };
 }
 

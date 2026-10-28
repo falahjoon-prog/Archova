@@ -189,6 +189,62 @@ export function createRfiService(deps: RfisDeps) {
   }
 
   /**
+   * Nova Ask (F2): every sent RFI on the project with its responses, for the `ai` indexer. Drafts and voided RFIs are
+   * left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by `aiAccessScopes`.
+   */
+  async function aiSources(scope: TenantScope, projectId: string) {
+    const rows = await scope.tx
+      .select()
+      .from(rfis)
+      .where(
+        and(
+          eq(rfis.projectId, projectId),
+          isNull(rfis.deletedAt),
+          sql`${rfis.status} not in ('draft', 'void')`,
+        ),
+      )
+      .orderBy(asc(rfis.id));
+    const replies = rows.length
+      ? await scope.tx
+          .select({
+            rfiId: responses.rfiId,
+            id: responses.id,
+            isOfficial: responses.isOfficial,
+            bodyText: responses.bodyText,
+          })
+          .from(responses)
+          .innerJoin(rfis, eq(rfis.id, responses.rfiId))
+          .where(
+            and(
+              eq(rfis.projectId, projectId),
+              isNull(rfis.deletedAt),
+              sql`${rfis.status} not in ('draft', 'void')`,
+            ),
+          )
+          .orderBy(asc(responses.createdAt), asc(responses.id))
+      : [];
+    return rows.map((r) => ({
+      id: r.id,
+      number: r.number === null ? null : formatRfiNumber(r.number),
+      subject: r.subject,
+      status: r.status,
+      question: r.questionText,
+      responses: replies
+        .filter((x) => x.rfiId === r.id)
+        .map((x) => ({ id: x.id, official: x.isOfficial, text: x.bodyText })),
+    }));
+  }
+
+  /**
+   * The Ask scopes this caller holds for RFIs. Builder staff with RFI read access hold `rfis`; everyone else holds
+   * none, so subcontractors and consultants never retrieve RFI text through Ask (they see their own RFIs in the register).
+   */
+  async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
+    if (scope.ctx.principalType !== 'member') return [];
+    return (await deps.access.can(scope, 'rfis.rfis.read', { projectId })) ? ['rfis'] : [];
+  }
+
+  /**
    * Nova F3 "similar RFIs" (RFI-US3): RFIs already raised on the project that the caller can see and that match
    * any of the phrases, best match first. Drafts and voided RFIs are left out. Empty without RFI read access.
    */
@@ -864,6 +920,8 @@ export function createRfiService(deps: RfisDeps) {
     voidRfi,
     importRfi,
     findSimilar,
+    aiSources,
+    aiAccessScopes,
     openOnDrawing,
     ballInCourt,
   };
