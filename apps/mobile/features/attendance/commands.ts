@@ -78,3 +78,13 @@ export async function endRollCall(api: ApiClient, t: GateTarget, rollCallId: str
     }),
   );
 }
+
+/** The evacuation still in progress, if any, so a supervisor can pick it up again after the app closes. */
+export async function findOpenRollCall(api: ApiClient, t: GateTarget) {
+  const list = unwrap(
+    await api.GET(rollCallPath, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId }, query: { open: 'true' } },
+    }),
+  );
+  return list.data[0] ?? null;
+}

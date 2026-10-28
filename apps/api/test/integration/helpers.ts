@@ -10,7 +10,12 @@ import {
   type Database,
   type RedisClient,
 } from '@archova/kernel';
-import { DEFAULT_FAKE_RESPONDERS, createFakeProvider, type FakeProvider } from '@archova/mod-ai';
+import {
+  DEFAULT_FAKE_RESPONDERS,
+  createFakeProvider,
+  type FakeProvider,
+  type RasterizePage,
+} from '@archova/mod-ai';
 import {
   createMemoryObjectStore,
   hexToBase64,
@@ -50,7 +55,7 @@ export interface TestContext {
 }
 
 export async function createTestContext(
-  opts: { redis?: boolean; scanner?: MalwareScanner } = {},
+  opts: { redis?: boolean; scanner?: MalwareScanner; rasterizePage?: RasterizePage } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
     NODE_ENV: 'test',
@@ -79,6 +84,7 @@ export async function createTestContext(
     store,
     scanner: opts.scanner ?? noScanner,
     aiProvider: ai,
+    ...(opts.rasterizePage ? { aiRasterizePage: opts.rasterizePage } : {}),
     messages,
   });
   await app.ready();

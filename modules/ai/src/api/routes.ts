@@ -453,6 +453,13 @@ export function aiRoutes(
           unexplainedChangeIds: c.unexplained,
           truncated: c.truncated,
           scanned: c.scanned,
+          visual: c.visual && {
+            runId: c.visual.runId ? encodeId('aiRun', c.visual.runId) : null,
+            reliable: c.visual.reliable,
+            reason: c.visual.reason,
+            truncated: c.visual.truncated,
+            regions: c.visual.regions,
+          },
           affectedRfis: c.affectedRfis.map((r) => ({ ...r, id: encodeId('rfi', r.id) })),
         },
       };

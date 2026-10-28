@@ -37,6 +37,12 @@ variable "service_principals" {
   default     = []
 }
 
+variable "allow_cloudfront_distributions" {
+  description = "Let CloudFront distributions in this account read objects encrypted with the key, for an S3 origin behind origin access control. The bucket policy still names the one distribution that may read."
+  type        = bool
+  default     = false
+}
+
 variable "multi_region" {
   description = "Create a multi-Region primary key so a replica can live in Melbourne for DR."
   type        = bool

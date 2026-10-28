@@ -105,6 +105,8 @@ describe('Nova drawing revision compare (F21)', () => {
       truncated: false,
       scanned: false,
       unexplainedChangeIds: [],
+      // No page renderer in this deployment, so the linework isn't compared.
+      visual: null,
     });
     expect(c.runId).toMatch(/^air_/);
     expect(

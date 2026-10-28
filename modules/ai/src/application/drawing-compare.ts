@@ -1,9 +1,11 @@
 // F21 drawing revision compare (ai/01 F21, product/02 "Nova"): "What changed?" on a drawing revision. Code diffs
 // the text of the sheet against the revision it superseded (OCR for scans); Nova words the changes, and the open
 // RFIs pinned to the sheet are listed, marked when a change sits near the pin. The wording is cached per revision
-// pair and shared; RFIs are looked up per request, as the caller sees them.
+// pair and shared; RFIs are looked up per request, as the caller sees them. Where a page renderer is installed, the
+// linework is compared too (`visual`, application/visual-compare.ts): code pixel-diffs the two renders and Nova words
+// the regions it found.
 import { and, eq } from 'drizzle-orm';
-import { drawingComparePrompt } from '@archova/ai-prompts';
+import { drawingCompareVisualPrompt, drawingComparePrompt } from '@archova/ai-prompts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import {
@@ -13,10 +15,17 @@ import {
   type ReviewedCompare,
   type SheetChange,
 } from '../domain/drawing-compare';
-import { drawingCompares } from '../infra/tables';
+import type { Raster } from '../domain/visual-diff';
+import { drawingCompares, drawingVisualCompares } from '../infra/tables';
 import { MAX_INLINE_BYTES, type ReadableFile } from './drawing-register';
 import type { Gateway } from './gateway';
 import { readSheetLines } from './sheet-text';
+import {
+  compareVisually,
+  type VisualComparePayload,
+  type VisualCompareResult,
+  type VisualUnavailable,
+} from './visual-compare';
 
 /** What `documents` returns for a drawing revision (the fields Nova reads). */
 export interface DrawingRevisionRef {
@@ -55,6 +64,12 @@ export interface DrawingCompareDeps {
     projectId: string,
     revisionIds: string[],
   ) => Promise<RfiOnDrawing[]>;
+  /**
+   * Renders one page of a PDF as greyscale: the whole page, longer side 2,000 px, so two issues of the same sheet size
+   * line up. Unset where no native canvas is installed (the API image): the linework pass is skipped and the result
+   * carries `visual: null`.
+   */
+  rasterizePage?: (file: ReadableFile, pageIndex: number) => Promise<Raster>;
 }
 
 /** `ai_drawing_compares.payload`. */
@@ -68,10 +83,22 @@ export interface DrawingComparePayload extends ReviewedCompare {
   scanned: boolean;
 }
 
+type SheetText = Awaited<ReturnType<typeof readSheetLines>>;
+interface LoadedSheets {
+  files: { from: ReadableFile; to: ReadableFile };
+  before: SheetText;
+  after: SheetText;
+}
+
+/** The linework half of a compare, with the run that worded it (null when nothing needed wording). */
+export type DrawingVisual = VisualComparePayload & { runId: string | null };
+
 export interface DrawingCompare extends DrawingComparePayload {
   runId: string | null;
   revisionId: string;
   againstRevisionId: string;
+  /** Null where no page renderer is installed. */
+  visual: DrawingVisual | null;
   affectedRfis: Array<Omit<RfiOnDrawing, 'pin'> & { nearChange: boolean }>;
 }
 
@@ -113,9 +140,9 @@ export function createDrawingCompareService(deps: DrawingCompareDeps) {
     );
     const { to, from } = found;
 
-    let runId = found.cached?.runId ?? null;
-    let payload = found.cached?.payload as DrawingComparePayload | undefined;
-    if (!payload) {
+    /** Both sheets and their text, read once and only if the text compare or the linework pass needs them. */
+    let sheets: Promise<LoadedSheets> | undefined;
+    const loadSheets = async (): Promise<LoadedSheets> => {
       const files = await database.withTenantTx(
         ctx,
         async (scope) => ({
@@ -141,6 +168,14 @@ export function createDrawingCompareService(deps: DrawingCompareDeps) {
         files.to,
         to.pageIndex + 1,
       );
+      return { files, before, after };
+    };
+    const sheetsOnce = () => (sheets ??= loadSheets());
+
+    let runId = found.cached?.runId ?? null;
+    let payload = found.cached?.payload as DrawingComparePayload | undefined;
+    if (!payload) {
+      const { before, after } = await sheetsOnce();
       if (!before.lines.length || !after.lines.length)
         throw new AppError(
           'ai.drawing_compare.no_text',
@@ -207,21 +242,117 @@ export function createDrawingCompareService(deps: DrawingCompareDeps) {
       });
     }
 
+    const changes = payload.changes;
+    const visual = deps.rasterizePage
+      ? await linework(ctx, projectId, { to, from }, changes, sheetsOnce, deps.rasterizePage)
+      : null;
+
     const rfis = await database.withTenantTx(
       ctx,
       (scope) => deps.openRfisOnDrawing(scope, projectId, [from.id, to.id]),
       ro,
     );
-    const changes = payload.changes;
     return {
       runId,
       revisionId: to.id,
       againstRevisionId: from.id,
+      visual,
       ...payload,
       affectedRfis: rfis
         .map(({ pin, ...r }) => ({ ...r, nearChange: pin !== null && isNearChange(pin, changes) }))
         .sort((a, b) => Number(b.nearChange) - Number(a.nearChange)),
     };
+  }
+
+  /**
+   * The linework half: the stored result for this revision pair, or render both pages, pixel-diff them and have Nova
+   * word the regions. A step that can't run (no render, allowance used, Nova busy) gives an empty result with the
+   * reason and is not stored, so the text half is never held back by it and the next open tries again.
+   */
+  async function linework(
+    ctx: TenantContext,
+    projectId: string,
+    revisions: { to: DrawingRevisionRef; from: DrawingRevisionRef },
+    changes: SheetChange[],
+    loadSheets: () => Promise<LoadedSheets>,
+    rasterizePage: NonNullable<DrawingCompareDeps['rasterizePage']>,
+  ): Promise<DrawingVisual> {
+    const { to, from } = revisions;
+    const version = drawingCompareVisualPrompt.version;
+    const cached = await database.withTenantTx(
+      ctx,
+      async (scope) => {
+        const [row] = await scope.tx
+          .select()
+          .from(drawingVisualCompares)
+          .where(
+            and(
+              eq(drawingVisualCompares.orgId, scope.ctx.orgId),
+              eq(drawingVisualCompares.revisionId, to.id),
+              eq(drawingVisualCompares.againstRevisionId, from.id),
+              eq(drawingVisualCompares.promptVersion, version),
+            ),
+          )
+          .limit(1);
+        return row ?? null;
+      },
+      { readOnly: true },
+    );
+    if (cached) return { ...(cached.payload as VisualComparePayload), runId: cached.runId };
+
+    const unavailable = (reason: VisualUnavailable): DrawingVisual => ({
+      reliable: false,
+      reason,
+      regions: [],
+      truncated: false,
+      dropped: 0,
+      shift: { dx: 0, dy: 0 },
+      runId: null,
+    });
+    let result: VisualCompareResult;
+    try {
+      const { files, before, after } = await loadSheets();
+      let rasters: { before: Raster; after: Raster };
+      try {
+        rasters = {
+          before: await rasterizePage(files.from, from.pageIndex),
+          after: await rasterizePage(files.to, to.pageIndex),
+        };
+      } catch {
+        return unavailable('render_failed');
+      }
+      result = await compareVisually(deps.gateway, ctx, {
+        projectId,
+        sheet: { label: `${to.sheetNumber} ${to.title}`, fromRev: from.rev, toRev: to.rev },
+        rasters,
+        text: { before: before.lines, after: after.lines, changes },
+      });
+    } catch (e) {
+      if (e instanceof AppError)
+        return unavailable(e.code === 'ai.allowance_used' ? 'allowance_used' : 'unavailable');
+      throw e;
+    }
+    if (result.complete) {
+      const stored = result.payload;
+      const storedRunId = result.runId;
+      await database.withTenantTx(ctx, async (scope) => {
+        await scope.tx
+          .insert(drawingVisualCompares)
+          .values({
+            id: uuidv7(),
+            orgId: scope.ctx.orgId,
+            projectId,
+            revisionId: to.id,
+            againstRevisionId: from.id,
+            promptVersion: version,
+            payload: stored,
+            runId: storedRunId,
+            createdBy: scope.ctx.userId,
+          })
+          .onConflictDoNothing();
+      });
+    }
+    return { ...result.payload, runId: result.runId };
   }
 
   return { compare };
