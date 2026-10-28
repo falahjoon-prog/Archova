@@ -1,6 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { DrawingSheet as Sheet } from '@archova/contracts';
 import { registerRows } from '../features/drawings';
+
+vi.mock('../features/drawings/screens/DrawingRegisterScreen', () => ({}));
 
 const sheet = (over: Partial<Sheet>): Sheet => ({
   id: 's1',
