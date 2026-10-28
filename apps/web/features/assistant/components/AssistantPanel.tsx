@@ -45,7 +45,7 @@ function recordLabel(r: NonNullable<AssistantScope['record']>): string {
   return RECORD_LABELS[r.type] ?? 'This page';
 }
 
-/** Starters that work with what Nova can read: the preview's records, or the project's documents and drawings. */
+/** Starters that work with what Nova can read: the preview's records, or what the project holds (documents, drawings, RFIs, defects, the site diary). */
 const SUGGESTIONS = previewDataOnly
   ? [
       'Which RFIs are overdue?',
@@ -54,8 +54,8 @@ const SUGGESTIONS = previewDataOnly
     ]
   : [
       'What fire rating do the stair walls need?',
-      'Which drawings show the bin store?',
-      'What does the spec say about waterproofing wet areas?',
+      'Which RFIs are still waiting on an answer?',
+      'Which defects are open in the bathrooms?',
     ];
 
 /** "allowance resets on 1 Nov 2026": a month after the period start. */

@@ -43,7 +43,7 @@ export function toNovaAnswer(res: ApiNovaAnswer): NovaAnswer {
   if (!res.found) {
     return {
       kind: 'not_found',
-      text: res.answer || "I couldn't find that in this project's documents and drawings.",
+      text: res.answer || "I couldn't find that in this project's records.",
       citations: res.closestMatches.map(toCitation),
       runId: res.runId,
     };
