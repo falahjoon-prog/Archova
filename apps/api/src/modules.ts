@@ -180,7 +180,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const sync = createSyncModule(services, {
     access: access.api,
-    sources: [defects.api.syncSource],
+    sources: [defects.api.syncSource, diary.api.syncSource],
   });
 
   const workforce = createWorkforceModule(services, {

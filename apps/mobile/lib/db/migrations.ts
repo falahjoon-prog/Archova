@@ -73,6 +73,19 @@ export const MIGRATIONS: readonly string[] = [
   ) WITHOUT ROWID;
   CREATE INDEX file_queue_state ON file_queue (state, created_at);
   `,
+  // 3: gate sign-ins scanned with no signal (ATT-AC9). `idempotency_key` is made at the scan and reused on every
+  // replay, so a reply lost on the way back cannot sign the worker in twice; `client_at` is the scan time.
+  `
+  CREATE TABLE gate_queue (
+    idempotency_key TEXT PRIMARY KEY,
+    project_id      TEXT NOT NULL,
+    gate_code       TEXT NOT NULL,
+    client_at       TEXT NOT NULL,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT NOT NULL
+  ) WITHOUT ROWID;
+  CREATE INDEX gate_queue_created ON gate_queue (created_at);
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

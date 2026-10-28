@@ -416,6 +416,60 @@ export function createDiaryService(deps: DiaryDeps) {
     };
   }
 
+  /**
+   * For the mobile pull: the records among `ids` the caller can see, as list/detail rows. Entries and lines follow the
+   * same company scoping as `list` and `detail`; ids not returned are sent to the device as deletes.
+   */
+  async function visibleAmong(
+    scope: TenantScope,
+    projectId: string,
+    entityType: string,
+    ids: readonly string[],
+  ): Promise<{ entries: EntryView[]; lines: Array<{ kind: LineKind; row: LineRow }> }> {
+    const v = await viewer(scope, projectId);
+    if (entityType === 'diary_entry') {
+      const { timezone } = await projectInfo(scope, projectId);
+      const where: SQL[] = [eq(entries.projectId, projectId), inArray(entries.id, [...ids])];
+      if (v.scopedCompanyId)
+        where.push(sql`exists (select 1 from diary.labour l where l.entry_id = ${entries.id}
+                       and l.company_id = ${v.scopedCompanyId} and l.deleted_at is null)`);
+      const rows = await scope.tx
+        .select()
+        .from(entries)
+        .where(and(...where));
+      const totals = await totalsFor(
+        scope,
+        rows.map((r) => r.id),
+        v,
+      );
+      return {
+        entries: rows.map((r) => ({
+          ...headerFor(r, v),
+          totals: totals.get(r.id) ?? emptyTotals(),
+          lateAfter: lateCutoff(r.date, timezone),
+        })),
+        lines: [],
+      };
+    }
+    const kind = (Object.keys(SYNC_TYPE) as LineKind[]).find((k) => SYNC_TYPE[k] === entityType);
+    if (!kind) return { entries: [], lines: [] };
+    const t = LINE_TABLES[kind];
+    if (v.scopedCompanyId && !COMPANY_SCOPED_KINDS[kind]) return { entries: [], lines: [] };
+    const where: SQL[] = [eq(t.projectId, projectId), inArray(t.id, [...ids]), isNull(t.deletedAt)];
+    // As with entries, a company's lines are theirs only on days when it has labour (matches `list`).
+    if (v.scopedCompanyId)
+      where.push(
+        sql`company_id = ${v.scopedCompanyId}`,
+        sql`exists (select 1 from diary.labour l where l.entry_id = ${t.entryId}
+            and l.company_id = ${v.scopedCompanyId} and l.deleted_at is null)`,
+      );
+    const rows = (await scope.tx
+      .select()
+      .from(t)
+      .where(and(...where))) as LineRow[];
+    return { entries: [], lines: rows.map((row) => ({ kind, row })) };
+  }
+
   async function list(scope: TenantScope, projectId: string, from: LocalDate, to: LocalDate) {
     const span = daysBetween(from, to);
     if (span < 0)
@@ -1097,6 +1151,7 @@ export function createDiaryService(deps: DiaryDeps) {
     list,
     detail,
     applyAttendanceTotals,
+    visibleAmong,
     dayForSummary,
     aiSources,
     aiAccessScopes,

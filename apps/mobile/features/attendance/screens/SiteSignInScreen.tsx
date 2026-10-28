@@ -1,4 +1,4 @@
-// Scan the gate's QR to sign in, or sign out (workforce ATT-US1). Needs a connection for now.
+// Scan the gate's QR to sign in, or sign out (workforce ATT-US1). A sign-in scanned with no signal is queued.
 import { useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
@@ -6,7 +6,8 @@ import { ApiError } from '@archova/api-client';
 import { uuidv7 } from '@archova/domain';
 import { Button, Screen, useTheme } from '@archova/ui-native';
 import { api } from '../../../lib/api';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { isOfflineError } from '../../../lib/attendance/sign-in-queue';
+import { StateMessage, useCurrentOrg, useDeviceData } from '../../../shared';
 import { signInAtGate, signOutOfSite } from '../commands';
 import { parseGateCode, signInMessage, type SignInMessage } from '../gate';
 
@@ -24,6 +25,7 @@ function failureText(e: unknown): string {
 export function SiteSignInScreen({ projectId }: { projectId: string }) {
   const t = useTheme();
   const { orgId } = useCurrentOrg();
+  const device = useDeviceData();
   const [permission, requestPermission] = useCameraPermissions();
   const [attempt, setAttempt] = useState<Attempt>({ kind: 'scan' });
   // The camera reports the same code many times a second; only the first starts a sign-in.
@@ -68,9 +70,24 @@ export function SiteSignInScreen({ projectId }: { projectId: string }) {
       });
       return;
     }
-    run(async (idempotencyKey, clientAt) =>
-      signInMessage(await signInAtGate(api, target, { gateCode, idempotencyKey, clientAt })),
-    );
+    run(async (idempotencyKey, clientAt) => {
+      try {
+        return signInMessage(
+          await signInAtGate(api, target, { gateCode, idempotencyKey, clientAt }),
+        );
+      } catch (e) {
+        // No signal: keep the scan on the phone and replay it later (ATT-AC9).
+        if (device.status !== 'ready' || !isOfflineError(e)) throw e;
+        await device.data.signIns.enqueue({ idempotencyKey, projectId, gateCode, clientAt });
+        device.data.requestSync('connectivity');
+        return {
+          tone: 'warning',
+          title: 'Saved on this phone',
+          detail:
+            'You have no signal. Your sign-in will be sent when you are back online. Until then the site manager will not see you on site.',
+        };
+      }
+    });
   };
 
   const signOut = () =>
