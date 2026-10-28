@@ -302,7 +302,11 @@ export const DraftRfiWithNovaParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const DraftRfiWithNovaBody = z.object({
-  "note": z.string().min(1).max(4000),
+  "note": z.string().max(4000).optional(),
+  "markup": z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "markupId": z.string().regex(new RegExp("^mku_[0-9A-Za-z]{26}$")),
+}).strict().optional(),
 }).strict();
 export const CompareDrawingRevisionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),

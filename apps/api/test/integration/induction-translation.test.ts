@@ -47,6 +47,7 @@ beforeAll(async () => {
         throw new Error('unused');
       },
       getPreviousDrawingRevision: async () => null,
+      getMarkup: async () => ({ shapes: [] }),
       openRfisOnDrawing: async () => [],
       provider: t.ai,
       translationLanguages: [TEST_LANGUAGE, { ...TEST_LANGUAGE, code: 'x-off', enabled: false }],

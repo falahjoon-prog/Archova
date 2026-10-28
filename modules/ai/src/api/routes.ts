@@ -216,7 +216,19 @@ export function aiRoutes(
     },
     draftRfiWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
-      const d = await rfiDrafts.draft(requireTenant(input), projectId, { note: input.body.note });
+      const m = input.body.markup;
+      let markup: { revisionId: string; markupId: string } | undefined;
+      if (m) {
+        const revisionId = decodeId('drawingRevision', m.drawingRevisionId);
+        const markupId = decodeId('markup', m.markupId);
+        if (!revisionId) throw new AppError('drawing_revision.not_found');
+        if (!markupId) throw new AppError('markup.not_found');
+        markup = { revisionId, markupId };
+      }
+      const d = await rfiDrafts.draft(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        ...(markup ? { markup } : {}),
+      });
       return {
         status: 200,
         body: {
@@ -234,6 +246,14 @@ export function aiRoutes(
             status: r.status,
           })),
           suggestedAssigneeIds: d.suggestedAssigneeIds.map((id) => encodeId('user', id)),
+          drawing: d.drawing && {
+            drawingRevisionId: encodeId('drawingRevision', d.drawing.revisionId),
+            sheetNumber: d.drawing.sheetNumber,
+            title: d.drawing.title,
+            rev: d.drawing.rev,
+            pin: d.drawing.pin,
+            scanned: d.drawing.scanned,
+          },
         },
       };
     },

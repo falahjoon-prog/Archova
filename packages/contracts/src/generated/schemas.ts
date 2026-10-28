@@ -1478,6 +1478,17 @@ export const NovaRfiDraftSchema = z.object({
   "status": z.enum(["open", "answered", "closed"]),
 })),
   "suggestedAssigneeIds": z.array(z.string()),
+  "drawing": z.object({
+  "drawingRevisionId": z.string(),
+  "sheetNumber": z.string(),
+  "title": z.string(),
+  "rev": z.string(),
+  "pin": z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}),
+  "scanned": z.boolean(),
+}).nullable(),
 });
 export type NovaRfiDraft = z.infer<typeof NovaRfiDraftSchema>;
 

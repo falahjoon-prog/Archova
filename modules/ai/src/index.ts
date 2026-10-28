@@ -186,6 +186,13 @@ export function createAiModule(
       projectId: string,
       id: string,
     ) => Promise<DrawingRevisionRef | null>;
+    /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
+    getMarkup: (
+      scope: TenantScope,
+      projectId: string,
+      revisionId: string,
+      markupId: string,
+    ) => Promise<{ shapes: unknown }>;
     /** rfis.api.openOnDrawing: open RFIs the caller can see pinned to these revisions (F21). */
     openRfisOnDrawing: (
       scope: TenantScope,
@@ -243,6 +250,9 @@ export function createAiModule(
     assert: deps.assert,
     accessScopes: deps.accessScopes,
     similarRfis: deps.similarRfis,
+    readFile: deps.readFile,
+    getRevision: deps.getDrawingRevision,
+    getMarkup: deps.getMarkup,
   });
   const drawingCompare = createDrawingCompareService({
     database: services.database,

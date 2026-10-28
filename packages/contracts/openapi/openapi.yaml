@@ -1269,9 +1269,9 @@ paths:
       tags: [ai]
       x-module: ai
       x-permission: rfis.rfis.create
-      summary: Nova drafts an RFI from a note typed on site (F3).
+      summary: Nova drafts an RFI from a note typed on site or a drawing markup (F3).
       description: |
-        Nova turns the note into an RFI subject and question, citing the drawings and spec clauses it refers to
+        A note, a markup with text on it, or both are needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
         from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
         the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
         neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
@@ -1283,9 +1283,21 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [note]
               properties:
-                note: { type: string, minLength: 1, maxLength: 4000 }
+                note:
+                  type: string
+                  maxLength: 4000
+                  description: What the RFI is about. May be empty when the markup has text on it.
+                markup:
+                  description: |
+                    A markup the person drew on a drawing revision. Nova reads the words on it and the sheet's own
+                    text around it, names the sheet and revision in the question, and returns where to pin the RFI.
+                  type: object
+                  additionalProperties: false
+                  required: [drawingRevisionId, markupId]
+                  properties:
+                    drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+                    markupId: { type: string, pattern: '^mku_[0-9A-Za-z]{26}$' }
       responses:
         '200':
           description: The draft
@@ -4361,6 +4373,7 @@ components:
           unsupportedNumbers,
           similarRfis,
           suggestedAssigneeIds,
+          drawing,
         ]
       properties:
         runId: { type: string, description: For feedback (`air_`) }
@@ -4412,6 +4425,25 @@ components:
           description: People (`usr_`) asked the most similar RFIs. The person picks the assignee.
           type: array
           items: { type: string }
+        drawing:
+          description: The marked sheet and where to pin the RFI; null when the draft came from a note alone.
+          type: [object, 'null']
+          required: [drawingRevisionId, sheetNumber, title, rev, pin, scanned]
+          properties:
+            drawingRevisionId: { type: string }
+            sheetNumber: { type: string }
+            title: { type: string }
+            rev: { type: string }
+            pin:
+              type: object
+              required: [x, y]
+              properties:
+                x:
+                  { type: number, minimum: 0, maximum: 1, description: Normalised, origin top-left }
+                y: { type: number, minimum: 0, maximum: 1 }
+            scanned:
+              type: boolean
+              description: The sheet was read with OCR, so the person should check the quoted text against the drawing.
     NovaDrawingChange:
       type: object
       required: [id, kind, before, after, titleBlock, x, y]

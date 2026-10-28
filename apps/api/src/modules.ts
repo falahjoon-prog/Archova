@@ -87,6 +87,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       documents.api.getDrawingRevision(scope, projectId, id),
     getPreviousDrawingRevision: (scope, projectId, id) =>
       documents.api.getPreviousDrawingRevision(scope, projectId, id),
+    getMarkup: (scope, projectId, revisionId, markupId) =>
+      documents.api.getMarkup(scope, projectId, revisionId, markupId),
     openRfisOnDrawing: (scope, projectId, ids) => rfis.api.openOnDrawing(scope, projectId, ids),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });

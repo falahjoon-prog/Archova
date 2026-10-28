@@ -979,8 +979,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Nova drafts an RFI from a note typed on site (F3).
-         * @description Nova turns the note into an RFI subject and question, citing the drawings and spec clauses it refers to
+         * Nova drafts an RFI from a note typed on site or a drawing markup (F3).
+         * @description A note, a markup with text on it, or both are needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
          *     from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
          *     the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
          *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
@@ -3100,6 +3100,20 @@ export interface components {
             }[];
             /** @description People (`usr_`) asked the most similar RFIs. The person picks the assignee. */
             suggestedAssigneeIds: string[];
+            /** @description The marked sheet and where to pin the RFI; null when the draft came from a note alone. */
+            drawing: {
+                drawingRevisionId: string;
+                sheetNumber: string;
+                title: string;
+                rev: string;
+                pin: {
+                    /** @description Normalised */
+                    x: number;
+                    y: number;
+                };
+                /** @description The sheet was read with OCR, so the person should check the quoted text against the drawing. */
+                scanned: boolean;
+            } | null;
         };
         NovaDrawingChange: {
             /** @description Cited by items */
@@ -6512,7 +6526,16 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    note: string;
+                    /** @description What the RFI is about. May be empty when the markup has text on it. */
+                    note?: string;
+                    /**
+                     * @description A markup the person drew on a drawing revision. Nova reads the words on it and the sheet's own
+                     *     text around it, names the sheet and revision in the question, and returns where to pin the RFI.
+                     */
+                    markup?: {
+                        drawingRevisionId: string;
+                        markupId: string;
+                    };
                 };
             };
         };

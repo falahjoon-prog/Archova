@@ -169,3 +169,125 @@ describe('Nova RFI drafts (F3)', () => {
     expect([403, 404]).toContain(denied.statusCode);
   });
 });
+
+describe('Nova RFI drafts from a drawing markup (F3)', () => {
+  /** A4 sheet with one line of text every 22 points from the top left (about 0.026 of the sheet apart). */
+  const SHEET = [
+    'GENERAL NOTES',
+    'CORRIDOR WALL FRL 90/90/90',
+    'RISER CUPBOARD R3.2 WALLS FRL 120/120/120',
+    'GRID C',
+    '',
+    '',
+    '',
+    '',
+    'STORMWATER PIT SW4 FAR FROM THE MARKUP',
+  ];
+
+  async function markedSheet() {
+    const s = await setup();
+    const set = (await s.pm.browser.post(`${s.base}/drawing-sets`, { name: 'IFC 1' })).json();
+    const fileId = await uploadBytes(t, s.pm.browser, s.org.id, s.project.id, await pdf([SHEET]));
+    const rev = await s.pm.browser.post(`${s.base}/drawing-sets/${set.id}/revisions`, {
+      sheetNumber: 'A-301',
+      title: 'Level 3 Floor Plan',
+      rev: 'D',
+      fileId,
+    });
+    expect(rev.statusCode).toBe(201);
+    expect(
+      (
+        await s.pm.browser.post(`${s.base}/drawing-sets/${set.id}/publish`, {
+          confirmNewSheets: true,
+        })
+      ).statusCode,
+    ).toBe(200);
+    const revisionId = rev.json().id as string;
+    const mark = async (shapes: unknown[], visibility = 'private') => {
+      const m = await s.pm.browser.post(`${s.base}/drawing-revisions/${revisionId}/markups`, {
+        visibility,
+        shapes,
+      });
+      expect(m.statusCode).toBe(201);
+      return m.json().id as string;
+    };
+    return { ...s, revisionId, mark };
+  }
+
+  it('drafts from the words on the markup and the sheet text around it, and says where to pin', async () => {
+    const s = await markedSheet();
+    // Lines 2 and 3 of the sheet sit near y 0.10 to 0.13; the markup is drawn around them.
+    const markupId = await s.mark([
+      { id: 'r', kind: 'rect', from: { x: 0.05, y: 0.08 }, to: { x: 0.5, y: 0.15 } },
+      { id: 't', kind: 'text', at: { x: 0.1, y: 0.2 }, text: 'Which FRL governs this riser wall?' },
+    ]);
+    const res = await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: '',
+      markup: { drawingRevisionId: s.revisionId, markupId },
+    });
+    expect(res.statusCode).toBe(200);
+    const d = res.json();
+    expect(d.question).toContain('A-301');
+    expect(d.question).toContain('Which FRL governs this riser wall?');
+    expect(d.unsupportedNumbers).toEqual([]);
+    expect(d.drawing).toMatchObject({
+      drawingRevisionId: s.revisionId,
+      sheetNumber: 'A-301',
+      title: 'Level 3 Floor Plan',
+      rev: 'D',
+      scanned: false,
+    });
+    expect(d.drawing.pin.x).toBeCloseTo(0.275, 2);
+    expect(d.drawing.pin.y).toBeCloseTo(0.14, 2);
+    // The model saw the words on the markup and the lines beside it, not the pit across the sheet.
+    const call = t.ai.calls.at(-1)!;
+    expect(call.task).toBe('rfi.draft');
+    expect(call.text).toContain('<label>Which FRL governs this riser wall?</label>');
+    expect(call.text).toContain('<nearby>RISER CUPBOARD R3.2 WALLS FRL 120/120/120</nearby>');
+    expect(call.text).not.toContain('STORMWATER PIT');
+
+    // A note alone still works and has no drawing to pin to.
+    const plain = await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: 'Level 3 corridor wall at the riser: which fire rating governs',
+    });
+    expect(plain.json().drawing).toBeNull();
+  });
+
+  it('keeps private markups private and asks for something to draft from', async () => {
+    const s = await markedSheet();
+    const markupId = await s.mark([
+      { id: 'r', kind: 'rect', from: { x: 0.05, y: 0.08 }, to: { x: 0.5, y: 0.15 } },
+    ]);
+    const body = { drawingRevisionId: s.revisionId, markupId };
+
+    // A rectangle with no words and no note gives Nova nothing to ask.
+    const empty = await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, { note: '', markup: body });
+    expect(empty.statusCode).toBe(422);
+    expect(empty.json().code).toBe('validation_failed');
+    // A note on top of the unlabelled markup is enough.
+    const withNote = await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: 'Riser wall FRL here?',
+      markup: body,
+    });
+    expect(withNote.statusCode).toBe(200);
+    expect(withNote.json().drawing.sheetNumber).toBe('A-301');
+
+    // Another project member can't draft from someone's private markup.
+    const other = await s.eng.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: 'Riser wall FRL here?',
+      markup: body,
+    });
+    expect(other.statusCode).toBe(404);
+    expect(other.json().code).toBe('markup.not_found');
+    // Published to the project, they can.
+    const shared = await s.mark(
+      [{ id: 'r', kind: 'rect', from: { x: 0.05, y: 0.08 }, to: { x: 0.5, y: 0.15 } }],
+      'project',
+    );
+    const ok = await s.eng.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: 'Riser wall FRL here?',
+      markup: { drawingRevisionId: s.revisionId, markupId: shared },
+    });
+    expect(ok.statusCode).toBe(200);
+  });
+});
