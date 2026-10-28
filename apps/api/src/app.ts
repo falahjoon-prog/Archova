@@ -14,7 +14,7 @@ import { FAKE_MODELS, type ModelProvider, type RasterizePage } from '@archova/mo
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import type { ApiConfig } from './config';
-import { loadModules, type Modules } from './modules';
+import { loadModules, type Modules } from '@archova/compose';
 import { registerInternalOperations } from './internal';
 import { registerOperations } from './pipeline';
 import { idempotencyStore } from './plugins/idempotency';
