@@ -22,14 +22,7 @@ async function verifiedSession(mobile = '0412 345 678') {
 }
 
 async function finishSections(sid: string, induction: Open['induction']) {
-  for (const s of induction.sections) {
-    if (s.type === 'video') await src.reportWatch(sid, s.id, s.durationS);
-    else if (s.type === 'slides')
-      for (let i = 0; i < s.pages.length; i++) await src.viewPage(sid, s.id, i);
-    else if (s.type === 'swms')
-      for (const d of s.documents) await src.openDocument(sid, s.id, d.id);
-    else await src.completeSection(sid, s.id);
-  }
+  for (const s of induction.sections) await src.completeSection(sid, s.id, 30);
 }
 
 const ALL_RIGHT = { q1: 'b', q2: 'a', q3: 'b', q4: 'a', q5: 'c' };
@@ -45,7 +38,7 @@ describe('induction preview source', () => {
 
   it('needs the code before anything is saved', async () => {
     const opened = (await src.open('demo', null)) as Open;
-    await expect(src.completeSection(opened.sessionId, 'sec_rules')).rejects.toMatchObject({
+    await expect(src.completeSection(opened.sessionId, 'sec_rules', 5)).rejects.toMatchObject({
       status: 403,
     });
     await src.sendCode(
@@ -55,26 +48,22 @@ describe('induction preview source', () => {
     );
     await expect(src.verify(opened.sessionId, '000000')).rejects.toMatchObject({ status: 422 });
     await expect(src.verify(opened.sessionId, PREVIEW_CODE)).resolves.toMatchObject({
-      verified: true,
-      worker: { mobileMasked: '•••• ••• 678' },
+      progress: { verified: true, worker: { mobileMasked: '•••• ••• 678' } },
     });
   });
 
-  it('counts a video only once watched to the end (IND-AC4)', async () => {
-    const { sid } = await verifiedSession();
-    let p = await src.reportWatch(sid, 'sec_welcome', 10);
-    expect(p.sections.sec_welcome).toMatchObject({ complete: false, watchedS: 10 });
-    p = await src.reportWatch(sid, 'sec_welcome', 5);
-    expect(p.sections.sec_welcome?.watchedS).toBe(10);
-    p = await src.reportWatch(sid, 'sec_welcome', 24);
-    expect(p.sections.sec_welcome?.complete).toBe(true);
+  it('records a section only for a verified worker, and the quiz waits for every section (IND-AC4)', async () => {
+    const { sid, induction } = await verifiedSession();
+    await expect(src.quizQuestions(sid)).rejects.toMatchObject({ status: 409 });
+    const p = await src.completeSection(sid, induction.sections[0]!.id, 24);
+    expect(p.sections.sec_welcome).toEqual({ complete: true });
+    expect(p.sections.sec_rules).toBeUndefined();
   });
 
   it('scores the quiz on the server: the pass mark, and any critical question wrong fails (IND-AC5)', async () => {
     expect(correctNeeded(5, 80)).toBe(4);
     expect(correctNeeded(10, 50)).toBe(7);
     const { sid, induction } = await verifiedSession();
-    await expect(src.quizQuestions(sid)).rejects.toMatchObject({ status: 409 });
     await finishSections(sid, induction);
     const questions = await src.quizQuestions(sid);
     expect(questions[0]).not.toHaveProperty('correct');
@@ -88,7 +77,7 @@ describe('induction preview source', () => {
     expect(one.progress.quiz).toEqual({ passed: true, attempts: 2 });
   });
 
-  it('signs only when everything is done, against a hash of the version shown (IND-AC6)', async () => {
+  it('signs only when everything is done (IND-AC6)', async () => {
     const { sid, induction } = await verifiedSession();
     const signature = { method: 'typed', name: 'Sam Worker' } as const;
     const sign = () =>
@@ -114,8 +103,7 @@ describe('induction preview source', () => {
       src.sign(sid, { statementsAccepted: 2, name: 'Sam', signature, deviceTime: '' }),
     ).rejects.toMatchObject({ status: 422 });
     const p = await sign();
-    expect(p.completion).toMatchObject({ version: 4, signatureMethod: 'typed' });
-    expect(p.completion?.versionHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(p.completion).toMatchObject({ version: 4 });
     expect(p.credentials[0]?.status).toBe('recorded');
   });
 

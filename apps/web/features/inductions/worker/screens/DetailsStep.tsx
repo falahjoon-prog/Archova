@@ -4,8 +4,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { Alert, Button, Select, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { PREVIEW_CODE, PREVIEW_RETURNING_MOBILE, inductionSource } from '../data/source';
-import { setProgress } from '../hooks/useInduction';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { PREVIEW_CODE, PREVIEW_RETURNING_MOBILE } from '../data/source';
+import { setOpened, useInductionSource } from '../hooks/useInduction';
 import { stepNumber, totalSteps } from '../lib/flow';
 import { StickyButton, WorkerShell } from '../components/WorkerShell';
 import type { StepProps } from './types';
@@ -17,6 +18,7 @@ const RESEND_AFTER_S = 30;
 export function DetailsStep({ opened, go, online }: StepProps) {
   const { site, induction, progress, sessionId, companies } = opened;
   const qc = useQueryClient();
+  const source = useInductionSource();
   const [name, setName] = useState(progress.worker?.name ?? '');
   const [companyId, setCompanyId] = useState('');
   const [otherCompany, setOtherCompany] = useState('');
@@ -40,7 +42,7 @@ export function DetailsStep({ opened, go, online }: StepProps) {
 
   const send = useMutation({
     mutationFn: () =>
-      inductionSource.sendCode(
+      source.sendCode(
         sessionId,
         {
           name,
@@ -57,8 +59,8 @@ export function DetailsStep({ opened, go, online }: StepProps) {
     },
   });
   const verify = useMutation({
-    mutationFn: () => inductionSource.verify(sessionId, code),
-    onSuccess: (p) => setProgress(qc, p),
+    mutationFn: () => source.verify(sessionId, code),
+    onSuccess: (o) => setOpened(qc, o),
   });
 
   const step = {
@@ -121,10 +123,12 @@ export function DetailsStep({ opened, go, online }: StepProps) {
         noValidate
       >
         <h1 className="worker-title">Your details</h1>
-        <Alert tone="info" title="Sample induction">
-          No message is sent in the preview. The code is {PREVIEW_CODE}. Use{' '}
-          {PREVIEW_RETURNING_MOBILE} to see a returning worker.
-        </Alert>
+        {previewDataOnly ? (
+          <Alert tone="info" title="Sample induction">
+            No message is sent in the preview. The code is {PREVIEW_CODE}. Use{' '}
+            {PREVIEW_RETURNING_MOBILE} to see a returning worker.
+          </Alert>
+        ) : null}
         <TextField
           label="Full name"
           autoComplete="name"
@@ -135,6 +139,7 @@ export function DetailsStep({ opened, go, online }: StepProps) {
           label="Company"
           placeholder="Choose your company"
           value={companyId}
+          hint="This list of companies on the project is shown before you verify your mobile number, to anyone who has this link. Your induction opens once you've verified."
           onChange={(e) => setCompanyId(e.target.value)}
           options={[
             ...companies.map((c) => ({ value: c.id, label: c.name })),

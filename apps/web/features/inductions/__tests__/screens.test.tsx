@@ -37,14 +37,7 @@ async function readyToSign() {
     { kind: 'sms' },
   );
   await src.verify(sid, PREVIEW_CODE);
-  for (const s of opened.induction.sections) {
-    if (s.type === 'video') await src.reportWatch(sid, s.id, s.durationS);
-    else if (s.type === 'slides')
-      for (let i = 0; i < s.pages.length; i++) await src.viewPage(sid, s.id, i);
-    else if (s.type === 'swms')
-      for (const d of s.documents) await src.openDocument(sid, s.id, d.id);
-    else await src.completeSection(sid, s.id);
-  }
+  for (const s of opened.induction.sections) await src.completeSection(sid, s.id, 30);
   await src.submitQuiz(sid, { q1: 'b', q2: 'a', q3: 'b', q4: 'a', q5: 'c' });
   await src.saveCredential(sid, {
     type: 'white_card',

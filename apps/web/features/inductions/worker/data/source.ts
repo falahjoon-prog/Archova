@@ -8,6 +8,7 @@ import { delay, mockId, nowIso, problem } from '@/shared/mocks/runtime';
 import type {
   InductionProgress,
   InductionSite,
+  OpenInduction,
   OpenedInduction,
   QuizQuestion,
   QuizResult,
@@ -16,6 +17,7 @@ import type {
   WorkerInduction,
 } from '../lib/types';
 import { isAuMobile, maskMobile } from '../lib/flow';
+import type { InductionSource } from './contract';
 
 /** The preview's one-time code; production sends a real one by SMS or email. */
 export const PREVIEW_CODE = '123456';
@@ -43,6 +45,7 @@ const INDUCTION: WorkerInduction = {
   version: 4,
   publishedAt: '2026-09-28T23:00:00Z',
   estimatedMinutes: 20,
+  sectionCount: 7,
   quiz: { questionCount: 5, passPercent: 80 },
   requiredLicences: [],
   declaration: [
@@ -53,101 +56,97 @@ const INDUCTION: WorkerInduction = {
   sections: [
     {
       id: 'sec_welcome',
-      type: 'video',
       title: 'Welcome to Harbour St Tower',
-      minutes: 1,
-      src: '/preview/induction/welcome.webm',
-      lowDataSrc: '/preview/induction/welcome-low.webm',
-      captionsSrc: '/preview/induction/welcome.vtt',
-      durationS: 24,
-      transcript:
-        'Welcome to Harbour St Tower. Sign in at the gate every day, and sign out when you leave. Wear a hard hat, high-vis, safety boots and eye protection at all times. If the alarm sounds, stop work and go to the assembly point at the Harbour St gate.',
+      blocks: [{ type: 'video', fileId: '/preview/induction/welcome.webm', title: null }],
     },
     {
       id: 'sec_emergency',
-      type: 'slides',
       title: 'Emergency procedures',
-      minutes: 3,
-      pages: [
+      blocks: [
         {
-          heading: 'If the alarm sounds',
-          body: 'Stop work. Make your area safe if you can do it quickly. Walk, do not run, to the assembly point.',
-        },
-        {
-          heading: 'Assembly point',
-          body: 'The assembly point is the green A sign inside the Harbour St gate. Stay there until a warden says you can leave.',
-        },
-        {
-          heading: 'Fire',
-          body: 'Raise the alarm. Only use an extinguisher if you are trained and the fire is small. Call 000 if no one has.',
+          type: 'slides',
+          slides: [
+            {
+              title: 'If the alarm sounds',
+              points: [
+                'Stop work. Make your area safe if you can do it quickly.',
+                'Walk, do not run, to the assembly point.',
+              ],
+            },
+            {
+              title: 'Assembly point',
+              points: [
+                'The assembly point is the green A sign inside the Harbour St gate.',
+                'Stay there until a warden says you can leave.',
+              ],
+            },
+            {
+              title: 'Fire',
+              points: [
+                'Raise the alarm.',
+                'Only use an extinguisher if you are trained and the fire is small.',
+                'Call 000 if no one has.',
+              ],
+            },
+          ],
         },
       ],
     },
     {
       id: 'sec_rules',
-      type: 'text',
       title: 'Site rules',
-      minutes: 3,
       blocks: [
         {
-          kind: 'p',
-          text: 'These rules keep everyone safe. Breaking them can mean leaving the site.',
+          type: 'text',
+          body: [
+            'These rules keep everyone safe. Breaking them can mean leaving the site.',
+            '- Sign in at the gate every day. Sign out when you leave.',
+            '- Work hours are 7:00 am to 5:00 pm, Monday to Friday.',
+            '- No alcohol or drugs. You may be tested.',
+            '- Smoke only in the marked area next to the lunch room.',
+            '- Keep walkways clear. Put rubbish in the bins.',
+          ].join('\n'),
         },
-        { kind: 'li', text: 'Sign in at the gate every day. Sign out when you leave.' },
-        { kind: 'li', text: 'Work hours are 7:00 am to 5:00 pm, Monday to Friday.' },
-        { kind: 'li', text: 'No alcohol or drugs. You may be tested.' },
-        { kind: 'li', text: 'Smoke only in the marked area next to the lunch room.' },
-        { kind: 'li', text: 'Keep walkways clear. Put rubbish in the bins.' },
       ],
     },
     {
       id: 'sec_ppe',
-      type: 'text',
       title: 'PPE and hazards',
-      minutes: 4,
       blocks: [
-        { kind: 'h', text: 'Always wear' },
-        { kind: 'li', text: 'Hard hat, high-vis shirt or vest, safety boots and safety glasses.' },
-        { kind: 'h', text: 'Main hazards on this site' },
         {
-          kind: 'li',
-          text: 'Crane lifts: never walk under a load. Keep out of the crane zone when the bell rings.',
-        },
-        {
-          kind: 'li',
-          text: 'Working at heights: use the handrails and harness points. Report missing edge protection.',
-        },
-        {
-          kind: 'li',
-          text: 'Electrical: only licensed electricians touch switchboards and leads.',
+          type: 'text',
+          body: [
+            '## Always wear',
+            '- Hard hat, high-vis shirt or vest, safety boots and safety glasses.',
+            '## Main hazards on this site',
+            '- Crane lifts: never walk under a load. Keep out of the crane zone when the bell rings.',
+            '- Working at heights: use the handrails and harness points. Report missing edge protection.',
+            '- Electrical: only licensed electricians touch switchboards and leads.',
+          ].join('\n'),
         },
       ],
     },
     {
       id: 'sec_firstaid',
-      type: 'text',
       title: 'First aid, amenities and reporting',
-      minutes: 2,
       blocks: [
         {
-          kind: 'li',
-          text: 'First aid is in the site office. The first aiders wear a green hard hat.',
-        },
-        { kind: 'li', text: 'The lunch room and toilets are next to the crane zone fence.' },
-        {
-          kind: 'li',
-          text: 'Report every injury, near miss and hazard to your supervisor the same day.',
+          type: 'text',
+          body: [
+            '- First aid is in the site office. The first aiders wear a green hard hat.',
+            '- The lunch room and toilets are next to the crane zone fence.',
+            '- Report every injury, near miss and hazard to your supervisor the same day.',
+          ].join('\n'),
         },
       ],
     },
     {
       id: 'sec_swms',
-      type: 'swms',
       title: 'SWMS for this site',
-      minutes: 4,
-      documents: [
+      blocks: [
         {
-          id: 'doc_swms_heights',
+          type: 'swms',
+          documentId: 'doc_swms_heights',
           title: 'SWMS 03 Working at heights',
           summary: [
             'Use edge protection or a harness above 2 metres.',
@@ -156,7 +155,8 @@ const INDUCTION: WorkerInduction = {
           ],
         },
         {
-          id: 'doc_swms_crane',
+          type: 'swms',
+          documentId: 'doc_swms_crane',
           title: 'SWMS 07 Crane lifts',
           summary: [
             'Only the dogman directs the crane.',
@@ -168,13 +168,15 @@ const INDUCTION: WorkerInduction = {
     },
     {
       id: 'sec_map',
-      type: 'site_map',
       title: 'Site map',
-      minutes: 2,
-      imageSrc: '/preview/induction/site-map.svg',
-      alt: 'Site map of Harbour St Tower',
-      description:
-        'The gate is on Harbour St, at the bottom of the map. The assembly point, a green A sign, is just inside the gate. The site office and first aid are on the left, the lunch room and toilets on the right. The crane zone is at the top right.',
+      blocks: [
+        {
+          type: 'image',
+          fileId: '/preview/induction/site-map.svg',
+          title: 'Site map of Harbour St Tower',
+          alt: 'Site map of Harbour St Tower. The gate is on Harbour St, at the bottom of the map. The assembly point, a green A sign, is just inside the gate. The site office and first aid are on the left, the lunch room and toilets on the right. The crane zone is at the top right.',
+        },
+      ],
     },
   ],
 };
@@ -311,17 +313,23 @@ function sectionOf(id: string) {
 const allSectionsDone = (p: InductionProgress) =>
   INDUCTION.sections.every((sec) => p.sections[sec.id]?.complete);
 
-async function sha256Hex(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
-  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
-}
-
 /** Quiz pass mark: the builder can raise it, never below 70% (IND-AC5). */
 export function correctNeeded(total: number, passPercent: number): number {
   return Math.ceil((total * Math.max(70, passPercent)) / 100);
 }
 
-export const inductionSource = {
+function openedFor(s: Session): OpenInduction {
+  return {
+    state: 'open',
+    sessionId: s.id,
+    site: SITE,
+    induction: INDUCTION,
+    companies: COMPANIES,
+    progress: s.progress,
+  };
+}
+
+export const inductionSource: InductionSource = {
   /**
    * Exchanges an access link (X45) for a session scoped to this induction. `continue` with a stored session
    * resumes after the token has been taken out of the address bar.
@@ -337,14 +345,12 @@ export const inductionSource = {
       s = { id: mockId('isn'), details: null, codeSent: false, progress: emptyProgress() };
       sessions.set(s.id, s);
     }
-    return delay({
-      state: 'open',
-      sessionId: s.id,
-      site: SITE,
-      induction: INDUCTION,
-      companies: COMPANIES,
-      progress: s.progress,
-    });
+    return delay(openedFor(s));
+  },
+
+  /** Preview files are plain paths under /preview, so the id is already the address. */
+  async fileUrl(fileId: string): Promise<string> {
+    return fileId;
   },
 
   /** B2: sends a 6-digit code by SMS, or by email as the fallback. */
@@ -368,7 +374,7 @@ export const inductionSource = {
   },
 
   /** Upgrades the session to verified. A mobile seen before keeps its credentials on file. */
-  async verify(sessionId: string, code: string): Promise<InductionProgress> {
+  async verify(sessionId: string, code: string): Promise<OpenInduction> {
     const s = session(sessionId);
     if (!s.codeSent || !s.details) problem(409, 'induction.no_code', 'Send a code first.');
     if (code.trim() !== PREVIEW_CODE)
@@ -398,58 +404,17 @@ export const inductionSource = {
         hasPhoto: true,
       });
     }
-    return delay(s.progress);
+    return delay(openedFor(s));
   },
 
-  /** Video: reports the furthest point watched; the section completes at the end (frontend 11 §4). */
-  async reportWatch(
+  /** A section has been read, watched or opened to the end. The server only records it; the screen decides when. */
+  async completeSection(
     sessionId: string,
     sectionId: string,
-    furthestS: number,
+    _seconds: number,
   ): Promise<InductionProgress> {
     const s = verified(sessionId);
-    const sec = sectionOf(sectionId);
-    if (sec.type !== 'video')
-      problem(409, 'induction.wrong_section', 'That section is not a video.');
-    const p = (s.progress.sections[sectionId] ??= { complete: false, watchedS: 0 });
-    p.watchedS = Math.max(p.watchedS ?? 0, Math.min(furthestS, sec.durationS));
-    if (p.watchedS >= sec.durationS - 1) p.complete = true;
-    return delay(s.progress);
-  },
-
-  /** Slides: each page must be seen. */
-  async viewPage(sessionId: string, sectionId: string, page: number): Promise<InductionProgress> {
-    const s = verified(sessionId);
-    const sec = sectionOf(sectionId);
-    if (sec.type !== 'slides')
-      problem(409, 'induction.wrong_section', 'That section is not slides.');
-    const p = (s.progress.sections[sectionId] ??= { complete: false, pagesSeen: [] });
-    p.pagesSeen = [...new Set([...(p.pagesSeen ?? []), page])].sort((a, b) => a - b);
-    if (sec.pages.every((_, i) => p.pagesSeen!.includes(i))) p.complete = true;
-    return delay(s.progress);
-  },
-
-  /** SWMS: each document must be opened. Awareness only, never SWMS sign-on (product 14). */
-  async openDocument(
-    sessionId: string,
-    sectionId: string,
-    documentId: string,
-  ): Promise<InductionProgress> {
-    const s = verified(sessionId);
-    const sec = sectionOf(sectionId);
-    if (sec.type !== 'swms') problem(409, 'induction.wrong_section', 'That section is not SWMS.');
-    const p = (s.progress.sections[sectionId] ??= { complete: false, opened: [] });
-    p.opened = [...new Set([...(p.opened ?? []), documentId])];
-    if (sec.documents.every((d) => p.opened!.includes(d.id))) p.complete = true;
-    return delay(s.progress);
-  },
-
-  /** Text and site map: read to the end and pressed Next. */
-  async completeSection(sessionId: string, sectionId: string): Promise<InductionProgress> {
-    const s = verified(sessionId);
-    const sec = sectionOf(sectionId);
-    if (sec.type !== 'text' && sec.type !== 'site_map')
-      problem(409, 'induction.section_rules', 'Finish this section first.');
+    sectionOf(sectionId);
     s.progress.sections[sectionId] = { complete: true };
     return delay(s.progress);
   },
@@ -489,6 +454,7 @@ export const inductionSource = {
         missedCritical,
         reviewSectionIds,
         attempt: s.progress.quiz.attempts,
+        seeSiteOffice: !passed && s.progress.quiz.attempts >= 3,
       },
       progress: s.progress,
     });
@@ -548,14 +514,10 @@ export const inductionSource = {
     s.progress.completion = {
       completedAt: nowIso(),
       version: INDUCTION.version,
-      versionHash: await sha256Hex(JSON.stringify(INDUCTION)),
-      signatureMethod: input.signature.method,
     };
     return delay(s.progress);
   },
 };
-
-export type InductionSource = typeof inductionSource;
 
 export function resetInductionPreview() {
   sessions = new Map();

@@ -12,9 +12,10 @@ import {
 import type { InductionProgress, WorkerInduction } from '../worker/lib/types';
 
 const induction = {
+  sectionCount: 2,
   sections: [
-    { id: 's1', type: 'text', title: 'One', minutes: 1, blocks: [] },
-    { id: 's2', type: 'text', title: 'Two', minutes: 1, blocks: [] },
+    { id: 's1', title: 'One', blocks: [] },
+    { id: 's2', title: 'Two', blocks: [] },
   ],
 } as unknown as WorkerInduction;
 
@@ -57,8 +58,6 @@ describe('induction flow', () => {
       completion: {
         completedAt: '2026-10-02T01:00:00Z',
         version: 4,
-        versionHash: 'x',
-        signatureMethod: 'typed',
       },
     });
     expect(isReachable({ kind: 'done' }, induction, done)).toBe(true);

@@ -29,7 +29,7 @@ export function DoneStep({ opened, online }: Omit<StepProps, 'go'>) {
           </h2>
           <p className="u-m-0">Scan the site QR code to sign in.</p>
         </section>
-        <p className="u-m-0">We&apos;ve sent you a copy by SMS.</p>
+        <p className="u-m-0">We&apos;ll send you a copy of your signed induction.</p>
         <section className="worker-card" aria-labelledby="your-account">
           <h2 id="your-account" className="worker-subtitle">
             Your free Archova account is ready
