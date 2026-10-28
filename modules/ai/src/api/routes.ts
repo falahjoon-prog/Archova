@@ -21,7 +21,7 @@ import type {
   InductionDraftService,
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
-import type { RfiDraftService } from '../application/rfi-draft';
+import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
 import type { DrawingCompareService } from '../application/drawing-compare';
 import type { SummarySource } from '../domain/diary-summary';
@@ -52,6 +52,18 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       possibleDelay: { ...p.possibleDelay, sources: p.possibleDelay.sources.map(diarySource) },
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'rfi.draft') {
+    const p = payload as RfiDraftPayload;
+    return {
+      ...p,
+      references: p.references.map((r) => ({ ...r, ...sourceIds(r) })),
+      similarRfiIds: p.similarRfiIds.map((id) => encodeId('rfi', id)),
+      suggestedAssigneeIds: p.suggestedAssigneeIds.map((id) => encodeId('user', id)),
+      pin: p.pin
+        ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
+        : null,
     };
   }
   if (task === 'defect.tag') {
@@ -254,6 +266,7 @@ export function aiRoutes(
         status: 200,
         body: {
           runId: encodeId('aiRun', d.runId),
+          suggestionId: encodeId('aiSuggestion', d.suggestionId),
           subject: d.subject,
           question: d.question,
           discipline: d.discipline,
