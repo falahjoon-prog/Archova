@@ -10,4 +10,5 @@ export * from './http';
 export * from './time';
 export * from './counters';
 export * from './access-links';
+export * from './access-link-retention';
 export * from './messages';

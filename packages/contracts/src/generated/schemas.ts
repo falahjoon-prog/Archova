@@ -1777,6 +1777,30 @@ export const NovaDrawingChangeSchema = z.object({
 });
 export type NovaDrawingChange = z.infer<typeof NovaDrawingChangeSchema>;
 
+export const NovaVisualRegionSchema = z.object({
+  "id": z.string(),
+  "x0": z.number(),
+  "y0": z.number(),
+  "x1": z.number(),
+  "y1": z.number(),
+  "kind": z.enum(["added", "removed", "changed"]),
+  "summary": z.string(),
+  "described": z.boolean(),
+  "what": z.enum(["wall_or_structure", "opening", "fixture_or_services", "dimension_or_note", "hatch_or_finish", "symbol_or_tag", "other"]).nullable(),
+  "cloud": z.enum(["yes", "no", "unclear"]).nullable(),
+  "changeIds": z.array(z.string()),
+});
+export type NovaVisualRegion = z.infer<typeof NovaVisualRegionSchema>;
+
+export const NovaVisualCompareSchema = z.object({
+  "runId": z.string().nullable(),
+  "reliable": z.boolean(),
+  "reason": z.enum(["different_size", "too_different", "blank", "render_failed", "allowance_used", "unavailable"]).nullable(),
+  "truncated": z.boolean(),
+  "regions": z.array(NovaVisualRegionSchema),
+});
+export type NovaVisualCompare = z.infer<typeof NovaVisualCompareSchema>;
+
 export const NovaDrawingCompareSchema = z.object({
   "runId": z.string().nullable(),
   "revisionId": z.string(),
@@ -1793,6 +1817,7 @@ export const NovaDrawingCompareSchema = z.object({
   "unexplainedChangeIds": z.array(z.string()),
   "truncated": z.boolean(),
   "scanned": z.boolean(),
+  "visual": z.union([z.null(), NovaVisualCompareSchema]),
   "affectedRfis": z.array(z.object({
   "id": z.string(),
   "number": z.string().nullable(),
