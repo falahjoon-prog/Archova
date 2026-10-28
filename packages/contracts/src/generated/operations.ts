@@ -345,6 +345,14 @@ export const SuggestImportMappingWithNovaBody = z.object({
   "distinct": z.array(z.string().max(100)).max(30).optional(),
 }).strict()).min(1).max(80),
 }).strict();
+export const ReadQuoteWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReadQuoteWithNovaBody = z.object({
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "fileId": s.FileRefSchema,
+}).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1893,6 +1901,18 @@ export const operations = {
     params: SuggestImportMappingWithNovaParams,
     query: null,
     body: SuggestImportMappingWithNovaBody,
+  },
+  readQuoteWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/quote-readings',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReadQuoteWithNovaParams,
+    query: null,
+    body: ReadQuoteWithNovaBody,
   },
   summariseDiaryDayWithNova: {
     method: 'POST',

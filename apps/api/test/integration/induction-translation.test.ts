@@ -51,6 +51,9 @@ beforeAll(async () => {
       dayForSummary: async () => null,
       projectCompanies: async () => [],
       openDefectsNear: async () => [],
+      quotePackage: async () => {
+        throw new Error('not used');
+      },
       openRfisOnDrawing: async () => [],
       provider: t.ai,
       translationLanguages: [TEST_LANGUAGE, { ...TEST_LANGUAGE, code: 'x-off', enabled: false }],

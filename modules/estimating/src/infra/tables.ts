@@ -99,6 +99,7 @@ export const quotes = estimatingSchema.table('quotes', {
   exclusions: jsonb('exclusions').$type<QuoteNote[]>().notNull().default([]),
   qualifications: jsonb('qualifications').$type<QuoteNote[]>().notNull().default([]),
   source: text('source').$type<'manual' | 'ai_extracted'>().notNull().default('manual'),
+  aiSuggestionId: uuid('ai_suggestion_id'),
   confirmedBy: uuid('confirmed_by'),
   confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

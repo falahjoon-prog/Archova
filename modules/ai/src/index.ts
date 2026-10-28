@@ -1,6 +1,6 @@
 // Public interface of @archova/mod-ai: Nova's gateway (ai/03). Feature modules call `api.runTask`; nothing else in
 // the codebase talks to an AI vendor (X26).
-import type { ModelTier } from '@archova/ai-prompts';
+import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createAdminService } from './application/admin';
 import { createAskService } from './application/ask';
@@ -13,6 +13,7 @@ import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createImportMappingService } from './application/import-mapping';
+import { createQuoteReadService } from './application/quote-read';
 import {
   createDrawingCompareService,
   type DrawingRevisionRef,
@@ -72,6 +73,7 @@ export type { DiarySummaryPayload } from './application/diary-summary';
 export type { RfiDraft } from './application/rfi-draft';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';
+export type { QuoteReading } from './application/quote-read';
 export type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 export type {
   DrawingCompare,
@@ -207,6 +209,12 @@ export function createAiModule(
       projectId: string,
       input: { drawingRevisionId: string; x: number; y: number; radius: number },
     ) => Promise<NearbyDefect[]>;
+    /** estimating.api.scopeForQuoteReading: a tender package's trade and scope lines, when it is taking quotes (F22). */
+    quotePackage: (
+      scope: TenantScope,
+      projectId: string,
+      packageId: string,
+    ) => Promise<{ id: string; trade: string; scope: QuoteScopeLine[] }>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
     getMarkup: (
       scope: TenantScope,
@@ -289,6 +297,13 @@ export function createAiModule(
     gateway,
     assert: deps.assert,
   });
+  const quoteReads = createQuoteReadService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    quotePackage: deps.quotePackage,
+  });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
     gateway,
@@ -323,6 +338,7 @@ export function createAiModule(
       diarySummary,
       defectTags,
       importMappings,
+      quoteReads,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -339,6 +355,8 @@ export function createAiModule(
       tagDefect: defectTags.tag,
       /** F31: which field each column of an import file fills, and what its status values mean; nothing is imported. */
       suggestImportMapping: importMappings.suggest,
+      /** F22: a subcontractor's PDF quote read into lines, exclusions and qualifications; no quote is saved. */
+      readQuote: quoteReads.read,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */

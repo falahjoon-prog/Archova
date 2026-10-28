@@ -143,6 +143,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     projectCompanies: (scope, projectId) =>
       platform.api.projectCompaniesWithTrades(scope, projectId),
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
+    quotePackage: (scope, projectId, packageId) =>
+      estimating.api.scopeForQuoteReading(scope, projectId, packageId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });

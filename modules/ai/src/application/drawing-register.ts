@@ -90,13 +90,16 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   'rfi.draft': 'rfis.rfis.create',
   // F31: the person who asked for the mapping confirms it.
   'import.mapping': 'ai.import_mapping.suggest',
+  // F22: the estimator who asked for the reading decides it; it is theirs alone (see PRIVATE_TASKS).
+  'quote.read': 'estimating.quotes.review',
 };
 
 /**
  * Tasks whose suggestions only the person who asked can list or decide: the note, photo, markup or file they came
- * from is theirs until they raise the defect or RFI or run the import. Their forms are edited in place, so `edited` needs no fields.
+ * from is theirs until they raise the defect or RFI, run the import or save the quote (a subcontractor's prices are
+ * commercial in confidence). Their forms are edited in place, so `edited` needs no fields.
  */
-const PRIVATE_TASKS = ['defect.tag', 'rfi.draft', 'import.mapping'] as const;
+const PRIVATE_TASKS = ['defect.tag', 'rfi.draft', 'import.mapping', 'quote.read'] as const;
 const isPrivateTask = (task: string) => (PRIVATE_TASKS as readonly string[]).includes(task);
 
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
