@@ -249,6 +249,14 @@ main:focus {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-4);
+  align-items: start;
+}
+/* Hints sit under the control in a row so fields with and without a hint start their inputs at the same height. */
+.form-row .ac-field__error {
+  order: 1;
+}
+.form-row .ac-field__hint {
+  order: 2;
 }
 .breadcrumb {
   margin-bottom: var(--space-2);
