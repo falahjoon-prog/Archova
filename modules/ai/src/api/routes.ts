@@ -226,9 +226,16 @@ export function aiRoutes(
         if (!markupId) throw new AppError('markup.not_found');
         markup = { revisionId, markupId };
       }
+      let photo: { fileId: string } | undefined;
+      if (input.body.photo) {
+        const fileId = decodeId('file', input.body.photo.fileId);
+        if (!fileId) throw new AppError('file.not_found');
+        photo = { fileId };
+      }
       const d = await rfiDrafts.draft(requireTenant(input), projectId, {
         note: input.body.note ?? '',
         ...(markup ? { markup } : {}),
+        ...(photo ? { photo } : {}),
       });
       return {
         status: 200,

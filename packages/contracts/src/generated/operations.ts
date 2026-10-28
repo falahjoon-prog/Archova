@@ -307,6 +307,9 @@ export const DraftRfiWithNovaBody = z.object({
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
   "markupId": z.string().regex(new RegExp("^mku_[0-9A-Za-z]{26}$")),
 }).strict().optional(),
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict().optional(),
 }).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
