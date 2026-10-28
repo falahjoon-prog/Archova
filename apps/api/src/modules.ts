@@ -8,7 +8,7 @@ import {
   type EntitlementProvider,
 } from '@archova/mod-billing';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
-import { DIARY_PERMISSIONS, createDiaryModule } from '@archova/mod-diary';
+import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
@@ -86,6 +86,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
+  // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
+  let diaryApi: DiaryApi | null = null;
   const ai = createAiModule(services, {
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
@@ -103,6 +105,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     getMarkup: (scope, projectId, revisionId, markupId) =>
       documents.api.getMarkup(scope, projectId, revisionId, markupId),
     openRfisOnDrawing: (scope, projectId, ids) => rfis.api.openOnDrawing(scope, projectId, ids),
+    dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
 
@@ -111,6 +114,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     files: files.api,
   });
+
+  diaryApi = diary.api;
 
   const sync = createSyncModule();
 

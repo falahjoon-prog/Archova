@@ -1306,6 +1306,37 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaRfiDraft' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: summariseDiaryDayWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: diary.entries.read
+      summary: Nova drafts a short summary of one diary day (F4).
+      description: |
+        Nova writes a few plain sentences from the day's labour, plant, deliveries, visitors, delays and events
+        that the caller can see. Every sentence names the diary lines it comes from (`sources`), and a sentence
+        with a number or a source the lines don't back is dropped. Delays and stand-downs the summary doesn't
+        mention are listed in `unmentionedDelays`, and a delay that weather or the lines suggest is listed in
+        `possibleDelay` for the person to log. The result is a pending suggestion (`task` `diary.summary`): it is
+        never written into the diary, the site manager edits it into the day's notes. Asking again before the day
+        changes returns the same suggestion at no cost; any change to the day or its lines makes a new one.
+        Costs half a Nova credit. An empty day returns 422 `ai.diary.nothing_to_summarise`.
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes:
     parameters:
       - $ref: '#/components/parameters/OrgId'

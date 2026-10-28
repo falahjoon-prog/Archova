@@ -308,6 +308,11 @@ export const DraftRfiWithNovaBody = z.object({
   "markupId": z.string().regex(new RegExp("^mku_[0-9A-Za-z]{26}$")),
 }).strict().optional(),
 }).strict();
+export const SummariseDiaryDayWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+});
 export const CompareDrawingRevisionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1625,6 +1630,18 @@ export const operations = {
     params: DraftRfiWithNovaParams,
     query: null,
     body: DraftRfiWithNovaBody,
+  },
+  summariseDiaryDayWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary',
+    module: "ai",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: SummariseDiaryDayWithNovaParams,
+    query: null,
+    body: null,
   },
   compareDrawingRevision: {
     method: 'POST',

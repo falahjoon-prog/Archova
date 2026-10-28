@@ -1,6 +1,7 @@
 // F4 site diary summary rules (ai/01 F4, product/05). Pure functions: turn a diary day into facts the model can
 // cite, and check the summary before anyone sees it, so every sentence is traceable to an entry and no number is
 // invented (ai/01 §4).
+import { createHash } from 'node:crypto';
 import type { DiaryDelayCause, DiaryFact, DiarySummaryOutput } from '@archova/ai-prompts';
 import { DIARY_DELAY_CAUSES } from '@archova/ai-prompts';
 import { isoWeekday } from '@archova/time';
@@ -182,4 +183,26 @@ export function reviewDiarySummary(
       .map((id) => built.sources.get(id)!),
     dropped,
   };
+}
+
+/**
+ * A fingerprint of everything a summary is written from. The entry's own version doesn't change when a line is
+ * added, edited or removed, so the cache is keyed on the lines and weather themselves.
+ */
+export function dayFingerprint(day: DiaryDayForSummary): string {
+  const lines = day.lines.map((l) => [
+    l.id,
+    l.kind,
+    l.text,
+    l.company,
+    l.headcount,
+    l.hours,
+    l.delayCause,
+    l.at,
+    l.photoCaptions,
+  ]);
+  return createHash('sha256')
+    .update(JSON.stringify([day.entryId, day.date, day.status, day.version, day.weather, lines]))
+    .digest('hex')
+    .slice(0, 32);
 }
