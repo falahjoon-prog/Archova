@@ -88,6 +88,8 @@ export interface QuoteInput {
   lines?: LineInput[];
   exclusions?: NoteInput[];
   qualifications?: NoteInput[];
+  /** The Nova reading this quote was made from (ai.ai_suggestions); builder staff only. */
+  aiSuggestionId?: string;
 }
 
 export function createTenderService(deps: EstimatingDeps) {
@@ -649,6 +651,11 @@ export function createTenderService(deps: EstimatingDeps) {
       throw new AppError('quote.company_not_invited', 'Invite the company to the package first.', [
         { path: 'companyId', message: 'Not invited' },
       ]);
+    if (input.aiSuggestionId && !v.isInternal)
+      throw new AppError(
+        'access.denied',
+        'Only builder staff can save a quote from a Nova reading.',
+      );
     checkLines(pkg, input.lines);
     checkNotes(pkg, 'exclusions', input.exclusions ?? []);
     checkNotes(pkg, 'qualifications', input.qualifications ?? []);
@@ -686,7 +693,9 @@ export function createTenderService(deps: EstimatingDeps) {
       ...totals,
       exclusions: noteRows(input.exclusions),
       qualifications: noteRows(input.qualifications),
-      source: 'manual',
+      // Read by Nova (F22): later corrections to a Nova amount keep the original (`quote_lines.original_amount`).
+      source: input.aiSuggestionId ? 'ai_extracted' : 'manual',
+      aiSuggestionId: input.aiSuggestionId ?? null,
       createdBy: scope.ctx.userId,
       updatedBy: scope.ctx.userId,
     });
@@ -701,7 +710,13 @@ export function createTenderService(deps: EstimatingDeps) {
       entityType: 'quote',
       entityId: id,
       entityVersion: 1,
-      data: { packageId, quoteId: id, companyId, revision: (maxRow?.last ?? 0) + 1 },
+      data: {
+        packageId,
+        quoteId: id,
+        companyId,
+        revision: (maxRow?.last ?? 0) + 1,
+        aiSuggestionId: input.aiSuggestionId ?? null,
+      },
     });
     return getQuote(scope, projectId, packageId, id);
   }
@@ -798,7 +813,31 @@ export function createTenderService(deps: EstimatingDeps) {
     return getQuote(scope, projectId, packageId, quoteId);
   }
 
+  /**
+   * For Nova quote reading (ai F22): the package's trade and scope lines. Builder staff only, and only while the package
+   * is taking quotes, so a reading is never made for a quote that could not be saved.
+   */
+  async function scopeForQuoteReading(scope: TenantScope, projectId: string, packageId: string) {
+    const { row, viewer: v } = await load(scope, projectId, packageId);
+    if (!v.isInternal) throw new AppError('tender.not_found');
+    if (!takesQuotes(row.status))
+      throw new AppError('tender.invalid_state', 'This package is not taking quotes.', undefined, {
+        status: row.status,
+      });
+    return {
+      id: row.id,
+      trade: row.trade,
+      scope: row.scope.map((s) => ({
+        key: s.key,
+        description: s.description,
+        quantity: s.quantity,
+        unit: s.unit,
+      })),
+    };
+  }
+
   return {
+    scopeForQuoteReading,
     list,
     get,
     create,

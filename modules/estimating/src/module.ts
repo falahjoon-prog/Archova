@@ -10,7 +10,7 @@ export function createEstimatingModule(services: KernelServices, deps: Estimatin
   return {
     definition: defineModule({ name: 'estimating', permissions: ESTIMATING_PERMISSIONS }),
     routes: estimatingRoutes(services.database, tenders, takeoff),
-    api: {},
+    api: { scopeForQuoteReading: tenders.scopeForQuoteReading },
   };
 }
 

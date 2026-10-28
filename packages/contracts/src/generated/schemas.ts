@@ -549,6 +549,7 @@ export const CreateQuoteRequestSchema = z.object({
   "lines": z.array(QuoteLineInputSchema).min(1).max(500),
   "exclusions": z.array(QuoteNoteInputSchema).max(200).optional(),
   "qualifications": z.array(QuoteNoteInputSchema).max(200).optional(),
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateQuoteRequest = z.infer<typeof CreateQuoteRequestSchema>;
 
@@ -1739,6 +1740,49 @@ export const NovaIndexReportSchema = z.object({
   "chunks": z.number().int(),
 });
 export type NovaIndexReport = z.infer<typeof NovaIndexReportSchema>;
+
+export const NovaQuoteNotesSchema = z.array(z.object({
+  "text": z.string(),
+  "scopeKey": z.string().nullable(),
+  "source": z.union([QuoteSourceRefSchema, z.null()]),
+  "warning": z.enum(["source_not_found"]).nullable(),
+}));
+export type NovaQuoteNotes = z.infer<typeof NovaQuoteNotesSchema>;
+
+export const NovaQuoteReadingSchema = z.object({
+  "runId": z.string(),
+  "suggestionId": z.string(),
+  "packageId": z.string(),
+  "fileId": z.string(),
+  "pageCount": z.number().int().min(1),
+  "scannedPages": z.array(z.number().int().min(1)),
+  "skippedPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+  "reference": z.string().nullable(),
+  "validUntil": z.string().date().nullable(),
+  "prices": z.enum(["exclude_gst", "include_gst", "unclear"]),
+  "lines": z.array(z.object({
+  "description": z.string(),
+  "scopeKey": z.string().nullable(),
+  "quantity": z.string().nullable(),
+  "unit": z.string(),
+  "rate": z.string().nullable(),
+  "amount": z.string(),
+  "isProvisional": z.boolean(),
+  "source": z.union([QuoteSourceRefSchema, z.null()]),
+  "warning": z.enum(["source_not_found", "amount_not_on_page"]).nullable(),
+})),
+  "exclusions": NovaQuoteNotesSchema,
+  "qualifications": NovaQuoteNotesSchema,
+  "statedTotalExGst": z.string().nullable(),
+  "linesTotalExGst": z.string(),
+  "discountsExGst": z.string(),
+  "totalCheck": z.enum(["matches", "differs", "not_stated"]),
+  "difference": z.string().nullable(),
+  "dropped": z.number().int().min(0),
+  "warnings": z.array(z.enum(["prices_include_gst", "total_differs", "stated_total_not_on_page", "discounts_as_qualifications", "items_dropped"])),
+});
+export type NovaQuoteReading = z.infer<typeof NovaQuoteReadingSchema>;
 
 export const NovaRfiDraftSchema = z.object({
   "runId": z.string(),

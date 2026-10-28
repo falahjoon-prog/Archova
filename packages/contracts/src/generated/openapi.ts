@@ -1077,6 +1077,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/quote-readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova reads a subcontractor's PDF quote into lines, exclusions and qualifications (F22).
+         * @description The estimator has the quote PDF uploaded to the project and names the tender package it answers (which must
+         *     be out to tender). Nova reads the PDF text (scanned pages through OCR) against the package's scope lines and
+         *     returns the priced lines (provisional sums marked), the exclusions and qualifications, the quote's reference,
+         *     validity and printed total, each with the page and words it came from (`source`). Code keeps a source only
+         *     when its words are on that page, flags a line whose amount is not printed on its page (`warning`), keeps
+         *     discounts and priced options as qualifications, adds the lines up and sets them against the printed total
+         *     (`totalCheck`). Nothing is saved as a quote: the estimator checks the reading against the PDF, picks the company
+         *     and saves the quote with `suggestionId` as `aiSuggestionId`, then decides the suggestion. The suggestion is
+         *     private to the caller. Costs one and a half Nova credits. A PDF with no readable text returns 422.
+         */
+        post: operations["readQuoteWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
         parameters: {
             query?: never;
@@ -3677,6 +3708,71 @@ export interface components {
             /** @description Required fields that no column fills. */
             missingRequired: string[];
         };
+        NovaQuoteReading: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The saved suggestion (`ais_`), private to the caller. Pass it as `aiSuggestionId` when saving the quote, then decide it. */
+            suggestionId: string;
+            packageId: string;
+            fileId: string;
+            pageCount: number;
+            /** @description Pages read by OCR rather than the PDF text layer; check these against the PDF. */
+            scannedPages: number[];
+            /** @description Pages Nova did not read (no text even after OCR, or beyond the limits). */
+            skippedPages: number[];
+            /** @description A page was cut */
+            truncated: boolean;
+            reference: string | null;
+            /** Format: date */
+            validUntil: string | null;
+            /**
+             * @description Whether the amounts on the lines include GST, as the quote says.
+             * @enum {string}
+             */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            lines: {
+                description: string;
+                /** @description A scope line of the package. */
+                scopeKey: string | null;
+                quantity: string | null;
+                unit: string;
+                rate: string | null;
+                /** @description Decimal AUD as printed on the quote */
+                amount: string;
+                isProvisional: boolean;
+                source: components["schemas"]["QuoteSourceRef"] | null;
+                /**
+                 * @description source_not_found means the words are on no page; amount_not_on_page means the amount is not printed on the line's page.
+                 * @enum {string|null}
+                 */
+                warning: "source_not_found" | "amount_not_on_page" | null;
+            }[];
+            exclusions: components["schemas"]["NovaQuoteNotes"];
+            qualifications: components["schemas"]["NovaQuoteNotes"];
+            /** @description The quote's total ex GST when it prints one that is on a page. */
+            statedTotalExGst: string | null;
+            /** @description The lines added up by code. */
+            linesTotalExGst: string;
+            /** @description Discounts and credits the quote takes off the lines (listed under qualifications). */
+            discountsExGst: string;
+            /**
+             * @description differs means the lines, less any discounts, do not add up to the printed total, so a line was missed or misread.
+             * @enum {string}
+             */
+            totalCheck: "matches" | "differs" | "not_stated";
+            /** @description Lines total less discounts */
+            difference: string | null;
+            /** @description Items left out for having no readable amount or repeating another. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "total_differs" | "stated_total_not_on_page" | "discounts_as_qualifications" | "items_dropped")[];
+        };
+        NovaQuoteNotes: {
+            text: string;
+            scopeKey: string | null;
+            source: components["schemas"]["QuoteSourceRef"] | null;
+            /** @enum {string|null} */
+            warning: "source_not_found" | null;
+        }[];
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -4608,6 +4704,8 @@ export interface components {
             lines: components["schemas"]["QuoteLineInput"][];
             exclusions?: components["schemas"]["QuoteNoteInput"][];
             qualifications?: components["schemas"]["QuoteNoteInput"][];
+            /** @description The Nova reading (`suggestionId` from `readQuoteWithNova`) this quote was made from. Builder staff only; the quote is then marked `ai_extracted`, so corrections to Nova's amounts are kept. */
+            aiSuggestionId?: string;
         };
         UpdateQuoteRequest: {
             reference?: string | null;
@@ -7679,6 +7777,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaImportMapping"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    readQuoteWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    packageId: string;
+                    fileId: components["schemas"]["FileRef"];
+                };
+            };
+        };
+        responses: {
+            /** @description The reading */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaQuoteReading"];
                 };
             };
             default: components["responses"]["Problem"];
