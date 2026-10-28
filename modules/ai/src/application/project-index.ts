@@ -1,13 +1,15 @@
 // Ask Nova ingestion (ai/03 §3): extract each revision's text by page (the PDF text layer, or OCR for a scanned
 // page), chunk it, embed it and store it with the access scope `documents` gave it. Sent RFIs (question and
-// responses) are indexed the same way from the text `rfis` supplies. Idempotent per (revision, pipeline version), so re-runs only do new work.
+// responses) and issued defects are indexed the same way from the text `rfis` and `defects` supply (one page per
+// record). Idempotent per (revision, pipeline version), so re-runs only do new work.
 // Runs in the API process for now, started by a project admin; the ai-worker takes it over, driven by
 // `documents.*` events, when the worker lands.
 import { and, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
-import { uuidv7 } from '@archova/domain';
+import { defectLabel, uuidv7 } from '@archova/domain';
 import type { Database, TenantContext, TenantScope } from '@archova/kernel';
 import { ocrPageText } from '../domain/ocr';
 import { PIPELINE_VERSION, chunkPages, type PageText } from '../domain/retrieval';
+import { defectRevisionId, defectText, type DefectSource } from '../domain/defect-source';
 import { rfiRevisionId, rfiText, type RfiSource } from '../domain/rfi-source';
 import { toLines } from '../domain/titleblock';
 import { readPdfText, readScannedPages } from '../infra/pdf';
@@ -37,6 +39,8 @@ export interface ProjectIndexDeps {
   sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
   /** `rfis.api.aiSources`: the sent RFIs with their responses. */
   rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
+  /** `defects.api.aiSources`: the issued defects with the notes on their history. */
+  defectSources: (scope: TenantScope, projectId: string) => Promise<DefectSource[]>;
 }
 
 /** What an index entry records about a source. */
@@ -48,6 +52,41 @@ interface IndexedSource {
 
 /** The scope RFI chunks carry: builder staff only (`rfis.api.aiAccessScopes`). */
 export const RFI_ACCESS_SCOPE = 'rfis';
+/** The scope defect chunks carry: builder staff only (`defects.api.aiAccessScopes`). */
+export const DEFECT_ACCESS_SCOPE = 'defects';
+
+/** One record (an RFI, a defect) as the single page of text that is chunked and embedded. */
+interface RecordPage {
+  sourceId: string;
+  /** Changes whenever `text` does. */
+  revisionId: string;
+  revisionLabel: string;
+  title: string;
+  reference: string | null;
+  /** Put before each chunk when it is embedded, so a chunk from the middle of a long record still names it. */
+  header: string;
+  text: string;
+}
+
+const rfiPage = (r: RfiSource): RecordPage => ({
+  sourceId: r.id,
+  revisionId: rfiRevisionId(r),
+  revisionLabel: r.status,
+  title: r.subject,
+  reference: r.number,
+  header: `${r.number ?? 'RFI'} ${r.subject}`,
+  text: rfiText(r),
+});
+
+const defectPage = (d: DefectSource): RecordPage => ({
+  sourceId: d.id,
+  revisionId: defectRevisionId(d),
+  revisionLabel: d.status,
+  title: d.title,
+  reference: defectLabel(d.number),
+  header: `${defectLabel(d.number)} ${d.title}`,
+  text: defectText(d),
+});
 
 export interface IndexReport {
   /** Revisions indexed in this run. */
@@ -64,6 +103,9 @@ export interface IndexReport {
   /** RFIs indexed in this run, and RFIs already indexed at this text and pipeline version. */
   rfisIndexed: number;
   rfisUnchanged: number;
+  /** Defects indexed in this run, and defects already indexed at this text and pipeline version. */
+  defectsIndexed: number;
+  defectsUnchanged: number;
 }
 
 /** The source types this service indexes and reconciles. */
@@ -77,21 +119,25 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
   const { database } = deps;
 
   async function indexProject(ctx: TenantContext, projectId: string): Promise<IndexReport> {
-    const { sources, rfiSources, done } = await database.withTenantTx(ctx, async (scope) => {
-      await deps.assert(scope, 'ai.project_index.run', { projectId });
-      const sources = await deps.sources(scope, projectId);
-      const rfiSources = await deps.rfiSources(scope, projectId);
-      const done = await scope.tx
-        .select({ revisionId: indexEntries.revisionId })
-        .from(indexEntries)
-        .where(
-          and(
-            eq(indexEntries.projectId, projectId),
-            eq(indexEntries.pipelineVersion, PIPELINE_VERSION),
-          ),
-        );
-      return { sources, rfiSources, done: new Set(done.map((d) => d.revisionId)) };
-    });
+    const { sources, rfiSources, defectSources, done } = await database.withTenantTx(
+      ctx,
+      async (scope) => {
+        await deps.assert(scope, 'ai.project_index.run', { projectId });
+        const sources = await deps.sources(scope, projectId);
+        const rfiSources = await deps.rfiSources(scope, projectId);
+        const defectSources = await deps.defectSources(scope, projectId);
+        const done = await scope.tx
+          .select({ revisionId: indexEntries.revisionId })
+          .from(indexEntries)
+          .where(
+            and(
+              eq(indexEntries.projectId, projectId),
+              eq(indexEntries.pipelineVersion, PIPELINE_VERSION),
+            ),
+          );
+        return { sources, rfiSources, defectSources, done: new Set(done.map((d) => d.revisionId)) };
+      },
+    );
 
     const report: IndexReport = {
       indexed: 0,
@@ -102,6 +148,8 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       chunks: 0,
       rfisIndexed: 0,
       rfisUnchanged: 0,
+      defectsIndexed: 0,
+      defectsUnchanged: 0,
     };
     const todo = sources.filter((s) => {
       if (done.has(s.revisionId)) report.unchanged++;
@@ -120,11 +168,26 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     };
     await Promise.all(Array.from({ length: Math.min(CONCURRENCY, files.length) }, worker));
 
-    await indexRfis(ctx, projectId, rfiSources, done, report);
+    const rfiPages = rfiSources.map(rfiPage);
+    const defectPages = defectSources.map(defectPage);
+    const rfiCounts = await indexRecords(ctx, projectId, 'rfi', RFI_ACCESS_SCOPE, rfiPages, done);
+    report.rfisIndexed = rfiCounts.indexed;
+    report.rfisUnchanged = rfiCounts.unchanged;
+    const defectCounts = await indexRecords(
+      ctx,
+      projectId,
+      'defect',
+      DEFECT_ACCESS_SCOPE,
+      defectPages,
+      done,
+    );
+    report.defectsIndexed = defectCounts.indexed;
+    report.defectsUnchanged = defectCounts.unchanged;
 
     await database.withTenantTx(ctx, async (scope) => {
       await reconcile(scope, projectId, sources);
-      await reconcileRfis(scope, projectId, rfiSources);
+      await reconcileRecords(scope, projectId, 'rfi', rfiPages);
+      await reconcileRecords(scope, projectId, 'defect', defectPages);
     });
     return report;
   }
@@ -254,26 +317,26 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       .onConflictDoNothing();
   }
 
-  /** Chunks and embeds each RFI whose text is new since the last run (a changed RFI has a new revision id). */
-  async function indexRfis(
+  /** Chunks and embeds each record whose text is new since the last run (a changed record has a new revision id). */
+  async function indexRecords(
     ctx: TenantContext,
     projectId: string,
-    rfiSources: RfiSource[],
+    sourceType: 'rfi' | 'defect',
+    accessScope: string,
+    pages: RecordPage[],
     done: Set<string>,
-    report: IndexReport,
   ) {
-    for (const r of rfiSources) {
-      const revisionId = rfiRevisionId(r);
-      if (done.has(revisionId)) {
-        report.rfisUnchanged++;
+    const counts = { indexed: 0, unchanged: 0 };
+    for (const r of pages) {
+      if (done.has(r.revisionId)) {
+        counts.unchanged++;
         continue;
       }
-      const rev: IndexedSource = { sourceType: 'rfi', sourceId: r.id, revisionId };
-      const pieces = chunkPages([{ page: 1, text: rfiText(r) }]);
-      const header = `${r.number ?? 'RFI'} ${r.subject}`;
+      const rev: IndexedSource = { sourceType, sourceId: r.sourceId, revisionId: r.revisionId };
+      const pieces = chunkPages([{ page: 1, text: r.text }]);
       const { model, vectors } = await deps.gateway.embed(
         ctx,
-        pieces.map((p) => `${header}\n${p.text}`),
+        pieces.map((p) => `${r.header}\n${p.text}`),
         { purpose: 'document', feature: 'ask', projectId },
       );
       await database.withTenantTx(ctx, async (scope) => {
@@ -284,18 +347,18 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
               id: uuidv7(),
               orgId: scope.ctx.orgId,
               projectId,
-              sourceType: 'rfi' as const,
-              sourceId: r.id,
-              revisionId,
-              revisionLabel: r.status,
-              title: r.subject,
-              reference: r.number,
+              sourceType,
+              sourceId: r.sourceId,
+              revisionId: r.revisionId,
+              revisionLabel: r.revisionLabel,
+              title: r.title,
+              reference: r.reference,
               page: p.page,
               chunkIndex: p.chunkIndex,
               text: p.text,
               embedding: vectors[i]!,
               embeddingModel: model,
-              accessScope: RFI_ACCESS_SCOPE,
+              accessScope,
               status: 'current' as const,
               pipelineVersion: PIPELINE_VERSION,
             })),
@@ -305,17 +368,23 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
           { rev, outcome: 'indexed', pages: 1, chunks: pieces.length },
         ]);
       });
-      report.rfisIndexed++;
+      counts.indexed++;
     }
+    return counts;
   }
 
-  /** Drops chunks of RFIs whose text has changed since, and of RFIs that were voided, deleted or are older than this pipeline. */
-  async function reconcileRfis(scope: TenantScope, projectId: string, rfiSources: RfiSource[]) {
-    const live = rfiSources.map(rfiRevisionId);
+  /** Drops chunks of records whose text has changed since, of records that were voided or deleted, and of older pipeline versions. */
+  async function reconcileRecords(
+    scope: TenantScope,
+    projectId: string,
+    sourceType: 'rfi' | 'defect',
+    pages: RecordPage[],
+  ) {
+    const live = pages.map((p) => p.revisionId);
     const inProject = and(
       eq(chunks.orgId, scope.ctx.orgId),
       eq(chunks.projectId, projectId),
-      eq(chunks.sourceType, 'rfi'),
+      eq(chunks.sourceType, sourceType),
     );
     await scope.tx
       .delete(chunks)
@@ -333,7 +402,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       .where(
         and(
           eq(indexEntries.projectId, projectId),
-          eq(indexEntries.sourceType, 'rfi'),
+          eq(indexEntries.sourceType, sourceType),
           live.length ? notInArray(indexEntries.revisionId, live) : sql`true`,
         ),
       );

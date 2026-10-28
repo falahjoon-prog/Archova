@@ -5583,21 +5583,33 @@ components:
           type: array
           items: { type: integer }
     NovaSource:
-      description: A document or drawing revision page, or an RFI, Nova used.
+      description: A document or drawing revision page, an RFI or a defect, Nova used.
       type: object
       required: [sourceType, sourceId, revisionId, revision, title, reference, page]
       properties:
-        sourceType: { type: string, enum: [document, drawing, rfi] }
+        sourceType: { type: string, enum: [document, drawing, rfi, defect] }
         sourceId:
-          description: The document (`doc_`), drawing sheet (`dsh_`) or RFI (`rfi_`).
+          description: The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`) or defect (`dfx_`).
           type: string
         revisionId:
-          description: The document revision (`rev_`) or drawing revision (`drv_`); for an RFI, its own `rfi_` id.
+          description: The document revision (`rev_`) or drawing revision (`drv_`); for an RFI or a defect, its own id.
           type: string
-        revision: { type: string, description: The revision label; for an RFI, its status }
-        title: { type: string, description: The document or sheet title; for an RFI, its subject }
+        revision:
+          { type: string, description: The revision label; for an RFI or a defect, its status }
+        title:
+          {
+            type: string,
+            description: The document or sheet title; for an RFI,
+            its subject; for a defect,
+            its title,
+          }
         reference:
-          { type: [string, 'null'], description: Document or sheet number, or the RFI number }
+          {
+            type: [string, 'null'],
+            description: Document or sheet number,
+            the RFI number,
+            or the defect number,
+          }
         page: { type: integer, minimum: 1 }
     NovaCitation:
       allOf:
@@ -6157,8 +6169,23 @@ components:
     NovaIndexReport:
       type: object
       required:
-        [indexed, unchanged, noText, ocrPages, unsupported, chunks, rfisIndexed, rfisUnchanged]
+        [
+          indexed,
+          unchanged,
+          noText,
+          ocrPages,
+          unsupported,
+          chunks,
+          rfisIndexed,
+          rfisUnchanged,
+          defectsIndexed,
+          defectsUnchanged,
+        ]
       properties:
+        defectsIndexed:
+          { type: integer, description: Issued defects indexed in this run (new or changed) }
+        defectsUnchanged:
+          { type: integer, description: Issued defects already indexed at their current text }
         rfisIndexed:
           {
             type: integer,

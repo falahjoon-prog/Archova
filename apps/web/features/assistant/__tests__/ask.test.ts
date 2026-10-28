@@ -65,6 +65,30 @@ describe('Ask Nova answers from the API', () => {
     ]);
   });
 
+  it('names a defect by its number, title and status and links it to the defect', () => {
+    const a = toNovaAnswer({
+      runId: 'air_3',
+      found: true,
+      answer: 'It is assigned to Tilers R Us.',
+      citations: [
+        {
+          sourceType: 'defect',
+          sourceId: 'dfx_042',
+          revisionId: 'dfx_042',
+          revision: 'open',
+          title: 'Cracked floor tile in ensuite',
+          reference: 'DEF-0042',
+          page: 1,
+          quote: 'Assigned to: Tilers R Us',
+        },
+      ],
+      closestMatches: [],
+    });
+    expect(a.citations.map((c) => [c.label, c.href])).toEqual([
+      ['DEF-0042 Cracked floor tile in ensuite (open)', 'defect:dfx_042'],
+    ]);
+  });
+
   it('shows the closest matches instead of a guess when nothing answers it', () => {
     const a = toNovaAnswer({
       runId: null,
