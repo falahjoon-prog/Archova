@@ -12,7 +12,7 @@ import {
 } from '@archova/kernel';
 import { FAKE_MODELS, type ModelProvider } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
-import type { MalwareScanner, ObjectStore } from '@archova/mod-files';
+import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import type { ApiConfig } from './config';
 import { loadModules, type Modules } from './modules';
 import { registerInternalOperations } from './internal';
@@ -27,6 +27,8 @@ export interface AppDeps {
   logger: Logger;
   store: ObjectStore;
   scanner: MalwareScanner;
+  /** Signs drawing tile URLs; defaults to the in-memory signer (no CDN). */
+  tiles?: TileUrls;
   entitlements?: EntitlementProvider;
   /** One-time codes and link invites; tests pass the in-memory sender, the default follows `API_MESSAGES`. */
   messages?: MessageSender;
@@ -71,7 +73,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         privateJwk: config.jwtPrivateJwk,
         webSignInUrl: config.webSignInUrl,
       },
-      files: { store: deps.store, scanner: deps.scanner },
+      files: {
+        store: deps.store,
+        scanner: deps.scanner,
+        ...(deps.tiles ? { tiles: deps.tiles } : {}),
+      },
       messages:
         deps.messages ??
         (config.messages === 'log' ? createLogMessageSender(deps.logger) : disabledMessageSender),

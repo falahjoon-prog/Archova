@@ -199,6 +199,11 @@ export const GetDrawingRevisionParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
 });
+export const GetDrawingTilesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
 export const GetSheetGeometryParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1640,6 +1645,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetDrawingRevisionParams,
+    query: null,
+    body: null,
+  },
+  getDrawingTiles: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/tiles',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: GetDrawingTilesParams,
     query: null,
     body: null,
   },

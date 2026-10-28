@@ -76,6 +76,7 @@ export const PROBLEM_CODES = {
   'drawing_set.publish_conflicts': 422,
   'drawing_sheet.not_found': 404,
   'drawing_revision.not_found': 404,
+  'drawing_tiles.invalid': 422,
   'drawing_revision.not_draft': 409,
   'markup.not_found': 404,
   'markup.not_owner': 403,
