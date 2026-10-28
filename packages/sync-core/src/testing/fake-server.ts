@@ -46,6 +46,8 @@ export class FakeSyncServer {
   readonly pushLog: { mutations: PushMutation[]; drain: boolean }[] = [];
   readonly pullLog: PullRequest[] = [];
 
+  /** Records whose file the scan has not cleared: `file.not_ready` (retry) or `file.blocked` (final). */
+  private fileProblems = new Map<string, 'file.not_ready' | 'file.blocked'>();
   private feed: FeedRow[] = [];
   private seq = 0;
   private revoked: RevokedScope[] = [];
@@ -55,6 +57,12 @@ export class FakeSyncServer {
 
   constructor(commands: Record<string, FakeCommand>) {
     this.commands = commands;
+  }
+
+  /** Answer commands on this entity with a file problem until it is cleared with `null`. */
+  setFileProblem(entityId: string, code: 'file.not_ready' | 'file.blocked' | null) {
+    if (code) this.fileProblems.set(entityId, code);
+    else this.fileProblems.delete(entityId);
   }
 
   /** Make the next `count` requests fail with this error (status 0 is "offline"). */
@@ -166,6 +174,13 @@ export class FakeSyncServer {
       return this.remember(m, { status: 'rejected', problem: { code: 'unknown-command' } });
     const payload = (m.payload ?? {}) as Record<string, unknown>;
     const projectId = String(payload.projectId ?? '');
+    const fileProblem = this.fileProblems.get(m.entityId);
+    if (fileProblem === 'file.not_ready') {
+      // Not remembered: the same mutation is sent again once the scan finishes.
+      return { mutationId: m.mutationId, status: 'rejected', problem: { code: fileProblem } };
+    }
+    if (fileProblem)
+      return this.remember(m, { status: 'rejected', problem: { code: fileProblem } });
 
     if (drain) {
       const ended = this.accessEndedAt;

@@ -43,6 +43,8 @@ export type FailureKind =
 export function classifyFailure(error: unknown): FailureKind {
   if (!(error instanceof SyncHttpError)) return 'retry';
   const { status } = error;
+  // The scan has not finished: the command is fine, try again later.
+  if (error.code === 'file.not_ready') return 'retry';
   if (status === 0 || status === 408 || status === 429 || status >= 500) return 'retry';
   if (status === 401) return 'auth';
   if (status === 426) return 'upgrade';
