@@ -1,6 +1,8 @@
 // Where a worker is in the online induction and what to ask next (IND-US1). Pure, so it runs in Node tests.
 import type { InductionCompletion } from '@archova/contracts';
 
+type Section = InductionCompletion['content']['sections'][number];
+
 export type InductionStep =
   | { kind: 'section'; index: number }
   | { kind: 'quiz' }
@@ -47,4 +49,28 @@ export function quizOutcome(result: {
         ? `Go back over ${result.reviewSections.map((i) => `section ${i + 1}`).join(', ')} and try again.`
         : 'Go back over the sections and try again.',
   };
+}
+
+/** Block kinds the phone can show in full today. Videos, documents, images and SWMS need file viewing, which is later. */
+const READABLE_BLOCKS = new Set(['text', 'slides']);
+
+/**
+ * Block kinds in a section the phone cannot show yet. A section with any of these cannot be marked as seen:
+ * "seen to the end" is the record, so it must not be ticked for content the worker never saw.
+ */
+export function unsupportedBlockKinds(section: Section): string[] {
+  const kinds = section.blocks.map((b) => b.type).filter((t) => !READABLE_BLOCKS.has(t));
+  return [...new Set(kinds)];
+}
+
+const kindLabel: Record<string, string> = {
+  video: 'a video',
+  document: 'a document',
+  image: 'an image',
+  swms: 'a SWMS',
+};
+
+export function unsupportedBlocksMessage(kinds: string[]): string {
+  const names = kinds.map((k) => kindLabel[k] ?? 'content');
+  return `This section has ${names.join(' and ')} that the app cannot show yet. Ask at the site office to finish your induction.`;
 }

@@ -3,7 +3,7 @@
 # deploy role (infra/cells/cell/ci-roles.tf):
 #   1. registers new task definition revisions that point at the tag (ECS pins the digest when tasks start)
 #   2. runs db-roles, then migrations, as one-off tasks; either failing stops the deploy before any traffic moves
-#   3. updates api and web (ECS blue/green shifts traffic and rolls back on its alarms) and the worker (rolling)
+#   3. updates api and web (ECS blue/green shifts traffic and rolls back on its alarms) and the workers (rolling)
 #   4. smoke-tests the public hosts
 #
 # Usage: deploy.sh <env> <registry> <tag>    e.g. deploy.sh demo 123456789012.dkr.ecr.ap-southeast-2.amazonaws.com 3f2c1ab
@@ -76,7 +76,7 @@ wait_service() {
 run_task db-roles "$(new_revision "${NAME}-db-roles" "${REGISTRY}/archova/migrate:${TAG}")"
 run_task migrate "$(new_revision "${NAME}-migrate" "${REGISTRY}/archova/migrate:${TAG}")"
 
-for svc in api web worker; do
+for svc in api web worker ai-worker; do
   current=$(aws ecs describe-services --cluster "$CLUSTER" --services "${NAME}-${svc}" \
     --query 'services[0].taskDefinition' --output text)
   family=$(echo "$current" | sed -E 's|.*task-definition/([^:]+):.*|\1|')
@@ -84,7 +84,7 @@ for svc in api web worker; do
   aws ecs update-service --cluster "$CLUSTER" --service "${NAME}-${svc}" --task-definition "$td" >/dev/null
   echo "${NAME}-${svc} -> $td"
 done
-for svc in api web worker; do wait_service "${NAME}-${svc}"; done
+for svc in api web worker ai-worker; do wait_service "${NAME}-${svc}"; done
 
 curl -fsS -o /dev/null --retry 5 --retry-delay 10 --retry-all-errors "https://${APP_HOST}/login"
 curl -fsS -o /dev/null --retry 5 --retry-delay 10 --retry-all-errors "https://${API_HOST}/.well-known/jwks.json"
