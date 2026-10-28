@@ -1,0 +1,55 @@
+import { date, integer, pgSchema, real, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import type { DefectPriority, DefectStage, DefectStatus } from '@archova/domain';
+
+export const defectsSchema = pgSchema('defects');
+
+export type DefectSource = 'manual' | 'inspection' | 'ai_suggested';
+
+export const defects = defectsSchema.table('defects', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  status: text('status').$type<DefectStatus>().notNull(),
+  priority: text('priority').$type<DefectPriority>().notNull().default('medium'),
+  category: text('category'),
+  trade: text('trade'),
+  stage: text('stage').$type<DefectStage>().notNull().default('pre_pc'),
+  locationId: uuid('location_id'),
+  sheetId: uuid('sheet_id'),
+  drawingRevisionId: uuid('drawing_revision_id'),
+  pinX: real('pin_x'),
+  pinY: real('pin_y'),
+  assigneeCompanyId: uuid('assignee_company_id'),
+  assigneeUserId: uuid('assignee_user_id'),
+  dueDate: date('due_date'),
+  raisedByCompanyId: uuid('raised_by_company_id'),
+  issuedAt: timestamp('issued_at', { withTimezone: true }),
+  readyForReviewAt: timestamp('ready_for_review_at', { withTimezone: true }),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  closedBy: uuid('closed_by'),
+  source: text('source').$type<DefectSource>().notNull().default('manual'),
+  inspectionItemId: uuid('inspection_item_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const events = defectsSchema.table('events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  defectId: uuid('defect_id').notNull(),
+  action: text('action').notNull(),
+  fromStatus: text('from_status').$type<DefectStatus>(),
+  toStatus: text('to_status').$type<DefectStatus>().notNull(),
+  note: text('note'),
+  fileIds: uuid('file_ids').array().notNull().default([]),
+  actorId: uuid('actor_id'),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});

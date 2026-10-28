@@ -30,6 +30,7 @@ tags:
   - name: documents
   - name: ai
   - name: rfis
+  - name: defects
   - name: sync
   - name: diary
   - name: workforce
@@ -1491,6 +1492,136 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SyncPushResponse' }
         '426': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDefects
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.read
+      summary: The defect register. Subcontractors see their company's defects and ones they raised (DEF-AC9).
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DefectStatus' } }
+        - {
+            name: assigneeCompanyId,
+            in: query,
+            schema: { $ref: '#/components/schemas/CompanyRef' },
+          }
+        - { name: stage, in: query, schema: { $ref: '#/components/schemas/DefectStage' } }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/DefectPriority' } }
+        - { name: trade, in: query, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - {
+            name: drawingRevisionId,
+            in: query,
+            schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
+          }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.create
+      summary: Draft a defect pinned on a drawing. It is numbered DEF-0001 per project (DEF-AC2, AC3).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDefectRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DefectId'
+    get:
+      operationId: getDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.read
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.create
+      summary: Edit a defect that is not closed or void. Builder staff edit any; an author edits their own draft.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDefectRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DefectId'
+    post:
+      operationId: transitionDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.read
+      summary: >-
+        Move a defect through its lifecycle with the shared state machine. Issue needs `defects.defects.create`;
+        markReadyForReview and dispute need `defects.defects.respond`; close, reject, reassign and void need
+        `defects.defects.close`. The state machine decides whether the caller's side (builder or assigned
+        company) may take the action.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DefectTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis:
     parameters:
@@ -3784,6 +3915,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    DefectId:
+      name: defectId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dfx_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -5601,6 +5737,176 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    DefectStatus:
+      type: string
+      enum: [draft, open, ready_for_review, closed, disputed, void]
+    DefectPriority:
+      type: string
+      enum: [low, medium, high, critical]
+    DefectStage:
+      type: string
+      description: Contract milestone the defect is reported against (DEF-AC7)
+      enum: [pre_pc, pc, dlp]
+    DefectAction:
+      type: string
+      enum: [issue, markReadyForReview, close, reject, dispute, reassign, void]
+    DefectSource:
+      type: string
+      enum: [manual, inspection, ai_suggested]
+    Defect:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          description,
+          status,
+          priority,
+          category,
+          trade,
+          stage,
+          pin,
+          assigneeCompanyId,
+          assigneeUserId,
+          dueDate,
+          isOverdue,
+          raisedByCompanyId,
+          issuedAt,
+          readyForReviewAt,
+          closedAt,
+          closedBy,
+          source,
+          availableActions,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'DEF-0042' }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/DefectStatus' }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        category: { type: [string, 'null'] }
+        trade: { type: [string, 'null'] }
+        stage: { $ref: '#/components/schemas/DefectStage' }
+        pin:
+          oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
+        assigneeCompanyId: { type: [string, 'null'] }
+        assigneeUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue:
+          {
+            type: boolean,
+            description: "Open or disputed and past its due date in the project's time zone",
+          }
+        raisedByCompanyId: { type: [string, 'null'] }
+        issuedAt: { type: [string, 'null'], format: date-time }
+        readyForReviewAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        closedBy: { type: [string, 'null'] }
+        source: { $ref: '#/components/schemas/DefectSource' }
+        availableActions:
+          type: array
+          description: Actions the caller can take now, for showing buttons
+          items: { $ref: '#/components/schemas/DefectAction' }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    DefectEvent:
+      type: object
+      required: [id, defectId, action, fromStatus, toStatus, note, fileIds, actorId, at]
+      properties:
+        id: { type: string }
+        defectId: { type: string }
+        action:
+          type: string
+          description: The lifecycle action, or `create`
+        fromStatus: { type: [string, 'null'] }
+        toStatus: { $ref: '#/components/schemas/DefectStatus' }
+        note:
+          {
+            type: [string, 'null'],
+            description: 'The reason given, shown to the subcontractor on a reject',
+          }
+        fileIds:
+          type: array
+          items: { type: string }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    DefectDetail:
+      type: object
+      required: [defect, events]
+      properties:
+        defect: { $ref: '#/components/schemas/Defect' }
+        events:
+          type: array
+          description: Status history, oldest first
+          items: { $ref: '#/components/schemas/DefectEvent' }
+    DefectPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Defect' }
+        nextCursor: { type: [string, 'null'] }
+    CreateDefectRequest:
+      type: object
+      additionalProperties: false
+      required: [title, pin]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 20000 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        category: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        stage: { $ref: '#/components/schemas/DefectStage' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+        dueDate: { type: string, format: date }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+    UpdateDefectRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 20000 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        category: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        trade: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        stage: { $ref: '#/components/schemas/DefectStage' }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+    DefectTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { $ref: '#/components/schemas/DefectAction' }
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required for reject, dispute and void. A reject reason is shown to the subcontractor.
+        fileIds:
+          type: array
+          maxItems: 20
+          description: Photos for this step. Marking ready for review needs at least one (DEF-AC5).
+          items: { $ref: '#/components/schemas/FileRef' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
     DiaryStatus:
       type: string
       enum: [draft, submitted, signed_off]

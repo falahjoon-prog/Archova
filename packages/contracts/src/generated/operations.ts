@@ -344,6 +344,44 @@ export const SyncPushParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const SyncPushBody = s.SyncPushRequestSchema;
+export const ListDefectsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListDefectsQuery = z.object({
+  "status": s.DefectStatusSchema.optional(),
+  "assigneeCompanyId": s.CompanyRefSchema.optional(),
+  "stage": s.DefectStageSchema.optional(),
+  "priority": s.DefectPrioritySchema.optional(),
+  "trade": z.string().min(1).max(100).optional(),
+  "overdue": z.enum(["true", "false"]).optional(),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateDefectParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateDefectBody = s.CreateDefectRequestSchema;
+export const GetDefectParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDefectParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
+});
+export const UpdateDefectBody = s.UpdateDefectRequestSchema;
+export const TransitionDefectParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
+});
+export const TransitionDefectBody = s.DefectTransitionRequestSchema;
 export const ListRfisParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1667,6 +1705,66 @@ export const operations = {
     params: SyncPushParams,
     query: null,
     body: SyncPushBody,
+  },
+  listDefects: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.read",
+    internal: false,
+    contentType: null,
+    params: ListDefectsParams,
+    query: ListDefectsQuery,
+    body: null,
+  },
+  createDefect: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateDefectParams,
+    query: null,
+    body: CreateDefectBody,
+  },
+  getDefect: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.read",
+    internal: false,
+    contentType: null,
+    params: GetDefectParams,
+    query: null,
+    body: null,
+  },
+  updateDefect: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateDefectParams,
+    query: null,
+    body: UpdateDefectBody,
+  },
+  transitionDefect: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition',
+    module: "defects",
+    auth: "required",
+    permission: "defects.defects.read",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionDefectParams,
+    query: null,
+    body: TransitionDefectBody,
   },
   listRfis: {
     method: 'GET',
