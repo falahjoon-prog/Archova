@@ -897,6 +897,55 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DrawingRevision' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    get:
+      operationId: getSheetGeometry
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: >-
+        Where a published sheet stands for takeoff: whether its vector geometry has been extracted and the drawing
+        scale (detected and confirmed). Before extraction it is `pending` with no scale.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SheetGeometry' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    put:
+      operationId: confirmSheetScale
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: >-
+        A person fixes the drawing scale (1:N) the takeoff tools measure against. If-Match is optional; send the
+        geometry ETag to refuse overwriting a scale someone else just set.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmSheetScaleRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SheetGeometry' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5865,6 +5914,39 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    SheetGeometry:
+      type: object
+      required:
+        [
+          revisionId,
+          status,
+          scaleDetected,
+          scaleConfirmed,
+          scaleConfirmedBy,
+          scaleConfirmedAt,
+          extractedAt,
+          version,
+        ]
+      properties:
+        revisionId: { type: string }
+        status:
+          {
+            type: string,
+            enum: [pending, ready],
+            description: '`ready` once the files worker has extracted vector geometry',
+          }
+        scaleDetected: { type: [integer, 'null'], description: The N in 1:N the extractor read }
+        scaleConfirmed: { type: [integer, 'null'], description: The N in 1:N a person confirmed }
+        scaleConfirmedBy: { type: [string, 'null'] }
+        scaleConfirmedAt: { type: [string, 'null'], format: date-time }
+        extractedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer, description: 0 before anything is recorded }
+    ConfirmSheetScaleRequest:
+      type: object
+      additionalProperties: false
+      required: [scale]
+      properties:
+        scale: { type: integer, minimum: 1, maximum: 100000, description: The N in 1:N }
     MarkupList:
       type: object
       required: [data]

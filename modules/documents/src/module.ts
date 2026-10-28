@@ -7,6 +7,7 @@ import { createAiSourceService } from './application/ai-sources';
 import { createContext } from './application/context';
 import { createDocumentService } from './application/documents';
 import { createDrawingService } from './application/drawings';
+import { createGeometryService } from './application/geometry';
 import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
 import { createTransmittalService } from './application/transmittals';
@@ -27,6 +28,7 @@ export function createDocumentsModule(
   const documents = createDocumentService(c, folders);
   const drawings = createDrawingService(c);
   const markups = createMarkupService(c, drawings);
+  const geometry = createGeometryService(drawings);
   const transmittals = createTransmittalService(c, documents, drawings);
   const aiSources = createAiSourceService(c, folders);
   return {
@@ -38,6 +40,7 @@ export function createDocumentsModule(
       documents,
       drawings,
       markups,
+      geometry,
       transmittals,
     }),
     api: {
@@ -49,6 +52,8 @@ export function createDocumentsModule(
       getPreviousDrawingRevision: drawings.getPreviousRevision,
       /** For Nova RFI drafts (F3): a markup the caller may see on a revision, or markup.not_found. */
       getMarkup: markups.getOwn,
+      /** For the files worker: record the vector geometry and scale it read off a sheet (X30). */
+      recordSheetGeometry: geometry.recordExtracted,
       /** For Nova (ai/03 §3): every published document and drawing revision, with its access scope. */
       aiSources: aiSources.aiSources,
       /** For Nova retrieval (ai/04 §3): the access scopes the caller holds in a project. */
