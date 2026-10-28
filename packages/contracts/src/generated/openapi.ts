@@ -1551,6 +1551,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The package's confirmed quotes side by side (EST-AC6).
+         * @description One column per confirmed quote, oldest received first (drafts, superseded and declined quotes don't compete),
+         *     and one row per scope line, with the flags an estimator looks for before awarding: scope lines a quote has no
+         *     line for, exclusions and qualifications, provisional sums, a validity date that has passed, and prices far
+         *     from the median. Totals are ex GST. The levelled total is the quote total plus the estimator's allowances for
+         *     that quote (`allowances` on the package), the figure `isLowest` and the award's "not lowest" check use.
+         *     Everything is arithmetic on confirmed quote data; no Nova credits are spent. Competing prices are the
+         *     estimator's: only builder staff with `estimating.quotes.review` can read this, and a subcontractor never can,
+         *     even for their own quote (EST-AC3).
+         */
+        get: operations["getQuoteComparison"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes": {
         parameters: {
             query?: never;
@@ -5070,6 +5101,85 @@ export interface components {
             /** Format: date-time */
             confirmedAt: string | null;
             version: number;
+        };
+        QuoteComparison: {
+            packageId: string;
+            columns: components["schemas"]["QuoteComparisonColumn"][];
+            /** @description One per scope line, in the package's order. Each has a cell for every column, in column order. */
+            rows: components["schemas"]["QuoteComparisonRow"][];
+            /** @description Median of the levelled totals; null when fewer than `outlierRule.minPrices` quotes compete. */
+            medianTotalExGst: string | null;
+            /** @description How `deviation` is decided, so the screen can say why a price is flagged. */
+            outlierRule: {
+                /** @description More than this far from the median, as a percent of it */
+                percent: number;
+                /** @description and at least this far in dollars */
+                minExGst: string;
+                /** @description Nothing is flagged unless at least this many quotes price the item */
+                minPrices: number;
+            };
+        };
+        /** @enum {string} */
+        QuoteDeviation: "high" | "low";
+        QuoteComparisonColumn: {
+            quoteId: string;
+            companyId: string;
+            revision: number;
+            reference: string | null;
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: date */
+            validUntil: string | null;
+            /** @description Today, in the project's time zone, is after `validUntil` */
+            validityExpired: boolean;
+            totalExGst: string;
+            /** @description Every allowance the estimator set against this quote */
+            allowancesExGst: string;
+            /** @description The total plus the allowances */
+            levelledTotalExGst: string;
+            /** @description Lowest levelled total among the confirmed quotes */
+            isLowest: boolean;
+            /** @description The levelled total against the median of the levelled totals. */
+            deviation: components["schemas"]["QuoteDeviation"] | null;
+            provisionalExGst: string;
+            provisionalLines: number;
+            /** @description Scope lines the quote has no line for. An exclusion or an allowance may already cover them. */
+            missingScopeKeys: string[];
+            /** @description Lines that match no scope line: in the total, not in any row */
+            unmappedLines: number;
+            unmappedExGst: string;
+            outlierLines: number;
+            exclusions: components["schemas"]["QuoteComparisonNote"][];
+            qualifications: components["schemas"]["QuoteComparisonNote"][];
+        };
+        QuoteComparisonNote: {
+            id: string;
+            text: string;
+            scopeKey: string | null;
+        };
+        QuoteComparisonRow: {
+            key: string;
+            description: string;
+            quantity: string | null;
+            unit: string;
+            /** @description Median price of the quotes that price this line; null when too few do. */
+            medianExGst: string | null;
+            cells: components["schemas"]["QuoteComparisonCell"][];
+        };
+        QuoteComparisonCell: {
+            quoteId: string;
+            /**
+             * @description `provisional` when any of the quote's lines for the scope line is a provisional or prime cost sum
+             * @enum {string}
+             */
+            state: "priced" | "provisional" | "missing";
+            /** @description The quote's lines for the scope line, summed */
+            amountExGst: string | null;
+            /** @description The estimator's allowance for this gap */
+            allowanceExGst: string | null;
+            /** @description An exclusion on the quote names this scope line */
+            excluded: boolean;
+            deviation: components["schemas"]["QuoteDeviation"] | null;
         };
         QuotePage: {
             data: components["schemas"]["Quote"][];
@@ -8847,6 +8957,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getQuoteComparison: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteComparison"];
                 };
             };
             default: components["responses"]["Problem"];
