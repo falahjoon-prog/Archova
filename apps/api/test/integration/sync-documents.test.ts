@@ -63,4 +63,48 @@ describe('mobile pull: documents', () => {
       [secretDoc]: 'delete:0',
     });
   });
+
+  it('takes a folders documents away from the phone when the folder goes private', async () => {
+    const owner = await signUp(t.app, 'syd3-owner');
+    const sub = await signUp(t.app, 'syd3-sub');
+    const org = await createOrg(owner.browser, 'Docs Privacy Builder');
+    const project = await createProject(owner.browser, org.id, { name: 'Tower D', state: 'NSW' });
+    const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+    await addMember(owner.browser, org.id, project.id, sub.email, 'Subcontractor');
+    const parent = await owner.browser.post(`${base}/folders`, { name: 'Commercial' });
+    const child = (
+      await owner.browser.post(`${base}/folders`, {
+        name: 'Variations',
+        parentId: parent.json().id,
+      })
+    ).json();
+    const fileId = await uploadFile(t, owner.browser, org.id, project.id, 'variation.pdf');
+    const docId = (
+      await owner.browser.post(`${base}/documents`, {
+        folderId: child.id,
+        title: 'Variation 1',
+        revision: { rev: '0', fileId },
+      })
+    ).json().document.id as string;
+
+    const pull = async (since: string) =>
+      (
+        await sub.browser.get(
+          `/v1/orgs/${org.id}/sync/pull?scopes=${encodeURIComponent(`project:${project.id}:documents`)}&since=${since}`,
+        )
+      ).json() as { changes: Array<{ id: string; op: string }>; nextSince: string };
+    const first = await pull('0');
+    expect(first.changes.find((c) => c.id === docId)?.op).toBe('upsert');
+
+    const patched = await owner.browser.patch(
+      `${base}/folders/${parent.json().id}`,
+      { isPrivate: true },
+      { 'if-match': parent.headers.etag as string },
+    );
+    expect(patched.statusCode).toBe(200);
+    const after = Object.fromEntries(
+      (await pull(first.nextSince)).changes.map((c) => [c.id, c.op]),
+    );
+    expect(after).toMatchObject({ [docId]: 'delete', [child.id]: 'delete' });
+  });
 });
