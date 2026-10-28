@@ -34,7 +34,12 @@ import { DiaryReadView } from '../components/DiaryReadView';
 import { possibleDelay } from '../data/source';
 import { useDiaryDay, useDiaryMutations, useDiaryRange } from '../hooks/useDiary';
 import { dayStrip, diffContent, eotByDefault, labourTotals, submitProblems } from '../lib/entry';
-import { DIARY_STATUS_LABELS, type DiaryContent, type DiaryEntry } from '../lib/types';
+import {
+  DIARY_STATUS_LABELS,
+  type DiaryContent,
+  type DiaryEntry,
+  type NovaDiarySummary,
+} from '../lib/types';
 
 const AUTOSAVE_MS = 1500;
 
@@ -193,11 +198,7 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
   const [amendOpen, setAmendOpen] = useState(false);
   const [reason, setReason] = useState('');
   const [reasonError, setReasonError] = useState<string | null>(null);
-  const [summary, setSummary] = useState<{
-    id: string;
-    text: string;
-    citations: { id: string; label: string; href: string }[];
-  } | null>(null);
+  const [summary, setSummary] = useState<NovaDiarySummary | null>(null);
   const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
   const [delayDismissed, setDelayDismissed] = useState(false);
 
@@ -232,8 +233,17 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
             type="button"
             variant="nova"
             size="sm"
-            disabled={m.summary.isPending}
-            onClick={() =>
+            disabled={m.summary.isPending || m.saveDraft.isPending}
+            onClick={async () => {
+              // Nova writes from the day as saved, so a draft still being typed is saved first.
+              if (mode === 'edit' && dirty) {
+                try {
+                  await m.saveDraft.mutateAsync(content);
+                } catch {
+                  return;
+                }
+                setDirty(false);
+              }
               m.summary.mutate(
                 { content, weather: entry.weather },
                 {
@@ -242,14 +252,15 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
                     setFeedback(null);
                   },
                 },
-              )
-            }
+              );
+            }}
           >
             <NovaIcon size={16} aria-hidden="true" />
             {m.summary.isPending ? 'Writing…' : "Write today's summary"}
           </Button>
         </div>
         <ErrorAlert error={m.summary.error} title="Nova couldn't write a summary" />
+        <ErrorAlert error={m.saveDraft.error} title="We couldn't save the draft first" />
         {summary ? (
           <NovaSuggestion
             title="Today's summary"
@@ -282,6 +293,14 @@ function DayBody({ entry }: { entry: DiaryEntry }) {
               {summary.text ||
                 'There isn’t enough recorded yet to summarise. Add labour, delays or notes first.'}
             </p>
+            {summary.unmentionedDelays ? (
+              <p className="u-caption u-m-0">
+                {summary.unmentionedDelays === 1
+                  ? '1 delay or stand-down isn’t in this summary.'
+                  : `${summary.unmentionedDelays} delays or stand-downs aren’t in this summary.`}{' '}
+                Check them under Delays.
+              </p>
+            ) : null}
           </NovaSuggestion>
         ) : null}
       </>
