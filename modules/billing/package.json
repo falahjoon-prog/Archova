@@ -14,7 +14,8 @@
   "dependencies": {
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
-    "@archova/kernel": "workspace:*"
+    "@archova/kernel": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

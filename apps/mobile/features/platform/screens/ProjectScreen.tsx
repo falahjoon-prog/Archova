@@ -1,4 +1,6 @@
 import { useEffect } from 'react';
+import { useRouter } from 'expo-router';
+import { mobileRoutes } from '@archova/routes';
 import { ListItem, Screen } from '@archova/ui-native';
 import { StateMessage, useCurrentOrg } from '../../../shared';
 import { useProject } from '../hooks';
@@ -11,6 +13,7 @@ export function ProjectScreen({
   projectId: string;
   orgId?: string | undefined;
 }) {
+  const router = useRouter();
   const { orgId: currentOrgId, setProjectId } = useCurrentOrg();
   const orgId = orgIdParam ?? currentOrgId;
   const project = useProject(orgId, projectId);
@@ -57,6 +60,16 @@ export function ProjectScreen({
       <ListItem title="Status" subtitle={p.status} />
       {address ? <ListItem title="Address" subtitle={address} /> : null}
       <ListItem title="Time zone" subtitle={p.timezone} />
+      <ListItem
+        title="Site diary"
+        subtitle="Today's labour, plant, deliveries and delays, offline"
+        onPress={() => router.push(mobileRoutes.diary(projectId))}
+      />
+      <ListItem
+        title="Defects"
+        subtitle="Raise, fix and close defects, offline"
+        onPress={() => router.push(mobileRoutes.defects(projectId))}
+      />
     </Screen>
   );
 }

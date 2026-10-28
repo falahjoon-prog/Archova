@@ -54,6 +54,13 @@ export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
   project: (projectId: string) => `/project/${enc(projectId)}`,
+  diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
+  defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
+  newDefect: (projectId: string) => `/project/${enc(projectId)}/defects/new`,
+  defect: (projectId: string, defectId: string) =>
+    `/project/${enc(projectId)}/defects/${enc(defectId)}`,
+  defectPhoto: (projectId: string, defectId: string, purpose: 'before' | 'after') =>
+    `/project/${enc(projectId)}/defects/${enc(defectId)}/photo?purpose=${purpose}`,
 } as const;
 
 /** Absolute link for emails and push payloads, e.g. `deepLink('https://app.example.com', webRoutes.project(...))`. */

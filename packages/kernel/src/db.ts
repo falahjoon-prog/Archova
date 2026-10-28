@@ -63,7 +63,11 @@ export interface Database {
    * Transaction with no tenant context, for global-layer modules only (`identity`). Tenant tables are
    * unreachable here: their RLS policies call `current_setting('app.org_id')`, which errors when unset.
    */
-  withGlobalTx<T>(owner: 'identity', fn: (tx: Tx) => Promise<T>, opts?: TxOptions): Promise<T>;
+  withGlobalTx<T>(
+    owner: 'identity' | 'billing' | 'backoffice',
+    fn: (tx: Tx) => Promise<T>,
+    opts?: TxOptions,
+  ): Promise<T>;
   /**
    * Self scope (ADR-0007): read-only transaction where only `self_read` policies match, i.e. the
    * caller's own memberships and the orgs they belong to. Used by GET /v1/me before an org is chosen.

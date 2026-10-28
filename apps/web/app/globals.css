@@ -144,6 +144,40 @@ main:focus {
 .app-shell__user {
   color: var(--c-text-secondary);
 }
+.app-shell__org {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Phone: brand and actions share the first row, the primary nav takes the second, so the bar stays two rows. */
+@media (max-width: 640px) {
+  .app-shell__bar {
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-2) var(--space-4);
+  }
+  .app-shell__brand {
+    order: 1;
+    min-width: 0;
+    flex: 1;
+  }
+  .app-shell__actions {
+    order: 2;
+    gap: var(--space-2);
+  }
+  .app-shell__nav {
+    order: 3;
+    flex: 1 0 100%;
+  }
+  .app-shell__user {
+    display: none;
+  }
+}
+@media (max-width: 480px) {
+  .app-shell__org {
+    display: none;
+  }
+}
 .app-shell__body {
   flex: 1;
   display: flex;
@@ -251,6 +285,103 @@ main:focus {
 .link-list__meta {
   color: var(--c-text-secondary);
   font-size: var(--font-xs);
+}
+
+/* Project cards */
+.project-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 768px) {
+  .project-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1280px) {
+  .project-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.project-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-lg);
+}
+.project-card:hover {
+  border-color: var(--c-action-primary);
+}
+.project-card:focus-within {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.project-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.project-card__number {
+  color: var(--c-text-secondary);
+  font-size: var(--font-xs);
+}
+.project-card__name {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* The whole card is the target; the link's own box stretches over it. */
+.project-card__link {
+  color: var(--c-text);
+  text-decoration: none;
+}
+.project-card__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.project-card__link:focus-visible {
+  outline: none;
+}
+.tool-grid {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (min-width: 768px) {
+  .tool-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (min-width: 1280px) {
+  .tool-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.tool-card {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  color: var(--c-action-primary);
+}
+.tool-card__link {
+  font-weight: 600;
+}
+.project-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--c-text-secondary);
+  font-size: var(--font-sm);
 }
 
 /* Tables */
@@ -400,6 +531,13 @@ main:focus {
     overflow-x: auto;
     gap: var(--space-2);
     border-bottom: 1px solid var(--c-border-divider);
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    /* A fade on the right edge says there is more to scroll to. */
+    mask-image: linear-gradient(to right, #000 calc(100% - var(--space-8)), transparent);
+  }
+  .project-nav li {
+    scroll-snap-align: start;
   }
   .project-nav ul {
     flex-direction: row;
@@ -757,12 +895,21 @@ main:focus {
 }
 @media (max-width: 900px) {
   .diary-layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .diary-strip ul {
     display: flex;
+    flex-direction: row;
     overflow-x: auto;
     gap: var(--space-2);
+    padding-bottom: var(--space-2);
+  }
+  .diary-strip li {
+    flex: 0 0 auto;
+  }
+  .diary-strip .diary-strip__day {
+    width: auto;
+    border: 1px solid var(--c-border-divider);
   }
 }
 .diary-strip__day {

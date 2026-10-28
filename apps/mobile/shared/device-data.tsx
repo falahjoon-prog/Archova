@@ -24,6 +24,9 @@ const MODULE_OF: Record<string, string> = {
   defect_event: 'defects',
   diary_entry: 'diary',
   diary_labour: 'diary',
+  diary_plant: 'diary',
+  diary_delivery: 'diary',
+  diary_delay: 'diary',
 };
 const moduleOf = (entityType: string) => MODULE_OF[entityType] ?? entityType;
 
@@ -138,4 +141,19 @@ export function useLocalQuery<T>(read: (() => Promise<T>) | null, deps: unknown[
     };
   }, [...deps, tick]);
   return useMemo(() => ({ value, refresh: () => setTick((t) => t + 1) }), [value]);
+}
+
+/**
+ * The user's company on a project, from their synced project membership (`my_project_membership`, keyed by
+ * project id, in the org sync scope). Null until the project has synced.
+ */
+export function useMyProjectCompany(projectId: string): string | null {
+  const state = useDeviceData();
+  const data = state.status === 'ready' ? state.data : null;
+  const membership = useLocalQuery(
+    data ? () => data.store.get('my_project_membership', projectId) : null,
+    [data, projectId],
+  );
+  const value = membership.value?.data as { companyId?: string } | undefined;
+  return value?.companyId ?? null;
 }
