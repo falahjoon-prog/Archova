@@ -47,6 +47,10 @@ function RootNavigator() {
           options={{ headerShown: true, title: 'Site sign-in' }}
         />
         <Stack.Screen
+          name="project/[projectId]/induction/index"
+          options={{ headerShown: true, title: 'Site induction' }}
+        />
+        <Stack.Screen
           name="project/[projectId]/roll-call/index"
           options={{ headerShown: true, title: 'Roll call' }}
         />
