@@ -146,15 +146,15 @@ Both keep WAF blocking, the egress firewall, GuardDuty scanning, 35-day point-in
 
 ## Not built yet
 
-| Item                                                                                                                                                                                                                 | Where it lands          |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------- |
-| Preview environments per PR, DAST (ZAP baseline) against the demo                                                                                                                                                    | Next PR                 |
-| Secret rotation Lambdas for the app roles and Valkey                                                                                                                                                                 | Next PR                 |
-| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                                                                                                                                       | As each app is built    |
-| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                                                                                                                            | DR PR, before pilots    |
-| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                                                                                                                                | With the org rollout    |
-| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)                                                                                                                    | Later PRs               |
-| files-worker service and role (`archova-<env>-c1-files-worker`): moves THREATS_FOUND uploads to `threats/` (30-day hold), DeleteObjectVersion on `orgs/*/credentials/*` for the 7-day ID-image rule; legal-hold role | With Ben's files worker |
+| Item                                                                                                     | Where it lands                                                                              |
+| -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Preview environments per PR, DAST (ZAP baseline) against the demo                                        | Next PR                                                                                     |
+| Secret rotation Lambdas for the app roles and Valkey                                                     | Next PR                                                                                     |
+| realtime, workers, events-relay, ai-worker, webhook-worker, scheduler services                           | As each app is built                                                                        |
+| Melbourne DR: S3 and state replication, KMS replicas, pilot-light network                                | DR PR, before pilots                                                                        |
+| Backup account vaults with Vault Lock; log-archive forwarding; CloudFront access logs                    | With the org rollout                                                                        |
+| Owner console (`console.`), marketing account with Payload CMS (`www.`), SES and email-in (`in.`)        | Later PRs                                                                                   |
+| files-worker: DeleteObjectVersion on `orgs/*/credentials/*` for the 7-day ID-image rule; legal-hold role | With Ben's legal-hold and credentials jobs (the threat move already runs in `files-worker`) |
 
 ## What the application needs from infra (phase 0)
 
