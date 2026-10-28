@@ -23,6 +23,8 @@ beforeAll(async () => {
       assert: async () => undefined,
       sources: async () => [],
       accessScopes: async () => [],
+      rfiSources: async () => [],
+      rfiAccessScopes: async () => [],
       similarRfis: async () => [],
       getDrawingRevision: async () => {
         throw new Error('unused');

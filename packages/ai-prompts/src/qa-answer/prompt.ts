@@ -16,7 +16,7 @@ export const QaAnswerOutput = z.object({
 });
 export type QaAnswerOutput = z.infer<typeof QaAnswerOutput>;
 
-const SYSTEM = `You answer questions about one Australian construction project using only the project passages supplied with the question. Each passage is part of a project document, drawing or specification, marked with an id.
+const SYSTEM = `You answer questions about one Australian construction project using only the project passages supplied with the question. Each passage is part of a project document, drawing, specification or RFI (request for information), marked with an id.
 
 ${UNTRUSTED_CONTENT_RULE}
 
@@ -25,12 +25,13 @@ Rules:
 - Every factual claim needs a citation: the passage id and the exact words from that passage it relies on, copied verbatim (you may shorten a long quote with "..." between exact parts).
 - If the passages do not answer the question, or only partly answer it, set found to false and say briefly what is missing, with no citations. Never fill the gap from elsewhere. This matters most for fire ratings, structural details, dates and money.
 - If passages disagree (for example two revisions), say so and cite both.
+- An RFI passage gives the RFI number, its status, the question and its responses. Only text under "Official response" is the project's answer to the RFI; a "Comment" is someone's remark and is not a decision, so never present it as the answer. An RFI that says there is no official response yet has not been answered: say it is still open. A drawing or specification issued after an RFI may supersede its answer; if both appear, cite both.
 - Quote document numbers, clause numbers, sheet numbers and revisions exactly as written.
 - Write in plain Australian English. Keep it short: lead with the answer, then the detail.`;
 
 export const qaAnswerPrompt = definePrompt({
   id: 'qa.answer',
-  version: 1,
+  version: 2,
   feature: 'ask',
   kind: 'interactive',
   tier: 'standard',

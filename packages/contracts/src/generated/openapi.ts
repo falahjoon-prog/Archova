@@ -1012,11 +1012,13 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Ask Nova a question about this project's documents and drawings (F2).
+         * Ask Nova a question about this project's documents, drawings and RFIs (F2).
          * @description Nova searches the current revisions the caller can open (private folders and drawing access apply) and
-         *     answers with a citation to the exact document, revision and page for each claim. When the documents don't
-         *     answer it, `found` is false and `closestMatches` lists the nearest passages instead of a guess. Costs one
-         *     Nova credit when the model is called; nothing when no visible passage matches.
+         *     answers with a citation to the exact document, revision and page for each claim. Builder staff with RFI
+         *     access also search sent RFIs, their question and every response; an RFI is cited by its `rfi_` id, and other
+         *     people never retrieve RFI text through Ask. When the project's records don't answer it, `found` is false and
+         *     `closestMatches` lists the nearest passages instead of a guess. Costs one Nova credit when the model is
+         *     called; nothing when no visible passage matches.
          */
         post: operations["askNova"];
         delete?: never;
@@ -1255,9 +1257,11 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Bring Nova's index of this project's documents and drawings up to date.
+         * Bring Nova's index of this project's documents, drawings and RFIs up to date.
          * @description Reads, chunks and embeds every published revision not yet indexed, marks older revisions superseded, applies
-         *     folder moves to access, and drops deleted records. Safe to repeat: finished revisions are skipped. Runs in the
+         *     folder moves to access, and drops deleted records. Sent RFIs are indexed from their question and responses:
+         *     an RFI with a new response or an edit is indexed again and its old text dropped; drafts and voided RFIs are
+         *     not indexed. Safe to repeat: finished revisions and unchanged RFIs are skipped. Runs in the
          *     request for now; the AI worker will run it on each document event once it lands. Embedding is background
          *     work and costs no credits.
          */
@@ -3624,15 +3628,17 @@ export interface components {
             skippedPages: number[];
             refusedPages: number[];
         };
-        /** @description A document or drawing revision page Nova used. */
+        /** @description A document or drawing revision page, or an RFI, Nova used. */
         NovaSource: {
             /** @enum {string} */
-            sourceType: "document" | "drawing";
-            /** @description The document (`doc_`) or drawing sheet (`dsh_`). */
+            sourceType: "document" | "drawing" | "rfi";
+            /** @description The document (`doc_`), drawing sheet (`dsh_`) or RFI (`rfi_`). */
             sourceId: string;
-            /** @description The document revision (`rev_`) or drawing revision (`drv_`). */
+            /** @description The document revision (`rev_`) or drawing revision (`drv_`); for an RFI, its own `rfi_` id. */
             revisionId: string;
+            /** @description The revision label; for an RFI */
             revision: string;
+            /** @description The document or sheet title; for an RFI */
             title: string;
             /** @description Document or sheet number */
             reference: string | null;
@@ -3918,6 +3924,10 @@ export interface components {
             }[];
         };
         NovaIndexReport: {
+            /** @description Sent RFIs indexed in this run (new */
+            rfisIndexed: number;
+            /** @description Sent RFIs already indexed at their current text */
+            rfisUnchanged: number;
             indexed: number;
             unchanged: number;
             /** @description Revisions with no text, even after OCR (blank pages, photos, drawings with no words). */

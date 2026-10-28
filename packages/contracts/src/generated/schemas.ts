@@ -1601,7 +1601,7 @@ export const MeSchema = z.object({
 export type Me = z.infer<typeof MeSchema>;
 
 export const NovaSourceSchema = z.object({
-  "sourceType": z.enum(["document", "drawing"]),
+  "sourceType": z.enum(["document", "drawing", "rfi"]),
   "sourceId": z.string(),
   "revisionId": z.string(),
   "revision": z.string(),
@@ -1737,6 +1737,8 @@ export const NovaImportMappingSchema = z.object({
 export type NovaImportMapping = z.infer<typeof NovaImportMappingSchema>;
 
 export const NovaIndexReportSchema = z.object({
+  "rfisIndexed": z.number().int(),
+  "rfisUnchanged": z.number().int(),
   "indexed": z.number().int(),
   "unchanged": z.number().int(),
   "noText": z.number().int(),
