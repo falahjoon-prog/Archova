@@ -5,7 +5,7 @@
 //
 // Phase 1 runs this inline from the API for one file at a time; scanned sheets are read with OCR first. The
 // ai-worker takes it over from `files.object.ready.v1` when apps/worker lands.
-import { and, desc, eq, inArray, lt, notInArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, or, sql } from 'drizzle-orm';
 import {
   TITLE_BLOCK_FIELDS,
   drawingTitleBlockPrompt,
@@ -22,6 +22,13 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import { ocrToTextItems } from '../domain/ocr';
+import {
+  DECIDER_TASKS,
+  SUGGESTION_TASKS,
+  decidePermission,
+  isCreatorOnly,
+  maySee,
+} from '../domain/suggestion-audience';
 import {
   matchToRegister,
   reviewTitleBlock,
@@ -53,6 +60,8 @@ export interface DrawingRegisterDeps {
   readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
   /** access.assert */
   assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
+  /** access.can: like `assert`, but answers instead of throwing. */
+  can: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<boolean>;
 }
 
 /** What a drawing sheet suggestion holds (`ai_suggestions.payload`). */
@@ -77,38 +86,6 @@ export interface ExtractionResult {
   skippedPages: number[];
   refusedPages: number[];
 }
-
-/** Permission needed to run or decide each suggestion task. */
-const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
-  [TITLEBLOCK_TASK]: 'ai.drawing_register.extract',
-  // F33: the builder approves or rejects the draft here; edits happen in the induction editor (ai/12 §2 I1).
-  'induction.draft': 'ai.induction.draft',
-  // F4: whoever can write the diary takes or discards the summary draft it asked for (see PRIVATE_TASKS).
-  'diary.summary': 'diary.entries.write',
-  // F5, F3: the person who asked for the tag or draft decides it; it is theirs alone (see PRIVATE_TASKS).
-  'defect.tag': 'defects.defects.create',
-  'rfi.draft': 'rfis.rfis.create',
-  // F31: the person who asked for the mapping confirms it.
-  'import.mapping': 'ai.import_mapping.suggest',
-  // F22: the estimator who asked for the reading decides it; it is theirs alone (see PRIVATE_TASKS).
-  'quote.read': 'estimating.quotes.review',
-};
-
-/**
- * Tasks whose suggestions only the person who asked can list or decide: the note, photo, markup or file they came
- * from is theirs until they raise the defect or RFI, run the import or save the quote (a subcontractor's prices are
- * commercial in confidence). A diary summary is written from the lines its asker may read, and a company sees only
- * its own lines, so another member of the project must not read it from the list. Their forms are edited in place,
- * so `edited` needs no fields.
- */
-const PRIVATE_TASKS = [
-  'defect.tag',
-  'rfi.draft',
-  'import.mapping',
-  'quote.read',
-  'diary.summary',
-] as const;
-const isPrivateTask = (task: string) => (PRIVATE_TASKS as readonly string[]).includes(task);
 
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
   const out = new Array<R>(items.length);
@@ -305,6 +282,12 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
   ) {
     // Ids are UUIDv7, so id order is creation order (and avoids timestamp precision issues in cursors).
     const after = decodeCursor<{ id: string }>(q.cursor);
+    // `ai.suggestions.read` is held by every project member, so it doesn't decide what they see: a row is theirs, or
+    // belongs to a task whose decide permission they hold (see suggestion-audience.ts). Anything else is left out.
+    const deciderTasks: string[] = [];
+    for (const task of DECIDER_TASKS)
+      if (await deps.can(scope, SUGGESTION_TASKS[task]!.permission, { projectId }))
+        deciderTasks.push(task);
     const rows = await scope.tx
       .select()
       .from(suggestions)
@@ -315,8 +298,8 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
           q.task ? eq(suggestions.task, q.task) : undefined,
           q.status ? eq(suggestions.status, q.status) : undefined,
           or(
-            notInArray(suggestions.task, [...PRIVATE_TASKS]),
             eq(suggestions.createdBy, scope.ctx.userId),
+            deciderTasks.length ? inArray(suggestions.task, deciderTasks) : undefined,
           ),
           after ? lt(suggestions.id, after.id) : undefined,
         ),
@@ -354,15 +337,18 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
       .limit(1)
       .for('update');
     if (!row) throw new AppError('ai.suggestion.not_found');
-    const permission = TASK_PERMISSIONS[row.task];
+    const permission = decidePermission(row.task);
     if (!permission) throw new AppError('ai.suggestion.not_found');
-    if (isPrivateTask(row.task) && row.createdBy !== scope.ctx.userId)
-      throw new AppError('ai.suggestion.not_found');
+    // A row the person couldn't list doesn't exist for them, whatever they hold.
+    const visible = await maySee(row, scope.ctx.userId, (key) =>
+      deps.can(scope, key, { projectId }),
+    );
+    if (!visible) throw new AppError('ai.suggestion.not_found');
     await deps.assert(scope, permission, { projectId });
     if (row.status !== 'pending')
       throw new AppError('conflict', 'This suggestion has already been decided.');
     const isSheet = row.task === TITLEBLOCK_TASK;
-    if (input.decision === 'edited' && !isSheet && !isPrivateTask(row.task))
+    if (input.decision === 'edited' && !isSheet && !isCreatorOnly(row.task))
       throw new AppError('validation_failed', 'Edit this draft in its editor, then accept it.', [
         { path: 'decision', message: 'Only accepted or rejected' },
       ]);

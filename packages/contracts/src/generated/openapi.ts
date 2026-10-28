@@ -965,7 +965,10 @@ export interface paths {
             };
             cookie?: never;
         };
-        /** Nova suggestions on this project, newest first. */
+        /**
+         * Nova suggestions on this project that the caller may see, newest first.
+         * @description Every project member can call this, but a row is listed only to the person who asked for it, or to someone who holds the permission that decides its feature (for drawing sheets, `ai.drawing_register.extract`). Drafts built from a person's own notes, photos, files or diary lines are theirs alone.
+         */
         get: operations["listAiSuggestions"];
         put?: never;
         post?: never;
@@ -990,7 +993,7 @@ export interface paths {
         put?: never;
         /**
          * Accept, edit or reject a Nova suggestion (ai/04 §7).
-         * @description Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`).
+         * @description Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`). A suggestion the caller may not list is `ai.suggestion.not_found`.
          */
         post: operations["decideAiSuggestion"];
         delete?: never;

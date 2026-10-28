@@ -110,5 +110,15 @@ describe('Nova induction drafts (F33)', () => {
     await addMember(owner.browser, org.id, project.id, sub.email, 'Subcontractor');
     const denied = await sub.browser.post(`${base}/ai/induction-drafts`, { siteName: 'Riverbend' });
     expect(denied.statusCode).toBe(403);
+
+    // Nor can they read or decide the builder's draft: every member holds `ai.suggestions.read`, but the draft is
+    // for whoever holds the induction permission.
+    const listed = async (b: typeof sub.browser) =>
+      (await b.get(`${base}/ai/suggestions?task=induction.draft`)).json().data as Array<{
+        id: string;
+      }>;
+    expect(await listed(sub.browser)).toEqual([]);
+    expect((await listed(owner.browser)).map((x) => x.id)).toEqual([s.id]);
+    expect((await sub.browser.post(url, { decision: 'rejected' })).statusCode).toBe(404);
   });
 });

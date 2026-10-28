@@ -1254,7 +1254,8 @@ paths:
       tags: [ai]
       x-module: ai
       x-permission: ai.suggestions.read
-      summary: Nova suggestions on this project, newest first.
+      summary: Nova suggestions on this project that the caller may see, newest first.
+      description: Every project member can call this, but a row is listed only to the person who asked for it, or to someone who holds the permission that decides its feature (for drawing sheets, `ai.drawing_register.extract`). Drafts built from a person's own notes, photos, files or diary lines are theirs alone.
       parameters:
         - { name: task, in: query, schema: { type: string, maxLength: 64 } }
         - { name: status, in: query, schema: { $ref: '#/components/schemas/AiSuggestionStatus' } }
@@ -1281,7 +1282,7 @@ paths:
       x-module: ai
       x-permission: ai.suggestions.read
       summary: Accept, edit or reject a Nova suggestion (ai/04 §7).
-      description: Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`).
+      description: Also needs the permission of the suggestion's own feature (for drawing sheets, `ai.drawing_register.extract`). A suggestion the caller may not list is `ai.suggestion.not_found`.
       requestBody:
         required: true
         content:
