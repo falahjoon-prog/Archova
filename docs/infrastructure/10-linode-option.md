@@ -70,8 +70,30 @@ The `linode` GitHub environment holds (add a required reviewer to it if every de
 
 Two things to confirm on the first deploy: that Linode's admin user can create the app's roles (it has `CREATEROLE` on Linode's managed Postgres), and that pgvector is available.
 
-## Not built yet (step 4)
+## Certificate renewal
 
-- **TLS certificate renewal:** Let's Encrypt through DNS-01, every 60 days, to the NodeBalancer.
-- **Object Storage CORS** for browser uploads and PDF viewing.
-- **Uptime monitoring and a restore runbook**, including a test restore to Melbourne.
+`.github/workflows/linode-cert.yml` runs on the 1st and 15th of each month (and by hand). If the certificate on `api.` has more than 30 days left it stops. Otherwise it asks Let's Encrypt for one certificate covering `app.` and `api.` (lego, DNS-01 in Linode DNS), then puts it on the NodeBalancer's HTTPS config through the Linode API and checks that the NodeBalancer serves it. Terraform ignores `ssl_cert` and `ssl_key` after the first apply, so a plan never puts the old certificate back. It is off until `LINODE_READY` is `true`.
+
+- **First apply:** `tls_certificate` and `tls_private_key` only need a placeholder: `openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:P-256 -days 30 -nodes -keyout tls.key -out tls.crt -subj "/CN=app.archova.com.au"`. After DNS points at the NodeBalancer, run the workflow once with **force**.
+- **DNS-01 needs the domain's DNS in Linode** (Domains in Cloud Manager, with the registrar's nameservers pointed at Linode). If john keeps DNS elsewhere, tell Jeff: lego supports the other common providers, and only the `--dns` flag and the token change.
+- Added to the `linode` environment: secret `LINODE_CERT_TOKEN` (a personal access token with Domains and NodeBalancers read/write, nothing else), variable `LINODE_ACME_EMAIL`, and optionally secret `LINODE_CERT_HEARTBEAT_URL` (a Better Stack heartbeat that expects a ping every 16 days; the script pings `/fail` on an error).
+
+## Object Storage CORS
+
+Terraform only switches CORS on for the uploads bucket. The deploy workflow sets the rules on every deploy (`pnpm infra:linode-cors`, then `aws s3api put-bucket-cors`): the app origin may PUT uploads, and may GET and HEAD byte ranges for the PDF viewers, the same as AWS. To confirm on the first deploy: that the api's key (read/write on the bucket) is allowed to set CORS. If Linode refuses, the same call with an access key that has the "bucket owner" permission works, and Jeff changes the key.
+
+## Monitoring
+
+Linode's own CPU, network and disk alerts are on every server. Add these in Better Stack's free tier (an account john opens; alerts go to Jeff and john):
+
+| Monitor | Kind | Expect |
+|---|---|---|
+| `https://api.archova.com.au/health/ready` | HTTP, every 1 min | 200 and the body contains `ok` |
+| `https://app.archova.com.au/login` | HTTP, every 1 min | 200 |
+| Certificate on `api.` | SSL expiry | alert at 14 days |
+| Nightly backup | Heartbeat, 26 h grace | `LINODE_BACKUP_HEARTBEAT_URL` |
+| Certificate renewal | Heartbeat, 16 days | `LINODE_CERT_HEARTBEAT_URL` |
+
+## Restore
+
+The steps, including the Melbourne test restore john should see once before any pilot data goes in, are in [the Linode restore runbook](../runbooks/linode-restore.md).

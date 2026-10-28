@@ -7,7 +7,8 @@ import {
   createBillingModule,
   type EntitlementProvider,
 } from '@archova/mod-billing';
-import { DIARY_PERMISSIONS, createDiaryModule } from '@archova/mod-diary';
+import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
+import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
@@ -21,6 +22,7 @@ export const MODULE_PERMISSIONS = [
   AI_PERMISSIONS,
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
+  DEFECTS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
 ];
@@ -55,8 +57,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     store: opts.files.store,
     scanner: opts.files.scanner,
-    // Anyone who can sign in on a project can upload their own white card and licence photos.
-    uploadPermissions: { workforce: 'workforce.attendance.sign_in_self' },
+    uploadPermissions: {
+      // Anyone who can sign in on a project can upload their own white card and licence photos.
+      workforce: 'workforce.attendance.sign_in_self',
+      // The assigned subcontractor's "after" photo when marking a defect ready for review (DEF-AC5).
+      defects: 'defects.defects.respond',
+    },
   });
 
   const documents = createDocumentsModule(services, {
@@ -73,6 +79,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
+  const defects = createDefectsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    documents: documents.api,
+    files: files.api,
+  });
+
+  // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
+  let diaryApi: DiaryApi | null = null;
   const ai = createAiModule(services, {
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
@@ -87,7 +102,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       documents.api.getDrawingRevision(scope, projectId, id),
     getPreviousDrawingRevision: (scope, projectId, id) =>
       documents.api.getPreviousDrawingRevision(scope, projectId, id),
+    getMarkup: (scope, projectId, revisionId, markupId) =>
+      documents.api.getMarkup(scope, projectId, revisionId, markupId),
     openRfisOnDrawing: (scope, projectId, ids) => rfis.api.openOnDrawing(scope, projectId, ids),
+    projectCompanies: (scope, projectId) =>
+      platform.api.projectCompaniesWithTrades(scope, projectId),
+    openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
+    dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
 
@@ -96,6 +117,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     files: files.api,
   });
+
+  diaryApi = diary.api;
 
   const sync = createSyncModule();
 
@@ -132,6 +155,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    defects,
     diary,
     workforce,
     sync,
@@ -153,6 +177,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    defects,
     sync,
     diary,
     workforce,

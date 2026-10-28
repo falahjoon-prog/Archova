@@ -67,7 +67,7 @@ variable "admin_cidrs" {
 }
 
 variable "tls_certificate" {
-  description = "PEM certificate chain for app. and api. on the NodeBalancer, renewed by the deploy pipeline (Let's Encrypt, DNS-01)."
+  description = "PEM certificate chain for app. and api. on the NodeBalancer. Only seeds the first apply (a self-signed one is fine); .github/workflows/linode-cert.yml replaces it with Let's Encrypt (DNS-01) and Terraform ignores later changes."
   type        = string
   sensitive   = true
 }

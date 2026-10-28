@@ -4,8 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import { SkeletonRows } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { inductionSource } from '../data/source';
-import { setProgress } from '../hooks/useInduction';
+import { setProgress, useInductionSource } from '../hooks/useInduction';
 import { stepNumber, totalSteps } from '../lib/flow';
 import type { QuizResult } from '../lib/types';
 import { StickyButton, WorkerShell } from '../components/WorkerShell';
@@ -18,16 +17,17 @@ import type { StepProps } from './types';
 export function QuizStep({ opened, go, online }: StepProps) {
   const { site, induction, progress, sessionId } = opened;
   const qc = useQueryClient();
+  const source = useInductionSource();
   const questions = useQuery({
     queryKey: ['induction', 'quiz', sessionId],
-    queryFn: () => inductionSource.quizQuestions(sessionId),
+    queryFn: () => source.quizQuestions(sessionId),
     staleTime: Infinity,
   });
   const [i, setI] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const submit = useMutation({
-    mutationFn: () => inductionSource.submitQuiz(sessionId, answers),
+    mutationFn: () => source.submitQuiz(sessionId, answers),
     onSuccess: ({ result: r, progress: p }) => {
       setResult(r);
       setProgress(qc, p);
@@ -75,6 +75,12 @@ export function QuizStep({ opened, go, online }: StepProps) {
             ? 'You need every safety-critical question right to pass.'
             : `You need ${result.needed} to pass.`}
         </p>
+        {result.seeSiteOffice ? (
+          <p className="u-m-0">
+            You&apos;ve tried a few times. Please see the site office, and we&apos;ve let the site
+            manager know.
+          </p>
+        ) : null}
         <section aria-labelledby="review">
           <h2 id="review" className="worker-subtitle">
             Look at these again

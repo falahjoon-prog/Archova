@@ -5,34 +5,28 @@
 export interface InductionSite {
   builderName: string;
   siteName: string;
-  siteAddress: string;
-  /** Shown on every screen as Help, and when a link no longer works. */
-  officePhone: string;
+  /** Not on the link's public summary yet, so only the preview has it. */
+  siteAddress: string | null;
+  /** Shown on every screen as Help, and when a link no longer works; hidden when unknown. */
+  officePhone: string | null;
   /** IANA zone the site's dates and times are shown in (conventions §Time). */
   timeZone: string;
 }
 
-interface SectionBase {
+/** One thing to read, watch or open inside a section. A section is its blocks in order. */
+export type SectionBlock =
+  | { type: 'video'; fileId: string; title: string | null }
+  | { type: 'slides'; slides: Array<{ title: string; points: string[] }> }
+  | { type: 'text'; body: string }
+  | { type: 'swms'; documentId: string; title: string; summary?: string[] }
+  | { type: 'document'; fileId: string; title: string | null }
+  | { type: 'image'; fileId: string; title: string | null; alt?: string };
+
+export interface InductionSection {
   id: string;
   title: string;
-  minutes: number;
+  blocks: SectionBlock[];
 }
-
-export type InductionSection = SectionBase &
-  (
-    | {
-        type: 'video';
-        src: string;
-        lowDataSrc: string;
-        captionsSrc: string;
-        transcript: string;
-        durationS: number;
-      }
-    | { type: 'slides'; pages: Array<{ heading: string; body: string }> }
-    | { type: 'text'; blocks: Array<{ kind: 'h' | 'p' | 'li'; text: string }> }
-    | { type: 'swms'; documents: Array<{ id: string; title: string; summary: string[] }> }
-    | { type: 'site_map'; imageSrc: string; alt: string; description: string }
-  );
 
 /** Quiz questions as the worker gets them: no answers, which stay on the server. */
 export interface QuizQuestion {
@@ -52,6 +46,8 @@ export interface QuizResult {
   /** Sections to look at again, from the questions answered wrongly. */
   reviewSectionIds: string[];
   attempt: number;
+  /** After three failed attempts the site manager is told and the worker is sent to the site office. */
+  seeSiteOffice: boolean;
 }
 
 export type CredentialType = 'white_card' | 'hrwl' | 'trade_licence';
@@ -75,7 +71,10 @@ export interface WorkerInduction {
   name: string;
   version: number;
   publishedAt: string;
-  estimatedMinutes: number;
+  /** Unknown until the content is read, which is after verification against the API. */
+  estimatedMinutes: number | null;
+  /** Sections arrive once the mobile is verified (the link's public summary has only the count). */
+  sectionCount: number;
   sections: InductionSection[];
   quiz: { questionCount: number; passPercent: number };
   /** Licence types the builder asks for, listed first on B5. */
@@ -85,12 +84,6 @@ export interface WorkerInduction {
 
 export interface SectionProgress {
   complete: boolean;
-  /** Video: furthest point the server accepted. */
-  watchedS?: number;
-  /** Slides: pages seen. */
-  pagesSeen?: number[];
-  /** SWMS: documents opened. */
-  opened?: string[];
 }
 
 export interface InductionProgress {
@@ -104,23 +97,20 @@ export interface InductionProgress {
   completion: {
     completedAt: string;
     version: number;
-    /** SHA-256 of the exact version content signed (X58). */
-    versionHash: string;
-    signatureMethod: 'drawn' | 'typed';
   } | null;
 }
 
 export type OpenedInduction =
   | {
       state: 'open';
-      /** Stand-in for the scoped guest session cookie the API sets on exchange. */
+      /** Preview only: stands in for the `__Host-lnk` cookie the API sets. Empty against the API. */
       sessionId: string;
       site: InductionSite;
       induction: WorkerInduction;
       companies: Array<{ id: string; name: string }>;
       progress: InductionProgress;
     }
-  | { state: 'expired' | 'revoked'; site: InductionSite };
+  | { state: 'expired' | 'revoked'; site: InductionSite | null };
 
 export interface WorkerDetails {
   name: string;
@@ -138,3 +128,5 @@ export type FlowStep =
   | { kind: 'credentials' }
   | { kind: 'declaration' }
   | { kind: 'done' };
+
+export type OpenInduction = Extract<OpenedInduction, { state: 'open' }>;

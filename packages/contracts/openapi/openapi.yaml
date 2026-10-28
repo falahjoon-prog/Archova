@@ -30,6 +30,7 @@ tags:
   - name: documents
   - name: ai
   - name: rfis
+  - name: defects
   - name: sync
   - name: diary
   - name: workforce
@@ -1269,9 +1270,9 @@ paths:
       tags: [ai]
       x-module: ai
       x-permission: rfis.rfis.create
-      summary: Nova drafts an RFI from a note typed on site (F3).
+      summary: Nova drafts an RFI from a note typed on site or a drawing markup (F3).
       description: |
-        Nova turns the note into an RFI subject and question, citing the drawings and spec clauses it refers to
+        A note, a markup with text on it, a site photo, or any mix of them is needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
         from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
         the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
         neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
@@ -1283,15 +1284,119 @@ paths:
             schema:
               type: object
               additionalProperties: false
-              required: [note]
               properties:
-                note: { type: string, minLength: 1, maxLength: 4000 }
+                note:
+                  type: string
+                  maxLength: 4000
+                  description: What the RFI is about. May be empty when the markup has text on it.
+                markup:
+                  description: |
+                    A markup the person drew on a drawing revision. Nova reads the words on it and the sheet's own
+                    text around it, names the sheet and revision in the question, and returns where to pin the RFI.
+                  type: object
+                  additionalProperties: false
+                  required: [drawingRevisionId, markupId]
+                  properties:
+                    drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+                    markupId: { type: string, pattern: '^mku_[0-9A-Za-z]{26}$' }
+                photo:
+                  description: |
+                    A site photo already uploaded to this project (PNG, JPEG or WebP, up to 3 MB; the apps shrink
+                    phone photos first). Nova looks at it and says what it shows. A photo shows a condition, not a
+                    location, so `location` is listed in `gaps` unless the note gives one. Numbers read off the
+                    photo are listed in `unsupportedNumbers`.
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
       responses:
         '200':
           description: The draft
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NovaRfiDraft' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: tagDefectWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: defects.defects.create
+      summary: Nova suggests a title, trade and priority for a defect from its photo (F5).
+      description: |
+        Nova looks at a defect photo and, when the defect is pinned on a drawing, the sheet's own text around the
+        pin, and suggests a title, a description, the trade (`trade`, then up to two `alternativeTrades`), the kind of
+        defect (`category`) and a priority. The place in the title is named only from the note or the sheet text
+        near the pin, copied as printed. Companies on the project that list the trade come back in
+        `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
+        pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
+        in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
+        is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+        The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
+        first); anything else is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: What the person said or typed about the defect. May be empty.
+                pin:
+                  description: Where the defect is on a drawing; without it no place is named and no duplicates are found.
+                  $ref: '#/components/schemas/DrawingPin'
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaDefectTag' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: date
+        in: path
+        required: true
+        description: The diary day in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: summariseDiaryDayWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: diary.entries.read
+      summary: Nova drafts a short summary of one diary day (F4).
+      description: |
+        Nova writes a few plain sentences from the day's labour, plant, deliveries, visitors, delays and events
+        that the caller can see. Every sentence names the diary lines it comes from (`sources`), and a sentence
+        with a number or a source the lines don't back is dropped. Delays and stand-downs the summary doesn't
+        mention are listed in `unmentionedDelays`, and a delay that weather or the lines suggest is listed in
+        `possibleDelay` for the person to log. The result is a pending suggestion (`task` `diary.summary`): it is
+        never written into the diary, the site manager edits it into the day's notes. Asking again before the day
+        changes returns the same suggestion at no cost; any change to the day or its lines makes a new one.
+        Costs half a Nova credit. An empty day returns 422 `ai.diary.nothing_to_summarise`.
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes:
     parameters:
@@ -1437,6 +1542,136 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SyncPushResponse' }
         '426': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDefects
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.read
+      summary: The defect register. Subcontractors see their company's defects and ones they raised (DEF-AC9).
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/DefectStatus' } }
+        - {
+            name: assigneeCompanyId,
+            in: query,
+            schema: { $ref: '#/components/schemas/CompanyRef' },
+          }
+        - { name: stage, in: query, schema: { $ref: '#/components/schemas/DefectStage' } }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/DefectPriority' } }
+        - { name: trade, in: query, schema: { type: string, minLength: 1, maxLength: 100 } }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - {
+            name: drawingRevisionId,
+            in: query,
+            schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
+          }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.create
+      summary: Draft a defect pinned on a drawing. It is numbered DEF-0001 per project (DEF-AC2, AC3).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateDefectRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DefectId'
+    get:
+      operationId: getDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.read
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.create
+      summary: Edit a defect that is not closed or void. Builder staff edit any; an author edits their own draft.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateDefectRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DefectId'
+    post:
+      operationId: transitionDefect
+      tags: [defects]
+      x-module: defects
+      x-permission: defects.defects.read
+      summary: >-
+        Move a defect through its lifecycle with the shared state machine. Issue needs `defects.defects.create`;
+        markReadyForReview and dispute need `defects.defects.respond`; close, reject, reassign and void need
+        `defects.defects.close`. The state machine decides whether the caller's side (builder or assigned
+        company) may take the action.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DefectTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DefectDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis:
     parameters:
@@ -1584,6 +1819,24 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RfiDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/activity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    get:
+      operationId: getRfiActivity
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      summary: What happened to the RFI and when (RFI-AC10), for the activity feed.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiActivity' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close:
     parameters:
@@ -3712,6 +3965,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    DefectId:
+      name: defectId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dfx_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -4361,6 +4619,7 @@ components:
           unsupportedNumbers,
           similarRfis,
           suggestedAssigneeIds,
+          drawing,
         ]
       properties:
         runId: { type: string, description: For feedback (`air_`) }
@@ -4412,6 +4671,111 @@ components:
           description: People (`usr_`) asked the most similar RFIs. The person picks the assignee.
           type: array
           items: { type: string }
+        drawing:
+          description: The marked sheet and where to pin the RFI; null when the draft came from a note alone.
+          type: [object, 'null']
+          required: [drawingRevisionId, sheetNumber, title, rev, pin, scanned]
+          properties:
+            drawingRevisionId: { type: string }
+            sheetNumber: { type: string }
+            title: { type: string }
+            rev: { type: string }
+            pin:
+              type: object
+              required: [x, y]
+              properties:
+                x:
+                  { type: number, minimum: 0, maximum: 1, description: Normalised, origin top-left }
+                y: { type: number, minimum: 0, maximum: 1 }
+            scanned:
+              type: boolean
+              description: The sheet was read with OCR, so the person should check the quoted text against the drawing.
+    NovaDefectTag:
+      type: object
+      required:
+        [
+          runId,
+          title,
+          description,
+          trade,
+          alternativeTrades,
+          category,
+          priority,
+          gaps,
+          unsupportedNumbers,
+          suggestedCompanies,
+          duplicates,
+          drawing,
+        ]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        title: { type: string }
+        description: { type: string }
+        trade:
+          description: The trade most likely responsible, as a defect stores it; null when the photo doesn't show enough.
+          type: [string, 'null']
+        alternativeTrades:
+          description: Up to two other trades that could own it, most likely first.
+          type: array
+          items: { type: string }
+        category:
+          description: The kind of defect, as a defect stores it; null when none fits.
+          type: [string, 'null']
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        gaps:
+          description: What Nova couldn't settle, for the form to prompt.
+          type: array
+          items: { type: string, enum: [location, trade, photo_unclear] }
+        unsupportedNumbers:
+          description: Numbers in the title or description found in neither the note nor the sheet text.
+          type: array
+          items: { type: string }
+        suggestedCompanies:
+          description: Companies on the project that list the trade, then an alternative. The person picks the assignee.
+          type: array
+          items:
+            type: object
+            required: [id, name, trade]
+            properties:
+              id: { type: string, description: The company (`cmp_`) }
+              name: { type: string }
+              trade: { type: string, description: The suggested trade the company matched }
+        duplicates:
+          description: Open defects already pinned beside this spot, nearest first.
+          type: array
+          items:
+            type: object
+            required: [id, numberLabel, title, status, trade, distance, sameTrade]
+            properties:
+              id: { type: string, description: The defect (`dfx_`) }
+              numberLabel: { type: string, description: 'DEF-0042' }
+              title: { type: string }
+              status: { $ref: '#/components/schemas/DefectStatus' }
+              trade: { type: [string, 'null'] }
+              distance: { type: number, description: From the pin, as a fraction of the sheet }
+              sameTrade: { type: boolean }
+        drawing:
+          description: The sheet the pin is on; null when the defect wasn't pinned.
+          type: [object, 'null']
+          required: [drawingRevisionId, sheetNumber, title, rev, pin, nearby, scanned]
+          properties:
+            drawingRevisionId: { type: string }
+            sheetNumber: { type: string }
+            title: { type: string }
+            rev: { type: string }
+            pin:
+              type: object
+              required: [x, y]
+              properties:
+                x: { type: number, minimum: 0, maximum: 1 }
+                y: { type: number, minimum: 0, maximum: 1 }
+            nearby:
+              description: The sheet's own text near the pin, nearest first, which the title may name.
+              type: array
+              items: { type: string }
+            scanned:
+              type: boolean
+              description: The sheet was read with OCR, so the person should check the text against the drawing.
     NovaDrawingChange:
       type: object
       required: [id, kind, before, after, titleBlock, x, y]
@@ -4809,6 +5173,10 @@ components:
         fileId: { $ref: '#/components/schemas/FileRef' }
         pageIndex: { type: integer, minimum: 0, maximum: 10000 }
         drawingDate: { type: string, format: date }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `drawing.register` suggestion this sheet was read from; recorded on the revision and its publish event.
     UpdateDraftDrawingRevisionRequest:
       type: object
       additionalProperties: false
@@ -5229,6 +5597,24 @@ components:
         drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
         x: { type: number, minimum: 0, maximum: 1 }
         y: { type: number, minimum: 0, maximum: 1 }
+    RfiPin:
+      type: object
+      description: The drawing revision an RFI is about, and where on the sheet if it was marked (x and y come together).
+      additionalProperties: false
+      required: [drawingRevisionId, x, y]
+      properties:
+        drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+        x: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        y: { type: [number, 'null'], minimum: 0, maximum: 1 }
+    RfiPinInput:
+      type: object
+      description: Pin an RFI to a drawing revision. Leave x and y out to tie it to the sheet without a position; give both to mark a spot.
+      additionalProperties: false
+      required: [drawingRevisionId]
+      properties:
+        drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
     RfiAssignee:
       type: object
       required: [userId, companyId, isBallInCourt, respondedAt]
@@ -5315,7 +5701,7 @@ components:
           { type: [string, 'null'], description: 'Decimal string in the project currency (AUD)' }
         scheduleImpactDays: { type: [integer, 'null'] }
         delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
-        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
@@ -5323,12 +5709,17 @@ components:
         version: { type: integer }
     RfiResponse:
       type: object
-      required: [id, rfiId, authorId, body, fileIds, isOfficial, createdAt]
+      required: [id, rfiId, authorId, body, fileIds, isOfficial, aiSuggestionId, createdAt]
       properties:
         id: { type: string }
         rfiId: { type: string }
         authorId: { type: [string, 'null'] }
         body: { type: string }
+        aiSuggestionId:
+          {
+            type: [string, 'null'],
+            description: The Nova suggestion this response was drafted from,
+          }
         fileIds:
           type: array
           items: { type: string }
@@ -5381,7 +5772,7 @@ components:
         costImpact: { $ref: '#/components/schemas/CostImpact' }
         costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
-        pin: { $ref: '#/components/schemas/DrawingPin' }
+        pin: { $ref: '#/components/schemas/RfiPinInput' }
     UpdateRfiRequest:
       type: object
       additionalProperties: false
@@ -5408,7 +5799,7 @@ components:
         costEstimate: { type: [string, 'null'], pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
-        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
     CreateRfiResponseRequest:
       type: object
       additionalProperties: false
@@ -5419,6 +5810,57 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `rfi.draft` suggestion this response was drafted from.
+    RfiActivityItem:
+      type: object
+      required: [id, kind, at, actorId, details]
+      properties:
+        id: { type: string }
+        kind:
+          type: string
+          enum: [created, updated, opened, responded, answered, closed, reopened, voided, imported]
+        at: { type: string, format: date-time }
+        actorId:
+          {
+            type: [string, 'null'],
+            description: 'The user; null for a person on an access link or the system',
+          }
+        details:
+          type: object
+          additionalProperties: false
+          properties:
+            changed: { type: array, items: { type: string }, description: Fields an update touched }
+            dueDate:
+              {
+                type: array,
+                minItems: 2,
+                maxItems: 2,
+                items: { type: [string, 'null'], format: date },
+                description: Before and after,
+              }
+            assigneeIds:
+              {
+                type: array,
+                minItems: 2,
+                maxItems: 2,
+                items: { type: array, items: { type: string } },
+                description: Before and after,
+              }
+            responseId: { type: string }
+            officialResponseId: { type: string }
+            number: { type: [integer, 'null'] }
+            reason: { type: string }
+    RfiActivity:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          description: Oldest first, at most 500 entries.
+          items: { $ref: '#/components/schemas/RfiActivityItem' }
     CloseRfiRequest:
       type: object
       additionalProperties: false
@@ -5431,6 +5873,176 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    DefectStatus:
+      type: string
+      enum: [draft, open, ready_for_review, closed, disputed, void]
+    DefectPriority:
+      type: string
+      enum: [low, medium, high, critical]
+    DefectStage:
+      type: string
+      description: Contract milestone the defect is reported against (DEF-AC7)
+      enum: [pre_pc, pc, dlp]
+    DefectAction:
+      type: string
+      enum: [issue, markReadyForReview, close, reject, dispute, reassign, void]
+    DefectSource:
+      type: string
+      enum: [manual, inspection, ai_suggested]
+    Defect:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          description,
+          status,
+          priority,
+          category,
+          trade,
+          stage,
+          pin,
+          assigneeCompanyId,
+          assigneeUserId,
+          dueDate,
+          isOverdue,
+          raisedByCompanyId,
+          issuedAt,
+          readyForReviewAt,
+          closedAt,
+          closedBy,
+          source,
+          availableActions,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'DEF-0042' }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/DefectStatus' }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        category: { type: [string, 'null'] }
+        trade: { type: [string, 'null'] }
+        stage: { $ref: '#/components/schemas/DefectStage' }
+        pin:
+          oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }]
+        assigneeCompanyId: { type: [string, 'null'] }
+        assigneeUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue:
+          {
+            type: boolean,
+            description: "Open or disputed and past its due date in the project's time zone",
+          }
+        raisedByCompanyId: { type: [string, 'null'] }
+        issuedAt: { type: [string, 'null'], format: date-time }
+        readyForReviewAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        closedBy: { type: [string, 'null'] }
+        source: { $ref: '#/components/schemas/DefectSource' }
+        availableActions:
+          type: array
+          description: Actions the caller can take now, for showing buttons
+          items: { $ref: '#/components/schemas/DefectAction' }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    DefectEvent:
+      type: object
+      required: [id, defectId, action, fromStatus, toStatus, note, fileIds, actorId, at]
+      properties:
+        id: { type: string }
+        defectId: { type: string }
+        action:
+          type: string
+          description: The lifecycle action, or `create`
+        fromStatus: { type: [string, 'null'] }
+        toStatus: { $ref: '#/components/schemas/DefectStatus' }
+        note:
+          {
+            type: [string, 'null'],
+            description: 'The reason given, shown to the subcontractor on a reject',
+          }
+        fileIds:
+          type: array
+          items: { type: string }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    DefectDetail:
+      type: object
+      required: [defect, events]
+      properties:
+        defect: { $ref: '#/components/schemas/Defect' }
+        events:
+          type: array
+          description: Status history, oldest first
+          items: { $ref: '#/components/schemas/DefectEvent' }
+    DefectPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Defect' }
+        nextCursor: { type: [string, 'null'] }
+    CreateDefectRequest:
+      type: object
+      additionalProperties: false
+      required: [title, pin]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 20000 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        category: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        stage: { $ref: '#/components/schemas/DefectStage' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+        dueDate: { type: string, format: date }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+    UpdateDefectRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 20000 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        category: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        trade: { type: [string, 'null'], minLength: 1, maxLength: 100 }
+        stage: { $ref: '#/components/schemas/DefectStage' }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        pin: { $ref: '#/components/schemas/DrawingPin' }
+    DefectTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { $ref: '#/components/schemas/DefectAction' }
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required for reject, dispute and void. A reject reason is shown to the subcontractor.
+        fileIds:
+          type: array
+          maxItems: 20
+          description: Photos for this step. Marking ready for review needs at least one (DEF-AC5).
+          items: { $ref: '#/components/schemas/FileRef' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
     DiaryStatus:
       type: string
       enum: [draft, submitted, signed_off]

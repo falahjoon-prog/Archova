@@ -9,7 +9,9 @@ import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import { createDiarySummaryService } from './application/diary-summary';
+import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
+import { createDefectTagService } from './application/defect-tag';
 import {
   createDrawingCompareService,
   type DrawingRevisionRef,
@@ -26,6 +28,7 @@ import {
   type RoutingTable,
 } from './domain/routing';
 import type { SimilarRfi } from './domain/rfi-draft';
+import type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 import type { TranslationLanguage } from './domain/translation';
 import { createProvider, type ProviderConfig } from './infra/providers';
 import { AI_PERMISSIONS } from './permissions';
@@ -66,6 +69,8 @@ export type { IndexReport, SourceRevision } from './application/project-index';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { RfiDraft } from './application/rfi-draft';
+export type { DefectTagSuggestion } from './application/defect-tag';
+export type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 export type {
   DrawingCompare,
   DrawingComparePayload,
@@ -186,6 +191,27 @@ export function createAiModule(
       projectId: string,
       id: string,
     ) => Promise<DrawingRevisionRef | null>;
+    /** diary.api.dayForSummary: one diary day as the caller may read it, or null (F4). */
+    dayForSummary: (
+      scope: TenantScope,
+      projectId: string,
+      date: string,
+    ) => Promise<DiaryDayForSummary | null>;
+    /** platform.api.projectCompaniesWithTrades: who works on the project and the trades they list (F5). */
+    projectCompanies: (scope: TenantScope, projectId: string) => Promise<ProjectCompany[]>;
+    /** defects.api.openNear: open defects the caller can see pinned near a spot on a revision (F5). */
+    openDefectsNear: (
+      scope: TenantScope,
+      projectId: string,
+      input: { drawingRevisionId: string; x: number; y: number; radius: number },
+    ) => Promise<NearbyDefect[]>;
+    /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
+    getMarkup: (
+      scope: TenantScope,
+      projectId: string,
+      revisionId: string,
+      markupId: string,
+    ) => Promise<{ shapes: unknown }>;
     /** rfis.api.openOnDrawing: open RFIs the caller can see pinned to these revisions (F21). */
     openRfisOnDrawing: (
       scope: TenantScope,
@@ -243,6 +269,18 @@ export function createAiModule(
     assert: deps.assert,
     accessScopes: deps.accessScopes,
     similarRfis: deps.similarRfis,
+    readFile: deps.readFile,
+    getRevision: deps.getDrawingRevision,
+    getMarkup: deps.getMarkup,
+  });
+  const defectTags = createDefectTagService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    getRevision: deps.getDrawingRevision,
+    projectCompanies: deps.projectCompanies,
+    openDefectsNear: deps.openDefectsNear,
   });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
@@ -253,7 +291,11 @@ export function createAiModule(
     getPreviousRevision: deps.getPreviousDrawingRevision,
     openRfisOnDrawing: deps.openRfisOnDrawing,
   });
-  const diarySummary = createDiarySummaryService({ database: services.database, gateway });
+  const diarySummary = createDiarySummaryService({
+    database: services.database,
+    gateway,
+    dayForSummary: deps.dayForSummary,
+  });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -271,6 +313,8 @@ export function createAiModule(
       inductionDrafts,
       rfiDrafts,
       drawingCompare,
+      diarySummary,
+      defectTags,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -283,6 +327,8 @@ export function createAiModule(
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
+      /** F5: a title, trade, priority and assignee companies from a defect photo and its pin; nothing is saved. */
+      tagDefect: defectTags.tag,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */

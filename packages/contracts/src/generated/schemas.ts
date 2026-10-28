@@ -272,6 +272,33 @@ export const CreateCompanyRequestSchema = z.object({
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
 
+export const DefectPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
+
+export const DefectStageSchema = z.enum(["pre_pc", "pc", "dlp"]);
+export type DefectStage = z.infer<typeof DefectStageSchema>;
+
+export const DrawingPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict();
+export type DrawingPin = z.infer<typeof DrawingPinSchema>;
+
+export const CreateDefectRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(20000).optional(),
+  "priority": DefectPrioritySchema.optional(),
+  "category": z.string().min(1).max(100).optional(),
+  "trade": z.string().min(1).max(100).optional(),
+  "stage": DefectStageSchema.optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+  "assigneeUserId": UserRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+  "pin": DrawingPinSchema,
+}).strict();
+export type CreateDefectRequest = z.infer<typeof CreateDefectRequestSchema>;
+
 export const DiaryDelayTypeSchema = z.enum(["weather", "client", "design", "subcontractor", "authority", "industrial", "other"]);
 export type DiaryDelayType = z.infer<typeof DiaryDelayTypeSchema>;
 
@@ -480,12 +507,12 @@ export const CreateProjectRequestSchema = z.object({
 }).strict();
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 
-export const DrawingPinSchema = z.object({
+export const RfiPinInputSchema = z.object({
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
-  "x": z.number().min(0).max(1),
-  "y": z.number().min(0).max(1),
+  "x": z.number().min(0).max(1).optional(),
+  "y": z.number().min(0).max(1).optional(),
 }).strict();
-export type DrawingPin = z.infer<typeof DrawingPinSchema>;
+export type RfiPinInput = z.infer<typeof RfiPinInputSchema>;
 
 export const CreateRfiRequestSchema = z.object({
   "subject": z.string().min(1).max(300),
@@ -500,13 +527,14 @@ export const CreateRfiRequestSchema = z.object({
   "costImpact": CostImpactSchema.optional(),
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).optional(),
-  "pin": DrawingPinSchema.optional(),
+  "pin": RfiPinInputSchema.optional(),
 }).strict();
 export type CreateRfiRequest = z.infer<typeof CreateRfiRequestSchema>;
 
 export const CreateRfiResponseRequestSchema = z.object({
   "body": z.string().min(1).max(20000),
   "fileIds": z.array(FileRefSchema).max(20).optional(),
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateRfiResponseRequest = z.infer<typeof CreateRfiResponseRequestSchema>;
 
@@ -567,6 +595,79 @@ export const CreateWorkerRequestSchema = z.object({
   "kind": z.enum(["worker", "visitor", "delivery"]).optional(),
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
+
+export const DefectStatusSchema = z.enum(["draft", "open", "ready_for_review", "closed", "disputed", "void"]);
+export type DefectStatus = z.infer<typeof DefectStatusSchema>;
+
+export const DefectSourceSchema = z.enum(["manual", "inspection", "ai_suggested"]);
+export type DefectSource = z.infer<typeof DefectSourceSchema>;
+
+export const DefectActionSchema = z.enum(["issue", "markReadyForReview", "close", "reject", "dispute", "reassign", "void"]);
+export type DefectAction = z.infer<typeof DefectActionSchema>;
+
+export const DefectSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "status": DefectStatusSchema,
+  "priority": DefectPrioritySchema,
+  "category": z.string().nullable(),
+  "trade": z.string().nullable(),
+  "stage": DefectStageSchema,
+  "pin": z.union([DrawingPinSchema, z.null()]),
+  "assigneeCompanyId": z.string().nullable(),
+  "assigneeUserId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "isOverdue": z.boolean(),
+  "raisedByCompanyId": z.string().nullable(),
+  "issuedAt": z.string().datetime({ offset: true }).nullable(),
+  "readyForReviewAt": z.string().datetime({ offset: true }).nullable(),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "closedBy": z.string().nullable(),
+  "source": DefectSourceSchema,
+  "availableActions": z.array(DefectActionSchema),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Defect = z.infer<typeof DefectSchema>;
+
+export const DefectEventSchema = z.object({
+  "id": z.string(),
+  "defectId": z.string(),
+  "action": z.string(),
+  "fromStatus": z.string().nullable(),
+  "toStatus": DefectStatusSchema,
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type DefectEvent = z.infer<typeof DefectEventSchema>;
+
+export const DefectDetailSchema = z.object({
+  "defect": DefectSchema,
+  "events": z.array(DefectEventSchema),
+});
+export type DefectDetail = z.infer<typeof DefectDetailSchema>;
+
+export const DefectPageSchema = z.object({
+  "data": z.array(DefectSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type DefectPage = z.infer<typeof DefectPageSchema>;
+
+export const DefectTransitionRequestSchema = z.object({
+  "action": DefectActionSchema,
+  "reason": z.string().min(1).max(1000).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+}).strict();
+export type DefectTransitionRequest = z.infer<typeof DefectTransitionRequestSchema>;
 
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
@@ -815,6 +916,7 @@ export const DraftDrawingRevisionInputSchema = z.object({
   "fileId": FileRefSchema,
   "pageIndex": z.number().int().min(0).max(10000).optional(),
   "drawingDate": z.string().date().optional(),
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
 
@@ -1416,6 +1518,45 @@ export const NovaAnswerSchema = z.object({
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
+export const NovaDefectTagSchema = z.object({
+  "runId": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "trade": z.string().nullable(),
+  "alternativeTrades": z.array(z.string()),
+  "category": z.string().nullable(),
+  "priority": DefectPrioritySchema,
+  "gaps": z.array(z.enum(["location", "trade", "photo_unclear"])),
+  "unsupportedNumbers": z.array(z.string()),
+  "suggestedCompanies": z.array(z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+})),
+  "duplicates": z.array(z.object({
+  "id": z.string(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "status": DefectStatusSchema,
+  "trade": z.string().nullable(),
+  "distance": z.number(),
+  "sameTrade": z.boolean(),
+})),
+  "drawing": z.object({
+  "drawingRevisionId": z.string(),
+  "sheetNumber": z.string(),
+  "title": z.string(),
+  "rev": z.string(),
+  "pin": z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}),
+  "nearby": z.array(z.string()),
+  "scanned": z.boolean(),
+}).nullable(),
+});
+export type NovaDefectTag = z.infer<typeof NovaDefectTagSchema>;
+
 export const NovaDrawingChangeSchema = z.object({
   "id": z.string(),
   "kind": z.enum(["added", "removed", "changed"]),
@@ -1478,6 +1619,17 @@ export const NovaRfiDraftSchema = z.object({
   "status": z.enum(["open", "answered", "closed"]),
 })),
   "suggestedAssigneeIds": z.array(z.string()),
+  "drawing": z.object({
+  "drawingRevisionId": z.string(),
+  "sheetNumber": z.string(),
+  "title": z.string(),
+  "rev": z.string(),
+  "pin": z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}),
+  "scanned": z.boolean(),
+}).nullable(),
 });
 export type NovaRfiDraft = z.infer<typeof NovaRfiDraftSchema>;
 
@@ -1633,6 +1785,13 @@ export const RfiAssigneeSchema = z.object({
 });
 export type RfiAssignee = z.infer<typeof RfiAssigneeSchema>;
 
+export const RfiPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1).nullable(),
+  "y": z.number().min(0).max(1).nullable(),
+}).strict();
+export type RfiPin = z.infer<typeof RfiPinSchema>;
+
 export const RfiSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -1659,7 +1818,7 @@ export const RfiSchema = z.object({
   "costEstimate": z.string().nullable(),
   "scheduleImpactDays": z.number().int().nullable(),
   "delayDays": z.number().int().nullable(),
-  "pin": z.union([DrawingPinSchema, z.null()]),
+  "pin": z.union([RfiPinSchema, z.null()]),
   "officialResponseId": z.string().nullable(),
   "createdBy": z.string().nullable(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -1668,11 +1827,34 @@ export const RfiSchema = z.object({
 });
 export type Rfi = z.infer<typeof RfiSchema>;
 
+export const RfiActivityItemSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["created", "updated", "opened", "responded", "answered", "closed", "reopened", "voided", "imported"]),
+  "at": z.string().datetime({ offset: true }),
+  "actorId": z.string().nullable(),
+  "details": z.object({
+  "changed": z.array(z.string()).optional(),
+  "dueDate": z.array(z.string().date().nullable()).min(2).max(2).optional(),
+  "assigneeIds": z.array(z.array(z.string())).min(2).max(2).optional(),
+  "responseId": z.string().optional(),
+  "officialResponseId": z.string().optional(),
+  "number": z.number().int().nullable().optional(),
+  "reason": z.string().optional(),
+}).strict(),
+});
+export type RfiActivityItem = z.infer<typeof RfiActivityItemSchema>;
+
+export const RfiActivitySchema = z.object({
+  "data": z.array(RfiActivityItemSchema),
+});
+export type RfiActivity = z.infer<typeof RfiActivitySchema>;
+
 export const RfiResponseSchema = z.object({
   "id": z.string(),
   "rfiId": z.string(),
   "authorId": z.string().nullable(),
   "body": z.string(),
+  "aiSuggestionId": z.string().nullable(),
   "fileIds": z.array(z.string()),
   "isOfficial": z.boolean(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -1969,6 +2151,20 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
 
+export const UpdateDefectRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(20000).optional(),
+  "priority": DefectPrioritySchema.optional(),
+  "category": z.string().min(1).max(100).nullable().optional(),
+  "trade": z.string().min(1).max(100).nullable().optional(),
+  "stage": DefectStageSchema.optional(),
+  "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "assigneeUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "pin": DrawingPinSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateDefectRequest = z.infer<typeof UpdateDefectRequestSchema>;
+
 export const UpdateDiaryDelayRequestSchema = z.object({
   "type": DiaryDelayTypeSchema.optional(),
   "description": z.string().min(1).max(2000).optional(),
@@ -2113,7 +2309,7 @@ export const UpdateRfiRequestSchema = z.object({
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).nullable().optional(),
   "delayDays": z.number().int().min(0).max(3650).nullable().optional(),
-  "pin": z.union([DrawingPinSchema, z.null()]).optional(),
+  "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
 

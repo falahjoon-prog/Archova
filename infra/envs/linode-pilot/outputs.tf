@@ -62,6 +62,8 @@ output "deploy" {
   description = "Everything else the deploy pipeline needs (tools/infra/linode-host-files.ts)."
   value = {
     app_firewall_id      = linode_firewall.app.id
+    nodebalancer_id      = linode_nodebalancer.this.id
+    https_config_id      = linode_nodebalancer_config.https.id
     backup_age_recipient = var.backup_age_recipient
     ai_models            = var.ai_models
   }

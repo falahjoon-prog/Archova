@@ -47,6 +47,8 @@ export function createDocumentsModule(
       getDocumentRef: documents.ref,
       /** For Nova revision compare (F21): the revision this one superseded on its sheet, or null. */
       getPreviousDrawingRevision: drawings.getPreviousRevision,
+      /** For Nova RFI drafts (F3): a markup the caller may see on a revision, or markup.not_found. */
+      getMarkup: markups.getOwn,
       /** For Nova (ai/03 §3): every published document and drawing revision, with its access scope. */
       aiSources: aiSources.aiSources,
       /** For Nova retrieval (ai/04 §3): the access scopes the caller holds in a project. */

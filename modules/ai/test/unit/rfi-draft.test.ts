@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { RfiDraftOutput } from '@archova/ai-prompts';
 import type { CheckedCitation } from '../../src/domain/citations';
 import {
+  markupContext,
   reviewRfiDraft,
   similarityPhrases,
   suggestAssignees,
@@ -89,5 +90,52 @@ describe('similar RFIs and assignees', () => {
       suggestAssignees([rfi(['b']), rfi(['a', 'a']), rfi(['a', 'c']), rfi(['d']), rfi(['c'])]),
     ).toEqual(['a', 'c', 'b']);
     expect(suggestAssignees([])).toEqual([]);
+  });
+});
+
+describe('markup context (F3 from a drawing markup)', () => {
+  const lines = [
+    { text: 'RISER CUPBOARD R3.2', x: 0.2, y: 0.3 },
+    { text: 'WALLS FRL 120/120/120 WHERE HATCHED', x: 0.3, y: 0.34 },
+    { text: 'GRID C', x: 0.9, y: 0.9 },
+    { text: 'REV D', x: 0.92, y: 0.95 },
+  ];
+
+  it('keeps the words written on the markup and the sheet text around it, nearest first', () => {
+    const ctx = markupContext(
+      [
+        { id: 'a', kind: 'rect', from: { x: 0.18, y: 0.28 }, to: { x: 0.32, y: 0.36 } },
+        {
+          id: 'b',
+          kind: 'text',
+          at: { x: 0.2, y: 0.4 },
+          text: '  Is this riser wall fire rated?  ',
+        },
+        { id: 'c', kind: 'text', at: { x: 0.2, y: 0.42 }, text: 'Is this riser wall fire rated?' },
+      ],
+      lines,
+    );
+    expect(ctx?.labels).toEqual(['Is this riser wall fire rated?']);
+    expect(ctx?.nearby).toEqual(['WALLS FRL 120/120/120 WHERE HATCHED', 'RISER CUPBOARD R3.2']);
+  });
+
+  it('pins at the pin shape if there is one, else the middle of what was drawn', () => {
+    const rect = { id: 'a', kind: 'rect', from: { x: 0.2, y: 0.2 }, to: { x: 0.4, y: 0.6 } };
+    const middle = markupContext([rect], lines)!.pin;
+    expect(middle.x).toBeCloseTo(0.3);
+    expect(middle.y).toBeCloseTo(0.4);
+    expect(
+      markupContext([rect, { id: 'p', kind: 'pin', at: { x: 0.25, y: 0.5 } }], lines)?.pin,
+    ).toEqual({
+      x: 0.25,
+      y: 0.5,
+    });
+  });
+
+  it('treats a single pin as a spot with some sheet around it, and finds nothing in a blank markup', () => {
+    const one = markupContext([{ id: 'p', kind: 'pin', at: { x: 0.9, y: 0.92 } }], lines);
+    expect(one?.nearby).toEqual(['GRID C', 'REV D']);
+    expect(markupContext([], lines)).toBeNull();
+    expect(markupContext([{ id: 'x', kind: 'text', text: 'no position' }], lines)).toBeNull();
   });
 });

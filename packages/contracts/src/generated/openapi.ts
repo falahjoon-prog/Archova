@@ -979,14 +979,78 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Nova drafts an RFI from a note typed on site (F3).
-         * @description Nova turns the note into an RFI subject and question, citing the drawings and spec clauses it refers to
+         * Nova drafts an RFI from a note typed on site or a drawing markup (F3).
+         * @description A note, a markup with text on it, a site photo, or any mix of them is needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
          *     from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
          *     the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
          *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
          *     saved: the draft fills the RFI form and the person edits and sends it. Costs one Nova credit.
          */
         post: operations["draftRfiWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests a title, trade and priority for a defect from its photo (F5).
+         * @description Nova looks at a defect photo and, when the defect is pinned on a drawing, the sheet's own text around the
+         *     pin, and suggests a title, a description, the trade (`trade`, then up to two `alternativeTrades`), the kind of
+         *     defect (`category`) and a priority. The place in the title is named only from the note or the sheet text
+         *     near the pin, copied as printed. Companies on the project that list the trade come back in
+         *     `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
+         *     pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
+         *     in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
+         *     is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+         *     The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
+         *     first); anything else is a 422.
+         */
+        post: operations["tagDefectWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a short summary of one diary day (F4).
+         * @description Nova writes a few plain sentences from the day's labour, plant, deliveries, visitors, delays and events
+         *     that the caller can see. Every sentence names the diary lines it comes from (`sources`), and a sentence
+         *     with a number or a source the lines don't back is dropped. Delays and stand-downs the summary doesn't
+         *     mention are listed in `unmentionedDelays`, and a delay that weather or the lines suggest is listed in
+         *     `possibleDelay` for the person to log. The result is a pending suggestion (`task` `diary.summary`): it is
+         *     never written into the diary, the site manager edits it into the day's notes. Asking again before the day
+         *     changes returns the same suggestion at no cost; any change to the day or its lines makes a new one.
+         *     Costs half a Nova credit. An empty day returns 422 `ai.diary.nothing_to_summarise`.
+         */
+        post: operations["summariseDiaryDayWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1128,6 +1192,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The defect register. Subcontractors see their company's defects and ones they raised (DEF-AC9). */
+        get: operations["listDefects"];
+        put?: never;
+        /** Draft a defect pinned on a drawing. It is numbered DEF-0001 per project (DEF-AC2, AC3). */
+        post: operations["createDefect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getDefect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a defect that is not closed or void. Builder staff edit any; an author edits their own draft. */
+        patch: operations["updateDefect"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a defect through its lifecycle with the shared state machine. Issue needs `defects.defects.create`; markReadyForReview and dispute need `defects.defects.respond`; close, reject, reassign and void need `defects.defects.close`. The state machine decides whether the caller's side (builder or assigned company) may take the action. */
+        post: operations["transitionDefect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/rfis": {
         parameters: {
             query?: never;
@@ -1206,6 +1333,27 @@ export interface paths {
         put?: never;
         /** Respond. A response from an assignee answers the RFI and passes the ball back to the builder. */
         post: operations["addRfiResponse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** What happened to the RFI and when (RFI-AC10), for the activity feed. */
+        get: operations["getRfiActivity"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3100,6 +3248,73 @@ export interface components {
             }[];
             /** @description People (`usr_`) asked the most similar RFIs. The person picks the assignee. */
             suggestedAssigneeIds: string[];
+            /** @description The marked sheet and where to pin the RFI; null when the draft came from a note alone. */
+            drawing: {
+                drawingRevisionId: string;
+                sheetNumber: string;
+                title: string;
+                rev: string;
+                pin: {
+                    /** @description Normalised */
+                    x: number;
+                    y: number;
+                };
+                /** @description The sheet was read with OCR, so the person should check the quoted text against the drawing. */
+                scanned: boolean;
+            } | null;
+        };
+        NovaDefectTag: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            title: string;
+            description: string;
+            /** @description The trade most likely responsible, as a defect stores it; null when the photo doesn't show enough. */
+            trade: string | null;
+            /** @description Up to two other trades that could own it, most likely first. */
+            alternativeTrades: string[];
+            /** @description The kind of defect, as a defect stores it; null when none fits. */
+            category: string | null;
+            priority: components["schemas"]["DefectPriority"];
+            /** @description What Nova couldn't settle, for the form to prompt. */
+            gaps: ("location" | "trade" | "photo_unclear")[];
+            /** @description Numbers in the title or description found in neither the note nor the sheet text. */
+            unsupportedNumbers: string[];
+            /** @description Companies on the project that list the trade, then an alternative. The person picks the assignee. */
+            suggestedCompanies: {
+                /** @description The company (`cmp_`) */
+                id: string;
+                name: string;
+                /** @description The suggested trade the company matched */
+                trade: string;
+            }[];
+            /** @description Open defects already pinned beside this spot, nearest first. */
+            duplicates: {
+                /** @description The defect (`dfx_`) */
+                id: string;
+                /** @description DEF-0042 */
+                numberLabel: string;
+                title: string;
+                status: components["schemas"]["DefectStatus"];
+                trade: string | null;
+                /** @description From the pin */
+                distance: number;
+                sameTrade: boolean;
+            }[];
+            /** @description The sheet the pin is on; null when the defect wasn't pinned. */
+            drawing: {
+                drawingRevisionId: string;
+                sheetNumber: string;
+                title: string;
+                rev: string;
+                pin: {
+                    x: number;
+                    y: number;
+                };
+                /** @description The sheet's own text near the pin, nearest first, which the title may name. */
+                nearby: string[];
+                /** @description The sheet was read with OCR, so the person should check the text against the drawing. */
+                scanned: boolean;
+            } | null;
         };
         NovaDrawingChange: {
             /** @description Cited by items */
@@ -3364,6 +3579,8 @@ export interface components {
             pageIndex?: number;
             /** Format: date */
             drawingDate?: string;
+            /** @description The Nova `drawing.register` suggestion this sheet was read from; recorded on the revision and its publish event. */
+            aiSuggestionId?: string;
         };
         UpdateDraftDrawingRevisionRequest: {
             sheetNumber?: string;
@@ -3625,6 +3842,18 @@ export interface components {
             x: number;
             y: number;
         };
+        /** @description The drawing revision an RFI is about, and where on the sheet if it was marked (x and y come together). */
+        RfiPin: {
+            drawingRevisionId: string;
+            x: number | null;
+            y: number | null;
+        };
+        /** @description Pin an RFI to a drawing revision. Leave x and y out to tie it to the sheet without a position; give both to mark a spot. */
+        RfiPinInput: {
+            drawingRevisionId: string;
+            x?: number;
+            y?: number;
+        };
         RfiAssignee: {
             userId: string;
             companyId: string | null;
@@ -3673,7 +3902,7 @@ export interface components {
             scheduleImpactDays: number | null;
             /** @description Days of delay caused by a late answer */
             delayDays: number | null;
-            pin: components["schemas"]["DrawingPin"] | null;
+            pin: components["schemas"]["RfiPin"] | null;
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -3687,6 +3916,8 @@ export interface components {
             rfiId: string;
             authorId: string | null;
             body: string;
+            /** @description The Nova suggestion this response was drafted from */
+            aiSuggestionId: string | null;
             fileIds: string[];
             isOfficial: boolean;
             /** Format: date-time */
@@ -3717,7 +3948,7 @@ export interface components {
             costImpact?: components["schemas"]["CostImpact"];
             costEstimate?: string;
             scheduleImpactDays?: number;
-            pin?: components["schemas"]["DrawingPin"];
+            pin?: components["schemas"]["RfiPinInput"];
         };
         UpdateRfiRequest: {
             subject?: string;
@@ -3734,17 +3965,152 @@ export interface components {
             costEstimate?: string | null;
             scheduleImpactDays?: number | null;
             delayDays?: number | null;
-            pin?: components["schemas"]["DrawingPin"] | null;
+            pin?: components["schemas"]["RfiPinInput"] | null;
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
+            /** @description The Nova `rfi.draft` suggestion this response was drafted from. */
+            aiSuggestionId?: string;
+        };
+        RfiActivityItem: {
+            id: string;
+            /** @enum {string} */
+            kind: "created" | "updated" | "opened" | "responded" | "answered" | "closed" | "reopened" | "voided" | "imported";
+            /** Format: date-time */
+            at: string;
+            /** @description The user; null for a person on an access link or the system */
+            actorId: string | null;
+            details: {
+                /** @description Fields an update touched */
+                changed?: string[];
+                /** @description Before and after */
+                dueDate?: (string | null)[];
+                /** @description Before and after */
+                assigneeIds?: string[][];
+                responseId?: string;
+                officialResponseId?: string;
+                number?: number | null;
+                reason?: string;
+            };
+        };
+        RfiActivity: {
+            /** @description Oldest first, at most 500 entries. */
+            data: components["schemas"]["RfiActivityItem"][];
         };
         CloseRfiRequest: {
             officialResponseId: string;
         };
         RfiReasonRequest: {
             reason: string;
+        };
+        /** @enum {string} */
+        DefectStatus: "draft" | "open" | "ready_for_review" | "closed" | "disputed" | "void";
+        /** @enum {string} */
+        DefectPriority: "low" | "medium" | "high" | "critical";
+        /**
+         * @description Contract milestone the defect is reported against (DEF-AC7)
+         * @enum {string}
+         */
+        DefectStage: "pre_pc" | "pc" | "dlp";
+        /** @enum {string} */
+        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void";
+        /** @enum {string} */
+        DefectSource: "manual" | "inspection" | "ai_suggested";
+        Defect: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description DEF-0042 */
+            numberLabel: string;
+            title: string;
+            description: string;
+            status: components["schemas"]["DefectStatus"];
+            priority: components["schemas"]["DefectPriority"];
+            category: string | null;
+            trade: string | null;
+            stage: components["schemas"]["DefectStage"];
+            pin: components["schemas"]["DrawingPin"] | null;
+            assigneeCompanyId: string | null;
+            assigneeUserId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            /** @description Open or disputed and past its due date in the project's time zone */
+            isOverdue: boolean;
+            raisedByCompanyId: string | null;
+            /** Format: date-time */
+            issuedAt: string | null;
+            /** Format: date-time */
+            readyForReviewAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            closedBy: string | null;
+            source: components["schemas"]["DefectSource"];
+            /** @description Actions the caller can take now, for showing buttons */
+            availableActions: components["schemas"]["DefectAction"][];
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        DefectEvent: {
+            id: string;
+            defectId: string;
+            /** @description The lifecycle action, or `create` */
+            action: string;
+            fromStatus: string | null;
+            toStatus: components["schemas"]["DefectStatus"];
+            /** @description The reason given, shown to the subcontractor on a reject */
+            note: string | null;
+            fileIds: string[];
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        DefectDetail: {
+            defect: components["schemas"]["Defect"];
+            /** @description Status history, oldest first */
+            events: components["schemas"]["DefectEvent"][];
+        };
+        DefectPage: {
+            data: components["schemas"]["Defect"][];
+            nextCursor: string | null;
+        };
+        CreateDefectRequest: {
+            title: string;
+            description?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            category?: string;
+            trade?: string;
+            stage?: components["schemas"]["DefectStage"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            assigneeUserId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            dueDate?: string;
+            pin: components["schemas"]["DrawingPin"];
+        };
+        UpdateDefectRequest: {
+            title?: string;
+            description?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            category?: string | null;
+            trade?: string | null;
+            stage?: components["schemas"]["DefectStage"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
+            assigneeUserId?: components["schemas"]["UserRef"] | null;
+            /** Format: date */
+            dueDate?: string | null;
+            pin?: components["schemas"]["DrawingPin"];
+        };
+        DefectTransitionRequest: {
+            action: components["schemas"]["DefectAction"];
+            /** @description Required for reject, dispute and void. A reject reason is shown to the subcontractor. */
+            reason?: string;
+            /** @description Photos for this step. Marking ready for review needs at least one (DEF-AC5). */
+            fileIds?: components["schemas"]["FileRef"][];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
         };
         /** @enum {string} */
         DiaryStatus: "draft" | "submitted" | "signed_off";
@@ -4829,6 +5195,7 @@ export interface components {
         MarkupId: string;
         TransmittalId: string;
         RfiId: string;
+        DefectId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -6512,7 +6879,25 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    note: string;
+                    /** @description What the RFI is about. May be empty when the markup has text on it. */
+                    note?: string;
+                    /**
+                     * @description A markup the person drew on a drawing revision. Nova reads the words on it and the sheet's own
+                     *     text around it, names the sheet and revision in the question, and returns where to pin the RFI.
+                     */
+                    markup?: {
+                        drawingRevisionId: string;
+                        markupId: string;
+                    };
+                    /**
+                     * @description A site photo already uploaded to this project (PNG, JPEG or WebP, up to 3 MB; the apps shrink
+                     *     phone photos first). Nova looks at it and says what it shows. A photo shows a condition, not a
+                     *     location, so `location` is listed in `gaps` unless the note gives one. Numbers read off the
+                     *     photo are listed in `unsupportedNumbers`.
+                     */
+                    photo?: {
+                        fileId: string;
+                    };
                 };
             };
         };
@@ -6524,6 +6909,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaRfiDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    tagDefectWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    /** @description What the person said or typed about the defect. May be empty. */
+                    note?: string;
+                    /** @description Where the defect is on a drawing; without it no place is named and no duplicates are found. */
+                    pin?: components["schemas"]["DrawingPin"];
+                };
+            };
+        };
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaDefectTag"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    summariseDiaryDayWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -6663,6 +7110,164 @@ export interface operations {
                 };
             };
             426: components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDefects: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["DefectStatus"];
+                assigneeCompanyId?: components["schemas"]["CompanyRef"];
+                stage?: components["schemas"]["DefectStage"];
+                priority?: components["schemas"]["DefectPriority"];
+                trade?: string;
+                overdue?: "true" | "false";
+                drawingRevisionId?: string;
+                q?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDefect: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDefectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDefect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDefect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDefectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionDefect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefectTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
             default: components["responses"]["Problem"];
         };
     };
@@ -6846,6 +7451,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRfiActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiActivity"];
                 };
             };
             default: components["responses"]["Problem"];

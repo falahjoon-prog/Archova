@@ -145,6 +145,36 @@ describe('site diary (product/05)', () => {
     });
     expect(detail.labour).toHaveLength(2);
     expect(detail.delays).toHaveLength(2);
+
+    // `dayForSummary` (ai F4): internal ids, company names, weather lost hours; scoped readers see their own lines.
+    const projectUuid = decodeId('project', s.project.id)!;
+    const forSummary = (userId: string, orgRole: 'owner' | 'member' = 'owner') =>
+      t.database.withTenantTx({ ...tenantOf(s.org.id, userId), orgRole }, (scope) =>
+        t.modules.diary.api.dayForSummary(scope, projectUuid, day),
+      );
+    const full = await forSummary(s.pm.userId);
+    expect(full).toMatchObject({ date: day, status: 'draft', weather: { lostHours: 2 } });
+    expect(full!.entryId).toBe(decodeId('diary', detail.entry.id));
+    expect(full!.lines.filter((l) => l.kind === 'labour')).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ company: 'Formco', headcount: 6, hours: 45.5, text: 'Formwork' }),
+      ]),
+    );
+    expect(full!.lines.find((l) => l.kind === 'delay' && l.hours === 2)).toMatchObject({
+      delayCause: 'weather',
+    });
+    expect(full!.lines.find((l) => l.kind === 'visitor')).toMatchObject({
+      company: 'Council',
+      at: '11:00',
+    });
+    const scoped = await forSummary(s.sub.userId, 'member');
+    expect(scoped!.lines.map((l) => l.kind)).toEqual(['labour']);
+    expect(scoped!.lines[0]!.company).toBe('Formco');
+    await expect(
+      t.database.withTenantTx(tenantOf(s.org.id, s.pm.userId), (scope) =>
+        t.modules.diary.api.dayForSummary(scope, projectUuid, addDays(day, -400)),
+      ),
+    ).resolves.toBeNull();
     expect(detail.standDowns).toHaveLength(1);
     expect(detail.visitors[0]).toMatchObject({
       name: 'J. Inspector',

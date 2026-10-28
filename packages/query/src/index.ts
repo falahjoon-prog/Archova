@@ -39,6 +39,7 @@ export type ProjectTool =
   | 'rfis'
   | 'diary'
   | 'defects'
+  | 'inductions'
   | 'tender-packages'
   | 'takeoff-measurements';
 

@@ -1,6 +1,6 @@
-import type { FlowStep, OpenedInduction } from '../lib/types';
+import type { FlowStep, OpenInduction } from '../lib/types';
 
-export type OpenInduction = Extract<OpenedInduction, { state: 'open' }>;
+export type { OpenInduction };
 
 export interface StepProps {
   opened: OpenInduction;

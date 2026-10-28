@@ -5,8 +5,7 @@ import { Button, CredentialCaptureCard, Select, TextField } from '@archova/ui';
 import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate } from '@/shared/lib/format';
-import { inductionSource } from '../data/source';
-import { useProgressMutation } from '../hooks/useInduction';
+import { useInductionSource, useProgressMutation } from '../hooks/useInduction';
 import { compressPhoto } from '../lib/compress-photo';
 import { stepNumber, totalSteps } from '../lib/flow';
 import type { CredentialType, WorkerCredential } from '../lib/types';
@@ -115,6 +114,7 @@ function CredentialForm({
   required?: boolean;
   onSaved?: () => void;
 }) {
+  const source = useInductionSource();
   const [photo, setPhoto] = useState<Blob | null>(null);
   const [kind, setKind] = useState(label);
   const [number, setNumber] = useState(existing?.number ?? '');
@@ -122,7 +122,7 @@ function CredentialForm({
   const [expiry, setExpiry] = useState(existing?.expiry ?? '');
   const [editing, setEditing] = useState(!existing);
   const save = useProgressMutation(async (sid, _: null) =>
-    inductionSource.saveCredential(sid, {
+    source.saveCredential(sid, {
       type,
       label: type === 'white_card' ? 'White card' : kind,
       number,

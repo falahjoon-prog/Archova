@@ -19,6 +19,7 @@
     "@archova/mod-access": "workspace:*",
     "@archova/mod-ai": "workspace:*",
     "@archova/mod-billing": "workspace:*",
+    "@archova/mod-defects": "workspace:*",
     "@archova/mod-diary": "workspace:*",
     "@archova/mod-documents": "workspace:*",
     "@archova/mod-files": "workspace:*",

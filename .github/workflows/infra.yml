@@ -105,7 +105,7 @@ jobs:
           dockerfile: infra/envs/linode-pilot/host/signing-helper/Dockerfile
           failure-threshold: warning
       - name: shellcheck
-        run: shellcheck backup/backup.sh ../../../../tools/infra/linode-deploy.sh
+        run: shellcheck backup/backup.sh ../../../../tools/infra/linode-deploy.sh ../../../../tools/infra/linode-cert.sh
       - name: Build the backup and signing-helper images
         run: |
           docker build -t archova/backup:ci backup
