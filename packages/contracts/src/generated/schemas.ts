@@ -816,6 +816,7 @@ export const DraftDrawingRevisionInputSchema = z.object({
   "fileId": FileRefSchema,
   "pageIndex": z.number().int().min(0).max(10000).optional(),
   "drawingDate": z.string().date().optional(),
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
 

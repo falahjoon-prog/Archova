@@ -3399,6 +3399,8 @@ export interface components {
             pageIndex?: number;
             /** Format: date */
             drawingDate?: string;
+            /** @description The Nova `drawing.register` suggestion this sheet was read from; recorded on the revision and its publish event. */
+            aiSuggestionId?: string;
         };
         UpdateDraftDrawingRevisionRequest: {
             sheetNumber?: string;
