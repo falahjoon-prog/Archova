@@ -17,7 +17,7 @@ import { isDrainToken } from '@archova/mod-sync';
 import type { ApiConfig } from './config';
 import type { Modules } from '@archova/compose';
 import type { IdempotencyStore } from './plugins/idempotency';
-import { safeEqualStrings } from './util';
+import { clientIp, safeEqualStrings } from './util';
 
 type Surface = 'app' | 'api';
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -218,7 +218,13 @@ export function registerOperations(
             >[2];
             return send(reply, {
               status: 200,
-              body: await modules.sync.api.drain.handle(orgId, drainToken, body, requestId, req.ip),
+              body: await modules.sync.api.drain.handle(
+                orgId,
+                drainToken,
+                body,
+                requestId,
+                clientIp(req, config.clientIpHops),
+              ),
             });
           }
           const { principal, viaCookie } = await authenticate(req, surface);
@@ -256,7 +262,7 @@ export function registerOperations(
             principal,
             tenant,
             requestId,
-            ip: req.ip,
+            ip: clientIp(req, config.clientIpHops),
             userAgent: req.headers['user-agent'] ?? null,
           };
 

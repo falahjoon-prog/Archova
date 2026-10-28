@@ -142,7 +142,7 @@ Both keep WAF blocking, the egress firewall, GuardDuty scanning, 35-day point-in
 - **NAT gateways sit in their own small subnets**, not with the ALB, so ALB-to-task traffic never crosses the firewall.
 - **Non-prod DNS zones are delegated to their own accounts**; prod's records go into the apex zone in shared-services through a narrow role.
 - **`API_REDIS_URL` points at the queue cluster** (`noeviction`): sessions, revocation markers and Idempotency-Keys must not be evicted. The LRU cache cluster is for disposable caches.
-- **`API_TRUST_PROXY=false`**: CloudFront and the ALB pass the viewer Host through, and trusting `X-Forwarded-Host` would let a client pick its own host. Client IPs for rate limits need a trusted-hop setting in the api (Ben).
+- **`API_TRUST_PROXY=false`**: CloudFront and the ALB pass the viewer Host through, and trusting `X-Forwarded-Host` would let a client pick its own host. Client IPs for rate limits and audit come from `API_CLIENT_IP_HOPS=2` (the 2nd entry from the right of `X-Forwarded-For`: CloudFront, then the ALB), never from `trustProxy`.
 
 ## Not built yet
 
