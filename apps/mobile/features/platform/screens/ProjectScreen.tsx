@@ -76,6 +76,11 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.siteSignIn(projectId))}
       />
       <ListItem
+        title="Site induction"
+        subtitle="Do your induction before starting work"
+        onPress={() => router.push(mobileRoutes.induction(projectId))}
+      />
+      <ListItem
         title="Roll call"
         subtitle="Account for everyone on site in an evacuation"
         onPress={() => router.push(mobileRoutes.rollCall(projectId))}

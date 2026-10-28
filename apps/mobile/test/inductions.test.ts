@@ -5,9 +5,13 @@ import {
   quizOutcome,
   recordSectionSeen,
   signInduction,
+  unsupportedBlockKinds,
+  unsupportedBlocksMessage,
   signaturePath,
   thinStroke,
 } from '../features/inductions';
+
+vi.mock('../features/inductions/screens/InductionScreen', () => ({}));
 
 const completion = (over: Record<string, unknown>) =>
   ({
@@ -123,5 +127,20 @@ describe('induction calls', () => {
       agreed: true,
       clientAt: '2026-10-28T15:00:00Z',
     });
+  });
+});
+
+describe('unsupported blocks', () => {
+  const section = (...types: string[]) =>
+    ({ key: 'ppe', title: 'PPE', blocks: types.map((type) => ({ type })) }) as never;
+
+  it('lets text and slides be ticked as seen', () => {
+    expect(unsupportedBlockKinds(section('text', 'slides'))).toEqual([]);
+  });
+
+  it('names the content the phone cannot show yet, once each', () => {
+    const kinds = unsupportedBlockKinds(section('text', 'video', 'video', 'swms'));
+    expect(kinds).toEqual(['video', 'swms']);
+    expect(unsupportedBlocksMessage(kinds)).toContain('a video and a SWMS');
   });
 });
