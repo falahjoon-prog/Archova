@@ -40,6 +40,7 @@ beforeAll(async () => {
         throw new Error('not used');
       },
       assert: async () => undefined,
+      can: async () => true,
       sources: async () => [],
       accessScopes: async () => [],
       rfiSources: async () => [],

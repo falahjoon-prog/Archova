@@ -62,6 +62,7 @@ module "cell" {
     api     = "${var.image_registry}/archova/api:bootstrap"
     web     = "${var.image_registry}/archova/web:bootstrap"
     migrate = "${var.image_registry}/archova/migrate:bootstrap"
+    worker  = "${var.image_registry}/archova/worker:bootstrap"
   }
 
   services = local.size.services
