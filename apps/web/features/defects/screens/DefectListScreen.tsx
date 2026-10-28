@@ -23,12 +23,12 @@ import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { todayIn } from '@/shared/lib/format';
-import { MOCK_COMPANIES, companyName } from '@/shared/mocks/directory';
 import { MOCK_LEVELS, locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DefectDue, DefectStatusPill, StageBadge } from '../components/DefectChips';
-import { useDefectList, useDefectMutations } from '../hooks/useDefects';
+import { useDefectList, useDefectMutations, useDefectsSource } from '../hooks/useDefects';
 import { defectsToCsv } from '../lib/csv';
 import {
   DEFECT_STATUSES,
@@ -40,14 +40,17 @@ import {
   type DefectStatus,
 } from '../lib/types';
 
-const TRADES = [
-  ...new Set(MOCK_COMPANIES.filter((c) => c.role === 'subcontractor').map((c) => c.trade)),
-];
-
 /** Defects register (DEF-US8): by trade, level, status, stage and age; bulk assign; CSV for a walk. */
 export function DefectListScreen() {
   const org = useCurrentOrg();
   const project = useCurrentProject();
+  const { live } = useDefectsSource();
+  const dir = useProjectDirectory();
+  const subbies = dir.companies.filter((c) => c.isSubcontractor && dir.onProject(c.id));
+  const trades = [...new Set(subbies.flatMap((c) => c.trades))];
+  // A subcontractor can't list the org's companies, so their own company is named from the project context.
+  const assignee = (id: string | null) =>
+    id ? (id === project.companyId ? 'Your company' : dir.companyName(id)) : 'Unassigned';
   usePublishAssistantScope({
     projectId: project.projectId,
     record: { type: 'defects', id: 'register' },
@@ -129,15 +132,15 @@ export function DefectListScreen() {
       id: 'location',
       header: 'Location',
       sortValue: (d) => locationPath(d.locationId) ?? d.drawing?.label ?? '',
-      cell: (d) => locationPath(d.locationId) ?? d.drawing?.label ?? '—',
+      cell: (d) => locationPath(d.locationId) ?? (live ? 'On a drawing' : d.drawing?.label) ?? '—',
     },
     {
       id: 'company',
       header: 'Company',
-      sortValue: (d) => companyName(d.assigneeCompanyId),
+      sortValue: (d) => assignee(d.assigneeCompanyId),
       cell: (d) => (
         <>
-          {companyName(d.assigneeCompanyId)}
+          {assignee(d.assigneeCompanyId)}
           <br />
           <span className="u-caption">{d.trade}</span>
         </>
@@ -171,7 +174,7 @@ export function DefectListScreen() {
   ];
 
   const exportCsv = () => {
-    const blob = new Blob([defectsToCsv(rows)], { type: 'text/csv' });
+    const blob = new Blob([defectsToCsv(rows, assignee)], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -215,7 +218,7 @@ export function DefectListScreen() {
           </>
         }
       />
-      <PreviewDataNotice tool="Defects" />
+      {live ? null : <PreviewDataNotice tool="Defects" />}
       {reviewCount > 0 && params.status !== 'ready_for_review' ? (
         <p className="u-m-0">
           <button
@@ -256,26 +259,25 @@ export function DefectListScreen() {
           label="Company"
           value={params.company}
           placeholder="Any company"
-          options={MOCK_COMPANIES.filter((c) => c.role === 'subcontractor').map((c) => ({
-            value: c.id,
-            label: c.name,
-          }))}
+          options={subbies.map((c) => ({ value: c.id, label: c.name }))}
           onChange={(e) => setParams({ company: e.target.value })}
         />
         <Select
           label="Trade"
           value={params.trade}
           placeholder="Any trade"
-          options={TRADES.map((t) => ({ value: t, label: t }))}
+          options={trades.map((t) => ({ value: t, label: t }))}
           onChange={(e) => setParams({ trade: e.target.value })}
         />
-        <Select
-          label="Level"
-          value={params.level}
-          placeholder="Any level"
-          options={MOCK_LEVELS.map((l) => ({ value: l, label: l }))}
-          onChange={(e) => setParams({ level: e.target.value })}
-        />
+        {live ? null : (
+          <Select
+            label="Level"
+            value={params.level}
+            placeholder="Any level"
+            options={MOCK_LEVELS.map((l) => ({ value: l, label: l }))}
+            onChange={(e) => setParams({ level: e.target.value })}
+          />
+        )}
         <Checkbox
           label="Overdue only"
           checked={Boolean(params.overdue)}
@@ -289,10 +291,7 @@ export function DefectListScreen() {
             label="Assign to"
             value={bulk.companyId}
             placeholder="Keep company"
-            options={MOCK_COMPANIES.filter((c) => c.role === 'subcontractor').map((c) => ({
-              value: c.id,
-              label: c.name,
-            }))}
+            options={subbies.map((c) => ({ value: c.id, label: c.name }))}
             onChange={(e) => setBulk({ ...bulk, companyId: e.target.value })}
           />
           <TextField

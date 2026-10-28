@@ -6,12 +6,13 @@ import { Alert, Button, NovaSuggestion, Select, TextField, Textarea } from '@arc
 import { NovaIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { MOCK_COMPANIES, MOCK_PEOPLE, companyName } from '@/shared/mocks/directory';
 import { MOCK_LOCATIONS, locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DefectStatusPill } from '../components/DefectChips';
-import { useDefectNova } from '../hooks/useDefects';
+import { PinPlacer } from '../components/PinPlacer';
+import { useDefectNova, useDefectsSource } from '../hooks/useDefects';
 import { defectInputErrors } from '../lib/lifecycle';
 import {
   PRIORITY_LABELS,
@@ -34,11 +35,24 @@ export const emptyDefectInput = (): DefectInput => ({
   assigneeCompanyId: null,
   assigneeUserId: null,
   dueDate: null,
-  photoNames: [],
+  category: null,
+  photos: [],
 });
 
-const SUBBIES = MOCK_COMPANIES.filter((c) => c.role === 'subcontractor');
-const TRADES = [...new Set(SUBBIES.map((c) => c.trade))];
+type AppliedFields = Pick<DefectInput, 'title' | 'description' | 'trade' | 'category' | 'priority'>;
+
+const pickFields = (v: DefectInput): AppliedFields => ({
+  title: v.title,
+  description: v.description,
+  trade: v.trade,
+  category: v.category,
+  priority: v.priority,
+});
+
+const sameFields = (a: AppliedFields, v: DefectInput) => {
+  const b = pickFields(v);
+  return (Object.keys(a) as Array<keyof AppliedFields>).every((k) => a[k] === b[k]);
+};
 
 export interface DefectFormProps {
   busy: boolean;
@@ -46,23 +60,27 @@ export interface DefectFormProps {
   /** `another` keeps location, trade and company for the next one in a walk (DEF-US2). */
   onSave: (
     input: DefectInput,
-    meta: { aiSuggested: boolean; another: boolean },
+    meta: { aiSuggestionId: string | null; another: boolean },
   ) => Promise<unknown>;
 }
 
 /**
- * Raise a defect on the web. Phones capture with a drawing pin (Mia); here the location tree is the reference and
- * the pin can be dropped from the drawing later. Nova suggests title, trade and company from the description, and
- * checks for duplicates at the same location; nothing applies until accepted.
+ * Raise a defect on the web. The server keeps a drawing pin, so live data asks for the drawing and a spot; preview
+ * data uses the location tree. Nova suggests title, trade and priority (from the photo on live data) and checks for
+ * duplicates beside the same spot; nothing applies until accepted, and the person picks the company.
  */
 export function DefectForm({ busy, error, onSave }: DefectFormProps) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const nova = useDefectNova();
+  const { live } = useDefectsSource();
+  const dir = useProjectDirectory();
   const [v, setV] = useState<DefectInput>(emptyDefectInput);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [aiFields, setAiFields] = useState<Set<keyof DefectInput>>(new Set());
   const [fileKey, setFileKey] = useState(0);
+  // The suggestion the person accepted, and the fields as Nova gave them, to tell "accepted" from "edited".
+  const [applied, setApplied] = useState<{ id: string; fields: AppliedFields } | null>(null);
 
   const set = <K extends keyof DefectInput>(key: K, value: DefectInput[K]) => {
     setV((prev) => ({ ...prev, [key]: value }));
@@ -74,24 +92,36 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
     });
   };
 
+  const subbies = dir.companies.filter((c) => c.isSubcontractor && dir.onProject(c.id));
+  const trades = [...new Set([...subbies.flatMap((c) => c.trades), ...(v.trade ? [v.trade] : [])])];
   // Companies with the chosen trade first (DEF-AC1).
-  const companies = [...SUBBIES].sort(
+  const companies = [...subbies].sort(
     (a, b) =>
-      Number(b.trade === v.trade) - Number(a.trade === v.trade) || a.name.localeCompare(b.name),
+      Number(b.trades.includes(v.trade)) - Number(a.trades.includes(v.trade)) ||
+      a.name.localeCompare(b.name),
   );
-  const people = MOCK_PEOPLE.filter((p) => p.companyId === v.assigneeCompanyId);
+  const people = dir.people.filter((p) => p.companyId === v.assigneeCompanyId);
   const suggestion = nova.suggest.data;
 
   const save = (another: boolean) => (e?: FormEvent) => {
     e?.preventDefault();
-    const found = defectInputErrors(v);
+    const found = defectInputErrors(v, live);
     setErrors(found);
     if (Object.keys(found).length) return;
-    void onSave(v, { aiSuggested: aiFields.size > 0, another }).then(() => {
+    const suggestion = applied;
+    void onSave(v, { aiSuggestionId: suggestion?.id ?? null, another }).then(() => {
+      if (suggestion) {
+        nova.decide.mutate({
+          suggestionId: suggestion.id,
+          decision: sameFields(suggestion.fields, v) ? 'accepted' : 'edited',
+        });
+      }
+      setApplied(null);
       if (!another) return;
       setV((prev) => ({
         ...emptyDefectInput(),
         locationId: prev.locationId,
+        drawing: prev.drawing,
         trade: prev.trade,
         assigneeCompanyId: prev.assigneeCompanyId,
         stage: prev.stage,
@@ -118,11 +148,25 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           type="button"
           variant="nova"
           size="sm"
-          disabled={!v.description.trim() || nova.suggest.isPending}
-          onClick={() => nova.suggest.mutate(v.description)}
+          disabled={
+            live
+              ? !v.photos.length || nova.suggest.isPending
+              : !v.description.trim() || nova.suggest.isPending
+          }
+          onClick={() =>
+            nova.suggest.mutate({
+              description: v.description,
+              photos: v.photos,
+              drawing: v.drawing,
+            })
+          }
         >
           <NovaIcon size={16} aria-hidden="true" />
-          {nova.suggest.isPending ? 'Thinking…' : 'Suggest title and trade'}
+          {nova.suggest.isPending
+            ? 'Thinking…'
+            : live
+              ? 'Suggest from photo'
+              : 'Suggest title and trade'}
         </Button>
       </div>
       {nova.suggest.isSuccess ? (
@@ -135,18 +179,25 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
                   type="button"
                   size="sm"
                   onClick={() => {
-                    setV((prev) => ({
-                      ...prev,
-                      title: prev.title || suggestion.title,
-                      trade: suggestion.trade,
-                      assigneeCompanyId: suggestion.companyId,
-                      assigneeUserId: null,
-                    }));
+                    const next: DefectInput = {
+                      ...v,
+                      title: v.title || suggestion.title,
+                      description: v.description || suggestion.description || '',
+                      trade: suggestion.trade ?? v.trade,
+                      category: suggestion.category ?? v.category,
+                      priority: suggestion.priority ?? v.priority,
+                      ...(suggestion.companyId
+                        ? { assigneeCompanyId: suggestion.companyId, assigneeUserId: null }
+                        : {}),
+                    };
+                    setV(next);
+                    setApplied({ id: suggestion.id, fields: pickFields(next) });
                     setAiFields(
                       new Set<keyof DefectInput>([
-                        'trade',
-                        'assigneeCompanyId',
-                        ...(v.title ? [] : ['title' as const]),
+                        ...(suggestion.trade ? (['trade'] as const) : []),
+                        ...(suggestion.companyId ? (['assigneeCompanyId'] as const) : []),
+                        ...(suggestion.priority ? (['priority'] as const) : []),
+                        ...(v.title ? [] : (['title'] as const)),
                       ]),
                     );
                     nova.suggest.reset();
@@ -159,7 +210,11 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
                 type="button"
                 size="sm"
                 variant="tertiary"
-                onClick={() => nova.suggest.reset()}
+                onClick={() => {
+                  if (suggestion)
+                    nova.decide.mutate({ suggestionId: suggestion.id, decision: 'rejected' });
+                  nova.suggest.reset();
+                }}
               >
                 Dismiss
               </Button>
@@ -168,12 +223,23 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         >
           {suggestion ? (
             <p className="u-m-0">
-              {suggestion.title} · {suggestion.trade} · {companyName(suggestion.companyId)}. Check
-              the company before you save.
+              {[
+                suggestion.title,
+                suggestion.trade,
+                suggestion.priority && `${PRIORITY_LABELS[suggestion.priority]} priority`,
+                suggestion.companyId && dir.companyName(suggestion.companyId),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+              . Check the details and choose the company before you save.
+              {suggestion.unsupportedNumbers.length
+                ? ` Check these numbers against the drawing: ${suggestion.unsupportedNumbers.join(', ')}.`
+                : ''}
             </p>
           ) : (
             <p className="u-m-0">
-              Nova couldn&apos;t tell the trade from this description. Choose it below.
+              Nova couldn&apos;t tell the trade from this {live ? 'photo' : 'description'}. Choose
+              it below.
             </p>
           )}
         </NovaSuggestion>
@@ -188,21 +254,23 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         onChange={(e) => set('title', e.target.value)}
       />
       <div className="form-row">
-        <Select
-          label="Location"
-          value={v.locationId ?? ''}
-          placeholder="Choose a location"
-          error={errors.location}
-          required
-          options={MOCK_LOCATIONS.map((l) => ({ value: l.id, label: l.path }))}
-          onChange={(e) => set('locationId', e.target.value || null)}
-        />
+        {live ? null : (
+          <Select
+            label="Location"
+            value={v.locationId ?? ''}
+            placeholder="Choose a location"
+            error={errors.location}
+            required
+            options={MOCK_LOCATIONS.map((l) => ({ value: l.id, label: l.path }))}
+            onChange={(e) => set('locationId', e.target.value || null)}
+          />
+        )}
         <Select
           label="Trade"
           value={v.trade}
           placeholder="Choose a trade"
           className={aiFields.has('trade') ? 'ac-input--ai' : undefined}
-          options={TRADES.map((t) => ({ value: t, label: t }))}
+          options={trades.map((t) => ({ value: t, label: t }))}
           onChange={(e) => set('trade', e.target.value)}
         />
         <Select
@@ -212,10 +280,16 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           error={errors.assigneeCompanyId}
           className={aiFields.has('assigneeCompanyId') ? 'ac-input--ai' : undefined}
           required
-          options={companies.map((c) => ({ value: c.id, label: `${c.name} · ${c.trade}` }))}
+          options={companies.map((c) => ({
+            value: c.id,
+            label: `${c.name} · ${c.trades.join(', ')}`,
+          }))}
           onChange={(e) => {
             set('assigneeCompanyId', e.target.value || null);
             set('assigneeUserId', null);
+            // A company with one trade fills it in; Nova's or the person's choice stays.
+            const trades = dir.companies.find((c) => c.id === e.target.value)?.trades ?? [];
+            if (!v.trade && trades.length === 1) set('trade', trades[0]!);
           }}
         />
         <Select
@@ -244,6 +318,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
         <Select
           label="Priority"
           value={v.priority}
+          className={aiFields.has('priority') ? 'ac-input--ai' : undefined}
           options={(Object.keys(PRIORITY_LABELS) as DefectPriority[]).map((p) => ({
             value: p,
             label: PRIORITY_LABELS[p],
@@ -251,6 +326,13 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           onChange={(e) => set('priority', e.target.value as DefectPriority)}
         />
       </div>
+      {live ? (
+        <PinPlacer
+          value={v.drawing}
+          error={errors.location}
+          onChange={(drawing) => set('drawing', drawing)}
+        />
+      ) : null}
       <div className="stack">
         <label className="ac-field__label" htmlFor="defect-photos">
           Photos
@@ -262,12 +344,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           type="file"
           accept="image/*"
           multiple
-          onChange={(e) =>
-            set(
-              'photoNames',
-              [...(e.target.files ?? [])].map((f) => f.name),
-            )
-          }
+          onChange={(e) => set('photos', [...(e.target.files ?? [])])}
         />
       </div>
 
@@ -276,9 +353,15 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
           type="button"
           variant="nova"
           size="sm"
-          disabled={!v.title.trim() || !v.locationId || nova.duplicates.isPending}
+          disabled={
+            !v.title.trim() || !(live ? v.drawing : v.locationId) || nova.duplicates.isPending
+          }
           onClick={() =>
-            nova.duplicates.mutate({ title: v.title, locationId: v.locationId, sheetId: null })
+            nova.duplicates.mutate({
+              title: v.title,
+              locationId: v.locationId,
+              drawing: v.drawing,
+            })
           }
         >
           <NovaIcon size={16} aria-hidden="true" />
@@ -288,7 +371,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
       {nova.duplicates.data ? (
         nova.duplicates.data.length ? (
           <NovaSuggestion
-            title={`Possible duplicates at ${locationPath(v.locationId) ?? 'this location'}`}
+            title={`Possible duplicates at ${(live ? null : locationPath(v.locationId)) ?? 'this spot'}`}
           >
             <ul className="plain-list">
               {nova.duplicates.data.map((d) => (
@@ -306,7 +389,7 @@ export function DefectForm({ busy, error, onSave }: DefectFormProps) {
             </ul>
           </NovaSuggestion>
         ) : (
-          <Alert tone="success" title="No open defects like this at that location" />
+          <Alert tone="success" title="No open defects like this at that spot" />
         )
       ) : null}
 
