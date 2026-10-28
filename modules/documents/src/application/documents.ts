@@ -295,7 +295,27 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     return { id: row.id, title: row.title, docNumber: row.docNumber };
   }
 
-  return { list, detail, create, addRevision, update, revisionsByIds, ref };
+  /**
+   * Mobile pull (modules/sync): the documents among `ids` the caller may see, by the same rule as `list`
+   * (nothing in a folder they can't open); ids not returned are sent to the device as deletes.
+   */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length) return [];
+    const conditions: SQL[] = [
+      eq(documentsTable.projectId, projectId),
+      isNull(documentsTable.deletedAt),
+      inArray(documentsTable.id, [...ids]),
+    ];
+    const hidden = await folders.hiddenIds(scope, projectId);
+    if (hidden.size) conditions.push(notInArray(documentsTable.folderId, [...hidden]));
+    const rows = await scope.tx
+      .select()
+      .from(documentsTable)
+      .where(and(...conditions));
+    return attachCurrent(scope, rows);
+  }
+
+  return { list, detail, create, addRevision, update, revisionsByIds, ref, visibleAmong };
 }
 
 async function changed(scope: TenantScope, projectId: string, id: string, version: number) {
