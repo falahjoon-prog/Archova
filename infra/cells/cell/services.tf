@@ -9,6 +9,13 @@ locals {
     API_AI_MODEL_ADVANCED = var.ai_models.advanced
   }
 
+  # Drawing tile signing (files-cdn.tf): the distribution's domain and key pair are plain, the private key is a secret.
+  files_cdn_env = local.files_cdn ? {
+    API_FILES_CDN_DOMAIN      = aws_cloudfront_distribution.files[0].domain_name
+    API_FILES_CDN_KEY_PAIR_ID = aws_cloudfront_public_key.files[0].id
+  } : {}
+  files_cdn_secrets = local.files_cdn ? { API_FILES_CDN_PRIVATE_KEY = aws_secretsmanager_secret.files_cdn_key[0].arn } : {}
+
   rollback_alarms = { for s in keys(var.services) : s => ["${local.svc[s]}-5xx-rate", "${local.svc[s]}-p95-latency"] }
 
   service_config = {
@@ -41,16 +48,16 @@ locals {
         API_AI_PROVIDER = "bedrock"
         API_AI_REGION   = local.region
       }
-      secrets = {
+      secrets = merge({
         API_DATABASE_URL    = "${module.aurora.role_secret_arns["app_rw"]}:url::"
         API_REDIS_URL       = "${module.valkey_queue.secret_arn}:url::"
         API_JWT_PRIVATE_JWK = aws_secretsmanager_secret.jwt_signing_key.arn
-      }
-      secret_arns = [
+      }, local.files_cdn_secrets)
+      secret_arns = concat([
         module.aurora.role_secret_arns["app_rw"],
         module.valkey_queue.secret_arn,
         aws_secretsmanager_secret.jwt_signing_key.arn,
-      ]
+      ], values(local.files_cdn_secrets))
     }
 
     web = {
@@ -87,7 +94,7 @@ module "service" {
   cpu                      = each.value.cpu
   memory                   = each.value.memory
   container_port           = local.service_config[each.key].port
-  environment              = merge(local.service_config[each.key].environment, each.key == "api" ? local.ai_model_env : {})
+  environment              = merge(local.service_config[each.key].environment, each.key == "api" ? merge(local.ai_model_env, local.files_cdn_env) : {})
   secrets                  = local.service_config[each.key].secrets
   secret_arns              = local.service_config[each.key].secret_arns
   secrets_kms_key_arn      = module.kms_secrets.arn

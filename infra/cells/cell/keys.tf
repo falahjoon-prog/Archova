@@ -12,7 +12,9 @@ module "kms_files" {
   source      = "../../modules/kms-key"
   alias       = "${local.name}-files"
   description = "S3 files, exports and inbound mail (${local.name})"
-  tags        = local.tags
+  # The drawing tiles CDN (files-cdn.tf) reads tiles from the files bucket through origin access control.
+  allow_cloudfront_distributions = var.files_cdn != null
+  tags                           = local.tags
 }
 
 module "kms_backups" {
