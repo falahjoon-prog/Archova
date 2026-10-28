@@ -2173,6 +2173,73 @@ export const QuoteSchema = z.object({
 });
 export type Quote = z.infer<typeof QuoteSchema>;
 
+export const QuoteDeviationSchema = z.enum(["high", "low"]);
+export type QuoteDeviation = z.infer<typeof QuoteDeviationSchema>;
+
+export const QuoteComparisonNoteSchema = z.object({
+  "id": z.string(),
+  "text": z.string(),
+  "scopeKey": z.string().nullable(),
+});
+export type QuoteComparisonNote = z.infer<typeof QuoteComparisonNoteSchema>;
+
+export const QuoteComparisonColumnSchema = z.object({
+  "quoteId": z.string(),
+  "companyId": z.string(),
+  "revision": z.number().int(),
+  "reference": z.string().nullable(),
+  "receivedAt": z.string().datetime({ offset: true }),
+  "validUntil": z.string().date().nullable(),
+  "validityExpired": z.boolean(),
+  "totalExGst": z.string(),
+  "allowancesExGst": z.string(),
+  "levelledTotalExGst": z.string(),
+  "isLowest": z.boolean(),
+  "deviation": z.union([QuoteDeviationSchema, z.null()]),
+  "provisionalExGst": z.string(),
+  "provisionalLines": z.number().int(),
+  "missingScopeKeys": z.array(z.string()),
+  "unmappedLines": z.number().int(),
+  "unmappedExGst": z.string(),
+  "outlierLines": z.number().int(),
+  "exclusions": z.array(QuoteComparisonNoteSchema),
+  "qualifications": z.array(QuoteComparisonNoteSchema),
+});
+export type QuoteComparisonColumn = z.infer<typeof QuoteComparisonColumnSchema>;
+
+export const QuoteComparisonCellSchema = z.object({
+  "quoteId": z.string(),
+  "state": z.enum(["priced", "provisional", "missing"]),
+  "amountExGst": z.string().nullable(),
+  "allowanceExGst": z.string().nullable(),
+  "excluded": z.boolean(),
+  "deviation": z.union([QuoteDeviationSchema, z.null()]),
+});
+export type QuoteComparisonCell = z.infer<typeof QuoteComparisonCellSchema>;
+
+export const QuoteComparisonRowSchema = z.object({
+  "key": z.string(),
+  "description": z.string(),
+  "quantity": z.string().nullable(),
+  "unit": z.string(),
+  "medianExGst": z.string().nullable(),
+  "cells": z.array(QuoteComparisonCellSchema),
+});
+export type QuoteComparisonRow = z.infer<typeof QuoteComparisonRowSchema>;
+
+export const QuoteComparisonSchema = z.object({
+  "packageId": z.string(),
+  "columns": z.array(QuoteComparisonColumnSchema),
+  "rows": z.array(QuoteComparisonRowSchema),
+  "medianTotalExGst": z.string().nullable(),
+  "outlierRule": z.object({
+  "percent": z.number().int(),
+  "minExGst": z.string(),
+  "minPrices": z.number().int(),
+}),
+});
+export type QuoteComparison = z.infer<typeof QuoteComparisonSchema>;
+
 export const QuotePageSchema = z.object({
   "data": z.array(QuoteSchema),
 });
