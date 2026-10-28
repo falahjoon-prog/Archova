@@ -53,6 +53,8 @@ CREATE POLICY tenant_isolation ON rfis.rfis
 | `app_admin` | `apps/admin` back-office | audited; support access is itself an audit event |
 | `readonly_analytics` | CDC / analytics export | replica only |
 
+**Deliberate exception (outbox relay, PR #73):** `app_platform` also has column-limited `SELECT (id, org_id, type, occurred_at, published_at)` and `UPDATE (published_at)` on `shared.outbox` with two narrow policies (read; set unpublished to published only). No payload columns, insert or delete. Sam approved.
+
 ### Cross-org collaborators
 
 A project belongs to exactly one org. A subcontractor user calling `/v1/orgs/{builderOrgId}/projects/{p}/defects` is authorised by their `project_members` row, and the transaction runs with `app.org_id = builderOrgId`. Their own org's data is never in scope of that request.

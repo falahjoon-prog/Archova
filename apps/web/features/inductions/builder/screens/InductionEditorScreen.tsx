@@ -22,6 +22,7 @@ import { formatInstant } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { LinksPanel } from '../components/LinksPanel';
 import { PublishDialog } from '../components/PublishDialog';
 import { QuizEditor } from '../components/QuizEditor';
 import { SectionEditor } from '../components/SectionEditor';
@@ -146,6 +147,7 @@ function Editor({ induction, back }: { induction: Induction; back: React.ReactNo
           { id: 'content', label: 'Sections', count: content.sections.length },
           { id: 'quiz', label: 'Quiz', count: content.quiz.length },
           { id: 'versions', label: 'Versions', count: induction.versions.length },
+          { id: 'links', label: 'Links' },
           { id: 'settings', label: 'Settings' },
         ]}
       >
@@ -220,6 +222,7 @@ function Editor({ induction, back }: { induction: Induction; back: React.ReactNo
             </ul>
           )
         ) : null}
+        {tab === 'links' ? <LinksPanel induction={induction} /> : null}
         {tab === 'settings' ? (
           <div className="stack">
             <TextField

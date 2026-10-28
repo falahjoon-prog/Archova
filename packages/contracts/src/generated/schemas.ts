@@ -1033,6 +1033,15 @@ export const DraftDrawingRevisionInputSchema = z.object({
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
 
+export const DrainGrantSchema = z.object({
+  "token": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "orgId": z.string(),
+  "projectId": z.string().nullable(),
+  "module": z.string().nullable(),
+});
+export type DrainGrant = z.infer<typeof DrainGrantSchema>;
+
 export const DrawingRegisterExtractionSchema = z.object({
   "suggestions": z.array(AiSuggestionSchema),
   "pageCount": z.number().int(),
@@ -1681,7 +1690,7 @@ export const MeSchema = z.object({
 export type Me = z.infer<typeof MeSchema>;
 
 export const NovaSourceSchema = z.object({
-  "sourceType": z.enum(["document", "drawing"]),
+  "sourceType": z.enum(["document", "drawing", "rfi"]),
   "sourceId": z.string(),
   "revisionId": z.string(),
   "revision": z.string(),
@@ -1817,6 +1826,8 @@ export const NovaImportMappingSchema = z.object({
 export type NovaImportMapping = z.infer<typeof NovaImportMappingSchema>;
 
 export const NovaIndexReportSchema = z.object({
+  "rfisIndexed": z.number().int(),
+  "rfisUnchanged": z.number().int(),
   "indexed": z.number().int(),
   "unchanged": z.number().int(),
   "noText": z.number().int(),
@@ -1975,6 +1986,7 @@ export const PermissionTemplateSchema = z.object({
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
 
 export const ProblemSchema = z.object({
+  "drainGrant": DrainGrantSchema.optional(),
   "type": z.string(),
   "title": z.string(),
   "status": z.number().int(),
@@ -2142,6 +2154,7 @@ export type RevokeRequest = z.infer<typeof RevokeRequestSchema>;
 export const RevokedScopeSchema = z.object({
   "projectId": z.string(),
   "module": z.string().nullable(),
+  "drainGrant": DrainGrantSchema.optional(),
 });
 export type RevokedScope = z.infer<typeof RevokedScopeSchema>;
 
@@ -2415,6 +2428,7 @@ export type SyncMutation = z.infer<typeof SyncMutationSchema>;
 export const SyncProblemSchema = z.object({
   "code": z.string(),
   "detail": z.string().optional(),
+  "drainGrant": DrainGrantSchema.optional(),
 });
 export type SyncProblem = z.infer<typeof SyncProblemSchema>;
 

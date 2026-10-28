@@ -34,6 +34,7 @@ Cross-org collaboration doesn't break this: a **project belongs to exactly one o
   - `app_rw`: used by the API, no `BYPASSRLS`, not table owner.
   - `app_migrator`: owns tables, used only by migrations in CI/CD.
   - `app_platform`: for cross-tenant platform jobs (billing usage rollups, ACV calculation, "claims due tomorrow" scans). **No `BYPASSRLS`.** It can only read a few `SECURITY DEFINER` views/functions exposing the minimum columns (ids, dates, amounts) and then fans out into per-org jobs under `app_rw`. Every use logged. (Confirmed in Ava's sign-off X11: no `BYPASSRLS` for api or worker.)
+    - Deliberate exception: the outbox relay has column-limited `SELECT (id, org_id, type, occurred_at, published_at)` and `UPDATE (published_at)` on `shared.outbox` only (migration 20261028150000, approved on PR #73).
 - Global tables (no `org_id`): `User`, `Credential`, plan catalogue, public holidays/SOPA rules. Accessed by explicit, reviewed code paths.
 - Lint rule in CI: every new table in a migration must either have `org_id` + RLS policy, or be on an allow-list of global tables with a reviewer sign-off.
 - Connection pooling (PgBouncer transaction mode) is compatible with `SET LOCAL`. Session-level `SET` is banned.

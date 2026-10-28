@@ -8,6 +8,7 @@ import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
+import type { RfiSource } from './domain/rfi-source';
 import { createDiarySummaryService } from './application/diary-summary';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
@@ -68,6 +69,7 @@ export type { TaskRun, RunOptions, Gateway } from './application/gateway';
 export type { ReadableFile, SheetSuggestionPayload } from './application/drawing-register';
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { IndexReport, SourceRevision } from './application/project-index';
+export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { RfiDraft } from './application/rfi-draft';
@@ -178,6 +180,10 @@ export function createAiModule(
     sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
     /** documents.api.aiAccessScopes: what the caller may retrieve. */
     accessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
+    /** rfis.api.aiSources: sent RFIs with their responses, to index for Ask. */
+    rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
+    /** rfis.api.aiAccessScopes: the Ask scopes the caller holds for RFIs. */
+    rfiAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.findSimilar: RFIs the caller can see on the same subject (F3). */
     similarRfis: (
       scope: TenantScope,
@@ -254,11 +260,15 @@ export function createAiModule(
     readFile: deps.readFile,
     assert: deps.assert,
   });
+  // Ask retrieves documents, drawings and (builder staff only) RFIs; drafting RFIs and inductions stays on documents.
   const askService = createAskService({
     database: services.database,
     gateway,
     assert: deps.assert,
-    accessScopes: deps.accessScopes,
+    accessScopes: async (scope, projectId) => [
+      ...(await deps.accessScopes(scope, projectId)),
+      ...(await deps.rfiAccessScopes(scope, projectId)),
+    ],
   });
   const projectIndex = createProjectIndexService({
     database: services.database,
@@ -266,6 +276,7 @@ export function createAiModule(
     readFile: deps.readFile,
     assert: deps.assert,
     sources: deps.sources,
+    rfiSources: deps.rfiSources,
   });
   const inductionDrafts = createInductionDraftService({
     database: services.database,

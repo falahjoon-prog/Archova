@@ -1,7 +1,8 @@
 // F4 site diary summary (ai/01 F4, product/05 DIA-US7): "write today's summary" drafts a short daily report from
 // the day's diary lines. The draft is a pending suggestion the site manager edits into the day's notes; `ai`
-// never writes diary tables. Cached per day content, so pressing the button again costs nothing until a line,
-// the weather or the entry changes.
+// never writes diary tables. Cached per person and day content, so pressing the button again costs nothing until a
+// line, the weather or the entry changes. The draft is private to the person who asked: what it says depends on the
+// lines they may read (a company sees only its own), so nobody else is handed it.
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { diarySummaryPrompt } from '@archova/ai-prompts';
 import { uuidv7 } from '@archova/domain';
@@ -65,6 +66,7 @@ export function createDiarySummaryService(deps: DiarySummaryDeps) {
               eq(suggestions.targetId, day.entryId),
               eq(suggestions.promptVersion, diarySummaryPrompt.version),
               eq(suggestions.status, 'pending'),
+              eq(suggestions.createdBy, scope.ctx.userId),
               sql`${suggestions.payload}->>'dayHash' = ${dayHash}`,
             ),
           )

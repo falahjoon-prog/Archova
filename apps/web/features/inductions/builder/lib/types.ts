@@ -13,6 +13,9 @@ export type InductionSectionKey = S['InductionSectionKey'];
 export type InductionVersionSummary = S['InductionVersionSummary'];
 export type InductionRegister = S['InductionRegister'];
 export type InductionRegisterEntry = S['InductionRegisterEntry'];
+export type InductionLink = S['InductionLink'];
+export type InductionLinkCreated = S['InductionLinkCreated'];
+export type CreateInductionLinkInput = S['CreateInductionLinkRequest'];
 
 export interface PublishInput {
   redo: 'all' | 'none';
@@ -53,4 +56,14 @@ export const INDUCTION_STATUS: Record<
   draft: { label: 'Draft', tone: 'neutral' },
   published: { label: 'Published', tone: 'success' },
   archived: { label: 'Archived', tone: 'neutral' },
+};
+
+export const LINK_STATE: Record<
+  InductionLink['state'],
+  { label: string; tone: 'success' | 'warning' | 'danger' | 'neutral' }
+> = {
+  active: { label: 'Active', tone: 'success' },
+  expired: { label: 'Expired', tone: 'neutral' },
+  revoked: { label: 'Revoked', tone: 'danger' },
+  used_up: { label: 'Used up', tone: 'warning' },
 };

@@ -11,6 +11,9 @@ import type {
   InductionRegister,
   InductionVersionSummary,
   PublishInput,
+  CreateInductionLinkInput,
+  InductionLink,
+  InductionLinkCreated,
 } from '../lib/types';
 
 export interface InductionBuilderSource {
@@ -26,6 +29,13 @@ export interface InductionBuilderSource {
   approve(projectId: string, induction: Induction, section: number): Promise<Induction>;
   publish(projectId: string, induction: Induction, input: PublishInput): Promise<Induction>;
   register(projectId: string): Promise<InductionRegister>;
+  listLinks(projectId: string, inductionId: string): Promise<InductionLink[]>;
+  createLink(
+    projectId: string,
+    inductionId: string,
+    input: CreateInductionLinkInput,
+  ): Promise<InductionLinkCreated>;
+  revokeLink(projectId: string, inductionId: string, linkId: string): Promise<InductionLink>;
 }
 
 interface Row {
@@ -131,6 +141,9 @@ function touch(r: Row, expected: number): void {
   r.induction.updatedAt = nowIso();
 }
 
+/** Links by induction, newest first. Their tokens are never kept, as on the server. */
+const previewLinks = new Map<string, InductionLink[]>();
+
 export const inductionBuilderSource: InductionBuilderSource = {
   list: (projectId) => delay([...stores.get(projectId).values()].map((r) => refresh(r))),
   get: (projectId, id) => delay(refresh(find(projectId, id))),
@@ -192,6 +205,36 @@ export const inductionBuilderSource: InductionBuilderSource = {
     i.status = 'published';
     return delay(refresh(row));
   },
+  listLinks: (_projectId, inductionId) =>
+    delay(structuredClone(previewLinks.get(inductionId) ?? [])),
+  createLink(_projectId, inductionId, input) {
+    const now = nowIso();
+    const link: InductionLink = {
+      id: mockId('lnk'),
+      inductionId,
+      label: input.label?.trim() || null,
+      recipientEmail: input.recipientEmail ?? null,
+      recipientPhone: input.recipientPhone ?? null,
+      state: 'active',
+      expiresAt: new Date(Date.now() + (input.expiresInDays ?? 30) * 86_400_000).toISOString(),
+      maxUses: input.maxUses ?? null,
+      useCount: 0,
+      lastUsedAt: null,
+      createdAt: now,
+      createdBy: ACTOR,
+      revokedAt: null,
+    };
+    previewLinks.set(inductionId, [link, ...(previewLinks.get(inductionId) ?? [])]);
+    const token = `arl_${'x'.repeat(64)}`;
+    return delay({ link: structuredClone(link), token, url: `/i/${token}` });
+  },
+  revokeLink(_projectId, inductionId, linkId) {
+    const link = previewLinks.get(inductionId)?.find((l) => l.id === linkId);
+    if (!link) return problem(404, 'links.not_found', 'That link does not exist.');
+    link.state = 'revoked';
+    link.revokedAt = nowIso();
+    return delay(structuredClone(link));
+  },
   register: () =>
     delay({
       inductionId: null,
@@ -227,6 +270,7 @@ export const inductionBuilderSource: InductionBuilderSource = {
 
 /** Back to the seeded sample, or to a project with no induction yet when `emptyProjectId` is given. */
 export function resetInductionBuilderPreview(emptyProjectId?: string): void {
+  previewLinks.clear();
   stores.reset();
   if (emptyProjectId) stores.get(emptyProjectId).clear();
 }

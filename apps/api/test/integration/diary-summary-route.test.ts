@@ -129,6 +129,46 @@ describe('Nova diary summary route (F4)', () => {
     expect(summaryCalls()).toHaveLength(2);
   });
 
+  it('keeps a summary to the person who asked: others cannot list or decide it, and get their own draft', async () => {
+    const s = await setup('dsr-c');
+    const day = yesterday();
+    await fillDay(s, day);
+    const base = `/v1/orgs/${s.org.id}/projects/${s.project.id}`;
+    const list = async (b: typeof s.sm.browser) =>
+      (await b.get(`${base}/ai/suggestions?task=diary.summary`)).json().data as Array<{
+        id: string;
+      }>;
+
+    const made = (await s.sm.browser.post(`${s.diary}/${day}/nova-summary`)).json();
+    expect(made.payload.sentences.length).toBeGreaterThan(0);
+    expect((await list(s.sm.browser)).map((x) => x.id)).toEqual([made.id]);
+
+    // The draft names every company's labour. A subcontractor on the project, or another builder admin, never
+    // gets it from the list, and can't decide it.
+    expect(await list(s.sub.browser)).toEqual([]);
+    expect(await list(s.pm.browser)).toEqual([]);
+    for (const other of [s.sub, s.pm]) {
+      const res = await other.browser.post(`${base}/ai/suggestions/${made.id}/decision`, {
+        decision: 'accepted',
+      });
+      expect(res.statusCode).toBe(404);
+    }
+
+    // The same day, the same lines, asked by someone else: their own draft (and their own half credit).
+    const before = summaryCalls().length;
+    const theirs = (await s.pm.browser.post(`${s.diary}/${day}/nova-summary`)).json();
+    expect(theirs.id).not.toBe(made.id);
+    expect(summaryCalls()).toHaveLength(before + 1);
+    expect((await list(s.pm.browser)).map((x) => x.id)).toEqual([theirs.id]);
+
+    // The person who asked decides it; it may be taken as edited, because they edit it in the day's notes.
+    const decided = await s.sm.browser.post(`${base}/ai/suggestions/${made.id}/decision`, {
+      decision: 'edited',
+    });
+    expect(decided.statusCode).toBe(200);
+    expect(decided.json()).toMatchObject({ id: made.id, status: 'edited' });
+  });
+
   it('shows a company only its own lines, and refuses days it cannot read or that are empty', async () => {
     const s = await setup('dsr-b');
     const day = yesterday();
