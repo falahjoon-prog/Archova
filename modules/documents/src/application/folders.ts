@@ -41,6 +41,12 @@ export function createFolderService(c: DocumentsContext) {
     return rows.filter((f) => !hidden.has(f.id));
   }
 
+  /** Mobile pull (modules/sync): the folders among `ids` the caller may open; the rest go out as deletes. */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    const wanted = new Set(ids);
+    return (await list(scope, projectId)).filter((f) => wanted.has(f.id));
+  }
+
   /** A folder the caller can open; hidden folders are a 404, like folders in other projects. */
   async function getVisible(scope: TenantScope, projectId: string, folderId: string) {
     const rows = await all(scope, projectId);
@@ -157,7 +163,7 @@ export function createFolderService(c: DocumentsContext) {
     return row;
   }
 
-  return { list, getVisible, hiddenIds, create, update };
+  return { list, visibleAmong, getVisible, hiddenIds, create, update };
 }
 
 const nameTaken = () =>
