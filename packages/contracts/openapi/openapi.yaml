@@ -5583,33 +5583,26 @@ components:
           type: array
           items: { type: integer }
     NovaSource:
-      description: A document or drawing revision page, an RFI or a defect, Nova used.
+      description: A document or drawing revision page, an RFI, a defect or a site diary day, Nova used.
       type: object
       required: [sourceType, sourceId, revisionId, revision, title, reference, page]
       properties:
-        sourceType: { type: string, enum: [document, drawing, rfi, defect] }
+        sourceType: { type: string, enum: [document, drawing, rfi, defect, diary] }
         sourceId:
-          description: The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`) or defect (`dfx_`).
+          description: The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`), defect (`dfx_`) or diary day (`dia_`).
           type: string
         revisionId:
-          description: The document revision (`rev_`) or drawing revision (`drv_`); for an RFI or a defect, its own id.
+          description: The document revision (`rev_`) or drawing revision (`drv_`). For an RFI, a defect or a diary day, its own id.
           type: string
         revision:
-          { type: string, description: The revision label; for an RFI or a defect, its status }
+          description: The revision label. For an RFI or a defect, its status. For a diary day, submitted or signed off.
+          type: string
         title:
-          {
-            type: string,
-            description: The document or sheet title; for an RFI,
-            its subject; for a defect,
-            its title,
-          }
+          description: The document or sheet title. For an RFI, its subject. For a defect, its title. For a diary day, "Site diary Monday 12 October 2026".
+          type: string
         reference:
-          {
-            type: [string, 'null'],
-            description: Document or sheet number,
-            the RFI number,
-            or the defect number,
-          }
+          description: The document or sheet number, the RFI number, the defect number, or for a diary day its date (`YYYY-MM-DD`).
+          type: [string, 'null']
         page: { type: integer, minimum: 1 }
     NovaCitation:
       allOf:
@@ -6180,8 +6173,16 @@ components:
           rfisUnchanged,
           defectsIndexed,
           defectsUnchanged,
+          diaryIndexed,
+          diaryUnchanged,
         ]
       properties:
+        diaryIndexed:
+          description: Submitted and signed-off diary days indexed in this run (new or changed).
+          type: integer
+        diaryUnchanged:
+          description: Diary days already indexed at their current text.
+          type: integer
         defectsIndexed:
           { type: integer, description: Issued defects indexed in this run (new or changed) }
         defectsUnchanged:

@@ -10,6 +10,7 @@ import type { Database, TenantContext, TenantScope } from '@archova/kernel';
 import { ocrPageText } from '../domain/ocr';
 import { PIPELINE_VERSION, chunkPages, type PageText } from '../domain/retrieval';
 import { defectRevisionId, defectText, type DefectSource } from '../domain/defect-source';
+import { diaryRevisionId, diaryText, diaryTitle, type DiarySource } from '../domain/diary-source';
 import { rfiRevisionId, rfiText, type RfiSource } from '../domain/rfi-source';
 import { toLines } from '../domain/titleblock';
 import { readPdfText, readScannedPages } from '../infra/pdf';
@@ -41,6 +42,8 @@ export interface ProjectIndexDeps {
   rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
   /** `defects.api.aiSources`: the issued defects with the notes on their history. */
   defectSources: (scope: TenantScope, projectId: string) => Promise<DefectSource[]>;
+  /** `diary.api.aiSources`: the submitted and signed-off days with all their lines. */
+  diarySources: (scope: TenantScope, projectId: string) => Promise<DiarySource[]>;
 }
 
 /** What an index entry records about a source. */
@@ -54,8 +57,10 @@ interface IndexedSource {
 export const RFI_ACCESS_SCOPE = 'rfis';
 /** The scope defect chunks carry: builder staff only (`defects.api.aiAccessScopes`). */
 export const DEFECT_ACCESS_SCOPE = 'defects';
+/** The scope diary chunks carry: builder staff who read the whole diary (`diary.api.aiAccessScopes`). */
+export const DIARY_ACCESS_SCOPE = 'diary';
 
-/** One record (an RFI, a defect) as the single page of text that is chunked and embedded. */
+/** One record (an RFI, a defect, a diary day) as the single page of text that is chunked and embedded. */
 interface RecordPage {
   sourceId: string;
   /** Changes whenever `text` does. */
@@ -88,6 +93,16 @@ const defectPage = (d: DefectSource): RecordPage => ({
   text: defectText(d),
 });
 
+const diaryPage = (d: DiarySource): RecordPage => ({
+  sourceId: d.entryId,
+  revisionId: diaryRevisionId(d),
+  revisionLabel: d.status.replace('_', ' '),
+  title: diaryTitle(d.date),
+  reference: d.date,
+  header: diaryTitle(d.date),
+  text: diaryText(d),
+});
+
 export interface IndexReport {
   /** Revisions indexed in this run. */
   indexed: number;
@@ -106,6 +121,9 @@ export interface IndexReport {
   /** Defects indexed in this run, and defects already indexed at this text and pipeline version. */
   defectsIndexed: number;
   defectsUnchanged: number;
+  /** Diary days indexed in this run, and days already indexed at this text and pipeline version. */
+  diaryIndexed: number;
+  diaryUnchanged: number;
 }
 
 /** The source types this service indexes and reconciles. */
@@ -119,13 +137,14 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
   const { database } = deps;
 
   async function indexProject(ctx: TenantContext, projectId: string): Promise<IndexReport> {
-    const { sources, rfiSources, defectSources, done } = await database.withTenantTx(
+    const { sources, rfiSources, defectSources, diarySources, done } = await database.withTenantTx(
       ctx,
       async (scope) => {
         await deps.assert(scope, 'ai.project_index.run', { projectId });
         const sources = await deps.sources(scope, projectId);
         const rfiSources = await deps.rfiSources(scope, projectId);
         const defectSources = await deps.defectSources(scope, projectId);
+        const diarySources = await deps.diarySources(scope, projectId);
         const done = await scope.tx
           .select({ revisionId: indexEntries.revisionId })
           .from(indexEntries)
@@ -135,7 +154,13 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
               eq(indexEntries.pipelineVersion, PIPELINE_VERSION),
             ),
           );
-        return { sources, rfiSources, defectSources, done: new Set(done.map((d) => d.revisionId)) };
+        return {
+          sources,
+          rfiSources,
+          defectSources,
+          diarySources,
+          done: new Set(done.map((d) => d.revisionId)),
+        };
       },
     );
 
@@ -150,6 +175,8 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       rfisUnchanged: 0,
       defectsIndexed: 0,
       defectsUnchanged: 0,
+      diaryIndexed: 0,
+      diaryUnchanged: 0,
     };
     const todo = sources.filter((s) => {
       if (done.has(s.revisionId)) report.unchanged++;
@@ -170,6 +197,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
 
     const rfiPages = rfiSources.map(rfiPage);
     const defectPages = defectSources.map(defectPage);
+    const diaryPages = diarySources.map(diaryPage);
     const rfiCounts = await indexRecords(ctx, projectId, 'rfi', RFI_ACCESS_SCOPE, rfiPages, done);
     report.rfisIndexed = rfiCounts.indexed;
     report.rfisUnchanged = rfiCounts.unchanged;
@@ -183,11 +211,22 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     );
     report.defectsIndexed = defectCounts.indexed;
     report.defectsUnchanged = defectCounts.unchanged;
+    const diaryCounts = await indexRecords(
+      ctx,
+      projectId,
+      'diary',
+      DIARY_ACCESS_SCOPE,
+      diaryPages,
+      done,
+    );
+    report.diaryIndexed = diaryCounts.indexed;
+    report.diaryUnchanged = diaryCounts.unchanged;
 
     await database.withTenantTx(ctx, async (scope) => {
       await reconcile(scope, projectId, sources);
       await reconcileRecords(scope, projectId, 'rfi', rfiPages);
       await reconcileRecords(scope, projectId, 'defect', defectPages);
+      await reconcileRecords(scope, projectId, 'diary', diaryPages);
     });
     return report;
   }
@@ -321,7 +360,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
   async function indexRecords(
     ctx: TenantContext,
     projectId: string,
-    sourceType: 'rfi' | 'defect',
+    sourceType: 'rfi' | 'defect' | 'diary',
     accessScope: string,
     pages: RecordPage[],
     done: Set<string>,
@@ -377,7 +416,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
   async function reconcileRecords(
     scope: TenantScope,
     projectId: string,
-    sourceType: 'rfi' | 'defect',
+    sourceType: 'rfi' | 'defect' | 'diary',
     pages: RecordPage[],
   ) {
     const live = pages.map((p) => p.revisionId);

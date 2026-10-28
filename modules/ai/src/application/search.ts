@@ -70,6 +70,14 @@ export async function searchChunks(scope: TenantScope, input: SearchInput) {
 
 export type ChunkHit = Awaited<ReturnType<typeof searchChunks>>[number];
 
+/** How a passage is named to the model: "RFI-031 Corridor hardware (closed)", "Site diary Monday 12 October 2026 (signed off)". */
+function passageTitle(r: ChunkHit): string {
+  if (r.sourceType === 'diary') return `${r.title} (${r.revisionLabel})`;
+  if (r.sourceType === 'rfi' || r.sourceType === 'defect')
+    return `${r.reference ?? r.sourceType.toUpperCase()} ${r.title} (${r.revisionLabel})`;
+  return `${r.reference ? `${r.reference} ` : ''}${r.title}, rev ${r.revisionLabel}`;
+}
+
 /** A search hit as a passage the model can cite. */
 export function toPassage(r: ChunkHit, id: string): PromptPassage {
   return {
@@ -79,10 +87,7 @@ export function toPassage(r: ChunkHit, id: string): PromptPassage {
       id: r.sourceId,
       revisionId: r.revisionId,
       page: r.page,
-      title:
-        r.sourceType === 'rfi' || r.sourceType === 'defect'
-          ? `${r.reference ?? r.sourceType.toUpperCase()} ${r.title} (${r.revisionLabel})`
-          : `${r.reference ? `${r.reference} ` : ''}${r.title}, rev ${r.revisionLabel}`,
+      title: passageTitle(r),
     },
     text: r.text,
   };
