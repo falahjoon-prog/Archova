@@ -54,6 +54,7 @@ export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
   project: (projectId: string) => `/project/${enc(projectId)}`,
+  diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
   newDefect: (projectId: string) => `/project/${enc(projectId)}/defects/new`,
   defect: (projectId: string, defectId: string) =>
