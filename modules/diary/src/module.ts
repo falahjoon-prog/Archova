@@ -11,6 +11,8 @@ export function createDiaryModule(services: KernelServices, deps: DiaryDeps) {
     api: {
       /** Subscriber for `workforce.attendance.session_closed.v1` (its `dayTotals`), run by the worker. */
       applyAttendanceTotals: service.applyAttendanceTotals,
+      /** The day's lines for the Nova diary summary; null when unreadable or absent. */
+      dayForSummary: service.dayForSummary,
     },
   };
 }
