@@ -179,6 +179,8 @@ Endpoints from [api.md §7](../architecture/api.md#7-mobile-sync-endpoints); cli
 - Records that left the caller's visibility for another reason (reassigned to a different company) come back as `op: "delete"`.
 - First load per scope is the same endpoint with `since=0`, paginated.
 
+**As built (pull):** `modules/sync` parses `scopes` (`project:{id}:{module,module};org`; anything else is 422) and, per project, checks `platform.projects.read` (else `{projectId, module: null}` is revoked) and each module source's read permission (else `{projectId, module}`). It reads `shared.change_feed` in `(since, head]` for the allowed project and module pairs; writers hold the org's sequence row until they commit, so everything up to `head` is visible and an empty page can safely move the checkpoint to `head`. Only the last change per record is sent. Each module offers a `SyncSource` (`@archova/kernel`): `load` returns the records among the ids that the caller may see, with the same DTO as REST, and any id it does not return goes out as `delete` (deleted, or no longer visible). A module with no source yet (only `defects` so far) is skipped, not an error. The `access_revoked` feed rows are not read; revocation is decided from current membership and permissions.
+
 **Push:** `POST {o}/sync/push`
 
 ```

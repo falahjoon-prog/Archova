@@ -1,0 +1,23 @@
+import type { TenantScope } from './db';
+
+/**
+ * What a module offers the mobile pull (backend 04 §4). The sync module reads `shared.change_feed` and asks the
+ * source of each changed record's module for the record as the caller may see it.
+ */
+export interface SyncSource {
+  /** `shared.change_feed.module`, and the module name devices ask for in `project:{id}:{module}`. */
+  module: string;
+  /** Read permission on a project; a caller without it has that module revoked. `null` for org-wide data. */
+  permission: string | null;
+  /** The id devices see, e.g. `dfx_…`. */
+  publicId(entityType: string, id: string): string;
+  /**
+   * The records the caller can see among `ids` (up to 500), keyed by id, with the same DTO as the REST endpoints.
+   * Ids missing from the result were deleted or are not visible to the caller (company scoping, privacy), and are
+   * sent to the device as deletes.
+   */
+  load(
+    scope: TenantScope,
+    request: { projectId: string | null; entityType: string; ids: readonly string[] },
+  ): Promise<Map<string, { version: number; data: Record<string, unknown> }>>;
+}
