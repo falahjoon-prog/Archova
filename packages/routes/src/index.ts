@@ -33,6 +33,12 @@ export const webRoutes = {
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
+  inductions: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/inductions`,
+  /** The builder for one induction. (`induction` below is the worker's guest link.) */
+  inductionBuilder: (orgSlug: string, projectId: string, inductionId: string) =>
+    `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
+  inductionRegister: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/inductions/register`,
   tenderPackages: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/estimating/packages`,
   tenderPackage: (orgSlug: string, projectId: string, packageId: string) =>
