@@ -907,6 +907,28 @@ export function createRfiService(deps: RfisDeps) {
     return { id, created: true };
   }
 
+  /**
+   * Mobile pull (modules/sync): the RFIs among `ids` the caller may see, by the same rule as `list` and `detail`;
+   * ids not returned are sent to the device as deletes.
+   */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length) return [];
+    const { date } = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      inArray(rfis.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(rfis)
+      .where(and(...conditions));
+    return withAssignees(scope, rows, date);
+  }
+
   return {
     list,
     detail,
@@ -924,6 +946,7 @@ export function createRfiService(deps: RfisDeps) {
     aiAccessScopes,
     openOnDrawing,
     ballInCourt,
+    visibleAmong,
   };
 }
 
