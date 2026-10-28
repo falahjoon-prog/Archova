@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { assertAustralianModelId, isAustralianRegion } from '@archova/mod-ai';
 
+// Zod 4's .default() skips the transform and returns the value as-is; .prefault() feeds it through like zod 3 did.
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
 const list = z.string().transform((v) =>
   v
@@ -16,9 +17,9 @@ const Env = z.object({
   API_DATABASE_URL: z.string().url(),
   API_DATABASE_POOL_MAX: z.coerce.number().int().default(10),
   API_REDIS_URL: z.string().url().optional(),
-  API_APP_ORIGINS: list.default('http://localhost:3000'),
-  API_PUBLIC_HOSTS: list.default('localhost:4000'),
-  API_TRUST_PROXY: bool.default('false'),
+  API_APP_ORIGINS: list.prefault('http://localhost:3000'),
+  API_PUBLIC_HOSTS: list.prefault('localhost:4000'),
+  API_TRUST_PROXY: bool.prefault('false'),
   API_JWT_PRIVATE_JWK: z.string().optional(),
   API_JWT_ISSUER: z.string().optional(),
   API_WEB_SIGN_IN_URL: z.string().url().default('http://localhost:3000/login'),
