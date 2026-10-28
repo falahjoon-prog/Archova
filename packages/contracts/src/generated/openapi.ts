@@ -1046,6 +1046,37 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests which field each column of an import file fills (F31).
+         * @description The import screen reads the file and sends, for each column, its header, up to five of its values and, for a
+         *     column with at most 30 distinct values (a status or priority), those values. Nova suggests the field each
+         *     column fills for the kind of record (`entity`), with a confidence, and for columns that fill a field with
+         *     fixed values (status, priority) what each value in the file means. Code keeps only fields that exist, gives
+         *     each field to one column, withdraws a suggestion whose values don't look like that kind of field (a date
+         *     column of names), fills `examples` from the file, and lists the required fields no column fills in
+         *     `missingRequired`. Nothing is imported: the person confirms or changes every suggestion, and the screen
+         *     passes `suggestionId` when it starts the import job. The suggestion keeps no values from the file and is
+         *     private to the caller. Costs a quarter of a Nova credit.
+         */
+        post: operations["suggestImportMappingWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
         parameters: {
             query?: never;
@@ -3314,6 +3345,56 @@ export interface components {
                 /** @description The sheet was read with OCR, so the person should check the quoted text against the drawing. */
                 scanned: boolean;
             } | null;
+        };
+        /** @enum {string} */
+        ImportEntity: "rfi" | "defect" | "drawing_register" | "company";
+        NovaImportMapping: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The saved suggestion (`ais_`), private to the caller. Pass it when the import job starts, then decide it. */
+            suggestionId: string;
+            entity: components["schemas"]["ImportEntity"];
+            /** @description The fields a column of this record can fill, for the screen to offer when the person changes a suggestion. */
+            fields: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                kind: "text" | "number" | "date" | "enum" | "email" | "phone" | "abn";
+                required: boolean;
+                /** @description For `enum` fields, the values Archova stores; empty for the rest. */
+                values: {
+                    value: string;
+                    label: string;
+                }[];
+            }[];
+            /** @description One entry per column of the file, in order. */
+            columns: {
+                index: number;
+                header: string;
+                /** @description A field key */
+                field: string | null;
+                /** @enum {string} */
+                confidence: "high" | "medium" | "low";
+                /** @description The first distinct values in the file, for the person to check the suggestion against. */
+                examples: string[];
+                /**
+                 * @description duplicate_field means another column fits that field better; unlike_values means the column's values don't look like that kind of field.
+                 * @enum {string|null}
+                 */
+                warning: "duplicate_field" | "unlike_values" | null;
+            }[];
+            /** @description For columns that fill a field with fixed values, what each value in the file means. */
+            values: {
+                index: number;
+                field: string;
+                pairs: {
+                    source: string;
+                    /** @description A value of the field */
+                    value: string | null;
+                }[];
+            }[];
+            /** @description Required fields that no column fills. */
+            missingRequired: string[];
         };
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
@@ -7028,6 +7109,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaDefectTag"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    suggestImportMappingWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    entity: components["schemas"]["ImportEntity"];
+                    columns: {
+                        header: string;
+                        samples: string[];
+                        distinct?: string[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The suggested mapping */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaImportMapping"];
                 };
             };
             default: components["responses"]["Problem"];

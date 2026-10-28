@@ -3,6 +3,7 @@
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
 import { heuristicDefectTag } from '../../eval/suites/defect-tag';
+import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
 import { heuristicDrawingCompare } from '../../eval/suites/drawing-compare';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
@@ -31,6 +32,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'rfi.draft': heuristicRfiDraft,
   'drawing.compare': heuristicDrawingCompare,
   'defect.tag': heuristicDefectTag,
+  'import.mapping': heuristicImportMapping,
 };
 
 export {

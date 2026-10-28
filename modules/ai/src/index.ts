@@ -12,6 +12,7 @@ import { createDiarySummaryService } from './application/diary-summary';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
 import { createDefectTagService } from './application/defect-tag';
+import { createImportMappingService } from './application/import-mapping';
 import {
   createDrawingCompareService,
   type DrawingRevisionRef,
@@ -70,6 +71,7 @@ export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { RfiDraft } from './application/rfi-draft';
 export type { DefectTagSuggestion } from './application/defect-tag';
+export type { ImportMappingSuggestion } from './application/import-mapping';
 export type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 export type {
   DrawingCompare,
@@ -282,6 +284,11 @@ export function createAiModule(
     projectCompanies: deps.projectCompanies,
     openDefectsNear: deps.openDefectsNear,
   });
+  const importMappings = createImportMappingService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+  });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
     gateway,
@@ -315,6 +322,7 @@ export function createAiModule(
       drawingCompare,
       diarySummary,
       defectTags,
+      importMappings,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -329,6 +337,8 @@ export function createAiModule(
       draftRfi: rfiDrafts.draft,
       /** F5: a title, trade, priority and assignee companies from a defect photo and its pin; nothing is saved. */
       tagDefect: defectTags.tag,
+      /** F31: which field each column of an import file fills, and what its status values mean; nothing is imported. */
+      suggestImportMapping: importMappings.suggest,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
