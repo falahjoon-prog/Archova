@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import { encodeId, uuidv7 } from '@archova/domain';
-import { daysBetween, localDateOf, type LocalDate } from '@archova/time';
+import { daysBetween, localDateOf, zonedParts, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
@@ -17,6 +17,7 @@ import {
   lateCutoff,
   recordTime,
   type DelayType,
+  type DiaryStatus,
   type LineKind,
 } from '../domain/diary';
 import {
@@ -57,9 +58,36 @@ export const MAX_RANGE_DAYS = 93;
 
 export interface DiaryDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'companyExists'>;
+  platform: Pick<PlatformApi, 'getProject' | 'companyExists' | 'projectCompanies'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   now?: () => Date;
+}
+
+/** One day as the diary summary (ai F4) reads it: same shape as `DiaryDayForSummary` in `@archova/mod-ai`. */
+export interface DiaryDayForSummary {
+  entryId: string;
+  date: string;
+  timeZone: string;
+  status: DiaryStatus;
+  version: number;
+  weather: {
+    summary: string | null;
+    minC: number | null;
+    maxC: number | null;
+    rainMm: number | null;
+    lostHours: number | null;
+  } | null;
+  lines: Array<{
+    id: string;
+    kind: string;
+    text: string;
+    company: string | null;
+    headcount: number | null;
+    hours: number | null;
+    delayCause: DelayType | null;
+    at: string | null;
+    photoCaptions: string[];
+  }>;
 }
 
 export interface HeaderPatch {
@@ -151,6 +179,11 @@ function toColumns(values: LineValues): LineValues {
     out[k] = k === 'receivedAt' && typeof v === 'string' ? new Date(v) : v;
   return out;
 }
+
+const localTimeOf = (at: Date, timeZone: string) => {
+  const p = zonedParts(at, timeZone);
+  return `${String(p.hour).padStart(2, '0')}:${String(p.minute).padStart(2, '0')}`;
+};
 
 export function createDiaryService(deps: DiaryDeps) {
   const now = deps.now ?? (() => new Date());
@@ -479,6 +512,100 @@ export function createDiaryService(deps: DiaryDeps) {
       },
       lines,
       amendments: amends,
+    };
+  }
+
+  /**
+   * The day's lines for the diary summary, with internal ids. Null when there is no entry or the caller can't
+   * read the diary; a company-scoped reader gets only their own lines, as in `detail`. Photos carry no captions.
+   */
+  async function dayForSummary(
+    scope: TenantScope,
+    projectId: string,
+    date: LocalDate,
+  ): Promise<DiaryDayForSummary | null> {
+    if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return null;
+    if (!(await findEntry(scope, projectId, date))) return null;
+    const { entry, lines } = await detail(scope, projectId, date);
+    const { timezone } = await projectInfo(scope, projectId);
+    const names = new Map(
+      (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
+    );
+    const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
+    const company = (id: string | null | undefined) => (id ? (names.get(id) ?? null) : null);
+    const join = (...parts: Array<string | null | undefined>) =>
+      parts.filter((x) => x && x.trim()).join(' - ');
+    const out: DiaryDayForSummary['lines'] = [];
+    const add = (
+      kind: string,
+      row: { id: string },
+      f: Partial<DiaryDayForSummary['lines'][number]> & { text: string },
+    ) =>
+      out.push({
+        id: row.id,
+        kind,
+        company: null,
+        headcount: null,
+        hours: null,
+        delayCause: null,
+        at: null,
+        photoCaptions: [],
+        ...f,
+      });
+    for (const r of lines.labour as Array<typeof LINE_TABLES.labour.$inferSelect>)
+      add('labour', r, {
+        text: join(r.trade, r.notes) || 'Labour',
+        company: company(r.companyId),
+        headcount: r.headcount,
+        hours: r.hours,
+      });
+    for (const r of lines.plant as Array<typeof LINE_TABLES.plant.$inferSelect>)
+      add('plant', r, {
+        text: join(r.description, `x${r.quantity}`, r.status === 'working' ? null : r.status),
+        company: company(r.companyId),
+        hours: r.hours,
+      });
+    for (const r of lines.delivery as Array<typeof LINE_TABLES.delivery.$inferSelect>)
+      add('delivery', r, {
+        text: join(r.description, r.docketNumber ? `docket ${r.docketNumber}` : null),
+        company: r.supplierName ?? company(r.supplierCompanyId),
+        at: r.receivedAt ? localTimeOf(r.receivedAt, timezone) : null,
+      });
+    for (const r of lines.visitor as Array<typeof LINE_TABLES.visitor.$inferSelect>)
+      add('visitor', r, {
+        text: join(r.name, r.purpose),
+        company: r.company,
+        at: hhmm(r.timeIn),
+      });
+    for (const r of lines.delay as Array<typeof LINE_TABLES.delay.$inferSelect>)
+      add('delay', r, { text: r.description, hours: r.hours, delayCause: r.type });
+    for (const r of lines.stand_down as Array<typeof LINE_TABLES.stand_down.$inferSelect>)
+      add('stand_down', r, { text: r.reason ?? 'Stand down', at: hhmm(r.startTime) });
+    for (const r of lines.event as Array<typeof LINE_TABLES.event.$inferSelect>)
+      add(r.kind, r, { text: r.description, at: hhmm(r.at) });
+    const raw = entry.weatherOverride ?? entry.weather;
+    const c = raw?.conditions;
+    const summary = join(c?.am, c?.midday, c?.pm, entry.weatherNotes) || null;
+    const lostHours = (lines.delay as unknown as Array<{ type: DelayType; hours: number }>)
+      .filter((d) => d.type === 'weather')
+      .reduce((n, d) => n + d.hours, 0);
+    return {
+      entryId: entry.id,
+      date: entry.date,
+      timeZone: timezone,
+      status: entry.status,
+      version: entry.version,
+      weather:
+        raw || summary || lostHours
+          ? {
+              summary,
+              minC: raw?.minTempC ?? null,
+              maxC: raw?.maxTempC ?? null,
+              rainMm: raw?.rainfallMm ?? null,
+              lostHours: lostHours ? Math.round(lostHours * 100) / 100 : null,
+            }
+          : null,
+      lines: out,
     };
   }
 
@@ -891,6 +1018,7 @@ export function createDiaryService(deps: DiaryDeps) {
     list,
     detail,
     applyAttendanceTotals,
+    dayForSummary,
     saveHeader,
     submit,
     signOff,
