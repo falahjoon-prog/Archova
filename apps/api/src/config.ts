@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { assertAustralianModelId, isAustralianRegion } from '@archova/mod-ai';
+import { loadAiConfig } from '@archova/mod-ai';
 
 // Zod 4's .default() skips the transform and returns the value as-is; .prefault() feeds it through like zod 3 did.
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
@@ -43,17 +43,7 @@ const Env = z.object({
   // Until apps/worker scans in the background, the scan holds the upload's transaction, so keep this short; slower
   // scans are retried on later reads and fail closed after SCAN_TIMEOUT_MS.
   API_CLAMAV_TIMEOUT_MS: z.coerce.number().int().default(30_000),
-  // Nova (ai/02): Bedrock in Australia when deployed; the fake provider locally and in tests.
-  API_AI_PROVIDER: z.enum(['fake', 'bedrock']).default('fake'),
-  API_AI_REGION: z.string().default('ap-southeast-2'),
-  API_AI_BEDROCK_ENDPOINT: z.string().url().optional(),
-  // OCR of scanned pages: Textract in the same Australian region (ai/02), through its VPC endpoint when set.
-  API_AI_TEXTRACT_ENDPOINT: z.string().url().optional(),
-  API_AI_MODEL_FAST: z.string().optional(),
-  API_AI_MODEL_STANDARD: z.string().optional(),
-  API_AI_MODEL_ADVANCED: z.string().optional(),
-  // Ask Nova embeddings: Titan Text Embeddings V2 in Sydney (ai/02 §6), 1024 dimensions.
-  API_AI_MODEL_EMBEDDING: z.string().default('amazon.titan-embed-text-v2:0'),
+  // Nova's API_AI_* variables are read by loadAiConfig (mod-ai), which the ai-worker shares.
   // One-time codes and link invites (security-licensing/11). `log` writes them to the log instead of sending: local
   // and demo only. SES and AWS End User Messaging SMS in Sydney arrive with the infrastructure work.
   API_MESSAGES: z.enum(['log', 'disabled']).default('disabled'),
@@ -114,18 +104,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
         timeoutMs: e.API_CLAMAV_TIMEOUT_MS,
       },
     },
-    ai: {
-      provider: e.API_AI_PROVIDER,
-      region: e.API_AI_REGION,
-      endpoint: e.API_AI_BEDROCK_ENDPOINT,
-      ocrEndpoint: e.API_AI_TEXTRACT_ENDPOINT,
-      models: {
-        fast: e.API_AI_MODEL_FAST ?? '',
-        standard: e.API_AI_MODEL_STANDARD ?? '',
-        advanced: e.API_AI_MODEL_ADVANCED ?? '',
-      },
-      embeddingModel: e.API_AI_MODEL_EMBEDDING,
-    },
+    ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,
     internal: {
@@ -142,18 +121,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error(
       'Set all of API_FILES_CDN_DOMAIN, API_FILES_CDN_KEY_PAIR_ID and API_FILES_CDN_PRIVATE_KEY, or none',
     );
-  if (config.ai.provider === 'bedrock') {
-    const unset = (['fast', 'standard', 'advanced'] as const).filter((t) => !config.ai.models[t]);
-    if (unset.length)
-      throw new Error(
-        `API_AI_PROVIDER=bedrock needs model ids for: ${unset.map((t) => `API_AI_MODEL_${t.toUpperCase()}`).join(', ')}`,
-      );
-    if (!isAustralianRegion(config.ai.region))
-      throw new Error(`API_AI_REGION must be an Australian region (X25), not ${config.ai.region}`);
-    for (const t of ['fast', 'standard', 'advanced'] as const)
-      assertAustralianModelId(config.ai.models[t]);
-    assertAustralianModelId(config.ai.embeddingModel);
-  }
   if (Boolean(e.API_S3_ACCESS_KEY_ID) !== Boolean(e.API_S3_SECRET_ACCESS_KEY))
     throw new Error('Set both API_S3_ACCESS_KEY_ID and API_S3_SECRET_ACCESS_KEY, or neither');
   if (config.files.scanner === 'guardduty' && config.files.store !== 's3')
@@ -180,7 +147,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (!config.redisUrl) missing.push('API_REDIS_URL (sessions, revocation, idempotency)');
     if (config.files.store !== 's3') missing.push('API_FILES_STORE=s3');
     if (config.files.scanner === 'none') missing.push('API_FILES_SCANNER=guardduty or clamav');
-    if (config.ai.provider !== 'bedrock') missing.push('API_AI_PROVIDER=bedrock (Nova)');
+    if (config.ai.provider.kind !== 'bedrock') missing.push('API_AI_PROVIDER=bedrock (Nova)');
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
     if (missing.length)

@@ -116,6 +116,8 @@ There is no renderer in the API image: pdf.js needs a native canvas (`@napi-rs/c
 | `fake` (default)  | Tests and local development. No network or credentials; tests script replies per task.                                                                                                                                                                                                                                                                                                                                |
 | `bedrock`         | Deployed environments. Needs `API_AI_REGION` in Australia, `API_AI_MODEL_FAST/STANDARD/ADVANCED` and `API_AI_MODEL_EMBEDDING` (default Titan Text Embeddings V2). Only in-region model ids or `au.` inference profiles are accepted (X25); `apac.`, `us.`, `global.` and the rest are refused. OCR uses Textract in the same region (`textract:DetectDocumentText`; `API_AI_TEXTRACT_ENDPOINT` for its VPC endpoint). |
 
+`loadAiConfig(env)` (`src/config.ts`) reads these variables for every process that runs the module, so the api and the ai-worker share one set and one set of checks: a bad region or a non-Australian model id stops the process at start.
+
 Vendor SDKs may be imported only in `src/infra/providers/` (`pnpm check:boundaries`).
 
 ## Evals
