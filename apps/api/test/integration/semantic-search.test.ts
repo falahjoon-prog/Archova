@@ -316,4 +316,28 @@ describe('Semantic search (F6)', () => {
     );
     expect(cross.statusCode).toBe(404);
   });
+  it('limits how often one person can search, since each search pays for an embedding', async () => {
+    const s = await setup('srch-rate');
+    const folder = (await s.pm.browser.post(`${s.base}/folders`, { name: 'Specs' })).json();
+    await addDocument(s, folder.id, 'Services Specification', 'SPEC-0900', [
+      ['Sprinkler isolation valves are above the lift lobby ceiling.'],
+    ]);
+    await index(s);
+    // 120 searches in ten minutes are allowed (one every five seconds); the next is refused.
+    for (let i = 0; i < 120; i++) {
+      const res = await search(s.pm.browser, s, { query: `sprinkler valve ${i}` });
+      if (res.statusCode !== 200) throw new Error(`search ${i + 1}: ${res.statusCode} ${res.body}`);
+    }
+    const over = await search(s.pm.browser, s, { query: 'sprinkler valve' });
+    expect(over.statusCode).toBe(429);
+    expect(over.json()).toMatchObject({ code: 'rate_limited' });
+
+    // Someone else is not held up by it, and Ask (limited by its own model runs) still works for this person.
+    const other = await setup('srch-rate-other');
+    expect((await search(other.pm.browser, other, { query: 'sprinkler valve' })).statusCode).toBe(
+      200,
+    );
+    const ask = await s.pm.browser.post(`${s.base}/ai/ask`, { question: 'Where are the valves?' });
+    expect(ask.statusCode).toBe(200);
+  });
 });
