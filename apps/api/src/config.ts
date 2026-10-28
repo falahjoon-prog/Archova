@@ -57,7 +57,7 @@ const Env = z.object({
   API_LINK_BASE_URL: z.string().url().optional(),
   // Owner console (backend 09): /internal/v1 answers only on these hosts and for requests from these origins.
   API_INTERNAL_HOSTS: list.prefault('localhost:4000'),
-  API_ADMIN_ORIGINS: list.prefault('http://localhost:3200'),
+  API_ADMIN_ORIGINS: list.prefault('http://localhost:3008'),
   // Password sign-in for staff: on by default outside production; hosted staff use the staff IdP.
   API_STAFF_LOCAL_LOGIN: bool.optional(),
   // Solo-owner mode (Sam 12 §4): how long the only Owner waits before approving their own price book. 24 in production.

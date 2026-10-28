@@ -19,7 +19,7 @@ docker compose up -d postgres
 pnpm admin:local
 ```
 
-The first start sets up the database and two sample staff accounts, then starts the API (port 4000) and the console. Open http://localhost:3200 when both say ready. Stop with `Ctrl+C`.
+The first start sets up the database and two sample staff accounts, then starts the API (port 4000) and the console. Open http://localhost:3008 when both say ready. Stop with `Ctrl+C`.
 
 | Who | Email | Password | Can |
 |---|---|---|---|

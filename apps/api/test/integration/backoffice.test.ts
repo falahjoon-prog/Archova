@@ -6,7 +6,7 @@ import { createOrg, createTestContext, signUp, type TestContext } from './helper
 
 let t: TestContext;
 const HOST = 'localhost:4000';
-const ORIGIN = 'http://localhost:3200';
+const ORIGIN = 'http://localhost:3008';
 const PASSWORD = 'Console-Test-Pw-1';
 
 beforeAll(async () => {
