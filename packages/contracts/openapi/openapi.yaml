@@ -4890,6 +4890,10 @@ components:
         fileId: { $ref: '#/components/schemas/FileRef' }
         pageIndex: { type: integer, minimum: 0, maximum: 10000 }
         drawingDate: { type: string, format: date }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `drawing.register` suggestion this sheet was read from; recorded on the revision and its publish event.
     UpdateDraftDrawingRevisionRequest:
       type: object
       additionalProperties: false

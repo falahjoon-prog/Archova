@@ -17,7 +17,8 @@ export function WorkerShell({
   children,
   footer,
 }: {
-  site: InductionSite;
+  /** Null when the link didn't open, so there is no site to name. */
+  site: InductionSite | null;
   step?: { current: number; total: number };
   saveState?: SaveState;
   online: boolean;
@@ -27,11 +28,13 @@ export function WorkerShell({
   return (
     <div className="worker-shell">
       <header className="worker-shell__header">
-        <p className="worker-shell__site">{site.siteName}</p>
-        <a className="worker-shell__help" href={`tel:${site.officePhone.replace(/\s/g, '')}`}>
-          <Phone size={16} aria-hidden="true" /> Help
-          <span className="u-visually-hidden">: call the site office on {site.officePhone}</span>
-        </a>
+        <p className="worker-shell__site">{site?.siteName ?? 'Site induction'}</p>
+        {site?.officePhone ? (
+          <a className="worker-shell__help" href={`tel:${site.officePhone.replace(/\s/g, '')}`}>
+            <Phone size={16} aria-hidden="true" /> Help
+            <span className="u-visually-hidden">: call the site office on {site.officePhone}</span>
+          </a>
+        ) : null}
       </header>
       {step ? (
         <ProgressStepper

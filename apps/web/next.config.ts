@@ -32,6 +32,25 @@ const nextConfig: NextConfig = {
    * the browser is same-origin with the API. Locally the Next dev server stands in for that path rule.
    * The proxy forwards `X-Forwarded-Host: localhost:3000`, which the API trusts with API_TRUST_PROXY=true.
    */
+  /**
+   * Guest induction pages (`/i/*`, X45, Sam's review) run only our own scripts: nothing from another origin can run
+   * on a page that holds a worker's name, mobile number and ticket photos. Inline scripts stay because Next
+   * emits them; the rest of the policy is left to the app-wide one.
+   */
+  async headers() {
+    const scriptSrc = isDev ? "'self' 'unsafe-inline' 'unsafe-eval'" : "'self' 'unsafe-inline'";
+    return [
+      {
+        source: '/i/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: `script-src ${scriptSrc}; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`,
+          },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     if (!isDev) return [];
     return [

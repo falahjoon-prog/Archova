@@ -1,61 +1,72 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Button, Dialog, StatusPill, WatchToEndVideo, formatClock } from '@archova/ui';
+import {
+  Button,
+  Dialog,
+  SkeletonRows,
+  StatusPill,
+  WatchToEndVideo,
+  formatClock,
+} from '@archova/ui';
 import { FileText, ZoomIn, ZoomOut } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { inductionSource } from '../data/source';
-import { useProgressMutation } from '../hooks/useInduction';
+import { useInductionSource, useProgressMutation } from '../hooks/useInduction';
 import { stepNumber, totalSteps } from '../lib/flow';
-import type { InductionSection, SectionProgress } from '../lib/types';
+import type { SectionBlock } from '../lib/types';
 import { StickyButton, WorkerShell } from '../components/WorkerShell';
 import type { StepProps } from './types';
 
-type Of<T extends InductionSection['type']> = Extract<InductionSection, { type: T }>;
+type Of<T extends SectionBlock['type']> = Extract<SectionBlock, { type: T }>;
+
+/** Blocks that must be watched, paged through or opened before the section counts; the rest are read. */
+const needsAction = (b: SectionBlock) =>
+  b.type === 'video' || b.type === 'slides' || b.type === 'swms';
+
+const BLOCKED_LABEL: Record<string, string> = {
+  video: 'Watch to the end to continue',
+  slides: 'See every page to continue',
+  swms: 'Open each SWMS to continue',
+};
 
 /**
- * B3: one section per screen, in order. Each type has its own rule for "done" (video watched to the end, every
- * slide seen, every SWMS opened, text and map read), and the server's answer is what unlocks Next (IND-AC4).
+ * B3: one section per screen, in order. A section is its blocks; each video is watched to the end, every slide
+ * page seen and every SWMS opened, and then Next records the section on the server, which unlocks the following
+ * steps (IND-AC4). A section already recorded stays open for reading again.
  */
 export function SectionStep({ opened, go, online, index }: StepProps & { index: number }) {
   const { site, induction, progress, sessionId } = opened;
+  const source = useInductionSource();
   const section = induction.sections[index]!;
-  const state: SectionProgress = progress.sections[section.id] ?? { complete: false };
-  const n = induction.sections.length;
+  const state = progress.sections[section.id] ?? { complete: false };
+  const n = induction.sectionCount;
   const next = () => go(index + 1 < n ? { kind: 'section', index: index + 1 } : { kind: 'quiz' });
   const back = () => go(index > 0 ? { kind: 'section', index: index - 1 } : { kind: 'details' });
 
-  const watch = useProgressMutation((sid, a: { furthest: number }) =>
-    inductionSource.reportWatch(sid, section.id, a.furthest),
-  );
-  const page = useProgressMutation((sid, a: { page: number }) =>
-    inductionSource.viewPage(sid, section.id, a.page),
-  );
-  const open = useProgressMutation((sid, a: { documentId: string }) =>
-    inductionSource.openDocument(sid, section.id, a.documentId),
-  );
+  const [done, setDone] = useState<ReadonlySet<number>>(new Set());
+  const [videoLeftS, setVideoLeftS] = useState<number | null>(null);
+  const openedAt = useRef(Date.now());
   const read = useProgressMutation((sid, _: null) =>
-    inductionSource.completeSection(sid, section.id),
+    source.completeSection(sid, section.id, (Date.now() - openedAt.current) / 1000),
   );
-  const saving = [watch, page, open, read].some((m) => m.isPending);
-  const error = watch.error ?? page.error ?? open.error ?? read.error;
+  const pending = section.blocks.findIndex((b, i) => needsAction(b) && !done.has(i));
+  const markDone = (i: number) => setDone((d) => (d.has(i) ? d : new Set(d).add(i)));
 
   let footer;
-  if (section.type === 'video') {
-    const left = section.durationS - (state.watchedS ?? 0);
+  if (state.complete) {
     footer = (
-      <StickyButton back={back} blocked={!state.complete} onClick={next}>
-        {state.complete ? 'Next' : `Watch to the end to continue (${formatClock(left)} left)`}
+      <StickyButton back={back} onClick={next}>
+        Next
       </StickyButton>
     );
-  } else if (section.type === 'slides' || section.type === 'swms') {
+  } else if (pending >= 0) {
+    const type = section.blocks[pending]!.type;
     footer = (
-      <StickyButton back={back} blocked={!state.complete} onClick={next}>
-        {state.complete
-          ? 'Next'
-          : section.type === 'slides'
-            ? 'See every page to continue'
-            : 'Open each SWMS to continue'}
+      <StickyButton back={back} blocked onClick={next}>
+        {type === 'video' && videoLeftS !== null
+          ? `${BLOCKED_LABEL.video} (${formatClock(videoLeftS)} left)`
+          : BLOCKED_LABEL[type]}
       </StickyButton>
     );
   } else {
@@ -63,9 +74,7 @@ export function SectionStep({ opened, go, online, index }: StepProps & { index: 
       <StickyButton
         back={back}
         loading={read.isPending}
-        onClick={() =>
-          state.complete ? next() : read.mutate({ sessionId, args: null }, { onSuccess: next })
-        }
+        onClick={() => read.mutate({ sessionId, args: null }, { onSuccess: next })}
       >
         Next
       </StickyButton>
@@ -79,7 +88,13 @@ export function SectionStep({ opened, go, online, index }: StepProps & { index: 
         current: stepNumber({ kind: 'section', index }, induction),
         total: totalSteps(induction),
       }}
-      saveState={saving ? 'saving' : Object.keys(progress.sections).length ? 'saved' : null}
+      saveState={
+        read.isPending
+          ? 'saving'
+          : Object.values(progress.sections).some((s) => s.complete)
+            ? 'saved'
+            : null
+      }
       online={online}
       footer={footer}
     >
@@ -88,66 +103,117 @@ export function SectionStep({ opened, go, online, index }: StepProps & { index: 
           Section {index + 1} of {n}
         </p>
         <h1 className="worker-title">{section.title}</h1>
-        {section.type === 'video' ? (
-          <WatchToEndVideo
-            title={section.title}
-            src={section.src}
-            lowDataSrc={section.lowDataSrc}
-            captionsSrc={section.captionsSrc}
-            transcript={section.transcript}
-            enforce={!state.complete}
-            onProgress={(p) => {
-              if (p.furthest > (state.watchedS ?? 0))
-                watch.mutate({ sessionId, args: { furthest: p.furthest } });
-            }}
+        {section.blocks.map((block, i) => (
+          <Block
+            key={i}
+            block={block}
+            watched={state.complete || done.has(i)}
+            onDone={() => markDone(i)}
+            onVideoLeft={i === pending ? setVideoLeftS : undefined}
           />
-        ) : section.type === 'slides' ? (
-          <Slides
-            section={section}
-            onView={(i) => {
-              if (!state.pagesSeen?.includes(i)) page.mutate({ sessionId, args: { page: i } });
-            }}
-          />
-        ) : section.type === 'text' ? (
-          <TextBlocks section={section} />
-        ) : section.type === 'swms' ? (
-          <Swms
-            section={section}
-            opened={state.opened ?? []}
-            onOpen={(documentId) => {
-              if (!state.opened?.includes(documentId))
-                open.mutate({ sessionId, args: { documentId } });
-            }}
-          />
-        ) : (
-          <SiteMap section={section} />
-        )}
-        <ErrorAlert error={error} title="That didn't save" />
+        ))}
+        <ErrorAlert error={read.error} title="That didn't save" />
       </div>
     </WorkerShell>
   );
 }
 
-/** One page at a time with large Back and Next; each page shown is reported once. */
-function Slides({ section, onView }: { section: Of<'slides'>; onView: (page: number) => void }) {
+function Block({
+  block,
+  watched,
+  onDone,
+  onVideoLeft,
+}: {
+  block: SectionBlock;
+  watched: boolean;
+  onDone: () => void;
+  onVideoLeft?: ((seconds: number) => void) | undefined;
+}) {
+  switch (block.type) {
+    case 'video':
+      return <Video block={block} watched={watched} onDone={onDone} onLeft={onVideoLeft} />;
+    case 'slides':
+      return <Slides block={block} onAllSeen={onDone} />;
+    case 'text':
+      return <TextBody body={block.body} />;
+    case 'swms':
+      return <Swms block={block} onOpen={onDone} />;
+    case 'document':
+      return <DocumentLink block={block} />;
+    case 'image':
+      return <Picture block={block} />;
+  }
+}
+
+/** The address of a stored file is short-lived, so it is asked for when the block shows. */
+function useFileUrl(fileId: string) {
+  const source = useInductionSource();
+  return useQuery({
+    queryKey: ['induction', 'file', fileId],
+    queryFn: () => source.fileUrl(fileId),
+    staleTime: 4 * 60_000,
+  });
+}
+
+function Video({
+  block,
+  watched,
+  onDone,
+  onLeft,
+}: {
+  block: Of<'video'>;
+  watched: boolean;
+  onDone: () => void;
+  onLeft: ((seconds: number) => void) | undefined;
+}) {
+  const url = useFileUrl(block.fileId);
+  if (url.isPending) return <SkeletonRows rows={2} label="Loading the video…" />;
+  if (url.isError) return <ErrorAlert error={url.error} title="The video didn't load" />;
+  return (
+    <WatchToEndVideo
+      title={block.title ?? 'Induction video'}
+      src={url.data}
+      enforce={!watched}
+      onProgress={(p) => {
+        onLeft?.(p.duration - p.furthest);
+        if (p.furthest >= p.duration - 1) onDone();
+      }}
+    />
+  );
+}
+
+/** One page at a time with large Back and Next; done once every page has been shown. */
+function Slides({ block, onAllSeen }: { block: Of<'slides'>; onAllSeen: () => void }) {
   const [i, setI] = useState(0);
-  const onViewRef = useRef(onView);
-  onViewRef.current = onView;
-  useEffect(() => onViewRef.current(i), [i]);
-  const page = section.pages[i]!;
-  const last = section.pages.length - 1;
+  const seen = useRef(new Set<number>());
+  const onAllSeenRef = useRef(onAllSeen);
+  onAllSeenRef.current = onAllSeen;
+  useEffect(() => {
+    seen.current.add(i);
+    if (seen.current.size === block.slides.length) onAllSeenRef.current();
+  }, [i, block.slides.length]);
+  const slide = block.slides[i]!;
+  const last = block.slides.length - 1;
   return (
     <div className="stack">
       <article className="worker-slide" aria-roledescription="slide" aria-live="polite">
-        <h2 className="worker-subtitle">{page.heading}</h2>
-        <p className="u-m-0">{page.body}</p>
+        <h2 className="worker-subtitle">{slide.title}</h2>
+        {slide.points.length === 1 ? (
+          <p className="u-m-0">{slide.points[0]}</p>
+        ) : (
+          <ul className="u-m-0">
+            {slide.points.map((point) => (
+              <li key={point}>{point}</li>
+            ))}
+          </ul>
+        )}
       </article>
       <div className="worker-pager">
         <Button variant="secondary" disabled={i === 0} onClick={() => setI(i - 1)}>
           Previous page
         </Button>
         <span>
-          Page {i + 1} of {section.pages.length}
+          Page {i + 1} of {block.slides.length}
         </span>
         <Button variant="secondary" disabled={i === last} onClick={() => setI(i + 1)}>
           Next page
@@ -157,19 +223,28 @@ function Slides({ section, onView }: { section: Of<'slides'>; onView: (page: num
   );
 }
 
-function TextBlocks({ section }: { section: Of<'text'> }) {
-  // Consecutive list items become one list.
-  const groups: Array<{ kind: 'h' | 'p'; text: string } | { kind: 'ul'; items: string[] }> = [];
-  for (const b of section.blocks) {
+/** `## heading`, `- point` and paragraphs: the little the builder's text blocks use. Consecutive points are one list. */
+export function parseText(
+  body: string,
+): Array<{ kind: 'h' | 'p'; text: string } | { kind: 'ul'; items: string[] }> {
+  const groups: ReturnType<typeof parseText> = [];
+  for (const raw of body.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
     const prev = groups[groups.length - 1];
-    if (b.kind === 'li') {
-      if (prev?.kind === 'ul') prev.items.push(b.text);
-      else groups.push({ kind: 'ul', items: [b.text] });
-    } else groups.push({ kind: b.kind, text: b.text });
+    if (line.startsWith('- ')) {
+      if (prev?.kind === 'ul') prev.items.push(line.slice(2));
+      else groups.push({ kind: 'ul', items: [line.slice(2)] });
+    } else if (line.startsWith('## ')) groups.push({ kind: 'h', text: line.slice(3) });
+    else groups.push({ kind: 'p', text: line });
   }
+  return groups;
+}
+
+function TextBody({ body }: { body: string }) {
   return (
     <div className="worker-text">
-      {groups.map((g, i) =>
+      {parseText(body).map((g, i) =>
         g.kind === 'ul' ? (
           <ul key={i}>
             {g.items.map((t) => (
@@ -188,67 +263,87 @@ function TextBlocks({ section }: { section: Of<'text'> }) {
   );
 }
 
-/** Each SWMS opens and is ticked once opened. Awareness only, never sign-on for the task (product 14). */
-function Swms({
-  section,
-  opened,
-  onOpen,
-}: {
-  section: Of<'swms'>;
-  opened: string[];
-  onOpen: (documentId: string) => void;
-}) {
-  const [showing, setShowing] = useState<Of<'swms'>['documents'][number] | null>(null);
+/**
+ * A SWMS opens and is ticked once opened. Awareness only, never sign-on for the task (product 14). The server
+ * gives the title only, so without a summary the worker is pointed to the site office for the document.
+ */
+function Swms({ block, onOpen }: { block: Of<'swms'>; onOpen: () => void }) {
+  const [showing, setShowing] = useState(false);
+  const [opened, setOpened] = useState(false);
   return (
     <div className="stack">
-      <p className="u-m-0">Open each one and read it.</p>
-      <ul className="plain-list stack">
-        {section.documents.map((d) => {
-          const done = opened.includes(d.id);
-          return (
-            <li key={d.id} className="worker-card worker-swms">
-              <FileText size={20} aria-hidden="true" />
-              <span className="worker-swms__title">{d.title}</span>
-              {done ? <StatusPill tone="success">Opened</StatusPill> : null}
-              <Button
-                variant="secondary"
-                onClick={() => {
-                  setShowing(d);
-                  onOpen(d.id);
-                }}
-              >
-                Open
-              </Button>
-            </li>
-          );
-        })}
-      </ul>
+      <div className="worker-card worker-swms">
+        <FileText size={20} aria-hidden="true" />
+        <span className="worker-swms__title">{block.title}</span>
+        {opened ? <StatusPill tone="success">Opened</StatusPill> : null}
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setShowing(true);
+            setOpened(true);
+            onOpen();
+          }}
+        >
+          Open
+        </Button>
+      </div>
       <p className="u-caption u-m-0">
         You&apos;ll still sign on to the SWMS for your task on site.
       </p>
       <Dialog
-        open={showing !== null}
-        onClose={() => setShowing(null)}
-        title={showing?.title ?? ''}
-        footer={<Button onClick={() => setShowing(null)}>Close</Button>}
+        open={showing}
+        onClose={() => setShowing(false)}
+        title={block.title}
+        footer={<Button onClick={() => setShowing(false)}>Close</Button>}
       >
-        <ul>
-          {showing?.summary.map((s) => (
-            <li key={s}>{s}</li>
-          ))}
-        </ul>
+        {block.summary ? (
+          <ul>
+            {block.summary.map((s) => (
+              <li key={s}>{s}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="u-m-0">
+            Ask at the site office for the full SWMS before you start this work.
+          </p>
+        )}
       </Dialog>
     </div>
   );
 }
 
-function SiteMap({ section }: { section: Of<'site_map'> }) {
+function DocumentLink({ block }: { block: Of<'document'> }) {
+  const url = useFileUrl(block.fileId);
+  if (url.isError) return <ErrorAlert error={url.error} title="The document didn't load" />;
+  return (
+    <div className="worker-card worker-swms">
+      <FileText size={20} aria-hidden="true" />
+      <span className="worker-swms__title">{block.title ?? 'Document'}</span>
+      {url.data ? (
+        <a className="link" href={url.data} target="_blank" rel="noopener noreferrer">
+          Open
+        </a>
+      ) : (
+        <span className="u-caption">Loading…</span>
+      )}
+    </div>
+  );
+}
+
+function Picture({ block }: { block: Of<'image'> }) {
+  const url = useFileUrl(block.fileId);
   const [zoom, setZoom] = useState(1);
+  if (url.isPending) return <SkeletonRows rows={2} label="Loading the picture…" />;
+  if (url.isError) return <ErrorAlert error={url.error} title="The picture didn't load" />;
   return (
     <div className="stack">
-      <div className="worker-map" tabIndex={0} aria-label="Site map, scroll to move around">
+      <div className="worker-map" tabIndex={0} aria-label="Picture, scroll to move around">
         {/* eslint-disable-next-line @next/next/no-img-element -- a plain image keeps the worker page small */}
-        <img src={section.imageSrc} alt={section.alt} style={{ width: `${zoom * 100}%` }} />
+        <img
+          src={url.data}
+          alt={block.alt ?? block.title ?? 'Picture from the induction'}
+          style={{ width: `${zoom * 100}%` }}
+        />
       </div>
       <div className="worker-pager">
         <Button
@@ -271,7 +366,7 @@ function SiteMap({ section }: { section: Of<'site_map'> }) {
           <ZoomIn size={20} aria-hidden="true" />
         </Button>
       </div>
-      <p className="u-m-0">{section.description}</p>
+      {block.title ? <p className="u-m-0">{block.title}</p> : null}
     </div>
   );
 }
