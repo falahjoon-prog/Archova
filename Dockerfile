@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Production images for api, web and migrate (infrastructure/03 §2). Built from the repo root for linux/arm64:
+# Production images for api, web, worker and migrate (infrastructure/03 §2). Built from the repo root for linux/arm64:
 #   docker buildx build --platform linux/arm64 --target api .
 # Images run as non-root on distroless Node 22 and trust the Amazon RDS CA bundle for TLS to Aurora.
 
@@ -16,15 +16,16 @@ WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc turbo.json ./
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY apps/worker/package.json apps/worker/
 COPY tools/package.json tools/
 COPY modules modules
 COPY packages packages
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --frozen-lockfile \
-      --filter '@archova/api...' --filter '@archova/web...' --filter '@archova/tools' --filter archova
+      --filter '@archova/api...' --filter '@archova/web...' --filter '@archova/worker...' --filter '@archova/tools' --filter archova
 
 COPY . .
-RUN pnpm turbo run build --filter=@archova/api --filter=@archova/web \
+RUN pnpm turbo run build --filter=@archova/api --filter=@archova/web --filter=@archova/worker \
  && pnpm --filter @archova/tools exec node db/build.mjs
 
 # The packages left outside the bundle (apps/api/build.mjs), at the versions the lockfile resolved.
@@ -56,6 +57,14 @@ COPY --from=build /repo/apps/web/.next/static /app/apps/web/.next/static
 COPY --from=build /repo/apps/web/public /app/apps/web/public
 EXPOSE 3000
 CMD ["apps/web/server.js"]
+
+# --- worker (outbox relay and event subscribers; no inbound port) ---------------------------------------------------
+FROM ${RUNTIME_IMAGE} AS worker
+WORKDIR /app
+ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
+COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
+COPY --from=build /repo/apps/worker/dist /app/dist
+CMD ["--enable-source-maps", "dist/main.js"]
 
 # --- migrate (one-off ECS tasks: tools/db/migrate.js as app_migrator; tools/db/roles.js as the master user) ------
 FROM ${RUNTIME_IMAGE} AS migrate

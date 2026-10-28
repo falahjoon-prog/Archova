@@ -1696,7 +1696,9 @@ paths:
         `command` names a module use case (`defects.markReadyForReview`); permissions, state machines and
         audit are the same as the REST endpoint. `mutationId` is the idempotency key: a replay returns the
         stored result. A rejection with `access.revoked` is not stored, so the drain-grant retry (X38) can
-        return `pending_review`.
+        return `pending_review`. The retry sends `Authorization: Bearer <drainGrant.token>`; the grant arrives on
+        the `access.revoked` problem (a 401 on any call or on a failed token refresh), on the per-mutation
+        problem, or on the `revokedScopes` entry of a pull.
       requestBody:
         required: true
         content:
@@ -4816,6 +4818,9 @@ components:
       type: object
       required: [type, title, status, code]
       properties:
+        drainGrant:
+          allOf: [{ $ref: '#/components/schemas/DrainGrant' }]
+          description: Only on `access.revoked` (a sync call, or a token refresh that failed because access ended).
         type: { type: string }
         title: { type: string }
         status: { type: integer }
@@ -4831,6 +4836,21 @@ components:
             properties:
               path: { type: string }
               message: { type: string }
+    DrainGrant:
+      type: object
+      required: [token, expiresAt, orgId, projectId, module]
+      description: |
+        Drain-only grant (X38) for work queued on a device before its access ended. The token is opaque, shown once
+        (the server keeps only its hash), and accepted only as `Authorization: Bearer` on `syncPush`, where every
+        mutation is held in the late-submissions queue and answered `pending_review`. It is bound to what was
+        revoked: the whole organisation (`projectId` and `module` null), one project (`module` null) or one
+        project module, and it cannot push into anything else.
+      properties:
+        token: { type: string }
+        expiresAt: { type: string, format: date-time, description: 72 hours after access ended. }
+        orgId: { type: string }
+        projectId: { type: [string, 'null'] }
+        module: { type: [string, 'null'] }
     Email:
       type: string
       format: email
@@ -6609,6 +6629,9 @@ components:
         module:
           type: [string, 'null']
           description: '`null` means the whole project.'
+        drainGrant:
+          allOf: [{ $ref: '#/components/schemas/DrainGrant' }]
+          description: Present once, when this scope was revoked after the device last pulled; keep it per org and push queued work with it.
     SyncPullResponse:
       type: object
       required: [changes, revokedScopes, nextSince, hasMore]
@@ -6660,6 +6683,9 @@ components:
       properties:
         code: { type: string }
         detail: { type: string }
+        drainGrant:
+          allOf: [{ $ref: '#/components/schemas/DrainGrant' }]
+          description: On a `rejected` result with `access.revoked` when only a project or module was revoked.
     SyncPushResult:
       type: object
       required: [mutationId, status]

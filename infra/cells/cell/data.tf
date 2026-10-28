@@ -4,6 +4,7 @@ locals {
   # Everything that talks to the database or Valkey.
   data_clients = {
     api     = module.service["api"].security_group_id
+    worker  = module.worker.security_group_id
     migrate = aws_security_group.migrate.id
   }
 }

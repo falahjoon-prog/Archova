@@ -2,7 +2,7 @@
 # without a dependency cycle.
 
 locals {
-  task_roles = toset(concat(keys(var.services), ["migrate"]))
+  task_roles = toset(concat(keys(var.services), ["worker", "migrate"]))
 
   bedrock_au_resources = [
     "arn:aws:bedrock:ap-southeast-2::foundation-model/*",
