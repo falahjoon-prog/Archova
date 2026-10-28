@@ -52,10 +52,11 @@ module "cell" {
   backup                       = null
 
   images = {
-    api     = "${var.image_registry}/archova/api:bootstrap"
-    web     = "${var.image_registry}/archova/web:bootstrap"
-    migrate = "${var.image_registry}/archova/migrate:bootstrap"
-    worker  = "${var.image_registry}/archova/worker:bootstrap"
+    api       = "${var.image_registry}/archova/api:bootstrap"
+    web       = "${var.image_registry}/archova/web:bootstrap"
+    migrate   = "${var.image_registry}/archova/migrate:bootstrap"
+    worker    = "${var.image_registry}/archova/worker:bootstrap"
+    ai-worker = "${var.image_registry}/archova/ai-worker:bootstrap"
   }
 
   # Short canary and bake: a demo deploy finishes in about ten minutes instead of the production 40.

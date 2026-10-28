@@ -6,7 +6,7 @@ locals {
   acct6 = substr(var.account_id, 6, 6)
 
   # Image repositories. Add one per app as it gets a Dockerfile (realtime, worker, admin, site).
-  repositories = ["api", "web", "worker", "migrate"]
+  repositories = ["api", "web", "worker", "ai-worker", "migrate"]
 }
 
 # --- Terraform state -------------------------------------------------------------------------------------------
