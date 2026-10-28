@@ -116,8 +116,8 @@ describe('app_platform grants', () => {
     await expect(platform.query('select 1 from shared.change_feed limit 1')).rejects.toThrow(
       /permission denied|app\.org_id/,
     );
-    await expect(platform.query('select 1 from platform.orgs limit 1')).rejects.toThrow(
-      /permission denied/,
+    await expect(platform.query('select 1 from platform.memberships limit 1')).rejects.toThrow(
+      /permission denied|app\.org_id/,
     );
   });
 
