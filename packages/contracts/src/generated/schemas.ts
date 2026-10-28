@@ -296,6 +296,7 @@ export const CreateDefectRequestSchema = z.object({
   "assigneeUserId": UserRefSchema.optional(),
   "dueDate": z.string().date().optional(),
   "pin": DrawingPinSchema,
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateDefectRequest = z.infer<typeof CreateDefectRequestSchema>;
 
@@ -1520,6 +1521,7 @@ export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
 export const NovaDefectTagSchema = z.object({
   "runId": z.string(),
+  "suggestionId": z.string(),
   "title": z.string(),
   "description": z.string(),
   "trade": z.string().nullable(),
