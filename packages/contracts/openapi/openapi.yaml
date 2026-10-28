@@ -1303,12 +1303,14 @@ paths:
       tags: [ai]
       x-module: ai
       x-permission: ai.ask.use
-      summary: Ask Nova a question about this project's documents and drawings (F2).
+      summary: Ask Nova a question about this project's documents, drawings and RFIs (F2).
       description: |
         Nova searches the current revisions the caller can open (private folders and drawing access apply) and
-        answers with a citation to the exact document, revision and page for each claim. When the documents don't
-        answer it, `found` is false and `closestMatches` lists the nearest passages instead of a guess. Costs one
-        Nova credit when the model is called; nothing when no visible passage matches.
+        answers with a citation to the exact document, revision and page for each claim. Builder staff with RFI
+        access also search sent RFIs, their question and every response; an RFI is cited by its `rfi_` id, and other
+        people never retrieve RFI text through Ask. When the project's records don't answer it, `found` is false and
+        `closestMatches` lists the nearest passages instead of a guess. Costs one Nova credit when the model is
+        called; nothing when no visible passage matches.
       requestBody:
         required: true
         content:
@@ -1631,10 +1633,12 @@ paths:
       tags: [ai]
       x-module: ai
       x-permission: ai.project_index.run
-      summary: Bring Nova's index of this project's documents and drawings up to date.
+      summary: Bring Nova's index of this project's documents, drawings and RFIs up to date.
       description: |
         Reads, chunks and embeds every published revision not yet indexed, marks older revisions superseded, applies
-        folder moves to access, and drops deleted records. Safe to repeat: finished revisions are skipped. Runs in the
+        folder moves to access, and drops deleted records. Sent RFIs are indexed from their question and responses:
+        an RFI with a new response or an edit is indexed again and its old text dropped; drafts and voided RFIs are
+        not indexed. Safe to repeat: finished revisions and unchanged RFIs are skipped. Runs in the
         request for now; the AI worker will run it on each document event once it lands. Embedding is background
         work and costs no credits.
       responses:
@@ -5408,20 +5412,21 @@ components:
           type: array
           items: { type: integer }
     NovaSource:
-      description: A document or drawing revision page Nova used.
+      description: A document or drawing revision page, or an RFI, Nova used.
       type: object
       required: [sourceType, sourceId, revisionId, revision, title, reference, page]
       properties:
-        sourceType: { type: string, enum: [document, drawing] }
+        sourceType: { type: string, enum: [document, drawing, rfi] }
         sourceId:
-          description: The document (`doc_`) or drawing sheet (`dsh_`).
+          description: The document (`doc_`), drawing sheet (`dsh_`) or RFI (`rfi_`).
           type: string
         revisionId:
-          description: The document revision (`rev_`) or drawing revision (`drv_`).
+          description: The document revision (`rev_`) or drawing revision (`drv_`); for an RFI, its own `rfi_` id.
           type: string
-        revision: { type: string }
-        title: { type: string }
-        reference: { type: [string, 'null'], description: Document or sheet number }
+        revision: { type: string, description: The revision label; for an RFI, its status }
+        title: { type: string, description: The document or sheet title; for an RFI, its subject }
+        reference:
+          { type: [string, 'null'], description: Document or sheet number, or the RFI number }
         page: { type: integer, minimum: 1 }
     NovaCitation:
       allOf:
@@ -5901,8 +5906,17 @@ components:
               nearChange: { type: boolean, description: A change sits near the RFI's pin }
     NovaIndexReport:
       type: object
-      required: [indexed, unchanged, noText, ocrPages, unsupported, chunks]
+      required:
+        [indexed, unchanged, noText, ocrPages, unsupported, chunks, rfisIndexed, rfisUnchanged]
       properties:
+        rfisIndexed:
+          {
+            type: integer,
+            description: Sent RFIs indexed in this run (new,
+            or changed since the last run),
+          }
+        rfisUnchanged:
+          { type: integer, description: Sent RFIs already indexed at their current text }
         indexed: { type: integer }
         unchanged: { type: integer }
         noText:

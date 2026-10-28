@@ -94,8 +94,10 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
   return payload as Record<string, unknown>;
 }
 
-/** Document or drawing ids in a citation, as public ids. */
+/** Document, drawing or RFI ids in a citation, as public ids (an RFI has no revisions: its id stands for both). */
 function sourceIds(c: { sourceType: string; sourceId: string; revisionId: string | null }) {
+  if (c.sourceType === 'rfi')
+    return { sourceId: encodeId('rfi', c.sourceId), revisionId: encodeId('rfi', c.sourceId) };
   const doc = c.sourceType === 'document';
   return {
     sourceId: encodeId(doc ? 'document' : 'drawingSheet', c.sourceId),
@@ -146,14 +148,7 @@ export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestio
 
 const toSourceDto = (s: AnswerSource) => ({
   sourceType: s.sourceType,
-  sourceId:
-    s.sourceType === 'document'
-      ? encodeId('document', s.sourceId)
-      : encodeId('drawingSheet', s.sourceId),
-  revisionId:
-    s.sourceType === 'document'
-      ? encodeId('revision', s.revisionId)
-      : encodeId('drawingRevision', s.revisionId),
+  ...sourceIds(s),
   revision: s.revision,
   title: s.title,
   reference: s.reference,

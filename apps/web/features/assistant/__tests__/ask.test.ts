@@ -41,6 +41,30 @@ describe('Ask Nova answers from the API', () => {
     ]);
   });
 
+  it('cites an RFI by its number and status and links to the RFI', () => {
+    const a = toNovaAnswer({
+      runId: 'air_2',
+      found: true,
+      answer: 'Lever handles to AS 1428.1.',
+      citations: [
+        {
+          sourceType: 'rfi',
+          sourceId: 'rfi_031',
+          revisionId: 'rfi_031',
+          revision: 'closed',
+          title: 'Level 3 corridor door hardware',
+          reference: 'RFI-031',
+          page: 1,
+          quote: 'Provide lever handles',
+        },
+      ],
+      closestMatches: [],
+    });
+    expect(a.citations.map((c) => [c.label, c.href])).toEqual([
+      ['RFI-031 Level 3 corridor door hardware (closed)', 'rfi:rfi_031'],
+    ]);
+  });
+
   it('shows the closest matches instead of a guess when nothing answers it', () => {
     const a = toNovaAnswer({
       runId: null,
