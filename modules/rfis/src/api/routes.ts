@@ -10,7 +10,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { RfiFields, RfiService } from '../application/rfis';
-import { toRfiDetail, toRfiDto } from './mappers';
+import { toRfiActivity, toRfiDetail, toRfiDto } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -46,7 +46,7 @@ type FieldsBody = {
   costEstimate?: string | null;
   scheduleImpactDays?: number | null;
   delayDays?: number | null;
-  pin?: { drawingRevisionId: string; x: number; y: number } | null;
+  pin?: { drawingRevisionId: string; x?: number; y?: number } | null;
 };
 
 /** Request body → service fields, decoding prefixed ids and keeping "absent" distinct from "null". */
@@ -131,6 +131,12 @@ export function rfisRoutes(database: Database, rfis: RfiService) {
     },
     getRfi: async (input) =>
       ok(200, await read(input, (s) => rfis.detail(s, project(input.params), rfiId(input.params)))),
+    getRfiActivity: async (input) => ({
+      status: 200,
+      body: toRfiActivity(
+        await read(input, (s) => rfis.activity(s, project(input.params), rfiId(input.params))),
+      ),
+    }),
     updateRfi: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
       const x = await tx(input, (s) =>
@@ -150,6 +156,9 @@ export function rfisRoutes(database: Database, rfis: RfiService) {
         rfis.respond(s, project(input.params), rfiId(input.params), {
           body: input.body.body,
           fileIds: refs('file', input.body.fileIds, 'fileIds') ?? [],
+          ...(input.body.aiSuggestionId
+            ? { aiSuggestionId: ref('aiSuggestion', input.body.aiSuggestionId, 'aiSuggestionId') }
+            : {}),
         }),
       );
       return ok(201, x);

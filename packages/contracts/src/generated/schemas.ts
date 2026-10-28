@@ -480,12 +480,12 @@ export const CreateProjectRequestSchema = z.object({
 }).strict();
 export type CreateProjectRequest = z.infer<typeof CreateProjectRequestSchema>;
 
-export const DrawingPinSchema = z.object({
+export const RfiPinInputSchema = z.object({
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
-  "x": z.number().min(0).max(1),
-  "y": z.number().min(0).max(1),
+  "x": z.number().min(0).max(1).optional(),
+  "y": z.number().min(0).max(1).optional(),
 }).strict();
-export type DrawingPin = z.infer<typeof DrawingPinSchema>;
+export type RfiPinInput = z.infer<typeof RfiPinInputSchema>;
 
 export const CreateRfiRequestSchema = z.object({
   "subject": z.string().min(1).max(300),
@@ -500,13 +500,14 @@ export const CreateRfiRequestSchema = z.object({
   "costImpact": CostImpactSchema.optional(),
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).optional(),
-  "pin": DrawingPinSchema.optional(),
+  "pin": RfiPinInputSchema.optional(),
 }).strict();
 export type CreateRfiRequest = z.infer<typeof CreateRfiRequestSchema>;
 
 export const CreateRfiResponseRequestSchema = z.object({
   "body": z.string().min(1).max(20000),
   "fileIds": z.array(FileRefSchema).max(20).optional(),
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateRfiResponseRequest = z.infer<typeof CreateRfiResponseRequestSchema>;
 
@@ -817,6 +818,13 @@ export const DraftDrawingRevisionInputSchema = z.object({
   "drawingDate": z.string().date().optional(),
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
+
+export const DrawingPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict();
+export type DrawingPin = z.infer<typeof DrawingPinSchema>;
 
 export const DrawingRegisterExtractionSchema = z.object({
   "suggestions": z.array(AiSuggestionSchema),
@@ -1644,6 +1652,13 @@ export const RfiAssigneeSchema = z.object({
 });
 export type RfiAssignee = z.infer<typeof RfiAssigneeSchema>;
 
+export const RfiPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1).nullable(),
+  "y": z.number().min(0).max(1).nullable(),
+}).strict();
+export type RfiPin = z.infer<typeof RfiPinSchema>;
+
 export const RfiSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -1670,7 +1685,7 @@ export const RfiSchema = z.object({
   "costEstimate": z.string().nullable(),
   "scheduleImpactDays": z.number().int().nullable(),
   "delayDays": z.number().int().nullable(),
-  "pin": z.union([DrawingPinSchema, z.null()]),
+  "pin": z.union([RfiPinSchema, z.null()]),
   "officialResponseId": z.string().nullable(),
   "createdBy": z.string().nullable(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -1679,11 +1694,34 @@ export const RfiSchema = z.object({
 });
 export type Rfi = z.infer<typeof RfiSchema>;
 
+export const RfiActivityItemSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["created", "updated", "opened", "responded", "answered", "closed", "reopened", "voided", "imported"]),
+  "at": z.string().datetime({ offset: true }),
+  "actorId": z.string().nullable(),
+  "details": z.object({
+  "changed": z.array(z.string()).optional(),
+  "dueDate": z.array(z.string().date().nullable()).min(2).max(2).optional(),
+  "assigneeIds": z.array(z.array(z.string())).min(2).max(2).optional(),
+  "responseId": z.string().optional(),
+  "officialResponseId": z.string().optional(),
+  "number": z.number().int().nullable().optional(),
+  "reason": z.string().optional(),
+}).strict(),
+});
+export type RfiActivityItem = z.infer<typeof RfiActivityItemSchema>;
+
+export const RfiActivitySchema = z.object({
+  "data": z.array(RfiActivityItemSchema),
+});
+export type RfiActivity = z.infer<typeof RfiActivitySchema>;
+
 export const RfiResponseSchema = z.object({
   "id": z.string(),
   "rfiId": z.string(),
   "authorId": z.string().nullable(),
   "body": z.string(),
+  "aiSuggestionId": z.string().nullable(),
   "fileIds": z.array(z.string()),
   "isOfficial": z.boolean(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -2124,7 +2162,7 @@ export const UpdateRfiRequestSchema = z.object({
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).nullable().optional(),
   "delayDays": z.number().int().min(0).max(3650).nullable().optional(),
-  "pin": z.union([DrawingPinSchema, z.null()]).optional(),
+  "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
 

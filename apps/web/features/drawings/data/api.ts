@@ -284,7 +284,8 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
       throw e;
     });
     return rfis.flatMap((r) =>
-      r.pin?.drawingRevisionId === revisionId
+      // An RFI tied to the sheet without a position has no spot to draw.
+      r.pin?.drawingRevisionId === revisionId && r.pin.x !== null && r.pin.y !== null
         ? [
             {
               id: `rfi~${r.id}`,
