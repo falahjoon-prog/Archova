@@ -32,6 +32,10 @@ export interface LabourLine {
   /** Blank when copied from yesterday (DIA-AC3), so nobody signs off a number they didn't count. */
   headcount: number | null;
   hours: number | null;
+  /** The numbers from site sign-in, on a line the server keeps in step with attendance (ATT-AC6). */
+  signIn?: { headcount: number | null; hours: number | null };
+  /** Why the headcount or hours differ from site sign-in; required to change them. */
+  editReason?: string;
 }
 
 export interface PlantLine {

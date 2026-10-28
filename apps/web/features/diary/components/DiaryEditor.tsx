@@ -1,11 +1,11 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { Button, Checkbox, Select, Switch, TextField, Textarea } from '@archova/ui';
 import { Plus, Trash2 } from '@archova/ui/icons';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { mockId } from '@/shared/mocks/runtime';
-import { eotByDefault, labourTotals } from '../lib/entry';
+import { eotByDefault, labourTotals, needsEditReason } from '../lib/entry';
 import {
   DELAY_TYPES,
   DELAY_TYPE_LABELS,
@@ -124,66 +124,105 @@ export function DiaryEditor({ value, onChange, weather, photosToday, nova }: Dia
               <tbody>
                 {value.labour.map((l) => {
                   const name = companyName(l.companyId);
+                  const changed =
+                    l.signIn && (l.headcount !== l.signIn.headcount || l.hours !== l.signIn.hours);
                   return (
-                    <tr key={l.id}>
-                      <th scope="row">
-                        <select
-                          className="ac-input"
-                          aria-label="Company"
-                          value={l.companyId}
-                          onChange={(e) =>
-                            updateLine('labour', l.id, { companyId: e.target.value })
-                          }
-                        >
-                          {companyOptions.map((o) => (
-                            <option key={o.value} value={o.value}>
-                              {o.label}
-                            </option>
-                          ))}
-                        </select>
-                      </th>
-                      <td>
-                        <input
-                          className="ac-input"
-                          aria-label={`${name} trade`}
-                          value={l.trade}
-                          onChange={(e) => updateLine('labour', l.id, { trade: e.target.value })}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="ac-input ac-input--narrow"
-                          aria-label={`${name} headcount`}
-                          type="number"
-                          min={0}
-                          inputMode="numeric"
-                          value={l.headcount ?? ''}
-                          onChange={(e) =>
-                            updateLine('labour', l.id, { headcount: num(e.target.value) })
-                          }
-                        />
-                      </td>
-                      <td>
-                        <input
-                          className="ac-input ac-input--narrow"
-                          aria-label={`${name} hours`}
-                          type="number"
-                          min={0}
-                          step={0.5}
-                          inputMode="decimal"
-                          value={l.hours ?? ''}
-                          onChange={(e) =>
-                            updateLine('labour', l.id, { hours: num(e.target.value) })
-                          }
-                        />
-                      </td>
-                      <td>
-                        <RemoveButton
-                          label={`Remove ${name}`}
-                          onClick={() => removeLine('labour', l.id)}
-                        />
-                      </td>
-                    </tr>
+                    <Fragment key={l.id}>
+                      <tr>
+                        <th scope="row">
+                          {l.signIn ? (
+                            // The server keeps one sign-in line per company, so its company is fixed.
+                            <>
+                              <span>{name}</span>
+                              <span className="u-caption diary-sign-in">
+                                Site sign-in: {l.signIn.headcount ?? 0}{' '}
+                                {l.signIn.headcount === 1 ? 'person' : 'people'} ·{' '}
+                                {l.signIn.hours ?? 0} hours
+                              </span>
+                            </>
+                          ) : (
+                            <select
+                              className="ac-input"
+                              aria-label="Company"
+                              value={l.companyId}
+                              onChange={(e) =>
+                                updateLine('labour', l.id, { companyId: e.target.value })
+                              }
+                            >
+                              {companyOptions.map((o) => (
+                                <option key={o.value} value={o.value}>
+                                  {o.label}
+                                </option>
+                              ))}
+                            </select>
+                          )}
+                        </th>
+                        <td>
+                          <input
+                            className="ac-input"
+                            aria-label={`${name} trade`}
+                            value={l.trade}
+                            onChange={(e) => updateLine('labour', l.id, { trade: e.target.value })}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="ac-input ac-input--narrow"
+                            aria-label={`${name} headcount`}
+                            type="number"
+                            min={0}
+                            inputMode="numeric"
+                            value={l.headcount ?? ''}
+                            onChange={(e) =>
+                              updateLine('labour', l.id, { headcount: num(e.target.value) })
+                            }
+                          />
+                        </td>
+                        <td>
+                          <input
+                            className="ac-input ac-input--narrow"
+                            aria-label={`${name} hours`}
+                            type="number"
+                            min={0}
+                            step={0.5}
+                            inputMode="decimal"
+                            value={l.hours ?? ''}
+                            onChange={(e) =>
+                              updateLine('labour', l.id, { hours: num(e.target.value) })
+                            }
+                          />
+                        </td>
+                        <td>
+                          {/* Removing a sign-in line would only bring it back at the next sign-out;
+                            set its headcount to 0 with a reason instead. */}
+                          {l.signIn ? null : (
+                            <RemoveButton
+                              label={`Remove ${name}`}
+                              onClick={() => removeLine('labour', l.id)}
+                            />
+                          )}
+                        </td>
+                      </tr>
+                      {changed ? (
+                        <tr className="diary-lines__reason">
+                          <td colSpan={5}>
+                            <TextField
+                              label={`Why do ${name}'s numbers differ from site sign-in?`}
+                              hint="Required to change sign-in numbers. Recorded with the line."
+                              value={l.editReason ?? ''}
+                              error={
+                                needsEditReason(l)
+                                  ? 'Add a reason, or put the sign-in numbers back.'
+                                  : undefined
+                              }
+                              onChange={(e) =>
+                                updateLine('labour', l.id, { editReason: e.target.value })
+                              }
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
                   );
                 })}
               </tbody>
