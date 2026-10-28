@@ -35,8 +35,24 @@ function RootNavigator() {
       <Stack.Protected guard={status === 'signed_in'}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen
-          name="project/[projectId]"
+          name="project/[projectId]/index"
           options={{ headerShown: true, title: 'Project' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/defects/index"
+          options={{ headerShown: true, title: 'Defects' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/defects/new"
+          options={{ headerShown: true, title: 'Raise defect' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/defects/[defectId]/index"
+          options={{ headerShown: true, title: 'Defect' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/defects/[defectId]/photo"
+          options={{ headerShown: true, title: 'Photo' }}
         />
         <Stack.Screen
           name="assistant"

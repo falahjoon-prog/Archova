@@ -311,6 +311,17 @@ export const DraftRfiWithNovaBody = z.object({
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 }).strict().optional(),
 }).strict();
+export const TagDefectWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const TagDefectWithNovaBody = z.object({
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+  "pin": s.DrawingPinSchema.optional(),
+}).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1645,6 +1656,18 @@ export const operations = {
     params: DraftRfiWithNovaParams,
     query: null,
     body: DraftRfiWithNovaBody,
+  },
+  tagDefectWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags',
+    module: "ai",
+    auth: "required",
+    permission: "defects.defects.create",
+    internal: false,
+    contentType: "application/json",
+    params: TagDefectWithNovaParams,
+    query: null,
+    body: TagDefectWithNovaBody,
   },
   summariseDiaryDayWithNova: {
     method: 'POST',

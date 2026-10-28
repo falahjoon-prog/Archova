@@ -1331,6 +1331,56 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaRfiDraft' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: tagDefectWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: defects.defects.create
+      summary: Nova suggests a title, trade and priority for a defect from its photo (F5).
+      description: |
+        Nova looks at a defect photo and, when the defect is pinned on a drawing, the sheet's own text around the
+        pin, and suggests a title, a description, the trade (`trade`, then up to two `alternativeTrades`), the kind of
+        defect (`category`) and a priority. The place in the title is named only from the note or the sheet text
+        near the pin, copied as printed. Companies on the project that list the trade come back in
+        `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
+        pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
+        in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
+        is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+        The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
+        first); anything else is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: What the person said or typed about the defect. May be empty.
+                pin:
+                  description: Where the defect is on a drawing; without it no place is named and no duplicates are found.
+                  $ref: '#/components/schemas/DrawingPin'
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaDefectTag' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4687,6 +4737,92 @@ components:
             scanned:
               type: boolean
               description: The sheet was read with OCR, so the person should check the quoted text against the drawing.
+    NovaDefectTag:
+      type: object
+      required:
+        [
+          runId,
+          title,
+          description,
+          trade,
+          alternativeTrades,
+          category,
+          priority,
+          gaps,
+          unsupportedNumbers,
+          suggestedCompanies,
+          duplicates,
+          drawing,
+        ]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        title: { type: string }
+        description: { type: string }
+        trade:
+          description: The trade most likely responsible, as a defect stores it; null when the photo doesn't show enough.
+          type: [string, 'null']
+        alternativeTrades:
+          description: Up to two other trades that could own it, most likely first.
+          type: array
+          items: { type: string }
+        category:
+          description: The kind of defect, as a defect stores it; null when none fits.
+          type: [string, 'null']
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        gaps:
+          description: What Nova couldn't settle, for the form to prompt.
+          type: array
+          items: { type: string, enum: [location, trade, photo_unclear] }
+        unsupportedNumbers:
+          description: Numbers in the title or description found in neither the note nor the sheet text.
+          type: array
+          items: { type: string }
+        suggestedCompanies:
+          description: Companies on the project that list the trade, then an alternative. The person picks the assignee.
+          type: array
+          items:
+            type: object
+            required: [id, name, trade]
+            properties:
+              id: { type: string, description: The company (`cmp_`) }
+              name: { type: string }
+              trade: { type: string, description: The suggested trade the company matched }
+        duplicates:
+          description: Open defects already pinned beside this spot, nearest first.
+          type: array
+          items:
+            type: object
+            required: [id, numberLabel, title, status, trade, distance, sameTrade]
+            properties:
+              id: { type: string, description: The defect (`dfx_`) }
+              numberLabel: { type: string, description: 'DEF-0042' }
+              title: { type: string }
+              status: { $ref: '#/components/schemas/DefectStatus' }
+              trade: { type: [string, 'null'] }
+              distance: { type: number, description: From the pin, as a fraction of the sheet }
+              sameTrade: { type: boolean }
+        drawing:
+          description: The sheet the pin is on; null when the defect wasn't pinned.
+          type: [object, 'null']
+          required: [drawingRevisionId, sheetNumber, title, rev, pin, nearby, scanned]
+          properties:
+            drawingRevisionId: { type: string }
+            sheetNumber: { type: string }
+            title: { type: string }
+            rev: { type: string }
+            pin:
+              type: object
+              required: [x, y]
+              properties:
+                x: { type: number, minimum: 0, maximum: 1 }
+                y: { type: number, minimum: 0, maximum: 1 }
+            nearby:
+              description: The sheet's own text near the pin, nearest first, which the title may name.
+              type: array
+              items: { type: string }
+            scanned:
+              type: boolean
+              description: The sheet was read with OCR, so the person should check the text against the drawing.
     NovaDrawingChange:
       type: object
       required: [id, kind, before, after, titleBlock, x, y]

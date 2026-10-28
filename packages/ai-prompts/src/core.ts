@@ -36,6 +36,13 @@ export interface PromptImage {
   base64: string;
 }
 
+/** A site photo as a task input: PNG, JPEG or WebP, base64 without a data: prefix. */
+export const SitePhoto = z.object({
+  mime: z.enum(['image/png', 'image/jpeg', 'image/webp']),
+  base64: z.string().min(1),
+});
+export type SitePhoto = z.infer<typeof SitePhoto>;
+
 /** Per-request content placed after the cached system prompt. */
 export interface RenderedPrompt {
   text: string;

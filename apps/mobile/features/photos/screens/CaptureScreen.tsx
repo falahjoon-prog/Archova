@@ -9,7 +9,7 @@ import { Button, Screen, useTheme } from '@archova/ui-native';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
 import { buildCapture, deviceTimeZone, type DevicePosition } from '../../../lib/capture/capture';
 import { preparePhoto } from '../../../lib/platform/photo-files';
-import { capturePhoto, type LocalPhoto } from '../commands';
+import { capturePhoto, type LocalPhoto, type PhotoPurpose } from '../commands';
 
 const FIX_TIMEOUT_MS = 4_000;
 
@@ -33,9 +33,23 @@ async function compassHeading(): Promise<number | null> {
   }
 }
 
-export function CaptureScreen() {
+export interface CaptureScreenProps {
+  /** Project to file against; defaults to the current project. */
+  projectId?: string;
+  /** Attach the photo to this defect. */
+  defectId?: string;
+  /** `before` when raising, `after` as fix evidence (DEF-AC5). */
+  purpose?: PhotoPurpose;
+  /** Commands the photo's command must follow (an unsent `defects.create`). */
+  dependsOn?: () => Promise<string[]>;
+  /** Called after each saved photo, e.g. to go back to the defect. */
+  onSaved?: (photo: LocalPhoto) => void;
+}
+
+export function CaptureScreen(props: CaptureScreenProps = {}) {
   const t = useTheme();
-  const { projectId } = useCurrentOrg();
+  const current = useCurrentOrg();
+  const projectId = props.projectId ?? current.projectId;
   const device = useDeviceData();
   const [permission, requestPermission] = useCameraPermissions();
   const camera = useRef<CameraView>(null);
@@ -104,11 +118,15 @@ export function CaptureScreen() {
         photoId,
         mutationId: uuidv7(),
         projectId,
+        defectId: props.defectId ?? null,
+        purpose: props.purpose ?? null,
+        dependsOn: props.dependsOn ? await props.dependsOn() : [],
         capture,
         clientAt: takenAt.toISOString(),
         file,
       });
       setLast(photo);
+      props.onSaved?.(photo);
       waiting.refresh();
       data.requestSync('local_write');
     } catch {

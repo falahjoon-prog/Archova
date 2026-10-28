@@ -25,6 +25,7 @@ import { MAX_INLINE_BYTES, type ReadableFile } from './drawing-register';
 import type { DrawingRevisionRef } from './drawing-compare';
 import type { Gateway } from './gateway';
 import { searchChunks, toPassage, type ChunkHit } from './search';
+import { MAX_PHOTO_BYTES, toSitePhoto } from './site-photo';
 import { readSheetLines } from './sheet-text';
 
 export interface RfiDraftDeps {
@@ -71,9 +72,6 @@ export interface RfiDraft extends Omit<ReviewedRfiDraft, 'references'> {
 /** Passages sent with the note: enough for the sheets and clauses it names, small enough for a quick draft. */
 const PASSAGES = 8;
 const SIMILAR = 5;
-/** The model takes images up to about 3.75 MB (before base64); the apps shrink phone photos before upload. */
-export const MAX_PHOTO_BYTES = 3_000_000;
-const PHOTO_MIMES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 
 export function createRfiDraftService(deps: RfiDraftDeps) {
   const { database } = deps;
@@ -115,17 +113,9 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
     );
     const { scopes } = found;
 
-    let photo: RfiDraftPhoto | undefined;
-    if (found.photoFile) {
-      const { file, bytes } = found.photoFile;
-      const mime = PHOTO_MIMES.find((m) => m === file.mime);
-      // A photo in another project is not this caller's to send to the model from here.
-      if (!mime || (file.projectId && file.projectId !== projectId))
-        throw new AppError('validation_failed', 'Nova reads site photos in PNG, JPEG or WebP.', [
-          { path: 'photo/fileId', message: 'Not a photo of this project' },
-        ]);
-      photo = { mime, base64: Buffer.from(bytes).toString('base64') };
-    }
+    const photo: RfiDraftPhoto | undefined = found.photoFile
+      ? toSitePhoto(found.photoFile, projectId)
+      : undefined;
 
     let drawing: RfiDraft['drawing'] = null;
     let markup: RfiDraftMarkup | undefined;

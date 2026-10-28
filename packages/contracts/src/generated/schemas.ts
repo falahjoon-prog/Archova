@@ -1518,6 +1518,45 @@ export const NovaAnswerSchema = z.object({
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
+export const NovaDefectTagSchema = z.object({
+  "runId": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "trade": z.string().nullable(),
+  "alternativeTrades": z.array(z.string()),
+  "category": z.string().nullable(),
+  "priority": DefectPrioritySchema,
+  "gaps": z.array(z.enum(["location", "trade", "photo_unclear"])),
+  "unsupportedNumbers": z.array(z.string()),
+  "suggestedCompanies": z.array(z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+})),
+  "duplicates": z.array(z.object({
+  "id": z.string(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "status": DefectStatusSchema,
+  "trade": z.string().nullable(),
+  "distance": z.number(),
+  "sameTrade": z.boolean(),
+})),
+  "drawing": z.object({
+  "drawingRevisionId": z.string(),
+  "sheetNumber": z.string(),
+  "title": z.string(),
+  "rev": z.string(),
+  "pin": z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}),
+  "nearby": z.array(z.string()),
+  "scanned": z.boolean(),
+}).nullable(),
+});
+export type NovaDefectTag = z.infer<typeof NovaDefectTagSchema>;
+
 export const NovaDrawingChangeSchema = z.object({
   "id": z.string(),
   "kind": z.enum(["added", "removed", "changed"]),

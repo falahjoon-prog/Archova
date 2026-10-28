@@ -74,6 +74,28 @@ export function createCompanyService() {
       .limit(500);
   }
 
+  /**
+   * The same companies with the trades they list, for Nova to suggest who a defect belongs to (F5). Kept apart from
+   * `onProject`, which stays names-only for the worker sign-in screen.
+   */
+  async function onProjectWithTrades(scope: TenantScope, projectId: string) {
+    const members = scope.tx
+      .selectDistinct({ id: projectMembers.companyId })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.status, 'active')));
+    return scope.tx
+      .select({ id: companies.id, name: companies.name, trades: companies.trades })
+      .from(companies)
+      .where(
+        and(
+          isNull(companies.deletedAt),
+          or(eq(companies.isOwnCompany, true), inArray(companies.id, members)),
+        ),
+      )
+      .orderBy(asc(companies.name), asc(companies.id))
+      .limit(500);
+  }
+
   async function exists(scope: TenantScope, companyId: string): Promise<boolean> {
     const [row] = await scope.tx
       .select({ id: companies.id })
@@ -83,7 +105,7 @@ export function createCompanyService() {
     return Boolean(row);
   }
 
-  return { list, create, exists, onProject };
+  return { list, create, exists, onProject, onProjectWithTrades };
 }
 
 export type CompanyService = ReturnType<typeof createCompanyService>;
