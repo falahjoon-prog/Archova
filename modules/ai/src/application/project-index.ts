@@ -450,6 +450,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       .delete(indexEntries)
       .where(
         and(
+          eq(indexEntries.orgId, scope.ctx.orgId),
           eq(indexEntries.projectId, projectId),
           eq(indexEntries.sourceType, sourceType),
           onlySource ? eq(indexEntries.sourceId, onlySource) : undefined,
@@ -539,6 +540,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
         .from(indexEntries)
         .where(
           and(
+            eq(indexEntries.orgId, ctx.orgId),
             eq(indexEntries.projectId, projectId),
             eq(indexEntries.sourceType, kind),
             eq(indexEntries.sourceId, recordId),
@@ -551,7 +553,26 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     return indexRecords(ctx, projectId, kind, RECORD_SCOPES[kind], pages, done);
   }
 
-  return { indexProject, reindexRecord };
+  /**
+   * The cheap half of `reindexRecord`, for the moment a record changes: whatever of its stored text no longer matches
+   * the register is deleted, in the same transaction and with no model call, so a voided record, a diary day sent back
+   * to draft, or an amended record's old words stop being searchable at once. Says whether the record is still a
+   * source, which is whether its current text may still need embedding. Same caller rules as `reindexRecord`.
+   */
+  async function dropStaleRecord(
+    ctx: TenantContext,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ): Promise<{ isSource: boolean }> {
+    return database.withTenantTx(ctx, async (scope) => {
+      const pages = await recordPages(scope, projectId, kind, recordId);
+      await reconcileRecords(scope, projectId, kind, pages, recordId);
+      return { isSource: pages.length > 0 };
+    });
+  }
+
+  return { indexProject, reindexRecord, dropStaleRecord };
 }
 
 export type ProjectIndexService = ReturnType<typeof createProjectIndexService>;

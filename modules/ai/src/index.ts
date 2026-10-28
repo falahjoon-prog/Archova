@@ -79,6 +79,7 @@ export type { SearchResult } from './application/semantic-search';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { DefectSource } from './domain/defect-source';
 export { RECORD_EVENT_TYPES, recordKindOf, type RecordKind } from './domain/record-events';
+export { AI_INDEX_ACTOR } from './domain/index-actor';
 export type { DiarySource } from './domain/diary-source';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
@@ -409,6 +410,7 @@ export function createAiModule(
        * changed. Checks no permission; the caller builds the context (backend 08 §2).
        */
       reindexRecord: projectIndex.reindexRecord,
+      dropStaleRecord: projectIndex.dropStaleRecord,
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,

@@ -1,7 +1,10 @@
 import { PDFDocument } from 'pdf-lib';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { MODULE_PERMISSIONS } from '@archova/compose';
 import { decodeId } from '@archova/domain';
+import { FOUNDATION_PERMISSIONS, buildRegistry } from '@archova/domain/permissions';
+import { AI_INDEX_ACTOR } from '@archova/mod-ai';
 import { addDays, localDateOf } from '@archova/time';
 import {
   addMember,
@@ -23,7 +26,6 @@ afterAll(() => t.close());
 const TZ = 'Australia/Brisbane';
 const day = (daysAgo: number) => addDays(localDateOf(new Date(), TZ), -daysAgo);
 const etagOf = (res: { headers: Record<string, unknown> }) => res.headers.etag as string;
-const SYSTEM_USER = '00000000-0000-0000-0000-000000000000';
 
 async function setup(label: string) {
   const pm = await signUp(t.app, `${label}-pm`);
@@ -58,12 +60,12 @@ async function setup(label: string) {
 }
 type Setup = Awaited<ReturnType<typeof setup>>;
 
-/** What the ai-worker runs as: the org, no person, and the plan's modules (Nova on unless `modules` says not). */
-const systemCtx = (s: Setup, modules: string[] = ['ai']) => ({
+/** What the ai-worker runs as: the org, the named system actor, and the plan's modules (Nova on unless `modules` says not). */
+const systemCtx = (s: Setup, modules: string[] = ['ai'], orgRole: 'owner' | null = null) => ({
   orgId: decodeId('org', s.org.id)!,
-  userId: SYSTEM_USER,
+  userId: AI_INDEX_ACTOR,
   principalType: 'member' as const,
-  orgRole: null,
+  orgRole,
   entitlements: { plan: 'x', state: 'active' as const, modules, limits: {} },
   requestId: 'test',
 });
@@ -294,5 +296,122 @@ describe('Re-indexing one record after it changes', () => {
     expect(await chunkRows(s, 'diary')).toHaveLength(1);
     expect(await entryCount(s, 'diary')).toBe(1);
     expect(await index(s)).toMatchObject({ diaryIndexed: 0, diaryUnchanged: 1 });
+  });
+
+  // ------------------------------------------------------------------------------- dropping, and who the worker is
+
+  const embedSpy = () => vi.spyOn(t.ai, 'embed');
+  const requestCount = (s: Setup) =>
+    t.adminDb.withTenantTx(systemCtx(s), async ({ tx }) => {
+      const res = await tx.execute<{ n: number }>(
+        sql`select count(*)::int as n from ai.ai_requests where org_id = ${decodeId('org', s.org.id)!}`,
+      );
+      return res.rows[0]!.n;
+    });
+  const dropStale = (s: Setup, kind: 'rfi' | 'defect' | 'diary', apiId: string) =>
+    t.modules.ai.api.dropStaleRecord(
+      systemCtx(s, []),
+      decodeId('project', s.project.id)!,
+      kind,
+      decodeId(kind, apiId)!,
+    );
+
+  it('drops a voided record with no model call, and for a plan without Nova', async () => {
+    const s = await setup('re-drop');
+    const grout = await issuedDefect(s, 'Bathroom 302 finishes', 'Grout is missing at the waste.');
+    await index(s);
+    const requests = await requestCount(s);
+    const embed = embedSpy();
+
+    const voided = await s.pm.browser.post(
+      `${s.base}/defects/${grout.id}/transition`,
+      { action: 'void', reason: 'Raised twice' },
+      { 'if-match': grout.etag },
+    );
+    expect(voided.statusCode, voided.body).toBe(200);
+    // The drop needs no Nova on the plan (`systemCtx(s, [])`): it is deleting, not embedding.
+    expect(await dropStale(s, 'defect', grout.id)).toEqual({ isSource: false });
+    expect(await chunkRows(s, 'defect')).toEqual([]);
+    expect(await entryCount(s, 'defect')).toBe(0);
+    expect(embed).not.toHaveBeenCalled();
+    expect(await requestCount(s)).toBe(requests);
+    embed.mockRestore();
+  });
+
+  it('drops the old text of a changed record at once and leaves its new text for the re-index', async () => {
+    const s = await setup('re-stale');
+    const tile = await issuedDefect(s, 'Ensuite tiles', 'Floor tiles are lipping at the doorway.');
+    await index(s);
+    const disputed = await s.sub.browser.post(
+      `${s.base}/defects/${tile.id}/transition`,
+      { action: 'dispute', reason: 'The substrate was out of level when we started.' },
+      { 'if-match': tile.etag },
+    );
+    expect(disputed.statusCode, disputed.body).toBe(200);
+    const embed = embedSpy();
+
+    expect(await dropStale(s, 'defect', tile.id)).toEqual({ isSource: true });
+    expect(await chunkRows(s, 'defect')).toEqual([]);
+    expect(embed).not.toHaveBeenCalled();
+
+    expect(await reindex(s, 'defect', tile.id)).toEqual({ indexed: 1, unchanged: 0 });
+    expect(await chunkRows(s, 'defect')).toHaveLength(1);
+    // The spy sees the gateway's calls, so the silence above is real.
+    expect(embed).toHaveBeenCalledTimes(1);
+    embed.mockRestore();
+  });
+
+  it('gives the worker an actor that holds no permission and retrieves from no scope', async () => {
+    const s = await setup('re-actor');
+    const registry = buildRegistry(FOUNDATION_PERMISSIONS, ...MODULE_PERMISSIONS);
+    const keys = [...registry.keys()];
+    expect(keys.length).toBeGreaterThan(50);
+    const projectId = decodeId('project', s.project.id)!;
+
+    const verdicts = await t.adminDb.withTenantTx(systemCtx(s), async (scope) => {
+      const out: string[] = [];
+      for (const key of keys) {
+        for (const resource of [{ projectId }, {}]) {
+          if (await t.modules.access.api.can(scope, key, resource)) out.push(key);
+        }
+      }
+      return out;
+    });
+    expect(verdicts).toEqual([]);
+
+    // The same check does allow an org owner every key, so a denial above is the actor's, not a mistyped key.
+    const owner = await t.adminDb.withTenantTx(systemCtx(s, ['ai'], 'owner'), async (scope) => {
+      const out: string[] = [];
+      for (const key of keys)
+        if (!(await t.modules.access.api.can(scope, key, { projectId }))) out.push(key);
+      return out;
+    });
+    expect(owner).toEqual([]);
+
+    const scopes = await t.adminDb.withTenantTx(systemCtx(s), async (scope) => ({
+      documents: await t.modules.documents.api.aiAccessScopes(scope, projectId),
+      rfis: await t.modules.rfis.api.aiAccessScopes(scope, projectId),
+      defects: await t.modules.defects.api.aiAccessScopes(scope, projectId),
+      diary: await t.modules.diary.api.aiAccessScopes(scope, projectId),
+    }));
+    expect(scopes).toEqual({ documents: [], rfis: [], defects: [], diary: [] });
+  });
+
+  it('records a background run under the actor, and writes no text into the request row', async () => {
+    const s = await setup('re-audit');
+    const door = await issuedDefect(s, 'Plant room door', 'The door swings the wrong way.');
+    expect(await reindex(s, 'defect', door.id)).toEqual({ indexed: 1, unchanged: 0 });
+
+    const rows = await t.adminDb.withTenantTx(systemCtx(s), async ({ tx }) => {
+      const res = await tx.execute<Record<string, unknown>>(
+        sql`select * from ai.ai_requests where org_id = ${decodeId('org', s.org.id)!}`,
+      );
+      return res.rows;
+    });
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(row.user_id).toBe(AI_INDEX_ACTOR);
+      expect(JSON.stringify(row)).not.toContain('swings the wrong way');
+    }
   });
 });
