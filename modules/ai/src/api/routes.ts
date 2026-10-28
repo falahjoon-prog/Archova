@@ -9,7 +9,7 @@ import {
   type Database,
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
-import type { DiarySummaryPayload } from '../application/diary-summary';
+import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { AnswerSource, AskService } from '../application/ask';
 import type {
   DrawingRegisterService,
@@ -145,6 +145,7 @@ export function aiRoutes(
   inductionDrafts: InductionDraftService,
   rfiDrafts: RfiDraftService,
   drawingCompare: DrawingCompareService,
+  diarySummary: DiarySummaryService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -256,6 +257,15 @@ export function aiRoutes(
           },
         },
       };
+    },
+    summariseDiaryDayWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const row = await diarySummary.summariseDate(
+        requireTenant(input),
+        projectId,
+        input.params.date,
+      );
+      return { status: 200, body: toSuggestionDto(row) };
     },
     compareDrawingRevision: async (input) => {
       const projectId = projectUuid(input.params.projectId);

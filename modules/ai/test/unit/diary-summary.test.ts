@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   TOTALS_SOURCE,
   WEATHER_SOURCE,
+  dayFingerprint,
   diaryFacts,
   reviewDiarySummary,
   weekdayOf,
@@ -125,5 +126,23 @@ describe('diary summary facts (F4)', () => {
       cause: null,
       sources: [],
     });
+  });
+});
+
+describe('day fingerprint (summary cache key)', () => {
+  it('is the same for the same day and changes with any line, weather or version change', () => {
+    const same = dayFingerprint({ ...day, lines: day.lines.map((l) => ({ ...l })) });
+    expect(same).toBe(dayFingerprint(day));
+    const extra = { ...day.lines[0]!, id: 'lab-9', text: 'Steel fixing' };
+    expect(dayFingerprint({ ...day, lines: [...day.lines, extra] })).not.toBe(same);
+    expect(
+      dayFingerprint({
+        ...day,
+        lines: [{ ...day.lines[0]!, headcount: 9 }, ...day.lines.slice(1)],
+      }),
+    ).not.toBe(same);
+    expect(dayFingerprint({ ...day, lines: day.lines.slice(1) })).not.toBe(same);
+    expect(dayFingerprint({ ...day, weather: null })).not.toBe(same);
+    expect(dayFingerprint({ ...day, version: day.version + 1 })).not.toBe(same);
   });
 });
