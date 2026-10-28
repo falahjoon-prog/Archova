@@ -150,6 +150,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfiAccessScopes: (scope, projectId) => rfis.api.aiAccessScopes(scope, projectId),
     defectSources: (scope, projectId) => defects.api.aiSources(scope, projectId),
     defectAccessScopes: (scope, projectId) => defects.api.aiAccessScopes(scope, projectId),
+    diarySources: (scope, projectId) => diaryApi!.aiSources(scope, projectId),
+    diaryAccessScopes: (scope, projectId) => diaryApi!.aiAccessScopes(scope, projectId),
     similarRfis: (scope, projectId, input) => rfis.api.findSimilar(scope, projectId, input),
     getDrawingRevision: (scope, projectId, id) =>
       documents.api.getDrawingRevision(scope, projectId, id),

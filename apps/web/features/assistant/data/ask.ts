@@ -14,11 +14,12 @@ type NovaSource = components['schemas']['NovaSource'];
 
 /**
  * "A-201 Rev C, p. 1": the reference people use, falling back to the title. An RFI is "RFI-031 Corridor hardware
- * (closed)", a defect "DEF-0042 Cracked tile (open)".
+ * (closed)", a defect "DEF-0042 Cracked tile (open)", a diary day "Site diary Monday 12 October 2026 (signed off)".
  */
 function sourceLabel(s: NovaSource): string {
   if (s.sourceType === 'rfi') return `${s.reference ?? 'RFI'} ${s.title} (${s.revision})`;
   if (s.sourceType === 'defect') return `${s.reference ?? 'Defect'} ${s.title} (${s.revision})`;
+  if (s.sourceType === 'diary') return `${s.title} (${s.revision})`;
   return `${s.reference ?? s.title} Rev ${s.revision}, p. ${s.page}`;
 }
 
@@ -26,6 +27,7 @@ function sourceHref(s: NovaSource): string {
   if (s.sourceType === 'drawing') return `drawing:${s.sourceId}:${s.revisionId}`;
   if (s.sourceType === 'rfi') return `rfi:${s.sourceId}`;
   if (s.sourceType === 'defect') return `defect:${s.sourceId}`;
+  if (s.sourceType === 'diary') return `diary:${s.reference ?? ''}`;
   return `documents:${s.sourceId}`;
 }
 

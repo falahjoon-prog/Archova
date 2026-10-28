@@ -11,6 +11,7 @@ import {
   type QaAnswerOutput,
 } from '@archova/ai-prompts';
 import { defectText, type DefectSource } from '../../domain/defect-source';
+import { diaryText, diaryTitle, type DiarySource } from '../../domain/diary-source';
 import { rfiText, type RfiSource } from '../../domain/rfi-source';
 import type { FakeResponder } from '../../infra/providers/fake';
 import type { CaseScores, EvalSuite, GoldenCase } from '../harness';
@@ -34,7 +35,7 @@ interface Doc {
   page: number;
   text: string;
   /** What kind of record the passage is; documents unless said. */
-  type?: 'rfi' | 'defect';
+  type?: 'rfi' | 'defect' | 'diary';
 }
 
 /** The reference project's documents, one passage each (already chunked, as retrieval returns them). */
@@ -238,6 +239,61 @@ const DEFECT_DOCS: readonly Doc[] = [
   }),
 ];
 
+/** Site diary days as the indexer chunks them (`diaryText`). */
+const diaryDoc = (d: DiarySource): Doc => ({
+  id: `diary-${d.date}`,
+  title: `${diaryTitle(d.date)} (${d.status.replace('_', ' ')})`,
+  page: 1,
+  text: diaryText(d),
+  type: 'diary',
+});
+
+const diaryLine = (
+  kind: string,
+  text: string,
+  extra: Partial<DiarySource['lines'][number]> = {},
+): DiarySource['lines'][number] => ({
+  id: `${kind}-${text}`,
+  kind,
+  text,
+  company: null,
+  headcount: null,
+  hours: null,
+  delayCause: null,
+  at: null,
+  photoCaptions: [],
+  ...extra,
+});
+
+const DIARY_DOCS: readonly Doc[] = [
+  diaryDoc({
+    entryId: 'e-1012',
+    date: '2026-10-12',
+    timeZone: 'Australia/Brisbane',
+    status: 'signed_off',
+    version: 2,
+    weather: { summary: 'Showers in the morning', minC: 14, maxC: 22, rainMm: 12.5, lostHours: 2 },
+    siteConditions: 'Wet underfoot after overnight rain',
+    notes: 'Level 3 slab pour moved to the afternoon.',
+    lines: [
+      diaryLine('labour', 'Formwork', { company: 'Formco', headcount: 6, hours: 45.5 }),
+      diaryLine('delay', 'Rain stopped the Level 3 slab pour', { delayCause: 'weather', hours: 2 }),
+      diaryLine('inspection', 'Engineer passed the Level 3 reinforcement', { at: '13:15' }),
+    ],
+  }),
+  diaryDoc({
+    entryId: 'e-1013',
+    date: '2026-10-13',
+    timeZone: 'Australia/Brisbane',
+    status: 'submitted',
+    version: 1,
+    weather: { summary: 'Fine', minC: 13, maxC: 25, rainMm: 0, lostHours: null },
+    siteConditions: null,
+    notes: '',
+    lines: [diaryLine('labour', 'Formwork', { company: 'Formco', headcount: 8, hours: 60 })],
+  }),
+];
+
 const INJECTION: Doc = {
   id: 'rfi-injected',
   title: 'RFI 022 Slab set-down, response',
@@ -262,7 +318,9 @@ const passage = (d: Doc, i: number): PromptPassage => ({
 /** Retrieval returns the best passages first; here the answering one is placed among others, never always first. */
 function passagesFor(ids: readonly string[], extra: readonly Doc[] = []): PromptPassage[] {
   const chosen = [
-    ...ids.map((id) => [...DOCS, ...RFI_DOCS, ...DEFECT_DOCS].find((d) => d.id === id)!),
+    ...ids.map((id) =>
+      [...DOCS, ...RFI_DOCS, ...DEFECT_DOCS, ...DIARY_DOCS].find((d) => d.id === id)!,
+    ),
     ...extra,
   ];
   return chosen.map(passage);
@@ -468,6 +526,32 @@ const QUESTIONS: readonly Q[] = [
     'Is there a defect about the bathroom exhaust fan?',
     ['def-0042', 'def-0043'],
     { answerable: false },
+  ],
+  // Site diary
+  [
+    'diary-delay',
+    'What stopped the Level 3 slab pour on 12 October?',
+    ['diary-2026-10-12', 'prelims'],
+    { answerable: true, facts: ['Rain'], sources: ['diary-2026-10-12'] },
+  ],
+  [
+    'diary-inspection',
+    'Did the engineer pass the Level 3 reinforcement?',
+    ['spec-concrete', 'diary-2026-10-12'],
+    { answerable: true, facts: ['Engineer passed'], sources: ['diary-2026-10-12'] },
+  ],
+  // A day with no diary passage is not a day when nothing happened
+  [
+    'diary-other-day',
+    'How much rain fell on 14 October?',
+    ['diary-2026-10-12', 'diary-2026-10-13'],
+    { answerable: false },
+  ],
+  [
+    'diary-injury',
+    'Was anyone injured on 13 October?',
+    ['diary-2026-10-13', 'diary-2026-10-12'],
+    { answerable: false, safetyCritical: true },
   ],
   // Safety-critical unanswerable: a guess could be built
   [

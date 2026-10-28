@@ -3909,19 +3909,19 @@ export interface components {
             skippedPages: number[];
             refusedPages: number[];
         };
-        /** @description A document or drawing revision page, an RFI or a defect, Nova used. */
+        /** @description A document or drawing revision page, an RFI, a defect or a site diary day, Nova used. */
         NovaSource: {
             /** @enum {string} */
-            sourceType: "document" | "drawing" | "rfi" | "defect";
-            /** @description The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`) or defect (`dfx_`). */
+            sourceType: "document" | "drawing" | "rfi" | "defect" | "diary";
+            /** @description The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`), defect (`dfx_`) or diary day (`dia_`). */
             sourceId: string;
-            /** @description The document revision (`rev_`) or drawing revision (`drv_`); for an RFI or a defect, its own id. */
+            /** @description The document revision (`rev_`) or drawing revision (`drv_`). For an RFI, a defect or a diary day, its own id. */
             revisionId: string;
-            /** @description The revision label; for an RFI or a defect */
+            /** @description The revision label. For an RFI or a defect, its status. For a diary day, submitted or signed off. */
             revision: string;
-            /** @description The document or sheet title; for an RFI */
+            /** @description The document or sheet title. For an RFI, its subject. For a defect, its title. For a diary day, "Site diary Monday 12 October 2026". */
             title: string;
-            /** @description Document or sheet number */
+            /** @description The document or sheet number, the RFI number, the defect number, or for a diary day its date (`YYYY-MM-DD`). */
             reference: string | null;
             page: number;
         };
@@ -4257,6 +4257,10 @@ export interface components {
             changeIds: string[];
         };
         NovaIndexReport: {
+            /** @description Submitted and signed-off diary days indexed in this run (new or changed). */
+            diaryIndexed: number;
+            /** @description Diary days already indexed at their current text. */
+            diaryUnchanged: number;
             /** @description Issued defects indexed in this run (new or changed) */
             defectsIndexed: number;
             /** @description Issued defects already indexed at their current text */

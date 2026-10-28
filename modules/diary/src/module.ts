@@ -13,6 +13,10 @@ export function createDiaryModule(services: KernelServices, deps: DiaryDeps) {
       applyAttendanceTotals: service.applyAttendanceTotals,
       /** The day's lines for the Nova diary summary; null when unreadable or absent. */
       dayForSummary: service.dayForSummary,
+      /** Nova Ask: submitted and signed-off days with all their lines, to index. Called by `ai` only. */
+      aiSources: service.aiSources,
+      /** Nova Ask: the scopes the caller holds for the diary (builder staff who read the whole diary). */
+      aiAccessScopes: service.aiAccessScopes,
     },
   };
 }
