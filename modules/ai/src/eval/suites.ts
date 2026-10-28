@@ -9,6 +9,7 @@ import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
+import { quoteReadSuite } from './suites/quote-read';
 import { rfiDraftSuite } from './suites/rfi-draft';
 import { translationSuite } from './suites/translation';
 
@@ -28,4 +29,5 @@ export const SUITES: readonly AnySuite[] = [
   drawingCompareSuite,
   defectTagSuite,
   importMappingSuite,
+  quoteReadSuite,
 ];

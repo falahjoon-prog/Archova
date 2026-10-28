@@ -85,6 +85,7 @@ type QuoteBody = {
   lines?: Array<{ id?: string } & Omit<LineInput, 'id'>>;
   exclusions?: NoteInput[];
   qualifications?: NoteInput[];
+  aiSuggestionId?: string;
 };
 
 function quoteFields(b: QuoteBody): QuoteInput {
@@ -97,6 +98,8 @@ function quoteFields(b: QuoteBody): QuoteInput {
   if (b.lines !== undefined) out.lines = b.lines.map(lineIn);
   if (b.exclusions !== undefined) out.exclusions = b.exclusions;
   if (b.qualifications !== undefined) out.qualifications = b.qualifications;
+  if (b.aiSuggestionId !== undefined)
+    out.aiSuggestionId = ref('aiSuggestion', b.aiSuggestionId, 'aiSuggestionId');
   return out;
 }
 
