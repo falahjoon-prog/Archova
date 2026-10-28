@@ -10,6 +10,7 @@ import { createInductionTranslationService } from './application/induction-trans
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import type { RfiSource } from './domain/rfi-source';
 import { createDiarySummaryService } from './application/diary-summary';
+import { createDiaryWeeklyService } from './application/diary-weekly';
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
 import { createDefectTagService } from './application/defect-tag';
@@ -72,6 +73,7 @@ export type { IndexReport, SourceRevision } from './application/project-index';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
+export type { DiaryWeeklyPayload } from './application/diary-weekly';
 export type { RfiDraft } from './application/rfi-draft';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';
@@ -332,6 +334,11 @@ export function createAiModule(
     gateway,
     dayForSummary: deps.dayForSummary,
   });
+  const diaryWeekly = createDiaryWeeklyService({
+    database: services.database,
+    gateway,
+    dayForSummary: deps.dayForSummary,
+  });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -350,6 +357,7 @@ export function createAiModule(
       rfiDrafts,
       drawingCompare,
       diarySummary,
+      diaryWeekly,
       defectTags,
       importMappings,
       quoteReads,
@@ -375,6 +383,7 @@ export function createAiModule(
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
       summariseDiaryDay: diarySummary.summariseDay,
+      summariseDiaryWeek: diaryWeekly.summariseWeek,
       /** For `workforce`: index a published induction version for worker Q&A (ai/12 §2 I3). */
       indexInductionVersion: inductionQa.indexVersion,
       /** For `workforce`'s worker route, after the access link check: answer from that version only. */

@@ -10,6 +10,7 @@ import {
 } from '@archova/kernel';
 import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
+import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
 import type {
   DrawingRegisterService,
@@ -53,6 +54,14 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       ...p,
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       possibleDelay: { ...p.possibleDelay, sources: p.possibleDelay.sources.map(diarySource) },
+      unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'diary.weekly') {
+    const p = payload as DiaryWeeklyPayload;
+    return {
+      ...p,
+      sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
     };
   }
@@ -117,6 +126,7 @@ const DIARY_LINE_KINDS = {
 /** A diary line as its public id (event kinds such as `inspection` are diary events); weather and totals as is. */
 const diarySource = (s: SummarySource) => ({
   kind: s.kind,
+  ...(s.date ? { date: s.date } : {}),
   id: s.id
     ? encodeId(DIARY_LINE_KINDS[s.kind as keyof typeof DIARY_LINE_KINDS] ?? 'diaryEvent', s.id)
     : null,
@@ -180,6 +190,7 @@ export function aiRoutes(
   rfiDrafts: RfiDraftService,
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
+  diaryWeekly: DiaryWeeklyService,
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
@@ -410,6 +421,15 @@ export function aiRoutes(
         requireTenant(input),
         projectId,
         input.params.date,
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    summariseDiaryWeekWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const row = await diaryWeekly.summariseWeek(
+        requireTenant(input),
+        projectId,
+        input.params.weekStart,
       );
       return { status: 200, body: toSuggestionDto(row) };
     },

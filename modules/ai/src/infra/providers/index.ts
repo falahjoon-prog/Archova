@@ -5,6 +5,7 @@ import { createBedrockProvider } from './bedrock';
 import { heuristicDefectTag } from '../../eval/suites/defect-tag';
 import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
+import { heuristicDiaryWeekly } from '../../eval/suites/diary-weekly';
 import { heuristicDrawingCompare } from '../../eval/suites/drawing-compare';
 import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
@@ -30,6 +31,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.translate': fakeTranslate,
   'translation.check': fakeTranslationCheck,
   'diary.summary': heuristicDiarySummary,
+  'diary.weekly': heuristicDiaryWeekly,
   'rfi.draft': heuristicRfiDraft,
   'drawing.compare': heuristicDrawingCompare,
   'defect.tag': heuristicDefectTag,
