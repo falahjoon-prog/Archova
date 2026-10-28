@@ -4,7 +4,7 @@ const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).crea
 vi.mock('@/shared/lib/api', () => fake.module);
 
 const { fakeProblem } = await import('@/test/fake-api');
-const { createDiaryApi } = await import('../data/api');
+const { createDiaryApi, summaryFromSuggestion } = await import('../data/api');
 const { emptyContent } = await import('../data/source');
 const { resetProjectPeople } = await import('@/shared/lib/people');
 
@@ -313,5 +313,55 @@ describe('Site diary API source', () => {
     expect(fake.callsTo('POST', `${D}/submit`)[0]!.init.params?.header).toEqual({
       'If-Match': '"4"',
     });
+  });
+
+  it('asks Nova to summarise the saved day and maps its sentences and sources', async () => {
+    fake.on('POST', `${D}/nova-summary`, () => ({
+      id: 'ais_1',
+      payload: {
+        sentences: [
+          { text: '12 people on site.', sources: [{ kind: 'labour', id: 'dlb_1' }] },
+          {
+            text: 'Heavy rain, 18 mm.',
+            sources: [
+              { kind: 'weather', id: null },
+              { kind: 'labour', id: 'dlb_1' },
+            ],
+          },
+        ],
+        unmentionedDelays: [{ kind: 'delay', id: 'ddl_1' }],
+      },
+    }));
+    const out = await createDiaryApi('org_1').novaSummary(
+      'prj_1',
+      '2026-10-01',
+      emptyContent(),
+      null,
+    );
+    expect(out).toEqual({
+      id: 'ais_1',
+      text: '12 people on site. Heavy rain, 18 mm.',
+      citations: [
+        { id: 'c_labour', label: 'Labour', href: '#diary-labour' },
+        { id: 'c_weather', label: 'Weather', href: '#diary-weather' },
+      ],
+      unmentionedDelays: 1,
+    });
+    expect(fake.callsTo('POST', `${D}/nova-summary`)[0]?.init.params?.path).toMatchObject({
+      date: '2026-10-01',
+    });
+  });
+
+  it('gives empty text for a suggestion with no sentences', () => {
+    expect(
+      summaryFromSuggestion({ id: 'ais_2', payload: { sentences: [] } } as never),
+    ).toMatchObject({ text: '', citations: [], unmentionedDelays: 0 });
+  });
+
+  it('surfaces an empty day as Nova having nothing to summarise', async () => {
+    fake.on('POST', `${D}/nova-summary`, () => fakeProblem(422, 'ai.diary.nothing_to_summarise'));
+    await expect(
+      createDiaryApi('org_1').novaSummary('prj_1', '2026-10-01', emptyContent(), null),
+    ).rejects.toMatchObject({ code: 'ai.diary.nothing_to_summarise' });
   });
 });

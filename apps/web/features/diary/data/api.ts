@@ -6,12 +6,18 @@
 import { ApiError, unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { addDays, type LocalDate } from '@archova/time';
-import type { Citation } from '@archova/ui';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
 import { mockId } from '@/shared/mocks/runtime';
 import { copyLabour, needsEditReason } from '../lib/entry';
-import type { Amendment, DiaryContent, DiaryEntry, StandDown, Weather } from '../lib/types';
+import type {
+  Amendment,
+  DiaryContent,
+  DiaryEntry,
+  NovaDiarySummary,
+  StandDown,
+  Weather,
+} from '../lib/types';
 import { emptyContent, type DiarySource } from './source';
 
 type S = components['schemas'];
@@ -529,14 +535,55 @@ export function createDiaryApi(orgId: string): DiarySource {
       );
     },
 
-    async novaSummary(): Promise<{ id: string; text: string; citations: Citation[] }> {
-      throw new ApiError(501, {
-        type: 'about:blank',
-        title: 'Not available yet',
-        status: 501,
-        detail: "Nova can't summarise the diary on this project yet.",
-        code: 'ai.not_available',
-      } as never);
+    // Nova writes from the day as saved on the server, so the screen saves its draft first (F4).
+    async novaSummary(projectId, date): Promise<NovaDiarySummary> {
+      await ensureCsrfToken();
+      return summaryFromSuggestion(
+        unwrap(
+          await api.POST(`${P}/{date}/nova-summary`, {
+            params: { path: { orgId, projectId, date } },
+          }),
+        ),
+      );
     },
+  };
+}
+
+// ------------------------------------------------------------------------------------------------ Nova
+
+interface SummaryPayload {
+  sentences?: Array<{ text: string; sources: Array<{ kind: string; id: string | null }> }>;
+  unmentionedDelays?: unknown[];
+}
+
+/** Where on the diary page each kind of line lives, and what to call it in a citation. */
+const SOURCE_LABELS: Record<string, { label: string; href: string }> = {
+  weather: { label: 'Weather', href: '#diary-weather' },
+  totals: { label: 'Labour totals', href: '#diary-labour' },
+  labour: { label: 'Labour', href: '#diary-labour' },
+  plant: { label: 'Plant', href: '#diary-plant' },
+  delivery: { label: 'Deliveries', href: '#diary-deliveries' },
+  visitor: { label: 'Visitors', href: '#diary-visitors' },
+  delay: { label: 'Delays', href: '#diary-delays' },
+  stand_down: { label: 'Stand-down', href: '#diary-delays' },
+};
+
+/** The suggestion's sentences as one text, with one citation for each kind of line they came from. */
+export function summaryFromSuggestion(s: S['AiSuggestion']): NovaDiarySummary {
+  const p = s.payload as SummaryPayload;
+  const sentences = p.sentences ?? [];
+  const seen = new Set<string>();
+  const citations: NovaDiarySummary['citations'] = [];
+  for (const k of sentences.flatMap((x) => x.sources.map((src) => src.kind))) {
+    const known = SOURCE_LABELS[k];
+    if (!known || seen.has(known.label)) continue;
+    seen.add(known.label);
+    citations.push({ id: `c_${k}`, ...known });
+  }
+  return {
+    id: s.id,
+    text: sentences.map((x) => x.text).join(' '),
+    citations,
+    unmentionedDelays: p.unmentionedDelays?.length ?? 0,
   };
 }

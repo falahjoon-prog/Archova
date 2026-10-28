@@ -73,7 +73,7 @@ export function useDiaryMutations(date: LocalDate) {
     }),
     summary: useMutation({
       mutationFn: (v: { content: DiaryContent; weather: Weather | null }) =>
-        diarySource.novaSummary(date, v.content, v.weather),
+        diarySource.novaSummary(projectId, date, v.content, v.weather),
     }),
   };
 }

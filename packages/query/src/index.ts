@@ -102,6 +102,17 @@ export function createQueries(api: ApiClient) {
             }),
           ),
       }),
+    /** The drawing register: sheets with their current revision (DOC-AC5). */
+    drawings: (orgId: string, projectId: string) =>
+      queryOptions({
+        queryKey: queryKeys.toolList(orgId, projectId, 'drawings'),
+        queryFn: async () =>
+          unwrap(
+            await api.GET('/v1/orgs/{orgId}/projects/{projectId}/drawings', {
+              params: { path: { orgId, projectId }, query: { limit: 200 } },
+            }),
+          ),
+      }),
     companies: (orgId: string) =>
       queryOptions({
         queryKey: queryKeys.companies(orgId),
