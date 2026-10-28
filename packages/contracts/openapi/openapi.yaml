@@ -1355,6 +1355,48 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/search:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: searchProjectWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Search this project's documents, drawings and RFIs by meaning and keyword (F6).
+      description: |
+        Finds the passages that match a few words, by meaning ("anything about the basement leak") as well as by the
+        words themselves, in the current revisions the caller can open: private folders and drawing access apply,
+        and builder staff with RFI access also search sent RFIs, exactly as for Ask. Results are ranked best first,
+        one per page of each revision, each with the start of the passage or the stretch around the first query word
+        it contains. Nothing is written or answered: the only model call is the embedding of the query, which costs
+        no Nova credits. The closest passages are returned even when none is close, so an empty list means nothing
+        is indexed that the caller can see. Needs Nova on for the organisation, as Ask does.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [query]
+              properties:
+                query: { type: string, minLength: 2, maxLength: 300 }
+                limit: { type: integer, minimum: 1, maximum: 20, description: Defaults to 10 }
+      responses:
+        '200':
+          description: The matching passages, best first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/NovaSearchResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5536,6 +5578,15 @@ components:
           required: [quote]
           properties:
             quote: { type: string, description: The exact words the answer relies on }
+    NovaSearchResult:
+      allOf:
+        - $ref: '#/components/schemas/NovaSource'
+        - type: object
+          required: [snippet]
+          properties:
+            snippet:
+              type: string
+              description: The start of the passage, or the stretch around the first query word it contains.
     NovaAnswer:
       type: object
       required: [runId, found, answer, citations, closestMatches]

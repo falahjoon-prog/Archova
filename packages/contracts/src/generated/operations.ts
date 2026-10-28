@@ -313,6 +313,14 @@ export const AskNovaParams = z.object({
 export const AskNovaBody = z.object({
   "question": z.string().min(1).max(1000),
 }).strict();
+export const SearchProjectWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SearchProjectWithNovaBody = z.object({
+  "query": z.string().min(2).max(300),
+  "limit": z.number().int().min(1).max(20).optional(),
+}).strict();
 export const DraftRfiWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1894,6 +1902,18 @@ export const operations = {
     params: AskNovaParams,
     query: null,
     body: AskNovaBody,
+  },
+  searchProjectWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/search',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: SearchProjectWithNovaParams,
+    query: null,
+    body: SearchProjectWithNovaBody,
   },
   draftRfiWithNova: {
     method: 'POST',
