@@ -898,6 +898,32 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DrawingRevision' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/tiles:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    get:
+      operationId: getDrawingTiles
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: Where a sheet's 256 px WebP tile pyramid is, with one signed URL template (mobile 03 §3.3).
+      description: |
+        `pending` until the files worker has cut the pyramid; show the sheet's PDF through the file download meanwhile.
+        When `ready`, replace `{z}`, `{x}` and `{y}` in `tileUrlTemplate` (level 0 is the overview, `levels - 1` full
+        resolution, x and y count tiles from the top left) and fetch from storage directly. Tile objects never
+        change, so cache them by revision, level and position for good. Fetch the template again after `expiresAt`.
+        The response is `no-store`; the signature covers this revision's tiles only.
+      responses:
+        '200':
+          description: Tile state
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingTiles' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1556,6 +1582,40 @@ paths:
         never written into the diary, the site manager edits it into the day's notes. Asking again before the day
         changes returns the same suggestion at no cost; any change to the day or its lines makes a new one.
         Costs half a Nova credit. An empty day returns 422 `ai.diary.nothing_to_summarise`.
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/weeks/{weekStart}/nova-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: weekStart
+        in: path
+        required: true
+        description: The Monday the week starts on, in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: summariseDiaryWeekWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: diary.entries.read
+      summary: Nova drafts a short summary of one diary week for the client or head office (F4).
+      description: |
+        Nova writes a few plain sentences about the week, Monday to Sunday, from the diary days the caller can
+        see (a subcontractor's summary is written from their own company's lines only). Every sentence names the
+        diary lines, weather or totals it comes from (`sources`, each with the `date` of its day), and a sentence
+        with a number or a source those facts don't back is dropped. The week's labour hours, busiest day and delay
+        hours by cause are added up in code (`delayHours`), never by the model. Delays and stand-downs the summary
+        doesn't mention are listed in `unmentionedDelays`. A day with more lines than the summary reads leaves out
+        its routine lines (`truncated`), never its delays. The result is a pending suggestion (`task`
+        `diary.weekly`) that only the person who asked can list or decide; it is never written into the diary.
+        Asking again before the week changes returns the same suggestion at no cost. Costs one Nova credit.
+        `weekStart` must be a Monday (422 otherwise); a week with no diary entry is 404 `diary.not_found`, and a
+        week whose entries are empty is 422 `ai.diary.nothing_to_summarise`.
       responses:
         '200':
           description: The suggestion
@@ -6410,6 +6470,21 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    DrawingTiles:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pending, ready] }
+        width: { type: integer, minimum: 1, description: Full-resolution sheet width in pixels. }
+        height: { type: integer, minimum: 1 }
+        tileSize: { type: integer, description: Tile edge in pixels (256). }
+        levels: { type: integer, minimum: 1 }
+        overviewUrl:
+          { type: string, description: The whole sheet in one small image; show it at once. }
+        tileUrlTemplate:
+          type: string
+          description: Contains `{z}`, `{x}` and `{y}`.
+        expiresAt: { type: string, format: date-time }
     SheetGeometry:
       type: object
       required:

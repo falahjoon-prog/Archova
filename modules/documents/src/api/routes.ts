@@ -16,6 +16,7 @@ import type { DocumentService } from '../application/documents';
 import type { DrawingService } from '../application/drawings';
 import type { FolderService } from '../application/folders';
 import type { GeometryService } from '../application/geometry';
+import type { TileService } from '../application/tiles';
 import type { MarkupService } from '../application/markups';
 import type { TransmittalItemView, TransmittalService } from '../application/transmittals';
 import {
@@ -39,6 +40,7 @@ export interface DocumentsRouteDeps {
   drawings: DrawingService;
   markups: MarkupService;
   geometry: GeometryService;
+  tiles: TileService;
   transmittals: TransmittalService;
 }
 
@@ -325,6 +327,23 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         status: 200,
         body: toSheetGeometryDto(revisionId, g.row),
         headers: { etag: etag(g.row?.version ?? 0) },
+      };
+    },
+    getDrawingTiles: async (input) => {
+      const revisionId = id(
+        'drawingRevision',
+        input.params.drawingRevisionId,
+        'drawing_revision.not_found',
+      );
+      const t = await read(input, (s) => d.tiles.get(s, project(input.params), revisionId));
+      return {
+        status: 200,
+        body:
+          t.status === 'pending'
+            ? { status: 'pending' }
+            : { ...t, expiresAt: t.expiresAt.toISOString() },
+        // The signed template is per caller and short-lived; never cached by a shared cache.
+        headers: { 'cache-control': 'private, no-store' },
       };
     },
     confirmSheetScale: async (input) => {

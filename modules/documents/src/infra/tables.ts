@@ -123,6 +123,9 @@ export const drawingRevisions = documents.table('drawing_revisions', {
   ocrTitle: text('ocr_title'),
   ocrConfidence: real('ocr_confidence'),
   aiSuggestionId: uuid('ai_suggestion_id'),
+  tilesPrefix: text('tiles_prefix'),
+  widthPx: integer('width_px'),
+  heightPx: integer('height_px'),
   ...audit,
 });
 

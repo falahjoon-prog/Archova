@@ -5,6 +5,7 @@ import { createFilesService } from './application/files-service';
 import { filesRoutes } from './api/routes';
 import type { ObjectStore } from './infra/object-store';
 import type { MalwareScanner } from './infra/scanner';
+import type { TileUrls } from './infra/tile-urls';
 
 export {
   createMemoryObjectStore,
@@ -13,6 +14,12 @@ export {
   type S3Credentials,
   type S3StoreConfig,
 } from './infra/object-store';
+export {
+  createCloudFrontTileUrls,
+  createMemoryTileUrls,
+  type CloudFrontTileConfig,
+  type TileUrls,
+} from './infra/tile-urls';
 export {
   clamdVerdict,
   createClamAvScanner,
@@ -32,6 +39,7 @@ export function createFilesModule(
     store: ObjectStore;
     scanner: MalwareScanner;
     uploadPermissions?: Readonly<Record<string, string>>;
+    tiles: TileUrls;
   },
 ) {
   const service = createFilesService({ ...deps, logger: services.logger });
@@ -45,6 +53,8 @@ export function createFilesModule(
       createUpload: service.createUpload,
       completeUpload: service.complete,
       downloadUrl: service.downloadUrl,
+      /** Signed template and overview URL for a drawing's tile pyramid (mobile 03 §3.3). */
+      signTiles: deps.tiles.sign,
     },
   };
 }

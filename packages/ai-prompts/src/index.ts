@@ -8,6 +8,7 @@ export * from './translation/prompt';
 export * from './qa-rewrite/prompt';
 export * from './qa-rerank/prompt';
 export * from './diary-summary/prompt';
+export * from './diary-weekly/prompt';
 export * from './rfi-draft/prompt';
 export * from './drawing-compare/prompt';
 export * from './defect-tag/prompt';
