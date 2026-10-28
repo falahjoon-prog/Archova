@@ -4,6 +4,7 @@ import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
 import { createAdminService } from './application/admin';
 import { createAskService } from './application/ask';
+import { createSemanticSearchService } from './application/semantic-search';
 import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
@@ -70,6 +71,7 @@ export {
 export type { TaskRun, RunOptions, Gateway } from './application/gateway';
 export type { ReadableFile, SheetSuggestionPayload } from './application/drawing-register';
 export type { AskAnswer, AnswerSource } from './application/ask';
+export type { SearchResult } from './application/semantic-search';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
@@ -281,15 +283,23 @@ export function createAiModule(
     assert: deps.assert,
     can: deps.can,
   });
-  // Ask retrieves documents, drawings and (builder staff only) RFIs; drafting RFIs and inductions stays on documents.
+  // Ask and search retrieve documents, drawings and (builder staff only) RFIs; drafting RFIs and inductions stays on
+  // documents.
+  const askScopes = async (scope: TenantScope, projectId: string) => [
+    ...(await deps.accessScopes(scope, projectId)),
+    ...(await deps.rfiAccessScopes(scope, projectId)),
+  ];
   const askService = createAskService({
     database: services.database,
     gateway,
     assert: deps.assert,
-    accessScopes: async (scope, projectId) => [
-      ...(await deps.accessScopes(scope, projectId)),
-      ...(await deps.rfiAccessScopes(scope, projectId)),
-    ],
+    accessScopes: askScopes,
+  });
+  const semanticSearch = createSemanticSearchService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    accessScopes: askScopes,
   });
   const projectIndex = createProjectIndexService({
     database: services.database,
@@ -369,6 +379,7 @@ export function createAiModule(
       admin,
       drawingRegister,
       askService,
+      semanticSearch,
       projectIndex,
       inductionDrafts,
       rfiDrafts,
@@ -386,6 +397,8 @@ export function createAiModule(
       getSettings: admin.getSettings,
       extractDrawingRegister: drawingRegister.extract,
       ask: askService.ask,
+      /** F6: the passages matching a few words by meaning or keyword, within the caller's access; no model call. */
+      searchProject: semanticSearch.search,
       indexProject: projectIndex.indexProject,
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */

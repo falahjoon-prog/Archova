@@ -1058,6 +1058,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Search this project's documents, drawings and RFIs by meaning and keyword (F6).
+         * @description Finds the passages that match a few words, by meaning ("anything about the basement leak") as well as by the
+         *     words themselves, in the current revisions the caller can open: private folders and drawing access apply,
+         *     and builder staff with RFI access also search sent RFIs, exactly as for Ask. Results are ranked best first,
+         *     one per page of each revision, each with the start of the passage or the stretch around the first query word
+         *     it contains. Nothing is written or answered: the only model call is the embedding of the query, which costs
+         *     no Nova credits. The closest passages are returned even when none is close, so an empty list means nothing
+         *     is indexed that the caller can see. Needs Nova on for the organisation, as Ask does.
+         */
+        post: operations["searchProjectWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts": {
         parameters: {
             query?: never;
@@ -3867,6 +3896,10 @@ export interface components {
         NovaCitation: components["schemas"]["NovaSource"] & {
             /** @description The exact words the answer relies on */
             quote: string;
+        };
+        NovaSearchResult: components["schemas"]["NovaSource"] & {
+            /** @description The start of the passage, or the stretch around the first query word it contains. */
+            snippet: string;
         };
         NovaAnswer: {
             /** @description For feedback (`air_`); null when no model call was needed. */
@@ -8191,6 +8224,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchProjectWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    query: string;
+                    /** @description Defaults to 10 */
+                    limit?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The matching passages, best first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        results: components["schemas"]["NovaSearchResult"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];
