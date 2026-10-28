@@ -1,6 +1,6 @@
 // Evacuation roll call for supervisors (ATT-AC5): start it from who is on site, tick people off, end it.
-// Needs a connection. The roll call is held on this screen, so leaving it before ending loses the place.
-import { useState } from 'react';
+// Needs a connection. An evacuation still in progress is picked up again when the screen opens.
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import type { RollCall } from '@archova/contracts';
@@ -8,7 +8,7 @@ import { uuidv7 } from '@archova/domain';
 import { Button, Screen, TextField, useTheme } from '@archova/ui-native';
 import { api, queries } from '../../../lib/api';
 import { StateMessage, useCurrentOrg } from '../../../shared';
-import { endRollCall, markRollCall, startRollCall } from '../commands';
+import { endRollCall, findOpenRollCall, markRollCall, startRollCall } from '../commands';
 import { groupByCompany, markLabel, progressLabel } from '../rollcall';
 
 export function RollCallScreen({ projectId }: { projectId: string }) {
@@ -19,6 +19,23 @@ export function RollCallScreen({ projectId }: { projectId: string }) {
   const [rollCall, setRollCall] = useState<RollCall | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Pick up an evacuation already under way, e.g. after the app was closed.
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    findOpenRollCall(api, { orgId, projectId }).then(
+      (open) => {
+        if (!cancelled && open) setRollCall((current) => current ?? open);
+      },
+      () => {
+        // Starting a new roll call still works; the open one just is not shown.
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId, projectId]);
 
   if (!orgId) {
     return (
