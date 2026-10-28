@@ -1209,6 +1209,222 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Tender packages on the project. A subcontractor sees the packages they were invited to, once out to tender. */
+        get: operations["listTenderPackages"];
+        put?: never;
+        /** Draft a tender package with its scope lines and documents (EST-AC1). Numbered TP-001 per project. */
+        post: operations["createTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        /** One package. A subcontractor sees only their own invite. */
+        get: operations["getTenderPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft or out-to-tender package. */
+        patch: operations["updateTenderPackage"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a draft out to tender (needs scope, a due date and an invite), close, reopen or cancel it. */
+        post: operations["transitionTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2). */
+        post: operations["inviteToTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the estimator allowances for gaps, keyed quoteId:scopeKey (EST-AC6 normalise). */
+        put: operations["setTenderPackageAllowances"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/award": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select the preferred confirmed quote. A reason is required when it is not the lowest after allowances (EST-AC7). */
+        post: operations["awardTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        /** Quotes on a package. A subcontractor sees only their own company quotes (EST-AC3). */
+        get: operations["listQuotes"];
+        put?: never;
+        /** Submit a quote, or a revised one that supersedes that company earlier quote (EST-AC4). A subcontractor quotes for their own company; builder staff name the company. */
+        post: operations["createQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        /** One quote with its lines. */
+        get: operations["getQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Correct a quote before it is confirmed. Changing a Nova-read amount keeps the original (EST-AC5). */
+        patch: operations["updateQuote"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the quote so it takes part in comparison and can be awarded (EST-AC5). */
+        post: operations["confirmQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a quote out of the comparison. */
+        post: operations["declineQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/defects": {
         parameters: {
             query?: never;
@@ -4047,6 +4263,197 @@ export interface components {
             reason: string;
         };
         /** @enum {string} */
+        PackageStatus: "draft" | "out_to_tender" | "closed" | "awarded" | "cancelled";
+        /** @enum {string} */
+        PackageInviteStatus: "invited" | "viewed" | "declined" | "intends_to_quote" | "submitted";
+        /** @enum {string} */
+        QuoteStatus: "reading" | "ready_to_review" | "confirmed" | "superseded" | "declined";
+        ScopeLine: {
+            /** @description Quotes line up against this (`normalised_item_key`) */
+            key: string;
+            description: string;
+            quantity: string | null;
+            unit: string;
+            /** @enum {string} */
+            source: "typed" | "csv" | "takeoff";
+        };
+        PackageDocument: {
+            /** @enum {string} */
+            kind: "drawing_revision" | "document";
+            /** @description A drv_ or doc_ id; linked, not copied */
+            id: string;
+        };
+        PackageInvite: {
+            companyId: string;
+            status: components["schemas"]["PackageInviteStatus"];
+            /** Format: date-time */
+            invitedAt: string;
+            /** Format: date-time */
+            viewedAt: string | null;
+            /** Format: date-time */
+            respondedAt: string | null;
+        };
+        PackageAward: {
+            quoteId: string;
+            by: string | null;
+            /** Format: date-time */
+            at: string;
+            reason: string | null;
+            /** @description The selected quote was not the lowest after allowances */
+            notLowest: boolean;
+        };
+        TenderPackage: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description TP-001 */
+            numberLabel: string;
+            name: string;
+            trade: string;
+            status: components["schemas"]["PackageStatus"];
+            /** Format: date-time */
+            dueAt: string | null;
+            scope: components["schemas"]["ScopeLine"][];
+            documents: components["schemas"]["PackageDocument"][];
+            invites: components["schemas"]["PackageInvite"][];
+            /** @description Estimator allowances keyed quoteId:scopeKey, decimal AUD ex GST. Empty for subcontractors. */
+            allowances: {
+                [key: string]: string;
+            };
+            award: components["schemas"]["PackageAward"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        TenderPackagePage: {
+            data: components["schemas"]["TenderPackage"][];
+            nextCursor: string | null;
+        };
+        CreateTenderPackageRequest: {
+            name: string;
+            trade: string;
+            /** Format: date-time */
+            dueAt?: string;
+            scope?: components["schemas"]["ScopeLine"][];
+            documents?: components["schemas"]["PackageDocument"][];
+        };
+        UpdateTenderPackageRequest: {
+            name?: string;
+            trade?: string;
+            /** Format: date-time */
+            dueAt?: string | null;
+            scope?: components["schemas"]["ScopeLine"][];
+            documents?: components["schemas"]["PackageDocument"][];
+        };
+        PackageActionRequest: {
+            /** @enum {string} */
+            action: "send" | "close" | "reopen" | "cancel";
+        };
+        InvitePackageRequest: {
+            companyIds: components["schemas"]["CompanyRef"][];
+        };
+        SetAllowancesRequest: {
+            allowances: {
+                [key: string]: string;
+            };
+        };
+        AwardPackageRequest: {
+            quoteId: string;
+            reason?: string;
+        };
+        QuoteSourceRef: {
+            page: number;
+            snippet: string;
+        };
+        QuoteLine: {
+            id: string;
+            scopeKey: string | null;
+            description: string;
+            quantity: string | null;
+            unit: string;
+            rate: string | null;
+            /** @description Decimal AUD ex GST */
+            amount: string;
+            isProvisional: boolean;
+            /** @description What Nova read, kept when the estimator corrected it */
+            originalAmount: string | null;
+            source: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        QuoteNote: {
+            id: string;
+            text: string;
+            /** @description An exclusion naming a scope line marks that cell excluded */
+            scopeKey: string | null;
+            source: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        Quote: {
+            id: string;
+            packageId: string;
+            companyId: string;
+            /** @description A revised quote supersedes the earlier revision (EST-AC4) */
+            revision: number;
+            status: components["schemas"]["QuoteStatus"];
+            reference: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: date */
+            validUntil: string | null;
+            totalExGst: string;
+            gst: string;
+            currency: string;
+            lines: components["schemas"]["QuoteLine"][];
+            exclusions: components["schemas"]["QuoteNote"][];
+            qualifications: components["schemas"]["QuoteNote"][];
+            /** @enum {string} */
+            source: "manual" | "ai_extracted";
+            confirmedBy: string | null;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            version: number;
+        };
+        QuotePage: {
+            data: components["schemas"]["Quote"][];
+        };
+        QuoteLineInput: {
+            /** @description Keeps the line (and a Nova original) when editing */
+            id?: string;
+            scopeKey?: string | null;
+            description: string;
+            quantity?: string | null;
+            unit?: string;
+            rate?: string | null;
+            amount: string;
+            isProvisional?: boolean;
+            source?: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        QuoteNoteInput: {
+            id?: string;
+            text: string;
+            scopeKey?: string | null;
+            source?: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        CreateQuoteRequest: {
+            companyId?: components["schemas"]["CompanyRef"];
+            reference?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+            /** Format: date */
+            validUntil?: string;
+            lines: components["schemas"]["QuoteLineInput"][];
+            exclusions?: components["schemas"]["QuoteNoteInput"][];
+            qualifications?: components["schemas"]["QuoteNoteInput"][];
+        };
+        UpdateQuoteRequest: {
+            reference?: string | null;
+            /** Format: date */
+            validUntil?: string | null;
+            lines?: components["schemas"]["QuoteLineInput"][];
+            exclusions?: components["schemas"]["QuoteNoteInput"][];
+            qualifications?: components["schemas"]["QuoteNoteInput"][];
+        };
+        /** @enum {string} */
         DefectStatus: "draft" | "open" | "ready_for_review" | "closed" | "disputed" | "void";
         /** @enum {string} */
         DefectPriority: "low" | "medium" | "high" | "critical";
@@ -5238,6 +5645,8 @@ export interface components {
         TransmittalId: string;
         RfiId: string;
         DefectId: string;
+        TenderPackageId: string;
+        QuoteId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -7173,6 +7582,433 @@ export interface operations {
                 };
             };
             426: components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTenderPackages: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PackageStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackagePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTenderPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTenderPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTenderPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTenderPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenderPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionTenderPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    inviteToTenderPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitePackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setTenderPackageAllowances: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAllowancesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    awardTenderPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listQuotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createQuote: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    declineQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
             default: components["responses"]["Problem"];
         };
     };
