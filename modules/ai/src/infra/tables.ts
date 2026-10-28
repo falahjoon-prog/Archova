@@ -182,3 +182,17 @@ export const drawingCompares = ai.table('ai_drawing_compares', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
+
+/** F21 vision pass: where the linework of a revision pair changed, and Nova's description of each place; shared. */
+export const drawingVisualCompares = ai.table('ai_drawing_visual_compares', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  revisionId: uuid('revision_id').notNull(),
+  againstRevisionId: uuid('against_revision_id').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  payload: jsonb('payload').$type<unknown>().notNull(),
+  runId: uuid('run_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});

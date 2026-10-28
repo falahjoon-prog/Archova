@@ -10,7 +10,7 @@ import {
   type MessageSender,
   type RedisClient,
 } from '@archova/kernel';
-import { FAKE_MODELS, type ModelProvider } from '@archova/mod-ai';
+import { FAKE_MODELS, type ModelProvider, type RasterizePage } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import type { ApiConfig } from './config';
@@ -34,6 +34,11 @@ export interface AppDeps {
   messages?: MessageSender;
   /** Tests inject a fake model provider with scripted responses. */
   aiProvider?: ModelProvider;
+  /**
+   * Renders a drawing page for the linework half of revision compare. None in the API image (no native canvas);
+   * tests and a developer's machine pass one.
+   */
+  aiRasterizePage?: RasterizePage;
   /** Hands the loaded modules to the caller, e.g. tests that drive import commands (X49) directly. */
   onModules?: (modules: Modules) => void;
 }
@@ -88,6 +93,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
+        ...(deps.aiRasterizePage ? { rasterizePage: deps.aiRasterizePage } : {}),
         config:
           config.ai.provider === 'bedrock'
             ? {
