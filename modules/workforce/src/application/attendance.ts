@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ilike, isNull, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, ilike, inArray, isNull, or, sql, type SQL } from 'drizzle-orm';
 import { geofenceStatus, uuidv7, type GeoFix } from '@archova/domain';
 import { localDateOf, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
@@ -988,13 +988,39 @@ export function createAttendanceService(deps: WorkforceDeps) {
     return getRollCall(scope, projectId, rollCallId);
   }
 
-  async function listRollCalls(scope: TenantScope, projectId: string) {
-    return scope.tx
+  /** Newest first, each with its latest marks. `open` keeps only calls not yet ended (the evacuation in progress). */
+  async function listRollCalls(
+    scope: TenantScope,
+    projectId: string,
+    opts: { open?: boolean } = {},
+  ) {
+    const calls = await scope.tx
       .select()
       .from(rollCalls)
-      .where(eq(rollCalls.projectId, projectId))
+      .where(
+        and(
+          eq(rollCalls.projectId, projectId),
+          opts.open === undefined
+            ? undefined
+            : opts.open
+              ? isNull(rollCalls.endedAt)
+              : sql`${rollCalls.endedAt} is not null`,
+        ),
+      )
       .orderBy(desc(rollCalls.startedAt))
-      .limit(50);
+      .limit(20);
+    if (calls.length === 0) return [];
+    const marks = await scope.tx
+      .select()
+      .from(rollCallMarks)
+      .where(
+        inArray(
+          rollCallMarks.rollCallId,
+          calls.map((c) => c.id),
+        ),
+      )
+      .orderBy(asc(rollCallMarks.markedAt), asc(rollCallMarks.id));
+    return calls.map((call) => ({ call, marks: marks.filter((m) => m.rollCallId === call.id) }));
   }
 
   return {
