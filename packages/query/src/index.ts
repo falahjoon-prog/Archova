@@ -25,8 +25,11 @@ export const queryKeys = {
   toolItem: (orgId: string, projectId: string, tool: ProjectTool, id: string) =>
     ['orgs', orgId, 'projects', projectId, tool, 'item', id] as const,
   /** Org-scoped drawing revision resources (geometry, markups, pins), per backend 04 §3. */
-  drawingRevision: (orgId: string, revisionId: string, part: 'geometry' | 'markups' | 'pins') =>
-    ['orgs', orgId, 'drawing-revisions', revisionId, part] as const,
+  drawingRevision: (
+    orgId: string,
+    revisionId: string,
+    part: 'geometry' | 'markups' | 'pins' | 'tiles',
+  ) => ['orgs', orgId, 'drawing-revisions', revisionId, part] as const,
   assistantConversation: (orgId: string, conversationId: string) =>
     ['orgs', orgId, 'ai', 'conversations', conversationId] as const,
 };
@@ -111,6 +114,19 @@ export function createQueries(api: ApiClient) {
             await api.GET('/v1/orgs/{orgId}/projects/{projectId}/drawings', {
               params: { path: { orgId, projectId }, query: { limit: 200 } },
             }),
+          ),
+      }),
+    /** Tile pyramid state for one drawing revision; the signed URLs expire, so keep it short-lived. */
+    drawingTiles: (orgId: string, projectId: string, revisionId: string) =>
+      queryOptions({
+        queryKey: [...queryKeys.drawingRevision(orgId, revisionId, 'tiles')],
+        staleTime: 5 * 60_000,
+        queryFn: async () =>
+          unwrap(
+            await api.GET(
+              '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/tiles',
+              { params: { path: { orgId, projectId, drawingRevisionId: revisionId } } },
+            ),
           ),
       }),
     companies: (orgId: string) =>
