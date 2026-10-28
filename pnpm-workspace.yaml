@@ -14,3 +14,6 @@ auditConfig:
   ignoreGhsas:
     # node-forge in Expo's CLI (mobile build tooling, never shipped in an app or image); no patched release yet.
     - GHSA-86w9-cpqp-85rv
+    # zod 3.25.76 inside Expo's CLI (mobile build tooling, same as above). Our own packages are on zod 4.6.7; Expo
+    # needs the zod 3 API, so an override would break its CLI. Revisit when Expo ships on zod 4.
+    - GHSA-mrhx-c7xc-m3w5
