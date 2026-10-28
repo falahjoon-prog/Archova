@@ -10,12 +10,16 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run test/unit --passWithNoTests",
-    "test:integration": "vitest run test/integration"
+    "test:integration": "vitest run test/integration",
+    "dev:ai": "tsx watch --env-file-if-exists=.env src/ai.ts",
+    "start:ai": "node dist/ai.js"
   },
   "dependencies": {
+    "@archova/compose": "workspace:*",
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
+    "@archova/mod-ai": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-integrations": "workspace:*",
     "bullmq": "^5.58.0",

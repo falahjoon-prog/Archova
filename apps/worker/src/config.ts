@@ -20,6 +20,17 @@ function required(env: NodeJS.ProcessEnv, key: string): string {
   return v;
 }
 
+/**
+ * `WORKER_ROLE=ai` is the ai-worker, which runs `dist/ai.js` (`src/ai.ts`) from its own image; the relay, dispatcher and
+ * scheduled jobs run only in `src/main.ts`, and refuse to start with the ai role so the two are never mixed up.
+ */
+export function workerRole(env: NodeJS.ProcessEnv = process.env): 'default' | 'ai' {
+  const role = env.WORKER_ROLE ?? 'default';
+  if (role !== 'default' && role !== 'ai') throw new Error(`Unknown WORKER_ROLE ${role}`);
+  return role;
+}
+
+/** What the default worker (relay, dispatcher, scheduled jobs) reads. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
   return {
     platformDatabaseUrl: required(env, 'DATABASE_PLATFORM_URL'),

@@ -531,6 +531,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@archova/compose':
+        specifier: workspace:*
+        version: link:../../packages/compose
       '@archova/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -540,6 +543,9 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@archova/mod-ai':
+        specifier: workspace:*
+        version: link:../../modules/ai
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
@@ -11220,9 +11226,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 

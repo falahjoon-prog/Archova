@@ -14,23 +14,35 @@ export interface StoredEvent extends RelayedEvent {
   occurredAt: string;
 }
 
-export interface Subscriber {
+/** Where the dispatcher sends an event for a subscriber: the default worker's runner, or another role's queue. */
+export type SubscriberQueue = 'ai';
+
+/** What the dispatcher needs to route an event; the handler lives wherever the subscriber's queue is consumed. */
+export interface SubscriberRoute {
   /** Unique; part of the job id, so renaming one re-delivers history. */
   name: string;
   /** Exact type (`defects.defect.created.v1`) or a prefix ending in `*` (`defects.*`). */
   types: readonly string[];
+  /** Absent: the default worker runs it. `ai`: the ai-worker does (its image alone carries the AI dependencies). */
+  queue?: SubscriberQueue;
+}
+
+export interface Subscriber extends SubscriberRoute {
   /** At-least-once: must be idempotent on `event.id`. */
   handle(event: StoredEvent, ctx: { database: Database }): Promise<void>;
 }
 
-export function matches(subscriber: Subscriber, type: string): boolean {
+export function matches(subscriber: SubscriberRoute, type: string): boolean {
   return subscriber.types.some((t) =>
     t.endsWith('*') ? type.startsWith(t.slice(0, -1)) : t === type,
   );
 }
 
 /** Subscribers named in the registry whose types match; throws on duplicate names so a typo can't shadow one. */
-export function subscribersFor(registry: readonly Subscriber[], type: string): Subscriber[] {
+export function subscribersFor<S extends SubscriberRoute>(
+  registry: readonly S[],
+  type: string,
+): S[] {
   const names = new Set<string>();
   for (const s of registry) {
     if (names.has(s.name)) throw new Error(`Duplicate subscriber ${s.name}`);
