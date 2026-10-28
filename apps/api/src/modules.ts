@@ -13,7 +13,13 @@ import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-est
 import { INTEGRATIONS_PERMISSIONS, createIntegrationsModule } from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
-import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
+import {
+  createFilesModule,
+  createMemoryTileUrls,
+  type MalwareScanner,
+  type ObjectStore,
+  type TileUrls,
+} from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
@@ -34,7 +40,7 @@ export const MODULE_PERMISSIONS = [
 
 export interface ModuleOptions {
   identity: IdentityConfig;
-  files: { store: ObjectStore; scanner: MalwareScanner };
+  files: { store: ObjectStore; scanner: MalwareScanner; tiles?: TileUrls };
   entitlements?: EntitlementProvider;
   ai: { config: AiConfig; provider?: ModelProvider };
   /** One-time codes for access links (X45). */
@@ -78,6 +84,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     store: opts.files.store,
     scanner: opts.files.scanner,
+    tiles: opts.files.tiles ?? createMemoryTileUrls(),
     uploadPermissions: {
       // Anyone who can sign in on a project can upload their own white card and licence photos.
       workforce: 'workforce.attendance.sign_in_self',

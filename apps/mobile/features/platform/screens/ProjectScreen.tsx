@@ -71,6 +71,16 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.defects(projectId))}
       />
       <ListItem
+        title="Site sign-in"
+        subtitle="Scan the gate code to sign in or out"
+        onPress={() => router.push(mobileRoutes.siteSignIn(projectId))}
+      />
+      <ListItem
+        title="Roll call"
+        subtitle="Account for everyone on site in an evacuation"
+        onPress={() => router.push(mobileRoutes.rollCall(projectId))}
+      />
+      <ListItem
         title="Drawings"
         subtitle="Current sheets for this project"
         onPress={() => router.push(mobileRoutes.drawings(projectId))}

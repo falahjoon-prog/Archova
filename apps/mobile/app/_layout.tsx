@@ -43,6 +43,14 @@ function RootNavigator() {
           options={{ headerShown: true, title: 'Site diary' }}
         />
         <Stack.Screen
+          name="project/[projectId]/sign-in/index"
+          options={{ headerShown: true, title: 'Site sign-in' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/roll-call/index"
+          options={{ headerShown: true, title: 'Roll call' }}
+        />
+        <Stack.Screen
           name="project/[projectId]/drawings/index"
           options={{ headerShown: true, title: 'Drawings' }}
         />

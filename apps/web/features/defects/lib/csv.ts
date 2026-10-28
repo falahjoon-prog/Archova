@@ -1,11 +1,13 @@
-import { companyName } from '@/shared/mocks/directory';
 import { locationPath } from '@/shared/mocks/locations';
 import { STAGE_LABELS, STATUS_LABELS, formatDefectNumber, type Defect } from './types';
 
 const cell = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
 
 /** The filtered register as CSV, sorted by location so it reads as a walk list (DEF-AC10). PDF is server-side. */
-export function defectsToCsv(rows: readonly Defect[]): string {
+export function defectsToCsv(
+  rows: readonly Defect[],
+  companyName: (id: string | null) => string,
+): string {
   const head = [
     'Number',
     'Title',

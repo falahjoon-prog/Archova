@@ -1137,6 +1137,18 @@ export const DrawingSheetPageSchema = z.object({
 });
 export type DrawingSheetPage = z.infer<typeof DrawingSheetPageSchema>;
 
+export const DrawingTilesSchema = z.object({
+  "status": z.enum(["pending", "ready"]),
+  "width": z.number().int().min(1).optional(),
+  "height": z.number().int().min(1).optional(),
+  "tileSize": z.number().int().optional(),
+  "levels": z.number().int().min(1).optional(),
+  "overviewUrl": z.string().optional(),
+  "tileUrlTemplate": z.string().optional(),
+  "expiresAt": z.string().datetime({ offset: true }).optional(),
+});
+export type DrawingTiles = z.infer<typeof DrawingTilesSchema>;
+
 export const PermissionLevelSchema = z.enum(["none", "read", "standard", "admin"]);
 export type PermissionLevel = z.infer<typeof PermissionLevelSchema>;
 

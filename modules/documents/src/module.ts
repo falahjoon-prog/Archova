@@ -10,6 +10,7 @@ import { createDrawingService } from './application/drawings';
 import { createGeometryService } from './application/geometry';
 import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
+import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
 import { documentsRoutes } from './api/routes';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
@@ -19,7 +20,7 @@ export function createDocumentsModule(
   deps: {
     access: AccessService;
     platform: Pick<PlatformApi, 'getProject'>;
-    files: Pick<FilesModule['api'], 'getFile'>;
+    files: Pick<FilesModule['api'], 'getFile' | 'signTiles'>;
     identity: Pick<IdentityApi, 'findUserByEmail'>;
   },
 ) {
@@ -29,6 +30,7 @@ export function createDocumentsModule(
   const drawings = createDrawingService(c);
   const markups = createMarkupService(c, drawings);
   const geometry = createGeometryService(drawings);
+  const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
   const aiSources = createAiSourceService(c, folders);
   return {
@@ -41,6 +43,7 @@ export function createDocumentsModule(
       drawings,
       markups,
       geometry,
+      tiles,
       transmittals,
     }),
     api: {
@@ -54,6 +57,8 @@ export function createDocumentsModule(
       getMarkup: markups.getOwn,
       /** For the files worker: record the vector geometry and scale it read off a sheet (X30). */
       recordSheetGeometry: geometry.recordExtracted,
+      /** For the files worker: record a finished tile pyramid for a sheet (backend 06 §4). */
+      recordDrawingTiles: tiles.recordTiles,
       /** For Nova (ai/03 §3): every published document and drawing revision, with its access scope. */
       aiSources: aiSources.aiSources,
       /** For Nova retrieval (ai/04 §3): the access scopes the caller holds in a project. */

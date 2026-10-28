@@ -1,14 +1,28 @@
 'use client';
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 import { queryKeys } from '@archova/query';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
-import { defectsSource, type DefectFilters } from '../data/source';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { createDefectsApi } from '../data/api';
+import {
+  defectsSource as previewSource,
+  type DefectFilters,
+  type DefectsSource,
+} from '../data/source';
 import type { Defect, DefectInput, DefectStage } from '../lib/types';
 
+/** The API once the defects endpoints are reachable; the in-browser preview store in preview mode and tests. */
+export function useDefectsSource(): DefectsSource {
+  const { orgId } = useCurrentOrg();
+  return useMemo(() => (previewDataOnly ? previewSource : createDefectsApi(orgId)), [orgId]);
+}
+
 export function useDefectList(filters: DefectFilters) {
+  const defectsSource = useDefectsSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   return useQuery({
@@ -18,6 +32,7 @@ export function useDefectList(filters: DefectFilters) {
 }
 
 export function useDefect(id: string) {
+  const defectsSource = useDefectsSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   return useQuery({
@@ -28,6 +43,7 @@ export function useDefect(id: string) {
 
 /** Status changes carry evidence and are seen by another company, so none is optimistic. */
 export function useDefectMutations() {
+  const defectsSource = useDefectsSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   const actor = useActor();
@@ -42,8 +58,8 @@ export function useDefectMutations() {
   };
   return {
     create: useMutation({
-      mutationFn: (v: { input: DefectInput; aiSuggested: boolean }) =>
-        defectsSource.create(projectId, v.input, actor, v.aiSuggested),
+      mutationFn: (v: { input: DefectInput; aiSuggestionId: string | null }) =>
+        defectsSource.create(projectId, v.input, actor, v.aiSuggestionId),
       onSuccess: settle,
     }),
     bulkAssign: useMutation({
@@ -56,18 +72,22 @@ export function useDefectMutations() {
       onSuccess: settle,
     }),
     markReady: useMutation({
-      mutationFn: (v: { id: string; note: string; photoNames: string[] }) =>
+      mutationFn: (v: { id: string; note: string; photos: File[] }) =>
         defectsSource.markReady(projectId, v.id, v, actor),
       onSuccess: settle,
     }),
     close: useMutation({
-      mutationFn: (v: { id: string; note: string; photoNames: string[] }) =>
+      mutationFn: (v: { id: string; note: string; photos: File[] }) =>
         defectsSource.close(projectId, v.id, v, actor),
       onSuccess: settle,
     }),
     withReason: useMutation({
       mutationFn: (v: { id: string; action: 'reject' | 'dispute' | 'void'; reason: string }) =>
         defectsSource.withReason(projectId, v.id, v.action, v.reason, actor),
+      onSuccess: settle,
+    }),
+    issue: useMutation({
+      mutationFn: (id: string) => defectsSource.issue(projectId, id, actor),
       onSuccess: settle,
     }),
     reassign: useMutation({
@@ -83,13 +103,20 @@ export function useDefectMutations() {
 }
 
 export function useDefectNova() {
+  const defectsSource = useDefectsSource();
   const { projectId } = useCurrentProject();
   return {
     suggest: useMutation({
-      mutationFn: (description: string) => defectsSource.novaSuggest(description),
+      mutationFn: (v: { description: string; photos: File[]; drawing: Defect['drawing'] }) =>
+        defectsSource.novaSuggest(projectId, v),
+    }),
+    /** Records what the person did with a suggestion; failing to record never blocks the defect. */
+    decide: useMutation({
+      mutationFn: (v: { suggestionId: string; decision: 'accepted' | 'edited' | 'rejected' }) =>
+        defectsSource.novaDecide(projectId, v.suggestionId, v.decision).catch(() => undefined),
     }),
     duplicates: useMutation({
-      mutationFn: (v: { title: string; locationId: string | null; sheetId: string | null }) =>
+      mutationFn: (v: { title: string; locationId: string | null; drawing: Defect['drawing'] }) =>
         defectsSource.novaDuplicates(projectId, v),
     }),
   };

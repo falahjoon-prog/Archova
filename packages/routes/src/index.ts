@@ -57,6 +57,8 @@ export const mobileRoutes = {
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
+  siteSignIn: (projectId: string) => `/project/${enc(projectId)}/sign-in`,
+  rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   newDefect: (projectId: string) => `/project/${enc(projectId)}/defects/new`,
   defect: (projectId: string, defectId: string) =>
     `/project/${enc(projectId)}/defects/${enc(defectId)}`,
