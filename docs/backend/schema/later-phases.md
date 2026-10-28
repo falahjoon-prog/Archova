@@ -21,6 +21,8 @@ Ari's table set, accepted as X9 in [cross-team-decisions](../../architecture/cro
 
 ## integrations (phase 2 onward)
 
+**As built (phase 1): import staging.** `integrations.import_jobs` and `integrations.import_rows` exist (migration `20261028140000`), one open job per project. A CSV the customer exported is staged by `parseImportJob` (50,000 rows; files over 5 MB wait for the worker), a person maps columns with `setImportMapping`, which dry-runs every row against the field catalogue in `@archova/ai-prompts` and counts valid and invalid rows. Applying through each module's `importX` command, rollback, XLSX and the 30-day staging purge are not built. Imports are core, so `integrations` is in `CORE_MODULES`.
+
 **integrations.webhook_subscriptions** — `url`, `secret_encrypted bytea`, `event_types text[]`, `project_ids uuid[] null`, `active bool`, `failure_count int`, `disabled_at`
 **integrations.webhook_deliveries** (partitioned) — `subscription_id`, `event_id`, `attempt int`, `status_code int`, `response_ms int`, `next_attempt_at`, `delivered_at`
 **integrations.connections** — `provider text CHECK (xero|myob|m365|google_drive)`, `tokens_encrypted bytea` (KMS envelope), `tenant_ref text`, `status`, `last_sync_at`
