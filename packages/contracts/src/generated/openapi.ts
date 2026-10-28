@@ -1187,6 +1187,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/weeks/{weekStart}/nova-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The Monday the week starts on, in the project's time zone (X34). */
+                weekStart: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a short summary of one diary week for the client or head office (F4).
+         * @description Nova writes a few plain sentences about the week, Monday to Sunday, from the diary days the caller can
+         *     see (a subcontractor's summary is written from their own company's lines only). Every sentence names the
+         *     diary lines, weather or totals it comes from (`sources`, each with the `date` of its day), and a sentence
+         *     with a number or a source those facts don't back is dropped. The week's labour hours, busiest day and delay
+         *     hours by cause are added up in code (`delayHours`), never by the model. Delays and stand-downs the summary
+         *     doesn't mention are listed in `unmentionedDelays`. A day with more lines than the summary reads leaves out
+         *     its routine lines (`truncated`), never its delays. The result is a pending suggestion (`task`
+         *     `diary.weekly`) that only the person who asked can list or decide; it is never written into the diary.
+         *     Asking again before the week changes returns the same suggestion at no cost. Costs one Nova credit.
+         *     `weekStart` must be a Monday (422 otherwise); a week with no diary entry is 404 `diary.not_found`, and a
+         *     week whose entries are empty is 422 `ai.diary.nothing_to_summarise`.
+         */
+        post: operations["summariseDiaryWeekWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes": {
         parameters: {
             query?: never;
@@ -8193,6 +8228,32 @@ export interface operations {
                 projectId: components["parameters"]["ProjectId"];
                 /** @description The diary day in the project's time zone (X34). */
                 date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    summariseDiaryWeekWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The Monday the week starts on, in the project's time zone (X34). */
+                weekStart: string;
             };
             cookie?: never;
         };

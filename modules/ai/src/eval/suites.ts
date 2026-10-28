@@ -2,6 +2,7 @@
 import type { EvalSuite } from './harness';
 import { defectTagSuite } from './suites/defect-tag';
 import { diarySummarySuite } from './suites/diary-summary';
+import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
 import { importMappingSuite } from './suites/import-mapping';
@@ -25,6 +26,7 @@ export const SUITES: readonly AnySuite[] = [
   inductionAskSuite,
   translationSuite,
   diarySummarySuite,
+  diaryWeeklySuite,
   rfiDraftSuite,
   drawingCompareSuite,
   defectTagSuite,
