@@ -26,6 +26,6 @@ const run = (cmd, args, extra = {}) => {
 
 run('pnpm', ['seed']);
 run('pnpm', ['build']);
-console.log('\nWebsite: http://localhost:3100   Editor: http://localhost:3100/cms');
+console.log('\nWebsite: http://localhost:3007   Editor: http://localhost:3007/cms');
 console.log('Sign in to the editor with admin@archova.local / Archova-Local-1 (local only)\n');
 run('pnpm', ['start']);

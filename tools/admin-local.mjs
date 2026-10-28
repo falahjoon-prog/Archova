@@ -1,5 +1,5 @@
 // pnpm admin:local: runs the owner console on your own computer. Needs Postgres (docker compose up -d postgres).
-// Prepares the database, creates two sample staff accounts, then starts the API (port 4000) and the console (3200).
+// Prepares the database, creates two sample staff accounts, then starts the API (port 4000) and the console (3008).
 // Local only: the passwords below are public and the cooling-off for solo owners is switched off.
 import { spawn, spawnSync } from 'node:child_process';
 import net from 'node:net';
@@ -57,7 +57,7 @@ seed('owner@archova.local', 'Local Owner', 'owner');
 seed('approver@archova.local', 'Pat Approver', 'pricing_approver');
 
 console.log(
-  '\nStarting the API and the console. Open http://localhost:3200 once both say "ready".\n',
+  '\nStarting the API and the console. Open http://localhost:3008 once both say "ready".\n',
 );
 const children = [
   spawn('pnpm', ['--filter', '@archova/api', 'dev'], { stdio: 'inherit', shell, env }),
