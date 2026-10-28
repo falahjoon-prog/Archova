@@ -53,7 +53,8 @@ Visibility rule: a subcontractor principal sees only rows where `assignee_compan
 - Lifecycle is `packages/domain/src/defects.ts`, shared with the app. `POST .../defects/{id}/transition` runs it; the caller acts as the builder (org member) and/or the assigned company. Permissions: `defects.defects.create` issues, `respond` marks ready or disputes, `close` (admin) closes, rejects, reassigns and voids (DEF-AC6).
 - A drawing pin is required for now (no location tree yet); `sheet_id` is copied from the revision. `number` is issued on create. Events add `action` and `project_id`; a trigger keeps them append-only.
 - Visible to builder staff; others see defects assigned to their company and ones they or their company raised. Drafts: builder staff and the author.
-- Not yet: reminders (DEF-AC8), PDF list (AC10), PC list freeze (AC7), guests (US9), sync push commands, `location_id`, Nova tagging.
+- Not yet: reminders (DEF-AC8), PDF list (AC10), PC list freeze (AC7), guests (US9), sync push commands, `location_id`, saving a Nova suggestion's `runId` with a defect (`source` `ai_suggested`).
+- Nova tags a defect from its photo and pin in the `ai` module (`POST .../ai/defect-tags`, F5). It suggests and saves nothing; `defects.api.openNear` is what it calls for duplicates.
 
 ## photos
 

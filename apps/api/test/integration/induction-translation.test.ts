@@ -49,6 +49,8 @@ beforeAll(async () => {
       getPreviousDrawingRevision: async () => null,
       getMarkup: async () => ({ shapes: [] }),
       dayForSummary: async () => null,
+      projectCompanies: async () => [],
+      openDefectsNear: async () => [],
       openRfisOnDrawing: async () => [],
       provider: t.ai,
       translationLanguages: [TEST_LANGUAGE, { ...TEST_LANGUAGE, code: 'x-off', enabled: false }],

@@ -1,5 +1,5 @@
 import { decodeId, encodeId } from '@archova/domain';
-import type { AiSuggestion } from '@archova/contracts';
+import type { AiSuggestion, DefectStatus } from '@archova/contracts';
 import {
   AppError,
   defineRoutes,
@@ -22,6 +22,7 @@ import type {
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiDraftService } from '../application/rfi-draft';
+import type { DefectTagService } from '../application/defect-tag';
 import type { DrawingCompareService } from '../application/drawing-compare';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
@@ -146,6 +147,7 @@ export function aiRoutes(
   rfiDrafts: RfiDraftService,
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
+  defectTags: DefectTagService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -260,6 +262,58 @@ export function aiRoutes(
             title: d.drawing.title,
             rev: d.drawing.rev,
             pin: d.drawing.pin,
+            scanned: d.drawing.scanned,
+          },
+        },
+      };
+    },
+    tagDefectWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const photoFileId = decodeId('file', input.body.photo.fileId);
+      if (!photoFileId) throw new AppError('file.not_found');
+      let pin: { drawingRevisionId: string; x: number; y: number } | undefined;
+      if (input.body.pin) {
+        const drawingRevisionId = decodeId('drawingRevision', input.body.pin.drawingRevisionId);
+        if (!drawingRevisionId) throw new AppError('drawing_revision.not_found');
+        pin = { drawingRevisionId, x: input.body.pin.x, y: input.body.pin.y };
+      }
+      const d = await defectTags.tag(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        photoFileId,
+        ...(pin ? { pin } : {}),
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          title: d.title,
+          description: d.description,
+          trade: d.trade,
+          alternativeTrades: d.alternativeTrades,
+          category: d.category,
+          priority: d.priority,
+          gaps: d.gaps,
+          unsupportedNumbers: d.unsupportedNumbers,
+          suggestedCompanies: d.suggestedCompanies.map((c) => ({
+            ...c,
+            id: encodeId('company', c.id),
+          })),
+          duplicates: d.duplicates.map((x) => ({
+            id: encodeId('defect', x.id),
+            numberLabel: x.numberLabel,
+            title: x.title,
+            status: x.status as DefectStatus,
+            trade: x.trade,
+            distance: x.distance,
+            sameTrade: x.sameTrade,
+          })),
+          drawing: d.drawing && {
+            drawingRevisionId: encodeId('drawingRevision', d.drawing.revisionId),
+            sheetNumber: d.drawing.sheetNumber,
+            title: d.drawing.title,
+            rev: d.drawing.rev,
+            pin: d.drawing.pin,
+            nearby: d.drawing.nearby,
             scanned: d.drawing.scanned,
           },
         },
