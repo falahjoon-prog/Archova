@@ -62,6 +62,7 @@ archova/
 │   ├── sync-core/           # Offline sync engine shared by mobile (and web offline later)
 │   ├── auth-client/         # Session/token handling for web + mobile
 │   ├── kernel/              # Backend kernel: tenant context, db client, outbox, events, errors, logger
+│   ├── compose/             # Backend: the list of modules `api` and `worker` load and how they are wired (`loadModules`)
 │   ├── testing/             # Factories, fixtures, test db helpers
 │   ├── config-eslint/       # Shared lint config incl. boundary rules
 │   ├── config-ts/           # Shared tsconfig bases

@@ -113,6 +113,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@archova/compose':
+        specifier: workspace:*
+        version: link:../../packages/compose
       '@archova/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -1330,6 +1333,73 @@ importers:
       vitest:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  packages/compose:
+    dependencies:
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../../modules/access
+      '@archova/mod-ai':
+        specifier: workspace:*
+        version: link:../../modules/ai
+      '@archova/mod-backoffice':
+        specifier: workspace:*
+        version: link:../../modules/backoffice
+      '@archova/mod-billing':
+        specifier: workspace:*
+        version: link:../../modules/billing
+      '@archova/mod-defects':
+        specifier: workspace:*
+        version: link:../../modules/defects
+      '@archova/mod-diary':
+        specifier: workspace:*
+        version: link:../../modules/diary
+      '@archova/mod-documents':
+        specifier: workspace:*
+        version: link:../../modules/documents
+      '@archova/mod-estimating':
+        specifier: workspace:*
+        version: link:../../modules/estimating
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../../modules/files
+      '@archova/mod-identity':
+        specifier: workspace:*
+        version: link:../../modules/identity
+      '@archova/mod-integrations':
+        specifier: workspace:*
+        version: link:../../modules/integrations
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../../modules/platform
+      '@archova/mod-rfis':
+        specifier: workspace:*
+        version: link:../../modules/rfis
+      '@archova/mod-sync':
+        specifier: workspace:*
+        version: link:../../modules/sync
+      '@archova/mod-workforce':
+        specifier: workspace:*
+        version: link:../../modules/workforce
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
 
   packages/config-eslint:
     dependencies:
@@ -11150,7 +11220,9 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
+      - bufferutil
       - supports-color
+      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 

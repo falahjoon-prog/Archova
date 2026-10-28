@@ -31,7 +31,7 @@ import {
   uniqueEmail,
 } from '@archova/testing';
 import { buildApp } from '../../src/app';
-import type { Modules } from '../../src/modules';
+import type { Modules } from '@archova/compose';
 import { loadConfig } from '../../src/config';
 
 export const APP_HOST = 'app.archova.test';

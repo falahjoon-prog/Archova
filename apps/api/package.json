@@ -14,6 +14,7 @@
     "staff:seed": "tsx --env-file-if-exists=.env src/seed-staff.ts"
   },
   "dependencies": {
+    "@archova/compose": "workspace:*",
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
