@@ -2331,6 +2331,11 @@ export const RollCallSchema = z.object({
 });
 export type RollCall = z.infer<typeof RollCallSchema>;
 
+export const RollCallListSchema = z.object({
+  "data": z.array(RollCallSchema),
+});
+export type RollCallList = z.infer<typeof RollCallListSchema>;
+
 export const SaveDiaryEntryRequestSchema = z.object({
   "weatherOverride": z.union([DiaryWeatherSchema, z.null()]).optional(),
   "weatherNotes": z.string().max(2000).nullable().optional(),

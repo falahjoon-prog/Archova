@@ -67,6 +67,24 @@ data "aws_iam_policy_document" "this" {
   }
 
   dynamic "statement" {
+    for_each = var.allow_cloudfront_distributions ? [1] : []
+    content {
+      sid       = "CloudFrontOriginAccessControlInThisAccount"
+      actions   = ["kms:Decrypt", "kms:Encrypt", "kms:GenerateDataKey*"]
+      resources = ["*"]
+      principals {
+        type        = "Service"
+        identifiers = ["cloudfront.amazonaws.com"]
+      }
+      condition {
+        test     = "ArnLike"
+        variable = "aws:SourceArn"
+        values   = ["arn:${data.aws_partition.current.partition}:cloudfront::${data.aws_caller_identity.current.account_id}:distribution/*"]
+      }
+    }
+  }
+
+  dynamic "statement" {
     for_each = var.allow_cloudwatch_logs ? [1] : []
     content {
       sid       = "CloudWatchLogsInThisAccount"

@@ -161,6 +161,21 @@ variable "services" {
   }))
 }
 
+variable "files_cdn" {
+  description = <<-EOT
+    Drawing tiles CDN (mobile 03 §3.3): a CloudFront distribution in front of the files bucket that serves only signed
+    requests under orgs/*/projects/*/tiles/*, plus the key pair the api signs with. Null builds none, and the api then
+    returns tile URLs that devices cannot use. public_key_pem is the PEM public key of an RSA 2048 key pair generated
+    outside Terraform (runbook: files-cdn); the private key goes into the secret this stack creates, never into state.
+    allowed_countries is the viewers' geo restriction, AU by default so tiles are cached and served in Australia only (Sam).
+  EOT
+  type = object({
+    public_key_pem    = string
+    allowed_countries = optional(list(string), ["AU"])
+  })
+  default = null
+}
+
 variable "ai_models" {
   description = "Nova's Bedrock model ids per tier (ai/02 §3): Australian in-region ids or au. inference profiles only (X25). Null leaves them unset, and the api will not start in production until they are."
   type = object({

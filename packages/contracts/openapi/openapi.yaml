@@ -3864,6 +3864,21 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrgId'
       - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listRollCalls
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.view
+      summary: Roll calls, newest first (at most 20); `open=true` finds the evacuation still in progress.
+      parameters:
+        - { name: open, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RollCallList' }
+        default: { $ref: '#/components/responses/Problem' }
     post:
       operationId: startRollCall
       tags: [workforce]
@@ -8818,6 +8833,11 @@ components:
           description: Sorted by company, then name.
           type: array
           items: { $ref: '#/components/schemas/RollCallPerson' }
+    RollCallList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/RollCall' } }
     StartRollCallRequest:
       type: object
       additionalProperties: false
