@@ -150,3 +150,12 @@ export const DIARY_STATUS_LABELS: Record<DiaryStatus, string> = {
   submitted: 'Submitted',
   signed_off: 'Signed off',
 };
+
+/** What Nova's diary summary gives the screen: the text, the lines it cites and the delays it left out. */
+export interface NovaDiarySummary {
+  id: string;
+  text: string;
+  citations: Array<{ id: string; label: string; href: string }>;
+  /** Delay and stand-down lines the summary doesn't mention (so none is lost). */
+  unmentionedDelays: number;
+}

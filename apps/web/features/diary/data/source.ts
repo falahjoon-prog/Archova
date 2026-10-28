@@ -14,7 +14,7 @@ import {
   submitProblems,
   type CompanyNamer,
 } from '../lib/entry';
-import type { DiaryContent, DiaryEntry, DiaryPhoto, Weather } from '../lib/types';
+import type { DiaryContent, DiaryEntry, DiaryPhoto, NovaDiarySummary, Weather } from '../lib/types';
 
 interface Actor {
   id: string;
@@ -307,10 +307,11 @@ export const diarySource = {
   // ---- Nova (preview). Production: the ai module, every sentence traceable to an entry line (Ari F4). ----
 
   async novaSummary(
+    _projectId: string,
     date: LocalDate,
     content: DiaryContent,
     weather: Weather | null,
-  ): Promise<{ id: string; text: string; citations: Citation[] }> {
+  ): Promise<NovaDiarySummary> {
     const t = labourTotals(content);
     const sentences: Array<[string, Citation | null]> = [];
     if (content.labour.length) {
@@ -340,13 +341,14 @@ export const diarySource = {
       ]);
     }
     if (!sentences.length) {
-      return delay({ id: mockId('ais'), text: '', citations: [] }, 300);
+      return delay({ id: mockId('ais'), text: '', citations: [], unmentionedDelays: 0 }, 300);
     }
     return delay(
       {
         id: mockId('ais'),
         text: sentences.map(([s]) => s).join(' '),
         citations: sentences.flatMap(([, c]) => (c ? [c] : [])),
+        unmentionedDelays: 0,
       },
       300,
     );

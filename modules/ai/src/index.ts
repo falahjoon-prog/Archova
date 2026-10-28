@@ -176,6 +176,8 @@ export function createAiModule(
     readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
     /** access.assert */
     assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
+    /** access.can: like `assert`, but answers instead of throwing (who may see a suggestion). */
+    can: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<boolean>;
     /** documents.api.aiSources: what to index, with access scopes. */
     sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
     /** documents.api.aiAccessScopes: what the caller may retrieve. */
@@ -259,6 +261,7 @@ export function createAiModule(
     gateway,
     readFile: deps.readFile,
     assert: deps.assert,
+    can: deps.can,
   });
   // Ask retrieves documents, drawings and (builder staff only) RFIs; drafting RFIs and inductions stays on documents.
   const askService = createAskService({
