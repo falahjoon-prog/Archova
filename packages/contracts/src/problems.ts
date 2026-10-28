@@ -122,6 +122,7 @@ export const PROBLEM_CODES = {
   'import.already_open': 409,
   'import.no_header': 422,
   'import.too_many_rows': 422,
+  'import.file_not_a_register': 422,
   'import.invalid_mapping': 422,
   'import.mapping_incomplete': 422,
   // defects

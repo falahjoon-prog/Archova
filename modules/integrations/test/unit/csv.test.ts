@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CsvTooLarge, detectDelimiter, isBlankRecord, parseCsv } from '../../src/domain/csv';
+import {
+  CsvTooLarge,
+  CsvTooWide,
+  MAX_CELL_CHARS,
+  MAX_COLUMNS,
+  detectDelimiter,
+  isBlankRecord,
+  parseCsv,
+} from '../../src/domain/csv';
 
 describe('csv reader', () => {
   it('reads quoted cells, escaped quotes, embedded commas and newlines', () => {
@@ -30,5 +38,12 @@ describe('csv reader', () => {
 
   it('stops a runaway file', () => {
     expect(() => parseCsv('a\nb\nc\nd', 2)).toThrow(CsvTooLarge);
+  });
+
+  it('refuses hostile shapes: huge cells, thousands of columns, and drops NULs', () => {
+    expect(() => parseCsv('x'.repeat(MAX_CELL_CHARS + 1), 10)).toThrow(CsvTooWide);
+    expect(() => parseCsv(`"${'x'.repeat(MAX_CELL_CHARS + 1)}"`, 10)).toThrow(CsvTooWide);
+    expect(() => parseCsv(','.repeat(MAX_COLUMNS + 1), 10)).toThrow(CsvTooWide);
+    expect(parseCsv('a\u0000b,c', 10)).toEqual([['ab', 'c']]);
   });
 });

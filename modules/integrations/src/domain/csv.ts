@@ -7,6 +7,16 @@ export class CsvTooLarge extends Error {
   }
 }
 
+/** A row with more cells, or a cell with more characters, than a register could have is not a spreadsheet. */
+export class CsvTooWide extends Error {
+  constructor(readonly reason: 'columns' | 'cell') {
+    super(reason === 'columns' ? 'Too many columns' : 'A cell is too long');
+  }
+}
+
+export const MAX_COLUMNS = 200;
+export const MAX_CELL_CHARS = 10_000;
+
 /** The separator the first line uses most, outside quotes. */
 export function detectDelimiter(text: string): ',' | ';' | '\t' {
   const counts = { ',': 0, ';': 0, '\t': 0 };
@@ -25,7 +35,9 @@ export function detectDelimiter(text: string): ',' | ';' | '\t' {
  * empty cell) so a record's index is its line among records. `maxRecords` stops a runaway file early.
  */
 export function parseCsv(input: string, maxRecords: number): string[][] {
-  const text = input.charCodeAt(0) === 0xfeff ? input.slice(1) : input;
+  // NUL characters can't be stored in jsonb, so they never reach the database.
+  const stripped = input.includes('\u0000') ? input.replaceAll('\u0000', '') : input;
+  const text = stripped.charCodeAt(0) === 0xfeff ? stripped.slice(1) : stripped;
   const delimiter = detectDelimiter(text);
   const records: string[][] = [];
   let row: string[] = [];
@@ -33,12 +45,18 @@ export function parseCsv(input: string, maxRecords: number): string[][] {
   let quoted = false;
   let sawAny = false;
 
-  const endRow = () => {
+  const pushCell = () => {
+    if (cell.length > MAX_CELL_CHARS) throw new CsvTooWide('cell');
     row.push(cell);
+    if (row.length > MAX_COLUMNS) throw new CsvTooWide('columns');
+    cell = '';
+  };
+
+  const endRow = () => {
+    pushCell();
     records.push(row);
     if (records.length > maxRecords) throw new CsvTooLarge(maxRecords);
     row = [];
-    cell = '';
     sawAny = false;
   };
 
@@ -50,15 +68,17 @@ export function parseCsv(input: string, maxRecords: number): string[][] {
           cell += '"';
           i++;
         } else quoted = false;
-      } else cell += ch;
+      } else {
+        cell += ch;
+        if (cell.length > MAX_CELL_CHARS) throw new CsvTooWide('cell');
+      }
       continue;
     }
     if (ch === '"' && cell === '') {
       quoted = true;
       sawAny = true;
     } else if (ch === delimiter) {
-      row.push(cell);
-      cell = '';
+      pushCell();
       sawAny = true;
     } else if (ch === '\n' || ch === '\r') {
       if (ch === '\r' && text[i + 1] === '\n') i++;
@@ -66,6 +86,7 @@ export function parseCsv(input: string, maxRecords: number): string[][] {
     } else {
       cell += ch;
       sawAny = true;
+      if (cell.length > MAX_CELL_CHARS) throw new CsvTooWide('cell');
     }
   }
   if (sawAny || cell !== '') endRow();

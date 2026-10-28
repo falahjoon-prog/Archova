@@ -4,7 +4,7 @@ import { uuidv7 } from '@archova/domain';
 import { AppError, decodeCursor, toPage, versionConflict, type TenantScope } from '@archova/kernel';
 import type { FilesModule } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
-import { CsvTooLarge, isBlankRecord, parseCsv } from '../domain/csv';
+import { CsvTooLarge, CsvTooWide, isBlankRecord, parseCsv } from '../domain/csv';
 import { missingRequired, normaliseRow, type Mapping } from '../domain/normalise';
 import {
   importJobs,
@@ -22,6 +22,8 @@ export const MAX_ROWS = 50_000;
 /** The biggest file read inside the API; bigger ones wait for the worker (files readBytes contract). */
 export const MAX_INLINE_BYTES = 5_000_000;
 const INSERT_CHUNK = 500;
+/** What a spreadsheet saved as CSV reports as its type (Excel on Windows says `ms-excel`). */
+const CSV_MIMES = ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel'];
 const OPEN: ImportJobStatus[] = ['uploaded', 'parsed', 'mapped', 'validated', 'applying'];
 
 export interface ImportsDeps {
@@ -91,6 +93,10 @@ export function createImportService(deps: ImportsDeps) {
       throw new AppError('file.not_in_project', 'That file belongs to another project.', [
         { path: 'fileId', message: 'File is not in this project' },
       ]);
+    if (!CSV_MIMES.includes(file.mime))
+      throw new AppError('import.file_not_a_register', 'Imports read CSV files.', [
+        { path: 'fileId', message: 'Export the register as a CSV file' },
+      ]);
     const [open] = await scope.tx
       .select({ id: importJobs.id })
       .from(importJobs)
@@ -127,6 +133,13 @@ export function createImportService(deps: ImportsDeps) {
       records = parseCsv(new TextDecoder('utf-8').decode(bytes), MAX_ROWS + job.headerRow + 1_000);
     } catch (e) {
       if (e instanceof CsvTooLarge) throw tooMany();
+      if (e instanceof CsvTooWide)
+        throw new AppError(
+          'import.file_not_a_register',
+          e.reason === 'columns'
+            ? 'That file has too many columns to be a register.'
+            : 'That file has a cell far longer than a register would have.',
+        );
       throw e;
     }
     const header = records[job.headerRow - 1];
@@ -274,7 +287,7 @@ export function createImportService(deps: ImportsDeps) {
            set normalised = v.normalised, source_ref = v.source_ref, status = v.status, errors = v.errors
           from jsonb_to_recordset(${JSON.stringify(results)}::jsonb)
                as v(id uuid, normalised jsonb, source_ref text, status text, errors jsonb)
-         where r.id = v.id
+         where r.id = v.id and r.job_id = ${job.id}
       `);
       cursor = batch[batch.length - 1]!.rowNumber;
     }

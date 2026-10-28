@@ -161,4 +161,38 @@ describe('import staging (integrations/07)', () => {
       'import.not_found',
     );
   });
+
+  it('survives hostile files: NUL bytes are dropped, absurd shapes and non-CSV files are refused', async () => {
+    const s = await setup('imp3');
+    const url = `${s.base}/import-jobs`;
+    const nul = await s.pm.browser.post(url, {
+      entity: 'rfi',
+      fileId: await s.file('No,Subject\u0000\n1,Door\u0000 hardware\n'),
+    });
+    const parsed = await s.pm.browser.post(
+      `${url}/${nul.json().id}/parse`,
+      {},
+      { 'if-match': etagOf(nul) },
+    );
+    expect(parsed.statusCode).toBe(200);
+    expect(parsed.json()).toMatchObject({ headers: ['No', 'Subject'], totalRows: 1 });
+    await s.pm.browser.post(`${url}/${nul.json().id}/cancel`, {}, { 'if-match': etagOf(parsed) });
+
+    const wide = await s.pm.browser.post(url, {
+      entity: 'rfi',
+      fileId: await s.file(','.repeat(500)),
+    });
+    const tooWide = await s.pm.browser.post(
+      `${url}/${wide.json().id}/parse`,
+      {},
+      { 'if-match': etagOf(wide) },
+    );
+    expect(tooWide.json().code).toBe('import.file_not_a_register');
+    await s.pm.browser.post(`${url}/${wide.json().id}/cancel`, {}, { 'if-match': etagOf(wide) });
+
+    // A PDF is not a register.
+    const pdf = await uploadBytes(t, s.pm.browser, s.org.id, s.project.id, csv('%PDF-1.4'));
+    const refused = await s.pm.browser.post(url, { entity: 'rfi', fileId: pdf });
+    expect(refused.json().code).toBe('import.file_not_a_register');
+  });
 });
