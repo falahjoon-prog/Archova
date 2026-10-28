@@ -3,6 +3,7 @@ import type { SyncPushRequest, SyncPushResponse } from '@archova/contracts';
 import { CORE_MODULES } from '@archova/domain';
 import {
   isAppError,
+  type AppError,
   type Database,
   type SyncCommand,
   type TenantContext,
@@ -124,7 +125,13 @@ export function createPushService(deps: PushDeps) {
     };
   }
 
-  /** A rejection is stored so a replay answers the same, except `access.revoked` (the drain-grant retry must run). */
+  /**
+   * A rejection is stored so a replay answers the same, but only when it is deterministic: not `access.*` (a grant or
+   * the drain-grant retry may change the answer), and not a timeout, 429 or 5xx (a retry may well succeed).
+   */
+  const storable = (e: AppError) =>
+    !e.code.startsWith('access.') && e.status < 500 && e.status !== 429 && e.status !== 408;
+
   async function storeRejection(
     tenant: TenantContext,
     m: Mutation,
@@ -159,7 +166,7 @@ export function createPushService(deps: PushDeps) {
       if (!isAppError(e)) throw e;
       if (e.code === 'version_conflict') return conflict(tenant, command, m);
       const problem = { code: e.code as string, detail: e.message };
-      await storeRejection(tenant, m, problem);
+      if (storable(e)) await storeRejection(tenant, m, problem);
       return { mutationId: m.mutationId, status: 'rejected', problem };
     }
   }
