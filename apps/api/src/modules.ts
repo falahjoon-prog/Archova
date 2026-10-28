@@ -10,6 +10,7 @@ import {
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
+import { INTEGRATIONS_PERMISSIONS, createIntegrationsModule } from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
@@ -26,6 +27,7 @@ export const MODULE_PERMISSIONS = [
   RFIS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
+  INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
 ];
@@ -116,6 +118,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
   });
 
+  const integrations = createIntegrationsModule(services, {
+    platform: platform.api,
+    files: files.api,
+  });
+
   const ai = createAiModule(services, {
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
@@ -190,6 +197,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     defects,
     estimating,
+    integrations,
     diary,
     workforce,
     sync,
@@ -214,6 +222,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     defects,
     estimating,
+    integrations,
     sync,
     diary,
     workforce,

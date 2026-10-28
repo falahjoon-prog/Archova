@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: defects
   - name: estimating
+  - name: integrations
   - name: sync
   - name: diary
   - name: workforce
@@ -2171,6 +2172,167 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listImportJobs
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.read
+      summary: Imports on the project, newest first.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJobPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Start an import from a file the customer exported (CSV). One import at a time per project. The file is read
+        by the parse step.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateImportJobRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    get:
+      operationId: getImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.read
+      summary: One import with its counts from the last dry run.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    post:
+      operationId: parseImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Read the file into staged rows, one per record, up to 50,000. Running it again replaces the staged rows and
+        clears the mapping.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    put:
+      operationId: setImportMapping
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Choose which column fills which field (and what each status value means), then dry-run every staged row.
+        Every required field needs a column. Nothing is created.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportMappingRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    post:
+      operationId: cancelImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: Drop an import that has not started applying; its staged rows are cleared by the retention job.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    get:
+      operationId: listImportRows
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.read
+      summary: The staged rows in file order, with what is wrong with the ones that failed the dry run.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ImportRowStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportRowPage' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects:
     parameters:
@@ -4614,6 +4776,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    ImportJobId:
+      name: importJobId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^imp_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -7254,6 +7421,138 @@ components:
         confidence: { type: [number, 'null'], minimum: 0, maximum: 1 }
         packageId: { type: [string, 'null'], pattern: '^tpk_[0-9A-Za-z]{26}$' }
         scopeKey: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,40}$' }
+    ImportSource:
+      type: string
+      enum: [spreadsheet, aconex_export, procore_export]
+    ImportJobStatus:
+      type: string
+      enum: [uploaded, parsed, mapped, validated, applying, done, failed, rolled_back, cancelled]
+    ImportRowStatus:
+      type: string
+      enum: [staged, valid, invalid, skipped, applied, failed]
+    ImportMapping:
+      type: object
+      required: [columns, values]
+      properties:
+        columns:
+          type: object
+          description: Field key to the index of the column that fills it.
+          additionalProperties: { type: integer, minimum: 0 }
+        values:
+          type: object
+          description: Field key to what each value in the file means (file value to the value Archova stores).
+          additionalProperties:
+            type: object
+            additionalProperties: { type: string }
+    ImportJob:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entity,
+          source,
+          fileId,
+          status,
+          headerRow,
+          headers,
+          mapping,
+          totalRows,
+          validRows,
+          invalidRows,
+          startedBy,
+          createdAt,
+          updatedAt,
+          finishedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entity: { $ref: '#/components/schemas/ImportEntity' }
+        source: { $ref: '#/components/schemas/ImportSource' }
+        fileId: { type: string }
+        status: { $ref: '#/components/schemas/ImportJobStatus' }
+        headerRow: { type: integer }
+        headers: { type: array, items: { type: string } }
+        mapping: { $ref: '#/components/schemas/ImportMapping' }
+        totalRows: { type: integer }
+        validRows: { type: integer }
+        invalidRows: { type: integer }
+        startedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+    ImportJobPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ImportJob' }
+        nextCursor: { type: [string, 'null'] }
+    CreateImportJobRequest:
+      type: object
+      additionalProperties: false
+      required: [entity, fileId]
+      properties:
+        entity: { $ref: '#/components/schemas/ImportEntity' }
+        source: { $ref: '#/components/schemas/ImportSource' }
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        headerRow:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 100,
+            description: 'The row the headings are on; default 1',
+          }
+    ImportMappingRequest:
+      type: object
+      additionalProperties: false
+      required: [columns]
+      properties:
+        columns:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+        values:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties: { type: string, maxLength: 100 }
+    ImportRowProblem:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    ImportRow:
+      type: object
+      required: [id, rowNumber, raw, normalised, sourceRef, status, errors, createdEntityId]
+      properties:
+        id: { type: string }
+        rowNumber:
+          { type: integer, description: 'The record number in the file, counting the heading row' }
+        raw: { type: array, items: { type: string } }
+        normalised:
+          type: [object, 'null']
+          description: The row in Archova's fields once mapped.
+          additionalProperties: { type: [string, number, 'null'] }
+        sourceRef:
+          { type: [string, 'null'], description: The record's own number in the old system }
+        status: { $ref: '#/components/schemas/ImportRowStatus' }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/ImportRowProblem' }
+        createdEntityId: { type: [string, 'null'] }
+    ImportRowPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ImportRow' }
+        nextCursor: { type: [string, 'null'] }
     DefectStatus:
       type: string
       enum: [draft, open, ready_for_review, closed, disputed, void]
