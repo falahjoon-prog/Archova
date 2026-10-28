@@ -78,6 +78,7 @@ export type { AskAnswer, AnswerSource } from './application/ask';
 export type { SearchResult } from './application/semantic-search';
 export type { IndexReport, SourceRevision } from './application/project-index';
 export type { DefectSource } from './domain/defect-source';
+export { RECORD_EVENT_TYPES, recordKindOf, type RecordKind } from './domain/record-events';
 export type { DiarySource } from './domain/diary-source';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
@@ -185,15 +186,19 @@ export function createAiModule(
     /** documents.api.aiAccessScopes: what the caller may retrieve. */
     accessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.aiSources: sent RFIs with their responses, to index for Ask. */
-    rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
+    rfiSources: (scope: TenantScope, projectId: string, only?: string) => Promise<RfiSource[]>;
     /** rfis.api.aiAccessScopes: the Ask scopes the caller holds for RFIs. */
     rfiAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** defects.api.aiSources: issued defects with the notes on their history, to index for Ask. */
-    defectSources: (scope: TenantScope, projectId: string) => Promise<DefectSource[]>;
+    defectSources: (
+      scope: TenantScope,
+      projectId: string,
+      only?: string,
+    ) => Promise<DefectSource[]>;
     /** defects.api.aiAccessScopes: the Ask scopes the caller holds for defects. */
     defectAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** diary.api.aiSources: submitted and signed-off days with all their lines, to index for Ask. */
-    diarySources: (scope: TenantScope, projectId: string) => Promise<DiarySource[]>;
+    diarySources: (scope: TenantScope, projectId: string, only?: string) => Promise<DiarySource[]>;
     /** diary.api.aiAccessScopes: the Ask scopes the caller holds for the diary. */
     diaryAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.findSimilar: RFIs the caller can see on the same subject (F3). */
@@ -399,6 +404,11 @@ export function createAiModule(
       /** F6: the passages matching a few words by meaning or keyword, within the caller's access; no model call. */
       searchProject: semanticSearch.search,
       indexProject: projectIndex.indexProject,
+      /**
+       * For background processes (the ai-worker): bring one RFI, defect or diary day in step with the register after it
+       * changed. Checks no permission; the caller builds the context (backend 08 §2).
+       */
+      reindexRecord: projectIndex.reindexRecord,
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
