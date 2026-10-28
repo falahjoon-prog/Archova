@@ -101,6 +101,21 @@ describe('drain grant (X38), queueing', () => {
     expect(await w.rows(sql`select 1 from sync.mutations`)).toHaveLength(0);
   });
 
+  it('answers a change that already went through a normal push with its stored result, and queues nothing', async () => {
+    const w = await world('drain-done');
+    const g = (await w.grant(w.a.id))!;
+    const m = mutation(w.a.id);
+    await w.rows(
+      sql`insert into sync.mutations (org_id, user_id, mutation_id, command, entity_id, status, version)
+          values (${w.ctx.orgId}, ${w.exId}, ${m.mutationId}, ${m.command}, ${m.entityId}, 'applied', 4)`,
+    );
+    const res = await send(w.org.id, g.token, [m]);
+    expect(res.json().results).toEqual([
+      { mutationId: m.mutationId, status: 'applied', version: 4 },
+    ]);
+    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(0);
+  });
+
   it('keeps only the hash of the token', async () => {
     const w = await world('drain-hash');
     const g = (await w.grant(w.a.id))!;
@@ -218,6 +233,28 @@ describe('drain grant (X38), who can use it', () => {
       sql`update sync.drain_grants set expires_at = now() - interval '1 minute' where revoked_at is null`,
     );
     expect(await ok(late.token)).toBe(401);
+  });
+
+  it('limits guesses per caller address without keeping a record per guess', async () => {
+    const w = await world('drain-guess');
+    const guess = () =>
+      t.app.inject({
+        method: 'POST',
+        url: `/v1/orgs/${w.org.id}/sync/push`,
+        remoteAddress: '10.9.9.9',
+        headers: {
+          host: API_HOST,
+          authorization: `Bearer dg_${randomUUID().replaceAll('-', '').padEnd(43, 'A')}`,
+        },
+        payload: { mutations: [mutation(w.a.id)] },
+      });
+    const codes: number[] = [];
+    for (let i = 0; i < 25; i += 1) codes.push((await guess()).statusCode);
+    expect(codes.slice(0, 20).every((c) => c === 401)).toBe(true);
+    expect(codes.slice(21).every((c) => c === 429)).toBe(true);
+    // A real grant from another address is unaffected.
+    const g = (await w.grant(w.a.id))!;
+    expect((await send(w.org.id, g.token, [mutation(w.a.id)])).statusCode).toBe(200);
   });
 
   it('stops minting after three rotations for a scope', async () => {

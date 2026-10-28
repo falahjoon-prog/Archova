@@ -9,7 +9,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
-import { drainGrants, lateSubmissions } from '../infra/tables';
+import { drainGrants, lateSubmissions, mutations } from '../infra/tables';
 
 type Mutation = SyncPushRequest['mutations'][number];
 type Result = SyncPushResponse['results'][number];
@@ -27,7 +27,38 @@ export const DRAIN_LIMITS = {
   rotations: 3,
   windowMs: 60_000,
   requestsPerWindow: 30,
+  /** Tokens that do not resolve, per caller address: stops guessing without a table that grows with guesses. */
+  badTokensPerWindow: 20,
+  limiterEntries: 10_000,
 } as const;
+
+/** Fixed-window counter by key. Entries age out from the oldest, so a call never scans the whole map. */
+function createLimiter(limit: number) {
+  const entries = new Map<string, { start: number; n: number }>();
+  const sweep = (now: number) => {
+    for (const [k, v] of entries) {
+      if (now - v.start <= DRAIN_LIMITS.windowMs && entries.size <= DRAIN_LIMITS.limiterEntries)
+        break;
+      entries.delete(k);
+    }
+  };
+  return {
+    over(key: string) {
+      const e = entries.get(key);
+      return Boolean(e && Date.now() - e.start <= DRAIN_LIMITS.windowMs && e.n >= limit);
+    },
+    hit(key: string) {
+      const now = Date.now();
+      sweep(now);
+      const e = entries.get(key);
+      if (!e || now - e.start > DRAIN_LIMITS.windowMs) {
+        entries.delete(key);
+        entries.set(key, { start: now, n: 1 });
+      } else e.n += 1;
+      return (entries.get(key)?.n ?? 0) <= limit;
+    },
+  };
+}
 
 const HOURS_72 = 72 * 60 * 60 * 1000;
 
@@ -54,18 +85,9 @@ export interface DrainDeps {
  */
 export function createDrainService(deps: DrainDeps) {
   const commands = new Map(deps.commands.map((c) => [c.name, c]));
-  // Per-process limiter on the token hash; the edge limit (infrastructure 04) is the real cap across instances.
-  const seen = new Map<string, { windowStart: number; n: number }>();
-
-  function throttle(hash: string) {
-    const now = Date.now();
-    for (const [k, v] of seen) if (now - v.windowStart > DRAIN_LIMITS.windowMs) seen.delete(k);
-    const entry = seen.get(hash);
-    if (!entry) return void seen.set(hash, { windowStart: now, n: 1 });
-    entry.n += 1;
-    if (entry.n > DRAIN_LIMITS.requestsPerWindow)
-      throw new AppError('rate_limited', 'Too many requests. Try again shortly.');
-  }
+  // Per-process limiters; the edge per-IP limit (infrastructure 04) is the real cap across instances.
+  const perGrant = createLimiter(DRAIN_LIMITS.requestsPerWindow);
+  const badTokens = createLimiter(DRAIN_LIMITS.badTokensPerWindow);
 
   /**
    * Mints the grant for a scope that was just revoked, replacing any live one (a lost token is rotated, never
@@ -156,6 +178,31 @@ export function createDrainService(deps: DrainDeps) {
     if (JSON.stringify(m.payload).length > DRAIN_LIMITS.payloadBytes)
       return rejected(m.mutationId, 'validation_failed', 'That change is too large to send now.');
 
+    // A change that already went through a normal push (its answer was lost) keeps that answer. Queueing it would
+    // let the accept run it a second time.
+    const [done] = await scope.tx
+      .select()
+      .from(mutations)
+      .where(and(eq(mutations.userId, grant.userId), eq(mutations.mutationId, m.mutationId)));
+    if (done) {
+      if (done.command !== m.command || done.entityId !== m.entityId)
+        return rejected(
+          m.mutationId,
+          'validation_failed',
+          'That mutation id was already used for something else.',
+        );
+      if (done.status === 'applied')
+        return {
+          mutationId: m.mutationId,
+          status: 'applied',
+          ...(done.version !== null ? { version: done.version } : {}),
+        };
+      return {
+        mutationId: m.mutationId,
+        status: 'rejected',
+        problem: done.problem ?? { code: 'validation_failed' },
+      };
+    }
     // A resend is the same row; reusing an id for something else is refused.
     const [existing] = await scope.tx
       .select({ command: lateSubmissions.command, entityId: lateSubmissions.entityId })
@@ -203,14 +250,19 @@ export function createDrainService(deps: DrainDeps) {
     token: string,
     req: SyncPushRequest,
     requestId: string,
+    ip: string,
   ): Promise<SyncPushResponse> {
+    const tooMany = () => new AppError('rate_limited', 'Too many requests. Try again shortly.');
+    const invalid = () => {
+      if (!badTokens.hit(ip)) return tooMany();
+      return new AppError(
+        'auth.session_revoked',
+        'The access token is invalid, expired or revoked.',
+      );
+    };
+    if (badTokens.over(ip)) throw tooMany();
     const hash = TOKEN_SHAPE.test(token) ? hashToken(token) : null;
-    if (hash) throttle(hash);
-    const invalid = new AppError(
-      'auth.session_revoked',
-      'The access token is invalid, expired or revoked.',
-    );
-    if (!hash) throw invalid;
+    if (!hash) throw invalid();
     if (JSON.stringify(req).length > DRAIN_LIMITS.requestBytes)
       throw new AppError('validation_failed', 'That request is too large.');
 
@@ -235,7 +287,9 @@ export function createDrainService(deps: DrainDeps) {
           ),
         )
         .limit(1);
-      if (!grant) throw invalid;
+      if (!grant) throw invalid();
+      // Counted by grant, which exists in the table, not by whatever token a caller made up.
+      if (!perGrant.hit(grant.id)) throw tooMany();
 
       const [{ queued } = { queued: 0 }] = await scope.tx
         .select({ queued: count() })

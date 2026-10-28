@@ -218,7 +218,7 @@ export function registerOperations(
             >[2];
             return send(reply, {
               status: 200,
-              body: await modules.sync.api.drain.handle(orgId, drainToken, body, requestId),
+              body: await modules.sync.api.drain.handle(orgId, drainToken, body, requestId, req.ip),
             });
           }
           const { principal, viaCookie } = await authenticate(req, surface);
