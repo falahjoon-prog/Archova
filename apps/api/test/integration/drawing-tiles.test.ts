@@ -52,7 +52,7 @@ async function setup() {
         { prefix, widthPx, heightPx },
       ),
     );
-  const prefix = `orgs/${ctx.orgId}/projects/${decodeId('project', project.id)!}/documents/f1/tiles`;
+  const prefix = `orgs/${ctx.orgId}/projects/${decodeId('project', project.id)!}/tiles/${decodeId('drawingRevision', draftId)!}`;
   return { pm, sub, org, project, base, draftId, record, prefix, set };
 }
 
@@ -90,6 +90,16 @@ describe('drawing tiles (mobile 03 §3.3)', () => {
       confirmNewSheets: true,
     });
     await expect(s.record('orgs/other/projects/x/documents/f/tiles')).rejects.toMatchObject({
+      code: 'drawing_tiles.invalid',
+    });
+    // Anything but this one revision's folder would sign more than its tiles.
+    await expect(s.record(s.prefix.replace(/\/tiles\/.*$/, ''))).rejects.toMatchObject({
+      code: 'drawing_tiles.invalid',
+    });
+    await expect(s.record(`${s.prefix}/*`)).rejects.toMatchObject({
+      code: 'drawing_tiles.invalid',
+    });
+    await expect(s.record(s.prefix.replace('/tiles/', '/tiles*/'))).rejects.toMatchObject({
       code: 'drawing_tiles.invalid',
     });
     await expect(s.record(`${s.prefix}/../../x`)).rejects.toMatchObject({

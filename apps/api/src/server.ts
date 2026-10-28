@@ -59,6 +59,8 @@ const scanner =
 if (config.files.store === 's3' && !config.files.cdn)
   logger.warn('API_FILES_CDN_* not set: drawing tile URLs are not usable by devices');
 const tiles = config.files.cdn ? createCloudFrontTileUrls(config.files.cdn) : undefined;
+// Fail at start, not on the first sheet, if the signing key does not work.
+await tiles?.sign('startup-check', { expiresInS: 60 });
 
 const app = await buildApp({
   config,

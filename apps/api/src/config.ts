@@ -137,6 +137,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     logLevel: e.LOG_LEVEL,
   };
+  const cdnSet = [e.API_FILES_CDN_DOMAIN, e.API_FILES_CDN_KEY_PAIR_ID, e.API_FILES_CDN_PRIVATE_KEY];
+  if (cdnSet.some(Boolean) && !cdnSet.every(Boolean))
+    throw new Error(
+      'Set all of API_FILES_CDN_DOMAIN, API_FILES_CDN_KEY_PAIR_ID and API_FILES_CDN_PRIVATE_KEY, or none',
+    );
   if (config.ai.provider === 'bedrock') {
     const unset = (['fast', 'standard', 'advanced'] as const).filter((t) => !config.ai.models[t]);
     if (unset.length)

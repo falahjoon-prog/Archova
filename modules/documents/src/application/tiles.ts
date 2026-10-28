@@ -49,11 +49,11 @@ export function createTileService(drawings: DrawingService, tiles: Tiles) {
     input: { prefix: string; widthPx: number; heightPx: number },
   ) {
     await drawings.getRevision(scope, projectId, revisionId);
-    const expected = `orgs/${scope.ctx.orgId}/projects/${projectId}/`;
+    // Exactly one revision's folder: the signature is a wildcard under this prefix, so a shorter prefix (or a `*`
+    // or `?` in it) would sign more than this sheet's tiles.
+    const expected = `orgs/${scope.ctx.orgId}/projects/${projectId}/tiles/${revisionId}`;
     const valid =
-      input.prefix.startsWith(expected) &&
-      !input.prefix.endsWith('/') &&
-      !input.prefix.includes('..') &&
+      input.prefix === expected &&
       Number.isInteger(input.widthPx) &&
       Number.isInteger(input.heightPx) &&
       input.widthPx > 0 &&

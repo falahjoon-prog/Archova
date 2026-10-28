@@ -48,6 +48,20 @@ describe('CloudFront tile URLs', () => {
   });
 });
 
+describe('tile prefix safety', () => {
+  it.each(['a/*', 'a/b?x=1', '', '/a', 'a/', 'a//b', 'a/../b', 'a b', 'a/b*/c'])(
+    'refuses %j',
+    async (prefix) => {
+      const urls = createCloudFrontTileUrls(
+        { domain: 'x.test', keyPairId: 'K', privateKey: 'unused' },
+        now,
+      );
+      await expect(urls.sign(prefix, { expiresInS: 60 })).rejects.toThrow('Unsafe tile prefix');
+      await expect(createMemoryTileUrls(now).sign(prefix, { expiresInS: 60 })).rejects.toThrow();
+    },
+  );
+});
+
 describe('memory tile URLs', () => {
   it('keeps the placeholders so a client can be tested without a CDN', async () => {
     const out = await createMemoryTileUrls(now).sign('p', { expiresInS: 10 });

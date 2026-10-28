@@ -11,6 +11,12 @@ export interface TileUrls {
   ): Promise<{ tileUrlTemplate: string; overviewUrl: string; expiresAt: Date }>;
 }
 
+/** The signature is a wildcard under the prefix, so it may hold nothing a CDN would treat as a wildcard or query. */
+const SAFE_PREFIX = /^[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/;
+function assertSafe(prefix: string) {
+  if (!SAFE_PREFIX.test(prefix)) throw new Error('Unsafe tile prefix');
+}
+
 const TEMPLATE_PATH = '{z}/{x}/{y}.webp';
 const OVERVIEW_PATH = 'overview.webp';
 
@@ -18,6 +24,7 @@ const OVERVIEW_PATH = 'overview.webp';
 export function createMemoryTileUrls(now: () => Date = () => new Date()): TileUrls {
   return {
     async sign(prefix, { expiresInS }) {
+      assertSafe(prefix);
       const expiresAt = new Date(now().getTime() + expiresInS * 1000);
       const q = `?expires=${Math.floor(expiresAt.getTime() / 1000)}`;
       return {
@@ -47,6 +54,7 @@ export function createCloudFrontTileUrls(
 ): TileUrls {
   return {
     async sign(prefix, { expiresInS }) {
+      assertSafe(prefix);
       const expiresAt = new Date(now().getTime() + expiresInS * 1000);
       const policy = JSON.stringify({
         Statement: [
