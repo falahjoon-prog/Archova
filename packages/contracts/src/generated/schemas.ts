@@ -272,6 +272,33 @@ export const CreateCompanyRequestSchema = z.object({
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
 
+export const DefectPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
+
+export const DefectStageSchema = z.enum(["pre_pc", "pc", "dlp"]);
+export type DefectStage = z.infer<typeof DefectStageSchema>;
+
+export const DrawingPinSchema = z.object({
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict();
+export type DrawingPin = z.infer<typeof DrawingPinSchema>;
+
+export const CreateDefectRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(20000).optional(),
+  "priority": DefectPrioritySchema.optional(),
+  "category": z.string().min(1).max(100).optional(),
+  "trade": z.string().min(1).max(100).optional(),
+  "stage": DefectStageSchema.optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+  "assigneeUserId": UserRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+  "pin": DrawingPinSchema,
+}).strict();
+export type CreateDefectRequest = z.infer<typeof CreateDefectRequestSchema>;
+
 export const DiaryDelayTypeSchema = z.enum(["weather", "client", "design", "subcontractor", "authority", "industrial", "other"]);
 export type DiaryDelayType = z.infer<typeof DiaryDelayTypeSchema>;
 
@@ -569,6 +596,79 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const DefectStatusSchema = z.enum(["draft", "open", "ready_for_review", "closed", "disputed", "void"]);
+export type DefectStatus = z.infer<typeof DefectStatusSchema>;
+
+export const DefectSourceSchema = z.enum(["manual", "inspection", "ai_suggested"]);
+export type DefectSource = z.infer<typeof DefectSourceSchema>;
+
+export const DefectActionSchema = z.enum(["issue", "markReadyForReview", "close", "reject", "dispute", "reassign", "void"]);
+export type DefectAction = z.infer<typeof DefectActionSchema>;
+
+export const DefectSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "description": z.string(),
+  "status": DefectStatusSchema,
+  "priority": DefectPrioritySchema,
+  "category": z.string().nullable(),
+  "trade": z.string().nullable(),
+  "stage": DefectStageSchema,
+  "pin": z.union([DrawingPinSchema, z.null()]),
+  "assigneeCompanyId": z.string().nullable(),
+  "assigneeUserId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "isOverdue": z.boolean(),
+  "raisedByCompanyId": z.string().nullable(),
+  "issuedAt": z.string().datetime({ offset: true }).nullable(),
+  "readyForReviewAt": z.string().datetime({ offset: true }).nullable(),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "closedBy": z.string().nullable(),
+  "source": DefectSourceSchema,
+  "availableActions": z.array(DefectActionSchema),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Defect = z.infer<typeof DefectSchema>;
+
+export const DefectEventSchema = z.object({
+  "id": z.string(),
+  "defectId": z.string(),
+  "action": z.string(),
+  "fromStatus": z.string().nullable(),
+  "toStatus": DefectStatusSchema,
+  "note": z.string().nullable(),
+  "fileIds": z.array(z.string()),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type DefectEvent = z.infer<typeof DefectEventSchema>;
+
+export const DefectDetailSchema = z.object({
+  "defect": DefectSchema,
+  "events": z.array(DefectEventSchema),
+});
+export type DefectDetail = z.infer<typeof DefectDetailSchema>;
+
+export const DefectPageSchema = z.object({
+  "data": z.array(DefectSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type DefectPage = z.infer<typeof DefectPageSchema>;
+
+export const DefectTransitionRequestSchema = z.object({
+  "action": DefectActionSchema,
+  "reason": z.string().min(1).max(1000).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+}).strict();
+export type DefectTransitionRequest = z.infer<typeof DefectTransitionRequestSchema>;
+
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
   "targetType": z.enum(["entry", "labour", "plant", "delivery", "delay", "visitor", "event", "stand_down"]),
@@ -819,13 +919,6 @@ export const DraftDrawingRevisionInputSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
-
-export const DrawingPinSchema = z.object({
-  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
-  "x": z.number().min(0).max(1),
-  "y": z.number().min(0).max(1),
-}).strict();
-export type DrawingPin = z.infer<typeof DrawingPinSchema>;
 
 export const DrawingRegisterExtractionSchema = z.object({
   "suggestions": z.array(AiSuggestionSchema),
@@ -2018,6 +2111,20 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
+
+export const UpdateDefectRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(20000).optional(),
+  "priority": DefectPrioritySchema.optional(),
+  "category": z.string().min(1).max(100).nullable().optional(),
+  "trade": z.string().min(1).max(100).nullable().optional(),
+  "stage": DefectStageSchema.optional(),
+  "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "assigneeUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "pin": DrawingPinSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateDefectRequest = z.infer<typeof UpdateDefectRequestSchema>;
 
 export const UpdateDiaryDelayRequestSchema = z.object({
   "type": DiaryDelayTypeSchema.optional(),

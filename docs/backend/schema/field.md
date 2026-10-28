@@ -48,6 +48,13 @@ These are the tables the mobile app writes offline, so every one uses client-gen
 
 Visibility rule: a subcontractor principal sees only rows where `assignee_company_id` is their company.
 
+### As built: defects (phase 1)
+
+- Lifecycle is `packages/domain/src/defects.ts`, shared with the app. `POST .../defects/{id}/transition` runs it; the caller acts as the builder (org member) and/or the assigned company. Permissions: `defects.defects.create` issues, `respond` marks ready or disputes, `close` (admin) closes, rejects, reassigns and voids (DEF-AC6).
+- A drawing pin is required for now (no location tree yet); `sheet_id` is copied from the revision. `number` is issued on create. Events add `action` and `project_id`; a trigger keeps them append-only.
+- Visible to builder staff; others see defects assigned to their company and ones they or their company raised. Drafts: builder staff and the author.
+- Not yet: reminders (DEF-AC8), PDF list (AC10), PC list freeze (AC7), guests (US9), sync push commands, `location_id`, Nova tagging.
+
 ## photos
 
 **photos.albums** — `name`, `is_private bool`
