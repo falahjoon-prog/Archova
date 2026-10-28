@@ -1460,6 +1460,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Takeoff measurements on the project, newest first. Filter by drawing revision, tender package or confirmed state. */
+        get: operations["listTakeoffMeasurements"];
+        put?: never;
+        /** Record a length, area or count measured on a drawing revision. A hand-drawn measurement is confirmed on creation; one Nova drew (`assisted`) waits for a person to confirm it. */
+        post: operations["createTakeoffMeasurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        /** One measurement. */
+        get: operations["getTakeoffMeasurement"];
+        put?: never;
+        post?: never;
+        /** Remove a measurement. */
+        delete: operations["deleteTakeoffMeasurement"];
+        options?: never;
+        head?: never;
+        /** Re-label, re-shape or re-link a measurement. Changing the shape or quantity of one Nova drew clears its confirmation. */
+        patch: operations["updateTakeoffMeasurement"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A person accepts a measurement so its quantity can feed a scope line or estimate. */
+        post: operations["confirmTakeoffMeasurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/defects": {
         parameters: {
             query?: never;
@@ -4553,6 +4618,66 @@ export interface components {
             qualifications?: components["schemas"]["QuoteNoteInput"][];
         };
         /** @enum {string} */
+        TakeoffKind: "length" | "area" | "count";
+        /** @description Points in sheet units, as the drawing viewer places them. */
+        TakeoffGeometry: {
+            /** @enum {string} */
+            type: "polyline" | "polygon" | "points";
+            points: number[][];
+        };
+        TakeoffMeasurement: {
+            id: string;
+            revisionId: string;
+            label: string;
+            kind: components["schemas"]["TakeoffKind"];
+            geometry: components["schemas"]["TakeoffGeometry"];
+            /** @description Decimal string */
+            quantity: string;
+            unit: string;
+            /** @enum {string} */
+            source: "manual" | "assisted" | "auto";
+            confidence: number | null;
+            packageId: string | null;
+            scopeKey: string | null;
+            confirmedBy: string | null;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        TakeoffMeasurementPage: {
+            data: components["schemas"]["TakeoffMeasurement"][];
+            nextCursor: string | null;
+        };
+        CreateTakeoffMeasurementRequest: {
+            revisionId: string;
+            label: string;
+            kind: components["schemas"]["TakeoffKind"];
+            geometry: components["schemas"]["TakeoffGeometry"];
+            quantity: string;
+            unit: string;
+            /**
+             * @default manual
+             * @enum {string}
+             */
+            source: "manual" | "assisted";
+            confidence?: number;
+            packageId?: string;
+            scopeKey?: string;
+        };
+        UpdateTakeoffMeasurementRequest: {
+            label?: string;
+            geometry?: components["schemas"]["TakeoffGeometry"];
+            quantity?: string;
+            unit?: string;
+            confidence?: number | null;
+            packageId?: string | null;
+            scopeKey?: string | null;
+        };
+        /** @enum {string} */
         DefectStatus: "draft" | "open" | "ready_for_review" | "closed" | "disputed" | "void";
         /** @enum {string} */
         DefectPriority: "low" | "medium" | "high" | "critical";
@@ -5748,6 +5873,7 @@ export interface components {
         DefectId: string;
         TenderPackageId: string;
         QuoteId: string;
+        TakeoffMeasurementId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -8143,6 +8269,178 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTakeoffMeasurements: {
+        parameters: {
+            query?: {
+                revisionId?: string;
+                packageId?: string;
+                confirmed?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurementPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTakeoffMeasurementRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTakeoffMeasurementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
                 };
             };
             default: components["responses"]["Problem"];

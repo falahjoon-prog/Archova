@@ -10,4 +10,8 @@ export const ESTIMATING_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'estimating.packages.manage', scope: 'project', tool: 'commitments', level: 'admin' },
   { key: 'estimating.quotes.submit', scope: 'project', tool: 'commitments', level: 'read' },
   { key: 'estimating.quotes.review', scope: 'project', tool: 'commitments', level: 'admin' },
+  // Takeoff is builder-side working data: standard commitments access, so subcontractors (read) never reach it.
+  { key: 'estimating.takeoff.read', scope: 'project', tool: 'commitments', level: 'standard' },
+  { key: 'estimating.takeoff.manage', scope: 'project', tool: 'commitments', level: 'standard' },
+  { key: 'estimating.takeoff.confirm', scope: 'project', tool: 'commitments', level: 'admin' },
 ];
