@@ -43,6 +43,7 @@ export function createPlatformModule(
       getProject: projects.get,
       getOrg: orgs.getOrg,
       companyExists: companies.exists,
+      projectCompanies: companies.onProject,
     },
   };
 }

@@ -4,6 +4,7 @@ import { decodeId } from '@archova/domain';
 import {
   createDatabase,
   createLogger,
+  createMemoryMessageSender,
   createRedis,
   type Database,
   type RedisClient,
@@ -38,6 +39,8 @@ export interface TestContext {
   adminDb: Database;
   redis: RedisClient | null;
   store: ReturnType<typeof createMemoryObjectStore>;
+  /** Everything the API tried to send by SMS or email (one-time codes for access links). */
+  messages: ReturnType<typeof createMemoryMessageSender>;
   /** Nova's model provider; tests script replies per task with `ai.on(task, ...)`. */
   ai: FakeProvider;
   /** The loaded modules, for driving internal commands such as imports (X49). */
@@ -61,6 +64,7 @@ export async function createTestContext(
   const redisUrl = testRedisUrl();
   const redis = opts.redis !== false && redisUrl ? createRedis(redisUrl) : null;
   const store = createMemoryObjectStore();
+  const messages = createMemoryMessageSender();
   const ai = createFakeProvider({ ...DEFAULT_FAKE_RESPONDERS });
   let modules: Modules | null = null;
   const app = await buildApp({
@@ -74,6 +78,7 @@ export async function createTestContext(
     store,
     scanner: opts.scanner ?? noScanner,
     aiProvider: ai,
+    messages,
   });
   await app.ready();
   return {
@@ -82,6 +87,7 @@ export async function createTestContext(
     adminDb,
     redis,
     store,
+    messages,
     ai,
     modules: modules!,
     async close() {

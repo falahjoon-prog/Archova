@@ -3324,6 +3324,339 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WorkerCredential' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: listInductionLinks
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: Access links for this induction, newest first (X45).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInductionLink
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: Create a link workers open on their phone to do the induction with no account (IND-AC3, X45).
+      description: 'The token and URL are returned once. One link can be shared with a crew or printed as a QR poster: each worker verifies their own mobile before doing anything.'
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInductionLinkRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionLinkCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links/{linkId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: inductionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^ind_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: linkId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^lnk_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: revokeInductionLink
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.inductions.manage
+      summary: Stop a link working. Takes effect on the next request; workers who already signed keep their record.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access:
+    post:
+      operationId: openInductionAccess
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Exchange a link token for a session on that link (web `/i/[token]`, X45).
+      description: 'Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link returns `access_link.invalid` with no detail about the record.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The induction behind the link; `__Host-lnk` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getInductionAccess
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: The induction behind the current link session, and where the worker is up to.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/codes:
+    post:
+      operationId: sendInductionAccessCode
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Send a 6-digit code to the worker's mobile (or email as a fallback) (design/08 B2).
+      description: 'Codes last 10 minutes and allow 5 attempts. At most 3 sends per session an hour and 10 per number a day (Sam 11 §6). A new code replaces the last one.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendInductionAccessCodeRequest' }
+      responses:
+        '202':
+          description: Sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionAccessCodeSent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/verify:
+    post:
+      operationId: verifyInductionAccess
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Check the code and say who the worker is; starts (or picks up) their induction.
+      description: 'A worker already known by this mobile number keeps their record and the cards on file ("Welcome back"). Otherwise a worker is added with the company picked from the project, or the name they typed (flagged to the site manager, ATT-AC2).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyInductionAccessRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/completion:
+    get:
+      operationId: getLinkInductionCompletion
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: The verified worker's induction on this link.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/progress:
+    post:
+      operationId: recordLinkInductionProgress
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Mark a section as seen to the end (same rules as `recordInductionProgress`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InductionProgressRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/quiz-attempts:
+    post:
+      operationId: submitLinkInductionQuiz
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Submit the quiz (same rules as `submitInductionQuiz`).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitInductionQuizRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionQuizResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/uploads:
+    post:
+      operationId: createLinkInductionUpload
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Start a card photo upload for the verified worker (images and PDF only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateLinkUploadRequest' }
+      responses:
+        '201':
+          description: Upload session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Upload' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/uploads/{uploadId}/complete:
+    parameters:
+      - {
+          name: uploadId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^upl_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: completeLinkInductionUpload
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Finish a card photo upload; scanned like every other upload.
+      responses:
+        '200':
+          description: The stored file
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FileObject' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/files/{fileId}/download:
+    parameters:
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getLinkInductionFileDownload
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: A short-lived download link for a video, PDF or image the induction uses (and no other file).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/credentials:
+    post:
+      operationId: addLinkInductionCredential
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Record the worker's white card or a licence, with photos uploaded on this link (design/08 B5).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWorkerCredentialRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WorkerCredential' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/sign:
+    post:
+      operationId: signLinkInduction
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Sign the declaration (same rules as `signInduction`); the verified mobile goes into the evidence.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SignInductionRequest' }
+      responses:
+        '200':
+          description: Signed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCompletion' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/questions:
+    post:
+      operationId: askLinkInduction
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: Ask Nova about this induction; answers come only from its content (ai/12 I3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AskInductionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionAnswer' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/induction-access/translation:
+    get:
+      operationId: getLinkInductionTranslation
+      tags: [workforce]
+      x-module: workforce
+      x-auth: none
+      summary: The induction in the worker's language, machine translated by Nova (ai/12 I4, design/08 C2).
+      description: 'Labelled as machine translation; the English version is the official one and the signature always points to it. The language shown is kept on the completion.'
+      parameters:
+        - {
+            name: lang,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^[a-z]{2,3}(-[A-Za-z]{2,4})?$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionTranslation' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     OrgId:
@@ -6365,7 +6698,7 @@ components:
         versionNumber: { type: integer }
         worker: { $ref: '#/components/schemas/Worker' }
         status: { type: string, enum: [in_progress, completed] }
-        method: { type: string, enum: [self, assisted] }
+        method: { type: string, enum: [self, assisted, link] }
         startedAt: { type: string, format: date-time }
         completedAt: { type: [string, 'null'], format: date-time }
         expiresOn: { type: [string, 'null'], format: date }
@@ -6518,7 +6851,7 @@ components:
                 completedAt: { type: [string, 'null'], format: date-time }
                 expiresOn: { type: [string, 'null'], format: date }
                 score: { type: [integer, 'null'] }
-                method: { type: string, enum: [self, assisted] }
+                method: { type: string, enum: [self, assisted, link] }
             - { type: 'null' }
         credentials:
           description: What's on file. Card numbers and photos stay on the worker's credential list.
@@ -6537,3 +6870,268 @@ components:
         inductionId: { type: [string, 'null'] }
         requiredVersion: { type: [integer, 'null'] }
         data: { type: array, items: { $ref: '#/components/schemas/InductionRegisterEntry' } }
+    InductionLinkState:
+      type: string
+      enum: [active, expired, revoked, used_up]
+    InductionLink:
+      type: object
+      required:
+        [
+          id,
+          inductionId,
+          label,
+          recipientEmail,
+          recipientPhone,
+          state,
+          expiresAt,
+          maxUses,
+          useCount,
+          lastUsedAt,
+          createdAt,
+          createdBy,
+          revokedAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^lnk_[0-9A-Za-z]{26}$' }
+        inductionId: { type: string }
+        label: { type: [string, 'null'] }
+        recipientEmail: { type: [string, 'null'] }
+        recipientPhone: { type: [string, 'null'] }
+        state: { $ref: '#/components/schemas/InductionLinkState' }
+        expiresAt: { type: string, format: date-time }
+        maxUses: { type: [integer, 'null'] }
+        useCount: { type: integer }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        createdBy: { $ref: '#/components/schemas/UserRef' }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    InductionLinkList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/InductionLink' } }
+    CreateInductionLinkRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          description: 'Who it is for, e.g. "Sparkies crew" or "Gate poster".'
+          type: string
+          minLength: 1
+          maxLength: 200
+        recipientEmail: { type: string, format: email, maxLength: 254 }
+        recipientPhone: { $ref: '#/components/schemas/MobileNumber' }
+        expiresInDays: { type: integer, minimum: 1, maximum: 90, default: 30 }
+        maxUses:
+          description: How many times the link can be opened. Unlimited when left out.
+          type: integer
+          minimum: 1
+          maximum: 10000
+    InductionLinkCreated:
+      type: object
+      required: [link, token, url]
+      properties:
+        link: { $ref: '#/components/schemas/InductionLink' }
+        token: { type: string, description: 'Shown once. Only its hash is stored.' }
+        url:
+          {
+            type: string,
+            description: 'The page workers open (`/i/<token>`); also what the QR poster encodes.',
+          }
+    MobileNumber:
+      description: 'Mobile in E.164, e.g. `+61412345678`.'
+      type: string
+      pattern: '^\+[1-9][0-9]{6,14}$'
+    OpenInductionAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [token]
+      properties:
+        token: { type: string, pattern: '^arl_[A-Za-z0-9_-]{64}$' }
+    InductionAccess:
+      type: object
+      required:
+        [
+          orgName,
+          projectName,
+          siteName,
+          inductionTitle,
+          versionNumber,
+          publishedAt,
+          sectionCount,
+          languages,
+          companies,
+          verified,
+          verifiedTo,
+          worker,
+          completionId,
+          completionStatus,
+          expiresAt,
+        ]
+      properties:
+        orgName: { type: string }
+        projectName: { type: string }
+        siteName: { type: [string, 'null'] }
+        inductionTitle: { type: string }
+        versionNumber: { type: integer }
+        publishedAt: { type: string, format: date-time }
+        sectionCount: { type: integer }
+        languages:
+          description: Languages Nova can translate into for this worker (reviewed ones only).
+          type: array
+          items:
+            type: object
+            required: [code, name, nativeName]
+            properties:
+              code: { type: string }
+              name: { type: string }
+              nativeName: { type: string }
+        companies:
+          description: Companies on the project, for the worker to pick theirs (design/08 B2).
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { $ref: '#/components/schemas/CompanyRef' }
+              name: { type: string }
+        verified: { type: boolean }
+        verifiedTo: { type: [string, 'null'], description: 'Masked, e.g. `+61 4•• ••• 678`.' }
+        worker:
+          oneOf:
+            - type: object
+              required: [fullName, companyName, returning]
+              properties:
+                fullName: { type: string }
+                companyName: { type: [string, 'null'] }
+                returning:
+                  {
+                    type: boolean,
+                    description: 'Known from another induction by this mobile number.',
+                  }
+            - { type: 'null' }
+        completionId: { type: [string, 'null'] }
+        completionStatus: { type: string, enum: [not_started, in_progress, completed] }
+        expiresAt:
+          {
+            type: string,
+            format: date-time,
+            description: When this browser's session on the link ends.,
+          }
+    SendInductionAccessCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [channel, to]
+      properties:
+        channel: { type: string, enum: [sms, email] }
+        to:
+          description: E.164 mobile for `sms`, an email address for `email`.
+          type: string
+          minLength: 3
+          maxLength: 254
+    InductionAccessCodeSent:
+      type: object
+      required: [channel, to, expiresAt, resendAfter]
+      properties:
+        channel: { type: string, enum: [sms, email] }
+        to: { type: string, description: Masked. }
+        expiresAt: { type: string, format: date-time }
+        resendAfter: { type: string, format: date-time }
+    VerifyInductionAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [code, fullName]
+      properties:
+        code: { type: string, pattern: '^[0-9]{6}$' }
+        fullName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        companyName:
+          description: '"My company isn''t listed": the name as typed, flagged to the site manager.'
+          type: string
+          minLength: 1
+          maxLength: 200
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+    CreateLinkUploadRequest:
+      type: object
+      additionalProperties: false
+      required: [filename, mime, sizeBytes, sha256]
+      properties:
+        filename: { type: string, minLength: 1, maxLength: 255 }
+        mime:
+          { type: string, enum: [image/jpeg, image/png, image/heic, image/webp, application/pdf] }
+        sizeBytes: { type: integer, minimum: 1, maximum: 20971520 }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+    AskInductionRequest:
+      type: object
+      additionalProperties: false
+      required: [question]
+      properties:
+        question: { type: string, minLength: 1, maxLength: 500 }
+    InductionAnswer:
+      type: object
+      required: [found, answer, citations]
+      properties:
+        found:
+          {
+            type: boolean,
+            description: 'False when the induction does not cover it; `answer` then says to ask a supervisor.',
+          }
+        answer: { type: string }
+        citations:
+          type: array
+          items:
+            type: object
+            required: [section, slideTitle, quote]
+            properties:
+              section: { type: integer, description: Index of the section the answer comes from. }
+              slideTitle: { type: string }
+              quote: { type: string }
+    InductionTranslation:
+      type: object
+      required: [language, nativeName, label, keptInEnglish, versionNumber, sections, quiz]
+      properties:
+        language: { type: string }
+        nativeName: { type: string }
+        label:
+          {
+            type: string,
+            description: 'Fixed label: machine translation, the English version is official.',
+          }
+        keptInEnglish: { type: string, description: Shown on anything left in English. }
+        versionNumber: { type: integer }
+        sections:
+          description: Same order as the induction's sections and blocks. Only slides and text blocks are translated.
+          type: array
+          items:
+            type: object
+            required: [section, blocks]
+            properties:
+              section: { type: integer }
+              blocks:
+                type: array
+                items:
+                  type: object
+                  required: [block, translated, slides]
+                  properties:
+                    block: { type: integer }
+                    translated: { type: boolean }
+                    slides:
+                      description: 'For a text block: one slide whose first point is the body.'
+                      type: array
+                      items:
+                        type: object
+                        required: [title, points, script]
+                        properties:
+                          title: { type: string }
+                          points: { type: array, items: { type: string } }
+                          script: { type: array, items: { type: string } }
+        quiz:
+          type: array
+          items:
+            type: object
+            required: [questionId, translated, question, options]
+            properties:
+              questionId: { type: string }
+              translated: { type: boolean }
+              question: { type: string }
+              options: { type: array, items: { type: string } }

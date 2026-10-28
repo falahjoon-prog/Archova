@@ -19,6 +19,18 @@ export interface TenantContext {
   orgRole: 'owner' | 'admin' | 'billing_admin' | 'member' | null;
   entitlements: Entitlements;
   requestId: string;
+  /**
+   * Set when the caller is a person on an access link (X45) rather than a signed-in user. `userId` is then the
+   * subject's id in the owning module (a workforce worker), never an identity user.
+   */
+  actor?: LinkActor;
+}
+
+export interface LinkActor {
+  type: 'link';
+  linkId: string;
+  subjectType: string | null;
+  subjectId: string | null;
 }
 
 export interface Entitlements {

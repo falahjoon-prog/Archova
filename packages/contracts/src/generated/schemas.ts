@@ -112,6 +112,11 @@ export const ApproveInductionSectionRequestSchema = z.object({
 }).strict();
 export type ApproveInductionSectionRequest = z.infer<typeof ApproveInductionSectionRequestSchema>;
 
+export const AskInductionRequestSchema = z.object({
+  "question": z.string().min(1).max(500),
+}).strict();
+export type AskInductionRequest = z.infer<typeof AskInductionRequestSchema>;
+
 export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
 export type CompanyRef = z.infer<typeof CompanyRefSchema>;
 
@@ -385,12 +390,32 @@ export const CreateGateRequestSchema = z.object({
 }).strict();
 export type CreateGateRequest = z.infer<typeof CreateGateRequestSchema>;
 
+export const MobileNumberSchema = z.string().regex(new RegExp("^\\+[1-9][0-9]{6,14}$"));
+export type MobileNumber = z.infer<typeof MobileNumberSchema>;
+
+export const CreateInductionLinkRequestSchema = z.object({
+  "label": z.string().min(1).max(200).optional(),
+  "recipientEmail": z.string().email().max(254).optional(),
+  "recipientPhone": MobileNumberSchema.optional(),
+  "expiresInDays": z.number().int().min(1).max(90).optional(),
+  "maxUses": z.number().int().min(1).max(10000).optional(),
+}).strict();
+export type CreateInductionLinkRequest = z.infer<typeof CreateInductionLinkRequestSchema>;
+
 export const CreateInductionRequestSchema = z.object({
   "title": z.string().min(1).max(200),
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
   "validityMonths": z.number().int().min(1).max(36).optional(),
 }).strict();
 export type CreateInductionRequest = z.infer<typeof CreateInductionRequestSchema>;
+
+export const CreateLinkUploadRequestSchema = z.object({
+  "filename": z.string().min(1).max(255),
+  "mime": z.enum(["image/jpeg", "image/png", "image/heic", "image/webp", "application/pdf"]),
+  "sizeBytes": z.number().int().min(1).max(20971520),
+  "sha256": z.string().regex(new RegExp("^[0-9a-f]{64}$")),
+}).strict();
+export type CreateLinkUploadRequest = z.infer<typeof CreateLinkUploadRequestSchema>;
 
 export const MarkupVisibilitySchema = z.enum(["private", "company", "project"]);
 export type MarkupVisibility = z.infer<typeof MarkupVisibilitySchema>;
@@ -1079,6 +1104,55 @@ export const InductionSchema = z.object({
 });
 export type Induction = z.infer<typeof InductionSchema>;
 
+export const InductionAccessSchema = z.object({
+  "orgName": z.string(),
+  "projectName": z.string(),
+  "siteName": z.string().nullable(),
+  "inductionTitle": z.string(),
+  "versionNumber": z.number().int(),
+  "publishedAt": z.string().datetime({ offset: true }),
+  "sectionCount": z.number().int(),
+  "languages": z.array(z.object({
+  "code": z.string(),
+  "name": z.string(),
+  "nativeName": z.string(),
+})),
+  "companies": z.array(z.object({
+  "id": CompanyRefSchema,
+  "name": z.string(),
+})),
+  "verified": z.boolean(),
+  "verifiedTo": z.string().nullable(),
+  "worker": z.union([z.object({
+  "fullName": z.string(),
+  "companyName": z.string().nullable(),
+  "returning": z.boolean(),
+}), z.null()]),
+  "completionId": z.string().nullable(),
+  "completionStatus": z.enum(["not_started", "in_progress", "completed"]),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type InductionAccess = z.infer<typeof InductionAccessSchema>;
+
+export const InductionAccessCodeSentSchema = z.object({
+  "channel": z.enum(["sms", "email"]),
+  "to": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "resendAfter": z.string().datetime({ offset: true }),
+});
+export type InductionAccessCodeSent = z.infer<typeof InductionAccessCodeSentSchema>;
+
+export const InductionAnswerSchema = z.object({
+  "found": z.boolean(),
+  "answer": z.string(),
+  "citations": z.array(z.object({
+  "section": z.number().int(),
+  "slideTitle": z.string(),
+  "quote": z.string(),
+})),
+});
+export type InductionAnswer = z.infer<typeof InductionAnswerSchema>;
+
 export const InductionQuizSummarySchema = z.object({
   "attempts": z.number().int(),
   "failedAttempts": z.number().int(),
@@ -1129,7 +1203,7 @@ export const InductionCompletionSchema = z.object({
   "versionNumber": z.number().int(),
   "worker": WorkerSchema,
   "status": z.enum(["in_progress", "completed"]),
-  "method": z.enum(["self", "assisted"]),
+  "method": z.enum(["self", "assisted", "link"]),
   "startedAt": z.string().datetime({ offset: true }),
   "completedAt": z.string().datetime({ offset: true }).nullable(),
   "expiresOn": z.string().date().nullable(),
@@ -1139,6 +1213,38 @@ export const InductionCompletionSchema = z.object({
   "content": InductionWorkerContentSchema,
 });
 export type InductionCompletion = z.infer<typeof InductionCompletionSchema>;
+
+export const InductionLinkStateSchema = z.enum(["active", "expired", "revoked", "used_up"]);
+export type InductionLinkState = z.infer<typeof InductionLinkStateSchema>;
+
+export const InductionLinkSchema = z.object({
+  "id": z.string().regex(new RegExp("^lnk_[0-9A-Za-z]{26}$")),
+  "inductionId": z.string(),
+  "label": z.string().nullable(),
+  "recipientEmail": z.string().nullable(),
+  "recipientPhone": z.string().nullable(),
+  "state": InductionLinkStateSchema,
+  "expiresAt": z.string().datetime({ offset: true }),
+  "maxUses": z.number().int().nullable(),
+  "useCount": z.number().int(),
+  "lastUsedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "createdBy": UserRefSchema,
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type InductionLink = z.infer<typeof InductionLinkSchema>;
+
+export const InductionLinkCreatedSchema = z.object({
+  "link": InductionLinkSchema,
+  "token": z.string(),
+  "url": z.string(),
+});
+export type InductionLinkCreated = z.infer<typeof InductionLinkCreatedSchema>;
+
+export const InductionLinkListSchema = z.object({
+  "data": z.array(InductionLinkSchema),
+});
+export type InductionLinkList = z.infer<typeof InductionLinkListSchema>;
 
 export const InductionListSchema = z.object({
   "data": z.array(InductionSchema),
@@ -1170,7 +1276,7 @@ export const InductionRegisterEntrySchema = z.object({
   "completedAt": z.string().datetime({ offset: true }).nullable(),
   "expiresOn": z.string().date().nullable(),
   "score": z.number().int().nullable(),
-  "method": z.enum(["self", "assisted"]),
+  "method": z.enum(["self", "assisted", "link"]),
 }), z.null()]),
   "credentials": z.array(z.object({
   "kind": WorkerCredentialKindSchema,
@@ -1186,6 +1292,33 @@ export const InductionRegisterSchema = z.object({
   "data": z.array(InductionRegisterEntrySchema),
 });
 export type InductionRegister = z.infer<typeof InductionRegisterSchema>;
+
+export const InductionTranslationSchema = z.object({
+  "language": z.string(),
+  "nativeName": z.string(),
+  "label": z.string(),
+  "keptInEnglish": z.string(),
+  "versionNumber": z.number().int(),
+  "sections": z.array(z.object({
+  "section": z.number().int(),
+  "blocks": z.array(z.object({
+  "block": z.number().int(),
+  "translated": z.boolean(),
+  "slides": z.array(z.object({
+  "title": z.string(),
+  "points": z.array(z.string()),
+  "script": z.array(z.string()),
+})),
+})),
+})),
+  "quiz": z.array(z.object({
+  "questionId": z.string(),
+  "translated": z.boolean(),
+  "question": z.string(),
+  "options": z.array(z.string()),
+})),
+});
+export type InductionTranslation = z.infer<typeof InductionTranslationSchema>;
 
 export const InductionVersionSchema = z.intersection(InductionVersionSummarySchema, z.object({
   "inductionId": z.string(),
@@ -1358,6 +1491,11 @@ export const OnSiteSchema = z.object({
   "people": z.array(AttendanceEntrySchema),
 });
 export type OnSite = z.infer<typeof OnSiteSchema>;
+
+export const OpenInductionAccessRequestSchema = z.object({
+  "token": z.string().regex(new RegExp("^arl_[A-Za-z0-9_-]{64}$")),
+}).strict();
+export type OpenInductionAccessRequest = z.infer<typeof OpenInductionAccessRequestSchema>;
 
 export const OrgSchema = z.object({
   "id": z.string(),
@@ -1619,6 +1757,12 @@ export const SelfSignOutRequestSchema = z.object({
   "clientAt": z.string().datetime({ offset: true }).optional(),
 }).strict();
 export type SelfSignOutRequest = z.infer<typeof SelfSignOutRequestSchema>;
+
+export const SendInductionAccessCodeRequestSchema = z.object({
+  "channel": z.enum(["sms", "email"]),
+  "to": z.string().min(3).max(254),
+}).strict();
+export type SendInductionAccessCodeRequest = z.infer<typeof SendInductionAccessCodeRequestSchema>;
 
 export const SessionInfoSchema = z.object({
   "user": UserSchema,
@@ -1988,6 +2132,15 @@ export const UploadSchema = z.object({
   "expiresAt": z.string().datetime({ offset: true }),
 });
 export type Upload = z.infer<typeof UploadSchema>;
+
+export const VerifyInductionAccessRequestSchema = z.object({
+  "code": z.string().regex(new RegExp("^[0-9]{6}$")),
+  "fullName": z.string().min(1).max(200),
+  "companyId": CompanyRefSchema.optional(),
+  "companyName": z.string().min(1).max(200).optional(),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type VerifyInductionAccessRequest = z.infer<typeof VerifyInductionAccessRequestSchema>;
 
 export const WorkerCredentialListSchema = z.object({
   "data": z.array(WorkerCredentialSchema),

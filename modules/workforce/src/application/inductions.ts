@@ -96,7 +96,8 @@ export type InductionDeps = WorkforceDeps & {
     getFile(
       scope: TenantScope,
       fileId: string,
-    ): Promise<{ projectId: string | null; status: string }>;
+      opts?: { authorised?: boolean },
+    ): Promise<{ projectId: string | null; status: string; createdBy: string | null }>;
   };
   documents: {
     getDocumentRef(
@@ -108,6 +109,16 @@ export type InductionDeps = WorkforceDeps & {
 };
 
 const newQuestionId = () => 'q' + randomBytes(6).toString('hex');
+
+/** A worker on an access link (X45) sees only their own record; the scope's actor says which worker. */
+const GUEST_VIEWER: Viewer = {
+  scopedCompanyId: null,
+  canManage: false,
+  canOverride: false,
+  canSeePersonal: false,
+};
+const linkWorker = (scope: TenantScope) =>
+  scope.ctx.actor?.type === 'link' ? scope.ctx.actor.subjectId : undefined;
 
 export function createInductionService(deps: InductionDeps, attendance: AttendanceService) {
   const now = deps.now ?? (() => new Date());
@@ -535,6 +546,15 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       )
       .limit(1);
     if (!c) throw new AppError('induction.completion_not_found');
+    const guest = linkWorker(scope);
+    if (guest !== undefined) {
+      if (c.workerId !== guest) throw new AppError('induction.completion_not_found');
+      return {
+        completion: c,
+        viewer: GUEST_VIEWER,
+        worker: await attendance.getWorker(scope, c.workerId),
+      };
+    }
     const viewer = await attendance.viewer(scope, projectId);
     const worker = await attendance.getWorker(scope, c.workerId);
     const mine = worker.userId === scope.ctx.userId;
@@ -585,6 +605,84 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       })
       .returning();
     return view(scope, row!, viewer);
+  }
+
+  /**
+   * Access link (X45): start, or pick up again, the verified worker's completion of the link's induction on its
+   * current version. The verified number goes on the completion and into the signed evidence.
+   */
+  async function startForLink(
+    scope: TenantScope,
+    projectId: string,
+    inductionId: string,
+    workerId: string,
+    link: { linkId: string; channel: 'sms' | 'email'; verifiedTo: string },
+  ) {
+    const row = await getRow(scope, projectId, inductionId);
+    if (row.status === 'archived' || !row.currentVersionId)
+      throw new AppError('induction.not_published', 'This site has no induction to take yet.');
+    const [existing] = await scope.tx
+      .select()
+      .from(inductionCompletions)
+      .where(
+        and(
+          eq(inductionCompletions.versionId, row.currentVersionId),
+          eq(inductionCompletions.workerId, workerId),
+        ),
+      )
+      .limit(1);
+    if (existing) return existing;
+    const [created] = await scope.tx
+      .insert(inductionCompletions)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        inductionId,
+        versionId: row.currentVersionId,
+        workerId,
+        method: 'link',
+        accessLinkId: link.linkId,
+        verifiedChannel: link.channel,
+        verifiedTo: link.verifiedTo,
+        startedAt: now(),
+      })
+      .returning();
+    return created!;
+  }
+
+  /** The worker's latest completion of an induction (in progress first), for the access-link pages. */
+  async function latestCompletion(scope: TenantScope, inductionId: string, workerId: string) {
+    const [c] = await scope.tx
+      .select()
+      .from(inductionCompletions)
+      .where(
+        and(
+          eq(inductionCompletions.inductionId, inductionId),
+          eq(inductionCompletions.workerId, workerId),
+        ),
+      )
+      .orderBy(
+        sql`case when ${inductionCompletions.status} = 'in_progress' then 0 else 1 end`,
+        desc(inductionCompletions.startedAt),
+      )
+      .limit(1);
+    return c ?? null;
+  }
+
+  /** Keeps the language the worker reads in, and what they saw, for the evidence (ai/12 I4). */
+  async function recordLanguage(
+    scope: TenantScope,
+    projectId: string,
+    completionId: string,
+    language: string,
+    translationHash: string | null,
+  ) {
+    const { completion } = await loadCompletion(scope, projectId, completionId);
+    if (completion.status === 'completed') return completion;
+    if (completion.language === language && completion.translationHash === translationHash)
+      return completion;
+    return saveCompletion(scope, completion, { language, translationHash });
   }
 
   async function getCompletion(scope: TenantScope, projectId: string, completionId: string) {
@@ -700,9 +798,18 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       throw new AppError('validation_failed', 'Enter the state that issued the white card.', [
         { path: 'issuingState', message: 'Required for a white card' },
       ]);
+    const guest = linkWorker(scope) !== undefined;
     for (const [i, fileId] of input.fileIds.entries()) {
-      const f = await deps.files.getFile(scope, fileId).catch(() => null);
-      if (!f || f.projectId !== projectId || f.status !== 'ready')
+      // On a link the photo must be one this worker uploaded on it.
+      const f = await deps.files
+        .getFile(scope, fileId, guest ? { authorised: true } : undefined)
+        .catch(() => null);
+      if (
+        !f ||
+        f.projectId !== projectId ||
+        f.status !== 'ready' ||
+        (guest && f.createdBy !== scope.ctx.userId)
+      )
         throw new AppError('file.not_in_project', 'Upload the photo to this project first.', [
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
@@ -849,6 +956,13 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       translationHash: completion.translationHash,
       method: completion.method,
       assistedBy: completion.assistedBy,
+      ...(completion.method === 'link'
+        ? {
+            accessLinkId: completion.accessLinkId,
+            verifiedChannel: completion.verifiedChannel,
+            verifiedTo: completion.verifiedTo,
+          }
+        : {}),
       startedAt: completion.startedAt.toISOString(),
       progress: completion.progress,
       attempts: attempts.map((a) => ({
@@ -1041,6 +1155,11 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     versionForAi,
     start,
     getCompletion,
+    startForLink,
+    latestCompletion,
+    recordLanguage,
+    view,
+    getRow,
     recordProgress,
     submitQuiz,
     addInductionCredential,
@@ -1074,3 +1193,16 @@ export function aiContent(v: VersionRow) {
 }
 
 export type InductionService = ReturnType<typeof createInductionService>;
+
+/** Where each of `aiContent`'s slides comes from, in the same order: the section and block indexes. */
+export function slideSources(v: VersionRow): Array<{ section: number; block: number }> {
+  return v.content.sections.flatMap((s, section) =>
+    s.blocks.flatMap((b, block) =>
+      b.type === 'slides'
+        ? b.slides.map(() => ({ section, block }))
+        : b.type === 'text'
+          ? [{ section, block }]
+          : [],
+    ),
+  );
+}

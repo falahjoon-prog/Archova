@@ -1,5 +1,5 @@
 // Composition root: the list of modules this app loads (backend 01 §2). Adding a module means adding it here.
-import type { Database, KernelServices, RouteTable } from '@archova/kernel';
+import type { Database, KernelServices, MessageSender, RouteTable } from '@archova/kernel';
 import { AI_PERMISSIONS, createAiModule, type AiConfig, type ModelProvider } from '@archova/mod-ai';
 import { createAccessModule } from '@archova/mod-access';
 import {
@@ -30,6 +30,10 @@ export interface ModuleOptions {
   files: { store: ObjectStore; scanner: MalwareScanner };
   entitlements?: EntitlementProvider;
   ai: { config: AiConfig; provider?: ModelProvider };
+  /** One-time codes for access links (X45). */
+  messages: MessageSender;
+  /** The web origin access links point at. */
+  linkBaseUrl: string;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -102,6 +106,20 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
+    links: {
+      platform: platform.api,
+      files: files.api,
+      entitlements: billing.api.entitlements.forOrg,
+      messages: opts.messages,
+      ai: {
+        askInduction: ai.api.askInduction,
+        translateInduction: ai.api.translateInduction,
+        translationLanguages: ai.api.translationLanguages,
+      },
+      baseUrl: opts.linkBaseUrl,
+      redis: services.redis,
+      logger: services.logger,
+    },
   });
 
   const all = [
