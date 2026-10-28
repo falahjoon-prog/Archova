@@ -340,6 +340,17 @@ export function workforceRoutes(
       );
       return { status: 201, body: toRollCallDto(r.call, r.marks) };
     },
+    listRollCalls: async (input) => {
+      const open = input.query.open;
+      const rows = await read(input, (s) =>
+        svc.listRollCalls(
+          s,
+          project(input.params),
+          open === undefined ? {} : { open: open === 'true' },
+        ),
+      );
+      return { status: 200, body: { data: rows.map((r) => toRollCallDto(r.call, r.marks)) } };
+    },
     getRollCall: async (input) => {
       const r = await read(input, (s) =>
         svc.getRollCall(

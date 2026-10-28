@@ -937,6 +937,13 @@ export const ListAttendanceSessionsQuery = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
   "companyId": s.CompanyRefSchema.optional(),
 });
+export const ListRollCallsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListRollCallsQuery = z.object({
+  "open": z.enum(["true", "false"]).optional(),
+});
 export const StartRollCallParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3014,6 +3021,18 @@ export const operations = {
     contentType: null,
     params: ListAttendanceSessionsParams,
     query: ListAttendanceSessionsQuery,
+    body: null,
+  },
+  listRollCalls: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.view",
+    internal: false,
+    contentType: null,
+    params: ListRollCallsParams,
+    query: ListRollCallsQuery,
     body: null,
   },
   startRollCall: {
