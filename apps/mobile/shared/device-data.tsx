@@ -9,6 +9,7 @@ import { SyncEngine, SyncScheduler, type SyncTrigger } from '@archova/sync-core'
 import { api } from '../lib/api';
 import { openOrgDatabase, SqliteSyncStore, type SqlDatabase } from '../lib/db';
 import { expoSqlDriver } from '../lib/db/expo-driver';
+import { createSignInSender, SignInQueue } from '../lib/attendance/sign-in-queue';
 import { createUploadApi } from '../lib/files/api';
 import { UploadQueue } from '../lib/files/upload-queue';
 import { backgroundFileTransfer } from '../lib/platform/file-transfer';
@@ -37,6 +38,7 @@ export interface DeviceData {
   db: SqlDatabase;
   store: SqliteSyncStore;
   uploads: UploadQueue;
+  signIns: SignInQueue;
   requestSync: (trigger: SyncTrigger) => void;
 }
 
@@ -79,12 +81,13 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           createUploadApi(api, orgId),
           backgroundFileTransfer,
         );
+        const signIns = new SignInQueue(db, createSignInSender(api, orgId));
         const engine = new SyncEngine({
           store,
           transport: createSyncTransport(api, orgId),
           scopes: () => deviceScopes(api, orgId),
         });
-        const scheduler = new SyncScheduler(createDeviceSync({ uploads, engine }), {
+        const scheduler = new SyncScheduler(createDeviceSync({ uploads, signIns, engine }), {
           setTimeout: (cb, ms) => setTimeout(cb, ms),
           clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
           now: () => Date.now(),
@@ -107,7 +110,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
         };
         setState({
           status: 'ready',
-          data: { orgId, db, store, uploads, requestSync: (t) => scheduler.request(t) },
+          data: { orgId, db, store, uploads, signIns, requestSync: (t) => scheduler.request(t) },
         });
       })
       .catch((error: unknown) => {
