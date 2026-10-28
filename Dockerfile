@@ -79,7 +79,9 @@ RUN CANVAS=$(node -p "require('/repo/node_modules/.pnpm/node_modules/@napi-rs/ca
  && npm install --omit=dev --no-audit --no-fund "@napi-rs/canvas@${CANVAS}" "pdfjs-dist@${PDFJS}" "@node-rs/argon2@${ARGON2}" \
  && node --input-type=commonjs -e "require('@napi-rs/canvas').createCanvas(8, 8).toBuffer('image/png')" \
  && cp -r /repo/apps/worker/dist ./dist \
- && (DATABASE_URL= node dist/ai.js 2>&1 || true) | grep -q 'Missing environment variable DATABASE_URL'
+ && (DATABASE_URL='' node dist/ai.js > start.log 2>&1 || true) \
+ && grep -q 'Missing environment variable DATABASE_URL' start.log \
+ && rm start.log
 
 FROM ${RUNTIME_IMAGE} AS ai-worker
 WORKDIR /app
