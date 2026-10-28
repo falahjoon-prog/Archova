@@ -41,6 +41,11 @@ export interface SyncCommand {
   name: string;
   /** Whose licence the command needs: the same module the REST endpoint is under. */
   module: string;
+  /**
+   * True when a person whose access just ended may still send it with a drain grant (X38). The server then only
+   * queues it for an admin and never runs it, so it is set for commands whose late result is worth reviewing.
+   */
+  drainable?: boolean;
   run(scope: TenantScope, mutation: SyncMutationInput): Promise<{ version: number }>;
   /** The caller's current copy of the record, for a conflict result; null when it is gone or not visible. */
   current(

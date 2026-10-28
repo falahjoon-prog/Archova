@@ -6930,6 +6930,12 @@ components:
           pattern: '^[a-z][a-z_]*\.[A-Za-z][A-Za-z0-9]*$'
           description: A module use case, e.g. `defects.markReadyForReview`.
         entityId: { type: string, minLength: 1, maxLength: 64 }
+        projectId:
+          type: string
+          pattern: '^prj_[0-9A-Za-z]{26}$'
+          description: >-
+            The project the change belongs to. Required when sending with a drain grant (X38), where the server
+            checks it against the grant and never reads the record; ignored otherwise.
         baseVersion:
           type: [integer, 'null']
           minimum: 0

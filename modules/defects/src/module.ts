@@ -44,6 +44,8 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
   const transitionCommand: SyncCommand = {
     name: 'defects.transition',
     module: 'defects',
+    // Worth an admin's look if the person lost access first (X38); a grant only queues it.
+    drainable: true,
     async run(scope, m) {
       const defectId = id('defect', m.entityId, 'entityId');
       if (m.baseVersion === null)

@@ -2537,6 +2537,7 @@ export const SyncMutationSchema = z.object({
   "mutationId": z.string(),
   "command": z.string().regex(new RegExp("^[a-z][a-z_]*\\.[A-Za-z][A-Za-z0-9]*$")),
   "entityId": z.string().min(1).max(64),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
   "baseVersion": z.number().int().min(0).nullable(),
   "clientAt": z.string().datetime({ offset: true }),
   "payload": z.record(z.string(), z.unknown()),

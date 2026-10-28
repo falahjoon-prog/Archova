@@ -7,6 +7,7 @@ import {
 } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { syncRoutes } from './api/routes';
+import { createDrainService } from './application/drain';
 import { createPullService } from './application/pull';
 import { createPushService } from './application/push';
 
@@ -21,9 +22,13 @@ export interface SyncDeps {
 export function createSyncModule(services: KernelServices, deps: SyncDeps) {
   const pull = createPullService(deps);
   const push = createPushService({ database: services.database, commands: deps.commands });
+  const drain = createDrainService({ database: services.database, commands: deps.commands });
   return {
     definition: defineModule({ name: 'sync' }),
     routes: syncRoutes(services.database, pull, push),
-    api: {},
+    /** `drain`: the late-submission queue (X38). The API pipeline calls `handle` for a drain-grant Bearer on `syncPush`. */
+    api: { drain },
   };
 }
+
+export { isDrainToken } from './application/drain';

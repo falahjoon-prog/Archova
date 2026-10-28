@@ -4746,6 +4746,8 @@ export interface components {
             /** @description A module use case, e.g. `defects.markReadyForReview`. */
             command: string;
             entityId: string;
+            /** @description The project the change belongs to. Required when sending with a drain grant (X38), where the server checks it against the grant and never reads the record; ignored otherwise. */
+            projectId?: string;
             /** @description The version the change was made against; `null` for a create. */
             baseVersion: number | null;
             /**
