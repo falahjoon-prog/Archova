@@ -20,6 +20,9 @@ import {
 } from './wire';
 
 /** How long a device may keep sending queued work after access ended (X38). */
+/** Problem code for a command that refers to a file the malware scan has not cleared yet (backend 04). */
+export const FILE_NOT_READY = 'file.not_ready';
+
 export const DRAIN_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 export interface Clock {
@@ -367,7 +370,15 @@ export class SyncEngine {
       for (const r of lostAccess) {
         this.startProjectDrain({ projectId: sent.get(r.mutationId)!.projectId!, module: null });
       }
-      await this.store.recordPushResults(results.filter((r) => !lostAccess.includes(r)));
+      // A file still being scanned (409 `file.not_ready`) is not a failure: the command stays queued and the run
+      // backs off. A blocked file (`file.blocked`, 422) is final and falls through to needs attention.
+      const notReady = results.filter(
+        (r) => r.status === 'rejected' && r.problem.code === FILE_NOT_READY,
+      );
+      await this.store.recordPushResults(
+        results.filter((r) => !lostAccess.includes(r) && !notReady.includes(r)),
+      );
+      if (notReady.length > 0) await this.store.recordAttempt(notReady.map((r) => r.mutationId));
       if (results.length < batch.length) {
         // The server answered only part of the batch; retry the rest later rather than loop now.
         const answered = new Set(results.map((r) => r.mutationId));
@@ -377,6 +388,12 @@ export class SyncEngine {
         throw new SyncHttpError(502, { message: 'Push response was missing results' });
       }
       await this.emitStatus();
+      if (notReady.length > 0) {
+        throw new SyncHttpError(409, {
+          code: FILE_NOT_READY,
+          message: 'A file is still being scanned',
+        });
+      }
     }
   }
 

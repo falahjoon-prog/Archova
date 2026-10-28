@@ -1,6 +1,5 @@
 // One sync run on the device: move waiting files first (their follow-up commands join the outbox when they
-// land), then run the sync engine. The engine is null until the sync endpoints are in the contract; files
-// still upload and commands wait safely in the outbox.
+// land), then run the sync engine. The engine is null only in tests that exercise files alone.
 
 import {
   backoffDelay,
