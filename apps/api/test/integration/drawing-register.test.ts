@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
 import { hexToBase64, quarantineKey } from '@archova/mod-files';
 import {
+  addMember,
   createOrg,
   createProject,
   createTestContext,
@@ -237,9 +238,10 @@ describe('drawing register auto-fill (F1)', () => {
     }
   });
 
-  it('lets a subcontractor see suggestions but not run or decide them, and hides other orgs', async () => {
+  it('shows sheet suggestions to the team that registers drawings, not to subcontractors, and hides other orgs', async () => {
     const owner = await signUp(t.app, 'dr-owner');
     const subbie = await signUp(t.app, 'dr-subbie');
+    const siteManager = await signUp(t.app, 'dr-sm');
     const org = await createOrg(owner.browser, 'Gate Builders');
     const project = await createProject(owner.browser, org.id);
     const company = (
@@ -256,6 +258,14 @@ describe('drawing register auto-fill (F1)', () => {
       companyId: company.id,
       permissionTemplateId: templates.find((x) => x.name === 'Subcontractor')!.id,
     });
+    await addMember(
+      owner.browser,
+      org.id,
+      project.id,
+      siteManager.email,
+      'Site Manager',
+      'Gate Builders',
+    );
     const file = await uploadPdf(
       owner.browser,
       org.id,
@@ -269,16 +279,30 @@ describe('drawing register auto-fill (F1)', () => {
       await owner.browser.post(`${base}/drawing-register/extractions`, { fileId: file.id })
     ).json();
     const id = run.suggestions[0].id;
+    const listIds = async (b: Browser) => {
+      const res = await b.get(`${base}/suggestions?task=drawing.titleblock`);
+      expect(res.statusCode).toBe(200);
+      return (res.json().data as Array<{ id: string }>).map((x) => x.id);
+    };
 
     const denied = await subbie.browser.post(`${base}/drawing-register/extractions`, {
       fileId: file.id,
     });
     expect(denied.statusCode).toBe(403);
-    expect((await subbie.browser.get(`${base}/suggestions`)).statusCode).toBe(200);
+    // `ai.suggestions.read` is held by every project member, so it can't be what shows a subcontractor the register
+    // draft: they hold neither the creator's seat nor the permission that decides it.
+    expect(await listIds(subbie.browser)).toEqual([]);
     const decide = await subbie.browser.post(`${base}/suggestions/${id}/decision`, {
       decision: 'accepted',
     });
-    expect(decide.statusCode).toBe(403);
+    expect(decide.statusCode).toBe(404);
+    // Someone on the project who holds the decide permission sees the draft and can take it.
+    expect(await listIds(owner.browser)).toEqual([id]);
+    expect(await listIds(siteManager.browser)).toEqual([id]);
+    const taken = await siteManager.browser.post(`${base}/suggestions/${id}/decision`, {
+      decision: 'accepted',
+    });
+    expect(taken.statusCode).toBe(200);
 
     // Another org can't reach the file or the suggestion even with its own project.
     const other = await signUp(t.app, 'dr-other');
