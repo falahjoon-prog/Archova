@@ -1,7 +1,9 @@
-import { defineModule, type KernelServices } from '@archova/kernel';
+import { encodeId } from '@archova/domain';
+import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import { createAttendanceService, type ComplianceSource } from './application/attendance';
 import { createInductionLinkService, type InductionLinkDeps } from './application/induction-links';
 import { createInductionService, type InductionDeps } from './application/inductions';
+import { toSessionDto } from './api/mappers';
 import { workforceRoutes, type InductionHooks } from './api/routes';
 import { WORKFORCE_PERMISSIONS } from './permissions';
 
@@ -24,6 +26,23 @@ export function createWorkforceModule(
     attendance,
     inductions,
   });
+  // Attendance sessions only. Workers are org-level records with personal details and have no project scope in
+  // the change feed, so they stay on REST until their sync rule is decided.
+  const syncSource: SyncSource = {
+    module: 'workforce',
+    permission: 'workforce.attendance.view',
+    publicId: (_entityType, id) => encodeId('attendanceSession', id),
+    async load(scope, { projectId, entityType, ids }) {
+      const out = new Map<string, { version: number; data: Record<string, unknown> }>();
+      if (!projectId || entityType !== 'attendance_session') return out;
+      for (const s of await attendance.visibleSessions(scope, projectId, ids))
+        out.set(s.id, {
+          version: s.version,
+          data: toSessionDto(s) as unknown as Record<string, unknown>,
+        });
+      return out;
+    },
+  };
   return {
     definition: defineModule({ name: 'workforce', permissions: WORKFORCE_PERMISSIONS }),
     routes: workforceRoutes(services.database, attendance, inductions, links, {
@@ -31,6 +50,8 @@ export function createWorkforceModule(
       ...deps.hooks,
     }),
     api: {
+      /** What the mobile pull reads (modules/sync): attendance sessions. */
+      syncSource,
       /** Scheduled job (every 15 minutes per org): closes sessions left open after the site's day end. */
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */
