@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import { encodeId, uuidv7 } from '@archova/domain';
 import { daysBetween, localDateOf, type LocalDate } from '@archova/time';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
@@ -813,7 +813,7 @@ export function createDiaryService(deps: DiaryDeps) {
    * Subscriber for `workforce.attendance.session_closed.v1` (ATT-AC6): keeps one `attendance` labour line
    * per company per day in step with sign-ins. The pre-filled values are always refreshed; the line's own
    * headcount and hours follow them until the site manager edits the line (an edit carries `editReason`).
-   * A submitted day isn't changed without a reason, so only the pre-filled values move there, and no new
+   * A deleted attendance line is not re-created. A submitted day isn't changed without a reason, so only the pre-filled values move there, and no new
    * line is added to it.
    */
   async function applyAttendanceTotals(
@@ -845,14 +845,12 @@ export function createDiaryService(deps: DiaryDeps) {
       .select()
       .from(t)
       .where(
-        and(
-          eq(t.entryId, entry.id),
-          eq(t.companyId, input.companyId),
-          eq(t.source, 'attendance'),
-          isNull(t.deletedAt),
-        ),
+        and(eq(t.entryId, entry.id), eq(t.companyId, input.companyId), eq(t.source, 'attendance')),
       )
+      .orderBy(desc(t.id))
       .limit(1);
+    // A line the site manager removed stays removed; it isn't re-created at the next sign-out.
+    if (line?.deletedAt) return null;
     if (!line) {
       if (isLocked(entry.status)) return null;
       const [row] = await scope.tx

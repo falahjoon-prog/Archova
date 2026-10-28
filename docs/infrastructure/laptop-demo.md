@@ -37,6 +37,10 @@ Use sample data only. Don't put real project data into it.
    - email `demo@archova.com.au`
    - password `Harbour-Sample-7731`
 
+## What is in it today
+
+The builder app (sign-in, organisations, projects, drawings, documents, RFIs, transmittals, site diary and sign-ins) and Nova with sample answers. The owner console (`apps/admin`) and the marketing website with its CMS (`apps/site`) don't exist in the code yet, so they aren't in this compose file and there is nothing to open for them. When they land, Jeff adds each one here with its own port, a sample staff sign-in and a section in this guide.
+
 ## Stop it, update it
 
 - **Stop:** press `Ctrl+C` in PowerShell, or run `docker compose -f docker-compose.demo.yml down`.

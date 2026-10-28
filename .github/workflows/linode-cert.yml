@@ -1,0 +1,58 @@
+# Renews the Linode option's TLS certificate (infrastructure/10 §Certificate renewal). Off until the repository
+# variable LINODE_READY is 'true'. Runs twice a month and renews only when under 30 days are left; run it by hand
+# with force to issue the first certificate, once app. and api. point at the NodeBalancer.
+name: Linode certificate
+
+on:
+  schedule:
+    - cron: '23 3 1,15 * *'
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Renew even if the certificate is not due
+        type: boolean
+        default: false
+
+concurrency:
+  group: linode-cert
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TF_VERSION: 1.16.4
+
+jobs:
+  renew:
+    name: Renew certificate
+    if: vars.LINODE_READY == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: linode
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      - name: Read Terraform outputs
+        working-directory: infra/envs/linode-pilot
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.LINODE_STATE_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.LINODE_STATE_KEY_SECRET }}
+        run: |
+          terraform init -input=false -backend-config=bucket=archova-tfstate \
+            -backend-config='endpoints={s3="https://au-mel-1.linodeobjects.com"}'
+          umask 077
+          terraform output -json > "$RUNNER_TEMP/linode-outputs.json"
+      - name: Renew
+        env:
+          LINODE_CERT_TOKEN: ${{ secrets.LINODE_CERT_TOKEN }}
+          ACME_EMAIL: ${{ vars.LINODE_ACME_EMAIL }}
+          CERT_ALERT_URL: ${{ secrets.LINODE_CERT_HEARTBEAT_URL }}
+          FORCE: ${{ github.event.inputs.force || 'false' }}
+        run: tools/infra/linode-cert.sh "$RUNNER_TEMP/linode-outputs.json"
+      - name: Remove the outputs
+        if: always()
+        run: rm -f "$RUNNER_TEMP/linode-outputs.json"

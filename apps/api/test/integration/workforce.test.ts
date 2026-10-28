@@ -178,6 +178,18 @@ describe('site sign-in (product/12)', () => {
       attendanceHeadcount: 1,
       hours: totals.hours,
     });
+
+    // Deleting the pre-filled line sticks: the next sign-out does not add it back.
+    const removed = await s.sm.browser.del(`${s.base}/diary/${day}/labour/${diary.labour[0].id}`);
+    expect(removed.statusCode).toBe(204);
+    await t.database.withTenantTx(tenantOf(s.org.id, s.pm.userId), (scope) =>
+      t.modules.diary.api.applyAttendanceTotals(scope, {
+        projectId: decodeId('project', s.project.id)!,
+        localDate: evt!.data.localDate,
+        ...totals,
+      }),
+    );
+    expect((await s.sm.browser.get(`${s.base}/diary/${day}`)).json().labour).toHaveLength(0);
   });
 
   it('reissues a gate code, which stops the old poster working', async () => {

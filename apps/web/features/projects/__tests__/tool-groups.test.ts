@@ -13,6 +13,7 @@ describe('projectToolGroups', () => {
       'RFIs',
       'Site diary',
       'Defects',
+      'Inductions',
       'Tender packages',
     ]);
   });
