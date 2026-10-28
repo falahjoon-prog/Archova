@@ -1,0 +1,130 @@
+# Deploys to the Linode option (infrastructure/10), if john picks it. Off until the repository variable LINODE_READY
+# is 'true'; then every image built on main is deployed, and any commit on main can be deployed by hand.
+# Builds x86_64 images here (the AWS images are arm64), copies them to the servers over SSH and rolls one server at
+# a time (tools/infra/linode-deploy.sh). Secrets live in the `linode` GitHub environment (10 §Deploy pipeline).
+name: Linode deploy
+
+on:
+  workflow_run:
+    workflows: [Images]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Commit SHA on main to deploy
+        required: true
+
+concurrency:
+  group: linode-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ github.event.inputs.tag || github.event.workflow_run.head_sha }}
+  TF_VERSION: 1.16.4
+
+jobs:
+  images:
+    name: Images (x86_64)
+    if: >-
+      vars.LINODE_READY == 'true' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: docker/setup-buildx-action@v3
+      - name: Build
+        run: |
+          for target in api web migrate; do
+            docker buildx build --platform linux/amd64 --target "$target" --load \
+              --cache-from "type=gha,scope=linode-$target" --cache-to "type=gha,mode=max,scope=linode-$target" \
+              -t "archova/$target:$TAG" .
+          done
+          docker build -t archova/backup:local infra/envs/linode-pilot/host/backup
+          docker build -t archova/aws-signing-helper:local infra/envs/linode-pilot/host/signing-helper
+      - name: Trivy api (fixable high and critical fail the build)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: archova/api:${{ env.TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Trivy web (fixable high and critical fail the build)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: archova/web:${{ env.TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Trivy migrate (fixable high and critical fail the build)
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: archova/migrate:${{ env.TAG }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Save
+        run: |
+          docker save "archova/api:$TAG" "archova/web:$TAG" "archova/migrate:$TAG" \
+            archova/backup:local archova/aws-signing-helper:local | gzip -1 > images.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linode-images
+          path: images.tar.gz
+          retention-days: 1
+          compression-level: 0
+
+  deploy:
+    name: Deploy to Linode
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: linode
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: linode-images
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+          terraform_wrapper: false
+      # State is in the Melbourne bucket (10 step 2); reading outputs needs only the state bucket's key.
+      - name: Read Terraform outputs
+        working-directory: infra/envs/linode-pilot
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.LINODE_STATE_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.LINODE_STATE_KEY_SECRET }}
+        run: |
+          terraform init -input=false -backend-config=bucket=archova-tfstate \
+            -backend-config='endpoints={s3="https://au-mel-1.linodeobjects.com"}'
+          umask 077
+          terraform output -json > "$RUNNER_TEMP/linode-outputs.json"
+      - uses: webfactory/ssh-agent@v0.9.1
+        with:
+          ssh-private-key: ${{ secrets.LINODE_DEPLOY_SSH_KEY }}
+      - name: Deploy ${{ env.TAG }}
+        env:
+          LINODE_TOKEN: ${{ secrets.LINODE_DEPLOY_TOKEN }}
+          LINODE_JWT_PRIVATE_JWK: ${{ secrets.LINODE_JWT_PRIVATE_JWK }}
+          BACKUP_ALERT_URL: ${{ secrets.LINODE_BACKUP_HEARTBEAT_URL }}
+          SSH_KNOWN_HOSTS: ${{ vars.LINODE_KNOWN_HOSTS }}
+        run: tools/infra/linode-deploy.sh "$RUNNER_TEMP/linode-outputs.json" "$TAG" images.tar.gz
+      - name: Remove the outputs
+        if: always()
+        run: rm -f "$RUNNER_TEMP/linode-outputs.json"

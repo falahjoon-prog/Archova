@@ -2,6 +2,7 @@
 admin_ssh_keys        = ["ssh-ed25519 AAAA... jeff", "ssh-ed25519 AAAA... deploy-pipeline"]
 admin_cidrs           = ["203.0.113.10/32"]
 aws_account_id        = "111111111111"
+backup_age_recipient  = "age1..."
 roles_anywhere_ca_pem = <<-PEM
   -----BEGIN CERTIFICATE-----
   ...

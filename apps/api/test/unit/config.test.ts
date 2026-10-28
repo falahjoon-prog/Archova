@@ -34,4 +34,13 @@ describe('config', () => {
       loadConfig({ ...base, API_FILES_SCANNER: 'clamav', API_FILES_STORE: 's3' }).files.clamav,
     ).toEqual({ host: 'clamav', port: 3310, timeoutMs: 30_000 });
   });
+
+  it('takes storage keys for S3-compatible storage outside AWS, as a pair', () => {
+    expect(loadConfig(base).files.credentials).toBeNull();
+    expect(
+      loadConfig({ ...base, API_S3_ACCESS_KEY_ID: 'AKID', API_S3_SECRET_ACCESS_KEY: 'secret' })
+        .files.credentials,
+    ).toEqual({ accessKeyId: 'AKID', secretAccessKey: 'secret' });
+    expect(() => loadConfig({ ...base, API_S3_ACCESS_KEY_ID: 'AKID' })).toThrow(/both/);
+  });
 });

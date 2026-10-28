@@ -1,4 +1,5 @@
 import { GetObjectCommand, GetObjectTaggingCommand, S3Client } from '@aws-sdk/client-s3';
+import type { S3Credentials } from './object-store';
 
 /**
  * Malware scanning port (backend 06 §3, security-licensing/09 §4). Production uses Amazon GuardDuty Malware
@@ -49,6 +50,7 @@ export interface GuardDutyScannerConfig {
   region: string;
   /** Custom endpoint (MinIO locally). */
   endpoint?: string;
+  credentials?: S3Credentials;
 }
 
 /** Reads GuardDuty's result tag on the object; the scan itself runs inside AWS on the S3 event. */
@@ -57,6 +59,7 @@ export function createGuardDutyScanner(
   s3: Pick<S3Client, 'send'> = new S3Client({
     region: cfg.region,
     ...(cfg.endpoint ? { endpoint: cfg.endpoint, forcePathStyle: true } : {}),
+    ...(cfg.credentials ? { credentials: cfg.credentials } : {}),
   }),
 ): MalwareScanner {
   return {
@@ -73,6 +76,8 @@ export interface ClamAvScannerConfig {
   region: string;
   /** Custom endpoint for S3-compatible storage (Linode Object Storage, MinIO). */
   endpoint?: string;
+  /** That storage's keys; unset, the SDK's default chain is used. */
+  credentials?: S3Credentials;
   /** clamd's TCP address, normally a container next to the api. */
   host: string;
   port: number;
@@ -142,6 +147,7 @@ export function createClamAvScanner(
   s3: Pick<S3Client, 'send'> = new S3Client({
     region: cfg.region,
     ...(cfg.endpoint ? { endpoint: cfg.endpoint, forcePathStyle: true } : {}),
+    ...(cfg.credentials ? { credentials: cfg.credentials } : {}),
   }),
   instream: typeof clamdInstream = clamdInstream,
 ): MalwareScanner {

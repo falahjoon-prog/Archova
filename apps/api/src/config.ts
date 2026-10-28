@@ -26,6 +26,10 @@ const Env = z.object({
   API_FILES_BUCKET: z.string().default('archova-local-files'),
   API_FILES_REGION: z.string().default('ap-southeast-2'),
   API_S3_ENDPOINT: z.string().url().optional(),
+  // Keys for S3-compatible storage outside AWS (the Linode option), where the AWS credentials (Roles Anywhere) are
+  // for Bedrock only. Unset on AWS, which uses the task role.
+  API_S3_ACCESS_KEY_ID: z.string().min(1).optional(),
+  API_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   // Malware scanning (security-licensing/09 §4): GuardDuty Malware Protection for S3 on AWS, ClamAV elsewhere
   // (the Linode option, infrastructure/09).
   API_FILES_SCANNER: z.enum(['none', 'guardduty', 'clamav']).default('none'),
@@ -72,6 +76,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       bucket: e.API_FILES_BUCKET,
       region: e.API_FILES_REGION,
       endpoint: e.API_S3_ENDPOINT,
+      credentials:
+        e.API_S3_ACCESS_KEY_ID && e.API_S3_SECRET_ACCESS_KEY
+          ? { accessKeyId: e.API_S3_ACCESS_KEY_ID, secretAccessKey: e.API_S3_SECRET_ACCESS_KEY }
+          : null,
       scanner: e.API_FILES_SCANNER,
       clamav: {
         host: e.API_CLAMAV_HOST,
@@ -105,6 +113,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       assertAustralianModelId(config.ai.models[t]);
     assertAustralianModelId(config.ai.embeddingModel);
   }
+  if (Boolean(e.API_S3_ACCESS_KEY_ID) !== Boolean(e.API_S3_SECRET_ACCESS_KEY))
+    throw new Error('Set both API_S3_ACCESS_KEY_ID and API_S3_SECRET_ACCESS_KEY, or neither');
   if (config.files.scanner === 'guardduty' && config.files.store !== 's3')
     throw new Error(
       'API_FILES_SCANNER=guardduty reads S3 object tags, so it needs API_FILES_STORE=s3',

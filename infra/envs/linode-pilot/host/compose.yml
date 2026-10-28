@@ -1,7 +1,9 @@
-# One Archova app server on Linode (infrastructure/10). The deploy pipeline copies this folder to /opt/archova,
-# writes /etc/archova/*.env and the CoreDNS config, then runs:
-#   docker compose --profile "$(cat /etc/archova/role)" up -d
-# The primary server (the first one) also runs Valkey and the nightly backup.
+# One Archova app server on Linode (infrastructure/10). The deploy pipeline (tools/infra/linode-deploy.sh) copies
+# this folder to /opt/archova, writes /etc/archova/*.env, the CoreDNS config and /opt/archova/.env
+# (tools/infra/linode-host-files.ts), loads the release's images and runs:
+#   docker compose --profile "$(cat /etc/archova/role)" up -d --no-build --wait
+# The primary server (the first one) also runs Valkey, the nightly backup and the database steps. Images are built
+# in GitHub Actions and copied over SSH, so the servers need no registry credentials.
 #
 # Every app container resolves names through the allow-list resolver only (X25): a host that isn't in
 # egress-allowlist.yaml doesn't resolve. Container names (api, clamav, ...) still resolve through Docker's own DNS,
@@ -36,7 +38,7 @@ services:
 
   api:
     <<: [*restart, *allowlist-dns]
-    image: ${IMAGE_REGISTRY:?}/api@${API_DIGEST:?}
+    image: archova/api:${IMAGE_TAG:?}
     env_file: [/etc/archova/api.env]
     environment:
       API_FILES_SCANNER: clamav
@@ -81,7 +83,7 @@ services:
 
   web:
     <<: [*restart, *allowlist-dns]
-    image: ${IMAGE_REGISTRY:?}/web@${WEB_DIGEST:?}
+    image: archova/web:${IMAGE_TAG:?}
     env_file: [/etc/archova/web.env]
     depends_on: [coredns]
     networks: [app]
@@ -123,11 +125,24 @@ services:
     depends_on: [coredns]
     networks: [app]
 
-  # One-off: database roles and migrations, run by the deploy pipeline before the api rolls.
+  # One-offs on the primary, run by the deploy pipeline before the api rolls: database roles as the admin user
+  # (tools/db/roles.ts), then migrations as app_migrator.
+  db-roles:
+    profiles: [tools]
+    <<: *allowlist-dns
+    image: archova/migrate:${IMAGE_TAG:?}
+    command: ['--enable-source-maps', 'tools/db/roles.js']
+    env_file: [/etc/archova/db-roles.env]
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/db-ca.pem
+    volumes: ['/etc/archova/db-ca.pem:/etc/ssl/db-ca.pem:ro']
+    depends_on: [coredns]
+    networks: [app]
+
   migrate:
     profiles: [tools]
     <<: *allowlist-dns
-    image: ${IMAGE_REGISTRY:?}/migrate@${MIGRATE_DIGEST:?}
+    image: archova/migrate:${IMAGE_TAG:?}
     env_file: [/etc/archova/migrate.env]
     environment:
       NODE_EXTRA_CA_CERTS: /etc/ssl/db-ca.pem
