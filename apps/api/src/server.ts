@@ -2,6 +2,7 @@ import { createDatabase, createLogger, createRedis } from '@archova/kernel';
 import {
   createClamAvScanner,
   createGuardDutyScanner,
+  createCloudFrontTileUrls,
   createMemoryObjectStore,
   createS3ObjectStore,
   noScanner,
@@ -55,7 +56,19 @@ const scanner =
         })
       : noScanner;
 
-const app = await buildApp({ config, database, redis, logger, store, scanner });
+if (config.files.store === 's3' && !config.files.cdn)
+  logger.warn('API_FILES_CDN_* not set: drawing tile URLs are not usable by devices');
+const tiles = config.files.cdn ? createCloudFrontTileUrls(config.files.cdn) : undefined;
+
+const app = await buildApp({
+  config,
+  database,
+  redis,
+  logger,
+  store,
+  scanner,
+  ...(tiles ? { tiles } : {}),
+});
 
 const shutdown = async () => {
   await app.close();

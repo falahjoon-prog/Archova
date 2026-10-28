@@ -693,6 +693,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/tiles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Where a sheet's 256 px WebP tile pyramid is, with one signed URL template (mobile 03 §3.3).
+         * @description `pending` until the files worker has cut the pyramid; show the sheet's PDF through the file download meanwhile.
+         *     When `ready`, replace `{z}`, `{x}` and `{y}` in `tileUrlTemplate` (level 0 is the overview, `levels - 1` full
+         *     resolution, x and y count tiles from the top left) and fetch from storage directly. Tile objects never
+         *     change, so cache them by revision, level and position for good. Fetch the template again after `expiresAt`.
+         *     The response is `no-store`; the signature covers this revision's tiles only.
+         */
+        get: operations["getDrawingTiles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry": {
         parameters: {
             query?: never;
@@ -4388,6 +4416,22 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        DrawingTiles: {
+            /** @enum {string} */
+            status: "pending" | "ready";
+            /** @description Full-resolution sheet width in pixels. */
+            width?: number;
+            height?: number;
+            /** @description Tile edge in pixels (256). */
+            tileSize?: number;
+            levels?: number;
+            /** @description The whole sheet in one small image; show it at once. */
+            overviewUrl?: string;
+            /** @description Contains `{z}`, `{x}` and `{y}`. */
+            tileUrlTemplate?: string;
+            /** Format: date-time */
+            expiresAt?: string;
+        };
         SheetGeometry: {
             revisionId: string;
             /**
@@ -7491,6 +7535,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DrawingRevision"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDrawingTiles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tile state */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DrawingTiles"];
                 };
             };
             default: components["responses"]["Problem"];
