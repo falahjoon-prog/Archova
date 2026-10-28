@@ -83,7 +83,7 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   [TITLEBLOCK_TASK]: 'ai.drawing_register.extract',
   // F33: the builder approves or rejects the draft here; edits happen in the induction editor (ai/12 §2 I1).
   'induction.draft': 'ai.induction.draft',
-  // F4: whoever can write the diary takes or discards the summary draft.
+  // F4: whoever can write the diary takes or discards the summary draft it asked for (see PRIVATE_TASKS).
   'diary.summary': 'diary.entries.write',
   // F5, F3: the person who asked for the tag or draft decides it; it is theirs alone (see PRIVATE_TASKS).
   'defect.tag': 'defects.defects.create',
@@ -97,9 +97,17 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
 /**
  * Tasks whose suggestions only the person who asked can list or decide: the note, photo, markup or file they came
  * from is theirs until they raise the defect or RFI, run the import or save the quote (a subcontractor's prices are
- * commercial in confidence). Their forms are edited in place, so `edited` needs no fields.
+ * commercial in confidence). A diary summary is written from the lines its asker may read, and a company sees only
+ * its own lines, so another member of the project must not read it from the list. Their forms are edited in place,
+ * so `edited` needs no fields.
  */
-const PRIVATE_TASKS = ['defect.tag', 'rfi.draft', 'import.mapping', 'quote.read'] as const;
+const PRIVATE_TASKS = [
+  'defect.tag',
+  'rfi.draft',
+  'import.mapping',
+  'quote.read',
+  'diary.summary',
+] as const;
 const isPrivateTask = (task: string) => (PRIVATE_TASKS as readonly string[]).includes(task);
 
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
