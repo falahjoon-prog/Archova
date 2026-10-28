@@ -1,4 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
+import { decodeId } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
@@ -34,7 +35,7 @@ async function setup() {
     fileId,
   });
   await pm.browser.post(`${base}/drawing-sets/${set.id}/publish`, { confirmNewSheets: true });
-  return { pm, sub, org, project, base, revisionId: rev.json().id as string };
+  return { pm, sub, org, project, base, pmUserId: pm.userId, revisionId: rev.json().id as string };
 }
 
 const etagOf = (res: { headers: Record<string, unknown> }) => res.headers.etag as string;
@@ -187,5 +188,66 @@ describe('takeoff measurements (X30)', () => {
     expect(linked.json()).toMatchObject({ packageId: pkg.id, scopeKey: 'floor' });
     const byPackage = await s.pm.browser.get(`${url}?packageId=${pkg.id}`);
     expect(byPackage.json().data).toHaveLength(1);
+  });
+
+  it('keeps the drawing scale: pending until a person confirms it, with the files worker recording geometry', async () => {
+    const s = await setup();
+    const geo = `${s.base}/drawing-revisions/${s.revisionId}/geometry`;
+
+    const pending = await s.pm.browser.get(geo);
+    expect(pending.json()).toMatchObject({
+      revisionId: s.revisionId,
+      status: 'pending',
+      scaleConfirmed: null,
+      version: 0,
+    });
+    // Subcontractors can read the drawing but not set its scale.
+    expect((await s.sub.browser.get(geo)).statusCode).toBe(200);
+    const denied = await s.sub.browser.put(`${s.base}/drawing-revisions/${s.revisionId}/scale`, {
+      scale: 100,
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(
+      (await s.pm.browser.put(`${s.base}/drawing-revisions/${s.revisionId}/scale`, { scale: 0 }))
+        .statusCode,
+    ).toBe(422);
+
+    const set = await s.pm.browser.put(`${s.base}/drawing-revisions/${s.revisionId}/scale`, {
+      scale: 100,
+    });
+    expect(set.statusCode).toBe(200);
+    expect(set.json()).toMatchObject({ status: 'pending', scaleConfirmed: 100, version: 2 });
+    expect(set.json().scaleConfirmedAt).not.toBeNull();
+    // A stale ETag is refused; the current one is accepted.
+    const stale = await s.pm.browser.put(
+      `${s.base}/drawing-revisions/${s.revisionId}/scale`,
+      { scale: 50 },
+      { 'if-match': '"1"' },
+    );
+    expect(stale.statusCode).toBe(412);
+
+    // The files worker records geometry and its detected scale; the confirmed scale stays.
+    const ctx = {
+      orgId: decodeId('org', s.org.id)!,
+      userId: decodeId('user', s.pmUserId)!,
+      principalType: 'member' as const,
+      orgRole: 'owner' as const,
+      entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+      requestId: 'test',
+    };
+    await t.database.withTenantTx(ctx, (scope) =>
+      t.modules.documents.api.recordSheetGeometry(
+        scope,
+        decodeId('project', s.project.id)!,
+        decodeId('drawingRevision', s.revisionId)!,
+        {
+          geometryKey: 'orgs/o/projects/p/documents/r/geometry/A-201',
+          extractorVersion: 'v1',
+          scaleDetected: 50,
+        },
+      ),
+    );
+    const ready = await s.pm.browser.get(geo);
+    expect(ready.json()).toMatchObject({ status: 'ready', scaleDetected: 50, scaleConfirmed: 100 });
   });
 });
