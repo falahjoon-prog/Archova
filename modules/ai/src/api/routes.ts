@@ -22,7 +22,7 @@ import type {
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiDraftService } from '../application/rfi-draft';
-import type { DefectTagService } from '../application/defect-tag';
+import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
 import type { DrawingCompareService } from '../application/drawing-compare';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
@@ -52,6 +52,17 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       possibleDelay: { ...p.possibleDelay, sources: p.possibleDelay.sources.map(diarySource) },
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'defect.tag') {
+    const p = payload as DefectTagPayload;
+    return {
+      ...p,
+      suggestedCompanyIds: p.suggestedCompanyIds.map((id) => encodeId('company', id)),
+      duplicateDefectIds: p.duplicateDefectIds.map((id) => encodeId('defect', id)),
+      pin: p.pin
+        ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
+        : null,
     };
   }
   if (task === 'drawing.titleblock') {
@@ -286,6 +297,7 @@ export function aiRoutes(
         status: 200,
         body: {
           runId: encodeId('aiRun', d.runId),
+          suggestionId: encodeId('aiSuggestion', d.suggestionId),
           title: d.title,
           description: d.description,
           trade: d.trade,

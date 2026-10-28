@@ -1030,8 +1030,10 @@ export interface paths {
          *     near the pin, copied as printed. Companies on the project that list the trade come back in
          *     `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
          *     pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
-         *     in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
-         *     is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+         *     in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nova
+         *     raises no defect: the suggestion fills the defect form and the person saves it, passing `suggestionId` as
+         *     `aiSuggestionId` so the defect is marked `ai_suggested`. The suggestion is kept for the caller alone (it
+         *     doesn't show in the project's suggestion list for anyone else). Costs a tenth of a Nova credit.
          *     The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
          *     first); anything else is a 422.
          */
@@ -3524,6 +3526,12 @@ export interface components {
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
+            /**
+             * @description The saved suggestion (`ais_`), private to the caller. Pass it as `aiSuggestionId` when creating the
+             *     defect, then decide it: `accepted` as is, `edited` when the person changed Nova's tags, `rejected` when
+             *     they raised nothing from it.
+             */
+            suggestionId: string;
             title: string;
             description: string;
             /** @description The trade most likely responsible, as a defect stores it; null when the photo doesn't show enough. */
@@ -4539,6 +4547,8 @@ export interface components {
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
+            /** @description The Nova `defect.tag` suggestion this defect was raised from (`suggestionId` of the tag). Sets `source` to `ai_suggested`. */
+            aiSuggestionId?: string;
         };
         UpdateDefectRequest: {
             title?: string;
