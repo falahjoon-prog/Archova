@@ -86,6 +86,7 @@ Audit, notifications, search, AI and webhooks all react to the event; the comman
 `defineJob({ queue, name, schema, handler, retries, timeout, tenant: 'org' | 'platform' })` from `packages/kernel`:
 - validates the payload with zod; tenant jobs require `orgId` and run the handler inside `withTenantTx`;
 - `tenant: 'platform'` jobs connect as `app_platform` (Sam 03 §3), may only read the views they're granted, and must fan out per-org jobs for any tenant work;
+  - Exception: the outbox relay reads routing columns of `shared.outbox` and sets `published_at` (see [05 §1](05-background-jobs.md)); no payloads.
 - deterministic `jobId` from the payload for dedupe; standard retry/backoff; OpenTelemetry span linked to the triggering request's trace;
 - progress reporting into `shared.job_runs` via `ctx.progress(done, total)`.
 
