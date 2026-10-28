@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: defects
+  - name: estimating
   - name: sync
   - name: diary
   - name: workforce
@@ -1560,6 +1561,342 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SyncPushResponse' }
         '426': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTenderPackages
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        Tender packages on the project. A subcontractor sees the packages they were invited to, once out to tender.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PackageStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackagePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Draft a tender package with its scope lines and documents (EST-AC1). Numbered TP-001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTenderPackageRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    get:
+      operationId: getTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        One package. A subcontractor sees only their own invite.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Edit a draft or out-to-tender package.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTenderPackageRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: transitionTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Send a draft out to tender (needs scope, a due date and an invite), close, reopen or cancel it.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PackageActionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: inviteToTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitePackageRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    put:
+      operationId: setTenderPackageAllowances
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Replace the estimator allowances for gaps, keyed quoteId:scopeKey (EST-AC6 normalise).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetAllowancesRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/award:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: awardTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Select the preferred confirmed quote. A reason is required when it is not the lowest after allowances (EST-AC7).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AwardPackageRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    get:
+      operationId: listQuotes
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        Quotes on a package. A subcontractor sees only their own company quotes (EST-AC3).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuotePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.submit
+      summary: >-
+        Submit a quote, or a revised one that supersedes that company earlier quote (EST-AC4). A subcontractor quotes for their own company; builder staff name the company.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateQuoteRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - $ref: '#/components/parameters/QuoteId'
+    get:
+      operationId: getQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        One quote with its lines.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Correct a quote before it is confirmed. Changing a Nova-read amount keeps the original (EST-AC5).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateQuoteRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - $ref: '#/components/parameters/QuoteId'
+    post:
+      operationId: confirmQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Confirm the quote so it takes part in comparison and can be awarded (EST-AC5).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/decline:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - $ref: '#/components/parameters/QuoteId'
+    post:
+      operationId: declineQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Take a quote out of the comparison.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects:
     parameters:
@@ -3988,6 +4325,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^dfx_[0-9A-Za-z]{26}$' }
+    TenderPackageId:
+      name: packageId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+    QuoteId:
+      name: quoteId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^quo_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -5942,6 +6289,352 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    PackageStatus:
+      type: string
+      enum: [draft, out_to_tender, closed, awarded, cancelled]
+    PackageInviteStatus:
+      type: string
+      enum: [invited, viewed, declined, intends_to_quote, submitted]
+    QuoteStatus:
+      type: string
+      enum: [reading, ready_to_review, confirmed, superseded, declined]
+    ScopeLine:
+      type: object
+      additionalProperties: false
+      required: [key, description, quantity, unit, source]
+      properties:
+        key:
+          type: string
+          pattern: '^[a-z0-9_]{1,40}$'
+          description: Quotes line up against this (`normalised_item_key`)
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: [string, 'null'], pattern: '^\d{1,15}(\.\d{1,3})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        source: { type: string, enum: [typed, csv, takeoff] }
+    PackageDocument:
+      type: object
+      additionalProperties: false
+      required: [kind, id]
+      properties:
+        kind: { type: string, enum: [drawing_revision, document] }
+        id: { type: string, description: 'A drv_ or doc_ id; linked, not copied' }
+    PackageInvite:
+      type: object
+      required: [companyId, status, invitedAt, viewedAt, respondedAt]
+      properties:
+        companyId: { type: string }
+        status: { $ref: '#/components/schemas/PackageInviteStatus' }
+        invitedAt: { type: string, format: date-time }
+        viewedAt: { type: [string, 'null'], format: date-time }
+        respondedAt: { type: [string, 'null'], format: date-time }
+    PackageAward:
+      type: object
+      required: [quoteId, by, at, reason, notLowest]
+      properties:
+        quoteId: { type: string }
+        by: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+        reason: { type: [string, 'null'] }
+        notLowest:
+          { type: boolean, description: 'The selected quote was not the lowest after allowances' }
+    TenderPackage:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          name,
+          trade,
+          status,
+          dueAt,
+          scope,
+          documents,
+          invites,
+          allowances,
+          award,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'TP-001' }
+        name: { type: string }
+        trade: { type: string }
+        status: { $ref: '#/components/schemas/PackageStatus' }
+        dueAt: { type: [string, 'null'], format: date-time }
+        scope:
+          type: array
+          items: { $ref: '#/components/schemas/ScopeLine' }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/PackageDocument' }
+        invites:
+          type: array
+          items: { $ref: '#/components/schemas/PackageInvite' }
+        allowances:
+          type: object
+          description: 'Estimator allowances keyed quoteId:scopeKey, decimal AUD ex GST. Empty for subcontractors.'
+          additionalProperties: { type: string }
+        award: { oneOf: [{ $ref: '#/components/schemas/PackageAward' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    TenderPackagePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TenderPackage' }
+        nextCursor: { type: [string, 'null'] }
+    CreateTenderPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [name, trade]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        dueAt: { type: string, format: date-time }
+        scope:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/ScopeLine' }
+        documents:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PackageDocument' }
+    UpdateTenderPackageRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        dueAt: { type: [string, 'null'], format: date-time }
+        scope:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/ScopeLine' }
+        documents:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PackageDocument' }
+    PackageActionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [send, close, reopen, cancel] }
+    InvitePackageRequest:
+      type: object
+      additionalProperties: false
+      required: [companyIds]
+      properties:
+        companyIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CompanyRef' }
+    SetAllowancesRequest:
+      type: object
+      additionalProperties: false
+      required: [allowances]
+      properties:
+        allowances:
+          type: object
+          additionalProperties: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    AwardPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [quoteId]
+      properties:
+        quoteId: { type: string, pattern: '^quo_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    QuoteSourceRef:
+      type: object
+      additionalProperties: false
+      required: [page, snippet]
+      properties:
+        page: { type: integer, minimum: 1 }
+        snippet: { type: string, maxLength: 500 }
+    QuoteLine:
+      type: object
+      required:
+        [
+          id,
+          scopeKey,
+          description,
+          quantity,
+          unit,
+          rate,
+          amount,
+          isProvisional,
+          originalAmount,
+          source,
+        ]
+      properties:
+        id: { type: string }
+        scopeKey: { type: [string, 'null'] }
+        description: { type: string }
+        quantity: { type: [string, 'null'] }
+        unit: { type: string }
+        rate: { type: [string, 'null'] }
+        amount: { type: string, description: 'Decimal AUD ex GST' }
+        isProvisional: { type: boolean }
+        originalAmount:
+          {
+            type: [string, 'null'],
+            description: 'What Nova read, kept when the estimator corrected it',
+          }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    QuoteNote:
+      type: object
+      required: [id, text, scopeKey, source]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        scopeKey:
+          {
+            type: [string, 'null'],
+            description: 'An exclusion naming a scope line marks that cell excluded',
+          }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    Quote:
+      type: object
+      required:
+        [
+          id,
+          packageId,
+          companyId,
+          revision,
+          status,
+          reference,
+          fileIds,
+          receivedAt,
+          validUntil,
+          totalExGst,
+          gst,
+          currency,
+          lines,
+          exclusions,
+          qualifications,
+          source,
+          confirmedBy,
+          confirmedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        packageId: { type: string }
+        companyId: { type: string }
+        revision:
+          {
+            type: integer,
+            description: 'A revised quote supersedes the earlier revision (EST-AC4)',
+          }
+        status: { $ref: '#/components/schemas/QuoteStatus' }
+        reference: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        receivedAt: { type: string, format: date-time }
+        validUntil: { type: [string, 'null'], format: date }
+        totalExGst: { type: string }
+        gst: { type: string }
+        currency: { type: string }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteLine' }
+        exclusions:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteNote' }
+        qualifications:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteNote' }
+        source: { type: string, enum: [manual, ai_extracted] }
+        confirmedBy: { type: [string, 'null'] }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+    QuotePage:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Quote' }
+    QuoteLineInput:
+      type: object
+      additionalProperties: false
+      required: [description, amount]
+      properties:
+        id: { type: string, description: 'Keeps the line (and a Nova original) when editing' }
+        scopeKey: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,40}$' }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: [string, 'null'], pattern: '^\d{1,15}(\.\d{1,3})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        rate: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        amount: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        isProvisional: { type: boolean }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    QuoteNoteInput:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        id: { type: string }
+        text: { type: string, minLength: 1, maxLength: 1000 }
+        scopeKey: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,40}$' }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    CreateQuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [lines]
+      properties:
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        reference: { type: string, maxLength: 100 }
+        fileIds:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/FileRef' }
+        validUntil: { type: string, format: date }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: '#/components/schemas/QuoteLineInput' }
+        exclusions:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+        qualifications:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+    UpdateQuoteRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        reference: { type: [string, 'null'], maxLength: 100 }
+        validUntil: { type: [string, 'null'], format: date }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: '#/components/schemas/QuoteLineInput' }
+        exclusions:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+        qualifications:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
     DefectStatus:
       type: string
       enum: [draft, open, ready_for_review, closed, disputed, void]
