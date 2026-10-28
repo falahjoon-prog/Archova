@@ -4,6 +4,7 @@ import { AI_INDEX_ACTOR } from '@archova/mod-ai';
 import {
   createReindex,
   DEBOUNCE_MS,
+  sanitizeFailure,
   type RecordIndexer,
   type ReindexJob,
 } from '../../src/ai/reindex';
@@ -213,13 +214,43 @@ describe('stage 2: the embedding job', () => {
     },
   );
 
-  it('rethrows anything else so BullMQ retries it', async () => {
+  it('rethrows anything else so BullMQ retries it, naming the error code and nothing more', async () => {
     const r = setup({
       embed: async () => {
         throw new AppError('ai.unavailable');
       },
     });
-    await expect(r.reindex(job)).rejects.toMatchObject({ code: 'ai.unavailable' });
+    await expect(r.reindex(job)).rejects.toThrow('ai job failed: ai.unavailable');
+  });
+
+  it('keeps record text out of a failed job: BullMQ stores the reason and stack for 14 days', async () => {
+    const text = 'Grout is missing at the waste. CANARY-7741';
+    const r = setup({
+      embed: async () => {
+        throw new Error(`provider rejected input: ${text}`);
+      },
+    });
+    const err = await r.reindex(job).then(
+      () => null,
+      (e: unknown) => e as Error,
+    );
+    expect(err).toBeInstanceOf(Error);
+    expect(err!.message).toBe('ai job failed: Error');
+    expect(`${err!.message}\n${err!.stack}`).not.toContain('CANARY');
+    expect(err).not.toHaveProperty('cause');
+  });
+
+  it('keeps record text out of a failed drop too, and a thrown non-error is named unknown', async () => {
+    const r = setup();
+    r.drop.mockRejectedValueOnce(new Error('relation ai_chunks: key (text)=(CANARY-7741)'));
+    const err = await handle(r, event()).then(
+      () => null,
+      (e: unknown) => e as Error,
+    );
+    expect(`${err!.message}\n${err!.stack}`).not.toContain('CANARY');
+    expect(err!.message).toBe('ai job failed: Error');
+
+    expect(sanitizeFailure('CANARY-7741').message).toBe('ai job failed: unknown');
   });
 
   it('logs ids and counts only', async () => {

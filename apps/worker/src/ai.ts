@@ -39,7 +39,7 @@ async function main() {
   });
   for (const w of [events, embedder])
     w.on('failed', (job, err) =>
-      log.error({ queue: w.name, job: job?.name, err: err.message }, 'ai job failed'),
+      log.error({ queue: w.name, job: job?.name, failure: err.message }, 'ai job failed'),
     );
 
   const stop = new AbortController();

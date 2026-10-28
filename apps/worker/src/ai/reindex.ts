@@ -7,7 +7,7 @@
 // The worker acts as `AI_INDEX_ACTOR` in the event's own org: no person, no org role, no project membership.
 import { isAppError, type Entitlements, type TenantContext } from '@archova/kernel';
 import { AI_INDEX_ACTOR, recordKindOf, type RecordKind } from '@archova/mod-ai';
-import type { Subscriber } from '../subscribers';
+import type { StoredEvent, Subscriber } from '../subscribers';
 import { AI_REINDEX_ROUTE } from './declaration';
 
 export const REINDEX_QUEUE = 'ai-reindex';
@@ -85,6 +85,17 @@ export function indexContext(
   };
 }
 
+/**
+ * What a failed job leaves behind: its kind, never its message or stack. BullMQ keeps a failed job's reason and stack
+ * trace in Redis for 14 days, and a message from a provider or the database could carry some of the text being embedded.
+ */
+export function sanitizeFailure(err: unknown): Error {
+  const kind = isAppError(err) ? err.code : err instanceof Error ? err.name : 'unknown';
+  const out = new Error(`ai job failed: ${kind}`);
+  out.stack = `Error: ${out.message}`;
+  return out;
+}
+
 /** Deleting needs no plan, so stage 1 runs with an empty one. */
 const NO_PLAN: Entitlements = { plan: 'system', state: 'active', modules: [], limits: {} };
 
@@ -93,41 +104,44 @@ export function createReindex(deps: ReindexDeps) {
   const window = deps.debounceMs ?? DEBOUNCE_MS;
 
   /** Stage 1: runs for every change event of an RFI, defect or diary day. */
+  async function dropAndSchedule(event: StoredEvent) {
+    const kind = recordKindOf(event.type);
+    if (!kind || !event.projectId) return;
+    const ctx = indexContext(event.orgId, NO_PLAN, `ai-drop:${event.id}`);
+    const { isSource } = await deps.ai.dropStaleRecord(ctx, event.projectId, kind, event.entityId);
+    // Voided, deleted or still a draft: nothing to embed, and nothing left to find.
+    if (!isSource) return;
+    const bucket = Math.floor(now().getTime() / window);
+    const job: ReindexJob = {
+      orgId: event.orgId,
+      projectId: event.projectId,
+      kind,
+      recordId: event.entityId,
+    };
+    await deps.queue.add(REINDEX_JOB, job, {
+      // Same record, same window: one job. The next window gets its own, so a change made while one runs is not lost.
+      jobId: `${event.orgId}.${kind}.${event.entityId}.${bucket}`,
+      delay: window + SLACK_MS,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 5_000 },
+      removeOnComplete: { age: 3600, count: 10_000 },
+      removeOnFail: { age: 14 * 86_400 },
+    });
+  }
+
   const subscriber: Subscriber = {
     ...AI_REINDEX_ROUTE,
     async handle(event) {
-      const kind = recordKindOf(event.type);
-      if (!kind || !event.projectId) return;
-      const ctx = indexContext(event.orgId, NO_PLAN, `ai-drop:${event.id}`);
-      const { isSource } = await deps.ai.dropStaleRecord(
-        ctx,
-        event.projectId,
-        kind,
-        event.entityId,
-      );
-      // Voided, deleted or still a draft: nothing to embed, and nothing left to find.
-      if (!isSource) return;
-      const bucket = Math.floor(now().getTime() / window);
-      const job: ReindexJob = {
-        orgId: event.orgId,
-        projectId: event.projectId,
-        kind,
-        recordId: event.entityId,
-      };
-      await deps.queue.add(REINDEX_JOB, job, {
-        // Same record, same window: one job. The next window gets its own, so a change made while one runs is not lost.
-        jobId: `${event.orgId}.${kind}.${event.entityId}.${bucket}`,
-        delay: window + SLACK_MS,
-        attempts: 5,
-        backoff: { type: 'exponential', delay: 5_000 },
-        removeOnComplete: { age: 3600, count: 10_000 },
-        removeOnFail: { age: 14 * 86_400 },
-      });
+      try {
+        await dropAndSchedule(event);
+      } catch (err) {
+        throw sanitizeFailure(err);
+      }
     },
   };
 
   /** Stage 2: embeds the record's current text if it is new. Safe to repeat. */
-  async function reindex(job: ReindexJob): Promise<void> {
+  async function embedRecord(job: ReindexJob): Promise<void> {
     const where = {
       orgId: job.orgId,
       projectId: job.projectId,
@@ -154,6 +168,14 @@ export function createReindex(deps: ReindexDeps) {
         return;
       }
       throw err;
+    }
+  }
+
+  async function reindex(job: ReindexJob): Promise<void> {
+    try {
+      await embedRecord(job);
+    } catch (err) {
+      throw sanitizeFailure(err);
     }
   }
 
