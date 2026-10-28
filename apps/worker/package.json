@@ -16,6 +16,7 @@
     "@archova/contracts": "workspace:*",
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
+    "@archova/mod-files": "workspace:*",
     "bullmq": "^5.58.0",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.8.0",
