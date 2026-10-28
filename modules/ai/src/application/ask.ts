@@ -48,7 +48,7 @@ const CANDIDATES = 30;
 const PASSAGES = 10;
 const CLOSEST = 3;
 
-export const NOT_FOUND_ANSWER = "I couldn't find this in the project documents.";
+export const NOT_FOUND_ANSWER = "I couldn't find this in the project records.";
 
 export function createAskService(deps: AskDeps) {
   const { database } = deps;
