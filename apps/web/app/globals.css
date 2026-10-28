@@ -253,6 +253,80 @@ main:focus {
   font-size: var(--font-xs);
 }
 
+/* Project cards */
+.project-grid {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-4);
+}
+@media (min-width: 768px) {
+  .project-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1280px) {
+  .project-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+.project-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-lg);
+}
+.project-card:hover {
+  border-color: var(--c-action-primary);
+}
+.project-card:focus-within {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.project-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.project-card__number {
+  color: var(--c-text-secondary);
+  font-size: var(--font-xs);
+}
+.project-card__name {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+/* The whole card is the target; the link's own box stretches over it. */
+.project-card__link {
+  color: var(--c-text);
+  text-decoration: none;
+}
+.project-card__link::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+.project-card__link:focus-visible {
+  outline: none;
+}
+.project-card__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--c-text-secondary);
+  font-size: var(--font-sm);
+}
+
 /* Tables */
 .table-wrap {
   overflow-x: auto;

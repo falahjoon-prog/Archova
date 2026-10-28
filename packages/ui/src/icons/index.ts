@@ -18,6 +18,7 @@ export {
   Copy,
   Download,
   FileText,
+  FolderOpen,
   Filter,
   Hand,
   Info,
