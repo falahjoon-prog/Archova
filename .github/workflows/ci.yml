@@ -2,8 +2,10 @@
 # added by DevOps on top of this.
 name: CI
 
+# Docs-only pull requests skip this workflow (Actions minutes); every push to main still runs it.
 on:
   pull_request:
+    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches: [main]
 
