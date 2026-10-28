@@ -125,6 +125,9 @@ export function rfisRoutes(database: Database, rfis: RfiService) {
         rfis.create(s, project(input.params), {
           ...fields(input.body),
           subject: input.body.subject,
+          ...(input.body.aiSuggestionId
+            ? { aiSuggestionId: ref('aiSuggestion', input.body.aiSuggestionId, 'aiSuggestionId') }
+            : {}),
         }),
       );
       return ok(201, x);

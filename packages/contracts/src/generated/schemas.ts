@@ -529,6 +529,7 @@ export const CreateRfiRequestSchema = z.object({
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).optional(),
   "pin": RfiPinInputSchema.optional(),
+  "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateRfiRequest = z.infer<typeof CreateRfiRequestSchema>;
 
@@ -1608,6 +1609,7 @@ export type NovaIndexReport = z.infer<typeof NovaIndexReportSchema>;
 
 export const NovaRfiDraftSchema = z.object({
   "runId": z.string(),
+  "suggestionId": z.string(),
   "subject": z.string(),
   "question": z.string(),
   "discipline": z.enum(["architectural", "structural", "civil", "hydraulic", "mechanical", "electrical", "fire", "landscape", "interiors", "survey", "other"]).nullable(),

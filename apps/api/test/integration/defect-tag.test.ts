@@ -1,11 +1,13 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { decodeId } from '@archova/domain';
 import { DEFAULT_FAKE_RESPONDERS } from '@archova/mod-ai';
 import {
   addMember,
   createOrg,
   createProject,
   createTestContext,
+  outboxData,
   signUp,
   uploadBytes,
   type TestContext,
@@ -343,6 +345,16 @@ describe('Nova defect photo tagging (F5)', () => {
     expect(raised.json().defect.source).toBe('ai_suggested');
     const byHand = await s.pm.browser.post(`${s.base}/defects`, { title: 'By hand', pin });
     expect(byHand.json().defect.source).toBe('manual');
+    const events = await outboxData<{ aiSuggestionId: string | null }>(
+      t,
+      s.org.id,
+      s.pm.userId,
+      'defects.defect.created.v1',
+    );
+    expect(events.map((e) => e.aiSuggestionId)).toEqual([
+      decodeId('aiSuggestion', mine.suggestionId),
+      null,
+    ]);
     const malformed = await s.pm.browser.post(`${s.base}/defects`, {
       title: 'Bad link',
       pin,

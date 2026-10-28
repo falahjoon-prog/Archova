@@ -12,6 +12,7 @@ All tables are project-scoped and carry the standard columns. References to othe
 - `cost_impact text CHECK (yes|no|tbc)`, `cost_estimate numeric(18,2)`, `schedule_impact_days int`
 - `location_id uuid null`, `drawing_revision_id uuid null`, `spec_section_id uuid null`
 - `official_response_id uuid null`, `is_private bool`, `custom jsonb`, `search tsvector`
+- `ai_suggestion_id uuid null` (the Nova `rfi.draft` suggestion it was drafted from; set when create is given `aiSuggestionId`, and carried on `rfis.rfi.created.v1`)
 - index `(org_id, project_id, status, due_date)`
 
 **rfis.assignees** — `rfi_id`, `user_id`, `is_ball_in_court bool`, `responded_at`
