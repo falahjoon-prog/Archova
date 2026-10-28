@@ -227,8 +227,12 @@ export const inductionCompletions = workforceSchema.table('induction_completions
   versionId: uuid('version_id').notNull(),
   workerId: uuid('worker_id').notNull(),
   status: text('status').$type<'in_progress' | 'completed'>().notNull().default('in_progress'),
-  method: text('method').$type<'self' | 'assisted'>().notNull(),
+  method: text('method').$type<'self' | 'assisted' | 'link'>().notNull(),
   assistedBy: uuid('assisted_by'),
+  /** Set for `method = link` (X45): the access link and the number or address the worker verified. */
+  accessLinkId: uuid('access_link_id'),
+  verifiedChannel: text('verified_channel').$type<'sms' | 'email'>(),
+  verifiedTo: text('verified_to'),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
   progress: jsonb('progress').$type<Record<string, SectionProgress>>().notNull().default({}),
   quizPassedAt: timestamp('quiz_passed_at', { withTimezone: true }),

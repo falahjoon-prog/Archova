@@ -50,6 +50,7 @@ export const ID_PREFIXES = {
   inductionCompletion: 'inc',
   inductionQuizAttempt: 'iqa',
   workerCredential: 'wcr',
+  accessLink: 'lnk',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

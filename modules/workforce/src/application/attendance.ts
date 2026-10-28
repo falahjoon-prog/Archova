@@ -1034,7 +1034,7 @@ function nameTaken(e: unknown, code: 'workforce_site.name_taken' | 'gate.name_ta
   return e;
 }
 
-async function workerChanged(scope: TenantScope, w: WorkerRow) {
+export async function workerChanged(scope: TenantScope, w: WorkerRow) {
   await scope.recordChange({
     module: 'workforce',
     entityType: 'worker',

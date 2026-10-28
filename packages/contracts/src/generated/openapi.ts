@@ -2381,6 +2381,291 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        /** Access links for this induction, newest first (X45). */
+        get: operations["listInductionLinks"];
+        put?: never;
+        /**
+         * Create a link workers open on their phone to do the induction with no account (IND-AC3, X45).
+         * @description The token and URL are returned once. One link can be shared with a crew or printed as a QR poster: each worker verifies their own mobile before doing anything.
+         */
+        post: operations["createInductionLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links/{linkId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Stop a link working. Takes effect on the next request; workers who already signed keep their record. */
+        post: operations["revokeInductionLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The induction behind the current link session, and where the worker is up to. */
+        get: operations["getInductionAccess"];
+        put?: never;
+        /**
+         * Exchange a link token for a session on that link (web `/i/[token]`, X45).
+         * @description Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link returns `access_link.invalid` with no detail about the record.
+         */
+        post: operations["openInductionAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send a 6-digit code to the worker's mobile (or email as a fallback) (design/08 B2).
+         * @description Codes last 10 minutes and allow 5 attempts. At most 3 sends per session an hour and 10 per number a day (Sam 11 §6). A new code replaces the last one.
+         */
+        post: operations["sendInductionAccessCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/verify": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Check the code and say who the worker is; starts (or picks up) their induction.
+         * @description A worker already known by this mobile number keeps their record and the cards on file ("Welcome back"). Otherwise a worker is added with the company picked from the project, or the name they typed (flagged to the site manager, ATT-AC2).
+         */
+        post: operations["verifyInductionAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/completion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The verified worker's induction on this link. */
+        get: operations["getLinkInductionCompletion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a section as seen to the end (same rules as `recordInductionProgress`). */
+        post: operations["recordLinkInductionProgress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/quiz-attempts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit the quiz (same rules as `submitInductionQuiz`). */
+        post: operations["submitLinkInductionQuiz"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/uploads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a card photo upload for the verified worker (images and PDF only). */
+        post: operations["createLinkInductionUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/uploads/{uploadId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uploadId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish a card photo upload; scanned like every other upload. */
+        post: operations["completeLinkInductionUpload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/files/{fileId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        /** A short-lived download link for a video, PDF or image the induction uses (and no other file). */
+        get: operations["getLinkInductionFileDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record the worker's white card or a licence, with photos uploaded on this link (design/08 B5). */
+        post: operations["addLinkInductionCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/sign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign the declaration (same rules as `signInduction`); the verified mobile goes into the evidence. */
+        post: operations["signLinkInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask Nova about this induction; answers come only from its content (ai/12 I3). */
+        post: operations["askLinkInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/induction-access/translation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The induction in the worker's language, machine translated by Nova (ai/12 I4, design/08 C2).
+         * @description Labelled as machine translation; the English version is the official one and the signature always points to it. The language shown is kept on the completion.
+         */
+        get: operations["getLinkInductionTranslation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4236,7 +4521,7 @@ export interface components {
             /** @enum {string} */
             status: "in_progress" | "completed";
             /** @enum {string} */
-            method: "self" | "assisted";
+            method: "self" | "assisted" | "link";
             /** Format: date-time */
             startedAt: string;
             /** Format: date-time */
@@ -4342,7 +4627,7 @@ export interface components {
                 expiresOn: string | null;
                 score: number | null;
                 /** @enum {string} */
-                method: "self" | "assisted";
+                method: "self" | "assisted" | "link";
             } | null;
             /** @description What's on file. Card numbers and photos stay on the worker's credential list. */
             credentials: {
@@ -4357,6 +4642,165 @@ export interface components {
             inductionId: string | null;
             requiredVersion: number | null;
             data: components["schemas"]["InductionRegisterEntry"][];
+        };
+        /** @enum {string} */
+        InductionLinkState: "active" | "expired" | "revoked" | "used_up";
+        InductionLink: {
+            id: string;
+            inductionId: string;
+            label: string | null;
+            recipientEmail: string | null;
+            recipientPhone: string | null;
+            state: components["schemas"]["InductionLinkState"];
+            /** Format: date-time */
+            expiresAt: string;
+            maxUses: number | null;
+            useCount: number;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            createdBy: components["schemas"]["UserRef"];
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        InductionLinkList: {
+            data: components["schemas"]["InductionLink"][];
+        };
+        CreateInductionLinkRequest: {
+            /** @description Who it is for, e.g. "Sparkies crew" or "Gate poster". */
+            label?: string;
+            /** Format: email */
+            recipientEmail?: string;
+            recipientPhone?: components["schemas"]["MobileNumber"];
+            /** @default 30 */
+            expiresInDays: number;
+            /** @description How many times the link can be opened. Unlimited when left out. */
+            maxUses?: number;
+        };
+        InductionLinkCreated: {
+            link: components["schemas"]["InductionLink"];
+            /** @description Shown once. Only its hash is stored. */
+            token: string;
+            /** @description The page workers open (`/i/<token>`); also what the QR poster encodes. */
+            url: string;
+        };
+        /** @description Mobile in E.164, e.g. `+61412345678`. */
+        MobileNumber: string;
+        OpenInductionAccessRequest: {
+            token: string;
+        };
+        InductionAccess: {
+            orgName: string;
+            projectName: string;
+            siteName: string | null;
+            inductionTitle: string;
+            versionNumber: number;
+            /** Format: date-time */
+            publishedAt: string;
+            sectionCount: number;
+            /** @description Languages Nova can translate into for this worker (reviewed ones only). */
+            languages: {
+                code: string;
+                name: string;
+                nativeName: string;
+            }[];
+            /** @description Companies on the project, for the worker to pick theirs (design/08 B2). */
+            companies: {
+                id: components["schemas"]["CompanyRef"];
+                name: string;
+            }[];
+            verified: boolean;
+            /** @description Masked, e.g. `+61 4•• ••• 678`. */
+            verifiedTo: string | null;
+            worker: {
+                fullName: string;
+                companyName: string | null;
+                /** @description Known from another induction by this mobile number. */
+                returning: boolean;
+            } | null;
+            completionId: string | null;
+            /** @enum {string} */
+            completionStatus: "not_started" | "in_progress" | "completed";
+            /**
+             * Format: date-time
+             * @description When this browser's session on the link ends.
+             */
+            expiresAt: string;
+        };
+        SendInductionAccessCodeRequest: {
+            /** @enum {string} */
+            channel: "sms" | "email";
+            /** @description E.164 mobile for `sms`, an email address for `email`. */
+            to: string;
+        };
+        InductionAccessCodeSent: {
+            /** @enum {string} */
+            channel: "sms" | "email";
+            /** @description Masked. */
+            to: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            resendAfter: string;
+        };
+        VerifyInductionAccessRequest: {
+            code: string;
+            fullName: string;
+            companyId?: components["schemas"]["CompanyRef"];
+            /** @description "My company isn't listed": the name as typed, flagged to the site manager. */
+            companyName?: string;
+            siteId?: string;
+        };
+        CreateLinkUploadRequest: {
+            filename: string;
+            /** @enum {string} */
+            mime: "image/jpeg" | "image/png" | "image/heic" | "image/webp" | "application/pdf";
+            sizeBytes: number;
+            sha256: string;
+        };
+        AskInductionRequest: {
+            question: string;
+        };
+        InductionAnswer: {
+            /** @description False when the induction does not cover it; `answer` then says to ask a supervisor. */
+            found: boolean;
+            answer: string;
+            citations: {
+                /** @description Index of the section the answer comes from. */
+                section: number;
+                slideTitle: string;
+                quote: string;
+            }[];
+        };
+        InductionTranslation: {
+            language: string;
+            nativeName: string;
+            /** @description Fixed label: machine translation, the English version is official. */
+            label: string;
+            /** @description Shown on anything left in English. */
+            keptInEnglish: string;
+            versionNumber: number;
+            /** @description Same order as the induction's sections and blocks. Only slides and text blocks are translated. */
+            sections: {
+                section: number;
+                blocks: {
+                    block: number;
+                    translated: boolean;
+                    /** @description For a text block: one slide whose first point is the body. */
+                    slides: {
+                        title: string;
+                        points: string[];
+                        script: string[];
+                    }[];
+                }[];
+            }[];
+            quiz: {
+                questionId: string;
+                translated: boolean;
+                question: string;
+                options: string[];
+            }[];
         };
     };
     responses: {
@@ -8398,6 +8842,424 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkerCredential"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInductionLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createInductionLink: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInductionLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionLinkCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeInductionLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inductionId: string;
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openInductionAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The induction behind the link; `__Host-lnk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendInductionAccessCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendInductionAccessCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description Sent */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionAccessCodeSent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    verifyInductionAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getLinkInductionCompletion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordLinkInductionProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InductionProgressRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitLinkInductionQuiz: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitInductionQuizRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionQuizResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createLinkInductionUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLinkUploadRequest"];
+            };
+        };
+        responses: {
+            /** @description Upload session */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Upload"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeLinkInductionUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                uploadId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The stored file */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FileObject"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getLinkInductionFileDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addLinkInductionCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWorkerCredentialRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkerCredential"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    signLinkInduction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description Signed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    askLinkInduction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AskInductionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getLinkInductionTranslation: {
+        parameters: {
+            query: {
+                lang: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionTranslation"];
                 };
             };
             default: components["responses"]["Problem"];

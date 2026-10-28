@@ -2,7 +2,14 @@ import cookie from '@fastify/cookie';
 import formbody from '@fastify/formbody';
 import Fastify, { type FastifyBaseLogger, type FastifyInstance } from 'fastify';
 import { sql } from 'drizzle-orm';
-import type { Database, Logger, RedisClient } from '@archova/kernel';
+import {
+  createLogMessageSender,
+  disabledMessageSender,
+  type Database,
+  type Logger,
+  type MessageSender,
+  type RedisClient,
+} from '@archova/kernel';
 import { FAKE_MODELS, type ModelProvider } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore } from '@archova/mod-files';
@@ -20,6 +27,8 @@ export interface AppDeps {
   store: ObjectStore;
   scanner: MalwareScanner;
   entitlements?: EntitlementProvider;
+  /** One-time codes and link invites; tests pass the in-memory sender, the default follows `API_MESSAGES`. */
+  messages?: MessageSender;
   /** Tests inject a fake model provider with scripted responses. */
   aiProvider?: ModelProvider;
   /** Hands the loaded modules to the caller, e.g. tests that drive import commands (X49) directly. */
@@ -53,6 +62,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         webSignInUrl: config.webSignInUrl,
       },
       files: { store: deps.store, scanner: deps.scanner },
+      messages:
+        deps.messages ??
+        (config.messages === 'log' ? createLogMessageSender(deps.logger) : disabledMessageSender),
+      linkBaseUrl: config.linkBaseUrl,
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
         config:
