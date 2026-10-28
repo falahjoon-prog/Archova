@@ -898,6 +898,32 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DrawingRevision' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/tiles:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    get:
+      operationId: getDrawingTiles
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: Where a sheet's 256 px WebP tile pyramid is, with one signed URL template (mobile 03 §3.3).
+      description: |
+        `pending` until the files worker has cut the pyramid; show the sheet's PDF through the file download meanwhile.
+        When `ready`, replace `{z}`, `{x}` and `{y}` in `tileUrlTemplate` (level 0 is the overview, `levels - 1` full
+        resolution, x and y count tiles from the top left) and fetch from storage directly. Tile objects never
+        change, so cache them by revision, level and position for good. Fetch the template again after `expiresAt`.
+        The response is `no-store`; the signature covers this revision's tiles only.
+      responses:
+        '200':
+          description: Tile state
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DrawingTiles' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6444,6 +6470,21 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    DrawingTiles:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [pending, ready] }
+        width: { type: integer, minimum: 1, description: Full-resolution sheet width in pixels. }
+        height: { type: integer, minimum: 1 }
+        tileSize: { type: integer, description: Tile edge in pixels (256). }
+        levels: { type: integer, minimum: 1 }
+        overviewUrl:
+          { type: string, description: The whole sheet in one small image; show it at once. }
+        tileUrlTemplate:
+          type: string
+          description: Contains `{z}`, `{x}` and `{y}`.
+        expiresAt: { type: string, format: date-time }
     SheetGeometry:
       type: object
       required:

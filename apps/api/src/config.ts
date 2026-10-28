@@ -33,6 +33,10 @@ const Env = z.object({
   API_S3_SECRET_ACCESS_KEY: z.string().min(1).optional(),
   // Malware scanning (security-licensing/09 §4): GuardDuty Malware Protection for S3 on AWS, ClamAV elsewhere
   // (the Linode option, infrastructure/09).
+  // CloudFront in front of the files bucket, for signed drawing tiles (mobile 03 §3.3). All three or none.
+  API_FILES_CDN_DOMAIN: z.string().min(1).optional(),
+  API_FILES_CDN_KEY_PAIR_ID: z.string().min(1).optional(),
+  API_FILES_CDN_PRIVATE_KEY: z.string().min(1).optional(),
   API_FILES_SCANNER: z.enum(['none', 'guardduty', 'clamav']).default('none'),
   API_CLAMAV_HOST: z.string().default('clamav'),
   API_CLAMAV_PORT: z.coerce.number().int().default(3310),
@@ -96,6 +100,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
           ? { accessKeyId: e.API_S3_ACCESS_KEY_ID, secretAccessKey: e.API_S3_SECRET_ACCESS_KEY }
           : null,
       scanner: e.API_FILES_SCANNER,
+      cdn:
+        e.API_FILES_CDN_DOMAIN && e.API_FILES_CDN_KEY_PAIR_ID && e.API_FILES_CDN_PRIVATE_KEY
+          ? {
+              domain: e.API_FILES_CDN_DOMAIN,
+              keyPairId: e.API_FILES_CDN_KEY_PAIR_ID,
+              privateKey: e.API_FILES_CDN_PRIVATE_KEY.replaceAll('\\n', '\n'),
+            }
+          : null,
       clamav: {
         host: e.API_CLAMAV_HOST,
         port: e.API_CLAMAV_PORT,
@@ -125,6 +137,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     logLevel: e.LOG_LEVEL,
   };
+  const cdnSet = [e.API_FILES_CDN_DOMAIN, e.API_FILES_CDN_KEY_PAIR_ID, e.API_FILES_CDN_PRIVATE_KEY];
+  if (cdnSet.some(Boolean) && !cdnSet.every(Boolean))
+    throw new Error(
+      'Set all of API_FILES_CDN_DOMAIN, API_FILES_CDN_KEY_PAIR_ID and API_FILES_CDN_PRIVATE_KEY, or none',
+    );
   if (config.ai.provider === 'bedrock') {
     const unset = (['fast', 'standard', 'advanced'] as const).filter((t) => !config.ai.models[t]);
     if (unset.length)
