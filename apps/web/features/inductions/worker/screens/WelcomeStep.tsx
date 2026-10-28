@@ -27,10 +27,14 @@ export function WelcomeStep({ opened, go, online }: StepProps) {
         <h1 className="worker-title">Site induction</h1>
         <p className="u-m-0">
           <strong>{site.siteName}</strong>
-          <br />
-          {site.siteAddress}
+          {site.siteAddress ? (
+            <>
+              <br />
+              {site.siteAddress}
+            </>
+          ) : null}
         </p>
-        <p className="u-m-0">{aboutMinutes(induction.estimatedMinutes)}.</p>
+        <p className="u-m-0">{aboutMinutes(induction.estimatedMinutes, induction.sectionCount)}.</p>
         <section className="worker-card" aria-labelledby="have-ready">
           <h2 id="have-ready" className="worker-subtitle">
             Have ready
@@ -62,18 +66,20 @@ function CollectionNotice({ site }: { site: InductionSite }) {
 }
 
 /** B1 when the link has expired or been revoked. */
-export function LinkNotWorking({ site, online }: { site: InductionSite; online: boolean }) {
+export function LinkNotWorking({ site, online }: { site: InductionSite | null; online: boolean }) {
   return (
     <WorkerShell site={site} online={online}>
       <div className="stack">
         <h1 className="worker-title">This link no longer works</h1>
         <p className="u-m-0">Ask your employer or the site office for a new one.</p>
-        <p className="u-m-0">
-          Site office:{' '}
-          <a className="link" href={`tel:${site.officePhone.replace(/\s/g, '')}`}>
-            {site.officePhone}
-          </a>
-        </p>
+        {site?.officePhone ? (
+          <p className="u-m-0">
+            Site office:{' '}
+            <a className="link" href={`tel:${site.officePhone.replace(/\s/g, '')}`}>
+              {site.officePhone}
+            </a>
+          </p>
+        ) : null}
       </div>
     </WorkerShell>
   );

@@ -15,8 +15,8 @@ export interface WatchToEndVideoProps {
   src: string;
   /** Lower rendition for "Use less data". */
   lowDataSrc?: string;
-  /** WebVTT captions, on by default (IND-AC11). */
-  captionsSrc: string;
+  /** WebVTT captions, on by default (IND-AC11). Videos uploaded to an induction have none yet, so the control hides. */
+  captionsSrc?: string;
   captionsLang?: string;
   /** Text transcript under the video. */
   transcript?: string;
@@ -122,13 +122,15 @@ export function WatchToEndVideo({
             report();
           }}
         >
-          <track
-            kind="captions"
-            src={captionsSrc}
-            srcLang={captionsLang}
-            label="Captions"
-            default
-          />
+          {captionsSrc ? (
+            <track
+              kind="captions"
+              src={captionsSrc}
+              srcLang={captionsLang}
+              label="Captions"
+              default
+            />
+          ) : null}
         </video>
       </div>
       <div className="ac-video__controls">
@@ -156,19 +158,21 @@ export function WatchToEndVideo({
         >
           <RotateCcw size={20} aria-hidden="true" />
         </button>
-        <button
-          type="button"
-          className="ac-video__button ac-focusable"
-          aria-pressed={captions}
-          aria-label="Captions"
-          onClick={() => setCaptions((c) => !c)}
-        >
-          {captions ? (
-            <Captions size={20} aria-hidden="true" />
-          ) : (
-            <CaptionsOff size={20} aria-hidden="true" />
-          )}
-        </button>
+        {captionsSrc ? (
+          <button
+            type="button"
+            className="ac-video__button ac-focusable"
+            aria-pressed={captions}
+            aria-label="Captions"
+            onClick={() => setCaptions((c) => !c)}
+          >
+            {captions ? (
+              <Captions size={20} aria-hidden="true" />
+            ) : (
+              <CaptionsOff size={20} aria-hidden="true" />
+            )}
+          </button>
+        ) : null}
         <span className="ac-video__time">
           {formatClock(time.current)} / {formatClock(time.duration)}
         </span>

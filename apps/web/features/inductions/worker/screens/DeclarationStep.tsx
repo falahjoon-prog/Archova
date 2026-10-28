@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { Checkbox, SignaturePad, TextField, type SignatureValue } from '@archova/ui';
 import { formatDate } from '@archova/i18n';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { inductionSource } from '../data/source';
-import { useProgressMutation } from '../hooks/useInduction';
+import { useInductionSource, useProgressMutation } from '../hooks/useInduction';
 import { stepNumber, totalSteps } from '../lib/flow';
 import { StickyButton, WorkerShell } from '../components/WorkerShell';
 import type { StepProps } from './types';
@@ -16,11 +15,12 @@ import type { StepProps } from './types';
  */
 export function DeclarationStep({ opened, go, online }: StepProps) {
   const { site, induction, progress } = opened;
+  const source = useInductionSource();
   const [ticked, setTicked] = useState<boolean[]>(() => induction.declaration.map(() => false));
   const [name, setName] = useState(progress.worker?.name ?? '');
   const [signature, setSignature] = useState<SignatureValue>(null);
   const sign = useProgressMutation((sid, _: null) =>
-    inductionSource.sign(sid, {
+    source.sign(sid, {
       statementsAccepted: ticked.filter(Boolean).length,
       name,
       signature: signature!,
