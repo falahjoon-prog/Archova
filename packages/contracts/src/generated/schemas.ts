@@ -1188,6 +1188,9 @@ export const GateWithCodeSchema = z.object({
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
 
+export const ImportEntitySchema = z.enum(["rfi", "defect", "drawing_register", "company"]);
+export type ImportEntity = z.infer<typeof ImportEntitySchema>;
+
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
 
@@ -1692,6 +1695,40 @@ export const NovaDrawingCompareSchema = z.object({
 })),
 });
 export type NovaDrawingCompare = z.infer<typeof NovaDrawingCompareSchema>;
+
+export const NovaImportMappingSchema = z.object({
+  "runId": z.string(),
+  "suggestionId": z.string(),
+  "entity": ImportEntitySchema,
+  "fields": z.array(z.object({
+  "key": z.string(),
+  "label": z.string(),
+  "kind": z.enum(["text", "number", "date", "enum", "email", "phone", "abn"]),
+  "required": z.boolean(),
+  "values": z.array(z.object({
+  "value": z.string(),
+  "label": z.string(),
+})),
+})),
+  "columns": z.array(z.object({
+  "index": z.number().int().min(0),
+  "header": z.string(),
+  "field": z.string().nullable(),
+  "confidence": z.enum(["high", "medium", "low"]),
+  "examples": z.array(z.string()),
+  "warning": z.enum(["duplicate_field", "unlike_values"]).nullable(),
+})),
+  "values": z.array(z.object({
+  "index": z.number().int().min(0),
+  "field": z.string(),
+  "pairs": z.array(z.object({
+  "source": z.string(),
+  "value": z.string().nullable(),
+})),
+})),
+  "missingRequired": z.array(z.string()),
+});
+export type NovaImportMapping = z.infer<typeof NovaImportMappingSchema>;
 
 export const NovaIndexReportSchema = z.object({
   "indexed": z.number().int(),

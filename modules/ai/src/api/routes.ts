@@ -23,6 +23,7 @@ import type {
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { ImportMappingService } from '../application/import-mapping';
 import type { DrawingCompareService } from '../application/drawing-compare';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
@@ -171,6 +172,7 @@ export function aiRoutes(
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
   defectTags: DefectTagService,
+  importMappings: ImportMappingService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -288,6 +290,34 @@ export function aiRoutes(
             pin: d.drawing.pin,
             scanned: d.drawing.scanned,
           },
+        },
+      };
+    },
+    suggestImportMappingWithNova: async (input) => {
+      const m = await importMappings.suggest(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          entity: input.body.entity,
+          columns: input.body.columns,
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', m.runId),
+          suggestionId: encodeId('aiSuggestion', m.suggestionId),
+          entity: m.entity,
+          fields: m.fields.map((f) => ({
+            key: f.key,
+            label: f.label,
+            kind: f.kind,
+            required: f.required,
+            values: (f.values ?? []).map((v) => ({ value: v.value, label: v.label })),
+          })),
+          columns: m.columns,
+          values: m.values,
+          missingRequired: m.missingRequired,
         },
       };
     },

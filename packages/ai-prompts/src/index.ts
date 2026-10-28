@@ -11,3 +11,5 @@ export * from './diary-summary/prompt';
 export * from './rfi-draft/prompt';
 export * from './drawing-compare/prompt';
 export * from './defect-tag/prompt';
+export * from './import-mapping/fields';
+export * from './import-mapping/prompt';

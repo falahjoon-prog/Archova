@@ -4,6 +4,7 @@ import { defectTagSuite } from './suites/defect-tag';
 import { diarySummarySuite } from './suites/diary-summary';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
+import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
 import { qaAnswerSuite } from './suites/qa-answer';
@@ -26,4 +27,5 @@ export const SUITES: readonly AnySuite[] = [
   rfiDraftSuite,
   drawingCompareSuite,
   defectTagSuite,
+  importMappingSuite,
 ];
