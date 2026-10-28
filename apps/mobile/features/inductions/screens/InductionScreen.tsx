@@ -1,5 +1,5 @@
 // The online site induction (IND-US1): read each section, pass the quiz, sign the declaration. Needs a connection.
-// White card photos and video, document and SWMS blocks come later; a section with those cannot be ticked as seen.
+// Video, document and SWMS blocks come later; a section with those cannot be ticked as seen.
 import { useEffect, useRef, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { ApiError } from '@archova/api-client';
@@ -23,6 +23,7 @@ import {
   unsupportedBlocksMessage,
 } from '../flow';
 import { SignaturePad } from './SignaturePad';
+import { WhiteCardStep } from './WhiteCardStep';
 
 const offline = 'Could not reach the server. Check your connection and try again.';
 
@@ -210,14 +211,17 @@ export function InductionScreen({ projectId }: { projectId: string }) {
     }
     if (step.kind === 'credentials' && !skipCredentials) {
       return (
-        <>
-          <Text style={{ color: t.color.text, fontSize: 20, fontWeight: '700' }}>White card</Text>
-          <Text style={{ color: t.color.text }}>
-            Adding your white card in the app is coming soon. You can finish your induction now and
-            show your card at the site office.
-          </Text>
-          <Button label="Continue" onPress={() => setSkipCredentials(true)} />
-        </>
+        <WhiteCardStep
+          target={target}
+          completionId={completion.id}
+          onAdded={() =>
+            void run(
+              () => getInductionCompletion(api, target, completion.id),
+              (c) => setCompletion(c),
+            )
+          }
+          onSkip={() => setSkipCredentials(true)}
+        />
       );
     }
     const ready = typedName.trim() !== '' && fit && agreed && signature !== '';
