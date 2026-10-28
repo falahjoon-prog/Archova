@@ -12,7 +12,7 @@ output "ecs_cluster" {
 }
 
 output "services" {
-  value = { for k, s in module.service : k => s.service_name }
+  value = merge({ for k, s in module.service : k => s.service_name }, { worker = module.worker.service_name })
 }
 
 output "migrate_task_definition" {
