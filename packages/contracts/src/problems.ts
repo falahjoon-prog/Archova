@@ -113,6 +113,9 @@ export const PROBLEM_CODES = {
   'quote.invalid_state': 409,
   'quote.company_not_invited': 422,
   'quote.unknown_scope_key': 422,
+  'takeoff.not_found': 404,
+  'takeoff.invalid': 422,
+  'takeoff.revision_not_found': 422,
   // defects
   'defect.not_found': 404,
   'defect.invalid_transition': 409,

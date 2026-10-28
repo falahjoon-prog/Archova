@@ -6,6 +6,7 @@ import {
   jsonb,
   numeric,
   pgSchema,
+  real,
   text,
   timestamp,
   uuid,
@@ -122,4 +123,33 @@ export const quoteLines = estimatingSchema.table('quote_lines', {
   originalAmount: numeric('original_amount', { precision: 18, scale: 2 }),
   sourcePage: integer('source_page'),
   sourceSnippet: text('source_snippet'),
+});
+
+export type MeasurementKind = 'length' | 'area' | 'count';
+export type MeasurementSource = 'manual' | 'assisted' | 'auto';
+
+export const takeoffMeasurements = estimatingSchema.table('takeoff_measurements', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  revisionId: uuid('revision_id').notNull(),
+  label: text('label').notNull(),
+  kind: text('kind').$type<MeasurementKind>().notNull(),
+  geometry: jsonb('geometry')
+    .$type<{ type: 'polyline' | 'polygon' | 'points'; points: number[][] }>()
+    .notNull(),
+  quantity: numeric('quantity', { precision: 18, scale: 3 }).notNull(),
+  unit: text('unit').notNull(),
+  source: text('source').$type<MeasurementSource>().notNull().default('manual'),
+  confidence: real('confidence'),
+  packageId: uuid('package_id'),
+  scopeKey: text('scope_key'),
+  confirmedBy: uuid('confirmed_by'),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });

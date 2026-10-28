@@ -1,7 +1,8 @@
 import { encodeId } from '@archova/domain';
-import type { Quote, QuoteNote, TenderPackage } from '@archova/contracts';
+import type { Quote, QuoteNote, TakeoffMeasurement, TenderPackage } from '@archova/contracts';
 import type { QuoteNote as NoteRow } from '../infra/tables';
 import type { PackageView, QuoteView } from '../application/tender';
+import type { MeasurementRow } from '../application/takeoff';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const userOrNull = (id: string | null) => (id ? encodeId('user', id) : null);
@@ -94,4 +95,23 @@ export const toQuoteDto = (q: QuoteView): Quote => ({
   confirmedBy: userOrNull(q.confirmedBy),
   confirmedAt: iso(q.confirmedAt),
   version: q.version,
+});
+
+export const toMeasurementDto = (m: MeasurementRow): TakeoffMeasurement => ({
+  id: encodeId('takeoffMeasurement', m.id),
+  revisionId: encodeId('drawingRevision', m.revisionId),
+  label: m.label,
+  kind: m.kind,
+  geometry: m.geometry,
+  quantity: m.quantity,
+  unit: m.unit,
+  source: m.source,
+  confidence: m.confidence,
+  packageId: m.packageId ? encodeId('tenderPackage', m.packageId) : null,
+  scopeKey: m.scopeKey,
+  confirmedBy: userOrNull(m.confirmedBy),
+  confirmedAt: iso(m.confirmedAt),
+  createdAt: m.createdAt.toISOString(),
+  updatedAt: m.updatedAt.toISOString(),
+  version: m.version,
 });

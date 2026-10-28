@@ -21,6 +21,7 @@ export const ID_PREFIXES = {
   tenderPackage: 'tpk',
   quote: 'quo',
   quoteLine: 'qln',
+  takeoffMeasurement: 'tkm',
   diary: 'dia',
   claim: 'clm',
   event: 'evt',

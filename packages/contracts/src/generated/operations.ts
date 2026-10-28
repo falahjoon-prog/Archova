@@ -440,6 +440,43 @@ export const DeclineQuoteParams = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
   "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
 });
+export const ListTakeoffMeasurementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListTakeoffMeasurementsQuery = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")).optional(),
+  "confirmed": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTakeoffMeasurementBody = s.CreateTakeoffMeasurementRequestSchema;
+export const GetTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTakeoffMeasurementBody = s.UpdateTakeoffMeasurementRequestSchema;
+export const DeleteTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
 export const ListDefectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1991,6 +2028,78 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeclineQuoteParams,
+    query: null,
+    body: null,
+  },
+  listTakeoffMeasurements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.read",
+    internal: false,
+    contentType: null,
+    params: ListTakeoffMeasurementsParams,
+    query: ListTakeoffMeasurementsQuery,
+    body: null,
+  },
+  createTakeoffMeasurement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTakeoffMeasurementParams,
+    query: null,
+    body: CreateTakeoffMeasurementBody,
+  },
+  getTakeoffMeasurement: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.read",
+    internal: false,
+    contentType: null,
+    params: GetTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  updateTakeoffMeasurement: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTakeoffMeasurementParams,
+    query: null,
+    body: UpdateTakeoffMeasurementBody,
+  },
+  deleteTakeoffMeasurement: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  confirmTakeoffMeasurement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/confirm',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.confirm",
+    internal: false,
+    contentType: null,
+    params: ConfirmTakeoffMeasurementParams,
     query: null,
     body: null,
   },
