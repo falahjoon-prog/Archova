@@ -367,6 +367,91 @@ export const SyncPushParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const SyncPushBody = s.SyncPushRequestSchema;
+export const ListTenderPackagesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListTenderPackagesQuery = z.object({
+  "status": s.PackageStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTenderPackageBody = s.CreateTenderPackageRequestSchema;
+export const GetTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTenderPackageBody = s.UpdateTenderPackageRequestSchema;
+export const TransitionTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const TransitionTenderPackageBody = s.PackageActionRequestSchema;
+export const InviteToTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const InviteToTenderPackageBody = s.InvitePackageRequestSchema;
+export const SetTenderPackageAllowancesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const SetTenderPackageAllowancesBody = s.SetAllowancesRequestSchema;
+export const AwardTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const AwardTenderPackageBody = s.AwardPackageRequestSchema;
+export const ListQuotesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const CreateQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const CreateQuoteBody = s.CreateQuoteRequestSchema;
+export const GetQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateQuoteBody = s.UpdateQuoteRequestSchema;
+export const ConfirmQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const DeclineQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
 export const ListDefectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1764,6 +1849,174 @@ export const operations = {
     params: SyncPushParams,
     query: null,
     body: SyncPushBody,
+  },
+  listTenderPackages: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: ListTenderPackagesParams,
+    query: ListTenderPackagesQuery,
+    body: null,
+  },
+  createTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTenderPackageParams,
+    query: null,
+    body: CreateTenderPackageBody,
+  },
+  getTenderPackage: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: GetTenderPackageParams,
+    query: null,
+    body: null,
+  },
+  updateTenderPackage: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTenderPackageParams,
+    query: null,
+    body: UpdateTenderPackageBody,
+  },
+  transitionTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/transition',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionTenderPackageParams,
+    query: null,
+    body: TransitionTenderPackageBody,
+  },
+  inviteToTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: InviteToTenderPackageParams,
+    query: null,
+    body: InviteToTenderPackageBody,
+  },
+  setTenderPackageAllowances: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: SetTenderPackageAllowancesParams,
+    query: null,
+    body: SetTenderPackageAllowancesBody,
+  },
+  awardTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/award',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: AwardTenderPackageParams,
+    query: null,
+    body: AwardTenderPackageBody,
+  },
+  listQuotes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: ListQuotesParams,
+    query: null,
+    body: null,
+  },
+  createQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.submit",
+    internal: false,
+    contentType: "application/json",
+    params: CreateQuoteParams,
+    query: null,
+    body: CreateQuoteBody,
+  },
+  getQuote: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: GetQuoteParams,
+    query: null,
+    body: null,
+  },
+  updateQuote: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateQuoteParams,
+    query: null,
+    body: UpdateQuoteBody,
+  },
+  confirmQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/confirm',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: null,
+    params: ConfirmQuoteParams,
+    query: null,
+    body: null,
+  },
+  declineQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/decline',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: null,
+    params: DeclineQuoteParams,
+    query: null,
+    body: null,
   },
   listDefects: {
     method: 'GET',
