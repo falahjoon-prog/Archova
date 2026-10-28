@@ -378,6 +378,75 @@ describe('price book publishing', () => {
   });
 });
 
+describe('solo-owner mode is re-checked at approval', () => {
+  it('refuses a self-approval once another approver exists', async () => {
+    await t.adminDb.db.execute(sql`update backoffice.staff_users set status = 'disabled'`);
+    const owner = await staff(['owner'], 'solo2');
+    const book = (await owner.post('/price-books')).json() as {
+      id: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    const cut = book.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: 8000 } : p));
+    await owner.put(`/price-books/${book.id}`, { effectiveFrom: null, prices: cut });
+    const req = (
+      await owner.post(`/price-books/${book.id}/submit`, { reason: 'Solo, then a hire' })
+    ).json() as { id: string };
+    await t.adminDb.db.execute(
+      sql`update backoffice.requests set cooling_off_until = now() - interval '1 minute' where id = ${req.id}`,
+    );
+    await staff(['pricing_approver'], 'newcomer');
+    const res = await owner.post(`/requests/${req.id}/approve`);
+    expect(res.statusCode).toBe(403);
+    expect(code(res)).toBe('backoffice.self_approval');
+    // The request stays pending for the second person.
+    expect(
+      (
+        (await owner.get('/requests?status=pending')).json() as { items: Array<{ id: string }> }
+      ).items.map((r) => r.id),
+    ).toContain(req.id);
+    await owner.post(`/requests/${req.id}/cancel`);
+    await owner.call('DELETE', `/price-books/${book.id}`);
+  });
+
+  it('a failed publish reopens the draft and is recorded, in one transaction', async () => {
+    const editor = await staff(['billing_ops'], 'editor3');
+    const approver = await staff(['pricing_approver'], 'approver3');
+    const book = (await editor.post('/price-books')).json() as {
+      id: string;
+      prices: Array<{
+        planCode: string;
+        unit: string;
+        fromPrice: boolean;
+        amountCents: number | null;
+      }>;
+    };
+    const cut = book.prices.map((p) => (p.planCode === 'team' ? { ...p, amountCents: 7000 } : p));
+    await editor.put(`/price-books/${book.id}`, { effectiveFrom: null, prices: cut });
+    const req = (
+      await editor.post(`/price-books/${book.id}/submit`, { reason: 'Will fail' })
+    ).json() as { id: string };
+    // Break the book after submission: a plan it prices is removed from the catalogue's rules (an increase with no notice).
+    await t.adminDb.db.execute(
+      sql`update billing.prices set amount_cents = 99999 where price_book_id = ${book.id} and plan_code = 'team'`,
+    );
+    const done = (await approver.post(`/requests/${req.id}/approve`)).json() as {
+      status: string;
+      result: { error: string };
+    };
+    expect(done.status).toBe('failed');
+    expect(done.result.error).toMatch(/60 days/);
+    expect(
+      ((await editor.get(`/price-books/${book.id}`)).json() as { status: string }).status,
+    ).toBe('draft');
+    await editor.call('DELETE', `/price-books/${book.id}`);
+  });
+});
+
 describe('plans', () => {
   it('edits a draft, publishes it through approval, and the pricing page follows', async () => {
     const editor = await staff(['billing_ops'], 'planner');

@@ -41,6 +41,7 @@ These accounts exist on your computer only.
 - Nothing a price book or plan edit does reaches a customer until a second person approves it. A single Owner can approve their own change after a delay when they are the only approver (24 hours hosted; off locally).
 - A price increase needs 60 days' notice, so the date must be at least that far away.
 - Customers shown are the tenant directory: orgs created after this version. Older local orgs don't appear until they are touched.
+- `pnpm admin:local` refuses any database that isn't on this computer, because the sample passwords are public. Production refuses password sign-in and a solo-owner delay under 24 hours unless `API_STAFF_DEMO_CELL=true` (synthetic data only).
 - Hosted: staff sign in through our IdP instead of a password (ADR-0008); not set up yet. Settings: `API_INTERNAL_HOSTS`, `API_ADMIN_ORIGINS`, `API_STAFF_LOCAL_LOGIN`, `API_STAFF_SOLO_COOLING_OFF_HOURS`.
 - Add a staff account yourself: `STAFF_EMAIL=... STAFF_NAME=... STAFF_PASSWORD=... STAFF_ROLES=support pnpm --filter @archova/api staff:seed` (needs `API_DATABASE_URL`).
 - Not built yet: feature flags and pilot cohorts, customer actions (trial extension, credits, suspension), support access, usage and revenue reports.

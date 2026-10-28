@@ -2,7 +2,7 @@ import { and, desc, eq, inArray } from 'drizzle-orm';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { RequestDto, RequestKind, RequestStatus } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type KernelServices } from '@archova/kernel';
+import { AppError, type KernelServices, type Tx } from '@archova/kernel';
 import { requests, staffUsers } from '../infra/tables';
 import type { StaffContext, StaffService } from './staff';
 
@@ -24,20 +24,25 @@ const KINDS: Record<
       ref: string,
       by: string,
       now: Date,
+      tx: Tx,
     ): Promise<Record<string, unknown>>;
     /** Puts the draft back to editable when the request is rejected, cancelled or fails. */
-    release(deps: RequestDeps, ref: string): Promise<void>;
+    release(deps: RequestDeps, ref: string, tx?: Tx): Promise<void>;
   }
 > = {
   'pricebook.publish': {
     permission: 'backoffice.pricing.approve',
-    execute: async (d, ref, by, now) => ({ ...(await d.catalogue.publishPriceBook(ref, by, now)) }),
-    release: (d, ref) => d.catalogue.returnPriceBook(ref),
+    execute: async (d, ref, by, now, tx) => ({
+      ...(await d.catalogue.publishPriceBook(ref, by, now, tx)),
+    }),
+    release: (d, ref, tx) => d.catalogue.returnPriceBook(ref, tx),
   },
   'plan.publish': {
     permission: 'backoffice.pricing.approve',
-    execute: async (d, ref, by, now) => ({ ...(await d.catalogue.publishPlanDraft(ref, by, now)) }),
-    release: (d, ref) => d.catalogue.returnPlanDraft(ref),
+    execute: async (d, ref, by, now, tx) => ({
+      ...(await d.catalogue.publishPlanDraft(ref, by, now, tx)),
+    }),
+    release: (d, ref, tx) => d.catalogue.returnPlanDraft(ref, tx),
   },
 };
 
@@ -158,6 +163,12 @@ export function createRequestService(deps: RequestDeps) {
     if (row.requestedBy === staff.staffId) {
       if (!row.soloOwnerMode)
         throw new AppError('backoffice.self_approval', 'A second person must approve this.');
+      // Solo-owner mode was decided when the request was made; it holds only while nobody else could approve.
+      if ((await deps.staff.otherApprovers(staff.staffId)) > 0)
+        throw new AppError(
+          'backoffice.self_approval',
+          'Another approver now exists, so a second person must approve this.',
+        );
       if (row.coolingOffUntil && row.coolingOffUntil > at)
         throw new AppError(
           'backoffice.cooling_off',
@@ -166,33 +177,35 @@ export function createRequestService(deps: RequestDeps) {
           { coolingOffUntil: row.coolingOffUntil.toISOString() },
         );
     }
-    const claimed = await tx((t) =>
-      t
+    // Claim, publish and mark executed commit together, so a request can never be left half-done. A failed
+    // publish rolls back to a savepoint, then the draft is reopened and the request recorded as failed.
+    const claimed = await tx(async (t) => {
+      const got = await t
         .update(requests)
         .set({ status: 'approved', approvedBy: staff.staffId, decidedAt: at })
         .where(and(eq(requests.id, id), eq(requests.status, 'pending')))
-        .returning({ id: requests.id }),
-    );
-    if (!claimed.length)
-      throw new AppError('backoffice.request_not_pending', 'The request was just decided.');
-    try {
-      const result = await kind.execute(deps, row.subjectRef, staff.staffId, at);
-      await tx((t) =>
-        t
+        .returning({ id: requests.id });
+      if (!got.length) return false;
+      try {
+        const result = await t.transaction((inner) =>
+          kind.execute(deps, row.subjectRef, staff.staffId, at, inner as unknown as Tx),
+        );
+        await t
           .update(requests)
           .set({ status: 'executed', executedAt: now(), result })
-          .where(eq(requests.id, id)),
-      );
-    } catch (e) {
-      const message = e instanceof Error ? e.message : 'Failed';
-      await kind.release(deps, row.subjectRef).catch(() => undefined);
-      await tx((t) =>
-        t
+          .where(eq(requests.id, id));
+      } catch (e) {
+        if (!(e instanceof AppError)) throw e;
+        await kind.release(deps, row.subjectRef, t);
+        await t
           .update(requests)
-          .set({ status: 'failed', executedAt: now(), result: { error: message } })
-          .where(eq(requests.id, id)),
-      );
-    }
+          .set({ status: 'failed', executedAt: now(), result: { error: e.message } })
+          .where(eq(requests.id, id));
+      }
+      return true;
+    });
+    if (!claimed)
+      throw new AppError('backoffice.request_not_pending', 'The request was just decided.');
     return get(id);
   }
 

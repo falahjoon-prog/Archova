@@ -73,7 +73,9 @@ const priceKey = (p: { planCode: string }) => p.planCode;
  * approval executes, so a draft can never go live by editing alone.
  */
 export function createCatalogueService({ database }: Pick<KernelServices, 'database'>) {
-  const global = <T>(fn: (tx: Tx) => Promise<T>) => database.withGlobalTx('billing', fn);
+  /** Runs in the caller's transaction when one is passed (an approval that must commit with its request), else its own. */
+  const global = <T>(fn: (tx: Tx) => Promise<T>, within?: Tx) =>
+    within ? fn(within) : database.withGlobalTx('billing', fn);
 
   /** Scheduled price books go live on their date (a daily job in production; lazily on read until then). */
   async function activateDue(tx: Tx, now = new Date()) {
@@ -271,16 +273,16 @@ export function createCatalogueService({ database }: Pick<KernelServices, 'datab
     });
   }
 
-  async function returnPlanDraft(code: string) {
+  async function returnPlanDraft(code: string, within?: Tx) {
     return global(async (tx) => {
       await tx
         .update(planVersions)
         .set({ status: 'draft' })
         .where(and(eq(planVersions.planCode, code), eq(planVersions.status, 'pending_approval')));
-    });
+    }, within);
   }
 
-  async function publishPlanDraft(code: string, staffId: string, now = new Date()) {
+  async function publishPlanDraft(code: string, staffId: string, now = new Date(), within?: Tx) {
     return global(async (tx) => {
       const d = await openDraft(tx, code);
       if (d.status !== 'pending_approval')
@@ -294,7 +296,7 @@ export function createCatalogueService({ database }: Pick<KernelServices, 'datab
         .set({ status: 'published', publishedAt: now, publishedBy: staffId })
         .where(eq(planVersions.id, d.id));
       return { version: d.version };
-    });
+    }, within);
   }
 
   // ---- price books -------------------------------------------------------------------------------------
@@ -410,7 +412,11 @@ export function createCatalogueService({ database }: Pick<KernelServices, 'datab
   }
 
   /** Before and after against the live book, plus the rules publishing enforces (backend 09 §4 step 2 and 4). */
-  async function previewPriceBook(id: string, now = new Date()): Promise<PriceBookPreview> {
+  async function previewPriceBook(
+    id: string,
+    now = new Date(),
+    within?: Tx,
+  ): Promise<PriceBookPreview> {
     return global(async (tx) => {
       await activateDue(tx, now);
       const { book, rows } = await loadBook(tx, id);
@@ -419,7 +425,7 @@ export function createCatalogueService({ database }: Pick<KernelServices, 'datab
         ? await tx.select().from(prices).where(eq(prices.priceBookId, live.id))
         : [];
       return diffBooks(before, rows, book.effectiveFrom, now);
-    });
+    }, within);
   }
 
   /** Marks the draft as awaiting approval; refuses a draft that breaks a publishing rule. */
@@ -441,19 +447,19 @@ export function createCatalogueService({ database }: Pick<KernelServices, 'datab
     });
   }
 
-  async function returnPriceBook(id: string) {
+  async function returnPriceBook(id: string, within?: Tx) {
     return global(async (tx) => {
       await tx
         .update(priceBooks)
         .set({ status: 'draft' })
         .where(and(eq(priceBooks.id, id), eq(priceBooks.status, 'pending_approval')));
-    });
+    }, within);
   }
 
   /** The approval's command: goes live now, or is scheduled for its effective date. Re-checks the notice rule. */
-  async function publishPriceBook(id: string, staffId: string, now = new Date()) {
+  async function publishPriceBook(id: string, staffId: string, now = new Date(), within?: Tx) {
     return global(async (tx) => {
-      const preview = await previewPriceBook(id, now);
+      const preview = await previewPriceBook(id, now, tx);
       const { book } = await loadBook(tx, id);
       if (book.status !== 'pending_approval')
         throw new AppError('backoffice.price_book_not_draft', 'The price book was not submitted.');
@@ -472,7 +478,7 @@ export function createCatalogueService({ database }: Pick<KernelServices, 'datab
         .where(eq(priceBooks.id, id));
       await makeLive(tx, id, staffId, now);
       return { version: book.version, outcome: 'published' as const };
-    });
+    }, within);
   }
 
   return {

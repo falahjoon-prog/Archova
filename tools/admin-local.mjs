@@ -6,6 +6,14 @@ import net from 'node:net';
 
 const DB_HOST = process.env.DB_HOST ?? 'localhost';
 const DB_PORT = Number(process.env.DB_PORT ?? 5432);
+// The sample accounts below have published passwords: only ever against a database on this computer.
+const LOCAL_HOSTS = ['localhost', '127.0.0.1', '::1', '[::1]', 'postgres'];
+if (!LOCAL_HOSTS.includes(DB_HOST)) {
+  console.error(
+    `\nRefusing to run against DB_HOST=${DB_HOST}. This command creates staff accounts with a public password, so it only runs against a database on this computer (${LOCAL_HOSTS.join(', ')}).\n`,
+  );
+  process.exit(1);
+}
 const shell = process.platform === 'win32';
 const env = {
   ...process.env,

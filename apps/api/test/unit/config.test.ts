@@ -43,4 +43,26 @@ describe('config', () => {
     ).toEqual({ accessKeyId: 'AKID', secretAccessKey: 'secret' });
     expect(() => loadConfig({ ...base, API_S3_ACCESS_KEY_ID: 'AKID' })).toThrow(/both/);
   });
+
+  it('refuses staff password sign-in and a short solo-owner delay in production unless it is a demo cell', () => {
+    const prod = { ...base, NODE_ENV: 'production' };
+    expect(() => loadConfig({ ...prod, API_STAFF_LOCAL_LOGIN: 'true' })).toThrow(
+      /API_STAFF_LOCAL_LOGIN/,
+    );
+    expect(() => loadConfig({ ...prod, API_STAFF_SOLO_COOLING_OFF_HOURS: '1' })).toThrow(
+      /at least 24/,
+    );
+    // A demo cell passes the staff checks; the usual production requirements still apply after them.
+    expect(() =>
+      loadConfig({
+        ...prod,
+        API_STAFF_DEMO_CELL: 'true',
+        API_STAFF_LOCAL_LOGIN: 'true',
+        API_STAFF_SOLO_COOLING_OFF_HOURS: '1',
+      }),
+    ).toThrow(/API_JWT_PRIVATE_JWK/);
+    const dev = loadConfig(base);
+    expect(dev.internal.localLogin).toBe(true);
+    expect(dev.internal.soloCoolingOffHours).toBe(24);
+  });
 });
