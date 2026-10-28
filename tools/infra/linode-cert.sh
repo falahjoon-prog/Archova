@@ -52,7 +52,7 @@ docker run --rm -e LINODE_TOKEN="$LINODE_CERT_TOKEN" -e LINODE_PROPAGATION_TIMEO
 # lego writes the files as root, named after the first domain.
 sudo chown -R "$(id -u)" "$WORK"
 CRT="$WORK/certificates/$APP_HOST.crt" KEY="$WORK/certificates/$APP_HOST.key"
-[ -s "$CRT" ] && [ -s "$KEY" ] || fail "lego wrote no certificate"
+if [ ! -s "$CRT" ] || [ ! -s "$KEY" ]; then fail "lego wrote no certificate"; fi
 openssl x509 -in "$CRT" -noout -checkend $((60 * 86400)) || fail "the new certificate expires within 60 days"
 
 jq -n --rawfile cert "$CRT" --rawfile key "$KEY" '{ssl_cert: $cert, ssl_key: $key}' \
