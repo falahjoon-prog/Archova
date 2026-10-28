@@ -291,3 +291,94 @@ describe('Nova RFI drafts from a drawing markup (F3)', () => {
     expect(ok.statusCode).toBe(200);
   });
 });
+
+describe('Nova RFI drafts from a site photo (F3)', () => {
+  /** A 1 x 1 PNG. */
+  const PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  );
+  const photoOf = (s: Setup, bytes: Uint8Array = PNG, name = 'photo.png', mime = 'image/png') =>
+    uploadBytes(t, s.pm.browser, s.org.id, s.project.id, bytes, name, mime);
+
+  it('sends the photo to the model and drafts from it, with the note or without one', async () => {
+    const s = await setup();
+    const fileId = await photoOf(s);
+
+    // Photo and note: the model sees both, and the note still finds the spec.
+    const withNote = await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: 'Level 3 corridor wall at the riser: which fire rating governs',
+      photo: { fileId },
+    });
+    expect(withNote.statusCode).toBe(200);
+    const call = t.ai.calls.at(-1)!;
+    expect(call.task).toBe('rfi.draft');
+    expect(call.images).toEqual([{ mime: 'image/png', base64: PNG.toString('base64') }]);
+    expect(call.text).toContain('<photo>');
+    expect(call.passages.map((p) => p.text).join('\n')).toContain('FRL of 90/90/90');
+    expect(withNote.json().drawing).toBeNull();
+
+    // A photo alone is enough to draft from: nothing to search with, so the draft says where it is thin.
+    const before = (await s.pm.browser.get(`/v1/orgs/${s.org.id}/ai/usage`)).json();
+    const alone = await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: '',
+      photo: { fileId },
+    });
+    expect(alone.statusCode).toBe(200);
+    const aloneCall = t.ai.calls.at(-1)!;
+    expect(aloneCall.images).toHaveLength(1);
+    expect(aloneCall.passages).toEqual([]);
+    expect(alone.json().gaps).toContain('location');
+    const after = (await s.pm.browser.get(`/v1/orgs/${s.org.id}/ai/usage`)).json();
+    const credits = (u: typeof before) =>
+      u.byFeature.find((f: { feature: string }) => f.feature === 'rfi_draft')?.credits ?? 0;
+    // One credit for the draft; no embedding run because there was no text to search.
+    expect(credits(after) - credits(before)).toBe(1);
+
+    // No photo: no images go to the model.
+    await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, {
+      note: 'Which FRL governs the riser wall',
+    });
+    expect(t.ai.calls.at(-1)!.images).toEqual([]);
+  });
+
+  it('only takes a photo of this project, as an image, within the size limit', async () => {
+    const s = await setup();
+    const draft = (photoFileId: string) =>
+      s.pm.browser.post(`${s.base}/ai/rfi-drafts`, { note: '', photo: { fileId: photoFileId } });
+
+    // A PDF is not a photo.
+    const notImage = await draft(
+      await photoOf(s, await pdf([['SPEC']]), 'spec.pdf', 'application/pdf'),
+    );
+    expect(notImage.statusCode).toBe(422);
+    expect(notImage.json().code).toBe('validation_failed');
+
+    // Too big for the model: the apps shrink phone photos first.
+    const big = new Uint8Array(3_000_001);
+    big.set(PNG);
+    const tooBig = await draft(await photoOf(s, big, 'big.png'));
+    expect(tooBig.statusCode).toBe(422);
+    expect(tooBig.json().code).toBe('validation_failed');
+
+    // A photo uploaded to another project is not sent from this one.
+    const other = await createProject(s.pm.browser, s.org.id, { name: 'Elsewhere', state: 'VIC' });
+    const elsewhere = await uploadBytes(
+      t,
+      s.pm.browser,
+      s.org.id,
+      other.id,
+      PNG,
+      'x.png',
+      'image/png',
+    );
+    const crossProject = await draft(elsewhere);
+    expect(crossProject.statusCode).toBe(422);
+
+    // Not an id of a file, and a well-formed id of no file.
+    expect((await draft('fil_notanid')).statusCode).toBe(422);
+    const missing = await draft(`fil_${'0'.repeat(26)}`);
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json().code).toBe('file.not_found');
+  });
+});

@@ -4,7 +4,12 @@
 // sends an RFI). Retrieval is one search under the caller's access scopes (ai/04 §3). A drawing markup can stand in
 // for, or add to, the typed note: its words and the sheet text around it go to the model, and the draft says where
 // to pin the RFI.
-import { rfiDraftPrompt, type PromptPassage, type RfiDraftMarkup } from '@archova/ai-prompts';
+import {
+  rfiDraftPrompt,
+  type PromptPassage,
+  type RfiDraftMarkup,
+  type RfiDraftPhoto,
+} from '@archova/ai-prompts';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import {
   markupContext,
@@ -66,6 +71,9 @@ export interface RfiDraft extends Omit<ReviewedRfiDraft, 'references'> {
 /** Passages sent with the note: enough for the sheets and clauses it names, small enough for a quick draft. */
 const PASSAGES = 8;
 const SIMILAR = 5;
+/** The model takes images up to about 3.75 MB (before base64); the apps shrink phone photos before upload. */
+export const MAX_PHOTO_BYTES = 3_000_000;
+const PHOTO_MIMES = ['image/png', 'image/jpeg', 'image/webp'] as const;
 
 export function createRfiDraftService(deps: RfiDraftDeps) {
   const { database } = deps;
@@ -74,7 +82,12 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
   async function draft(
     ctx: TenantContext,
     projectId: string,
-    input: { note: string; markup?: { revisionId: string; markupId: string } },
+    input: {
+      note: string;
+      markup?: { revisionId: string; markupId: string };
+      /** A site photo already uploaded to this project (a `files` id). */
+      photo?: { fileId: string };
+    },
     signal?: AbortSignal,
   ): Promise<RfiDraft> {
     const note = input.note.trim();
@@ -83,7 +96,10 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
       async (scope) => {
         await deps.assert(scope, 'rfis.rfis.create', { projectId });
         const scopes = await deps.accessScopes(scope, projectId);
-        if (!input.markup) return { scopes, marked: null };
+        const photoFile = input.photo
+          ? await deps.readFile(scope, input.photo.fileId, MAX_PHOTO_BYTES)
+          : null;
+        if (!input.markup) return { scopes, marked: null, photoFile };
         await deps.assert(scope, 'documents.drawings.read', { projectId });
         const revision = await deps.getRevision(scope, projectId, input.markup.revisionId);
         const markup = await deps.getMarkup(
@@ -93,11 +109,23 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
           input.markup.markupId,
         );
         const file = await deps.readFile(scope, revision.fileId, MAX_INLINE_BYTES);
-        return { scopes, marked: { revision, shapes: markup.shapes, file } };
+        return { scopes, marked: { revision, shapes: markup.shapes, file }, photoFile };
       },
       { readOnly: true, statementTimeout: '60s' },
     );
     const { scopes } = found;
+
+    let photo: RfiDraftPhoto | undefined;
+    if (found.photoFile) {
+      const { file, bytes } = found.photoFile;
+      const mime = PHOTO_MIMES.find((m) => m === file.mime);
+      // A photo in another project is not this caller's to send to the model from here.
+      if (!mime || (file.projectId && file.projectId !== projectId))
+        throw new AppError('validation_failed', 'Nova reads site photos in PNG, JPEG or WebP.', [
+          { path: 'photo/fileId', message: 'Not a photo of this project' },
+        ]);
+      photo = { mime, base64: Buffer.from(bytes).toString('base64') };
+    }
 
     let drawing: RfiDraft['drawing'] = null;
     let markup: RfiDraftMarkup | undefined;
@@ -140,15 +168,16 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
     }
     // What the question is about, for retrieval: the note, or what the person wrote on the markup.
     const subject = [note, ...(markup?.labels ?? [])].filter(Boolean).join('\n');
-    if (!subject)
+    if (!subject && !photo)
       throw new AppError(
         'validation_failed',
-        'Write a note, or write on the markup, so Nova knows what to ask.',
-        [{ path: 'note', message: 'A note is needed when the markup has no text.' }],
+        'Write a note, write on the markup or add a photo so Nova knows what to ask.',
+        [{ path: 'note', message: 'A note is needed when there is no markup text or photo.' }],
       );
 
     let rows: ChunkHit[] = [];
-    if (scopes.length) {
+    // A photo alone gives nothing to search with, so the draft rests on the photo and is told what is missing.
+    if (scopes.length && subject) {
       const { vectors } = await deps.gateway.embed(ctx, [subject], {
         purpose: 'query',
         feature: rfiDraftPrompt.feature,
@@ -173,7 +202,7 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
     const run = await deps.gateway.runTask(
       ctx,
       rfiDraftPrompt,
-      { note, ...(markup ? { markup } : {}) },
+      { note, ...(markup ? { markup } : {}), ...(photo ? { photo } : {}) },
       { projectId, passages, ...(signal ? { signal } : {}) },
     );
     if (run.status !== 'ok')
