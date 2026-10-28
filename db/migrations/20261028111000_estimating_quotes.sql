@@ -1,4 +1,4 @@
--- Composed from modules/estimating/db/migrations/20261028110000_estimating_quotes.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/estimating/db/migrations/20261028111000_estimating_quotes.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- estimating (phase 1): tender packages, invites, quotes and quote lines
 -- (backend schema/estimating.md, product/10 EST-US1..6). Takeoff measurements follow in their own migration.
 
