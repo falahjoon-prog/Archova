@@ -540,6 +540,9 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
+      '@archova/mod-integrations':
+        specifier: workspace:*
+        version: link:../../modules/integrations
       bullmq:
         specifier: ^5.58.0
         version: 5.81.5
@@ -11138,9 +11141,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 

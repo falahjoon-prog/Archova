@@ -5,6 +5,7 @@ import { loadConfig } from './config';
 import { startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
+import { importStagingPurge } from './jobs/import-staging';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
@@ -17,7 +18,7 @@ async function main() {
   const config = loadConfig();
   const database = createDatabase(config.databaseUrl);
   /** Nightly and hourly per-org jobs (backend 05 §3). */
-  const jobs: TenantJob[] = [accessLinkPurge];
+  const jobs: TenantJob[] = [accessLinkPurge, importStagingPurge];
   if (config.files.store === 's3') {
     const store = createS3ObjectStore({
       bucket: config.files.bucket,
