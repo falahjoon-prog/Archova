@@ -15,6 +15,9 @@ export interface DirectoryCompany {
   name: string;
   /** The organisation that runs the project. */
   isBuilder: boolean;
+  /** Companies a defect can be assigned to. */
+  isSubcontractor: boolean;
+  trades: readonly string[];
 }
 
 export interface DirectoryPerson {
@@ -29,21 +32,38 @@ export interface ProjectDirectory {
   personName(id: string | null | undefined): string;
   companyName(id: string | null | undefined): string;
   personCompanyId(id: string | null | undefined): string | null;
+  /** The company is on the project (the builder, or it has a member), so a record can be assigned to it. */
+  onProject(id: string): boolean;
 }
 
-function directory(companies: DirectoryCompany[], people: DirectoryPerson[]): ProjectDirectory {
+function directory(
+  companies: DirectoryCompany[],
+  people: DirectoryPerson[],
+  everyoneOnProject = false,
+): ProjectDirectory {
   return {
     companies,
     people,
     personName: (id) => people.find((p) => p.id === id)?.name ?? 'Project member',
     companyName: (id) => companies.find((c) => c.id === id)?.name ?? 'Unknown company',
     personCompanyId: (id) => people.find((p) => p.id === id)?.companyId ?? null,
+    onProject: (id) =>
+      everyoneOnProject ||
+      companies.find((c) => c.id === id)?.isBuilder === true ||
+      people.some((p) => p.companyId === id),
   };
 }
 
 const PREVIEW = directory(
-  MOCK_COMPANIES.map((c) => ({ id: c.id, name: c.name, isBuilder: c.role === 'builder' })),
+  MOCK_COMPANIES.map((c) => ({
+    id: c.id,
+    name: c.name,
+    isBuilder: c.role === 'builder',
+    isSubcontractor: c.role === 'subcontractor',
+    trades: [c.trade],
+  })),
   [...MOCK_PEOPLE],
+  true,
 );
 
 /**
@@ -81,6 +101,8 @@ export function useProjectDirectory(): ProjectDirectory {
               id: c.id,
               name: c.name,
               isBuilder: c.isOwnCompany,
+              isSubcontractor: c.type === 'subcontractor',
+              trades: c.trades,
             })),
             members.data ?? [],
           ),

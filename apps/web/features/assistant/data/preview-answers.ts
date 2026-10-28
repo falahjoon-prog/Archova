@@ -107,8 +107,10 @@ export async function previewAnswer(
       };
     }
     const byCompany = new Map<string, number>();
-    for (const d of rows)
-      byCompany.set(d.assigneeCompanyId, (byCompany.get(d.assigneeCompanyId) ?? 0) + 1);
+    for (const d of rows) {
+      const company = d.assigneeCompanyId ?? '';
+      byCompany.set(company, (byCompany.get(company) ?? 0) + 1);
+    }
     return {
       kind: 'answer',
       text: `${rows.length} ${rows.length === 1 ? 'defect is' : 'defects are'} ${ready ? 'ready for inspection' : 'open'}: ${list([...byCompany].map(([c, n]) => `${n} with ${companyName(c)}`))}.`,

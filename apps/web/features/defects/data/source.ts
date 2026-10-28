@@ -6,9 +6,15 @@ import { MOCK_COMPANIES, companyName, personCompanyId } from '@/shared/mocks/dir
 import { locationLevel } from '@/shared/mocks/locations';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { canDefect, defectInputErrors, isDefectOverdue, type DefectAction } from '../lib/lifecycle';
-import type { Defect, DefectInput, DefectStage, DefectStatus } from '../lib/types';
+import type {
+  Defect,
+  DefectInput,
+  DefectNovaSuggestion,
+  DefectStage,
+  DefectStatus,
+} from '../lib/types';
 
-interface Actor {
+export interface Actor {
   id: string;
   name: string;
   companyId: string | null;
@@ -54,6 +60,10 @@ function seedDefect(
     createdAt: at('2026-09-22'),
     readyForReviewAt: null,
     closedAt: null,
+    category: null,
+    availableActions: null,
+    isOverdue: null,
+    version: 1,
     ...p,
   };
 }
@@ -272,7 +282,8 @@ function addPhotos(d: Defect, names: string[], kind: 'after' | 'closeout'): stri
   return added.map((p) => p.id);
 }
 
-export const defectsSource = {
+export const defectsSource: DefectsSource = {
+  live: false,
   async list(projectId: string, f: DefectFilters = {}): Promise<Defect[]> {
     const q = f.q?.trim().toLowerCase();
     const rows = stores
@@ -302,15 +313,15 @@ export const defectsSource = {
     projectId: string,
     input: DefectInput,
     actor: Actor,
-    aiSuggested: boolean,
+    aiSuggestionId: string | null,
   ): Promise<Defect> {
     const errors = defectInputErrors(input);
     if (Object.keys(errors).length) problem(422, 'validation', Object.values(errors)[0]!);
     const s = stores.get(projectId);
     const id = mockId('dft');
-    const photos = input.photoNames.map((name) => ({
+    const photos = input.photos.map((f) => ({
       id: mockId('pho'),
-      name,
+      name: f.name,
       kind: 'before' as const,
     }));
     const d: Defect = {
@@ -321,6 +332,7 @@ export const defectsSource = {
       status: 'open',
       priority: input.priority,
       trade: input.trade,
+      category: input.category,
       stage: input.stage,
       locationId: input.locationId,
       drawing: input.drawing,
@@ -329,7 +341,7 @@ export const defectsSource = {
       dueDate: input.dueDate,
       raisedBy: actor.name,
       raisedByCompanyId: actor.companyId,
-      source: aiSuggested ? 'ai_suggested' : 'manual',
+      source: aiSuggestionId ? 'ai_suggested' : 'manual',
       photos,
       events: [
         {
@@ -345,6 +357,9 @@ export const defectsSource = {
       createdAt: nowIso(),
       readyForReviewAt: null,
       closedAt: null,
+      availableActions: null,
+      isOverdue: null,
+      version: 1,
     };
     s.defects.push(d);
     return delay(d);
@@ -377,14 +392,18 @@ export const defectsSource = {
   async markReady(
     projectId: string,
     id: string,
-    v: { note: string; photoNames: string[] },
+    v: { note: string; photos: File[] },
     actor: Actor,
   ): Promise<Defect> {
     const d = find(projectId, id);
     ensure(d, 'ready');
-    if (READY_NEEDS_PHOTO && v.photoNames.length === 0)
+    if (READY_NEEDS_PHOTO && v.photos.length === 0)
       problem(422, 'defect.photo_required', 'Add an “after” photo to show the fix.');
-    const ids = addPhotos(d, v.photoNames, 'after');
+    const ids = addPhotos(
+      d,
+      v.photos.map((f) => f.name),
+      'after',
+    );
     transition(d, 'ready_for_review', actor, v.note.trim() || null, ids);
     d.readyForReviewAt = nowIso();
     return delay(d);
@@ -393,12 +412,16 @@ export const defectsSource = {
   async close(
     projectId: string,
     id: string,
-    v: { note: string; photoNames: string[] },
+    v: { note: string; photos: File[] },
     actor: Actor,
   ): Promise<Defect> {
     const d = find(projectId, id);
     ensure(d, 'close');
-    const ids = addPhotos(d, v.photoNames, 'closeout');
+    const ids = addPhotos(
+      d,
+      v.photos.map((f) => f.name),
+      'closeout',
+    );
     transition(d, 'closed', actor, v.note.trim() || null, ids);
     d.closedAt = nowIso();
     return delay(d);
@@ -422,6 +445,13 @@ export const defectsSource = {
     return delay(d);
   },
 
+  async issue(projectId: string, id: string, actor: Actor): Promise<Defect> {
+    const d = find(projectId, id);
+    ensure(d, 'issue');
+    transition(d, 'open', actor, null);
+    return delay(d);
+  },
+
   async reassign(
     projectId: string,
     id: string,
@@ -441,8 +471,10 @@ export const defectsSource = {
 
   /** Trade, company and title from the description. Keyword matching in the preview. */
   async novaSuggest(
-    description: string,
-  ): Promise<{ id: string; title: string; trade: string; companyId: string } | null> {
+    _projectId: string,
+    v: { description: string },
+  ): Promise<DefectNovaSuggestion | null> {
+    const description = v.description;
     const text = description.toLowerCase();
     const rules: Array<[RegExp, string]> = [
       [/tile|grout|tiling/, 'cmp_tile'],
@@ -460,17 +492,25 @@ export const defectsSource = {
       {
         id: mockId('ais'),
         title: title.charAt(0).toUpperCase() + title.slice(1),
+        description: null,
         trade: company.trade,
+        category: null,
+        priority: null,
         companyId: company.id,
+        gaps: [],
+        unsupportedNumbers: [],
       },
       300,
     );
   },
 
+  /** Nothing to record in the preview; the API keeps the decision on the suggestion. */
+  async novaDecide(): Promise<void> {},
+
   /** Open defects at the same location or drawing with overlapping words (DEF-US10). */
   async novaDuplicates(
     projectId: string,
-    v: { title: string; locationId: string | null; sheetId: string | null },
+    v: { title: string; locationId: string | null; drawing: Defect['drawing'] },
   ): Promise<Defect[]> {
     const words = new Set(
       v.title
@@ -484,7 +524,7 @@ export const defectsSource = {
       .filter(
         (d) =>
           (v.locationId && d.locationId === v.locationId) ||
-          (v.sheetId && d.drawing?.sheetId === v.sheetId),
+          (v.drawing && d.drawing?.sheetId === v.drawing.sheetId),
       )
       .filter((d) =>
         d.title
@@ -495,6 +535,66 @@ export const defectsSource = {
     return delay(rows);
   },
 };
+
+/** What the screens and hooks use: the preview store above, or `createDefectsApi` once the module is reachable. */
+export interface DefectsSource {
+  /** The API stores drawing pins, not project locations: live forms ask for a pin and hide the location tree. */
+  live: boolean;
+  list(projectId: string, f?: DefectFilters): Promise<Defect[]>;
+  get(projectId: string, id: string): Promise<Defect>;
+  create(
+    projectId: string,
+    input: DefectInput,
+    actor: Actor,
+    aiSuggestionId: string | null,
+  ): Promise<Defect>;
+  bulkAssign(
+    projectId: string,
+    ids: string[],
+    patch: { companyId?: string; dueDate?: string; stage?: DefectStage },
+    actor: Actor,
+  ): Promise<Defect[]>;
+  markReady(
+    projectId: string,
+    id: string,
+    v: { note: string; photos: File[] },
+    actor: Actor,
+  ): Promise<Defect>;
+  close(
+    projectId: string,
+    id: string,
+    v: { note: string; photos: File[] },
+    actor: Actor,
+  ): Promise<Defect>;
+  withReason(
+    projectId: string,
+    id: string,
+    action: 'reject' | 'dispute' | 'void',
+    reason: string,
+    actor: Actor,
+  ): Promise<Defect>;
+  reassign(
+    projectId: string,
+    id: string,
+    v: { companyId: string; userId: string | null; dueDate: string | null },
+    actor: Actor,
+  ): Promise<Defect>;
+  /** Draft to open: assigns the company and sends it (needs the company already on the draft). */
+  issue(projectId: string, id: string, actor: Actor): Promise<Defect>;
+  novaSuggest(
+    projectId: string,
+    v: { description: string; photos: File[]; drawing: Defect['drawing'] },
+  ): Promise<DefectNovaSuggestion | null>;
+  novaDecide(
+    projectId: string,
+    suggestionId: string,
+    decision: 'accepted' | 'edited' | 'rejected',
+  ): Promise<void>;
+  novaDuplicates(
+    projectId: string,
+    v: { title: string; locationId: string | null; drawing: Defect['drawing'] },
+  ): Promise<Defect[]>;
+}
 
 export function resetDefectsPreview() {
   stores.reset();

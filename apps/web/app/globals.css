@@ -1008,6 +1008,26 @@ section.diary-section .diary-section__summary {
   border-radius: var(--radius-sm);
   font-size: var(--font-sm);
 }
+.pin-placer__sheet {
+  position: relative;
+  width: 100%;
+  max-width: 28rem;
+  aspect-ratio: 841 / 594;
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface);
+  cursor: crosshair;
+}
+.pin-placer__pin {
+  position: absolute;
+  width: var(--space-4);
+  height: var(--space-4);
+  border: 2px solid var(--c-surface);
+  border-radius: 50%;
+  background: var(--c-action-primary);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
 .detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
