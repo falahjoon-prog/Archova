@@ -80,8 +80,8 @@ export function toPassage(r: ChunkHit, id: string): PromptPassage {
       revisionId: r.revisionId,
       page: r.page,
       title:
-        r.sourceType === 'rfi'
-          ? `${r.reference ?? 'RFI'} ${r.title} (${r.revisionLabel})`
+        r.sourceType === 'rfi' || r.sourceType === 'defect'
+          ? `${r.reference ?? r.sourceType.toUpperCase()} ${r.title} (${r.revisionLabel})`
           : `${r.reference ? `${r.reference} ` : ''}${r.title}, rev ${r.revisionLabel}`,
     },
     text: r.text,

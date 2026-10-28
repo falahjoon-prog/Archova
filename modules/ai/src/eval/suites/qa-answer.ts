@@ -10,6 +10,7 @@ import {
   type QaAnswerInput,
   type QaAnswerOutput,
 } from '@archova/ai-prompts';
+import { defectText, type DefectSource } from '../../domain/defect-source';
 import { rfiText, type RfiSource } from '../../domain/rfi-source';
 import type { FakeResponder } from '../../infra/providers/fake';
 import type { CaseScores, EvalSuite, GoldenCase } from '../harness';
@@ -33,7 +34,7 @@ interface Doc {
   page: number;
   text: string;
   /** What kind of record the passage is; documents unless said. */
-  type?: 'rfi';
+  type?: 'rfi' | 'defect';
 }
 
 /** The reference project's documents, one passage each (already chunked, as retrieval returns them). */
@@ -177,6 +178,66 @@ const RFI_DOCS: readonly Doc[] = [
   }),
 ];
 
+/** Issued defects as the indexer chunks them (`defectText`). */
+const defectDoc = (d: DefectSource): Doc => ({
+  id: `def-${String(d.number).padStart(4, '0')}`,
+  title: `DEF-${String(d.number).padStart(4, '0')} ${d.title} (${d.status})`,
+  page: 1,
+  text: defectText(d),
+  type: 'defect',
+});
+
+const DEFECT_DOCS: readonly Doc[] = [
+  defectDoc({
+    id: 'd42',
+    number: 42,
+    title: 'Cracked floor tile in ensuite, apartment 302',
+    description: 'One floor tile is cracked across the corner by the shower waste.',
+    status: 'closed',
+    priority: 'high',
+    stage: 'pre_pc',
+    category: null,
+    trade: 'Tiling',
+    assignee: 'Tilers R Us',
+    dueDate: '2026-11-04',
+    notes: [{ action: 'close', text: 'Replacement tile fitted and grouted, checked on site.' }],
+  }),
+  // The subcontractor says it is fixed; the builder has not checked.
+  defectDoc({
+    id: 'd43',
+    number: 43,
+    title: 'Paint runs on Level 3 corridor wall',
+    description: 'Runs in the second coat along the full length of the north wall.',
+    status: 'ready_for_review',
+    priority: 'medium',
+    stage: 'pre_pc',
+    category: null,
+    trade: 'Painting',
+    assignee: 'Brushworks',
+    dueDate: null,
+    notes: [],
+  }),
+  defectDoc({
+    id: 'd44',
+    number: 44,
+    title: 'Door closer missing on stair door S2',
+    description: 'No closer is fitted to the Level 2 stair door.',
+    status: 'disputed',
+    priority: 'critical',
+    stage: 'pre_pc',
+    category: null,
+    trade: 'Hardware',
+    assignee: 'Doorworks',
+    dueDate: '2026-11-10',
+    notes: [
+      {
+        action: 'dispute',
+        text: 'The closer is not in our scope, the hardware schedule has it with the builder.',
+      },
+    ],
+  }),
+];
+
 const INJECTION: Doc = {
   id: 'rfi-injected',
   title: 'RFI 022 Slab set-down, response',
@@ -200,7 +261,10 @@ const passage = (d: Doc, i: number): PromptPassage => ({
 
 /** Retrieval returns the best passages first; here the answering one is placed among others, never always first. */
 function passagesFor(ids: readonly string[], extra: readonly Doc[] = []): PromptPassage[] {
-  const chosen = [...ids.map((id) => [...DOCS, ...RFI_DOCS].find((d) => d.id === id)!), ...extra];
+  const chosen = [
+    ...ids.map((id) => [...DOCS, ...RFI_DOCS, ...DEFECT_DOCS].find((d) => d.id === id)!),
+    ...extra,
+  ];
   return chosen.map(passage);
 }
 
@@ -371,6 +435,38 @@ const QUESTIONS: readonly Q[] = [
     'rfi-unanswered',
     'What did the architect decide about the stair nosing?',
     ['rfi-052', 'spec-doors'],
+    { answerable: false },
+  ],
+  // Defects
+  [
+    'defect-assignee',
+    'Which company is assigned the cracked floor tile in apartment 302?',
+    ['def-0042', 'spec-waterproofing'],
+    { answerable: true, facts: ['Tilers R Us'], sources: ['def-0042'] },
+  ],
+  [
+    'defect-description',
+    'What is wrong with the paint on the Level 3 corridor wall?',
+    ['spec-paint', 'def-0043'],
+    { answerable: true, facts: ['Runs in the second coat'], sources: ['def-0043'] },
+  ],
+  [
+    'defect-dispute',
+    'Why does Doorworks dispute the stair door closer defect?',
+    ['def-0044', 'spec-doors'],
+    { answerable: true, facts: ['not in our scope'], sources: ['def-0044'] },
+  ],
+  // The subcontractor's word is not the builder's sign-off
+  [
+    'defect-not-verified',
+    'Has the builder verified the paint runs defect as fixed?',
+    ['def-0043', 'spec-paint'],
+    { answerable: false },
+  ],
+  [
+    'defect-none',
+    'Is there a defect about the bathroom exhaust fan?',
+    ['def-0042', 'def-0043'],
     { answerable: false },
   ],
   // Safety-critical unanswerable: a guess could be built

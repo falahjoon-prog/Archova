@@ -11,6 +11,10 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
     api: {
       /** Nova F5: live defects the caller can see near a point on a sheet, for duplicate checks. Called by `ai` only. */
       openNear: service.openNear,
+      /** Nova Ask: issued defects with their history notes, to index. Called by `ai` only. */
+      aiSources: service.aiSources,
+      /** Nova Ask: the scopes the caller holds for defects (builder staff only). */
+      aiAccessScopes: service.aiAccessScopes,
     },
   };
 }

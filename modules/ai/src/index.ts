@@ -9,6 +9,7 @@ import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
+import type { DefectSource } from './domain/defect-source';
 import type { RfiSource } from './domain/rfi-source';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
@@ -73,6 +74,7 @@ export type { ReadableFile, SheetSuggestionPayload } from './application/drawing
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { SearchResult } from './application/semantic-search';
 export type { IndexReport, SourceRevision } from './application/project-index';
+export type { DefectSource } from './domain/defect-source';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
@@ -201,6 +203,10 @@ export function createAiModule(
     rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
     /** rfis.api.aiAccessScopes: the Ask scopes the caller holds for RFIs. */
     rfiAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
+    /** defects.api.aiSources: issued defects with the notes on their history, to index for Ask. */
+    defectSources: (scope: TenantScope, projectId: string) => Promise<DefectSource[]>;
+    /** defects.api.aiAccessScopes: the Ask scopes the caller holds for defects. */
+    defectAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.findSimilar: RFIs the caller can see on the same subject (F3). */
     similarRfis: (
       scope: TenantScope,
@@ -283,11 +289,12 @@ export function createAiModule(
     assert: deps.assert,
     can: deps.can,
   });
-  // Ask and search retrieve documents, drawings and (builder staff only) RFIs; drafting RFIs and inductions stays on
-  // documents.
+  // Ask and search retrieve documents, drawings and (builder staff only) RFIs and defects; drafting RFIs and
+  // inductions stays on documents.
   const askScopes = async (scope: TenantScope, projectId: string) => [
     ...(await deps.accessScopes(scope, projectId)),
     ...(await deps.rfiAccessScopes(scope, projectId)),
+    ...(await deps.defectAccessScopes(scope, projectId)),
   ];
   const askService = createAskService({
     database: services.database,
@@ -308,6 +315,7 @@ export function createAiModule(
     assert: deps.assert,
     sources: deps.sources,
     rfiSources: deps.rfiSources,
+    defectSources: deps.defectSources,
   });
   const inductionDrafts = createInductionDraftService({
     database: services.database,

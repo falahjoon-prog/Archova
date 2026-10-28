@@ -534,7 +534,72 @@ export function createDefectService(deps: DefectsDeps) {
     }));
   }
 
-  return { list, create, detail, update, transition, openNear };
+  /**
+   * Nova Ask (F2): every issued defect on the project with the notes on its history, for the `ai` indexer. Drafts and
+   * voided defects are left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by
+   * `aiAccessScopes`.
+   */
+  async function aiSources(scope: TenantScope, projectId: string) {
+    const rows = await scope.tx
+      .select()
+      .from(defects)
+      .where(
+        and(
+          eq(defects.projectId, projectId),
+          isNull(defects.deletedAt),
+          sql`${defects.status} not in ('draft', 'void')`,
+        ),
+      )
+      .orderBy(asc(defects.number));
+    if (!rows.length) return [];
+    const notes = await scope.tx
+      .select({
+        defectId: events.defectId,
+        action: events.action,
+        note: events.note,
+      })
+      .from(events)
+      .innerJoin(defects, eq(defects.id, events.defectId))
+      .where(
+        and(
+          eq(defects.projectId, projectId),
+          isNull(defects.deletedAt),
+          sql`${defects.status} not in ('draft', 'void')`,
+          sql`${events.note} is not null and btrim(${events.note}) <> ''`,
+        ),
+      )
+      .orderBy(asc(events.at), asc(events.id));
+    const companies = new Map(
+      (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      number: r.number,
+      title: r.title,
+      description: r.description,
+      status: r.status,
+      priority: r.priority,
+      stage: r.stage,
+      category: r.category,
+      trade: r.trade,
+      assignee: r.assigneeCompanyId ? (companies.get(r.assigneeCompanyId) ?? null) : null,
+      dueDate: r.dueDate,
+      notes: notes
+        .filter((n) => n.defectId === r.id)
+        .map((n) => ({ action: n.action, text: n.note! })),
+    }));
+  }
+
+  /**
+   * The Ask scopes this caller holds for defects. Builder staff with defects read access hold `defects`; everyone else
+   * holds none, so a subcontractor never retrieves defect text through Ask (they work from their own list in the register).
+   */
+  async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
+    if (scope.ctx.principalType !== 'member') return [];
+    return (await deps.access.can(scope, 'defects.defects.read', { projectId })) ? ['defects'] : [];
+  }
+
+  return { list, create, detail, update, transition, openNear, aiSources, aiAccessScopes };
 }
 
 function verb(action: DefectAction): string {
