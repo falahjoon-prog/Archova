@@ -130,6 +130,41 @@ describe('push', () => {
     ]);
   });
 
+  it('keeps a command queued and backs off while its file is still being scanned', async () => {
+    const { server, store, clock, engine } = setup();
+    const defect = await createDefect(store, clock, { title: 'Water stain' });
+    const photo = await addPhoto(store, clock, defect.entityId);
+    server.setFileProblem(photo.entityId, 'file.not_ready');
+
+    const outcome = await engine.sync({ pull: false });
+    expect(outcome).toMatchObject({ ok: false, kind: 'retry' });
+    // The defect went through; the photo waits, still pending, with one attempt counted.
+    expect(server.records.get(`defect:${defect.entityId}`)).toBeDefined();
+    expect(await store.listOutbox()).toMatchObject([
+      { mutationId: photo.mutationId, status: 'pending', attempts: 1 },
+    ]);
+
+    server.setFileProblem(photo.entityId, null);
+    expect(await engine.sync({ pull: false })).toEqual({ ok: true });
+    expect(await store.listOutbox()).toEqual([]);
+  });
+
+  it('sends a blocked file to needs attention for good', async () => {
+    const { server, store, clock, engine } = setup();
+    const defect = await createDefect(store, clock, { title: 'Water stain' });
+    const photo = await addPhoto(store, clock, defect.entityId);
+    server.setFileProblem(photo.entityId, 'file.blocked');
+
+    expect(await engine.sync({ pull: false })).toEqual({ ok: true });
+    expect(await store.listOutbox()).toMatchObject([
+      {
+        mutationId: photo.mutationId,
+        status: 'needs_attention',
+        attention: { kind: 'rejected', problem: { code: 'file.blocked' } },
+      },
+    ]);
+  });
+
   it('sends a child only after its parent is applied', async () => {
     const { server, store, clock, engine } = setup();
     const defect = await createDefect(store, clock, { title: 'Missing grout' });

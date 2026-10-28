@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { AppState } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import * as SecureStore from 'expo-secure-store';
-import { SyncScheduler, type SyncTrigger } from '@archova/sync-core';
+import { SyncEngine, SyncScheduler, type SyncTrigger } from '@archova/sync-core';
 import { api } from '../lib/api';
 import { openOrgDatabase, SqliteSyncStore, type SqlDatabase } from '../lib/db';
 import { expoSqlDriver } from '../lib/db/expo-driver';
@@ -14,6 +14,8 @@ import { UploadQueue } from '../lib/files/upload-queue';
 import { backgroundFileTransfer } from '../lib/platform/file-transfer';
 import { randomBytes } from '../lib/platform/crypto';
 import { createDeviceSync } from '../lib/sync/device-sync';
+import { deviceScopes } from '../lib/sync/scopes';
+import { createSyncTransport } from '../lib/sync/transport';
 import { useCurrentOrg } from './org';
 import { useSession } from './session';
 
@@ -77,8 +79,12 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           createUploadApi(api, orgId),
           backgroundFileTransfer,
         );
-        // The sync engine joins here once `syncPull` and `syncPush` are in the contract.
-        const scheduler = new SyncScheduler(createDeviceSync({ uploads, engine: null }), {
+        const engine = new SyncEngine({
+          store,
+          transport: createSyncTransport(api, orgId),
+          scopes: () => deviceScopes(api, orgId),
+        });
+        const scheduler = new SyncScheduler(createDeviceSync({ uploads, engine }), {
           setTimeout: (cb, ms) => setTimeout(cb, ms),
           clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
           now: () => Date.now(),
