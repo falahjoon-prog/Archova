@@ -479,7 +479,53 @@ export function createDefectService(deps: DefectsDeps) {
     return detail(scope, projectId, defectId);
   }
 
-  return { list, create, detail, update, transition };
+  /**
+   * Nova F5 duplicate check: live defects the caller can see on the same sheet within `radius` (normalised sheet
+   * units) of a point, nearest first. Live means open, ready for review or disputed, plus the caller's own drafts.
+   * Empty without defect read access. Called by `ai` only.
+   */
+  async function openNear(
+    scope: TenantScope,
+    projectId: string,
+    input: { drawingRevisionId?: string; sheetId?: string; x: number; y: number; radius: number },
+  ) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId }))) return [];
+    let sheetId = input.sheetId ?? null;
+    if (!sheetId && input.drawingRevisionId)
+      sheetId = (await deps.documents.getDrawingRevision(scope, projectId, input.drawingRevisionId))
+        .sheetId;
+    if (!sheetId) return [];
+    const v = await viewer(scope, projectId);
+    const dist = sql`sqrt(power(${defects.pinX} - ${input.x}, 2) + power(${defects.pinY} - ${input.y}, 2))`;
+    const conditions: SQL[] = [
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      eq(defects.sheetId, sheetId),
+      sql`${defects.pinX} is not null`,
+      sql`(${defects.status} in ('open', 'ready_for_review', 'disputed')
+           or (${defects.status} = 'draft' and ${defects.createdBy} = ${v.userId}))`,
+      sql`${dist} <= ${input.radius}`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(defects)
+      .where(and(...conditions))
+      .orderBy(dist, asc(defects.number))
+      .limit(50);
+    return rows.map((r) => ({
+      id: r.id,
+      number: r.number,
+      title: r.title,
+      status: r.status,
+      trade: r.trade,
+      assigneeCompanyId: r.assigneeCompanyId,
+      pin: { x: r.pinX!, y: r.pinY! },
+    }));
+  }
+
+  return { list, create, detail, update, transition, openNear };
 }
 
 function verb(action: DefectAction): string {

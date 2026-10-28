@@ -1,4 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
+import { decodeId } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
@@ -346,5 +347,49 @@ describe('Defect lifecycle (product/06)', () => {
     expect(await list('status=draft')).toEqual([]);
     expect(await list(`assigneeCompanyId=${s.subCo.companyId}`)).toEqual(['Nobody']);
     expect(await list('q=nobody')).toEqual(['Nobody']);
+  });
+
+  it('lists live defects near a point for Nova, only those the caller can see (F5)', async () => {
+    const s = await setup();
+    const make = async (title: string, x: number, y: number, issue: boolean) => {
+      const draft = await s.pm.browser.post(`${s.base}/defects`, {
+        title,
+        assigneeCompanyId: s.subCo.companyId,
+        pin: { ...s.pin, x, y },
+      });
+      if (!issue) return draft;
+      return s.pm.browser.post(
+        `${s.base}/defects/${draft.json().defect.id}/transition`,
+        { action: 'issue' },
+        { 'if-match': etagOf(draft) },
+      );
+    };
+    await make('Open here', 0.4, 0.6, true);
+    await make('Draft here', 0.42, 0.6, false);
+    await make('Far away', 0.9, 0.1, true);
+    const near = (userId: string, principal: 'member' | 'external') =>
+      t.database.withTenantTx(
+        {
+          orgId: decodeId('org', s.org.id)!,
+          userId: decodeId('user', userId)!,
+          principalType: principal,
+          orgRole: principal === 'member' ? ('owner' as const) : null,
+          entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+          requestId: 'test',
+        },
+        (scope) =>
+          t.modules.defects.api.openNear(scope, decodeId('project', s.project.id)!, {
+            drawingRevisionId: decodeId('drawingRevision', s.pin.drawingRevisionId)!,
+            x: 0.41,
+            y: 0.6,
+            radius: 0.05,
+          }),
+      );
+    expect((await near(s.pm.userId, 'member')).map((d) => d.title)).toEqual([
+      'Open here',
+      'Draft here',
+    ]);
+    expect((await near(s.sub.userId, 'external')).map((d) => d.title)).toEqual(['Open here']);
+    expect(await near(s.other.userId, 'external')).toEqual([]);
   });
 });

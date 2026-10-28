@@ -8,7 +8,10 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
     routes: defectsRoutes(services.database, service),
-    api: {},
+    api: {
+      /** Nova F5: live defects the caller can see near a point on a sheet, for duplicate checks. Called by `ai` only. */
+      openNear: service.openNear,
+    },
   };
 }
 
