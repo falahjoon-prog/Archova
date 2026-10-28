@@ -100,9 +100,12 @@ export async function createTestContext(
 }
 
 /** A browser on app.<domain>: keeps cookies, sends Origin and the CSRF header like the web auth-client does. */
+let browsers = 0;
 export class Browser {
   cookies = new Map<string, string>();
   csrf: string | null = null;
+  /** Each browser is its own device on its own address, so per-IP limits don't couple unrelated tests. */
+  private ip = `10.${(++browsers >> 8) & 255}.${browsers & 255}.7`;
   constructor(private app: FastifyInstance) {}
 
   private absorb(res: LightMyRequestResponse) {
@@ -132,6 +135,7 @@ export class Browser {
     const res = await this.app.inject({
       method,
       url,
+      remoteAddress: this.ip,
       headers: {
         host: APP_HOST,
         ...(method !== 'GET' ? { origin: APP_ORIGIN } : {}),

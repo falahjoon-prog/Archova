@@ -819,9 +819,7 @@ export const GetLinkInductionFileDownloadParams = z.object({
 export const AddLinkInductionCredentialBody = s.CreateWorkerCredentialRequestSchema;
 export const SignLinkInductionBody = s.SignInductionRequestSchema;
 export const AskLinkInductionBody = s.AskInductionRequestSchema;
-export const GetLinkInductionTranslationQuery = z.object({
-  "lang": z.string().regex(new RegExp("^[a-z]{2,3}(-[A-Za-z]{2,4})?$")),
-});
+export const GetLinkInductionTranslationBody = s.TranslateInductionRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -2698,16 +2696,16 @@ export const operations = {
     body: AskLinkInductionBody,
   },
   getLinkInductionTranslation: {
-    method: 'GET',
+    method: 'POST',
     path: '/v1/induction-access/translation',
     module: "workforce",
     auth: "none",
     permission: null,
     internal: false,
-    contentType: null,
+    contentType: "application/json",
     params: null,
-    query: GetLinkInductionTranslationQuery,
-    body: null,
+    query: null,
+    body: GetLinkInductionTranslationBody,
   },
 } as const satisfies Record<string, OperationDef>;
 
