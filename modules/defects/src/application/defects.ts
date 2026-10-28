@@ -278,7 +278,7 @@ export function createDefectService(deps: DefectsDeps) {
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: DefectFields & { title: string },
+    input: DefectFields & { title: string; aiSuggestionId?: string },
   ) {
     const v = await viewer(scope, projectId);
     await deps.platform.getProject(scope, projectId);
@@ -307,6 +307,10 @@ export function createDefectService(deps: DefectsDeps) {
         title: input.title.trim(),
         status: 'draft',
         raisedByCompanyId: v.companyId,
+        // Raised from a Nova tag: marks the source and lets the accept-rate metrics join the suggestion to the result.
+        ...(input.aiSuggestionId
+          ? { source: 'ai_suggested' as const, aiSuggestionId: input.aiSuggestionId }
+          : {}),
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -319,7 +323,12 @@ export function createDefectService(deps: DefectsDeps) {
       entityType: 'defect',
       entityId: id,
       entityVersion: 1,
-      data: { defectId: id, number, raisedByCompanyId: v.companyId },
+      data: {
+        defectId: id,
+        number,
+        raisedByCompanyId: v.companyId,
+        aiSuggestionId: input.aiSuggestionId ?? null,
+      },
     });
     return detail(scope, projectId, id);
   }
