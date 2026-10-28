@@ -8,7 +8,12 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createInductionBuilderApi } from '../data/api';
 import { inductionBuilderSource, type InductionBuilderSource } from '../data/source';
-import type { Induction, InductionContent, PublishInput } from '../lib/types';
+import type {
+  CreateInductionLinkInput,
+  Induction,
+  InductionContent,
+  PublishInput,
+} from '../lib/types';
 
 /** The API once the workforce endpoints are reachable; the in-browser preview store in preview mode and tests. */
 export function useBuilderSource(): InductionBuilderSource {
@@ -92,6 +97,39 @@ export function useInductionMutations(induction: Induction) {
     publish: useMutation({
       mutationFn: (input: PublishInput) => source.publish(projectId, induction, input),
       onSuccess: settle,
+    }),
+  };
+}
+
+export function useInductionLinks(inductionId: string) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useBuilderSource();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'inductions', { links: inductionId }),
+    queryFn: () => source.listLinks(projectId, inductionId),
+  });
+}
+
+/** A link's token and URL come back once, with the create; the list only ever has the link's own record. */
+export function useInductionLinkMutations(inductionId: string) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useBuilderSource();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({
+      queryKey: queryKeys.toolList(orgId, projectId, 'inductions', { links: inductionId }),
+    });
+  return {
+    create: useMutation({
+      mutationFn: (input: CreateInductionLinkInput) =>
+        source.createLink(projectId, inductionId, input),
+      onSuccess: refresh,
+    }),
+    revoke: useMutation({
+      mutationFn: (linkId: string) => source.revokeLink(projectId, inductionId, linkId),
+      onSuccess: refresh,
     }),
   };
 }

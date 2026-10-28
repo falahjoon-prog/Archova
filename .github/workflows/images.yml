@@ -4,8 +4,10 @@
 # (pr-<n>-<sha> on pull requests, <sha> on main) and signed with cosign.
 name: Images
 
+# Docs-only pull requests skip this workflow (Actions minutes); every push to main still runs it.
 on:
   pull_request:
+    paths-ignore: ['docs/**', '**/*.md']
   push:
     branches: [main]
 

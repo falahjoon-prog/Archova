@@ -76,6 +76,31 @@ export function createInductionBuilderApi(orgId: string): InductionBuilderSource
       // Publishing answers with the new version; the screen needs the induction with it.
       return get(projectId, induction.id);
     },
+    async listLinks(projectId, inductionId) {
+      const res = unwrap(
+        await api.GET(`${P}/{inductionId}/links`, {
+          params: { path: at(projectId, inductionId) },
+        }),
+      );
+      return res.data;
+    },
+    async createLink(projectId, inductionId, input) {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${P}/{inductionId}/links`, {
+          params: { path: at(projectId, inductionId), header: idempotencyKey() },
+          body: input,
+        }),
+      );
+    },
+    async revokeLink(projectId, inductionId, linkId) {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${P}/{inductionId}/links/{linkId}/revoke`, {
+          params: { path: { ...at(projectId, inductionId), linkId } },
+        }),
+      );
+    },
     async register(projectId) {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/projects/{projectId}/induction-register', {

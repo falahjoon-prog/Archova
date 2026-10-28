@@ -96,4 +96,23 @@ describe('Induction builder API source', () => {
       requiredVersion: 1,
     });
   });
+
+  it('lists links, creates one with an idempotency key, and revokes it', async () => {
+    const LINKS = `${I}/links`;
+    const LNK = 'lnk_00000000000000000000000001';
+    fake.on('GET', LINKS, () => ({ data: [{ id: LNK, state: 'active' }] }));
+    fake.on('POST', LINKS, () => ({ link: { id: LNK }, token: 'arl_x', url: '/i/arl_x' }));
+    fake.on('POST', `${LINKS}/{linkId}/revoke`, () => ({ id: LNK, state: 'revoked' }));
+    const api = createInductionBuilderApi('org_1');
+    expect(await api.listLinks('prj_1', IND)).toHaveLength(1);
+    const made = await api.createLink('prj_1', IND, { label: 'Gate poster', expiresInDays: 7 });
+    expect(made.url).toBe('/i/arl_x');
+    const [call] = fake.callsTo('POST', LINKS);
+    expect(call?.init.body).toEqual({ label: 'Gate poster', expiresInDays: 7 });
+    expect(call?.init.params?.header?.['Idempotency-Key']).toBeTruthy();
+    expect(await api.revokeLink('prj_1', IND, LNK)).toMatchObject({ state: 'revoked' });
+    expect(fake.callsTo('POST', `${LINKS}/{linkId}/revoke`)[0]?.init.params?.path).toMatchObject({
+      linkId: LNK,
+    });
+  });
 });
