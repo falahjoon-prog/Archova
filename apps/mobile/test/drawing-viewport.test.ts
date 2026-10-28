@@ -4,15 +4,18 @@ import {
   fitViewport,
   levelForScale,
   levelSize,
+  panViewport,
   pinToScreen,
   screenToPin,
   tileCacheKey,
   tileUrl,
   visibleTiles,
+  zoomViewport,
   type Pyramid,
 } from '../features/drawings';
 
 vi.mock('../features/drawings/screens/DrawingRegisterScreen', () => ({}));
+vi.mock('../features/drawings/screens/DrawingViewerScreen', () => ({}));
 
 // An A1-ish sheet: 8192 x 4096 at full size, four levels (1024 x 512 at the bottom).
 const p: Pyramid = { width: 8192, height: 4096, tileSize: 256, levels: 4 };
@@ -80,5 +83,30 @@ describe('tile urls', () => {
     const t = { z: 2, x: 5, y: 1 };
     expect(tileUrl('https://cdn/x/{z}/{x}/{y}.webp', t)).toBe('https://cdn/x/2/5/1.webp');
     expect(tileCacheKey('rev1', t)).toBe('rev1/2/5/1');
+  });
+});
+
+describe('gestures', () => {
+  const fit = fitViewport(p, 1024, 768);
+  const zoomed = { ...fit, scale: 0.5, x: 2000, y: 1000 };
+
+  it('pans with the finger and stays on the sheet', () => {
+    const v = panViewport(p, zoomed, 100, 0);
+    expect(v.x).toBe(2000 - 100 / 0.5);
+    expect(panViewport(p, zoomed, 1e6, 1e6).x).toBe(0);
+  });
+
+  it('keeps the pinched point fixed', () => {
+    const focus = { x: 300, y: 200 };
+    const before = { x: focus.x / zoomed.scale + zoomed.x, y: focus.y / zoomed.scale + zoomed.y };
+    const v = zoomViewport(p, zoomed, 1.5, focus);
+    expect(v.scale).toBeCloseTo(0.75);
+    expect(focus.x / v.scale + v.x).toBeCloseTo(before.x);
+    expect(focus.y / v.scale + v.y).toBeCloseTo(before.y);
+  });
+
+  it('will not zoom out past fit or in past the maximum', () => {
+    expect(zoomViewport(p, zoomed, 0.001, { x: 0, y: 0 }).scale).toBeCloseTo(fit.scale);
+    expect(zoomViewport(p, zoomed, 100, { x: 0, y: 0 }, 2).scale).toBe(2);
   });
 });
