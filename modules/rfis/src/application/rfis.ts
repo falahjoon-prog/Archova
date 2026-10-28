@@ -192,18 +192,14 @@ export function createRfiService(deps: RfisDeps) {
    * Nova Ask (F2): every sent RFI on the project with its responses, for the `ai` indexer. Drafts and voided RFIs are
    * left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by `aiAccessScopes`.
    */
-  async function aiSources(scope: TenantScope, projectId: string) {
-    const rows = await scope.tx
-      .select()
-      .from(rfis)
-      .where(
-        and(
-          eq(rfis.projectId, projectId),
-          isNull(rfis.deletedAt),
-          sql`${rfis.status} not in ('draft', 'void')`,
-        ),
-      )
-      .orderBy(asc(rfis.id));
+  async function aiSources(scope: TenantScope, projectId: string, only?: string) {
+    const live = and(
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} not in ('draft', 'void')`,
+      only ? eq(rfis.id, only) : undefined,
+    );
+    const rows = await scope.tx.select().from(rfis).where(live).orderBy(asc(rfis.id));
     const replies = rows.length
       ? await scope.tx
           .select({
@@ -214,13 +210,7 @@ export function createRfiService(deps: RfisDeps) {
           })
           .from(responses)
           .innerJoin(rfis, eq(rfis.id, responses.rfiId))
-          .where(
-            and(
-              eq(rfis.projectId, projectId),
-              isNull(rfis.deletedAt),
-              sql`${rfis.status} not in ('draft', 'void')`,
-            ),
-          )
+          .where(live)
           .orderBy(asc(responses.createdAt), asc(responses.id))
       : [];
     return rows.map((r) => ({

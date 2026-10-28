@@ -32,7 +32,7 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
       importRfi: service.importRfi,
       /** Nova F3: RFIs the caller can see on the same subject, with who was asked. Called by `ai` only. */
       findSimilar: service.findSimilar,
-      /** Nova Ask (F2): sent RFIs with their responses, to index; and the Ask scopes the caller holds for them. Called by `ai` only. */
+      /** Nova Ask (F2): sent RFIs with their responses, to index (one RFI when `only` is given); and the Ask scopes the caller holds for them. Called by `ai` only. */
       aiSources: service.aiSources,
       aiAccessScopes: service.aiAccessScopes,
       /** Nova F21: open RFIs the caller can see pinned to these drawing revisions. Called by `ai` only. */

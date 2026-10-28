@@ -2,8 +2,8 @@
 // page), chunk it, embed it and store it with the access scope `documents` gave it. Sent RFIs (question and
 // responses) and issued defects are indexed the same way from the text `rfis` and `defects` supply (one page per
 // record). Idempotent per (revision, pipeline version), so re-runs only do new work.
-// Runs in the API process for now, started by a project admin; the ai-worker takes it over, driven by
-// `documents.*` events, when the worker lands.
+// A project admin starts a full run from the API; the ai-worker brings one RFI, defect or diary day in step when it
+// changes (`reindexRecord`, driven by the module's events).
 import { and, eq, inArray, notInArray, or, sql } from 'drizzle-orm';
 import { defectLabel, uuidv7 } from '@archova/domain';
 import type { Database, TenantContext, TenantScope } from '@archova/kernel';
@@ -11,6 +11,7 @@ import { ocrPageText } from '../domain/ocr';
 import { PIPELINE_VERSION, chunkPages, type PageText } from '../domain/retrieval';
 import { defectRevisionId, defectText, type DefectSource } from '../domain/defect-source';
 import { diaryRevisionId, diaryText, diaryTitle, type DiarySource } from '../domain/diary-source';
+import type { RecordKind } from '../domain/record-events';
 import { rfiRevisionId, rfiText, type RfiSource } from '../domain/rfi-source';
 import { toLines } from '../domain/titleblock';
 import { readPdfText, readScannedPages } from '../infra/pdf';
@@ -39,11 +40,11 @@ export interface ProjectIndexDeps {
   assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
   sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
   /** `rfis.api.aiSources`: the sent RFIs with their responses. */
-  rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
+  rfiSources: (scope: TenantScope, projectId: string, only?: string) => Promise<RfiSource[]>;
   /** `defects.api.aiSources`: the issued defects with the notes on their history. */
-  defectSources: (scope: TenantScope, projectId: string) => Promise<DefectSource[]>;
+  defectSources: (scope: TenantScope, projectId: string, only?: string) => Promise<DefectSource[]>;
   /** `diary.api.aiSources`: the submitted and signed-off days with all their lines. */
-  diarySources: (scope: TenantScope, projectId: string) => Promise<DiarySource[]>;
+  diarySources: (scope: TenantScope, projectId: string, only?: string) => Promise<DiarySource[]>;
 }
 
 /** What an index entry records about a source. */
@@ -59,6 +60,12 @@ export const RFI_ACCESS_SCOPE = 'rfis';
 export const DEFECT_ACCESS_SCOPE = 'defects';
 /** The scope diary chunks carry: builder staff who read the whole diary (`diary.api.aiAccessScopes`). */
 export const DIARY_ACCESS_SCOPE = 'diary';
+
+const RECORD_SCOPES: Record<RecordKind, string> = {
+  rfi: RFI_ACCESS_SCOPE,
+  defect: DEFECT_ACCESS_SCOPE,
+  diary: DIARY_ACCESS_SCOPE,
+};
 
 /** One record (an RFI, a defect, a diary day) as the single page of text that is chunked and embedded. */
 interface RecordPage {
@@ -360,7 +367,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
   async function indexRecords(
     ctx: TenantContext,
     projectId: string,
-    sourceType: 'rfi' | 'defect' | 'diary',
+    sourceType: RecordKind,
     accessScope: string,
     pages: RecordPage[],
     done: Set<string>,
@@ -416,14 +423,17 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
   async function reconcileRecords(
     scope: TenantScope,
     projectId: string,
-    sourceType: 'rfi' | 'defect' | 'diary',
+    sourceType: RecordKind,
     pages: RecordPage[],
+    /** Reconcile one record (its page, if it is still a source) instead of the whole project. */
+    onlySource?: string,
   ) {
     const live = pages.map((p) => p.revisionId);
     const inProject = and(
       eq(chunks.orgId, scope.ctx.orgId),
       eq(chunks.projectId, projectId),
       eq(chunks.sourceType, sourceType),
+      onlySource ? eq(chunks.sourceId, onlySource) : undefined,
     );
     await scope.tx
       .delete(chunks)
@@ -440,8 +450,10 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       .delete(indexEntries)
       .where(
         and(
+          eq(indexEntries.orgId, scope.ctx.orgId),
           eq(indexEntries.projectId, projectId),
           eq(indexEntries.sourceType, sourceType),
+          onlySource ? eq(indexEntries.sourceId, onlySource) : undefined,
           live.length ? notInArray(indexEntries.revisionId, live) : sql`true`,
         ),
       );
@@ -496,7 +508,71 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     }
   }
 
-  return { indexProject };
+  /** The page of one record, or none when it is not a source (a draft, voided, deleted or not found). */
+  async function recordPages(
+    scope: TenantScope,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ): Promise<RecordPage[]> {
+    if (kind === 'rfi') return (await deps.rfiSources(scope, projectId, recordId)).map(rfiPage);
+    if (kind === 'defect')
+      return (await deps.defectSources(scope, projectId, recordId)).map(defectPage);
+    return (await deps.diarySources(scope, projectId, recordId)).map(diaryPage);
+  }
+
+  /**
+   * Brings one record's chunks in line with the register after it changed: text that no longer matches is dropped
+   * first, with no model call, so a voided or amended record is never searchable while its new text waits for an
+   * embedding; then the current text is embedded if it is new. For background callers, which build the context:
+   * no route reaches this, and it checks no permission of its own.
+   */
+  async function reindexRecord(
+    ctx: TenantContext,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ) {
+    const { pages, done } = await database.withTenantTx(ctx, async (scope) => {
+      const pages = await recordPages(scope, projectId, kind, recordId);
+      const entries = await scope.tx
+        .select({ revisionId: indexEntries.revisionId })
+        .from(indexEntries)
+        .where(
+          and(
+            eq(indexEntries.orgId, ctx.orgId),
+            eq(indexEntries.projectId, projectId),
+            eq(indexEntries.sourceType, kind),
+            eq(indexEntries.sourceId, recordId),
+            eq(indexEntries.pipelineVersion, PIPELINE_VERSION),
+          ),
+        );
+      await reconcileRecords(scope, projectId, kind, pages, recordId);
+      return { pages, done: new Set(entries.map((e) => e.revisionId)) };
+    });
+    return indexRecords(ctx, projectId, kind, RECORD_SCOPES[kind], pages, done);
+  }
+
+  /**
+   * The cheap half of `reindexRecord`, for the moment a record changes: whatever of its stored text no longer matches
+   * the register is deleted, in the same transaction and with no model call, so a voided record, a diary day sent back
+   * to draft, or an amended record's old words stop being searchable at once. Says whether the record is still a
+   * source, which is whether its current text may still need embedding. Same caller rules as `reindexRecord`.
+   */
+  async function dropStaleRecord(
+    ctx: TenantContext,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ): Promise<{ isSource: boolean }> {
+    return database.withTenantTx(ctx, async (scope) => {
+      const pages = await recordPages(scope, projectId, kind, recordId);
+      await reconcileRecords(scope, projectId, kind, pages, recordId);
+      return { isSource: pages.length > 0 };
+    });
+  }
+
+  return { indexProject, reindexRecord, dropStaleRecord };
 }
 
 export type ProjectIndexService = ReturnType<typeof createProjectIndexService>;

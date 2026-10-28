@@ -689,7 +689,11 @@ export function createDiaryService(deps: DiaryDeps) {
    * indexer. Days still being written (drafts) are left out. Not narrowed to the caller, and not company-scoped:
    * who may retrieve what is decided when Ask searches, by `aiAccessScopes`.
    */
-  async function aiSources(scope: TenantScope, projectId: string): Promise<DiaryDayForAsk[]> {
+  async function aiSources(
+    scope: TenantScope,
+    projectId: string,
+    only?: string,
+  ): Promise<DiaryDayForAsk[]> {
     const days = await scope.tx
       .select()
       .from(entries)
@@ -697,6 +701,7 @@ export function createDiaryService(deps: DiaryDeps) {
         and(
           eq(entries.projectId, projectId),
           sql`${entries.status} in ('submitted', 'signed_off')`,
+          only ? eq(entries.id, only) : undefined,
         ),
       )
       .orderBy(asc(entries.date));

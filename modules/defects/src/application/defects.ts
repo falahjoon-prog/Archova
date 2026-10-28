@@ -557,18 +557,14 @@ export function createDefectService(deps: DefectsDeps) {
    * voided defects are left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by
    * `aiAccessScopes`.
    */
-  async function aiSources(scope: TenantScope, projectId: string) {
-    const rows = await scope.tx
-      .select()
-      .from(defects)
-      .where(
-        and(
-          eq(defects.projectId, projectId),
-          isNull(defects.deletedAt),
-          sql`${defects.status} not in ('draft', 'void')`,
-        ),
-      )
-      .orderBy(asc(defects.number));
+  async function aiSources(scope: TenantScope, projectId: string, only?: string) {
+    const live = and(
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      sql`${defects.status} not in ('draft', 'void')`,
+      only ? eq(defects.id, only) : undefined,
+    );
+    const rows = await scope.tx.select().from(defects).where(live).orderBy(asc(defects.number));
     if (!rows.length) return [];
     const notes = await scope.tx
       .select({
@@ -578,14 +574,7 @@ export function createDefectService(deps: DefectsDeps) {
       })
       .from(events)
       .innerJoin(defects, eq(defects.id, events.defectId))
-      .where(
-        and(
-          eq(defects.projectId, projectId),
-          isNull(defects.deletedAt),
-          sql`${defects.status} not in ('draft', 'void')`,
-          sql`${events.note} is not null and btrim(${events.note}) <> ''`,
-        ),
-      )
+      .where(and(live, sql`${events.note} is not null and btrim(${events.note}) <> ''`))
       .orderBy(asc(events.at), asc(events.id));
     const companies = new Map(
       (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
