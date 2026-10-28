@@ -78,6 +78,14 @@ resource "aws_cloudfront_response_headers_policy" "files" {
     access_control_allow_headers { items = ["*"] }
     origin_override = true
   }
+
+  security_headers_config {
+    strict_transport_security {
+      access_control_max_age_sec = 31536000
+      include_subdomains         = true
+      override                   = true
+    }
+  }
 }
 
 resource "aws_cloudfront_distribution" "files" {
@@ -86,6 +94,7 @@ resource "aws_cloudfront_distribution" "files" {
   #checkov:skip=CKV_AWS_310:Origin failover needs a second origin; the files bucket is the only copy and S3 is multi-AZ
   #checkov:skip=CKV2_AWS_32:The response headers policy only sets CORS; the security headers apply to HTML, not tiles
   #checkov:skip=CKV2_AWS_47:No WAF on this distribution, see CKV_AWS_68
+  #checkov:skip=CKV2_AWS_42:The default *.cloudfront.net certificate is used until the files custom domain exists
   #checkov:skip=CKV_AWS_174:The default CloudFront certificate cannot set a minimum TLS version; a custom domain does that later
 
   count           = local.files_cdn ? 1 : 0
