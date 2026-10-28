@@ -9,10 +9,13 @@ import {
   type SyncRunOptions,
   type Syncable,
 } from '@archova/sync-core';
+import type { SignInQueue } from '../attendance/sign-in-queue';
 import type { UploadQueue } from '../files/upload-queue';
 
 export function createDeviceSync(deps: {
   uploads: UploadQueue;
+  /** Gate sign-ins scanned with no signal; replayed before the engine runs so the site list is current. */
+  signIns?: SignInQueue;
   engine: SyncEngine | null;
   now?: () => number;
   random?: () => number;
@@ -29,6 +32,11 @@ export function createDeviceSync(deps: {
       } catch {
         uploadRetry = true;
       }
+      try {
+        if (deps.signIns && (await deps.signIns.drain()).retry) uploadRetry = true;
+      } catch {
+        uploadRetry = true;
+      }
       uploadFailures = uploadRetry ? uploadFailures + 1 : 0;
 
       const outcome = deps.engine ? await deps.engine.sync(options) : ({ ok: true } as const);
@@ -37,7 +45,7 @@ export function createDeviceSync(deps: {
         ok: false,
         kind: 'retry',
         retryAt: now() + backoffDelay(uploadFailures, random, DEFAULT_BACKOFF),
-        error: new Error('A file upload is waiting for a connection'),
+        error: new Error('A file upload or gate sign-in is waiting for a connection'),
       };
     },
   };

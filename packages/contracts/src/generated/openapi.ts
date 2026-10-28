@@ -3909,15 +3909,15 @@ export interface components {
             skippedPages: number[];
             refusedPages: number[];
         };
-        /** @description A document or drawing revision page, or an RFI, Nova used. */
+        /** @description A document or drawing revision page, an RFI or a defect, Nova used. */
         NovaSource: {
             /** @enum {string} */
-            sourceType: "document" | "drawing" | "rfi";
-            /** @description The document (`doc_`), drawing sheet (`dsh_`) or RFI (`rfi_`). */
+            sourceType: "document" | "drawing" | "rfi" | "defect";
+            /** @description The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`) or defect (`dfx_`). */
             sourceId: string;
-            /** @description The document revision (`rev_`) or drawing revision (`drv_`); for an RFI, its own `rfi_` id. */
+            /** @description The document revision (`rev_`) or drawing revision (`drv_`); for an RFI or a defect, its own id. */
             revisionId: string;
-            /** @description The revision label; for an RFI */
+            /** @description The revision label; for an RFI or a defect */
             revision: string;
             /** @description The document or sheet title; for an RFI */
             title: string;
@@ -4257,6 +4257,10 @@ export interface components {
             changeIds: string[];
         };
         NovaIndexReport: {
+            /** @description Issued defects indexed in this run (new or changed) */
+            defectsIndexed: number;
+            /** @description Issued defects already indexed at their current text */
+            defectsUnchanged: number;
             /** @description Sent RFIs indexed in this run (new */
             rfisIndexed: number;
             /** @description Sent RFIs already indexed at their current text */
