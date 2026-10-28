@@ -28,7 +28,8 @@
     "infra:linode-cors": "tsx tools/infra/linode-cors.ts",
     "infra:linode-corefile": "tsx tools/infra/linode-corefile.ts",
     "infra:linode-host-files": "tsx tools/infra/linode-host-files.ts",
-    "demo:seed": "tsx tools/demo-seed/seed.ts"
+    "demo:seed": "tsx tools/demo-seed/seed.ts",
+    "site:local": "pnpm --filter @archova/site local"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
