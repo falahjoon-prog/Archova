@@ -70,6 +70,11 @@ export function ProjectScreen({
         subtitle="Raise, fix and close defects, offline"
         onPress={() => router.push(mobileRoutes.defects(projectId))}
       />
+      <ListItem
+        title="Drawings"
+        subtitle="Current sheets for this project"
+        onPress={() => router.push(mobileRoutes.drawings(projectId))}
+      />
     </Screen>
   );
 }

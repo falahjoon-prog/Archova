@@ -43,6 +43,10 @@ function RootNavigator() {
           options={{ headerShown: true, title: 'Site diary' }}
         />
         <Stack.Screen
+          name="project/[projectId]/drawings/index"
+          options={{ headerShown: true, title: 'Drawings' }}
+        />
+        <Stack.Screen
           name="project/[projectId]/defects/index"
           options={{ headerShown: true, title: 'Defects' }}
         />
