@@ -10,6 +10,3 @@ alter table workforce.induction_completions
   add column verified_to text,
   add constraint induction_completions_link_check
     check (method <> 'link' or (access_link_id is not null and verified_to is not null));
-
--- A returning worker is found by their verified mobile (design/08 B2).
-create index workers_phone on workforce.workers (org_id, phone) where phone is not null;
