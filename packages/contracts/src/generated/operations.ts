@@ -382,6 +382,11 @@ export const AddRfiResponseParams = z.object({
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
 });
 export const AddRfiResponseBody = s.CreateRfiResponseRequestSchema;
+export const GetRfiActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
 export const CloseRfiParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1731,6 +1736,18 @@ export const operations = {
     params: AddRfiResponseParams,
     query: null,
     body: AddRfiResponseBody,
+  },
+  getRfiActivity: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/activity',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: GetRfiActivityParams,
+    query: null,
+    body: null,
   },
   closeRfi: {
     method: 'POST',

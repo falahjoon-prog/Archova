@@ -1628,6 +1628,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RfiDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/activity:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    get:
+      operationId: getRfiActivity
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      summary: What happened to the RFI and when (RFI-AC10), for the activity feed.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiActivity' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5292,6 +5310,24 @@ components:
         drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
         x: { type: number, minimum: 0, maximum: 1 }
         y: { type: number, minimum: 0, maximum: 1 }
+    RfiPin:
+      type: object
+      description: The drawing revision an RFI is about, and where on the sheet if it was marked (x and y come together).
+      additionalProperties: false
+      required: [drawingRevisionId, x, y]
+      properties:
+        drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+        x: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        y: { type: [number, 'null'], minimum: 0, maximum: 1 }
+    RfiPinInput:
+      type: object
+      description: Pin an RFI to a drawing revision. Leave x and y out to tie it to the sheet without a position; give both to mark a spot.
+      additionalProperties: false
+      required: [drawingRevisionId]
+      properties:
+        drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+        x: { type: number, minimum: 0, maximum: 1 }
+        y: { type: number, minimum: 0, maximum: 1 }
     RfiAssignee:
       type: object
       required: [userId, companyId, isBallInCourt, respondedAt]
@@ -5378,7 +5414,7 @@ components:
           { type: [string, 'null'], description: 'Decimal string in the project currency (AUD)' }
         scheduleImpactDays: { type: [integer, 'null'] }
         delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
-        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
@@ -5386,12 +5422,17 @@ components:
         version: { type: integer }
     RfiResponse:
       type: object
-      required: [id, rfiId, authorId, body, fileIds, isOfficial, createdAt]
+      required: [id, rfiId, authorId, body, fileIds, isOfficial, aiSuggestionId, createdAt]
       properties:
         id: { type: string }
         rfiId: { type: string }
         authorId: { type: [string, 'null'] }
         body: { type: string }
+        aiSuggestionId:
+          {
+            type: [string, 'null'],
+            description: The Nova suggestion this response was drafted from,
+          }
         fileIds:
           type: array
           items: { type: string }
@@ -5444,7 +5485,7 @@ components:
         costImpact: { $ref: '#/components/schemas/CostImpact' }
         costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
-        pin: { $ref: '#/components/schemas/DrawingPin' }
+        pin: { $ref: '#/components/schemas/RfiPinInput' }
     UpdateRfiRequest:
       type: object
       additionalProperties: false
@@ -5471,7 +5512,7 @@ components:
         costEstimate: { type: [string, 'null'], pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
-        pin: { oneOf: [{ $ref: '#/components/schemas/DrawingPin' }, { type: 'null' }] }
+        pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
     CreateRfiResponseRequest:
       type: object
       additionalProperties: false
@@ -5482,6 +5523,57 @@ components:
           type: array
           maxItems: 20
           items: { $ref: '#/components/schemas/FileRef' }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `rfi.draft` suggestion this response was drafted from.
+    RfiActivityItem:
+      type: object
+      required: [id, kind, at, actorId, details]
+      properties:
+        id: { type: string }
+        kind:
+          type: string
+          enum: [created, updated, opened, responded, answered, closed, reopened, voided, imported]
+        at: { type: string, format: date-time }
+        actorId:
+          {
+            type: [string, 'null'],
+            description: 'The user; null for a person on an access link or the system',
+          }
+        details:
+          type: object
+          additionalProperties: false
+          properties:
+            changed: { type: array, items: { type: string }, description: Fields an update touched }
+            dueDate:
+              {
+                type: array,
+                minItems: 2,
+                maxItems: 2,
+                items: { type: [string, 'null'], format: date },
+                description: Before and after,
+              }
+            assigneeIds:
+              {
+                type: array,
+                minItems: 2,
+                maxItems: 2,
+                items: { type: array, items: { type: string } },
+                description: Before and after,
+              }
+            responseId: { type: string }
+            officialResponseId: { type: string }
+            number: { type: [integer, 'null'] }
+            reason: { type: string }
+    RfiActivity:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          description: Oldest first, at most 500 entries.
+          items: { $ref: '#/components/schemas/RfiActivityItem' }
     CloseRfiRequest:
       type: object
       additionalProperties: false

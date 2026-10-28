@@ -1244,6 +1244,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** What happened to the RFI and when (RFI-AC10), for the activity feed. */
+        get: operations["getRfiActivity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close": {
         parameters: {
             query?: never;
@@ -3671,6 +3692,18 @@ export interface components {
             x: number;
             y: number;
         };
+        /** @description The drawing revision an RFI is about, and where on the sheet if it was marked (x and y come together). */
+        RfiPin: {
+            drawingRevisionId: string;
+            x: number | null;
+            y: number | null;
+        };
+        /** @description Pin an RFI to a drawing revision. Leave x and y out to tie it to the sheet without a position; give both to mark a spot. */
+        RfiPinInput: {
+            drawingRevisionId: string;
+            x?: number;
+            y?: number;
+        };
         RfiAssignee: {
             userId: string;
             companyId: string | null;
@@ -3719,7 +3752,7 @@ export interface components {
             scheduleImpactDays: number | null;
             /** @description Days of delay caused by a late answer */
             delayDays: number | null;
-            pin: components["schemas"]["DrawingPin"] | null;
+            pin: components["schemas"]["RfiPin"] | null;
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -3733,6 +3766,8 @@ export interface components {
             rfiId: string;
             authorId: string | null;
             body: string;
+            /** @description The Nova suggestion this response was drafted from */
+            aiSuggestionId: string | null;
             fileIds: string[];
             isOfficial: boolean;
             /** Format: date-time */
@@ -3763,7 +3798,7 @@ export interface components {
             costImpact?: components["schemas"]["CostImpact"];
             costEstimate?: string;
             scheduleImpactDays?: number;
-            pin?: components["schemas"]["DrawingPin"];
+            pin?: components["schemas"]["RfiPinInput"];
         };
         UpdateRfiRequest: {
             subject?: string;
@@ -3780,11 +3815,38 @@ export interface components {
             costEstimate?: string | null;
             scheduleImpactDays?: number | null;
             delayDays?: number | null;
-            pin?: components["schemas"]["DrawingPin"] | null;
+            pin?: components["schemas"]["RfiPinInput"] | null;
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
+            /** @description The Nova `rfi.draft` suggestion this response was drafted from. */
+            aiSuggestionId?: string;
+        };
+        RfiActivityItem: {
+            id: string;
+            /** @enum {string} */
+            kind: "created" | "updated" | "opened" | "responded" | "answered" | "closed" | "reopened" | "voided" | "imported";
+            /** Format: date-time */
+            at: string;
+            /** @description The user; null for a person on an access link or the system */
+            actorId: string | null;
+            details: {
+                /** @description Fields an update touched */
+                changed?: string[];
+                /** @description Before and after */
+                dueDate?: (string | null)[];
+                /** @description Before and after */
+                assigneeIds?: string[][];
+                responseId?: string;
+                officialResponseId?: string;
+                number?: number | null;
+                reason?: string;
+            };
+        };
+        RfiActivity: {
+            /** @description Oldest first, at most 500 entries. */
+            data: components["schemas"]["RfiActivityItem"][];
         };
         CloseRfiRequest: {
             officialResponseId: string;
@@ -6927,6 +6989,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getRfiActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiActivity"];
                 };
             };
             default: components["responses"]["Problem"];

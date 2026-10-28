@@ -1,3 +1,4 @@
+import { PDFDocument } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId, uuidv7 } from '@archova/domain';
 import {
@@ -6,6 +7,7 @@ import {
   createProject,
   createTestContext,
   signUp,
+  uploadBytes,
   uploadFile,
   type TestContext,
 } from './helpers';
@@ -151,6 +153,80 @@ describe('RFI lifecycle (product/03)', () => {
       { 'if-match': etagOf(voided) },
     );
     expect(again.json().code).toBe('rfi.invalid_transition');
+
+    // The activity feed lists the lifecycle oldest first, with the who and the before/after of an update.
+    const feed = (await s.pm.browser.get(`${s.base}/rfis/${rfi.id}/activity`)).json().data;
+    expect(feed.map((e: { kind: string }) => e.kind)).toEqual([
+      'created',
+      'opened',
+      'answered',
+      'closed',
+      'reopened',
+      'voided',
+    ]);
+    expect(feed[2]).toMatchObject({
+      actorId: s.eng.userId,
+      details: { responseId: a.responses[0].id },
+    });
+    expect(feed[5].details.reason).toBe('Superseded by RFI-002');
+    expect((await s.outsider.browser.get(`${s.base}/rfis/${rfi.id}/activity`)).statusCode).toBe(
+      404,
+    );
+  });
+
+  it('pins to a sheet with or without a position, and records the Nova suggestion on a response', async () => {
+    const s = await setup();
+    const doc = await PDFDocument.create();
+    doc.addPage([595, 842]);
+    const set = (await s.pm.browser.post(`${s.base}/drawing-sets`, { name: 'IFC' })).json();
+    const fileId = await uploadBytes(t, s.pm.browser, s.org.id, s.project.id, await doc.save());
+    const rev = await s.pm.browser.post(`${s.base}/drawing-sets/${set.id}/revisions`, {
+      sheetNumber: 'S-201',
+      title: 'Slab',
+      rev: 'A',
+      fileId,
+    });
+    await s.pm.browser.post(`${s.base}/drawing-sets/${set.id}/publish`, { confirmNewSheets: true });
+    const drawingRevisionId = rev.json().id as string;
+
+    const sheetOnly = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: 'Slab edge',
+      question: 'Which setback governs?',
+      assigneeIds: [s.eng.userId],
+      pin: { drawingRevisionId },
+    });
+    expect(sheetOnly.statusCode).toBe(201);
+    expect(sheetOnly.json().rfi.pin).toEqual({ drawingRevisionId, x: null, y: null });
+    const marked = await s.pm.browser.patch(
+      `${s.base}/rfis/${sheetOnly.json().rfi.id}`,
+      { pin: { drawingRevisionId, x: 0.25, y: 0.5 } },
+      { 'if-match': etagOf(sheetOnly) },
+    );
+    expect(marked.json().rfi.pin).toEqual({ drawingRevisionId, x: 0.25, y: 0.5 });
+    const half = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: 'Half a pin',
+      pin: { drawingRevisionId, x: 0.1 },
+    });
+    expect(half.statusCode).toBe(422);
+
+    const opened = await s.pm.browser.post(
+      `${s.base}/rfis/${sheetOnly.json().rfi.id}/open`,
+      undefined,
+      {
+        'if-match': etagOf(marked),
+      },
+    );
+    expect(opened.statusCode).toBe(200);
+    const suggestionId = `ais_${'0'.repeat(26)}`;
+    const answered = await s.eng.browser.post(
+      `${s.base}/rfis/${sheetOnly.json().rfi.id}/responses`,
+      {
+        body: 'Drafted by Nova, checked by me.',
+        aiSuggestionId: suggestionId,
+      },
+    );
+    expect(answered.statusCode).toBe(201);
+    expect(answered.json().responses[0].aiSuggestionId).toBe(suggestionId);
   });
 
   it('refuses to open an incomplete RFI and never reuses numbers', async () => {
