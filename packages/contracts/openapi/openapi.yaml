@@ -1272,7 +1272,7 @@ paths:
       x-permission: rfis.rfis.create
       summary: Nova drafts an RFI from a note typed on site or a drawing markup (F3).
       description: |
-        A note, a markup with text on it, or both are needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
+        A note, a markup with text on it, a site photo, or any mix of them is needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
         from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
         the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
         neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
@@ -1299,6 +1299,17 @@ paths:
                   properties:
                     drawingRevisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
                     markupId: { type: string, pattern: '^mku_[0-9A-Za-z]{26}$' }
+                photo:
+                  description: |
+                    A site photo already uploaded to this project (PNG, JPEG or WebP, up to 3 MB; the apps shrink
+                    phone photos first). Nova looks at it and says what it shows. A photo shows a condition, not a
+                    location, so `location` is listed in `gaps` unless the note gives one. Numbers read off the
+                    photo are listed in `unsupportedNumbers`.
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
       responses:
         '200':
           description: The draft
