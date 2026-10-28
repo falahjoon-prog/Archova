@@ -9,6 +9,7 @@ import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
 import { createDiarySummaryService } from './application/diary-summary';
+import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiDraftService } from './application/rfi-draft';
 import {
   createDrawingCompareService,
@@ -186,6 +187,12 @@ export function createAiModule(
       projectId: string,
       id: string,
     ) => Promise<DrawingRevisionRef | null>;
+    /** diary.api.dayForSummary: one diary day as the caller may read it, or null (F4). */
+    dayForSummary: (
+      scope: TenantScope,
+      projectId: string,
+      date: string,
+    ) => Promise<DiaryDayForSummary | null>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
     getMarkup: (
       scope: TenantScope,
@@ -263,7 +270,11 @@ export function createAiModule(
     getPreviousRevision: deps.getPreviousDrawingRevision,
     openRfisOnDrawing: deps.openRfisOnDrawing,
   });
-  const diarySummary = createDiarySummaryService({ database: services.database, gateway });
+  const diarySummary = createDiarySummaryService({
+    database: services.database,
+    gateway,
+    dayForSummary: deps.dayForSummary,
+  });
   const inductionQa = createInductionQaService({ database: services.database, gateway });
   const inductionTranslation = createInductionTranslationService({
     database: services.database,
@@ -281,6 +292,7 @@ export function createAiModule(
       inductionDrafts,
       rfiDrafts,
       drawingCompare,
+      diarySummary,
     ),
     permissions: AI_PERMISSIONS,
     provider,

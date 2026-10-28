@@ -29,6 +29,7 @@ beforeAll(async () => {
       },
       getPreviousDrawingRevision: async () => null,
       getMarkup: async () => ({ shapes: [] }),
+      dayForSummary: async () => null,
       openRfisOnDrawing: async () => [],
       provider: t.ai,
     },

@@ -1,12 +1,14 @@
 // F4 site diary summary (ai/01 F4, product/05 DIA-US7): "write today's summary" drafts a short daily report from
 // the day's diary lines. The draft is a pending suggestion the site manager edits into the day's notes; `ai`
-// never writes diary tables. Cached per entry version, so pressing the button again costs nothing until the
-// diary changes.
+// never writes diary tables. Cached per day content, so pressing the button again costs nothing until a line,
+// the weather or the entry changes.
 import { and, desc, eq, sql } from 'drizzle-orm';
 import { diarySummaryPrompt } from '@archova/ai-prompts';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type Database, type TenantContext } from '@archova/kernel';
+import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
+import { isLocalDate, type LocalDate } from '@archova/time';
 import {
+  dayFingerprint,
   diaryFacts,
   reviewDiarySummary,
   weekdayOf,
@@ -24,11 +26,19 @@ export interface DiarySummaryPayload extends ReviewedSummary {
   date: string;
   /** The diary entry version this summary was written from. */
   entryVersion: number;
+  /** `dayFingerprint` of the lines and weather it was written from: the cache key. */
+  dayHash: string;
 }
 
 export interface DiarySummaryDeps {
   database: Database;
   gateway: Pick<Gateway, 'runTask'>;
+  /** `diary.api.dayForSummary`: the day's lines the caller may see, or null when there is no day or no access. */
+  dayForSummary: (
+    scope: TenantScope,
+    projectId: string,
+    date: LocalDate,
+  ) => Promise<DiaryDayForSummary | null>;
 }
 
 export function createDiarySummaryService(deps: DiarySummaryDeps) {
@@ -39,6 +49,7 @@ export function createDiarySummaryService(deps: DiarySummaryDeps) {
    * only the lines they may see.
    */
   async function summariseDay(ctx: TenantContext, projectId: string, day: DiaryDayForSummary) {
+    const dayHash = dayFingerprint(day);
     const cached = await database.withTenantTx(
       ctx,
       async (scope) => {
@@ -54,7 +65,7 @@ export function createDiarySummaryService(deps: DiarySummaryDeps) {
               eq(suggestions.targetId, day.entryId),
               eq(suggestions.promptVersion, diarySummaryPrompt.version),
               eq(suggestions.status, 'pending'),
-              sql`(${suggestions.payload}->>'entryVersion')::int = ${day.version}`,
+              sql`${suggestions.payload}->>'dayHash' = ${dayHash}`,
             ),
           )
           .orderBy(desc(suggestions.createdAt))
@@ -81,7 +92,12 @@ export function createDiarySummaryService(deps: DiarySummaryDeps) {
       throw new AppError('ai.invalid_output', "Nova couldn't write this summary. Try again.");
 
     const reviewed = reviewDiarySummary(run.output, built, day);
-    const payload: DiarySummaryPayload = { date: day.date, entryVersion: day.version, ...reviewed };
+    const payload: DiarySummaryPayload = {
+      date: day.date,
+      entryVersion: day.version,
+      dayHash,
+      ...reviewed,
+    };
     const total = reviewed.sentences.length + reviewed.dropped;
     return database.withTenantTx(ctx, async (scope) => {
       const [row] = await scope.tx
@@ -107,7 +123,22 @@ export function createDiarySummaryService(deps: DiarySummaryDeps) {
     });
   }
 
-  return { summariseDay };
+  /** The route's entry point: reads the day as the caller (their access applies) and summarises it. */
+  async function summariseDate(ctx: TenantContext, projectId: string, date: string) {
+    if (!isLocalDate(date))
+      throw new AppError('validation_failed', 'The date must be a day like 2026-10-28.', [
+        { path: 'date', message: 'Not a valid date' },
+      ]);
+    const day = await database.withTenantTx(
+      ctx,
+      (scope) => deps.dayForSummary(scope, projectId, date),
+      { readOnly: true },
+    );
+    if (!day) throw new AppError('diary.not_found');
+    return summariseDay(ctx, projectId, day);
+  }
+
+  return { summariseDay, summariseDate };
 }
 
 export type DiarySummaryService = ReturnType<typeof createDiarySummaryService>;

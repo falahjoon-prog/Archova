@@ -993,6 +993,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a short summary of one diary day (F4).
+         * @description Nova writes a few plain sentences from the day's labour, plant, deliveries, visitors, delays and events
+         *     that the caller can see. Every sentence names the diary lines it comes from (`sources`), and a sentence
+         *     with a number or a source the lines don't back is dropped. Delays and stand-downs the summary doesn't
+         *     mention are listed in `unmentionedDelays`, and a delay that weather or the lines suggest is listed in
+         *     `possibleDelay` for the person to log. The result is a pending suggestion (`task` `diary.summary`): it is
+         *     never written into the diary, the site manager edits it into the day's notes. Asking again before the day
+         *     changes returns the same suggestion at no cost; any change to the day or its lines makes a new one.
+         *     Costs half a Nova credit. An empty day returns 422 `ai.diary.nothing_to_summarise`.
+         */
+        post: operations["summariseDiaryDayWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes": {
         parameters: {
             query?: never;
@@ -6547,6 +6579,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaRfiDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    summariseDiaryDayWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                /** @description The diary day in the project's time zone (X34). */
+                date: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
                 };
             };
             default: components["responses"]["Problem"];
