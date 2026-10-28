@@ -1268,11 +1268,16 @@ export interface paths {
          * @description Software compares the text on this revision's sheet with the revision it superseded (scanned sheets are
          *     read with OCR) and lists every line added, removed or changed, with where it sits on the sheet. Nova puts
          *     those changes into plain words; an item that cites no real change or adds a number is removed, and changes
-         *     no item describes are listed in `unexplainedChangeIds`. Linework and clouds aren't compared yet: use the
-         *     overlay for those. Open RFIs the caller can see that are pinned to either revision are listed, with
+         *     no item describes are listed in `unexplainedChangeIds`. Where the deployment can render drawing pages
+         *     (`visual` is not null), the linework is compared as well: software compares the two renders and finds each
+         *     place where lines were added or removed, and Nova describes each place and says whether a revision cloud
+         *     marks it. Software lists every place it found, described or not, and removes a description that states a
+         *     number the sheet text near the place lacks; `cloud` is what Nova saw, not checked by software. Where
+         *     `visual` is null, or `visual.reliable` is false, use the overlay for linework. Open RFIs the caller can see that are pinned to either revision are listed, with
          *     `nearChange` when a change sits near the pin. The wording is worked out once per revision pair and shared,
-         *     costing half a Nova credit the first time and nothing after; no text changes means no model call. A POST
-         *     because the first call does that work.
+         *     costing half a Nova credit the first time and nothing after; no text changes means no model call. The
+         *     linework pass costs another half credit the first time, when it finds places to describe. A POST because the
+         *     first call does that work.
          */
         post: operations["compareDrawingRevision"];
         delete?: never;
@@ -4127,6 +4132,8 @@ export interface components {
             truncated: boolean;
             /** @description A sheet was read with OCR; check against the drawing */
             scanned: boolean;
+            /** @description The linework half of the compare. Null where the deployment can't render drawing pages. */
+            visual: null | components["schemas"]["NovaVisualCompare"];
             affectedRfis: {
                 id: string;
                 number: string | null;
@@ -4136,6 +4143,52 @@ export interface components {
                 /** @description A change sits near the RFI's pin */
                 nearChange: boolean;
             }[];
+        };
+        NovaVisualCompare: {
+            /** @description For feedback (`air_`); null when there was nothing to describe. */
+            runId: string | null;
+            /**
+             * @description False when the two renders couldn't be compared line for line (see `reason`); `regions` is then empty and
+             *     says nothing about whether the linework changed.
+             */
+            reliable: boolean;
+            /**
+             * @description Why not reliable. `different_size`: the sheets are different shapes. `too_different`: most of the sheet
+             *     changed, so it was redrawn rather than revised. `blank`: a render came out empty. `render_failed`,
+             *     `allowance_used` and `unavailable`: the pass could not run this time; opening the compare again retries.
+             * @enum {string|null}
+             */
+            reason: "different_size" | "too_different" | "blank" | "render_failed" | "allowance_used" | "unavailable" | null;
+            /** @description More places were found than listed (the biggest are kept) */
+            truncated: boolean;
+            regions: components["schemas"]["NovaVisualRegion"][];
+        };
+        NovaVisualRegion: {
+            /** @description r1 is the place with the most changed lines */
+            id: string;
+            /** @description Left edge on the new sheet (0 to 1 from the left) */
+            x0: number;
+            /** @description Top edge on the new sheet (0 to 1 from the top) */
+            y0: number;
+            x1: number;
+            y1: number;
+            /**
+             * @description Lines only on the new sheet, only on the old sheet, or both.
+             * @enum {string}
+             */
+            kind: "added" | "removed" | "changed";
+            summary: string;
+            /** @description False when `summary` is the plain sentence software wrote because Nova's was missing or failed the checks. */
+            described: boolean;
+            /** @enum {string|null} */
+            what: "wall_or_structure" | "opening" | "fixture_or_services" | "dimension_or_note" | "hatch_or_finish" | "symbol_or_tag" | "other" | null;
+            /**
+             * @description Whether Nova saw a revision cloud or triangle marking the change on the new sheet. Not checked by software; null when not described.
+             * @enum {string|null}
+             */
+            cloud: "yes" | "no" | "unclear" | null;
+            /** @description Text changes (`changes[].id`) that sit in or next to this place. */
+            changeIds: string[];
         };
         NovaIndexReport: {
             /** @description Sent RFIs indexed in this run (new */

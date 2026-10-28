@@ -1,6 +1,12 @@
 // Composition root: the list of modules this app loads (backend 01 §2). Adding a module means adding it here.
 import type { Database, KernelServices, MessageSender, RouteTable } from '@archova/kernel';
-import { AI_PERMISSIONS, createAiModule, type AiConfig, type ModelProvider } from '@archova/mod-ai';
+import {
+  AI_PERMISSIONS,
+  createAiModule,
+  type AiConfig,
+  type ModelProvider,
+  type RasterizePage,
+} from '@archova/mod-ai';
 import { createAccessModule } from '@archova/mod-access';
 import {
   TRIAL_ENTITLEMENTS,
@@ -42,7 +48,7 @@ export interface ModuleOptions {
   identity: IdentityConfig;
   files: { store: ObjectStore; scanner: MalwareScanner; tiles?: TileUrls };
   entitlements?: EntitlementProvider;
-  ai: { config: AiConfig; provider?: ModelProvider };
+  ai: { config: AiConfig; provider?: ModelProvider; rasterizePage?: RasterizePage };
   /** One-time codes for access links (X45). */
   messages: MessageSender;
   /** The web origin access links point at. */
@@ -157,6 +163,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
+    ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
 
   const diary = createDiaryModule(services, {

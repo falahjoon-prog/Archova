@@ -34,6 +34,7 @@ import {
 import type { SimilarRfi } from './domain/rfi-draft';
 import type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 import type { TranslationLanguage } from './domain/translation';
+import type { Raster as VisualRaster } from './domain/visual-diff';
 import { createProvider, type ProviderConfig } from './infra/providers';
 import { AI_PERMISSIONS } from './permissions';
 
@@ -81,7 +82,9 @@ export type {
   VisualCompareResult,
 } from './application/visual-compare';
 export type { DescribedRegion } from './domain/visual-compare';
-export type { Raster as VisualRaster } from './domain/visual-diff';
+export type { VisualRaster };
+/** Renders one PDF page as greyscale (the whole page, longer side 2,000 px) for the linework compare. */
+export type RasterizePage = (file: ReadableFile, pageIndex: number) => Promise<VisualRaster>;
 export type { RfiDraft } from './application/rfi-draft';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';
@@ -246,6 +249,11 @@ export function createAiModule(
       projectId: string,
       revisionIds: string[],
     ) => Promise<RfiOnDrawing[]>;
+    /**
+     * Renders a PDF page as greyscale for the linework half of revision compare (F21): the whole page, longer side
+     * 2,000 px. Only the AI worker image has a native canvas; unset in the API image, where compare stays text-only.
+     */
+    rasterizePage?: RasterizePage;
     /** Tests pass a fake provider directly. */
     provider?: ModelProvider;
     /** Tests pass an enabled test language; defaults to TRANSLATION_LANGUAGES. */
@@ -336,6 +344,7 @@ export function createAiModule(
     getRevision: deps.getDrawingRevision,
     getPreviousRevision: deps.getPreviousDrawingRevision,
     openRfisOnDrawing: deps.openRfisOnDrawing,
+    ...(deps.rasterizePage ? { rasterizePage: deps.rasterizePage } : {}),
   });
   const diarySummary = createDiarySummaryService({
     database: services.database,
