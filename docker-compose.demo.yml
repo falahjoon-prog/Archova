@@ -60,7 +60,9 @@ services:
       AWS_ACCESS_KEY_ID: local
       AWS_SECRET_ACCESS_KEY: local
       API_AI_PROVIDER: fake
-      LOG_LEVEL: warn
+      # No SMS or email provider yet: one-time codes and invite links are written to the api log (sample data only).
+      API_MESSAGES: log
+      LOG_LEVEL: info
     extra_hosts: ['demo.localhost:host-gateway']
 
   web:
