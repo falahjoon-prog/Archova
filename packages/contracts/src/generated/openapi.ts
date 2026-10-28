@@ -693,6 +693,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        /** Where a published sheet stands for takeoff: whether its vector geometry has been extracted and the drawing scale (detected and confirmed). Before extraction it is `pending` with no scale. */
+        get: operations["getSheetGeometry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** A person fixes the drawing scale (1:N) the takeoff tools measure against. If-Match is optional; send the geometry ETag to refuse overwriting a scale someone else just set. */
+        put: operations["confirmSheetScale"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups": {
         parameters: {
             query?: never;
@@ -4185,6 +4227,29 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        SheetGeometry: {
+            revisionId: string;
+            /**
+             * @description `ready` once the files worker has extracted vector geometry
+             * @enum {string}
+             */
+            status: "pending" | "ready";
+            /** @description The N in 1:N the extractor read */
+            scaleDetected: number | null;
+            /** @description The N in 1:N a person confirmed */
+            scaleConfirmed: number | null;
+            scaleConfirmedBy: string | null;
+            /** Format: date-time */
+            scaleConfirmedAt: string | null;
+            /** Format: date-time */
+            extractedAt: string | null;
+            /** @description 0 before anything is recorded */
+            version: number;
+        };
+        ConfirmSheetScaleRequest: {
+            /** @description The N in 1:N */
+            scale: number;
+        };
         MarkupList: {
             data: components["schemas"]["Markup"][];
         };
@@ -7176,6 +7241,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DrawingRevision"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSheetGeometry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetGeometry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmSheetScale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmSheetScaleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetGeometry"];
                 };
             };
             default: components["responses"]["Problem"];

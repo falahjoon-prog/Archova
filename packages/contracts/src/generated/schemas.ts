@@ -257,6 +257,11 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
+export const ConfirmSheetScaleRequestSchema = z.object({
+  "scale": z.number().int().min(1).max(100000),
+}).strict();
+export type ConfirmSheetScaleRequest = z.infer<typeof ConfirmSheetScaleRequestSchema>;
+
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
 
@@ -2243,6 +2248,18 @@ export const SetAllowancesRequestSchema = z.object({
   "allowances": z.record(z.string(), z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"))),
 }).strict();
 export type SetAllowancesRequest = z.infer<typeof SetAllowancesRequestSchema>;
+
+export const SheetGeometrySchema = z.object({
+  "revisionId": z.string(),
+  "status": z.enum(["pending", "ready"]),
+  "scaleDetected": z.number().int().nullable(),
+  "scaleConfirmed": z.number().int().nullable(),
+  "scaleConfirmedBy": z.string().nullable(),
+  "scaleConfirmedAt": z.string().datetime({ offset: true }).nullable(),
+  "extractedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+});
+export type SheetGeometry = z.infer<typeof SheetGeometrySchema>;
 
 export const SignInResultSchema = z.object({
   "outcome": z.enum(["accepted", "blocked", "overridden", "already_on_site", "signed_out"]),

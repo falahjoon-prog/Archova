@@ -199,6 +199,17 @@ export const GetDrawingRevisionParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
 });
+export const GetSheetGeometryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmSheetScaleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmSheetScaleBody = s.ConfirmSheetScaleRequestSchema;
 export const ListMarkupsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1582,6 +1593,30 @@ export const operations = {
     params: GetDrawingRevisionParams,
     query: null,
     body: null,
+  },
+  getSheetGeometry: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: GetSheetGeometryParams,
+    query: null,
+    body: null,
+  },
+  confirmSheetScale: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ConfirmSheetScaleParams,
+    query: null,
+    body: ConfirmSheetScaleBody,
   },
   listMarkups: {
     method: 'GET',
