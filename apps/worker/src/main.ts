@@ -1,26 +1,38 @@
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
+import { createS3ObjectStore } from '@archova/mod-files';
 import { loadConfig } from './config';
 import { startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
+import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 
 /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
 const SUBSCRIBERS: Subscriber[] = [];
 
-/** Nightly and hourly per-org jobs (backend 05 §3). */
-const JOBS: TenantJob[] = [accessLinkPurge];
-
 async function main() {
   const log = createLogger('worker');
   const config = loadConfig();
   const database = createDatabase(config.databaseUrl);
+  /** Nightly and hourly per-org jobs (backend 05 §3). */
+  const jobs: TenantJob[] = [accessLinkPurge];
+  if (config.files.store === 's3') {
+    const store = createS3ObjectStore({
+      bucket: config.files.bucket,
+      region: config.files.region,
+      ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
+      ...(config.files.credentials ? { credentials: config.files.credentials } : {}),
+    });
+    jobs.push(threatMove(store, log));
+  } else {
+    log.warn({}, 'WORKER_FILES_STORE is not s3: file jobs (threat move) are not scheduled');
+  }
   const platform = new pg.Pool({ connectionString: config.platformDatabaseUrl, max: 2 });
   const { publish, running } = startQueues(config.redisUrl, database, SUBSCRIBERS, {
     platform,
-    jobs: JOBS,
+    jobs,
     log: (msg, o) => log.info(o, msg),
   });
 
