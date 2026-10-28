@@ -11,6 +11,7 @@ import {
   DrawingsIcon,
   EstimatingIcon,
   HomeIcon,
+  InductionsIcon,
   RfisIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -103,6 +104,11 @@ export function projectToolGroups(
       href: webRoutes.defects(orgSlug, projectId),
       label: 'Defects',
       icon: DefectsIcon,
+    },
+    canRead('workforce') && {
+      href: webRoutes.inductions(orgSlug, projectId),
+      label: 'Inductions',
+      icon: InductionsIcon,
     },
   ];
   return [
