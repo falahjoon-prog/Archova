@@ -1,7 +1,14 @@
 // F3 RFI auto-draft (ai/01 F3, product/03 RFI "Nova"): turn a note typed on site into an RFI subject and question,
 // with drawing and spec references cited from the project passages retrieval found. The PM edits and sends it;
 // Nova never sends an RFI. Code checks every number in the draft against the note and the cited passages.
-import { CitationSchema, UNTRUSTED_CONTENT_RULE, definePrompt, escapeContent, z } from '../core';
+import {
+  CitationSchema,
+  SitePhoto,
+  UNTRUSTED_CONTENT_RULE,
+  definePrompt,
+  escapeContent,
+  z,
+} from '../core';
 import { DISCIPLINES } from '../drawing-titleblock/prompt';
 
 /** Details a complete RFI states (ai/06 F3 "required elements") that the note didn't give. */
@@ -26,12 +33,8 @@ export const RfiDraftMarkup = z.object({
 export type RfiDraftMarkup = z.infer<typeof RfiDraftMarkup>;
 
 /** A site photo (F3 "from a site photo"), sent to the model as an image. */
-export const RfiDraftPhoto = z.object({
-  mime: z.enum(['image/png', 'image/jpeg', 'image/webp']),
-  /** Base64 without a data: prefix. */
-  base64: z.string().min(1),
-});
-export type RfiDraftPhoto = z.infer<typeof RfiDraftPhoto>;
+export const RfiDraftPhoto = SitePhoto;
+export type RfiDraftPhoto = SitePhoto;
 
 export const RfiDraftInput = z.object({
   /** The typed note; may be empty when a markup with labels or a photo is given. */

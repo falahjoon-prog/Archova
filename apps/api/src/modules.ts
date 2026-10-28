@@ -105,6 +105,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     getMarkup: (scope, projectId, revisionId, markupId) =>
       documents.api.getMarkup(scope, projectId, revisionId, markupId),
     openRfisOnDrawing: (scope, projectId, ids) => rfis.api.openOnDrawing(scope, projectId, ids),
+    projectCompanies: (scope, projectId) =>
+      platform.api.projectCompaniesWithTrades(scope, projectId),
+    openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });

@@ -993,6 +993,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests a title, trade and priority for a defect from its photo (F5).
+         * @description Nova looks at a defect photo and, when the defect is pinned on a drawing, the sheet's own text around the
+         *     pin, and suggests a title, a description, the trade (`trade`, then up to two `alternativeTrades`), the kind of
+         *     defect (`category`) and a priority. The place in the title is named only from the note or the sheet text
+         *     near the pin, copied as printed. Companies on the project that list the trade come back in
+         *     `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
+         *     pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
+         *     in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
+         *     is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+         *     The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
+         *     first); anything else is a 422.
+         */
+        post: operations["tagDefectWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
         parameters: {
             query?: never;
@@ -3228,6 +3260,59 @@ export interface components {
                     y: number;
                 };
                 /** @description The sheet was read with OCR, so the person should check the quoted text against the drawing. */
+                scanned: boolean;
+            } | null;
+        };
+        NovaDefectTag: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            title: string;
+            description: string;
+            /** @description The trade most likely responsible, as a defect stores it; null when the photo doesn't show enough. */
+            trade: string | null;
+            /** @description Up to two other trades that could own it, most likely first. */
+            alternativeTrades: string[];
+            /** @description The kind of defect, as a defect stores it; null when none fits. */
+            category: string | null;
+            priority: components["schemas"]["DefectPriority"];
+            /** @description What Nova couldn't settle, for the form to prompt. */
+            gaps: ("location" | "trade" | "photo_unclear")[];
+            /** @description Numbers in the title or description found in neither the note nor the sheet text. */
+            unsupportedNumbers: string[];
+            /** @description Companies on the project that list the trade, then an alternative. The person picks the assignee. */
+            suggestedCompanies: {
+                /** @description The company (`cmp_`) */
+                id: string;
+                name: string;
+                /** @description The suggested trade the company matched */
+                trade: string;
+            }[];
+            /** @description Open defects already pinned beside this spot, nearest first. */
+            duplicates: {
+                /** @description The defect (`dfx_`) */
+                id: string;
+                /** @description DEF-0042 */
+                numberLabel: string;
+                title: string;
+                status: components["schemas"]["DefectStatus"];
+                trade: string | null;
+                /** @description From the pin */
+                distance: number;
+                sameTrade: boolean;
+            }[];
+            /** @description The sheet the pin is on; null when the defect wasn't pinned. */
+            drawing: {
+                drawingRevisionId: string;
+                sheetNumber: string;
+                title: string;
+                rev: string;
+                pin: {
+                    x: number;
+                    y: number;
+                };
+                /** @description The sheet's own text near the pin, nearest first, which the title may name. */
+                nearby: string[];
+                /** @description The sheet was read with OCR, so the person should check the text against the drawing. */
                 scanned: boolean;
             } | null;
         };
@@ -6824,6 +6909,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaRfiDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    tagDefectWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    /** @description What the person said or typed about the defect. May be empty. */
+                    note?: string;
+                    /** @description Where the defect is on a drawing; without it no place is named and no duplicates are found. */
+                    pin?: components["schemas"]["DrawingPin"];
+                };
+            };
+        };
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaDefectTag"];
                 };
             };
             default: components["responses"]["Problem"];
