@@ -2,7 +2,7 @@
 
 Terraform for Archova on AWS (owner: Jeff). Design: [docs/infrastructure/](../docs/infrastructure/README.md), especially [01-cloud-setup.md](../docs/infrastructure/01-cloud-setup.md). Domain: **archova.com.au**.
 
-Images are built from the root [Dockerfile](../Dockerfile) (targets `api`, `web`, `worker`, `migrate`) by [images.yml](../.github/workflows/images.yml), which also scans them, writes an SBOM and, once AWS is ready, pushes and signs them.
+Images are built from the root [Dockerfile](../Dockerfile) (targets `api`, `web`, `worker`, `ai-worker`, `migrate`) by [images.yml](../.github/workflows/images.yml), which also scans them, writes an SBOM and, once AWS is ready, pushes and signs them.
 
 Nothing here has been applied. Every stack passes `terraform validate`, `tflint` and `checkov` in CI ([.github/workflows/infra.yml](../.github/workflows/infra.yml)); plans and applies switch on once the AWS accounts exist (see [First-time setup](#first-time-setup)).
 

@@ -9,7 +9,8 @@ await build({
   target: 'node22',
   format: 'esm',
   sourcemap: true,
-  external: ['pg-native'],
+  // Native or file-reading packages stay out of the bundle; only the ai-worker image installs them (Dockerfile).
+  external: ['pg-native', '@napi-rs/canvas', 'pdfjs-dist', '@node-rs/argon2'],
   banner: {
     // CommonJS dependencies inside an ESM bundle still call require() for Node built-ins.
     js: "import { createRequire as __createRequire } from 'node:module'; const require = __createRequire(import.meta.url);",

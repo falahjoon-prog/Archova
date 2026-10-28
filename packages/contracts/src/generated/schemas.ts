@@ -1947,6 +1947,11 @@ export const NovaRfiDraftSchema = z.object({
 });
 export type NovaRfiDraft = z.infer<typeof NovaRfiDraftSchema>;
 
+export const NovaSearchResultSchema = z.intersection(NovaSourceSchema, z.object({
+  "snippet": z.string(),
+}));
+export type NovaSearchResult = z.infer<typeof NovaSearchResultSchema>;
+
 export const OnSiteSchema = z.object({
   "total": z.number().int(),
   "companies": z.array(z.object({

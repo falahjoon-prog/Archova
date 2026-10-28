@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Production images for api, web, worker and migrate (infrastructure/03 §2). Built from the repo root for linux/arm64:
+# Production images for api, web, worker, ai-worker and migrate (infrastructure/03 §2). Built from the repo root for linux/arm64:
 #   docker buildx build --platform linux/arm64 --target api .
 # Images run as non-root on distroless Node 22 and trust the Amazon RDS CA bundle for TLS to Aurora.
 
@@ -64,6 +64,25 @@ WORKDIR /app
 ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
 COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
 COPY --from=build /repo/apps/worker/dist /app/dist
+CMD ["--enable-source-maps", "dist/main.js"]
+
+# --- ai-worker (the worker with WORKER_ROLE=ai: renders drawing pages for Nova's vision pass) ------------------------
+# pdf.js needs a native canvas (@napi-rs/canvas) and its fonts, which only this image carries; the api and worker
+# images stay free of them. The packages sit outside the bundle (apps/worker/build.mjs), at the lockfile's versions.
+FROM build AS ai-worker-deps
+WORKDIR /out/ai-worker
+RUN CANVAS=$(node -p "require('/repo/node_modules/.pnpm/node_modules/@napi-rs/canvas/package.json').version") \
+ && PDFJS=$(node -p "require('/repo/modules/ai/node_modules/pdfjs-dist/package.json').version") \
+ && echo '{"name":"ai-worker-runtime","private":true,"type":"module"}' > package.json \
+ && npm install --omit=dev --no-audit --no-fund "@napi-rs/canvas@${CANVAS}" "pdfjs-dist@${PDFJS}" \
+ && node --input-type=commonjs -e "require('@napi-rs/canvas').createCanvas(8, 8).toBuffer('image/png')" \
+ && cp -r /repo/apps/worker/dist ./dist
+
+FROM ${RUNTIME_IMAGE} AS ai-worker
+WORKDIR /app
+ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
+COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
+COPY --from=ai-worker-deps /out/ai-worker /app
 CMD ["--enable-source-maps", "dist/main.js"]
 
 # --- migrate (one-off ECS tasks: tools/db/migrate.js as app_migrator; tools/db/roles.js as the master user) ------

@@ -82,3 +82,11 @@ export async function signInduction(
     }),
   );
 }
+
+export async function getInductionCompletion(
+  api: ApiClient,
+  t: InductionTarget,
+  completionId: string,
+) {
+  return unwrap(await api.GET(`${base}/{completionId}`, { params: at(t, completionId) }));
+}

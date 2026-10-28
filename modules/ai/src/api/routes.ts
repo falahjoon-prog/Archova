@@ -12,6 +12,7 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
   SheetSuggestionPayload,
@@ -185,6 +186,7 @@ export function aiRoutes(
   admin: AdminService,
   drawingRegister: DrawingRegisterService,
   askService: AskService,
+  semanticSearch: SemanticSearchService,
   projectIndex: ProjectIndexService,
   inductionDrafts: InductionDraftService,
   rfiDrafts: RfiDraftService,
@@ -261,6 +263,17 @@ export function aiRoutes(
           citations: a.citations.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
           closestMatches: a.closestMatches.map(toSourceDto),
         },
+      };
+    },
+    searchProjectWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const results = await semanticSearch.search(requireTenant(input), projectId, {
+        query: input.body.query,
+        ...(input.body.limit ? { limit: input.body.limit } : {}),
+      });
+      return {
+        status: 200,
+        body: { results: results.map((r) => ({ ...toSourceDto(r), snippet: r.snippet })) },
       };
     },
     draftRfiWithNova: async (input) => {

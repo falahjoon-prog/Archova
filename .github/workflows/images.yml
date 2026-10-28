@@ -1,4 +1,4 @@
-# Production images (infrastructure/03 §2, §3): build api, web, worker and migrate for linux/arm64, lint the Dockerfile,
+# Production images (infrastructure/03 §2, §3): build api, web, worker, ai-worker and migrate for linux/arm64, lint the Dockerfile,
 # scan each image with Trivy, attach an SBOM, and run the accessibility gate against the built web app. Once the
 # AWS accounts exist (repository variable INFRA_AWS_READY = true) images are pushed to ECR in shared-services
 # (pr-<n>-<sha> on pull requests, <sha> on main) and signed with cosign.
@@ -40,7 +40,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target: [api, web, worker, migrate]
+        target: [api, web, worker, ai-worker, migrate]
     env:
       PUSH: ${{ vars.INFRA_AWS_READY == 'true' && (github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository) }}
       TAG: ${{ github.event_name == 'pull_request' && format('pr-{0}-{1}', github.event.number, github.event.pull_request.head.sha) || github.sha }}
