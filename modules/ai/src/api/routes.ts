@@ -21,8 +21,10 @@ import type {
   InductionDraftService,
 } from '../application/induction-draft';
 import type { ProjectIndexService } from '../application/project-index';
-import type { RfiDraftService } from '../application/rfi-draft';
-import type { DefectTagService } from '../application/defect-tag';
+import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
+import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { ImportMappingService } from '../application/import-mapping';
+import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
@@ -52,6 +54,37 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       possibleDelay: { ...p.possibleDelay, sources: p.possibleDelay.sources.map(diarySource) },
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'rfi.draft') {
+    const p = payload as RfiDraftPayload;
+    return {
+      ...p,
+      references: p.references.map((r) => ({ ...r, ...sourceIds(r) })),
+      similarRfiIds: p.similarRfiIds.map((id) => encodeId('rfi', id)),
+      suggestedAssigneeIds: p.suggestedAssigneeIds.map((id) => encodeId('user', id)),
+      pin: p.pin
+        ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
+        : null,
+    };
+  }
+  if (task === 'defect.tag') {
+    const p = payload as DefectTagPayload;
+    return {
+      ...p,
+      suggestedCompanyIds: p.suggestedCompanyIds.map((id) => encodeId('company', id)),
+      duplicateDefectIds: p.duplicateDefectIds.map((id) => encodeId('defect', id)),
+      pin: p.pin
+        ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
+        : null,
+    };
+  }
+  if (task === 'quote.read') {
+    const p = payload as QuoteReadPayload;
+    return {
+      ...p,
+      packageId: encodeId('tenderPackage', p.packageId),
+      fileId: encodeId('file', p.fileId),
     };
   }
   if (task === 'drawing.titleblock') {
@@ -87,7 +120,12 @@ const diarySource = (s: SummarySource) => ({
     : null,
 });
 
-const TARGET_KINDS = { file_page: 'file', project: 'project', diary_entry: 'diary' } as const;
+const TARGET_KINDS = {
+  file_page: 'file',
+  project: 'project',
+  diary_entry: 'diary',
+  tender_package: 'tenderPackage',
+} as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
   id: encodeId('aiSuggestion', r.id),
@@ -148,6 +186,8 @@ export function aiRoutes(
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
   defectTags: DefectTagService,
+  importMappings: ImportMappingService,
+  quoteReads: QuoteReadService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -243,6 +283,7 @@ export function aiRoutes(
         status: 200,
         body: {
           runId: encodeId('aiRun', d.runId),
+          suggestionId: encodeId('aiSuggestion', d.suggestionId),
           subject: d.subject,
           question: d.question,
           discipline: d.discipline,
@@ -267,6 +308,54 @@ export function aiRoutes(
         },
       };
     },
+    suggestImportMappingWithNova: async (input) => {
+      const m = await importMappings.suggest(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          entity: input.body.entity,
+          columns: input.body.columns,
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', m.runId),
+          suggestionId: encodeId('aiSuggestion', m.suggestionId),
+          entity: m.entity,
+          fields: m.fields.map((f) => ({
+            key: f.key,
+            label: f.label,
+            kind: f.kind,
+            required: f.required,
+            values: (f.values ?? []).map((v) => ({ value: v.value, label: v.label })),
+          })),
+          columns: m.columns,
+          values: m.values,
+          missingRequired: m.missingRequired,
+        },
+      };
+    },
+    readQuoteWithNova: async (input) => {
+      const packageId = decodeId('tenderPackage', input.body.packageId);
+      if (!packageId) throw new AppError('tender.not_found');
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const { runId, suggestionId, truncated, ...payload } = await quoteReads.read(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        { packageId, fileId },
+      );
+      return {
+        status: 200,
+        body: {
+          ...payloadDto('quote.read', payload),
+          runId: encodeId('aiRun', runId),
+          suggestionId: encodeId('aiSuggestion', suggestionId),
+          truncated,
+        },
+      };
+    },
     tagDefectWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
       const photoFileId = decodeId('file', input.body.photo.fileId);
@@ -286,6 +375,7 @@ export function aiRoutes(
         status: 200,
         body: {
           runId: encodeId('aiRun', d.runId),
+          suggestionId: encodeId('aiSuggestion', d.suggestionId),
           title: d.title,
           description: d.description,
           trade: d.trade,

@@ -4,10 +4,12 @@ import { defectTagSuite } from './suites/defect-tag';
 import { diarySummarySuite } from './suites/diary-summary';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
+import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
+import { quoteReadSuite } from './suites/quote-read';
 import { rfiDraftSuite } from './suites/rfi-draft';
 import { translationSuite } from './suites/translation';
 
@@ -26,4 +28,6 @@ export const SUITES: readonly AnySuite[] = [
   rfiDraftSuite,
   drawingCompareSuite,
   defectTagSuite,
+  importMappingSuite,
+  quoteReadSuite,
 ];

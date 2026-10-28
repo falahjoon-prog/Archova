@@ -111,6 +111,9 @@ export function defectsRoutes(database: Database, defects: DefectService) {
           defects.create(s, project(input.params), {
             ...fields(input.body),
             title: input.body.title,
+            ...(input.body.aiSuggestionId
+              ? { aiSuggestionId: ref('aiSuggestion', input.body.aiSuggestionId, 'aiSuggestionId') }
+              : {}),
           }),
         ),
       ),

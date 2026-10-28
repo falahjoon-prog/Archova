@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { sql } from 'drizzle-orm';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { decodeId } from '@archova/domain';
 import {
@@ -282,4 +283,28 @@ export async function addMember(
   });
   if (res.statusCode !== 201) throw new Error(`addMember failed: ${res.statusCode} ${res.body}`);
   return { companyId: company.id };
+}
+
+/** The `data` of every outbox event of a type in an org, oldest first (public org and user ids). */
+export async function outboxData<T>(
+  t: TestContext,
+  orgId: string,
+  userId: string,
+  type: string,
+): Promise<T[]> {
+  const org = decodeId('org', orgId)!;
+  const rows = await t.adminDb.withTenantTx(
+    {
+      orgId: org,
+      userId: decodeId('user', userId)!,
+      principalType: 'member' as const,
+      orgRole: 'owner' as const,
+      entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+      requestId: 'test',
+    },
+    ({ tx }) =>
+      tx.execute(sql`select data from shared.outbox
+                     where org_id = ${org} and type = ${type} order by occurred_at`),
+  );
+  return (rows.rows as Array<{ data: T }>).map((r) => r.data);
 }

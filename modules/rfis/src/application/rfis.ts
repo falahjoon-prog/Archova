@@ -426,7 +426,7 @@ export function createRfiService(deps: RfisDeps) {
   async function create(
     scope: TenantScope,
     projectId: string,
-    input: RfiFields & { subject: string },
+    input: RfiFields & { subject: string; aiSuggestionId?: string },
   ) {
     const v = await viewer(scope, projectId);
     await deps.platform.getProject(scope, projectId);
@@ -447,6 +447,8 @@ export function createRfiService(deps: RfisDeps) {
         managerId: input.managerId ?? (v.isInternal ? scope.ctx.userId : null),
         raisedByCompanyId: v.companyId,
         receivedFromCompanyId: input.receivedFromCompanyId ?? (v.isInternal ? null : v.companyId),
+        // Drafted by Nova: lets the "sent with light or no edits" metric join the draft to the RFI.
+        aiSuggestionId: input.aiSuggestionId ?? null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -459,7 +461,12 @@ export function createRfiService(deps: RfisDeps) {
       entityType: 'rfi',
       entityId: id,
       entityVersion: 1,
-      data: { rfiId: id, raisedByCompanyId: v.companyId, fromExternal: !v.isInternal },
+      data: {
+        rfiId: id,
+        raisedByCompanyId: v.companyId,
+        fromExternal: !v.isInternal,
+        aiSuggestionId: input.aiSuggestionId ?? null,
+      },
     });
     return detail(scope, projectId, id);
   }

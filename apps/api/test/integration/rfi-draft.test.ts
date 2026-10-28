@@ -1,11 +1,13 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { decodeId } from '@archova/domain';
 import { DEFAULT_FAKE_RESPONDERS } from '@archova/mod-ai';
 import {
   addMember,
   createOrg,
   createProject,
   createTestContext,
+  outboxData,
   signUp,
   uploadBytes,
   type TestContext,
@@ -380,5 +382,93 @@ describe('Nova RFI drafts from a site photo (F3)', () => {
     const missing = await draft(`fil_${'0'.repeat(26)}`);
     expect(missing.statusCode).toBe(404);
     expect(missing.json().code).toBe('file.not_found');
+  });
+});
+
+describe('Nova RFI drafts kept as suggestions (F3)', () => {
+  it('keeps each draft as a private suggestion that the RFI it leads to is linked to', async () => {
+    const s = await setup();
+    const asked = await raiseRfi(
+      s,
+      'Level 3 corridor wall fire rating at riser',
+      'Which FRL governs the riser wall?',
+      true,
+    );
+    const note = 'Level 3 corridor wall at the riser: which fire rating governs';
+    const mine = (await s.pm.browser.post(`${s.base}/ai/rfi-drafts`, { note })).json();
+    expect(mine.suggestionId).toMatch(/^ais_/);
+
+    const listed = (await s.pm.browser.get(`${s.base}/ai/suggestions?task=rfi.draft`)).json();
+    expect(listed.data).toHaveLength(1);
+    expect(listed.data[0]).toMatchObject({
+      id: mine.suggestionId,
+      task: 'rfi.draft',
+      targetType: 'project',
+      targetId: s.project.id,
+      status: 'pending',
+      runId: mine.runId,
+      payload: {
+        subject: mine.subject,
+        discipline: 'fire',
+        references: [{ sourceType: 'document', sourceId: s.documentId, page: 1 }],
+        similarRfiIds: [asked],
+        suggestedAssigneeIds: [s.eng.userId],
+        pin: null,
+      },
+    });
+
+    // Someone else on the project doesn't see it, and can't decide it.
+    expect(
+      (await s.sub.browser.get(`${s.base}/ai/suggestions?task=rfi.draft`)).json().data,
+    ).toEqual([]);
+    const stolen = await s.sub.browser.post(
+      `${s.base}/ai/suggestions/${mine.suggestionId}/decision`,
+      { decision: 'accepted' },
+    );
+    expect(stolen.statusCode).toBe(404);
+
+    // Sending the draft as an RFI records where it came from; an RFI written by hand carries nothing.
+    const created = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: mine.subject,
+      question: mine.question,
+      assigneeIds: mine.suggestedAssigneeIds,
+      aiSuggestionId: mine.suggestionId,
+    });
+    expect(created.statusCode).toBe(201);
+    expect((await s.pm.browser.post(`${s.base}/rfis`, { subject: 'By hand' })).statusCode).toBe(
+      201,
+    );
+    const bad = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: 'Bad link',
+      aiSuggestionId: 'ais_nope',
+    });
+    expect(bad.statusCode).toBe(422);
+    const events = await outboxData<{ rfiId: string; aiSuggestionId: string | null }>(
+      t,
+      s.org.id,
+      s.pm.userId,
+      'rfis.rfi.created.v1',
+    );
+    // The earlier RFI raised for the test, then the one from the draft, then the hand-written one.
+    expect(events.map((e) => e.aiSuggestionId)).toEqual([
+      null,
+      decodeId('aiSuggestion', mine.suggestionId),
+      null,
+    ]);
+
+    // The person says whether they sent it as drafted.
+    const decided = await s.pm.browser.post(
+      `${s.base}/ai/suggestions/${mine.suggestionId}/decision`,
+      { decision: 'edited' },
+    );
+    expect(decided.statusCode).toBe(200);
+    expect(decided.json()).toMatchObject({ id: mine.suggestionId, status: 'edited' });
+    expect(
+      (
+        await s.pm.browser.post(`${s.base}/ai/suggestions/${mine.suggestionId}/decision`, {
+          decision: 'rejected',
+        })
+      ).statusCode,
+    ).toBe(409);
   });
 });

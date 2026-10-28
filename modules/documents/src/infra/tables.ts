@@ -185,3 +185,20 @@ export const transmittalRecipients = documents.table('transmittal_recipients', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const sheetGeometry = documents.table('sheet_geometry', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  revisionId: uuid('revision_id').notNull(),
+  geometryKey: text('geometry_key'),
+  extractorVersion: text('extractor_version'),
+  extractedAt: timestamp('extracted_at', { withTimezone: true }),
+  scaleDetected: integer('scale_detected'),
+  scaleConfirmed: integer('scale_confirmed'),
+  scaleConfirmedBy: uuid('scale_confirmed_by'),
+  scaleConfirmedAt: timestamp('scale_confirmed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});

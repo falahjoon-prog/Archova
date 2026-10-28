@@ -8,11 +8,13 @@ import type {
   Folder,
   Markup,
   MarkupShape,
+  SheetGeometry,
   Transmittal,
   TransmittalRecipient,
 } from '@archova/contracts';
 import type { DocumentWithCurrent } from '../application/documents';
 import type { RevisionView } from '../application/drawings';
+import type { SheetGeometryRow } from '../application/geometry';
 import type {
   documentRevisions,
   drawingMarkups,
@@ -179,4 +181,18 @@ export const toRecipientDto = (
   openedAt: isoOrNull(r.openedAt),
   downloadedAt: isoOrNull(r.downloadedAt),
   acknowledgedAt: isoOrNull(r.acknowledgedAt),
+});
+
+export const toSheetGeometryDto = (
+  revisionId: string,
+  g: SheetGeometryRow | null,
+): SheetGeometry => ({
+  revisionId: encodeId('drawingRevision', revisionId),
+  status: g?.geometryKey ? 'ready' : 'pending',
+  scaleDetected: g?.scaleDetected ?? null,
+  scaleConfirmed: g?.scaleConfirmed ?? null,
+  scaleConfirmedBy: g?.scaleConfirmedBy ? encodeId('user', g.scaleConfirmedBy) : null,
+  scaleConfirmedAt: g?.scaleConfirmedAt ? g.scaleConfirmedAt.toISOString() : null,
+  extractedAt: g?.extractedAt ? g.extractedAt.toISOString() : null,
+  version: g?.version ?? 0,
 });
