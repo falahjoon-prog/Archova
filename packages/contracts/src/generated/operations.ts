@@ -500,6 +500,50 @@ export const ConfirmTakeoffMeasurementParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
 });
+export const ListImportJobsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListImportJobsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateImportJobBody = s.CreateImportJobRequestSchema;
+export const GetImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const ParseImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const SetImportMappingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const SetImportMappingBody = s.ImportMappingRequestSchema;
+export const CancelImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const ListImportRowsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const ListImportRowsQuery = z.object({
+  "status": s.ImportRowStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
 export const ListDefectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2160,6 +2204,90 @@ export const operations = {
     contentType: null,
     params: ConfirmTakeoffMeasurementParams,
     query: null,
+    body: null,
+  },
+  listImportJobs: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.read",
+    internal: false,
+    contentType: null,
+    params: ListImportJobsParams,
+    query: ListImportJobsQuery,
+    body: null,
+  },
+  createImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateImportJobParams,
+    query: null,
+    body: CreateImportJobBody,
+  },
+  getImportJob: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.read",
+    internal: false,
+    contentType: null,
+    params: GetImportJobParams,
+    query: null,
+    body: null,
+  },
+  parseImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: null,
+    params: ParseImportJobParams,
+    query: null,
+    body: null,
+  },
+  setImportMapping: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetImportMappingParams,
+    query: null,
+    body: SetImportMappingBody,
+  },
+  cancelImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: null,
+    params: CancelImportJobParams,
+    query: null,
+    body: null,
+  },
+  listImportRows: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.read",
+    internal: false,
+    contentType: null,
+    params: ListImportRowsParams,
+    query: ListImportRowsQuery,
     body: null,
   },
   listDefects: {

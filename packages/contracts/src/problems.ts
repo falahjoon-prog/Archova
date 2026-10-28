@@ -116,6 +116,14 @@ export const PROBLEM_CODES = {
   'takeoff.not_found': 404,
   'takeoff.invalid': 422,
   'takeoff.revision_not_found': 422,
+  // integrations
+  'import.not_found': 404,
+  'import.invalid_state': 409,
+  'import.already_open': 409,
+  'import.no_header': 422,
+  'import.too_many_rows': 422,
+  'import.invalid_mapping': 422,
+  'import.mapping_incomplete': 422,
   // defects
   'defect.not_found': 404,
   'defect.invalid_transition': 409,

@@ -1567,6 +1567,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Imports on the project, newest first. */
+        get: operations["listImportJobs"];
+        put?: never;
+        /** Start an import from a file the customer exported (CSV). One import at a time per project. The file is read by the parse step. */
+        post: operations["createImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        /** One import with its counts from the last dry run. */
+        get: operations["getImportJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read the file into staged rows, one per record, up to 50,000. Running it again replaces the staged rows and clears the mapping. */
+        post: operations["parseImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose which column fills which field (and what each status value means), then dry-run every staged row. Every required field needs a column. Nothing is created. */
+        put: operations["setImportMapping"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drop an import that has not started applying; its staged rows are cleared by the retention job. */
+        post: operations["cancelImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        /** The staged rows in file order, with what is wrong with the ones that failed the dry run. */
+        get: operations["listImportRows"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/defects": {
         parameters: {
             query?: never;
@@ -4743,6 +4869,90 @@ export interface components {
             scopeKey?: string | null;
         };
         /** @enum {string} */
+        ImportSource: "spreadsheet" | "aconex_export" | "procore_export";
+        /** @enum {string} */
+        ImportJobStatus: "uploaded" | "parsed" | "mapped" | "validated" | "applying" | "done" | "failed" | "rolled_back" | "cancelled";
+        /** @enum {string} */
+        ImportRowStatus: "staged" | "valid" | "invalid" | "skipped" | "applied" | "failed";
+        ImportMapping: {
+            /** @description Field key to the index of the column that fills it. */
+            columns: {
+                [key: string]: number;
+            };
+            /** @description Field key to what each value in the file means (file value to the value Archova stores). */
+            values: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        ImportJob: {
+            id: string;
+            projectId: string;
+            entity: components["schemas"]["ImportEntity"];
+            source: components["schemas"]["ImportSource"];
+            fileId: string;
+            status: components["schemas"]["ImportJobStatus"];
+            headerRow: number;
+            headers: string[];
+            mapping: components["schemas"]["ImportMapping"];
+            totalRows: number;
+            validRows: number;
+            invalidRows: number;
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+            version: number;
+        };
+        ImportJobPage: {
+            data: components["schemas"]["ImportJob"][];
+            nextCursor: string | null;
+        };
+        CreateImportJobRequest: {
+            entity: components["schemas"]["ImportEntity"];
+            source?: components["schemas"]["ImportSource"];
+            fileId: components["schemas"]["FileRef"];
+            /** @description The row the headings are on; default 1 */
+            headerRow?: number;
+        };
+        ImportMappingRequest: {
+            columns: {
+                [key: string]: number;
+            };
+            values?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        ImportRowProblem: {
+            field: string;
+            message: string;
+        };
+        ImportRow: {
+            id: string;
+            /** @description The record number in the file, counting the heading row */
+            rowNumber: number;
+            raw: string[];
+            /** @description The row in Archova's fields once mapped. */
+            normalised: {
+                [key: string]: string | number | null;
+            } | null;
+            /** @description The record's own number in the old system */
+            sourceRef: string | null;
+            status: components["schemas"]["ImportRowStatus"];
+            errors: components["schemas"]["ImportRowProblem"][];
+            createdEntityId: string | null;
+        };
+        ImportRowPage: {
+            data: components["schemas"]["ImportRow"][];
+            nextCursor: string | null;
+        };
+        /** @enum {string} */
         DefectStatus: "draft" | "open" | "ready_for_review" | "closed" | "disputed" | "void";
         /** @enum {string} */
         DefectPriority: "low" | "medium" | "high" | "critical";
@@ -5939,6 +6149,7 @@ export interface components {
         TenderPackageId: string;
         QuoteId: string;
         TakeoffMeasurementId: string;
+        ImportJobId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -8562,6 +8773,210 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listImportJobs: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJobPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createImportJob: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateImportJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getImportJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    parseImportJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setImportMapping: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportMappingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelImportJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listImportRows: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ImportRowStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowPage"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -429,6 +429,20 @@ export const CreateGateRequestSchema = z.object({
 }).strict();
 export type CreateGateRequest = z.infer<typeof CreateGateRequestSchema>;
 
+export const ImportEntitySchema = z.enum(["rfi", "defect", "drawing_register", "company"]);
+export type ImportEntity = z.infer<typeof ImportEntitySchema>;
+
+export const ImportSourceSchema = z.enum(["spreadsheet", "aconex_export", "procore_export"]);
+export type ImportSource = z.infer<typeof ImportSourceSchema>;
+
+export const CreateImportJobRequestSchema = z.object({
+  "entity": ImportEntitySchema,
+  "source": ImportSourceSchema.optional(),
+  "fileId": FileRefSchema,
+  "headerRow": z.number().int().min(1).max(100).optional(),
+}).strict();
+export type CreateImportJobRequest = z.infer<typeof CreateImportJobRequestSchema>;
+
 export const MobileNumberSchema = z.string().regex(new RegExp("^\\+[1-9][0-9]{6,14}$"));
 export type MobileNumber = z.infer<typeof MobileNumberSchema>;
 
@@ -1193,8 +1207,74 @@ export const GateWithCodeSchema = z.object({
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
 
-export const ImportEntitySchema = z.enum(["rfi", "defect", "drawing_register", "company"]);
-export type ImportEntity = z.infer<typeof ImportEntitySchema>;
+export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
+export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
+
+export const ImportMappingSchema = z.object({
+  "columns": z.record(z.string(), z.number().int().min(0)),
+  "values": z.record(z.string(), z.record(z.string(), z.string())),
+});
+export type ImportMapping = z.infer<typeof ImportMappingSchema>;
+
+export const ImportJobSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "entity": ImportEntitySchema,
+  "source": ImportSourceSchema,
+  "fileId": z.string(),
+  "status": ImportJobStatusSchema,
+  "headerRow": z.number().int(),
+  "headers": z.array(z.string()),
+  "mapping": ImportMappingSchema,
+  "totalRows": z.number().int(),
+  "validRows": z.number().int(),
+  "invalidRows": z.number().int(),
+  "startedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "finishedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+});
+export type ImportJob = z.infer<typeof ImportJobSchema>;
+
+export const ImportJobPageSchema = z.object({
+  "data": z.array(ImportJobSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ImportJobPage = z.infer<typeof ImportJobPageSchema>;
+
+export const ImportMappingRequestSchema = z.object({
+  "columns": z.record(z.string(), z.number().int().min(0)),
+  "values": z.record(z.string(), z.record(z.string(), z.string().max(100))).optional(),
+}).strict();
+export type ImportMappingRequest = z.infer<typeof ImportMappingRequestSchema>;
+
+export const ImportRowStatusSchema = z.enum(["staged", "valid", "invalid", "skipped", "applied", "failed"]);
+export type ImportRowStatus = z.infer<typeof ImportRowStatusSchema>;
+
+export const ImportRowProblemSchema = z.object({
+  "field": z.string(),
+  "message": z.string(),
+});
+export type ImportRowProblem = z.infer<typeof ImportRowProblemSchema>;
+
+export const ImportRowSchema = z.object({
+  "id": z.string(),
+  "rowNumber": z.number().int(),
+  "raw": z.array(z.string()),
+  "normalised": z.record(z.string(), z.union([z.string(), z.number()]).nullable()).nullable(),
+  "sourceRef": z.string().nullable(),
+  "status": ImportRowStatusSchema,
+  "errors": z.array(ImportRowProblemSchema),
+  "createdEntityId": z.string().nullable(),
+});
+export type ImportRow = z.infer<typeof ImportRowSchema>;
+
+export const ImportRowPageSchema = z.object({
+  "data": z.array(ImportRowSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type ImportRowPage = z.infer<typeof ImportRowPageSchema>;
 
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;

@@ -22,6 +22,8 @@ export const ID_PREFIXES = {
   quote: 'quo',
   quoteLine: 'qln',
   takeoffMeasurement: 'tkm',
+  importJob: 'imp',
+  importRow: 'imr',
   diary: 'dia',
   claim: 'clm',
   event: 'evt',
