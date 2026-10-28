@@ -42,8 +42,13 @@ function workspaces(): Pkg[] {
 
 const FRONTEND_APPS = new Set(['@archova/web', '@archova/mobile', '@archova/admin']);
 const BACKEND = (p: Pkg) =>
-  ['@archova/api', '@archova/worker', '@archova/realtime', '@archova/kernel'].includes(p.name) ||
-  p.name.startsWith('@archova/mod-');
+  [
+    '@archova/api',
+    '@archova/worker',
+    '@archova/realtime',
+    '@archova/kernel',
+    '@archova/compose',
+  ].includes(p.name) || p.name.startsWith('@archova/mod-');
 const PURE = new Set([
   '@archova/domain',
   '@archova/contracts',
@@ -58,7 +63,10 @@ const PURE = new Set([
   '@archova/design-tokens',
 ]);
 const BACKEND_ONLY = (d: string) =>
-  d === '@archova/kernel' || d.startsWith('@archova/mod-') || d === '@archova/ai-prompts';
+  d === '@archova/kernel' ||
+  d === '@archova/compose' ||
+  d.startsWith('@archova/mod-') ||
+  d === '@archova/ai-prompts';
 const CLIENT_ONLY = new Set([
   '@archova/ui',
   '@archova/ui-native',

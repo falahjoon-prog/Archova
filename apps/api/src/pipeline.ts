@@ -14,7 +14,7 @@ import {
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE } from '@archova/mod-identity';
 import type { ApiConfig } from './config';
-import type { Modules } from './modules';
+import type { Modules } from '@archova/compose';
 import type { IdempotencyStore } from './plugins/idempotency';
 import { safeEqualStrings } from './util';
 

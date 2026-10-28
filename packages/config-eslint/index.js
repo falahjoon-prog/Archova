@@ -66,6 +66,7 @@ const frontendOnly = [
 const backendOnly = [
   '@archova/kernel',
   '@archova/kernel/*',
+  '@archova/compose',
   '@archova/mod-*',
   '@archova/ai-prompts',
 ];
