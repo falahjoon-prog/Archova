@@ -178,16 +178,6 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   diaryApi = diary.api;
 
-  const sync = createSyncModule(services, {
-    access: access.api,
-    sources: [
-      defects.api.syncSource,
-      diary.api.syncSource,
-      rfis.api.syncSource,
-      documents.api.syncSource,
-    ],
-  });
-
   const workforce = createWorkforceModule(services, {
     access: access.api,
     platform: platform.api,
@@ -210,6 +200,17 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       redis: services.redis,
       logger: services.logger,
     },
+  });
+
+  const sync = createSyncModule(services, {
+    access: access.api,
+    sources: [
+      defects.api.syncSource,
+      diary.api.syncSource,
+      rfis.api.syncSource,
+      documents.api.syncSource,
+      workforce.api.syncSource,
+    ],
   });
 
   const all = [

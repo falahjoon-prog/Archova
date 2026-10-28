@@ -869,6 +869,24 @@ export function createAttendanceService(deps: WorkforceDeps) {
   }
 
   /**
+   * Mobile pull (modules/sync): the sessions among `ids` the caller may see, by the same rule as
+   * `sessionsForDay` (a company-scoped viewer sees only their own company's); the rest go out as deletes.
+   */
+  async function visibleSessions(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length) return [];
+    const v = await viewer(scope, projectId);
+    const where: SQL[] = [
+      eq(attendanceSessions.projectId, projectId),
+      inArray(attendanceSessions.id, [...ids]),
+    ];
+    if (v.scopedCompanyId) where.push(eq(attendanceSessions.companyId, v.scopedCompanyId));
+    return scope.tx
+      .select()
+      .from(attendanceSessions)
+      .where(and(...where));
+  }
+
+  /**
    * Closes sessions still open after their site's day end (ATT-AC4). Run by the scheduled job per org;
    * sign-out time is the day end, and the hours are flagged as not exact.
    */
@@ -1048,6 +1066,7 @@ export function createAttendanceService(deps: WorkforceDeps) {
     markRollCall,
     endRollCall,
     listRollCalls,
+    visibleSessions,
   };
 }
 
