@@ -42,6 +42,8 @@ Ava's base set plus three backend-specific queues for heavy or bursty work. Each
 
 Repeatable jobs, one instance cluster-wide (fixed `jobId`). Scans that cross tenants are **platform jobs** (`app_platform`, narrow views only) that fan out per-org tenant jobs; nothing in api/worker uses `BYPASSRLS`.
 
+**Exception:** the outbox relay (§1) connects as `app_platform` with column-limited `SELECT (id, org_id, type, occurred_at, published_at)` and `UPDATE (published_at)` on `shared.outbox`, plus two narrow policies; it never reads payloads. Approved by Sam on PR #73.
+
 | Job | When | What |
 |---|---|---|
 | `financials.sopa-deadlines` | every 15 min | From `financials.v_open_claim_deadlines`, find schedules/payments due within 5, 2, 1, 0 business days in the project's state and timezone; notify the responsible party; escalate to admins on the day. **Runs in every subscription state.** Missed run → page. |
