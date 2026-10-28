@@ -51,7 +51,7 @@ module "files" {
   expire_prefixes                    = { "quarantine/" = 2, "threats/" = 30 } # threats/: malware.tf
   access_log_bucket                  = module.access_logs.id
   force_destroy                      = var.force_destroy_buckets
-  policy_statements                  = [data.aws_iam_policy_document.files_scanned_only.json, data.aws_iam_policy_document.files_legal_hold_only.json]
+  policy_statements                  = concat([data.aws_iam_policy_document.files_scanned_only.json, data.aws_iam_policy_document.files_legal_hold_only.json], local.files_cdn ? [data.aws_iam_policy_document.files_cdn_read[0].json] : [])
   cors_rules = [{
     allowed_methods = ["PUT"]
     allowed_origins = ["https://${var.app_host}"]
