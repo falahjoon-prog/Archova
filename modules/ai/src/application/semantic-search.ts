@@ -51,6 +51,7 @@ export function createSemanticSearchService(deps: SemanticSearchDeps) {
       purpose: 'query',
       feature: 'ask',
       projectId,
+      rateLimited: true,
     });
     const hits = await database.withTenantTx(
       ctx,

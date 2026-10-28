@@ -3,6 +3,7 @@ import type { DrawingSheet as Sheet } from '@archova/contracts';
 import { registerRows } from '../features/drawings';
 
 vi.mock('../features/drawings/screens/DrawingRegisterScreen', () => ({}));
+vi.mock('../features/drawings/screens/DrawingViewerScreen', () => ({}));
 
 const sheet = (over: Partial<Sheet>): Sheet => ({
   id: 's1',

@@ -1372,7 +1372,8 @@ paths:
         one per page of each revision, each with the start of the passage or the stretch around the first query word
         it contains. Nothing is written or answered: the only model call is the embedding of the query, which costs
         no Nova credits. The closest passages are returned even when none is close, so an empty list means nothing
-        is indexed that the caller can see. Needs Nova on for the organisation, as Ask does.
+        is indexed that the caller can see. Needs Nova on for the organisation, as Ask does. Each person can search
+        120 times in ten minutes; beyond that the response is 429 `rate_limited`.
       requestBody:
         required: true
         content:

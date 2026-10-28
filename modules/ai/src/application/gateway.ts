@@ -38,6 +38,8 @@ export interface GatewayDeps {
   credits?: Readonly<Record<string, number>>;
   /** Per-user limit on interactive runs (ai/05 §4): stops scripts and loops, not normal use. */
   rateLimit?: { runs: number; windowS: number };
+  /** Per-user limit on query embeddings a person triggers by searching (F6): each pays for an embedding. */
+  queryRateLimit?: { runs: number; windowS: number };
   timeouts?: { interactiveMs: number; backgroundMs: number };
   now?: () => Date;
 }
@@ -77,17 +79,22 @@ export interface EmbedOptions {
   /** Feature the embeddings serve, for the feature switch and the ledger (`ask`). */
   feature: string;
   projectId?: string | null;
+  /** Counts against the caller's per-user search limit; for embeddings a person triggers by typing a query. */
+  rateLimited?: boolean;
 }
 
 /** Texts per provider call; Titan takes one at a time anyway, Cohere up to 96. */
 const EMBED_BATCH = 64;
 
 const DEFAULT_RATE_LIMIT = { runs: 30, windowS: 600 };
+/** Searches are cheaper than answers and may run as the person types, so the limit is looser: one every 5 s. */
+const DEFAULT_QUERY_RATE_LIMIT = { runs: 120, windowS: 600 };
 const DEFAULT_TIMEOUTS = { interactiveMs: 60_000, backgroundMs: 180_000 };
 
 export function createGateway(deps: GatewayDeps) {
   const prices = deps.credits ?? TASK_CREDITS;
   const rateLimit = deps.rateLimit ?? DEFAULT_RATE_LIMIT;
+  const queryRateLimit = deps.queryRateLimit ?? DEFAULT_QUERY_RATE_LIMIT;
   const timeouts = deps.timeouts ?? DEFAULT_TIMEOUTS;
   const now = deps.now ?? (() => new Date());
 
@@ -140,13 +147,13 @@ export function createGateway(deps: GatewayDeps) {
     return Number(row?.total ?? 0);
   }
 
-  async function checkRateLimit(ctx: TenantContext) {
+  async function checkRateLimit(ctx: TenantContext, bucket = 'rl', limit = rateLimit) {
     if (!deps.redis) return;
-    const window = Math.floor(now().getTime() / 1000 / rateLimit.windowS);
-    const key = tenantKey(ctx.orgId, 'ai', 'rl', ctx.userId, String(window));
+    const window = Math.floor(now().getTime() / 1000 / limit.windowS);
+    const key = tenantKey(ctx.orgId, 'ai', bucket, ctx.userId, String(window));
     const n = await deps.redis.incr(key);
-    if (n === 1) await deps.redis.expire(key, rateLimit.windowS);
-    if (n > rateLimit.runs)
+    if (n === 1) await deps.redis.expire(key, limit.windowS);
+    if (n > limit.runs)
       throw new AppError('rate_limited', 'Too many Nova requests. Try again in a few minutes.');
   }
 
@@ -243,6 +250,7 @@ export function createGateway(deps: GatewayDeps) {
     const prompt = { id: task, feature: opts.feature, version: 1, kind: 'background' as const };
     const ro = { readOnly: true } as const;
     const { day } = await deps.database.withTenantTx(ctx, (s) => admit(s, prompt, 0), ro);
+    if (opts.rateLimited) await checkRateLimit(ctx, 'rlq', queryRateLimit);
     const { model, pricePerMTok } = deps.embedding;
     const vectors: number[][] = [];
     const calls: CallRecord[] = [];

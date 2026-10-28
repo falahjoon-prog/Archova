@@ -19,7 +19,7 @@ locals {
   })
 
   # Resource name for a service: archova-<env>-<cell>-<service> (X24).
-  svc = { for s in concat(keys(var.services), ["worker", "ai-worker"]) : s => "${local.name}-${s}" }
+  svc = { for s in concat(keys(var.services), ["worker", "ai-worker", "files-worker"]) : s => "${local.name}-${s}" }
 }
 
 resource "aws_ecs_cluster" "this" {
