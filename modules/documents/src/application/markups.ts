@@ -180,7 +180,7 @@ export function createMarkupService(c: DocumentsContext, drawings: DrawingServic
     });
   }
 
-  return { list, create, update, remove };
+  return { list, create, update, remove, getOwn };
 }
 
 /** Private and company markups only sync to the people who can see them. */

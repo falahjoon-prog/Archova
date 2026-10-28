@@ -10,16 +10,13 @@ import {
   diffSheets,
   isNearChange,
   reviewCompare,
-  sheetLines,
   type ReviewedCompare,
   type SheetChange,
-  type SheetLine,
 } from '../domain/drawing-compare';
-import { ocrToTextItems } from '../domain/ocr';
-import { readPdfText, readScannedPages } from '../infra/pdf';
 import { drawingCompares } from '../infra/tables';
 import { MAX_INLINE_BYTES, type ReadableFile } from './drawing-register';
 import type { Gateway } from './gateway';
+import { readSheetLines } from './sheet-text';
 
 /** What `documents` returns for a drawing revision (the fields Nova reads). */
 export interface DrawingRevisionRef {
@@ -82,27 +79,6 @@ export function createDrawingCompareService(deps: DrawingCompareDeps) {
   const { database } = deps;
   const ro = { readOnly: true } as const;
 
-  /** The sheet's lines, from the text layer or, for a scan, OCR. */
-  async function linesOf(
-    ctx: TenantContext,
-    projectId: string,
-    file: ReadableFile,
-    page: number,
-  ): Promise<{ lines: SheetLine[]; scanned: boolean }> {
-    if (file.file.mime !== 'application/pdf') return { lines: [], scanned: false };
-    const pdf = await readPdfText(file.bytes, { pages: [page] });
-    const text = pdf.pages[0];
-    if (text?.items.some((i) => i.str.trim()))
-      return { lines: sheetLines(text.items, text), scanned: false };
-    const [scan] = await readScannedPages(file.bytes, [page]);
-    if (!scan) return { lines: [], scanned: false };
-    const [read] = await deps.gateway.ocr(ctx, [scan.png], {
-      feature: drawingComparePrompt.feature,
-      projectId,
-    });
-    return { lines: sheetLines(ocrToTextItems(read!.lines, scan.placement), scan), scanned: true };
-  }
-
   async function compare(
     ctx: TenantContext,
     projectId: string,
@@ -148,8 +124,23 @@ export function createDrawingCompareService(deps: DrawingCompareDeps) {
         }),
         { readOnly: true, statementTimeout: '60s' },
       );
-      const before = await linesOf(ctx, projectId, files.from, from.pageIndex + 1);
-      const after = await linesOf(ctx, projectId, files.to, to.pageIndex + 1);
+      const feature = drawingComparePrompt.feature;
+      const before = await readSheetLines(
+        deps.gateway,
+        ctx,
+        projectId,
+        feature,
+        files.from,
+        from.pageIndex + 1,
+      );
+      const after = await readSheetLines(
+        deps.gateway,
+        ctx,
+        projectId,
+        feature,
+        files.to,
+        to.pageIndex + 1,
+      );
       if (!before.lines.length || !after.lines.length)
         throw new AppError(
           'ai.drawing_compare.no_text',
