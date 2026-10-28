@@ -1435,6 +1435,61 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaDefectTag' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: suggestImportMappingWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.import_mapping.suggest
+      summary: Nova suggests which field each column of an import file fills (F31).
+      description: |
+        The import screen reads the file and sends, for each column, its header, up to five of its values and, for a
+        column with at most 30 distinct values (a status or priority), those values. Nova suggests the field each
+        column fills for the kind of record (`entity`), with a confidence, and for columns that fill a field with
+        fixed values (status, priority) what each value in the file means. Code keeps only fields that exist, gives
+        each field to one column, withdraws a suggestion whose values don't look like that kind of field (a date
+        column of names), fills `examples` from the file, and lists the required fields no column fills in
+        `missingRequired`. Nothing is imported: the person confirms or changes every suggestion, and the screen
+        passes `suggestionId` when it starts the import job. The suggestion keeps no values from the file and is
+        private to the caller. Costs a quarter of a Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entity, columns]
+              properties:
+                entity: { $ref: '#/components/schemas/ImportEntity' }
+                columns:
+                  type: array
+                  minItems: 1
+                  maxItems: 80
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [header, samples]
+                    properties:
+                      header: { type: string, maxLength: 200 }
+                      samples:
+                        type: array
+                        maxItems: 5
+                        items: { type: string, maxLength: 100 }
+                      distinct:
+                        type: array
+                        maxItems: 30
+                        items: { type: string, maxLength: 100 }
+      responses:
+        '200':
+          description: The suggested mapping
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaImportMapping' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5277,6 +5332,88 @@ components:
             scanned:
               type: boolean
               description: The sheet was read with OCR, so the person should check the quoted text against the drawing.
+    ImportEntity:
+      type: string
+      enum: [rfi, defect, drawing_register, company]
+    NovaImportMapping:
+      type: object
+      required: [runId, suggestionId, entity, fields, columns, values, missingRequired]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        suggestionId:
+          type: string
+          description: The saved suggestion (`ais_`), private to the caller. Pass it when the import job starts, then decide it.
+        entity: { $ref: '#/components/schemas/ImportEntity' }
+        fields:
+          description: The fields a column of this record can fill, for the screen to offer when the person changes a suggestion.
+          type: array
+          items:
+            type: object
+            required: [key, label, kind, required, values]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              kind: { type: string, enum: [text, number, date, enum, email, phone, abn] }
+              required: { type: boolean }
+              values:
+                description: For `enum` fields, the values Archova stores; empty for the rest.
+                type: array
+                items:
+                  type: object
+                  required: [value, label]
+                  properties:
+                    value: { type: string }
+                    label: { type: string }
+        columns:
+          description: One entry per column of the file, in order.
+          type: array
+          items:
+            type: object
+            required: [index, header, field, confidence, examples, warning]
+            properties:
+              index: { type: integer, minimum: 0 }
+              header: { type: string }
+              field:
+                {
+                  type: [string, 'null'],
+                  description: A field key,
+                  or null when the column isn't imported.,
+                }
+              confidence: { type: string, enum: [high, medium, low] }
+              examples:
+                description: The first distinct values in the file, for the person to check the suggestion against.
+                type: array
+                items: { type: string }
+              warning:
+                description: duplicate_field means another column fits that field better; unlike_values means the column's values don't look like that kind of field.
+                type: [string, 'null']
+                enum: [duplicate_field, unlike_values, null]
+        values:
+          description: For columns that fill a field with fixed values, what each value in the file means.
+          type: array
+          items:
+            type: object
+            required: [index, field, pairs]
+            properties:
+              index: { type: integer, minimum: 0 }
+              field: { type: string }
+              pairs:
+                type: array
+                items:
+                  type: object
+                  required: [source, value]
+                  properties:
+                    source: { type: string }
+                    value:
+                      {
+                        type: [string, 'null'],
+                        description: A value of the field,
+                        or null when the person must choose.,
+                      }
+        missingRequired:
+          description: Required fields that no column fills.
+          type: array
+          items: { type: string }
     NovaDefectTag:
       type: object
       required:

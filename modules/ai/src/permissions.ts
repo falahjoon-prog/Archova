@@ -21,4 +21,6 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'ai.project_index.run', scope: 'project', tool: 'documents', level: 'admin' },
   // F33: site managers draft inductions. Moves to the workforce tool when that module and tool exist (X58).
   { key: 'ai.induction.draft', scope: 'project', tool: 'project_admin', level: 'standard' },
+  // F31: whoever runs an import asks Nova where the columns go. Moves to the import tool when the importer exists.
+  { key: 'ai.import_mapping.suggest', scope: 'project', tool: 'project_admin', level: 'standard' },
 ];

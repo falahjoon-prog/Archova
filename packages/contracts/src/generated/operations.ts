@@ -333,6 +333,18 @@ export const TagDefectWithNovaBody = z.object({
   "note": z.string().max(1000).optional(),
   "pin": s.DrawingPinSchema.optional(),
 }).strict();
+export const SuggestImportMappingWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestImportMappingWithNovaBody = z.object({
+  "entity": s.ImportEntitySchema,
+  "columns": z.array(z.object({
+  "header": z.string().max(200),
+  "samples": z.array(z.string().max(100)).max(5),
+  "distinct": z.array(z.string().max(100)).max(30).optional(),
+}).strict()).min(1).max(80),
+}).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1825,6 +1837,18 @@ export const operations = {
     params: TagDefectWithNovaParams,
     query: null,
     body: TagDefectWithNovaBody,
+  },
+  suggestImportMappingWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings',
+    module: "ai",
+    auth: "required",
+    permission: "ai.import_mapping.suggest",
+    internal: false,
+    contentType: "application/json",
+    params: SuggestImportMappingWithNovaParams,
+    query: null,
+    body: SuggestImportMappingWithNovaBody,
   },
   summariseDiaryDayWithNova: {
     method: 'POST',
