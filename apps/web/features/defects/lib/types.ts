@@ -39,10 +39,13 @@ export interface Defect {
   status: DefectStatus;
   priority: DefectPriority;
   trade: string;
+  category: string | null;
   stage: DefectStage;
   locationId: string | null;
+  /** The pin. From the API, `sheetId` is empty and `label` generic until screens look the sheet up by revision. */
   drawing: { sheetId: string; revisionId: string; label: string; x: number; y: number } | null;
-  assigneeCompanyId: string;
+  /** Null while a defect is a draft. */
+  assigneeCompanyId: string | null;
   assigneeUserId: string | null;
   dueDate: string | null;
   raisedBy: string;
@@ -53,7 +56,16 @@ export interface Defect {
   createdAt: string;
   readyForReviewAt: string | null;
   closedAt: string | null;
+  /** What the caller can do now, from the API; null in preview, where `canDefect` decides from the status. */
+  availableActions: readonly ApiDefectAction[] | null;
+  /** The API's own overdue flag (project time zone); null in preview, which compares dates. */
+  isOverdue: boolean | null;
+  version: number;
 }
+
+/** The lifecycle actions as the API names them. */
+export type ApiDefectAction =
+  'issue' | 'markReadyForReview' | 'close' | 'reject' | 'dispute' | 'reassign' | 'void';
 
 export interface DefectInput {
   title: string;
@@ -66,7 +78,9 @@ export interface DefectInput {
   assigneeCompanyId: string | null;
   assigneeUserId: string | null;
   dueDate: string | null;
-  photoNames: string[];
+  category: string | null;
+  /** Photos picked on the form; uploaded when the defect is saved. */
+  photos: File[];
 }
 
 export const STATUS_LABELS: Record<DefectStatus, string> = {
@@ -93,3 +107,18 @@ export const PRIORITY_LABELS: Record<DefectPriority, string> = {
 
 export const formatDefectNumber = (n: number | null) =>
   n === null ? 'D-local' : `DEF-${String(n).padStart(4, '0')}`;
+
+/** Nova's suggestion for a new defect. It fills the form once accepted; the person picks the assignee in live data. */
+export interface DefectNovaSuggestion {
+  /** The saved suggestion (`ais_`), passed back as `aiSuggestionId` when the defect is raised. */
+  id: string;
+  title: string;
+  description: string | null;
+  trade: string | null;
+  category: string | null;
+  priority: DefectPriority | null;
+  /** Preview only: live Nova never picks the company. */
+  companyId: string | null;
+  gaps: string[];
+  unsupportedNumbers: string[];
+}

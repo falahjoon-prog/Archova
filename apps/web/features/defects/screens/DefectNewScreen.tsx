@@ -10,7 +10,7 @@ import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { DefectForm } from '../forms/DefectForm';
-import { useDefectMutations } from '../hooks/useDefects';
+import { useDefectMutations, useDefectsSource } from '../hooks/useDefects';
 import { formatDefectNumber } from '../lib/types';
 
 export function DefectNewScreen() {
@@ -22,6 +22,7 @@ export function DefectNewScreen() {
     record: { type: 'defects', id: 'new' },
   });
   const { create } = useDefectMutations();
+  const { live } = useDefectsSource();
   const [saved, setSaved] = useState<string[]>([]);
 
   return (
@@ -33,9 +34,13 @@ export function DefectNewScreen() {
           </Link>
         }
         title="New defect"
-        description="Choose where it is and who fixes it. Add a pin on the drawing from the drawing viewer or the phone."
+        description={
+          live
+            ? 'Choose the drawing, mark where it is and who fixes it. Photos go to the company with the defect.'
+            : 'Choose where it is and who fixes it. Add a pin on the drawing from the drawing viewer or the phone.'
+        }
       />
-      <PreviewDataNotice tool="Defects" />
+      {live ? null : <PreviewDataNotice tool="Defects" />}
       {saved.length ? (
         <Alert tone="success" title={`Saved ${saved.join(', ')}`}>
           Keep going, or{' '}
@@ -49,7 +54,7 @@ export function DefectNewScreen() {
         busy={create.isPending}
         error={create.error}
         onSave={(input, meta) =>
-          create.mutateAsync({ input, aiSuggested: meta.aiSuggested }).then((d) => {
+          create.mutateAsync({ input, aiSuggestionId: meta.aiSuggestionId }).then((d) => {
             if (meta.another) setSaved((s) => [...s, formatDefectNumber(d.number)]);
             else router.push(webRoutes.defect(org.orgSlug, project.projectId, d.id));
           })

@@ -16,17 +16,18 @@ import {
 } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
+import { useSheetPicker } from '@/features/drawings';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant, todayIn } from '@/shared/lib/format';
-import { MOCK_COMPANIES, MOCK_PEOPLE, companyName, personName } from '@/shared/mocks/directory';
 import { locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DefectDue, DefectStatusPill, StageBadge } from '../components/DefectChips';
 import { READY_NEEDS_PHOTO } from '../data/source';
-import { useDefect, useDefectMutations } from '../hooks/useDefects';
-import { canDefect } from '../lib/lifecycle';
+import { useDefect, useDefectMutations, useDefectsSource } from '../hooks/useDefects';
+import { defectCan } from '../lib/lifecycle';
 import { PRIORITY_LABELS, STATUS_LABELS, formatDefectNumber, type Defect } from '../lib/types';
 
 type Pending = 'ready' | 'close' | 'reject' | 'dispute' | 'void' | 'reassign' | null;
@@ -89,13 +90,16 @@ function DefectView({ d }: { d: Defect }) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const m = useDefectMutations();
+  const { live } = useDefectsSource();
+  const dir = useProjectDirectory();
+  const sheets = useSheetPicker(project.projectId);
   const askNova = useAskNova();
   const today = todayIn(project.timezone);
   const [pending, setPending] = useState<Pending>(null);
   const [note, setNote] = useState('');
-  const [photos, setPhotos] = useState<string[]>([]);
+  const [photos, setPhotos] = useState<File[]>([]);
   const [assign, setAssign] = useState({
-    companyId: d.assigneeCompanyId,
+    companyId: d.assigneeCompanyId ?? '',
     userId: '',
     dueDate: d.dueDate ?? '',
   });
@@ -105,21 +109,22 @@ function DefectView({ d }: { d: Defect }) {
     setNote('');
     setPhotos([]);
     setProblem(null);
-    setAssign({ companyId: d.assigneeCompanyId, userId: '', dueDate: d.dueDate ?? '' });
+    setAssign({ companyId: d.assigneeCompanyId ?? '', userId: '', dueDate: d.dueDate ?? '' });
     setPending(p);
   };
   const done = { onSuccess: () => setPending(null) };
   const busy =
     m.markReady.isPending || m.close.isPending || m.withReason.isPending || m.reassign.isPending;
-  const error = m.markReady.error ?? m.close.error ?? m.withReason.error ?? m.reassign.error;
+  const error =
+    m.markReady.error ?? m.close.error ?? m.withReason.error ?? m.reassign.error ?? m.issue.error;
 
   const confirm = () => {
     if (pending === 'ready') {
       if (READY_NEEDS_PHOTO && photos.length === 0)
         return setProblem('Add an “after” photo to show the fix.');
-      m.markReady.mutate({ id: d.id, note, photoNames: photos }, done);
+      m.markReady.mutate({ id: d.id, note, photos }, done);
     } else if (pending === 'close') {
-      m.close.mutate({ id: d.id, note, photoNames: photos }, done);
+      m.close.mutate({ id: d.id, note, photos }, done);
     } else if (pending === 'reject' || pending === 'dispute' || pending === 'void') {
       if (!note.trim()) return setProblem('Give a reason.');
       m.withReason.mutate({ id: d.id, action: pending, reason: note }, done);
@@ -138,29 +143,38 @@ function DefectView({ d }: { d: Defect }) {
 
   const actions = (
     <>
-      {d.status === 'open' ? (
+      {defectCan(d, 'issue') && d.assigneeCompanyId ? (
+        <Button disabled={m.issue.isPending} onClick={() => m.issue.mutate(d.id)}>
+          Send to company
+        </Button>
+      ) : null}
+      {defectCan(d, 'ready') ? (
         <Button onClick={() => open('ready')}>Mark ready for inspection</Button>
       ) : null}
-      {d.status === 'ready_for_review' ? (
+      {defectCan(d, 'close') ? (
         <>
           <Button onClick={() => open('close')}>Close defect</Button>
-          <Button variant="secondary" onClick={() => open('reject')}>
-            Reject
-          </Button>
+          {defectCan(d, 'reject') ? (
+            <Button variant="secondary" onClick={() => open('reject')}>
+              Reject
+            </Button>
+          ) : null}
         </>
       ) : null}
-      {d.status === 'disputed' ? <Button onClick={() => open('reassign')}>Reassign</Button> : null}
-      {d.status === 'open' ? (
-        <>
-          <Button variant="secondary" onClick={() => open('reassign')}>
-            Reassign
-          </Button>
-          <Button variant="tertiary" onClick={() => open('dispute')}>
-            Not ours
-          </Button>
-        </>
+      {defectCan(d, 'reassign') ? (
+        <Button
+          variant={d.status === 'disputed' ? 'primary' : 'secondary'}
+          onClick={() => open('reassign')}
+        >
+          Reassign
+        </Button>
       ) : null}
-      {canDefect(d.status, 'void') ? (
+      {defectCan(d, 'dispute') ? (
+        <Button variant="tertiary" onClick={() => open('dispute')}>
+          Not ours
+        </Button>
+      ) : null}
+      {defectCan(d, 'void') ? (
         <Button variant="tertiary" onClick={() => open('void')}>
           Void
         </Button>
@@ -170,6 +184,20 @@ function DefectView({ d }: { d: Defect }) {
       </Button>
     </>
   );
+
+  // The API stores the revision; the sheet to link to comes from the register.
+  const pinned = d.drawing;
+  const sheet =
+    pinned && !pinned.sheetId
+      ? sheets.options.find((o) => o.revisionId === pinned.revisionId)
+      : null;
+  const drawing = pinned
+    ? {
+        ...pinned,
+        sheetId: pinned.sheetId || sheet?.sheetId || '',
+        label: sheet?.label ?? pinned.label,
+      }
+    : null;
 
   const photoName = (id: string) => d.photos.find((p) => p.id === id)?.name ?? id;
   const needsReason = pending === 'reject' || pending === 'dispute' || pending === 'void';
@@ -186,7 +214,7 @@ function DefectView({ d }: { d: Defect }) {
         number={<span className="u-mono">{formatDefectNumber(d.number)}</span>}
         title={d.title}
         status={<DefectStatusPill status={d.status} />}
-        ballInCourt={`Assigned to: ${companyName(d.assigneeCompanyId)}${d.assigneeUserId ? ` · ${personName(d.assigneeUserId)}` : ''}`}
+        ballInCourt={`Assigned to: ${d.assigneeCompanyId ? (d.assigneeCompanyId === project.companyId ? 'your company' : dir.companyName(d.assigneeCompanyId)) : 'no company yet'}${d.assigneeUserId ? ` · ${dir.personName(d.assigneeUserId)}` : ''}`}
         due={<DefectDue defect={d} today={today} />}
         meta={
           <>
@@ -201,7 +229,7 @@ function DefectView({ d }: { d: Defect }) {
         }
         actions={actions}
       />
-      <PreviewDataNotice tool="Defects" />
+      {live ? null : <PreviewDataNotice tool="Defects" />}
       <div className="detail-grid">
         <section className="stack" aria-labelledby="defect-details">
           <h2 id="defect-details" className="panel-heading">
@@ -210,21 +238,25 @@ function DefectView({ d }: { d: Defect }) {
           {d.description ? <p className="u-m-0 u-prewrap">{d.description}</p> : null}
           <DescriptionList
             items={[
-              { label: 'Location', value: locationPath(d.locationId) ?? '—' },
+              ...(live ? [] : [{ label: 'Location', value: locationPath(d.locationId) ?? '—' }]),
               {
                 label: 'Drawing',
-                value: d.drawing ? (
-                  <Link
-                    className="link"
-                    href={webRoutes.drawing(
-                      org.orgSlug,
-                      project.projectId,
-                      d.drawing.sheetId,
-                      d.drawing.revisionId,
-                    )}
-                  >
-                    {d.drawing.label}
-                  </Link>
+                value: drawing ? (
+                  drawing.sheetId ? (
+                    <Link
+                      className="link"
+                      href={webRoutes.drawing(
+                        org.orgSlug,
+                        project.projectId,
+                        drawing.sheetId,
+                        drawing.revisionId,
+                      )}
+                    >
+                      {drawing.label}
+                    </Link>
+                  ) : (
+                    drawing.label
+                  )
                 ) : (
                   'No pin yet'
                 ),
@@ -317,20 +349,18 @@ function DefectView({ d }: { d: Defect }) {
               <Select
                 label="Company"
                 value={assign.companyId}
-                options={MOCK_COMPANIES.filter((c) => c.role === 'subcontractor').map((c) => ({
-                  value: c.id,
-                  label: `${c.name} · ${c.trade}`,
-                }))}
+                options={dir.companies
+                  .filter((c) => c.isSubcontractor && dir.onProject(c.id))
+                  .map((c) => ({ value: c.id, label: `${c.name} · ${c.trades.join(', ')}` }))}
                 onChange={(e) => setAssign({ ...assign, companyId: e.target.value, userId: '' })}
               />
               <Select
                 label="Person (optional)"
                 value={assign.userId}
                 placeholder="Anyone at the company"
-                options={MOCK_PEOPLE.filter((p) => p.companyId === assign.companyId).map((p) => ({
-                  value: p.id,
-                  label: p.name,
-                }))}
+                options={dir.people
+                  .filter((p) => p.companyId === assign.companyId)
+                  .map((p) => ({ value: p.id, label: p.name }))}
                 onChange={(e) => setAssign({ ...assign, userId: e.target.value })}
               />
               <TextField
@@ -352,7 +382,7 @@ function DefectView({ d }: { d: Defect }) {
                 type="file"
                 accept="image/*"
                 multiple
-                onChange={(e) => setPhotos([...(e.target.files ?? [])].map((f) => f.name))}
+                onChange={(e) => setPhotos([...(e.target.files ?? [])])}
               />
             </div>
           ) : null}
