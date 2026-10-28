@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull, lt, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-orm';
 import {
   DEFECT_ACTIONS,
   hasDefectLocation,
@@ -147,6 +147,24 @@ export function createDefectService(deps: DefectsDeps) {
       nextCursor: page.nextCursor,
       viewer: v,
     };
+  }
+
+  /** For the mobile pull: the defects among `ids` the caller can see, as list rows. */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    const date = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      inArray(defects.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(defects)
+      .where(and(...conditions));
+    return { rows: rows.map((r) => view(r, date)), viewer: v };
   }
 
   async function getVisible(scope: TenantScope, projectId: string, defectId: string) {
@@ -599,7 +617,17 @@ export function createDefectService(deps: DefectsDeps) {
     return (await deps.access.can(scope, 'defects.defects.read', { projectId })) ? ['defects'] : [];
   }
 
-  return { list, create, detail, update, transition, openNear, aiSources, aiAccessScopes };
+  return {
+    list,
+    create,
+    detail,
+    update,
+    transition,
+    openNear,
+    visibleAmong,
+    aiSources,
+    aiAccessScopes,
+  };
 }
 
 function verb(action: DefectAction): string {

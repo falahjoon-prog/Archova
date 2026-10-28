@@ -13,7 +13,10 @@
   },
   "dependencies": {
     "@archova/contracts": "workspace:*",
-    "@archova/kernel": "workspace:*"
+    "@archova/domain": "workspace:*",
+    "@archova/kernel": "workspace:*",
+    "@archova/mod-access": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
