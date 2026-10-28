@@ -10,7 +10,7 @@ import {
   type MessageSender,
   type RedisClient,
 } from '@archova/kernel';
-import { FAKE_MODELS, type ModelProvider, type RasterizePage } from '@archova/mod-ai';
+import type { ModelProvider, RasterizePage } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import type { ApiConfig } from './config';
@@ -94,19 +94,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
         ...(deps.aiRasterizePage ? { rasterizePage: deps.aiRasterizePage } : {}),
-        config:
-          config.ai.provider === 'bedrock'
-            ? {
-                provider: {
-                  kind: 'bedrock',
-                  region: config.ai.region,
-                  ...(config.ai.endpoint ? { endpoint: config.ai.endpoint } : {}),
-                  ...(config.ai.ocrEndpoint ? { ocrEndpoint: config.ai.ocrEndpoint } : {}),
-                },
-                models: config.ai.models,
-                embedding: { model: config.ai.embeddingModel },
-              }
-            : { provider: { kind: 'fake' }, models: FAKE_MODELS },
+        config: config.ai,
         ...(deps.aiProvider ? { provider: deps.aiProvider } : {}),
       },
     },
