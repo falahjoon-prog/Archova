@@ -27,7 +27,8 @@
     "check:egress": "tsx tools/infra/check-egress-allowlist.ts && tsx --test tools/infra/egress-allowlist.test.ts tools/infra/linode-corefile.test.ts tools/infra/linode-host-files.test.ts",
     "infra:linode-corefile": "tsx tools/infra/linode-corefile.ts",
     "infra:linode-host-files": "tsx tools/infra/linode-host-files.ts",
-    "demo:seed": "tsx tools/demo-seed/seed.ts"
+    "demo:seed": "tsx tools/demo-seed/seed.ts",
+    "site:local": "pnpm --filter @archova/site local"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

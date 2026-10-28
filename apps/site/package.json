@@ -1,0 +1,43 @@
+{
+  "name": "@archova/site",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "seed": "tsx scripts/seed.ts",
+    "generate:importmap": "payload generate:importmap",
+    "local": "node scripts/local.mjs"
+  },
+  "dependencies": {
+    "@archova/design-tokens": "workspace:*",
+    "@archova/ui": "workspace:*",
+    "@payloadcms/db-sqlite": "3.92.1",
+    "@payloadcms/next": "3.92.1",
+    "@payloadcms/richtext-lexical": "3.92.1",
+    "graphql": "^16.8.1",
+    "next": "16.4.3",
+    "payload": "3.92.1",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "sharp": "^0.34.0"
+  },
+  "devDependencies": {
+    "@archova/config-eslint": "workspace:*",
+    "@archova/config-ts": "workspace:*",
+    "@types/node": "^22.18.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "eslint": "^9.39.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.0",
+    "@next/eslint-plugin-next": "^15.5.0",
+    "eslint-plugin-react-hooks": "^5.2.0"
+  }
+}
