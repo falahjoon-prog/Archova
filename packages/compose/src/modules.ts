@@ -211,6 +211,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       documents.api.syncSource,
       workforce.api.syncSource,
     ],
+    commands: [...defects.api.syncCommands],
   });
 
   const all = [
