@@ -74,6 +74,14 @@ export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { DiaryWeeklyPayload } from './application/diary-weekly';
+export { compareVisually } from './application/visual-compare';
+export type {
+  VisualComparePayload,
+  VisualCompareRequest,
+  VisualCompareResult,
+} from './application/visual-compare';
+export type { DescribedRegion } from './domain/visual-compare';
+export type { Raster as VisualRaster } from './domain/visual-diff';
 export type { RfiDraft } from './application/rfi-draft';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';

@@ -27,6 +27,9 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // F21: one sheet's text changes put into words; cached per revision pair, so opening it again is free. Priya to
   // confirm.
   'drawing.compare': 0.5,
+  // F21 vision pass: up to 12 small pictures of the places the linework changed; with the text compare, a revision
+  // pair costs one credit. Cached with it. Priya to confirm.
+  'drawing.compare_visual': 0.5,
   'diary.summary': 0.5,
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,
