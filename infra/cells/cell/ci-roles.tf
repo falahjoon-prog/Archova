@@ -10,6 +10,8 @@ locals {
     [for s in keys(var.services) : aws_iam_role.task[s].arn],
     [for s in keys(var.services) : module.service[s].execution_role_arn],
     [aws_iam_role.task["worker"].arn, module.worker.execution_role_arn],
+    [aws_iam_role.task["ai-worker"].arn, module.ai_worker.execution_role_arn],
+    [aws_iam_role.files_worker.arn, module.files_worker.execution_role_arn],
     [aws_iam_role.task["migrate"].arn, aws_iam_role.migrate_execution.arn, aws_iam_role.db_roles_execution.arn],
   )
 }

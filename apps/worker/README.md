@@ -10,7 +10,7 @@ Background job processors (BullMQ on Valkey, X19). Loads the same modules as `ap
 
 ## Database access
 
-The relay connects as `app_platform` (`DATABASE_PLATFORM_URL`, NOBYPASSRLS). Migration `20261028150000_outbox_relay_grants.sql` gives it `SELECT (id, org_id, type, occurred_at, published_at)` and `UPDATE (published_at)` on `shared.outbox` only, with an update policy that lets it set `published_at` on unpublished rows and nothing else. Subscribers use `DATABASE_URL` (app_rw). `REDIS_URL` is the job Redis.
+The relay connects as `app_platform` (`DATABASE_PLATFORM_URL`, NOBYPASSRLS). Migration `20261028150000_outbox_relay_grants.sql` gives it `SELECT (id, org_id, type, occurred_at, published_at)` and `UPDATE (published_at)` on `shared.outbox` only, with an update policy that lets it set `published_at` on unpublished rows and nothing else. Subscribers use `DATABASE_URL` (app_rw). `REDIS_URL` is the job Redis. File jobs (the threat move) are scheduled only when `WORKER_FILES_STORE=s3`, with `WORKER_FILES_BUCKET`, `WORKER_FILES_REGION`, and for non-AWS storage `WORKER_S3_ENDPOINT`, `WORKER_S3_ACCESS_KEY_ID`, `WORKER_S3_SECRET_ACCESS_KEY`. The task role needs get/put/delete on `quarantine/` and put on `threats/`.
 
 ## Not built yet
 

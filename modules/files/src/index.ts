@@ -29,7 +29,8 @@ export {
   type MalwareScanner,
   type ScanVerdict,
 } from './infra/scanner';
-export { hexToBase64, quarantineKey } from './domain/rules';
+export { hexToBase64, quarantineKey, threatKey } from './domain/rules';
+export { moveThreats, type ThreatMoveResult } from './application/threats';
 export { assertFileReady } from './application/files-service';
 
 export function createFilesModule(

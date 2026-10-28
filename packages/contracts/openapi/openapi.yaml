@@ -1355,6 +1355,49 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/search:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: searchProjectWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Search this project's documents, drawings and RFIs by meaning and keyword (F6).
+      description: |
+        Finds the passages that match a few words, by meaning ("anything about the basement leak") as well as by the
+        words themselves, in the current revisions the caller can open: private folders and drawing access apply,
+        and builder staff with RFI access also search sent RFIs, exactly as for Ask. Results are ranked best first,
+        one per page of each revision, each with the start of the passage or the stretch around the first query word
+        it contains. Nothing is written or answered: the only model call is the embedding of the query, which costs
+        no Nova credits. The closest passages are returned even when none is close, so an empty list means nothing
+        is indexed that the caller can see. Needs Nova on for the organisation, as Ask does. Each person can search
+        120 times in ten minutes; beyond that the response is 429 `rate_limited`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [query]
+              properties:
+                query: { type: string, minLength: 2, maxLength: 300 }
+                limit: { type: integer, minimum: 1, maximum: 20, description: Defaults to 10 }
+      responses:
+        '200':
+          description: The matching passages, best first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [results]
+                properties:
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/NovaSearchResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1977,6 +2020,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    get:
+      operationId: getQuoteComparison
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: The package's confirmed quotes side by side (EST-AC6).
+      description: |
+        One column per confirmed quote, oldest received first (drafts, superseded and declined quotes don't compete),
+        and one row per scope line, with the flags an estimator looks for before awarding: scope lines a quote has no
+        line for, exclusions and qualifications, provisional sums, a validity date that has passed, and prices far
+        from the median. Totals are ex GST. The levelled total is the quote total plus the estimator's allowances for
+        that quote (`allowances` on the package), the figure `isLowest` and the award's "not lowest" check use.
+        Everything is arithmetic on confirmed quote data; no Nova credits are spent. Competing prices are the
+        estimator's: only builder staff with `estimating.quotes.review` can read this, and a subcontractor never can,
+        even for their own quote (EST-AC3).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuoteComparison' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes:
     parameters:
@@ -5536,6 +5606,15 @@ components:
           required: [quote]
           properties:
             quote: { type: string, description: The exact words the answer relies on }
+    NovaSearchResult:
+      allOf:
+        - $ref: '#/components/schemas/NovaSource'
+        - type: object
+          required: [snippet]
+          properties:
+            snippet:
+              type: string
+              description: The start of the passage, or the stretch around the first query word it contains.
     NovaAnswer:
       type: object
       required: [runId, found, answer, citations, closestMatches]
@@ -7442,6 +7521,138 @@ components:
         confirmedBy: { type: [string, 'null'] }
         confirmedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
+    QuoteComparison:
+      type: object
+      required: [packageId, columns, rows, medianTotalExGst, outlierRule]
+      properties:
+        packageId: { type: string }
+        columns:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteComparisonColumn' }
+        rows:
+          description: One per scope line, in the package's order. Each has a cell for every column, in column order.
+          type: array
+          items: { $ref: '#/components/schemas/QuoteComparisonRow' }
+        medianTotalExGst:
+          description: Median of the levelled totals; null when fewer than `outlierRule.minPrices` quotes compete.
+          type: [string, 'null']
+        outlierRule:
+          description: How `deviation` is decided, so the screen can say why a price is flagged.
+          type: object
+          required: [percent, minExGst, minPrices]
+          properties:
+            percent:
+              {
+                type: integer,
+                description: 'More than this far from the median, as a percent of it',
+              }
+            minExGst: { type: string, description: 'and at least this far in dollars' }
+            minPrices:
+              {
+                type: integer,
+                description: 'Nothing is flagged unless at least this many quotes price the item',
+              }
+    QuoteDeviation:
+      type: string
+      enum: [high, low]
+    QuoteComparisonColumn:
+      type: object
+      required:
+        [
+          quoteId,
+          companyId,
+          revision,
+          reference,
+          receivedAt,
+          validUntil,
+          validityExpired,
+          totalExGst,
+          allowancesExGst,
+          levelledTotalExGst,
+          isLowest,
+          deviation,
+          provisionalExGst,
+          provisionalLines,
+          missingScopeKeys,
+          unmappedLines,
+          unmappedExGst,
+          outlierLines,
+          exclusions,
+          qualifications,
+        ]
+      properties:
+        quoteId: { type: string }
+        companyId: { type: string }
+        revision: { type: integer }
+        reference: { type: [string, 'null'] }
+        receivedAt: { type: string, format: date-time }
+        validUntil: { type: [string, 'null'], format: date }
+        validityExpired:
+          { type: boolean, description: "Today, in the project's time zone, is after `validUntil`" }
+        totalExGst: { type: string }
+        allowancesExGst:
+          { type: string, description: 'Every allowance the estimator set against this quote' }
+        levelledTotalExGst: { type: string, description: 'The total plus the allowances' }
+        isLowest: { type: boolean, description: 'Lowest levelled total among the confirmed quotes' }
+        deviation:
+          description: The levelled total against the median of the levelled totals.
+          oneOf: [{ $ref: '#/components/schemas/QuoteDeviation' }, { type: 'null' }]
+        provisionalExGst: { type: string }
+        provisionalLines: { type: integer }
+        missingScopeKeys:
+          description: Scope lines the quote has no line for. An exclusion or an allowance may already cover them.
+          type: array
+          items: { type: string }
+        unmappedLines:
+          {
+            type: integer,
+            description: 'Lines that match no scope line: in the total, not in any row',
+          }
+        unmappedExGst: { type: string }
+        outlierLines: { type: integer }
+        exclusions:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteComparisonNote' }
+        qualifications:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteComparisonNote' }
+    QuoteComparisonNote:
+      type: object
+      required: [id, text, scopeKey]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        scopeKey: { type: [string, 'null'] }
+    QuoteComparisonRow:
+      type: object
+      required: [key, description, quantity, unit, medianExGst, cells]
+      properties:
+        key: { type: string }
+        description: { type: string }
+        quantity: { type: [string, 'null'] }
+        unit: { type: string }
+        medianExGst:
+          description: Median price of the quotes that price this line; null when too few do.
+          type: [string, 'null']
+        cells:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteComparisonCell' }
+    QuoteComparisonCell:
+      type: object
+      required: [quoteId, state, amountExGst, allowanceExGst, excluded, deviation]
+      properties:
+        quoteId: { type: string }
+        state:
+          description: "`provisional` when any of the quote's lines for the scope line is a provisional or prime cost sum"
+          type: string
+          enum: [priced, provisional, missing]
+        amountExGst:
+          { type: [string, 'null'], description: "The quote's lines for the scope line, summed" }
+        allowanceExGst:
+          { type: [string, 'null'], description: "The estimator's allowance for this gap" }
+        excluded: { type: boolean, description: 'An exclusion on the quote names this scope line' }
+        deviation:
+          oneOf: [{ $ref: '#/components/schemas/QuoteDeviation' }, { type: 'null' }]
     QuotePage:
       type: object
       required: [data]

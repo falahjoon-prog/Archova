@@ -17,7 +17,7 @@ import type {
   TenderService,
 } from '../application/tender';
 import type { MeasurementFields, TakeoffService } from '../application/takeoff';
-import { toMeasurementDto, toPackageDto, toQuoteDto } from './mappers';
+import { toComparisonDto, toMeasurementDto, toPackageDto, toQuoteDto } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -329,6 +329,13 @@ export function estimatingRoutes(database: Database, svc: TenderService, takeoff
         ).map(toQuoteDto),
       },
     }),
+    getQuoteComparison: async (input) => {
+      const packageId = pkgId(input.params);
+      const comparison = await read(input, (s) =>
+        svc.comparison(s, project(input.params), packageId),
+      );
+      return { status: 200, body: toComparisonDto(packageId, comparison) };
+    },
     createQuote: async (input) =>
       quote(
         201,

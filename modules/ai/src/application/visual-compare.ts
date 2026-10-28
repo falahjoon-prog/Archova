@@ -16,10 +16,10 @@ import { diffRasters, type Raster, type UnreliableReason } from '../domain/visua
 import { encodePng } from '../infra/raster';
 import type { Gateway } from './gateway';
 
-/** The linework half of a revision compare, as stored with the text half. */
 /** Why no linework result could be given at all: nothing was compared, so none of these is a statement about the sheet. */
 export type VisualUnavailable = 'render_failed' | 'allowance_used' | 'unavailable';
 
+/** The linework half of a revision compare, as stored with the text half. */
 export interface VisualComparePayload {
   /** False when the two renders can't be compared line for line; `reason` says why and `regions` is empty. */
   reliable: boolean;

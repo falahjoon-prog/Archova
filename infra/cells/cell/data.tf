@@ -5,6 +5,8 @@ locals {
   data_clients = {
     api     = module.service["api"].security_group_id
     worker  = module.worker.security_group_id
+    ai      = module.ai_worker.security_group_id
+    files   = module.files_worker.security_group_id
     migrate = aws_security_group.migrate.id
   }
 }

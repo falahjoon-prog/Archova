@@ -12,6 +12,8 @@ import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
 import type { FilesModule } from '@archova/mod-files';
 import type { PlatformApi } from '@archova/mod-platform';
+import { localDateOf } from '@archova/time';
+import { compareQuotes } from '../domain/comparison';
 import {
   canAward,
   canSeePackage,
@@ -836,8 +838,44 @@ export function createTenderService(deps: EstimatingDeps) {
     };
   }
 
+  /**
+   * EST-AC6: the confirmed quotes side by side. Competing prices are the estimator's, so this is builder staff with
+   * `quotes.review` only; a subcontractor never reaches it, not even for their own quote.
+   */
+  async function comparison(scope: TenantScope, projectId: string, packageId: string) {
+    const { row, viewer: v } = await load(scope, projectId, packageId);
+    if (!v.isInternal) throw new AppError('tender.not_found');
+    await assertCanReadQuotes(scope, projectId, v);
+    const confirmed = await scope.tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.packageId, packageId), eq(quotes.status, 'confirmed')))
+      .orderBy(asc(quotes.receivedAt), asc(quotes.id));
+    const project = await deps.platform.getProject(scope, projectId);
+    const note = (n: QuoteNote) => ({ id: n.id, text: n.text, scopeKey: n.scopeKey });
+    return compareQuotes({
+      scope: row.scope,
+      quotes: (await withLines(scope, confirmed)).map((q) => ({
+        id: q.id,
+        companyId: q.companyId,
+        revision: q.revision,
+        status: q.status,
+        reference: q.reference,
+        receivedAt: q.receivedAt,
+        validUntil: q.validUntil,
+        totalExGst: q.totalExGst,
+        lines: q.lines,
+        exclusions: q.exclusions.map(note),
+        qualifications: q.qualifications.map(note),
+      })),
+      allowances: row.allowances,
+      today: localDateOf(now(), project.timezone),
+    });
+  }
+
   return {
     scopeForQuoteReading,
+    comparison,
     list,
     get,
     create,

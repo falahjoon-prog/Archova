@@ -1,8 +1,21 @@
 import { encodeId } from '@archova/domain';
-import type { Quote, QuoteNote, TakeoffMeasurement, TenderPackage } from '@archova/contracts';
+import type {
+  Quote,
+  QuoteComparison,
+  QuoteNote,
+  TakeoffMeasurement,
+  TenderPackage,
+} from '@archova/contracts';
 import type { QuoteNote as NoteRow } from '../infra/tables';
 import type { PackageView, QuoteView } from '../application/tender';
 import type { MeasurementRow } from '../application/takeoff';
+import {
+  OUTLIER_MIN_CENTS,
+  OUTLIER_MIN_PRICES,
+  OUTLIER_PERCENT,
+  type Comparison,
+} from '../domain/comparison';
+import { fromCents } from '../domain/tender';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const userOrNull = (id: string | null) => (id ? encodeId('user', id) : null);
@@ -114,4 +127,26 @@ export const toMeasurementDto = (m: MeasurementRow): TakeoffMeasurement => ({
   createdAt: m.createdAt.toISOString(),
   updatedAt: m.updatedAt.toISOString(),
   version: m.version,
+});
+
+export const toComparisonDto = (packageId: string, c: Comparison): QuoteComparison => ({
+  packageId: encodeId('tenderPackage', packageId),
+  columns: c.columns.map((x) => ({
+    ...x,
+    quoteId: encodeId('quote', x.quoteId),
+    companyId: encodeId('company', x.companyId),
+    receivedAt: x.receivedAt.toISOString(),
+    exclusions: [...x.exclusions],
+    qualifications: [...x.qualifications],
+  })),
+  rows: c.rows.map((r) => ({
+    ...r,
+    cells: r.cells.map((x) => ({ ...x, quoteId: encodeId('quote', x.quoteId) })),
+  })),
+  medianTotalExGst: c.medianTotalExGst,
+  outlierRule: {
+    percent: OUTLIER_PERCENT,
+    minExGst: fromCents(OUTLIER_MIN_CENTS),
+    minPrices: OUTLIER_MIN_PRICES,
+  },
 });

@@ -108,9 +108,14 @@ export function reciprocalRankFusion(lists: readonly (readonly string[])[], k = 
  * clause numbers like "A-201" or "6.3.2" are kept whole.
  */
 export function keywordQuery(question: string): string {
+  return queryTerms(question).join(' OR ');
+}
+
+/** The distinct search words of a question, lower case, in the order asked (at most 30). */
+export function queryTerms(question: string): string[] {
   const terms = question.toLowerCase().match(/[a-z0-9]+(?:[-./][a-z0-9]+)*/g);
   const unique = [...new Set(terms ?? [])].filter((t) => t.length >= 2 && !STOPWORDS.has(t));
-  return unique.slice(0, 30).join(' OR ');
+  return unique.slice(0, 30);
 }
 
 const STOPWORDS = new Set(
