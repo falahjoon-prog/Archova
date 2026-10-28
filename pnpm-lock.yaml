@@ -537,6 +537,9 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../../modules/files
       bullmq:
         specifier: ^5.58.0
         version: 5.81.5

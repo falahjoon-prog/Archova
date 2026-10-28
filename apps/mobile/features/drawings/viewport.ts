@@ -123,3 +123,32 @@ export const tileCacheKey = (revisionId: string, t: TileKey) =>
 /** Fills a `{z}/{x}/{y}` template from the tiles endpoint. */
 export const tileUrl = (template: string, t: TileKey) =>
   template.replace('{z}', String(t.z)).replace('{x}', String(t.x)).replace('{y}', String(t.y));
+
+/** Pan by a finger drag in screen pixels. */
+export function panViewport(
+  p: Pyramid,
+  v: Viewport,
+  dx: number,
+  dy: number,
+  maxScale = 1,
+): Viewport {
+  return clampViewport(p, { ...v, x: v.x - dx / v.scale, y: v.y - dy / v.scale }, maxScale);
+}
+
+/** Zoom by `factor` keeping the sheet point under `focus` (a screen point) where it is. */
+export function zoomViewport(
+  p: Pyramid,
+  v: Viewport,
+  factor: number,
+  focus: { x: number; y: number },
+  maxScale = 1,
+): Viewport {
+  const scale = v.scale * factor;
+  const sheetX = focus.x / v.scale + v.x;
+  const sheetY = focus.y / v.scale + v.y;
+  return clampViewport(
+    p,
+    { ...v, scale, x: sheetX - focus.x / scale, y: sheetY - focus.y / scale },
+    maxScale,
+  );
+}

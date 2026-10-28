@@ -34,6 +34,9 @@ export const ALLOWED_MIME_TYPES: ReadonlySet<string> = new Set([
 
 export const quarantineKey = (uploadId: string) => `quarantine/${uploadId}`;
 
+/** Where infected and unscannable objects are kept for investigation (30-day lifecycle on the prefix; backend 06 §3). */
+export const threatKey = (orgId: string, fileId: string) => `threats/${orgId}/${fileId}`;
+
 /** `orgs/{orgId}/projects/{projectId}/{module}/{fileId}/original` or `orgs/{orgId}/_org/{module}/{fileId}/original` (X22). */
 export function storageKey(p: {
   orgId: string;

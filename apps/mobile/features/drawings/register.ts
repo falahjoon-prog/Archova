@@ -3,6 +3,8 @@ import type { DrawingSheet as Sheet } from '@archova/contracts';
 
 export interface RegisterRow {
   id: string;
+  /** The current revision to open, or null when there is none. */
+  revisionId: string | null;
   title: string;
   subtitle: string;
   /** The sheet has no current revision, so there is nothing to open yet. */
@@ -26,6 +28,7 @@ export function registerRows(sheets: readonly Sheet[]): RegisterRow[] {
     ].filter((p): p is string => Boolean(p));
     return {
       id: s.id,
+      revisionId: rev?.id ?? null,
       title: `${s.sheetNumber} · ${s.title}`,
       subtitle: parts.join(' · '),
       hasRevision: rev !== null,
