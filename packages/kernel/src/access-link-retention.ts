@@ -13,7 +13,7 @@ export interface AccessLinkPurgeResult {
   codesDeleted: number;
   sessionsDeleted: number;
   networkDetailsCleared: number;
-  emailsHashed: number;
+  emailsCleared: number;
 }
 
 /**
@@ -39,14 +39,13 @@ export async function purgeAccessLinks(
     where created_at < ${ago(days.sessionNetworkDetails)} and (ip is not null or user_agent is not null)`);
   const emails = await scope.tx.execute(sql`
     update shared.access_links
-    set recipient_email = 'sha256:' || encode(digest(lower(recipient_email::text), 'sha256'), 'hex')
-    where expires_at < ${ago(days.recipientEmailAfterLinkExpiry)}
-      and recipient_email is not null and recipient_email::text not like 'sha256:%'`);
+    set recipient_email = null
+    where expires_at < ${ago(days.recipientEmailAfterLinkExpiry)} and recipient_email is not null`);
 
   return {
     codesDeleted: codes.rowCount ?? 0,
     sessionsDeleted: sessions.rowCount ?? 0,
     networkDetailsCleared: network.rowCount ?? 0,
-    emailsHashed: emails.rowCount ?? 0,
+    emailsCleared: emails.rowCount ?? 0,
   };
 }

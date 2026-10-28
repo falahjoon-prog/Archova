@@ -2,10 +2,10 @@ import { purgeAccessLinks } from '@archova/kernel';
 import { jobContext } from '../subscribers';
 import type { TenantJob } from '../scheduler';
 
-/** Sam 11 §6 retention for access links, nightly (03:15 UTC, a quiet hour in Australia's evening-to-morning gap). */
+/** Sam 11 §6 retention for access links, nightly (16:15 UTC, 03:15 on the east coast). */
 export const accessLinkPurge: TenantJob = {
   name: 'access-links.purge',
-  cron: '15 3 * * *',
+  cron: '15 16 * * *',
   async run(database, orgId, now) {
     const r = await database.withTenantTx(
       jobContext(orgId, `access-links.purge:${orgId}`),

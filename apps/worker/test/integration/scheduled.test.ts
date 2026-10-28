@@ -129,7 +129,7 @@ describe('access link retention (Sam 11 §6)', () => {
       };
     });
 
-  it('deletes expired codes and sessions, clears network details and hashes old recipient emails', async () => {
+  it('deletes expired codes and sessions, clears network details and recipient emails', async () => {
     const orgId = await insertOrg();
     const other = await insertOrg();
     const seeded = await seed(orgId);
@@ -143,7 +143,7 @@ describe('access link retention (Sam 11 §6)', () => {
       codesDeleted: 2,
       sessionsDeleted: 1,
       networkDetailsCleared: 1,
-      emailsHashed: 1,
+      emailsCleared: 1,
     });
 
     const after = await read(orgId);
@@ -152,8 +152,7 @@ describe('access link retention (Sam 11 §6)', () => {
     const byId = Object.fromEntries(
       after.links.map((l) => [l.id as string, l.recipient_email as string]),
     );
-    expect(byId[seeded.oldLink]).toMatch(/^sha256:[0-9a-f]{64}$/);
-    expect(byId[seeded.oldLink]).not.toContain('example');
+    expect(byId[seeded.oldLink]).toBeNull();
     expect(byId[seeded.freshLink]).toBe('fresh@example.com');
 
     // Another org's rows are untouched, and a second run finds nothing to do.
@@ -166,7 +165,7 @@ describe('access link retention (Sam 11 §6)', () => {
       codesDeleted: 0,
       sessionsDeleted: 0,
       networkDetailsCleared: 0,
-      emailsHashed: 0,
+      emailsCleared: 0,
     });
   });
 });
