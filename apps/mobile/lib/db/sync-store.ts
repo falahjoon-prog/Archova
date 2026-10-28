@@ -397,6 +397,30 @@ export class SqliteSyncStore implements SyncStore {
     return countByType(dropped);
   }
 
+  /**
+   * Records of one type in a project, for feature queries. `where` filters on the DTO with SQLite JSON paths,
+   * for example `{ '$.assigneeCompanyId': companyId }`.
+   */
+  async listRecords<T>(
+    entityType: string,
+    projectId: string,
+    where: Record<string, string | number | null> = {},
+  ): Promise<(LocalRecordView & { data: T; id: string })[]> {
+    const clauses = Object.keys(where).map(() => 'json_extract(data, ?) IS ?');
+    const params = Object.entries(where).flatMap(([path, value]) => [path, value]);
+    const rows = await this.db.getAllAsync<RecordRow>(
+      `SELECT * FROM records WHERE entity_type = ? AND project_id = ?${clauses.map((c) => ` AND ${c}`).join('')}
+       ORDER BY id DESC`,
+      [entityType, projectId, ...params],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      version: r.version,
+      pending: r.pending === 1,
+      data: JSON.parse(r.data) as T,
+    }));
+  }
+
   /** Record keys, sorted; for tests and diagnostics. */
   async keys(): Promise<string[]> {
     const rows = await this.db.getAllAsync<{ k: string }>(

@@ -8,11 +8,14 @@ import type { UploadQueue } from '../../lib/files/upload-queue';
 
 export const PHOTO_ENTITY = 'photo';
 
+export type PhotoPurpose = 'before' | 'after';
+
 export interface LocalPhoto {
   id: string;
   projectId: string;
   /** The defect, diary entry or other record the photo belongs to, if any. */
   defectId: string | null;
+  purpose: PhotoPurpose | null;
   capture: Capture;
   localUri: string;
   thumbnailUri: string;
@@ -25,6 +28,7 @@ export interface CapturePhotoInput {
   mutationId: string;
   projectId: string;
   defectId?: string | null;
+  purpose?: PhotoPurpose | null;
   /** Commands that must be applied first, such as the offline `defects.create` this photo belongs to. */
   dependsOn?: string[];
   capture: Capture;
@@ -48,6 +52,7 @@ export async function capturePhoto(
     id: input.photoId,
     projectId: input.projectId,
     defectId: input.defectId ?? null,
+    purpose: input.purpose ?? null,
     capture: input.capture,
     localUri: input.file.localUri,
     thumbnailUri: input.file.thumbnailUri,
@@ -71,7 +76,12 @@ export async function capturePhoto(
         baseVersion: null,
         clientAt: input.clientAt,
         dependsOn: input.dependsOn ?? [],
-        payload: { projectId: photo.projectId, defectId: photo.defectId, capture: input.capture },
+        payload: {
+          projectId: photo.projectId,
+          defectId: photo.defectId,
+          purpose: photo.purpose,
+          capture: input.capture,
+        },
       },
       { held: true },
     );
