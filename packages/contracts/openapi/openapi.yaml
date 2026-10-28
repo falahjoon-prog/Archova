@@ -1589,6 +1589,40 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/diary/weeks/{weekStart}/nova-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: weekStart
+        in: path
+        required: true
+        description: The Monday the week starts on, in the project's time zone (X34).
+        schema: { type: string, format: date }
+    post:
+      operationId: summariseDiaryWeekWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: diary.entries.read
+      summary: Nova drafts a short summary of one diary week for the client or head office (F4).
+      description: |
+        Nova writes a few plain sentences about the week, Monday to Sunday, from the diary days the caller can
+        see (a subcontractor's summary is written from their own company's lines only). Every sentence names the
+        diary lines, weather or totals it comes from (`sources`, each with the `date` of its day), and a sentence
+        with a number or a source those facts don't back is dropped. The week's labour hours, busiest day and delay
+        hours by cause are added up in code (`delayHours`), never by the model. Delays and stand-downs the summary
+        doesn't mention are listed in `unmentionedDelays`. A day with more lines than the summary reads leaves out
+        its routine lines (`truncated`), never its delays. The result is a pending suggestion (`task`
+        `diary.weekly`) that only the person who asked can list or decide; it is never written into the diary.
+        Asking again before the week changes returns the same suggestion at no cost. Costs one Nova credit.
+        `weekStart` must be a Monday (422 otherwise); a week with no diary entry is 404 `diary.not_found`, and a
+        week whose entries are empty is 422 `ai.diary.nothing_to_summarise`.
+      responses:
+        '200':
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes:
     parameters:
       - $ref: '#/components/parameters/OrgId'

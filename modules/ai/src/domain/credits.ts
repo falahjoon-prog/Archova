@@ -28,6 +28,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // confirm.
   'drawing.compare': 0.5,
   'diary.summary': 0.5,
+  // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
+  'diary.weekly': 1,
   'defect.tag': 0.1,
   // F31: one suggestion per import file, however many columns. Priya to confirm.
   'import.mapping': 0.25,

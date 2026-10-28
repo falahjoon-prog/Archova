@@ -48,6 +48,8 @@ export interface SummarySource {
   kind: string;
   /** The line's id; null for `weather` and `totals`. */
   id: string | null;
+  /** The day it comes from; set on a weekly summary's sources only (a daily summary is of one day). */
+  date?: string;
 }
 export const WEATHER_SOURCE: SummarySource = { kind: 'weather', id: null };
 export const TOTALS_SOURCE: SummarySource = { kind: 'totals', id: null };
@@ -65,48 +67,67 @@ const MAX_FACTS = 250;
 
 const num = (n: number) => String(Math.round(n * 100) / 100);
 
+type DayLine = DiaryDayForSummary['lines'][number];
+
+/** The weather as one fact, or null when the day records none. */
+export function weatherText(w: DiaryDayForSummary['weather']): string | null {
+  if (!w || !(w.summary || w.minC !== null || w.maxC !== null || w.rainMm !== null)) return null;
+  return [
+    w.summary,
+    w.minC !== null || w.maxC !== null
+      ? `temperature ${w.minC !== null ? num(w.minC) : '?'} to ${w.maxC !== null ? num(w.maxC) : '?'} °C`
+      : null,
+    w.rainMm !== null ? `rain ${num(w.rainMm)} mm` : null,
+    w.lostHours ? `${num(w.lostHours)} hours lost to weather` : null,
+  ]
+    .filter(Boolean)
+    .join('; ');
+}
+
+/** Labour totals calculated in code, or null when the day has no labour lines. */
+export function totalsText(lines: readonly DayLine[]): string | null {
+  const labour = lines.filter((l) => l.kind === 'labour');
+  if (!labour.length) return null;
+  const people = labour.reduce((n, l) => n + (l.headcount ?? 0), 0);
+  const hours = labour.reduce((n, l) => n + (l.hours ?? 0), 0);
+  const companies = new Set(labour.map((l) => l.company).filter(Boolean)).size;
+  return `${people} people, ${num(hours)} hours, ${companies} ${companies === 1 ? 'company' : 'companies'} on site`;
+}
+
+/** A line with its structured fields spelled out beside its own wording. */
+export function lineText(l: DayLine): string {
+  const fields = [
+    l.company,
+    l.headcount !== null ? `${l.headcount} people` : null,
+    l.hours !== null ? `${num(l.hours)} hours` : null,
+    l.delayCause ? `cause: ${l.delayCause}` : null,
+    l.at ? `at ${l.at}` : null,
+  ].filter(Boolean);
+  const photos = l.photoCaptions.length ? ` (photos: ${l.photoCaptions.join('; ')})` : '';
+  const text = [fields.join(', '), l.text.trim()].filter(Boolean).join(' | ') + photos;
+  return text || '(no detail)';
+}
+
+export const isDelayKind = (kind: string) => DELAY_KINDS.has(kind);
+
 /** The day as numbered facts. Lines keep their own wording; structured fields are spelled out beside it. */
 export function diaryFacts(day: DiaryDayForSummary): DiaryFacts {
   const facts: DiaryFact[] = [];
   const sources = new Map<string, SummarySource>();
   const delayIds: string[] = [];
-  const w = day.weather;
-  if (w && (w.summary || w.minC !== null || w.maxC !== null || w.rainMm !== null)) {
-    const parts = [
-      w.summary,
-      w.minC !== null || w.maxC !== null
-        ? `temperature ${w.minC !== null ? num(w.minC) : '?'} to ${w.maxC !== null ? num(w.maxC) : '?'} °C`
-        : null,
-      w.rainMm !== null ? `rain ${num(w.rainMm)} mm` : null,
-      w.lostHours ? `${num(w.lostHours)} hours lost to weather` : null,
-    ].filter(Boolean);
-    facts.push({ id: 'w', kind: 'weather', text: parts.join('; ') });
+  const weather = weatherText(day.weather);
+  if (weather) {
+    facts.push({ id: 'w', kind: 'weather', text: weather });
     sources.set('w', WEATHER_SOURCE);
   }
-  const labour = day.lines.filter((l) => l.kind === 'labour');
-  if (labour.length) {
-    const people = labour.reduce((n, l) => n + (l.headcount ?? 0), 0);
-    const hours = labour.reduce((n, l) => n + (l.hours ?? 0), 0);
-    const companies = new Set(labour.map((l) => l.company).filter(Boolean)).size;
-    facts.push({
-      id: 't',
-      kind: 'totals',
-      text: `${people} people, ${num(hours)} hours, ${companies} ${companies === 1 ? 'company' : 'companies'} on site`,
-    });
+  const totals = totalsText(day.lines);
+  if (totals) {
+    facts.push({ id: 't', kind: 'totals', text: totals });
     sources.set('t', TOTALS_SOURCE);
   }
   for (const [i, l] of day.lines.slice(0, MAX_FACTS - facts.length).entries()) {
     const id = `l${i + 1}`;
-    const fields = [
-      l.company,
-      l.headcount !== null ? `${l.headcount} people` : null,
-      l.hours !== null ? `${num(l.hours)} hours` : null,
-      l.delayCause ? `cause: ${l.delayCause}` : null,
-      l.at ? `at ${l.at}` : null,
-    ].filter(Boolean);
-    const photos = l.photoCaptions.length ? ` (photos: ${l.photoCaptions.join('; ')})` : '';
-    const text = [fields.join(', '), l.text.trim()].filter(Boolean).join(' | ') + photos;
-    facts.push({ id, kind: l.kind, text: text || '(no detail)' });
+    facts.push({ id, kind: l.kind, text: lineText(l) });
     sources.set(id, { kind: l.kind, id: l.id });
     if (DELAY_KINDS.has(l.kind)) delayIds.push(id);
   }
@@ -132,6 +153,41 @@ export function numbersIn(text: string): string[] {
   return (text.match(/\d+(?:[.:/,-]\d+)*/g) ?? []).map((n) => n.replace(/,/g, ''));
 }
 
+/** A sentence the model wrote: its words and the ids of the facts it says it used. */
+export interface ModelSentence {
+  text: string;
+  sources: readonly string[];
+}
+
+/**
+ * The sentence checks shared by the daily and weekly summaries: a sentence is kept only when it cites at least one
+ * fact we supplied and every number, time and date in it appears in those facts (or in `known`, the dates of the
+ * period). Returns the kept sentences with their sources, the facts they cite and how many were dropped.
+ */
+export function reviewSentences(
+  modelSentences: readonly ModelSentence[],
+  built: DiaryFacts,
+  known: readonly string[],
+): { sentences: SummarySentence[]; mentioned: Set<string>; dropped: number } {
+  const text = new Map(built.facts.map((f) => [f.id, f.text]));
+  const mentioned = new Set<string>();
+  let dropped = 0;
+  const sentences: SummarySentence[] = [];
+  for (const s of modelSentences) {
+    const ids = [...new Set(s.sources)].filter((id) => text.has(id));
+    const hay = normaliseForMatch(
+      [...known, ...ids.map((id) => text.get(id)!)].join('\n').replace(/,/g, ''),
+    ).replace(/\s+/g, '');
+    if (!ids.length || !numbersIn(s.text).every((n) => hay.includes(n))) {
+      dropped++;
+      continue;
+    }
+    ids.forEach((id) => mentioned.add(id));
+    sentences.push({ text: s.text.trim(), sources: ids.map((id) => built.sources.get(id)!) });
+  }
+  return { sentences, mentioned, dropped };
+}
+
 /**
  * The checks between the model and the site manager: sources must be facts we supplied, numbers must be in those
  * facts, and a delay line the summary skipped is listed. "Possible delay" is always raised when the day has a
@@ -143,21 +199,7 @@ export function reviewDiarySummary(
   day: Pick<DiaryDayForSummary, 'date' | 'lines'>,
 ): ReviewedSummary {
   const text = new Map(built.facts.map((f) => [f.id, f.text]));
-  const mentioned = new Set<string>();
-  let dropped = 0;
-  const sentences: SummarySentence[] = [];
-  for (const s of out.sentences) {
-    const ids = [...new Set(s.sources)].filter((id) => text.has(id));
-    const hay = normaliseForMatch(
-      [day.date, ...ids.map((id) => text.get(id)!)].join('\n').replace(/,/g, ''),
-    ).replace(/\s+/g, '');
-    if (!ids.length || !numbersIn(s.text).every((n) => hay.includes(n))) {
-      dropped++;
-      continue;
-    }
-    ids.forEach((id) => mentioned.add(id));
-    sentences.push({ text: s.text.trim(), sources: ids.map((id) => built.sources.get(id)!) });
-  }
+  const { sentences, mentioned, dropped } = reviewSentences(out.sentences, built, [day.date]);
 
   const delayIds = new Set(built.delayIds.map((id) => built.sources.get(id)!.id));
   const modelIds = out.possibleDelay.sources.filter((id) => text.has(id));
