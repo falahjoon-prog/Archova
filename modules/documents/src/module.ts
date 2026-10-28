@@ -1,4 +1,5 @@
-import { defineModule, type KernelServices } from '@archova/kernel';
+import { encodeId } from '@archova/domain';
+import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { FilesModule } from '@archova/mod-files';
 import type { IdentityApi } from '@archova/mod-identity';
@@ -13,6 +14,7 @@ import { createMarkupService } from './application/markups';
 import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
 import { documentsRoutes } from './api/routes';
+import { toDocumentDto, toFolderDto } from './api/mappers';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
 
 export function createDocumentsModule(
@@ -33,6 +35,29 @@ export function createDocumentsModule(
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
   const aiSources = createAiSourceService(c, folders);
+  const syncSource: SyncSource = {
+    module: 'documents',
+    permission: 'documents.documents.read',
+    publicId: (entityType, id) => encodeId(entityType === 'folder' ? 'folder' : 'document', id),
+    async load(scope, { projectId, entityType, ids }) {
+      const out = new Map<string, { version: number; data: Record<string, unknown> }>();
+      if (!projectId) return out;
+      if (entityType === 'folder') {
+        for (const f of await folders.visibleAmong(scope, projectId, ids))
+          out.set(f.id, {
+            version: f.version,
+            data: toFolderDto(f) as unknown as Record<string, unknown>,
+          });
+      } else if (entityType === 'document') {
+        for (const d of await documents.visibleAmong(scope, projectId, ids))
+          out.set(d.id, {
+            version: d.version,
+            data: toDocumentDto(d) as unknown as Record<string, unknown>,
+          });
+      }
+      return out;
+    },
+  };
   return {
     definition: defineModule({ name: 'documents', permissions: DOCUMENTS_PERMISSIONS }),
     routes: documentsRoutes({
@@ -47,6 +72,8 @@ export function createDocumentsModule(
       transmittals,
     }),
     api: {
+      /** What the mobile pull reads (modules/sync): folders and documents. */
+      syncSource,
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */
