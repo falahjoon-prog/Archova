@@ -38,3 +38,43 @@ export async function signOutOfSite(
     }),
   );
 }
+
+const rollCallPath = '/v1/orgs/{orgId}/projects/{projectId}/attendance/roll-calls' as const;
+
+export async function startRollCall(
+  api: ApiClient,
+  t: GateTarget,
+  input: { reason: string; idempotencyKey: string },
+) {
+  return unwrap(
+    await api.POST(rollCallPath, {
+      params: {
+        path: { orgId: t.orgId, projectId: t.projectId },
+        header: { 'Idempotency-Key': input.idempotencyKey },
+      },
+      body: { reason: input.reason },
+    }),
+  );
+}
+
+export async function markRollCall(
+  api: ApiClient,
+  t: GateTarget,
+  rollCallId: string,
+  mark: { workerId: string; status: 'accounted_for' | 'missing' | 'not_on_site' },
+) {
+  return unwrap(
+    await api.POST(`${rollCallPath}/{rollCallId}/marks`, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId, rollCallId } },
+      body: mark,
+    }),
+  );
+}
+
+export async function endRollCall(api: ApiClient, t: GateTarget, rollCallId: string) {
+  return unwrap(
+    await api.POST(`${rollCallPath}/{rollCallId}/end`, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId, rollCallId } },
+    }),
+  );
+}

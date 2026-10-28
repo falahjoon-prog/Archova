@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { companyName } from '@/shared/mocks/directory';
 import { defectsSource, resetDefectsPreview } from '../data/source';
 import { defectInputErrors } from '../lib/lifecycle';
 import { defectsToCsv } from '../lib/csv';
@@ -23,21 +24,40 @@ describe('defects', () => {
       assigneeCompanyId: null,
       assigneeUserId: null,
       dueDate: null,
-      photoNames: [],
+      category: null,
+      photos: [],
     });
     expect(Object.keys(errors)).toEqual(['title', 'assigneeCompanyId', 'location']);
+    const live = defectInputErrors(
+      {
+        title: 'Cracked tile',
+        description: '',
+        priority: 'medium',
+        trade: '',
+        stage: 'pre_pc',
+        locationId: 'loc_ground_lobby',
+        drawing: null,
+        assigneeCompanyId: 'cmp_tile',
+        assigneeUserId: null,
+        dueDate: null,
+        category: null,
+        photos: [],
+      },
+      true,
+    );
+    expect(live.location).toBe('Choose the drawing and mark where the defect is.');
     expect(formatDefectNumber(12)).toBe('DEF-0012');
     expect(formatDefectNumber(null)).toBe('D-local');
   });
 
   it('needs an after photo to mark ready, and a reason to reject (DEF-AC5, DEF-AC6)', async () => {
     await expect(
-      defectsSource.markReady(P, 'dft_0002', { note: '', photoNames: [] }, tiler),
+      defectsSource.markReady(P, 'dft_0002', { note: '', photos: [] }, tiler),
     ).rejects.toMatchObject({ status: 422 });
     const ready = await defectsSource.markReady(
       P,
       'dft_0002',
-      { note: 'Replaced', photoNames: ['after.jpg'] },
+      { note: 'Replaced', photos: [new File(['x'], 'after.jpg')] },
       tiler,
     );
     expect(ready.status).toBe('ready_for_review');
@@ -87,21 +107,23 @@ describe('defects', () => {
   });
 
   it('suggests trade and company from the description and finds duplicates at a location', async () => {
-    expect(await defectsSource.novaSuggest('Cracked tile near the lift')).toMatchObject({
+    const ask = (description: string) =>
+      defectsSource.novaSuggest(P, { description, photos: [], drawing: null });
+    expect(await ask('Cracked tile near the lift')).toMatchObject({
       trade: 'Tiling',
       companyId: 'cmp_tile',
     });
-    expect(await defectsSource.novaSuggest('Something odd')).toBeNull();
+    expect(await ask('Something odd')).toBeNull();
     const dups = await defectsSource.novaDuplicates(P, {
       title: 'Chipped tile',
       locationId: 'loc_ground_lobby',
-      sheetId: null,
+      drawing: null,
     });
     expect(dups.map((d) => d.id)).toEqual(['dft_0002']);
   });
 
   it('exports CSV sorted by location for a walk (DEF-AC10)', async () => {
-    const csv = defectsToCsv(await defectsSource.list(P, {}));
+    const csv = defectsToCsv(await defectsSource.list(P, {}), companyName);
     const firstCol = csv
       .split('\n')
       .slice(1)

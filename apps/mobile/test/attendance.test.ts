@@ -1,8 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SignInResult } from '@archova/contracts';
-import { parseGateCode, signInAtGate, signInMessage } from '../features/attendance';
+import {
+  groupByCompany,
+  parseGateCode,
+  progressLabel,
+  signInAtGate,
+  signInMessage,
+} from '../features/attendance';
 
 vi.mock('../features/attendance/screens/SiteSignInScreen', () => ({}));
+vi.mock('../features/attendance/screens/RollCallScreen', () => ({}));
 
 const result = (over: Partial<SignInResult>): SignInResult =>
   ({ outcome: 'accepted', eligibility: null, session: null, worker: {}, ...over }) as SignInResult;
@@ -69,5 +76,36 @@ describe('signInAtGate', () => {
       params: { path: { orgId: 'o1', projectId: 'p1' }, header: { 'Idempotency-Key': 'k1' } },
       body: { gateCode: 'gqr_AbCdEfGhIjKlMnOp', clientAt: '2026-10-28T14:30:00Z' },
     });
+  });
+});
+
+describe('roll call display', () => {
+  const person = (over: Record<string, unknown>) =>
+    ({ workerId: 'w', fullName: 'A', companyId: null, companyNameOther: null, ...over }) as never;
+
+  it('groups consecutive people by company name', () => {
+    const groups = groupByCompany(
+      [
+        person({ workerId: '1', companyId: 'c1' }),
+        person({ workerId: '2', companyId: 'c1' }),
+        person({ workerId: '3', companyNameOther: 'Visitors Pty' }),
+        person({ workerId: '4' }),
+      ],
+      (id) => (id === 'c1' ? 'Acme Electrical' : undefined),
+    );
+    expect(groups.map((g) => [g.company, g.people.length])).toEqual([
+      ['Acme Electrical', 2],
+      ['Visitors Pty', 1],
+      ['No company', 1],
+    ]);
+  });
+
+  it('summarises progress and hides zero counts', () => {
+    expect(progressLabel({ total: 42, accountedFor: 30, missing: 2, unmarked: 10 })).toBe(
+      '30 of 42 accounted for · 2 missing · 10 to check',
+    );
+    expect(progressLabel({ total: 5, accountedFor: 5, missing: 0, unmarked: 0 })).toBe(
+      '5 of 5 accounted for',
+    );
   });
 });
