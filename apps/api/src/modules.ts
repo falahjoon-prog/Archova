@@ -9,6 +9,8 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
+import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
+import { INTEGRATIONS_PERMISSIONS, createIntegrationsModule } from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
@@ -24,6 +26,8 @@ export const MODULE_PERMISSIONS = [
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
+  ESTIMATING_PERMISSIONS,
+  INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
 ];
@@ -79,6 +83,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce: 'workforce.attendance.sign_in_self',
       // The assigned subcontractor's "after" photo when marking a defect ready for review (DEF-AC5).
       defects: 'defects.defects.respond',
+      // A subcontractor attaches their quote PDF to a tender package they were invited to.
+      estimating: 'estimating.quotes.submit',
     },
   });
 
@@ -105,6 +111,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
+  const estimating = createEstimatingModule(services, {
+    access: access.api,
+    platform: platform.api,
+    documents: documents.api,
+    files: files.api,
+  });
+
+  const integrations = createIntegrationsModule(services, {
+    platform: platform.api,
+    files: files.api,
+  });
+
   const ai = createAiModule(services, {
     config: opts.ai.config,
     orgTimeZone: async (scope) => (await platform.api.getOrg(scope)).timezone,
@@ -125,6 +143,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     projectCompanies: (scope, projectId) =>
       platform.api.projectCompaniesWithTrades(scope, projectId),
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
+    quotePackage: (scope, projectId, packageId) =>
+      estimating.api.scopeForQuoteReading(scope, projectId, packageId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
   });
@@ -174,6 +194,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     defects,
+    estimating,
+    integrations,
     diary,
     workforce,
     sync,
@@ -197,6 +219,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     defects,
+    estimating,
+    integrations,
     sync,
     diary,
     workforce,

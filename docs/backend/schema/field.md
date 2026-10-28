@@ -40,7 +40,7 @@ These are the tables the mobile app writes offline, so every one uses client-gen
 - `location_id uuid null`, `sheet_id uuid null`, `drawing_revision_id uuid null`, `pin_x real`, `pin_y real` (0–1 normalised)
 - `assignee_company_id uuid`, `assignee_user_id uuid null`, `due_date date`
 - `raised_by_company_id uuid`, `ready_for_review_at`, `closed_at`, `closed_by`
-- `inspection_item_id uuid null` (raised from an inspection), `source text CHECK (manual|inspection|ai_suggested)`
+- `inspection_item_id uuid null` (raised from an inspection), `source text CHECK (manual|inspection|ai_suggested)`, `ai_suggestion_id uuid null` (the Nova `defect.tag` suggestion it was raised from; set with `source = ai_suggested` when create is given `aiSuggestionId`, and carried on `defects.defect.created.v1`)
 - index `(org_id, project_id, status, assignee_company_id)`
 
 **defects.events** — status history with evidence
@@ -53,7 +53,7 @@ Visibility rule: a subcontractor principal sees only rows where `assignee_compan
 - Lifecycle is `packages/domain/src/defects.ts`, shared with the app. `POST .../defects/{id}/transition` runs it; the caller acts as the builder (org member) and/or the assigned company. Permissions: `defects.defects.create` issues, `respond` marks ready or disputes, `close` (admin) closes, rejects, reassigns and voids (DEF-AC6).
 - A drawing pin is required for now (no location tree yet); `sheet_id` is copied from the revision. `number` is issued on create. Events add `action` and `project_id`; a trigger keeps them append-only.
 - Visible to builder staff; others see defects assigned to their company and ones they or their company raised. Drafts: builder staff and the author.
-- Not yet: reminders (DEF-AC8), PDF list (AC10), PC list freeze (AC7), guests (US9), sync push commands, `location_id`, saving a Nova suggestion's `runId` with a defect (`source` `ai_suggested`).
+- Not yet: reminders (DEF-AC8), PDF list (AC10), PC list freeze (AC7), guests (US9), sync push commands, `location_id`.
 - Nova tags a defect from its photo and pin in the `ai` module (`POST .../ai/defect-tags`, F5). It suggests and saves nothing; `defects.api.openNear` is what it calls for duplicates.
 
 ## photos

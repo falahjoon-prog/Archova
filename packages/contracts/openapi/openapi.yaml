@@ -31,6 +31,8 @@ tags:
   - name: ai
   - name: rfis
   - name: defects
+  - name: estimating
+  - name: integrations
   - name: sync
   - name: diary
   - name: workforce
@@ -896,6 +898,55 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DrawingRevision' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    get:
+      operationId: getSheetGeometry
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.read
+      summary: >-
+        Where a published sheet stands for takeoff: whether its vector geometry has been extracted and the drawing
+        scale (detected and confirmed). Before extraction it is `pending` with no scale.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SheetGeometry' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DrawingRevisionId'
+    put:
+      operationId: confirmSheetScale
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.drawings.manage
+      summary: >-
+        A person fixes the drawing scale (1:N) the takeoff tools measure against. If-Match is optional; send the
+        geometry ETag to refuse overwriting a scale someone else just set.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmSheetScaleRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SheetGeometry' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1289,8 +1340,10 @@ paths:
         A note, a markup with text on it, a site photo, or any mix of them is needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
         from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
         the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
-        neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
-        saved: the draft fills the RFI form and the person edits and sends it. Costs one Nova credit.
+        neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nova sends
+        nothing: the draft fills the RFI form and the person edits and sends it, passing `suggestionId` as
+        `aiSuggestionId` when they create the RFI. The draft is kept for the caller alone (it doesn't show in the
+        project's suggestion list for anyone else). Costs one Nova credit.
       requestBody:
         required: true
         content:
@@ -1348,8 +1401,10 @@ paths:
         near the pin, copied as printed. Companies on the project that list the trade come back in
         `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
         pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
-        in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
-        is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+        in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nova
+        raises no defect: the suggestion fills the defect form and the person saves it, passing `suggestionId` as
+        `aiSuggestionId` so the defect is marked `ai_suggested`. The suggestion is kept for the caller alone (it
+        doesn't show in the project's suggestion list for anyone else). Costs a tenth of a Nova credit.
         The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
         first); anything else is a 422.
       requestBody:
@@ -1380,6 +1435,99 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NovaDefectTag' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: suggestImportMappingWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.import_mapping.suggest
+      summary: Nova suggests which field each column of an import file fills (F31).
+      description: |
+        The import screen reads the file and sends, for each column, its header, up to five of its values and, for a
+        column with at most 30 distinct values (a status or priority), those values. Nova suggests the field each
+        column fills for the kind of record (`entity`), with a confidence, and for columns that fill a field with
+        fixed values (status, priority) what each value in the file means. Code keeps only fields that exist, gives
+        each field to one column, withdraws a suggestion whose values don't look like that kind of field (a date
+        column of names), fills `examples` from the file, and lists the required fields no column fills in
+        `missingRequired`. Nothing is imported: the person confirms or changes every suggestion, and the screen
+        passes `suggestionId` when it starts the import job. The suggestion keeps no values from the file and is
+        private to the caller. Costs a quarter of a Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [entity, columns]
+              properties:
+                entity: { $ref: '#/components/schemas/ImportEntity' }
+                columns:
+                  type: array
+                  minItems: 1
+                  maxItems: 80
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [header, samples]
+                    properties:
+                      header: { type: string, maxLength: 200 }
+                      samples:
+                        type: array
+                        maxItems: 5
+                        items: { type: string, maxLength: 100 }
+                      distinct:
+                        type: array
+                        maxItems: 30
+                        items: { type: string, maxLength: 100 }
+      responses:
+        '200':
+          description: The suggested mapping
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaImportMapping' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/quote-readings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: readQuoteWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: estimating.quotes.review
+      summary: Nova reads a subcontractor's PDF quote into lines, exclusions and qualifications (F22).
+      description: |
+        The estimator has the quote PDF uploaded to the project and names the tender package it answers (which must
+        be out to tender). Nova reads the PDF text (scanned pages through OCR) against the package's scope lines and
+        returns the priced lines (provisional sums marked), the exclusions and qualifications, the quote's reference,
+        validity and printed total, each with the page and words it came from (`source`). Code keeps a source only
+        when its words are on that page, flags a line whose amount is not printed on its page (`warning`), keeps
+        discounts and priced options as qualifications, adds the lines up and sets them against the printed total
+        (`totalCheck`). Nothing is saved as a quote: the estimator checks the reading against the PDF, picks the company
+        and saves the quote with `suggestionId` as `aiSuggestionId`, then decides the suggestion. The suggestion is
+        private to the caller. Costs one and a half Nova credits. A PDF with no readable text returns 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [packageId, fileId]
+              properties:
+                packageId: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+                fileId: { $ref: '#/components/schemas/FileRef' }
+      responses:
+        '200':
+          description: The reading
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaQuoteReading' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
@@ -1556,6 +1704,631 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SyncPushResponse' }
         '426': { $ref: '#/components/responses/Problem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTenderPackages
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        Tender packages on the project. A subcontractor sees the packages they were invited to, once out to tender.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PackageStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackagePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Draft a tender package with its scope lines and documents (EST-AC1). Numbered TP-001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTenderPackageRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    get:
+      operationId: getTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        One package. A subcontractor sees only their own invite.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Edit a draft or out-to-tender package.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTenderPackageRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: transitionTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Send a draft out to tender (needs scope, a due date and an invite), close, reopen or cancel it.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PackageActionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: inviteToTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: >-
+        Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InvitePackageRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    put:
+      operationId: setTenderPackageAllowances
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Replace the estimator allowances for gaps, keyed quoteId:scopeKey (EST-AC6 normalise).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetAllowancesRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/award:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: awardTenderPackage
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Select the preferred confirmed quote. A reason is required when it is not the lowest after allowances (EST-AC7).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AwardPackageRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    get:
+      operationId: listQuotes
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        Quotes on a package. A subcontractor sees only their own company quotes (EST-AC3).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuotePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.submit
+      summary: >-
+        Submit a quote, or a revised one that supersedes that company earlier quote (EST-AC4). A subcontractor quotes for their own company; builder staff name the company.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateQuoteRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - $ref: '#/components/parameters/QuoteId'
+    get:
+      operationId: getQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.read
+      summary: >-
+        One quote with its lines.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Correct a quote before it is confirmed. Changing a Nova-read amount keeps the original (EST-AC5).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateQuoteRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - $ref: '#/components/parameters/QuoteId'
+    post:
+      operationId: confirmQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Confirm the quote so it takes part in comparison and can be awarded (EST-AC5).
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/decline:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - $ref: '#/components/parameters/QuoteId'
+    post:
+      operationId: declineQuote
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: >-
+        Take a quote out of the comparison.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quote' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTakeoffMeasurements
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.read
+      summary: >-
+        Takeoff measurements on the project, newest first. Filter by drawing revision, tender package or confirmed state.
+      parameters:
+        - {
+            name: revisionId,
+            in: query,
+            schema: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' },
+          }
+        - { name: packageId, in: query, schema: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' } }
+        - { name: confirmed, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TakeoffMeasurementPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createTakeoffMeasurement
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.manage
+      summary: >-
+        Record a length, area or count measured on a drawing revision. A hand-drawn measurement is confirmed on
+        creation; one Nova drew (`assisted`) waits for a person to confirm it.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateTakeoffMeasurementRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TakeoffMeasurementId'
+    get:
+      operationId: getTakeoffMeasurement
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.read
+      summary: One measurement.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateTakeoffMeasurement
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.manage
+      summary: >-
+        Re-label, re-shape or re-link a measurement. Changing the shape or quantity of one Nova drew clears its
+        confirmation.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTakeoffMeasurementRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteTakeoffMeasurement
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.manage
+      summary: Remove a measurement.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/confirm:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TakeoffMeasurementId'
+    post:
+      operationId: confirmTakeoffMeasurement
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.confirm
+      summary: A person accepts a measurement so its quantity can feed a scope line or estimate.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listImportJobs
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.read
+      summary: Imports on the project, newest first.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJobPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Start an import from a file the customer exported (CSV). One import at a time per project. The file is read
+        by the parse step.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateImportJobRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    get:
+      operationId: getImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.read
+      summary: One import with its counts from the last dry run.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    post:
+      operationId: parseImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Read the file into staged rows, one per record, up to 50,000. Running it again replaces the staged rows and
+        clears the mapping.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    put:
+      operationId: setImportMapping
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: >-
+        Choose which column fills which field (and what each status value means), then dry-run every staged row.
+        Every required field needs a column. Nothing is created.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportMappingRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    post:
+      operationId: cancelImportJob
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.manage
+      summary: Drop an import that has not started applying; its staged rows are cleared by the retention job.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportJob' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ImportJobId'
+    get:
+      operationId: listImportRows
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.imports.read
+      summary: The staged rows in file order, with what is wrong with the ones that failed the dry run.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ImportRowStatus' } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportRowPage' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/defects:
     parameters:
@@ -3984,6 +4757,26 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^dfx_[0-9A-Za-z]{26}$' }
+    TenderPackageId:
+      name: packageId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+    QuoteId:
+      name: quoteId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^quo_[0-9A-Za-z]{26}$' }
+    TakeoffMeasurementId:
+      name: measurementId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    ImportJobId:
+      name: importJobId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^imp_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -4658,6 +5451,7 @@ components:
       required:
         [
           runId,
+          suggestionId,
           subject,
           question,
           discipline,
@@ -4670,6 +5464,12 @@ components:
         ]
       properties:
         runId: { type: string, description: For feedback (`air_`) }
+        suggestionId:
+          type: string
+          description: |
+            The saved draft (`ais_`), private to the caller. Pass it as `aiSuggestionId` when creating the RFI,
+            then decide it: `accepted` as is, `edited` when the person changed the draft, `rejected` when they
+            raised nothing from it.
         subject: { type: string }
         question: { type: string }
         discipline:
@@ -4737,11 +5537,213 @@ components:
             scanned:
               type: boolean
               description: The sheet was read with OCR, so the person should check the quoted text against the drawing.
+    ImportEntity:
+      type: string
+      enum: [rfi, defect, drawing_register, company]
+    NovaImportMapping:
+      type: object
+      required: [runId, suggestionId, entity, fields, columns, values, missingRequired]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        suggestionId:
+          type: string
+          description: The saved suggestion (`ais_`), private to the caller. Pass it when the import job starts, then decide it.
+        entity: { $ref: '#/components/schemas/ImportEntity' }
+        fields:
+          description: The fields a column of this record can fill, for the screen to offer when the person changes a suggestion.
+          type: array
+          items:
+            type: object
+            required: [key, label, kind, required, values]
+            properties:
+              key: { type: string }
+              label: { type: string }
+              kind: { type: string, enum: [text, number, date, enum, email, phone, abn] }
+              required: { type: boolean }
+              values:
+                description: For `enum` fields, the values Archova stores; empty for the rest.
+                type: array
+                items:
+                  type: object
+                  required: [value, label]
+                  properties:
+                    value: { type: string }
+                    label: { type: string }
+        columns:
+          description: One entry per column of the file, in order.
+          type: array
+          items:
+            type: object
+            required: [index, header, field, confidence, examples, warning]
+            properties:
+              index: { type: integer, minimum: 0 }
+              header: { type: string }
+              field:
+                {
+                  type: [string, 'null'],
+                  description: A field key,
+                  or null when the column isn't imported.,
+                }
+              confidence: { type: string, enum: [high, medium, low] }
+              examples:
+                description: The first distinct values in the file, for the person to check the suggestion against.
+                type: array
+                items: { type: string }
+              warning:
+                description: duplicate_field means another column fits that field better; unlike_values means the column's values don't look like that kind of field.
+                type: [string, 'null']
+                enum: [duplicate_field, unlike_values, null]
+        values:
+          description: For columns that fill a field with fixed values, what each value in the file means.
+          type: array
+          items:
+            type: object
+            required: [index, field, pairs]
+            properties:
+              index: { type: integer, minimum: 0 }
+              field: { type: string }
+              pairs:
+                type: array
+                items:
+                  type: object
+                  required: [source, value]
+                  properties:
+                    source: { type: string }
+                    value:
+                      {
+                        type: [string, 'null'],
+                        description: A value of the field,
+                        or null when the person must choose.,
+                      }
+        missingRequired:
+          description: Required fields that no column fills.
+          type: array
+          items: { type: string }
+    NovaQuoteReading:
+      type: object
+      required:
+        - runId
+        - suggestionId
+        - packageId
+        - fileId
+        - pageCount
+        - scannedPages
+        - skippedPages
+        - truncated
+        - reference
+        - validUntil
+        - prices
+        - lines
+        - exclusions
+        - qualifications
+        - statedTotalExGst
+        - linesTotalExGst
+        - discountsExGst
+        - totalCheck
+        - difference
+        - dropped
+        - warnings
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        suggestionId:
+          type: string
+          description: The saved suggestion (`ais_`), private to the caller. Pass it as `aiSuggestionId` when saving the quote, then decide it.
+        packageId: { type: string }
+        fileId: { type: string }
+        pageCount: { type: integer, minimum: 1 }
+        scannedPages:
+          description: Pages read by OCR rather than the PDF text layer; check these against the PDF.
+          type: array
+          items: { type: integer, minimum: 1 }
+        skippedPages:
+          description: Pages Nova did not read (no text even after OCR, or beyond the limits).
+          type: array
+          items: { type: integer, minimum: 1 }
+        truncated:
+          {
+            type: boolean,
+            description: A page was cut,
+            or later pages left out,
+            to stay inside the limits.,
+          }
+        reference: { type: [string, 'null'] }
+        validUntil: { type: [string, 'null'], format: date }
+        prices:
+          description: Whether the amounts on the lines include GST, as the quote says.
+          type: string
+          enum: [exclude_gst, include_gst, unclear]
+        lines:
+          type: array
+          items:
+            type: object
+            required:
+              [description, scopeKey, quantity, unit, rate, amount, isProvisional, source, warning]
+            properties:
+              description: { type: string }
+              scopeKey: { type: [string, 'null'], description: A scope line of the package. }
+              quantity: { type: [string, 'null'] }
+              unit: { type: string }
+              rate: { type: [string, 'null'] }
+              amount: { type: string, description: Decimal AUD as printed on the quote }
+              isProvisional: { type: boolean }
+              source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+              warning:
+                description: source_not_found means the words are on no page; amount_not_on_page means the amount is not printed on the line's page.
+                type: [string, 'null']
+                enum: [source_not_found, amount_not_on_page, null]
+        exclusions: { $ref: '#/components/schemas/NovaQuoteNotes' }
+        qualifications: { $ref: '#/components/schemas/NovaQuoteNotes' }
+        statedTotalExGst:
+          type: [string, 'null']
+          description: The quote's total ex GST when it prints one that is on a page.
+        linesTotalExGst: { type: string, description: The lines added up by code. }
+        discountsExGst:
+          {
+            type: string,
+            description: Discounts and credits the quote takes off the lines (listed under qualifications).,
+          }
+        totalCheck:
+          description: differs means the lines, less any discounts, do not add up to the printed total, so a line was missed or misread.
+          type: string
+          enum: [matches, differs, not_stated]
+        difference:
+          {
+            type: [string, 'null'],
+            description: Lines total less discounts,
+            minus the printed total.,
+          }
+        dropped:
+          {
+            type: integer,
+            minimum: 0,
+            description: Items left out for having no readable amount or repeating another.,
+          }
+        warnings:
+          type: array
+          items:
+            type: string
+            enum:
+              - prices_include_gst
+              - total_differs
+              - stated_total_not_on_page
+              - discounts_as_qualifications
+              - items_dropped
+    NovaQuoteNotes:
+      type: array
+      items:
+        type: object
+        required: [text, scopeKey, source, warning]
+        properties:
+          text: { type: string }
+          scopeKey: { type: [string, 'null'] }
+          source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+          warning: { type: [string, 'null'], enum: [source_not_found, null] }
     NovaDefectTag:
       type: object
       required:
         [
           runId,
+          suggestionId,
           title,
           description,
           trade,
@@ -4756,6 +5758,12 @@ components:
         ]
       properties:
         runId: { type: string, description: For feedback (`air_`) }
+        suggestionId:
+          type: string
+          description: |
+            The saved suggestion (`ais_`), private to the caller. Pass it as `aiSuggestionId` when creating the
+            defect, then decide it: `accepted` as is, `edited` when the person changed Nova's tags, `rejected` when
+            they raised nothing from it.
         title: { type: string }
         description: { type: string }
         trade:
@@ -5367,6 +6375,39 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    SheetGeometry:
+      type: object
+      required:
+        [
+          revisionId,
+          status,
+          scaleDetected,
+          scaleConfirmed,
+          scaleConfirmedBy,
+          scaleConfirmedAt,
+          extractedAt,
+          version,
+        ]
+      properties:
+        revisionId: { type: string }
+        status:
+          {
+            type: string,
+            enum: [pending, ready],
+            description: '`ready` once the files worker has extracted vector geometry',
+          }
+        scaleDetected: { type: [integer, 'null'], description: The N in 1:N the extractor read }
+        scaleConfirmed: { type: [integer, 'null'], description: The N in 1:N a person confirmed }
+        scaleConfirmedBy: { type: [string, 'null'] }
+        scaleConfirmedAt: { type: [string, 'null'], format: date-time }
+        extractedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer, description: 0 before anything is recorded }
+    ConfirmSheetScaleRequest:
+      type: object
+      additionalProperties: false
+      required: [scale]
+      properties:
+        scale: { type: integer, minimum: 1, maximum: 100000, description: The N in 1:N }
     MarkupList:
       type: object
       required: [data]
@@ -5820,6 +6861,10 @@ components:
         costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event.
     UpdateRfiRequest:
       type: object
       additionalProperties: false
@@ -5920,6 +6965,580 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    PackageStatus:
+      type: string
+      enum: [draft, out_to_tender, closed, awarded, cancelled]
+    PackageInviteStatus:
+      type: string
+      enum: [invited, viewed, declined, intends_to_quote, submitted]
+    QuoteStatus:
+      type: string
+      enum: [reading, ready_to_review, confirmed, superseded, declined]
+    ScopeLine:
+      type: object
+      additionalProperties: false
+      required: [key, description, quantity, unit, source]
+      properties:
+        key:
+          type: string
+          pattern: '^[a-z0-9_]{1,40}$'
+          description: Quotes line up against this (`normalised_item_key`)
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: [string, 'null'], pattern: '^\d{1,15}(\.\d{1,3})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        source: { type: string, enum: [typed, csv, takeoff] }
+    PackageDocument:
+      type: object
+      additionalProperties: false
+      required: [kind, id]
+      properties:
+        kind: { type: string, enum: [drawing_revision, document] }
+        id: { type: string, description: 'A drv_ or doc_ id; linked, not copied' }
+    PackageInvite:
+      type: object
+      required: [companyId, status, invitedAt, viewedAt, respondedAt]
+      properties:
+        companyId: { type: string }
+        status: { $ref: '#/components/schemas/PackageInviteStatus' }
+        invitedAt: { type: string, format: date-time }
+        viewedAt: { type: [string, 'null'], format: date-time }
+        respondedAt: { type: [string, 'null'], format: date-time }
+    PackageAward:
+      type: object
+      required: [quoteId, by, at, reason, notLowest]
+      properties:
+        quoteId: { type: string }
+        by: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+        reason: { type: [string, 'null'] }
+        notLowest:
+          { type: boolean, description: 'The selected quote was not the lowest after allowances' }
+    TenderPackage:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          name,
+          trade,
+          status,
+          dueAt,
+          scope,
+          documents,
+          invites,
+          allowances,
+          award,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'TP-001' }
+        name: { type: string }
+        trade: { type: string }
+        status: { $ref: '#/components/schemas/PackageStatus' }
+        dueAt: { type: [string, 'null'], format: date-time }
+        scope:
+          type: array
+          items: { $ref: '#/components/schemas/ScopeLine' }
+        documents:
+          type: array
+          items: { $ref: '#/components/schemas/PackageDocument' }
+        invites:
+          type: array
+          items: { $ref: '#/components/schemas/PackageInvite' }
+        allowances:
+          type: object
+          description: 'Estimator allowances keyed quoteId:scopeKey, decimal AUD ex GST. Empty for subcontractors.'
+          additionalProperties: { type: string }
+        award: { oneOf: [{ $ref: '#/components/schemas/PackageAward' }, { type: 'null' }] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    TenderPackagePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TenderPackage' }
+        nextCursor: { type: [string, 'null'] }
+    CreateTenderPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [name, trade]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        dueAt: { type: string, format: date-time }
+        scope:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/ScopeLine' }
+        documents:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PackageDocument' }
+    UpdateTenderPackageRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        dueAt: { type: [string, 'null'], format: date-time }
+        scope:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/ScopeLine' }
+        documents:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/PackageDocument' }
+    PackageActionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { type: string, enum: [send, close, reopen, cancel] }
+    InvitePackageRequest:
+      type: object
+      additionalProperties: false
+      required: [companyIds]
+      properties:
+        companyIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CompanyRef' }
+    SetAllowancesRequest:
+      type: object
+      additionalProperties: false
+      required: [allowances]
+      properties:
+        allowances:
+          type: object
+          additionalProperties: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    AwardPackageRequest:
+      type: object
+      additionalProperties: false
+      required: [quoteId]
+      properties:
+        quoteId: { type: string, pattern: '^quo_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    QuoteSourceRef:
+      type: object
+      additionalProperties: false
+      required: [page, snippet]
+      properties:
+        page: { type: integer, minimum: 1 }
+        snippet: { type: string, maxLength: 500 }
+    QuoteLine:
+      type: object
+      required:
+        [
+          id,
+          scopeKey,
+          description,
+          quantity,
+          unit,
+          rate,
+          amount,
+          isProvisional,
+          originalAmount,
+          source,
+        ]
+      properties:
+        id: { type: string }
+        scopeKey: { type: [string, 'null'] }
+        description: { type: string }
+        quantity: { type: [string, 'null'] }
+        unit: { type: string }
+        rate: { type: [string, 'null'] }
+        amount: { type: string, description: 'Decimal AUD ex GST' }
+        isProvisional: { type: boolean }
+        originalAmount:
+          {
+            type: [string, 'null'],
+            description: 'What Nova read, kept when the estimator corrected it',
+          }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    QuoteNote:
+      type: object
+      required: [id, text, scopeKey, source]
+      properties:
+        id: { type: string }
+        text: { type: string }
+        scopeKey:
+          {
+            type: [string, 'null'],
+            description: 'An exclusion naming a scope line marks that cell excluded',
+          }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    Quote:
+      type: object
+      required:
+        [
+          id,
+          packageId,
+          companyId,
+          revision,
+          status,
+          reference,
+          fileIds,
+          receivedAt,
+          validUntil,
+          totalExGst,
+          gst,
+          currency,
+          lines,
+          exclusions,
+          qualifications,
+          source,
+          confirmedBy,
+          confirmedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        packageId: { type: string }
+        companyId: { type: string }
+        revision:
+          {
+            type: integer,
+            description: 'A revised quote supersedes the earlier revision (EST-AC4)',
+          }
+        status: { $ref: '#/components/schemas/QuoteStatus' }
+        reference: { type: [string, 'null'] }
+        fileIds:
+          type: array
+          items: { type: string }
+        receivedAt: { type: string, format: date-time }
+        validUntil: { type: [string, 'null'], format: date }
+        totalExGst: { type: string }
+        gst: { type: string }
+        currency: { type: string }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteLine' }
+        exclusions:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteNote' }
+        qualifications:
+          type: array
+          items: { $ref: '#/components/schemas/QuoteNote' }
+        source: { type: string, enum: [manual, ai_extracted] }
+        confirmedBy: { type: [string, 'null'] }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+    QuotePage:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Quote' }
+    QuoteLineInput:
+      type: object
+      additionalProperties: false
+      required: [description, amount]
+      properties:
+        id: { type: string, description: 'Keeps the line (and a Nova original) when editing' }
+        scopeKey: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,40}$' }
+        description: { type: string, minLength: 1, maxLength: 500 }
+        quantity: { type: [string, 'null'], pattern: '^\d{1,15}(\.\d{1,3})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        rate: { type: [string, 'null'], pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        amount: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+        isProvisional: { type: boolean }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    QuoteNoteInput:
+      type: object
+      additionalProperties: false
+      required: [text]
+      properties:
+        id: { type: string }
+        text: { type: string, minLength: 1, maxLength: 1000 }
+        scopeKey: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,40}$' }
+        source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
+    CreateQuoteRequest:
+      type: object
+      additionalProperties: false
+      required: [lines]
+      properties:
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        reference: { type: string, maxLength: 100 }
+        fileIds:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/FileRef' }
+        validUntil: { type: string, format: date }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: '#/components/schemas/QuoteLineInput' }
+        exclusions:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+        qualifications:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova reading (`suggestionId` from `readQuoteWithNova`) this quote was made from. Builder staff only; the quote is then marked `ai_extracted`, so corrections to Nova's amounts are kept.
+    UpdateQuoteRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        reference: { type: [string, 'null'], maxLength: 100 }
+        validUntil: { type: [string, 'null'], format: date }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items: { $ref: '#/components/schemas/QuoteLineInput' }
+        exclusions:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+        qualifications:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/QuoteNoteInput' }
+    TakeoffKind:
+      type: string
+      enum: [length, area, count]
+    TakeoffGeometry:
+      type: object
+      additionalProperties: false
+      required: [type, points]
+      description: Points in sheet units, as the drawing viewer places them.
+      properties:
+        type: { type: string, enum: [polyline, polygon, points] }
+        points:
+          type: array
+          minItems: 1
+          maxItems: 5000
+          items:
+            type: array
+            minItems: 2
+            maxItems: 2
+            items: { type: number }
+    TakeoffMeasurement:
+      type: object
+      required:
+        [
+          id,
+          revisionId,
+          label,
+          kind,
+          geometry,
+          quantity,
+          unit,
+          source,
+          confidence,
+          packageId,
+          scopeKey,
+          confirmedBy,
+          confirmedAt,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        revisionId: { type: string }
+        label: { type: string }
+        kind: { $ref: '#/components/schemas/TakeoffKind' }
+        geometry: { $ref: '#/components/schemas/TakeoffGeometry' }
+        quantity: { type: string, description: Decimal string, 3 places }
+        unit: { type: string }
+        source: { type: string, enum: [manual, assisted, auto] }
+        confidence: { type: [number, 'null'] }
+        packageId: { type: [string, 'null'] }
+        scopeKey: { type: [string, 'null'] }
+        confirmedBy: { type: [string, 'null'] }
+        confirmedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    TakeoffMeasurementPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        nextCursor: { type: [string, 'null'] }
+    CreateTakeoffMeasurementRequest:
+      type: object
+      additionalProperties: false
+      required: [revisionId, label, kind, geometry, quantity, unit]
+      properties:
+        revisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+        label: { type: string, minLength: 1, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/TakeoffKind' }
+        geometry: { $ref: '#/components/schemas/TakeoffGeometry' }
+        quantity: { type: string, pattern: '^[0-9]{1,15}(\.[0-9]{1,3})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        source: { type: string, enum: [manual, assisted], default: manual }
+        confidence: { type: number, minimum: 0, maximum: 1 }
+        packageId: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+        scopeKey: { type: string, pattern: '^[a-z0-9_]{1,40}$' }
+    UpdateTakeoffMeasurementRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        label: { type: string, minLength: 1, maxLength: 200 }
+        geometry: { $ref: '#/components/schemas/TakeoffGeometry' }
+        quantity: { type: string, pattern: '^[0-9]{1,15}(\.[0-9]{1,3})?$' }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        confidence: { type: [number, 'null'], minimum: 0, maximum: 1 }
+        packageId: { type: [string, 'null'], pattern: '^tpk_[0-9A-Za-z]{26}$' }
+        scopeKey: { type: [string, 'null'], pattern: '^[a-z0-9_]{1,40}$' }
+    ImportSource:
+      type: string
+      enum: [spreadsheet, aconex_export, procore_export]
+    ImportJobStatus:
+      type: string
+      enum: [uploaded, parsed, mapped, validated, applying, done, failed, rolled_back, cancelled]
+    ImportRowStatus:
+      type: string
+      enum: [staged, valid, invalid, skipped, applied, failed]
+    ImportMapping:
+      type: object
+      required: [columns, values]
+      properties:
+        columns:
+          type: object
+          description: Field key to the index of the column that fills it.
+          additionalProperties: { type: integer, minimum: 0 }
+        values:
+          type: object
+          description: Field key to what each value in the file means (file value to the value Archova stores).
+          additionalProperties:
+            type: object
+            additionalProperties: { type: string }
+    ImportJob:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          entity,
+          source,
+          fileId,
+          status,
+          headerRow,
+          headers,
+          mapping,
+          totalRows,
+          validRows,
+          invalidRows,
+          startedBy,
+          createdAt,
+          updatedAt,
+          finishedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        entity: { $ref: '#/components/schemas/ImportEntity' }
+        source: { $ref: '#/components/schemas/ImportSource' }
+        fileId: { type: string }
+        status: { $ref: '#/components/schemas/ImportJobStatus' }
+        headerRow: { type: integer }
+        headers: { type: array, items: { type: string } }
+        mapping: { $ref: '#/components/schemas/ImportMapping' }
+        totalRows: { type: integer }
+        validRows: { type: integer }
+        invalidRows: { type: integer }
+        startedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+    ImportJobPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ImportJob' }
+        nextCursor: { type: [string, 'null'] }
+    CreateImportJobRequest:
+      type: object
+      additionalProperties: false
+      required: [entity, fileId]
+      properties:
+        entity: { $ref: '#/components/schemas/ImportEntity' }
+        source: { $ref: '#/components/schemas/ImportSource' }
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        headerRow:
+          {
+            type: integer,
+            minimum: 1,
+            maximum: 100,
+            description: 'The row the headings are on; default 1',
+          }
+    ImportMappingRequest:
+      type: object
+      additionalProperties: false
+      required: [columns]
+      properties:
+        columns:
+          type: object
+          additionalProperties: { type: integer, minimum: 0 }
+        values:
+          type: object
+          additionalProperties:
+            type: object
+            additionalProperties: { type: string, maxLength: 100 }
+    ImportRowProblem:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    ImportRow:
+      type: object
+      required: [id, rowNumber, raw, normalised, sourceRef, status, errors, createdEntityId]
+      properties:
+        id: { type: string }
+        rowNumber:
+          { type: integer, description: 'The record number in the file, counting the heading row' }
+        raw: { type: array, items: { type: string } }
+        normalised:
+          type: [object, 'null']
+          description: The row in Archova's fields once mapped.
+          additionalProperties: { type: [string, number, 'null'] }
+        sourceRef:
+          { type: [string, 'null'], description: The record's own number in the old system }
+        status: { $ref: '#/components/schemas/ImportRowStatus' }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/ImportRowProblem' }
+        createdEntityId: { type: [string, 'null'] }
+    ImportRowPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ImportRow' }
+        nextCursor: { type: [string, 'null'] }
     DefectStatus:
       type: string
       enum: [draft, open, ready_for_review, closed, disputed, void]
@@ -6057,6 +7676,10 @@ components:
         assigneeUserId: { $ref: '#/components/schemas/UserRef' }
         dueDate: { type: string, format: date }
         pin: { $ref: '#/components/schemas/DrawingPin' }
+        aiSuggestionId:
+          type: string
+          pattern: '^ais_[0-9A-Za-z]{26}$'
+          description: The Nova `defect.tag` suggestion this defect was raised from (`suggestionId` of the tag). Sets `source` to `ai_suggested`.
     UpdateDefectRequest:
       type: object
       additionalProperties: false

@@ -199,6 +199,17 @@ export const GetDrawingRevisionParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
 });
+export const GetSheetGeometryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmSheetScaleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "drawingRevisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmSheetScaleBody = s.ConfirmSheetScaleRequestSchema;
 export const ListMarkupsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -322,6 +333,26 @@ export const TagDefectWithNovaBody = z.object({
   "note": z.string().max(1000).optional(),
   "pin": s.DrawingPinSchema.optional(),
 }).strict();
+export const SuggestImportMappingWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SuggestImportMappingWithNovaBody = z.object({
+  "entity": s.ImportEntitySchema,
+  "columns": z.array(z.object({
+  "header": z.string().max(200),
+  "samples": z.array(z.string().max(100)).max(5),
+  "distinct": z.array(z.string().max(100)).max(30).optional(),
+}).strict()).min(1).max(80),
+}).strict();
+export const ReadQuoteWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReadQuoteWithNovaBody = z.object({
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "fileId": s.FileRefSchema,
+}).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -355,6 +386,172 @@ export const SyncPushParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const SyncPushBody = s.SyncPushRequestSchema;
+export const ListTenderPackagesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListTenderPackagesQuery = z.object({
+  "status": s.PackageStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTenderPackageBody = s.CreateTenderPackageRequestSchema;
+export const GetTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTenderPackageBody = s.UpdateTenderPackageRequestSchema;
+export const TransitionTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const TransitionTenderPackageBody = s.PackageActionRequestSchema;
+export const InviteToTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const InviteToTenderPackageBody = s.InvitePackageRequestSchema;
+export const SetTenderPackageAllowancesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const SetTenderPackageAllowancesBody = s.SetAllowancesRequestSchema;
+export const AwardTenderPackageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const AwardTenderPackageBody = s.AwardPackageRequestSchema;
+export const ListQuotesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const CreateQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const CreateQuoteBody = s.CreateQuoteRequestSchema;
+export const GetQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateQuoteBody = s.UpdateQuoteRequestSchema;
+export const ConfirmQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const DeclineQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string().regex(new RegExp("^quo_[0-9A-Za-z]{26}$")),
+});
+export const ListTakeoffMeasurementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListTakeoffMeasurementsQuery = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")).optional(),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")).optional(),
+  "confirmed": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateTakeoffMeasurementBody = s.CreateTakeoffMeasurementRequestSchema;
+export const GetTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateTakeoffMeasurementBody = s.UpdateTakeoffMeasurementRequestSchema;
+export const DeleteTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const ListImportJobsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListImportJobsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateImportJobBody = s.CreateImportJobRequestSchema;
+export const GetImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const ParseImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const SetImportMappingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const SetImportMappingBody = s.ImportMappingRequestSchema;
+export const CancelImportJobParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const ListImportRowsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "importJobId": z.string().regex(new RegExp("^imp_[0-9A-Za-z]{26}$")),
+});
+export const ListImportRowsQuery = z.object({
+  "status": s.ImportRowStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
 export const ListDefectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1441,6 +1638,30 @@ export const operations = {
     query: null,
     body: null,
   },
+  getSheetGeometry: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.read",
+    internal: false,
+    contentType: null,
+    params: GetSheetGeometryParams,
+    query: null,
+    body: null,
+  },
+  confirmSheetScale: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale',
+    module: "documents",
+    auth: "required",
+    permission: "documents.drawings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ConfirmSheetScaleParams,
+    query: null,
+    body: ConfirmSheetScaleBody,
+  },
   listMarkups: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups',
@@ -1669,6 +1890,30 @@ export const operations = {
     query: null,
     body: TagDefectWithNovaBody,
   },
+  suggestImportMappingWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings',
+    module: "ai",
+    auth: "required",
+    permission: "ai.import_mapping.suggest",
+    internal: false,
+    contentType: "application/json",
+    params: SuggestImportMappingWithNovaParams,
+    query: null,
+    body: SuggestImportMappingWithNovaBody,
+  },
+  readQuoteWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/quote-readings',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReadQuoteWithNovaParams,
+    query: null,
+    body: ReadQuoteWithNovaBody,
+  },
   summariseDiaryDayWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary',
@@ -1740,6 +1985,330 @@ export const operations = {
     params: SyncPushParams,
     query: null,
     body: SyncPushBody,
+  },
+  listTenderPackages: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: ListTenderPackagesParams,
+    query: ListTenderPackagesQuery,
+    body: null,
+  },
+  createTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTenderPackageParams,
+    query: null,
+    body: CreateTenderPackageBody,
+  },
+  getTenderPackage: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: GetTenderPackageParams,
+    query: null,
+    body: null,
+  },
+  updateTenderPackage: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTenderPackageParams,
+    query: null,
+    body: UpdateTenderPackageBody,
+  },
+  transitionTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/transition',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionTenderPackageParams,
+    query: null,
+    body: TransitionTenderPackageBody,
+  },
+  inviteToTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: "application/json",
+    params: InviteToTenderPackageParams,
+    query: null,
+    body: InviteToTenderPackageBody,
+  },
+  setTenderPackageAllowances: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: SetTenderPackageAllowancesParams,
+    query: null,
+    body: SetTenderPackageAllowancesBody,
+  },
+  awardTenderPackage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/award',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: AwardTenderPackageParams,
+    query: null,
+    body: AwardTenderPackageBody,
+  },
+  listQuotes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: ListQuotesParams,
+    query: null,
+    body: null,
+  },
+  createQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.submit",
+    internal: false,
+    contentType: "application/json",
+    params: CreateQuoteParams,
+    query: null,
+    body: CreateQuoteBody,
+  },
+  getQuote: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.read",
+    internal: false,
+    contentType: null,
+    params: GetQuoteParams,
+    query: null,
+    body: null,
+  },
+  updateQuote: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateQuoteParams,
+    query: null,
+    body: UpdateQuoteBody,
+  },
+  confirmQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/confirm',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: null,
+    params: ConfirmQuoteParams,
+    query: null,
+    body: null,
+  },
+  declineQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/decline',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: null,
+    params: DeclineQuoteParams,
+    query: null,
+    body: null,
+  },
+  listTakeoffMeasurements: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.read",
+    internal: false,
+    contentType: null,
+    params: ListTakeoffMeasurementsParams,
+    query: ListTakeoffMeasurementsQuery,
+    body: null,
+  },
+  createTakeoffMeasurement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateTakeoffMeasurementParams,
+    query: null,
+    body: CreateTakeoffMeasurementBody,
+  },
+  getTakeoffMeasurement: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.read",
+    internal: false,
+    contentType: null,
+    params: GetTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  updateTakeoffMeasurement: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateTakeoffMeasurementParams,
+    query: null,
+    body: UpdateTakeoffMeasurementBody,
+  },
+  deleteTakeoffMeasurement: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  confirmTakeoffMeasurement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/confirm',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.confirm",
+    internal: false,
+    contentType: null,
+    params: ConfirmTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  listImportJobs: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.read",
+    internal: false,
+    contentType: null,
+    params: ListImportJobsParams,
+    query: ListImportJobsQuery,
+    body: null,
+  },
+  createImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateImportJobParams,
+    query: null,
+    body: CreateImportJobBody,
+  },
+  getImportJob: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.read",
+    internal: false,
+    contentType: null,
+    params: GetImportJobParams,
+    query: null,
+    body: null,
+  },
+  parseImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: null,
+    params: ParseImportJobParams,
+    query: null,
+    body: null,
+  },
+  setImportMapping: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetImportMappingParams,
+    query: null,
+    body: SetImportMappingBody,
+  },
+  cancelImportJob: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.manage",
+    internal: false,
+    contentType: null,
+    params: CancelImportJobParams,
+    query: null,
+    body: null,
+  },
+  listImportRows: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.imports.read",
+    internal: false,
+    contentType: null,
+    params: ListImportRowsParams,
+    query: ListImportRowsQuery,
+    body: null,
   },
   listDefects: {
     method: 'GET',

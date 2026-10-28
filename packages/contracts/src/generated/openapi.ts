@@ -693,6 +693,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        /** Where a published sheet stands for takeoff: whether its vector geometry has been extracted and the drawing scale (detected and confirmed). Before extraction it is `pending` with no scale. */
+        get: operations["getSheetGeometry"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** A person fixes the drawing scale (1:N) the takeoff tools measure against. If-Match is optional; send the geometry ETag to refuse overwriting a scale someone else just set. */
+        put: operations["confirmSheetScale"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups": {
         parameters: {
             query?: never;
@@ -1000,8 +1042,10 @@ export interface paths {
          * @description A note, a markup with text on it, a site photo, or any mix of them is needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
          *     from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
          *     the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
-         *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
-         *     saved: the draft fills the RFI form and the person edits and sends it. Costs one Nova credit.
+         *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nova sends
+         *     nothing: the draft fills the RFI form and the person edits and sends it, passing `suggestionId` as
+         *     `aiSuggestionId` when they create the RFI. The draft is kept for the caller alone (it doesn't show in the
+         *     project's suggestion list for anyone else). Costs one Nova credit.
          */
         post: operations["draftRfiWithNova"];
         delete?: never;
@@ -1030,12 +1074,76 @@ export interface paths {
          *     near the pin, copied as printed. Companies on the project that list the trade come back in
          *     `suggestedCompanies` (the person picks the assignee; Nova never does), and open defects the caller can see
          *     pinned beside the same spot come back in `duplicates`, nearest first. Numbers in the suggestion that appear
-         *     in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nothing
-         *     is saved: the suggestion fills the defect form and the person saves it. Costs a tenth of a Nova credit.
+         *     in neither the note nor the sheet text are listed in `unsupportedNumbers` for the person to check. Nova
+         *     raises no defect: the suggestion fills the defect form and the person saves it, passing `suggestionId` as
+         *     `aiSuggestionId` so the defect is marked `ai_suggested`. The suggestion is kept for the caller alone (it
+         *     doesn't show in the project's suggestion list for anyone else). Costs a tenth of a Nova credit.
          *     The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB (the apps shrink phone photos
          *     first); anything else is a 422.
          */
         post: operations["tagDefectWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova suggests which field each column of an import file fills (F31).
+         * @description The import screen reads the file and sends, for each column, its header, up to five of its values and, for a
+         *     column with at most 30 distinct values (a status or priority), those values. Nova suggests the field each
+         *     column fills for the kind of record (`entity`), with a confidence, and for columns that fill a field with
+         *     fixed values (status, priority) what each value in the file means. Code keeps only fields that exist, gives
+         *     each field to one column, withdraws a suggestion whose values don't look like that kind of field (a date
+         *     column of names), fills `examples` from the file, and lists the required fields no column fills in
+         *     `missingRequired`. Nothing is imported: the person confirms or changes every suggestion, and the screen
+         *     passes `suggestionId` when it starts the import job. The suggestion keeps no values from the file and is
+         *     private to the caller. Costs a quarter of a Nova credit.
+         */
+        post: operations["suggestImportMappingWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/quote-readings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova reads a subcontractor's PDF quote into lines, exclusions and qualifications (F22).
+         * @description The estimator has the quote PDF uploaded to the project and names the tender package it answers (which must
+         *     be out to tender). Nova reads the PDF text (scanned pages through OCR) against the package's scope lines and
+         *     returns the priced lines (provisional sums marked), the exclusions and qualifications, the quote's reference,
+         *     validity and printed total, each with the page and words it came from (`source`). Code keeps a source only
+         *     when its words are on that page, flags a line whose amount is not printed on its page (`warning`), keeps
+         *     discounts and priced options as qualifications, adds the lines up and sets them against the printed total
+         *     (`totalCheck`). Nothing is saved as a quote: the estimator checks the reading against the PDF, picks the company
+         *     and saves the quote with `suggestionId` as `aiSuggestionId`, then decides the suggestion. The suggestion is
+         *     private to the caller. Costs one and a half Nova credits. A PDF with no readable text returns 422.
+         */
+        post: operations["readQuoteWithNova"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1203,6 +1311,413 @@ export interface paths {
          *     return `pending_review`.
          */
         post: operations["syncPush"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Tender packages on the project. A subcontractor sees the packages they were invited to, once out to tender. */
+        get: operations["listTenderPackages"];
+        put?: never;
+        /** Draft a tender package with its scope lines and documents (EST-AC1). Numbered TP-001 per project. */
+        post: operations["createTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        /** One package. A subcontractor sees only their own invite. */
+        get: operations["getTenderPackage"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft or out-to-tender package. */
+        patch: operations["updateTenderPackage"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a draft out to tender (needs scope, a due date and an invite), close, reopen or cancel it. */
+        post: operations["transitionTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2). */
+        post: operations["inviteToTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the estimator allowances for gaps, keyed quoteId:scopeKey (EST-AC6 normalise). */
+        put: operations["setTenderPackageAllowances"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/award": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Select the preferred confirmed quote. A reason is required when it is not the lowest after allowances (EST-AC7). */
+        post: operations["awardTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        /** Quotes on a package. A subcontractor sees only their own company quotes (EST-AC3). */
+        get: operations["listQuotes"];
+        put?: never;
+        /** Submit a quote, or a revised one that supersedes that company earlier quote (EST-AC4). A subcontractor quotes for their own company; builder staff name the company. */
+        post: operations["createQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        /** One quote with its lines. */
+        get: operations["getQuote"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Correct a quote before it is confirmed. Changing a Nova-read amount keeps the original (EST-AC5). */
+        patch: operations["updateQuote"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the quote so it takes part in comparison and can be awarded (EST-AC5). */
+        post: operations["confirmQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/quotes/{quoteId}/decline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take a quote out of the comparison. */
+        post: operations["declineQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Takeoff measurements on the project, newest first. Filter by drawing revision, tender package or confirmed state. */
+        get: operations["listTakeoffMeasurements"];
+        put?: never;
+        /** Record a length, area or count measured on a drawing revision. A hand-drawn measurement is confirmed on creation; one Nova drew (`assisted`) waits for a person to confirm it. */
+        post: operations["createTakeoffMeasurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        /** One measurement. */
+        get: operations["getTakeoffMeasurement"];
+        put?: never;
+        post?: never;
+        /** Remove a measurement. */
+        delete: operations["deleteTakeoffMeasurement"];
+        options?: never;
+        head?: never;
+        /** Re-label, re-shape or re-link a measurement. Changing the shape or quantity of one Nova drew clears its confirmation. */
+        patch: operations["updateTakeoffMeasurement"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A person accepts a measurement so its quantity can feed a scope line or estimate. */
+        post: operations["confirmTakeoffMeasurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Imports on the project, newest first. */
+        get: operations["listImportJobs"];
+        put?: never;
+        /** Start an import from a file the customer exported (CSV). One import at a time per project. The file is read by the parse step. */
+        post: operations["createImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        /** One import with its counts from the last dry run. */
+        get: operations["getImportJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Read the file into staged rows, one per record, up to 50,000. Running it again replaces the staged rows and clears the mapping. */
+        post: operations["parseImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/mapping": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose which column fills which field (and what each status value means), then dry-run every staged row. Every required field needs a column. Nothing is created. */
+        put: operations["setImportMapping"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Drop an import that has not started applying; its staged rows are cleared by the retention job. */
+        post: operations["cancelImportJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/import-jobs/{importJobId}/rows": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        /** The staged rows in file order, with what is wrong with the ones that failed the dry run. */
+        get: operations["listImportRows"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3265,6 +3780,12 @@ export interface components {
         NovaRfiDraft: {
             /** @description For feedback (`air_`) */
             runId: string;
+            /**
+             * @description The saved draft (`ais_`), private to the caller. Pass it as `aiSuggestionId` when creating the RFI,
+             *     then decide it: `accepted` as is, `edited` when the person changed the draft, `rejected` when they
+             *     raised nothing from it.
+             */
+            suggestionId: string;
             subject: string;
             question: string;
             /**
@@ -3305,9 +3826,130 @@ export interface components {
                 scanned: boolean;
             } | null;
         };
+        /** @enum {string} */
+        ImportEntity: "rfi" | "defect" | "drawing_register" | "company";
+        NovaImportMapping: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The saved suggestion (`ais_`), private to the caller. Pass it when the import job starts, then decide it. */
+            suggestionId: string;
+            entity: components["schemas"]["ImportEntity"];
+            /** @description The fields a column of this record can fill, for the screen to offer when the person changes a suggestion. */
+            fields: {
+                key: string;
+                label: string;
+                /** @enum {string} */
+                kind: "text" | "number" | "date" | "enum" | "email" | "phone" | "abn";
+                required: boolean;
+                /** @description For `enum` fields, the values Archova stores; empty for the rest. */
+                values: {
+                    value: string;
+                    label: string;
+                }[];
+            }[];
+            /** @description One entry per column of the file, in order. */
+            columns: {
+                index: number;
+                header: string;
+                /** @description A field key */
+                field: string | null;
+                /** @enum {string} */
+                confidence: "high" | "medium" | "low";
+                /** @description The first distinct values in the file, for the person to check the suggestion against. */
+                examples: string[];
+                /**
+                 * @description duplicate_field means another column fits that field better; unlike_values means the column's values don't look like that kind of field.
+                 * @enum {string|null}
+                 */
+                warning: "duplicate_field" | "unlike_values" | null;
+            }[];
+            /** @description For columns that fill a field with fixed values, what each value in the file means. */
+            values: {
+                index: number;
+                field: string;
+                pairs: {
+                    source: string;
+                    /** @description A value of the field */
+                    value: string | null;
+                }[];
+            }[];
+            /** @description Required fields that no column fills. */
+            missingRequired: string[];
+        };
+        NovaQuoteReading: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The saved suggestion (`ais_`), private to the caller. Pass it as `aiSuggestionId` when saving the quote, then decide it. */
+            suggestionId: string;
+            packageId: string;
+            fileId: string;
+            pageCount: number;
+            /** @description Pages read by OCR rather than the PDF text layer; check these against the PDF. */
+            scannedPages: number[];
+            /** @description Pages Nova did not read (no text even after OCR, or beyond the limits). */
+            skippedPages: number[];
+            /** @description A page was cut */
+            truncated: boolean;
+            reference: string | null;
+            /** Format: date */
+            validUntil: string | null;
+            /**
+             * @description Whether the amounts on the lines include GST, as the quote says.
+             * @enum {string}
+             */
+            prices: "exclude_gst" | "include_gst" | "unclear";
+            lines: {
+                description: string;
+                /** @description A scope line of the package. */
+                scopeKey: string | null;
+                quantity: string | null;
+                unit: string;
+                rate: string | null;
+                /** @description Decimal AUD as printed on the quote */
+                amount: string;
+                isProvisional: boolean;
+                source: components["schemas"]["QuoteSourceRef"] | null;
+                /**
+                 * @description source_not_found means the words are on no page; amount_not_on_page means the amount is not printed on the line's page.
+                 * @enum {string|null}
+                 */
+                warning: "source_not_found" | "amount_not_on_page" | null;
+            }[];
+            exclusions: components["schemas"]["NovaQuoteNotes"];
+            qualifications: components["schemas"]["NovaQuoteNotes"];
+            /** @description The quote's total ex GST when it prints one that is on a page. */
+            statedTotalExGst: string | null;
+            /** @description The lines added up by code. */
+            linesTotalExGst: string;
+            /** @description Discounts and credits the quote takes off the lines (listed under qualifications). */
+            discountsExGst: string;
+            /**
+             * @description differs means the lines, less any discounts, do not add up to the printed total, so a line was missed or misread.
+             * @enum {string}
+             */
+            totalCheck: "matches" | "differs" | "not_stated";
+            /** @description Lines total less discounts */
+            difference: string | null;
+            /** @description Items left out for having no readable amount or repeating another. */
+            dropped: number;
+            warnings: ("prices_include_gst" | "total_differs" | "stated_total_not_on_page" | "discounts_as_qualifications" | "items_dropped")[];
+        };
+        NovaQuoteNotes: {
+            text: string;
+            scopeKey: string | null;
+            source: components["schemas"]["QuoteSourceRef"] | null;
+            /** @enum {string|null} */
+            warning: "source_not_found" | null;
+        }[];
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
+            /**
+             * @description The saved suggestion (`ais_`), private to the caller. Pass it as `aiSuggestionId` when creating the
+             *     defect, then decide it: `accepted` as is, `edited` when the person changed Nova's tags, `rejected` when
+             *     they raised nothing from it.
+             */
+            suggestionId: string;
             title: string;
             description: string;
             /** @description The trade most likely responsible, as a defect stores it; null when the photo doesn't show enough. */
@@ -3711,6 +4353,29 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        SheetGeometry: {
+            revisionId: string;
+            /**
+             * @description `ready` once the files worker has extracted vector geometry
+             * @enum {string}
+             */
+            status: "pending" | "ready";
+            /** @description The N in 1:N the extractor read */
+            scaleDetected: number | null;
+            /** @description The N in 1:N a person confirmed */
+            scaleConfirmed: number | null;
+            scaleConfirmedBy: string | null;
+            /** Format: date-time */
+            scaleConfirmedAt: string | null;
+            /** Format: date-time */
+            extractedAt: string | null;
+            /** @description 0 before anything is recorded */
+            version: number;
+        };
+        ConfirmSheetScaleRequest: {
+            /** @description The N in 1:N */
+            scale: number;
+        };
         MarkupList: {
             data: components["schemas"]["Markup"][];
         };
@@ -3991,6 +4656,8 @@ export interface components {
             costEstimate?: string;
             scheduleImpactDays?: number;
             pin?: components["schemas"]["RfiPinInput"];
+            /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
+            aiSuggestionId?: string;
         };
         UpdateRfiRequest: {
             subject?: string;
@@ -4045,6 +4712,343 @@ export interface components {
         };
         RfiReasonRequest: {
             reason: string;
+        };
+        /** @enum {string} */
+        PackageStatus: "draft" | "out_to_tender" | "closed" | "awarded" | "cancelled";
+        /** @enum {string} */
+        PackageInviteStatus: "invited" | "viewed" | "declined" | "intends_to_quote" | "submitted";
+        /** @enum {string} */
+        QuoteStatus: "reading" | "ready_to_review" | "confirmed" | "superseded" | "declined";
+        ScopeLine: {
+            /** @description Quotes line up against this (`normalised_item_key`) */
+            key: string;
+            description: string;
+            quantity: string | null;
+            unit: string;
+            /** @enum {string} */
+            source: "typed" | "csv" | "takeoff";
+        };
+        PackageDocument: {
+            /** @enum {string} */
+            kind: "drawing_revision" | "document";
+            /** @description A drv_ or doc_ id; linked, not copied */
+            id: string;
+        };
+        PackageInvite: {
+            companyId: string;
+            status: components["schemas"]["PackageInviteStatus"];
+            /** Format: date-time */
+            invitedAt: string;
+            /** Format: date-time */
+            viewedAt: string | null;
+            /** Format: date-time */
+            respondedAt: string | null;
+        };
+        PackageAward: {
+            quoteId: string;
+            by: string | null;
+            /** Format: date-time */
+            at: string;
+            reason: string | null;
+            /** @description The selected quote was not the lowest after allowances */
+            notLowest: boolean;
+        };
+        TenderPackage: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description TP-001 */
+            numberLabel: string;
+            name: string;
+            trade: string;
+            status: components["schemas"]["PackageStatus"];
+            /** Format: date-time */
+            dueAt: string | null;
+            scope: components["schemas"]["ScopeLine"][];
+            documents: components["schemas"]["PackageDocument"][];
+            invites: components["schemas"]["PackageInvite"][];
+            /** @description Estimator allowances keyed quoteId:scopeKey, decimal AUD ex GST. Empty for subcontractors. */
+            allowances: {
+                [key: string]: string;
+            };
+            award: components["schemas"]["PackageAward"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        TenderPackagePage: {
+            data: components["schemas"]["TenderPackage"][];
+            nextCursor: string | null;
+        };
+        CreateTenderPackageRequest: {
+            name: string;
+            trade: string;
+            /** Format: date-time */
+            dueAt?: string;
+            scope?: components["schemas"]["ScopeLine"][];
+            documents?: components["schemas"]["PackageDocument"][];
+        };
+        UpdateTenderPackageRequest: {
+            name?: string;
+            trade?: string;
+            /** Format: date-time */
+            dueAt?: string | null;
+            scope?: components["schemas"]["ScopeLine"][];
+            documents?: components["schemas"]["PackageDocument"][];
+        };
+        PackageActionRequest: {
+            /** @enum {string} */
+            action: "send" | "close" | "reopen" | "cancel";
+        };
+        InvitePackageRequest: {
+            companyIds: components["schemas"]["CompanyRef"][];
+        };
+        SetAllowancesRequest: {
+            allowances: {
+                [key: string]: string;
+            };
+        };
+        AwardPackageRequest: {
+            quoteId: string;
+            reason?: string;
+        };
+        QuoteSourceRef: {
+            page: number;
+            snippet: string;
+        };
+        QuoteLine: {
+            id: string;
+            scopeKey: string | null;
+            description: string;
+            quantity: string | null;
+            unit: string;
+            rate: string | null;
+            /** @description Decimal AUD ex GST */
+            amount: string;
+            isProvisional: boolean;
+            /** @description What Nova read, kept when the estimator corrected it */
+            originalAmount: string | null;
+            source: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        QuoteNote: {
+            id: string;
+            text: string;
+            /** @description An exclusion naming a scope line marks that cell excluded */
+            scopeKey: string | null;
+            source: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        Quote: {
+            id: string;
+            packageId: string;
+            companyId: string;
+            /** @description A revised quote supersedes the earlier revision (EST-AC4) */
+            revision: number;
+            status: components["schemas"]["QuoteStatus"];
+            reference: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            receivedAt: string;
+            /** Format: date */
+            validUntil: string | null;
+            totalExGst: string;
+            gst: string;
+            currency: string;
+            lines: components["schemas"]["QuoteLine"][];
+            exclusions: components["schemas"]["QuoteNote"][];
+            qualifications: components["schemas"]["QuoteNote"][];
+            /** @enum {string} */
+            source: "manual" | "ai_extracted";
+            confirmedBy: string | null;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            version: number;
+        };
+        QuotePage: {
+            data: components["schemas"]["Quote"][];
+        };
+        QuoteLineInput: {
+            /** @description Keeps the line (and a Nova original) when editing */
+            id?: string;
+            scopeKey?: string | null;
+            description: string;
+            quantity?: string | null;
+            unit?: string;
+            rate?: string | null;
+            amount: string;
+            isProvisional?: boolean;
+            source?: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        QuoteNoteInput: {
+            id?: string;
+            text: string;
+            scopeKey?: string | null;
+            source?: components["schemas"]["QuoteSourceRef"] | null;
+        };
+        CreateQuoteRequest: {
+            companyId?: components["schemas"]["CompanyRef"];
+            reference?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+            /** Format: date */
+            validUntil?: string;
+            lines: components["schemas"]["QuoteLineInput"][];
+            exclusions?: components["schemas"]["QuoteNoteInput"][];
+            qualifications?: components["schemas"]["QuoteNoteInput"][];
+            /** @description The Nova reading (`suggestionId` from `readQuoteWithNova`) this quote was made from. Builder staff only; the quote is then marked `ai_extracted`, so corrections to Nova's amounts are kept. */
+            aiSuggestionId?: string;
+        };
+        UpdateQuoteRequest: {
+            reference?: string | null;
+            /** Format: date */
+            validUntil?: string | null;
+            lines?: components["schemas"]["QuoteLineInput"][];
+            exclusions?: components["schemas"]["QuoteNoteInput"][];
+            qualifications?: components["schemas"]["QuoteNoteInput"][];
+        };
+        /** @enum {string} */
+        TakeoffKind: "length" | "area" | "count";
+        /** @description Points in sheet units, as the drawing viewer places them. */
+        TakeoffGeometry: {
+            /** @enum {string} */
+            type: "polyline" | "polygon" | "points";
+            points: number[][];
+        };
+        TakeoffMeasurement: {
+            id: string;
+            revisionId: string;
+            label: string;
+            kind: components["schemas"]["TakeoffKind"];
+            geometry: components["schemas"]["TakeoffGeometry"];
+            /** @description Decimal string */
+            quantity: string;
+            unit: string;
+            /** @enum {string} */
+            source: "manual" | "assisted" | "auto";
+            confidence: number | null;
+            packageId: string | null;
+            scopeKey: string | null;
+            confirmedBy: string | null;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        TakeoffMeasurementPage: {
+            data: components["schemas"]["TakeoffMeasurement"][];
+            nextCursor: string | null;
+        };
+        CreateTakeoffMeasurementRequest: {
+            revisionId: string;
+            label: string;
+            kind: components["schemas"]["TakeoffKind"];
+            geometry: components["schemas"]["TakeoffGeometry"];
+            quantity: string;
+            unit: string;
+            /**
+             * @default manual
+             * @enum {string}
+             */
+            source: "manual" | "assisted";
+            confidence?: number;
+            packageId?: string;
+            scopeKey?: string;
+        };
+        UpdateTakeoffMeasurementRequest: {
+            label?: string;
+            geometry?: components["schemas"]["TakeoffGeometry"];
+            quantity?: string;
+            unit?: string;
+            confidence?: number | null;
+            packageId?: string | null;
+            scopeKey?: string | null;
+        };
+        /** @enum {string} */
+        ImportSource: "spreadsheet" | "aconex_export" | "procore_export";
+        /** @enum {string} */
+        ImportJobStatus: "uploaded" | "parsed" | "mapped" | "validated" | "applying" | "done" | "failed" | "rolled_back" | "cancelled";
+        /** @enum {string} */
+        ImportRowStatus: "staged" | "valid" | "invalid" | "skipped" | "applied" | "failed";
+        ImportMapping: {
+            /** @description Field key to the index of the column that fills it. */
+            columns: {
+                [key: string]: number;
+            };
+            /** @description Field key to what each value in the file means (file value to the value Archova stores). */
+            values: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        ImportJob: {
+            id: string;
+            projectId: string;
+            entity: components["schemas"]["ImportEntity"];
+            source: components["schemas"]["ImportSource"];
+            fileId: string;
+            status: components["schemas"]["ImportJobStatus"];
+            headerRow: number;
+            headers: string[];
+            mapping: components["schemas"]["ImportMapping"];
+            totalRows: number;
+            validRows: number;
+            invalidRows: number;
+            startedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** Format: date-time */
+            finishedAt: string | null;
+            version: number;
+        };
+        ImportJobPage: {
+            data: components["schemas"]["ImportJob"][];
+            nextCursor: string | null;
+        };
+        CreateImportJobRequest: {
+            entity: components["schemas"]["ImportEntity"];
+            source?: components["schemas"]["ImportSource"];
+            fileId: components["schemas"]["FileRef"];
+            /** @description The row the headings are on; default 1 */
+            headerRow?: number;
+        };
+        ImportMappingRequest: {
+            columns: {
+                [key: string]: number;
+            };
+            values?: {
+                [key: string]: {
+                    [key: string]: string;
+                };
+            };
+        };
+        ImportRowProblem: {
+            field: string;
+            message: string;
+        };
+        ImportRow: {
+            id: string;
+            /** @description The record number in the file, counting the heading row */
+            rowNumber: number;
+            raw: string[];
+            /** @description The row in Archova's fields once mapped. */
+            normalised: {
+                [key: string]: string | number | null;
+            } | null;
+            /** @description The record's own number in the old system */
+            sourceRef: string | null;
+            status: components["schemas"]["ImportRowStatus"];
+            errors: components["schemas"]["ImportRowProblem"][];
+            createdEntityId: string | null;
+        };
+        ImportRowPage: {
+            data: components["schemas"]["ImportRow"][];
+            nextCursor: string | null;
         };
         /** @enum {string} */
         DefectStatus: "draft" | "open" | "ready_for_review" | "closed" | "disputed" | "void";
@@ -4132,6 +5136,8 @@ export interface components {
             /** Format: date */
             dueDate?: string;
             pin: components["schemas"]["DrawingPin"];
+            /** @description The Nova `defect.tag` suggestion this defect was raised from (`suggestionId` of the tag). Sets `source` to `ai_suggested`. */
+            aiSuggestionId?: string;
         };
         UpdateDefectRequest: {
             title?: string;
@@ -5238,6 +6244,10 @@ export interface components {
         TransmittalId: string;
         RfiId: string;
         DefectId: string;
+        TenderPackageId: string;
+        QuoteId: string;
+        TakeoffMeasurementId: string;
+        ImportJobId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -6447,6 +7457,62 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getSheetGeometry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetGeometry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmSheetScale: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                drawingRevisionId: components["parameters"]["DrawingRevisionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmSheetScaleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SheetGeometry"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listMarkups: {
         parameters: {
             query?: never;
@@ -7013,6 +8079,72 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    suggestImportMappingWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    entity: components["schemas"]["ImportEntity"];
+                    columns: {
+                        header: string;
+                        samples: string[];
+                        distinct?: string[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description The suggested mapping */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaImportMapping"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    readQuoteWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    packageId: string;
+                    fileId: components["schemas"]["FileRef"];
+                };
+            };
+        };
+        responses: {
+            /** @description The reading */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaQuoteReading"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     summariseDiaryDayWithNova: {
         parameters: {
             query?: never;
@@ -7173,6 +8305,809 @@ export interface operations {
                 };
             };
             426: components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTenderPackages: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PackageStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackagePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTenderPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTenderPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTenderPackage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTenderPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenderPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionTenderPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PackageActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    inviteToTenderPackage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InvitePackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setTenderPackageAllowances: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetAllowancesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    awardTenderPackage: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AwardPackageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listQuotes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createQuote: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateQuoteRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    declineQuote: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                quoteId: components["parameters"]["QuoteId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Quote"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTakeoffMeasurements: {
+        parameters: {
+            query?: {
+                revisionId?: string;
+                packageId?: string;
+                confirmed?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurementPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTakeoffMeasurementRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTakeoffMeasurementRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listImportJobs: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJobPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createImportJob: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateImportJobRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getImportJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    parseImportJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setImportMapping: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportMappingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelImportJob: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportJob"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listImportRows: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ImportRowStatus"];
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                importJobId: components["parameters"]["ImportJobId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportRowPage"];
+                };
+            };
             default: components["responses"]["Problem"];
         };
     };

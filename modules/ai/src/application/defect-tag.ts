@@ -1,15 +1,18 @@
 // F5 defect photo tagging (ai/01 F5, product/06 DEF-US3): a photo of a defect, and the spot the site manager pinned
 // on the drawing, become a suggested title, description, trade, kind of defect and priority, the companies on the
-// project that could be assigned it, and any open defects already pinned nearby. Nothing is saved: the suggestion
-// fills the defect form and the person saves it (Nova never raises a defect). The sheet text near the pin names the
-// room, so the title can say where without the model guessing. Who to assign comes from the project's companies and
-// their trades, not from the model.
+// project that could be assigned it, and any open defects already pinned nearby. Nova never raises a defect: the
+// suggestion fills the defect form and the person saves it, passing `suggestionId` so the defect is marked
+// `ai_suggested` and the accept rate can be measured. The suggestion is kept as a pending `ai_suggestions` row that
+// only the person who asked can see or decide (the photo and note are theirs until they raise the defect). The sheet
+// text near the pin names the room, so the title can say where without the model guessing. Who to assign comes from
+// the project's companies and their trades, not from the model.
 import {
   defectTagPrompt,
   type DefectTagPin,
   type DefectTradeId,
   type SitePhoto,
 } from '@archova/ai-prompts';
+import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import {
   DUPLICATE_RADIUS,
@@ -30,6 +33,7 @@ import { MAX_INLINE_BYTES, type ReadableFile } from './drawing-register';
 import type { Gateway } from './gateway';
 import { readSheetLines } from './sheet-text';
 import { MAX_PHOTO_BYTES, toSitePhoto } from './site-photo';
+import { suggestions } from '../infra/tables';
 
 export interface DefectTagDeps {
   database: Database;
@@ -56,11 +60,34 @@ export interface DefectTagInput {
   pin?: { drawingRevisionId: string; x: number; y: number };
 }
 
+/** The `ai_suggestions` row kind: `task`, and the photo it is about (`targetType` as the drawing register uses for files). */
+export const DEFECT_TAG_TASK = 'defect.tag';
+export const DEFECT_TAG_TARGET = 'file_page';
+
+/** `ai_suggestions.payload` for `defect.tag`: what Nova proposed, as ids and labels the accept-rate metrics can compare. */
+export interface DefectTagPayload {
+  title: string;
+  description: string;
+  trade: string | null;
+  alternativeTrades: string[];
+  category: string | null;
+  priority: ReviewedDefectTag['priority'];
+  gaps: ReviewedDefectTag['gaps'];
+  /** Companies offered as the assignee, best match first (`companies` ids). */
+  suggestedCompanyIds: string[];
+  /** Open defects shown as possible duplicates (`defects` ids). */
+  duplicateDefectIds: string[];
+  /** The pinned spot the tag was made for. */
+  pin: { drawingRevisionId: string; x: number; y: number } | null;
+}
+
 export interface DefectTagSuggestion extends Omit<
   ReviewedDefectTag,
   'trade' | 'alternativeTrades' | 'defectType'
 > {
   runId: string;
+  /** The saved `ai_suggestions` row; pass it as `aiSuggestionId` when the defect is raised, then decide it. */
+  suggestionId: string;
   /** Labels as a defect stores them, ready for the defect form; null when Nova couldn't settle one. */
   trade: string | null;
   alternativeTrades: string[];
@@ -160,8 +187,7 @@ export function createDefectTagService(deps: DefectTagDeps) {
     });
     const { trade, alternativeTrades, defectType, ...rest } = reviewed;
     const trades = [trade, ...alternativeTrades].filter((t): t is DefectTradeId => !!t);
-    return {
-      runId: run.runId,
+    const suggested = {
       ...rest,
       trade: trade && labelOfTrade(trade),
       alternativeTrades: alternativeTrades.map(labelOfTrade),
@@ -171,6 +197,39 @@ export function createDefectTagService(deps: DefectTagDeps) {
         found.pinned && input.pin ? duplicateCandidates(input.pin, found.pinned.near, trade) : [],
       drawing,
     };
+    const payload: DefectTagPayload = {
+      title: suggested.title,
+      description: suggested.description,
+      trade: suggested.trade,
+      alternativeTrades: suggested.alternativeTrades,
+      category: suggested.category,
+      priority: suggested.priority,
+      gaps: suggested.gaps,
+      suggestedCompanyIds: suggested.suggestedCompanies.map((c) => c.id),
+      duplicateDefectIds: suggested.duplicates.map((d) => d.id),
+      pin: input.pin ?? null,
+    };
+    const suggestionId = await database.withTenantTx(ctx, async (scope) => {
+      const [row] = await scope.tx
+        .insert(suggestions)
+        .values({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          projectId,
+          targetType: DEFECT_TAG_TARGET,
+          targetId: input.photoFileId,
+          task: DEFECT_TAG_TASK,
+          promptVersion: defectTagPrompt.version,
+          payload,
+          status: 'pending',
+          runId: run.runId,
+          createdBy: scope.ctx.userId,
+          updatedBy: scope.ctx.userId,
+        })
+        .returning({ id: suggestions.id });
+      return row!.id;
+    });
+    return { runId: run.runId, suggestionId, ...suggested };
   }
 
   return { tag };

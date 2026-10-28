@@ -15,6 +15,7 @@ import type { StoredShape } from '../domain/markup';
 import type { DocumentService } from '../application/documents';
 import type { DrawingService } from '../application/drawings';
 import type { FolderService } from '../application/folders';
+import type { GeometryService } from '../application/geometry';
 import type { MarkupService } from '../application/markups';
 import type { TransmittalItemView, TransmittalService } from '../application/transmittals';
 import {
@@ -26,6 +27,7 @@ import {
   toFolderDto,
   toMarkupDto,
   toRecipientDto,
+  toSheetGeometryDto,
   toTransmittalDto,
 } from './mappers';
 
@@ -36,6 +38,7 @@ export interface DocumentsRouteDeps {
   documents: DocumentService;
   drawings: DrawingService;
   markups: MarkupService;
+  geometry: GeometryService;
   transmittals: TransmittalService;
 }
 
@@ -311,6 +314,36 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
       return { status: 200, body: toDrawingRevisionDto(row) };
     },
 
+    getSheetGeometry: async (input) => {
+      const revisionId = id(
+        'drawingRevision',
+        input.params.drawingRevisionId,
+        'drawing_revision.not_found',
+      );
+      const g = await read(input, (s) => d.geometry.get(s, project(input.params), revisionId));
+      return {
+        status: 200,
+        body: toSheetGeometryDto(revisionId, g.row),
+        headers: { etag: etag(g.row?.version ?? 0) },
+      };
+    },
+    confirmSheetScale: async (input) => {
+      const revisionId = id(
+        'drawingRevision',
+        input.params.drawingRevisionId,
+        'drawing_revision.not_found',
+      );
+      const header = input.headers['if-match'];
+      const expected = header ? parseIfMatch(header) : null;
+      const row = await tx(input, (s) =>
+        d.geometry.confirmScale(s, project(input.params), revisionId, input.body.scale, expected),
+      );
+      return {
+        status: 200,
+        body: toSheetGeometryDto(revisionId, row),
+        headers: { etag: etag(row.version) },
+      };
+    },
     listMarkups: async (input) => {
       const revisionId = id(
         'drawingRevision',

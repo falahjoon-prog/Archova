@@ -5,7 +5,7 @@
 //
 // Phase 1 runs this inline from the API for one file at a time; scanned sheets are read with OCR first. The
 // ai-worker takes it over from `files.object.ready.v1` when apps/worker lands.
-import { and, desc, eq, inArray, lt, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, lt, notInArray, or, sql } from 'drizzle-orm';
 import {
   TITLE_BLOCK_FIELDS,
   drawingTitleBlockPrompt,
@@ -85,7 +85,22 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   'induction.draft': 'ai.induction.draft',
   // F4: whoever can write the diary takes or discards the summary draft.
   'diary.summary': 'diary.entries.write',
+  // F5, F3: the person who asked for the tag or draft decides it; it is theirs alone (see PRIVATE_TASKS).
+  'defect.tag': 'defects.defects.create',
+  'rfi.draft': 'rfis.rfis.create',
+  // F31: the person who asked for the mapping confirms it.
+  'import.mapping': 'ai.import_mapping.suggest',
+  // F22: the estimator who asked for the reading decides it; it is theirs alone (see PRIVATE_TASKS).
+  'quote.read': 'estimating.quotes.review',
 };
+
+/**
+ * Tasks whose suggestions only the person who asked can list or decide: the note, photo, markup or file they came
+ * from is theirs until they raise the defect or RFI, run the import or save the quote (a subcontractor's prices are
+ * commercial in confidence). Their forms are edited in place, so `edited` needs no fields.
+ */
+const PRIVATE_TASKS = ['defect.tag', 'rfi.draft', 'import.mapping', 'quote.read'] as const;
+const isPrivateTask = (task: string) => (PRIVATE_TASKS as readonly string[]).includes(task);
 
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
   const out = new Array<R>(items.length);
@@ -291,6 +306,10 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
           eq(suggestions.projectId, projectId),
           q.task ? eq(suggestions.task, q.task) : undefined,
           q.status ? eq(suggestions.status, q.status) : undefined,
+          or(
+            notInArray(suggestions.task, [...PRIVATE_TASKS]),
+            eq(suggestions.createdBy, scope.ctx.userId),
+          ),
           after ? lt(suggestions.id, after.id) : undefined,
         ),
       )
@@ -329,15 +348,17 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
     if (!row) throw new AppError('ai.suggestion.not_found');
     const permission = TASK_PERMISSIONS[row.task];
     if (!permission) throw new AppError('ai.suggestion.not_found');
+    if (isPrivateTask(row.task) && row.createdBy !== scope.ctx.userId)
+      throw new AppError('ai.suggestion.not_found');
     await deps.assert(scope, permission, { projectId });
     if (row.status !== 'pending')
       throw new AppError('conflict', 'This suggestion has already been decided.');
     const isSheet = row.task === TITLEBLOCK_TASK;
-    if (input.decision === 'edited' && !isSheet)
+    if (input.decision === 'edited' && !isSheet && !isPrivateTask(row.task))
       throw new AppError('validation_failed', 'Edit this draft in its editor, then accept it.', [
         { path: 'decision', message: 'Only accepted or rejected' },
       ]);
-    if (input.decision === 'edited' && !input.fields)
+    if (input.decision === 'edited' && isSheet && !input.fields)
       throw new AppError('validation_failed', 'Send the edited fields.', [
         { path: 'fields', message: 'Required when editing' },
       ]);

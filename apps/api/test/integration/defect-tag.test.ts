@@ -1,11 +1,13 @@
 import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { decodeId } from '@archova/domain';
 import { DEFAULT_FAKE_RESPONDERS } from '@archova/mod-ai';
 import {
   addMember,
   createOrg,
   createProject,
   createTestContext,
+  outboxData,
   signUp,
   uploadBytes,
   type TestContext,
@@ -277,5 +279,107 @@ describe('Nova defect photo tagging (F5)', () => {
     const stranger = await signUp(t.app, 'dtag-stranger');
     const denied = await draft({ photo: { fileId: await s.photo() } }, stranger);
     expect([403, 404]).toContain(denied.statusCode);
+  });
+
+  it('keeps each tag as a private suggestion that the defect it leads to is linked to', async () => {
+    const s = await setup();
+    const manager = await signUp(t.app, 'dtag-manager');
+    await addMember(s.pm.browser, s.org.id, s.project.id, manager.email, 'Site Manager', 'Main Co');
+    const pin = { drawingRevisionId: s.revisionId, x: 0.1, y: 0.09 };
+    const tag = async (who: { browser: typeof s.pm.browser }) =>
+      (
+        await who.browser.post(`${s.base}/ai/defect-tags`, {
+          photo: { fileId: await s.photo() },
+          note: 'Paint runs down the wall',
+          pin,
+        })
+      ).json();
+
+    const mine = await tag(s.pm);
+    expect(mine.suggestionId).toMatch(/^ais_/);
+    const listed = (await s.pm.browser.get(`${s.base}/ai/suggestions?task=defect.tag`)).json();
+    expect(listed.data).toHaveLength(1);
+    expect(listed.data[0]).toMatchObject({
+      id: mine.suggestionId,
+      task: 'defect.tag',
+      targetType: 'file_page',
+      status: 'pending',
+      runId: mine.runId,
+      payload: {
+        title: mine.title,
+        trade: 'Painting',
+        category: 'Paint finish',
+        suggestedCompanyIds: [s.brush.companyId, s.coat.companyId],
+        duplicateDefectIds: [],
+        pin: { drawingRevisionId: s.revisionId, x: 0.1, y: 0.09 },
+      },
+    });
+
+    // Someone else on the project doesn't see it, and can't decide it.
+    expect(
+      (await manager.browser.get(`${s.base}/ai/suggestions?task=defect.tag`)).json().data,
+    ).toEqual([]);
+    const theirs = await tag(manager);
+    const stolen = await manager.browser.post(
+      `${s.base}/ai/suggestions/${mine.suggestionId}/decision`,
+      { decision: 'accepted' },
+    );
+    expect(stolen.statusCode).toBe(404);
+    expect(
+      (await s.pm.browser.get(`${s.base}/ai/suggestions?task=defect.tag`))
+        .json()
+        .data.map((x: { id: string }) => x.id),
+    ).toEqual([mine.suggestionId]);
+    expect(theirs.suggestionId).not.toBe(mine.suggestionId);
+
+    // Raising the defect from the tag marks where it came from; a defect raised by hand stays manual.
+    const raised = await s.pm.browser.post(`${s.base}/defects`, {
+      title: mine.title,
+      trade: mine.trade,
+      category: mine.category,
+      assigneeCompanyId: s.brush.companyId,
+      pin,
+      aiSuggestionId: mine.suggestionId,
+    });
+    expect(raised.statusCode).toBe(201);
+    expect(raised.json().defect.source).toBe('ai_suggested');
+    const byHand = await s.pm.browser.post(`${s.base}/defects`, { title: 'By hand', pin });
+    expect(byHand.json().defect.source).toBe('manual');
+    const events = await outboxData<{ aiSuggestionId: string | null }>(
+      t,
+      s.org.id,
+      s.pm.userId,
+      'defects.defect.created.v1',
+    );
+    expect(events.map((e) => e.aiSuggestionId)).toEqual([
+      decodeId('aiSuggestion', mine.suggestionId),
+      null,
+    ]);
+    const malformed = await s.pm.browser.post(`${s.base}/defects`, {
+      title: 'Bad link',
+      pin,
+      aiSuggestionId: 'ais_nope',
+    });
+    expect(malformed.statusCode).toBe(422);
+
+    // The person says whether they used the tags as given; Nova's tags changed, so `edited`, with nothing to send.
+    const decided = await s.pm.browser.post(
+      `${s.base}/ai/suggestions/${mine.suggestionId}/decision`,
+      { decision: 'edited' },
+    );
+    expect(decided.statusCode).toBe(200);
+    expect(decided.json()).toMatchObject({ id: mine.suggestionId, status: 'edited' });
+    expect(decided.json().decidedAt).toEqual(expect.any(String));
+    const again = await s.pm.browser.post(
+      `${s.base}/ai/suggestions/${mine.suggestionId}/decision`,
+      { decision: 'rejected' },
+    );
+    expect(again.statusCode).toBe(409);
+    const rejected = await manager.browser.post(
+      `${s.base}/ai/suggestions/${theirs.suggestionId}/decision`,
+      { decision: 'rejected' },
+    );
+    expect(rejected.statusCode).toBe(200);
+    expect(rejected.json().status).toBe('rejected');
   });
 });

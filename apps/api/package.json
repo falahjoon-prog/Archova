@@ -24,6 +24,8 @@
     "@archova/mod-defects": "workspace:*",
     "@archova/mod-diary": "workspace:*",
     "@archova/mod-documents": "workspace:*",
+    "@archova/mod-estimating": "workspace:*",
+    "@archova/mod-integrations": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-identity": "workspace:*",
     "@archova/mod-platform": "workspace:*",

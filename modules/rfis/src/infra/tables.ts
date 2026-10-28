@@ -60,6 +60,7 @@ export const rfis = rfisSchema.table('rfis', {
   specSectionId: uuid('spec_section_id'),
   officialResponseId: uuid('official_response_id'),
   sourceRef: text('source_ref'),
+  aiSuggestionId: uuid('ai_suggestion_id'),
   custom: jsonb('custom').notNull().default({}),
   ...audit,
   deletedAt: timestamp('deleted_at', { withTimezone: true }),

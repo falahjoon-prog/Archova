@@ -32,6 +32,7 @@ export const defects = defectsSchema.table('defects', {
   closedBy: uuid('closed_by'),
   source: text('source').$type<DefectSource>().notNull().default('manual'),
   inspectionItemId: uuid('inspection_item_id'),
+  aiSuggestionId: uuid('ai_suggestion_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),

@@ -29,6 +29,10 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'drawing.compare': 0.5,
   'diary.summary': 0.5,
   'defect.tag': 0.1,
+  // F31: one suggestion per import file, however many columns. Priya to confirm.
+  'import.mapping': 0.25,
+  // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
+  'quote.read': 1.5,
   'minutes.extract': 1.5,
 };
 
