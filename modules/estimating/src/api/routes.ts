@@ -16,7 +16,8 @@ import type {
   QuoteInput,
   TenderService,
 } from '../application/tender';
-import { toPackageDto, toQuoteDto } from './mappers';
+import type { MeasurementFields, TakeoffService } from '../application/takeoff';
+import { toMeasurementDto, toPackageDto, toQuoteDto } from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -32,6 +33,11 @@ const project = (p: { projectId: string }) => {
 const pkgId = (p: { packageId: string }) => {
   const id = decodeId('tenderPackage', p.packageId);
   if (!id) throw new AppError('tender.not_found');
+  return id;
+};
+const measurementIdOf = (p: { measurementId: string }) => {
+  const id = decodeId('takeoffMeasurement', p.measurementId);
+  if (!id) throw new AppError('takeoff.not_found');
   return id;
 };
 const quoteIdOf = (p: { quoteId: string }) => {
@@ -94,7 +100,30 @@ function quoteFields(b: QuoteBody): QuoteInput {
   return out;
 }
 
-export function estimatingRoutes(database: Database, svc: TenderService) {
+type MeasurementBody = {
+  label?: string;
+  geometry?: MeasurementFields['geometry'];
+  quantity?: string;
+  unit?: string;
+  confidence?: number | null;
+  packageId?: string | null;
+  scopeKey?: string | null;
+};
+
+function measurementFields(b: MeasurementBody): MeasurementFields {
+  const out: MeasurementFields = {};
+  if (b.label !== undefined) out.label = b.label;
+  if (b.geometry !== undefined) out.geometry = b.geometry;
+  if (b.quantity !== undefined) out.quantity = b.quantity;
+  if (b.unit !== undefined) out.unit = b.unit;
+  if (b.confidence !== undefined) out.confidence = b.confidence;
+  if (b.packageId !== undefined)
+    out.packageId = b.packageId === null ? null : ref('tenderPackage', b.packageId, 'packageId');
+  if (b.scopeKey !== undefined) out.scopeKey = b.scopeKey;
+  return out;
+}
+
+export function estimatingRoutes(database: Database, svc: TenderService, takeoff: TakeoffService) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -110,7 +139,85 @@ export function estimatingRoutes(database: Database, svc: TenderService) {
     headers: { etag: etag(x.version) },
   });
 
+  const measurement = (status: number, x: Awaited<ReturnType<TakeoffService['get']>>) => ({
+    status,
+    body: toMeasurementDto(x),
+    headers: { etag: etag(x.version) },
+  });
+
   return defineRoutes({
+    listTakeoffMeasurements: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        takeoff.list(s, project(input.params), {
+          ...(q.revisionId
+            ? { revisionId: ref('drawingRevision', q.revisionId, 'revisionId') }
+            : {}),
+          ...(q.packageId ? { packageId: ref('tenderPackage', q.packageId, 'packageId') } : {}),
+          ...(q.confirmed ? { confirmed: q.confirmed === 'true' } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toMeasurementDto), nextCursor: page.nextCursor },
+      };
+    },
+    createTakeoffMeasurement: async (input) =>
+      measurement(
+        201,
+        await tx(input, (s) =>
+          takeoff.create(s, project(input.params), {
+            ...measurementFields(input.body),
+            revisionId: ref('drawingRevision', input.body.revisionId, 'revisionId'),
+            kind: input.body.kind,
+            source: input.body.source ?? 'manual',
+            label: input.body.label,
+            geometry: input.body.geometry,
+            quantity: input.body.quantity,
+            unit: input.body.unit,
+          }),
+        ),
+      ),
+    getTakeoffMeasurement: async (input) =>
+      measurement(
+        200,
+        await read(input, (s) =>
+          takeoff.get(s, project(input.params), measurementIdOf(input.params)),
+        ),
+      ),
+    updateTakeoffMeasurement: async (input) =>
+      measurement(
+        200,
+        await tx(input, (s) =>
+          takeoff.update(
+            s,
+            project(input.params),
+            measurementIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+            measurementFields(input.body),
+          ),
+        ),
+      ),
+    deleteTakeoffMeasurement: async (input) => {
+      await tx(input, (s) =>
+        takeoff.remove(s, project(input.params), measurementIdOf(input.params)),
+      );
+      return { status: 204 };
+    },
+    confirmTakeoffMeasurement: async (input) =>
+      measurement(
+        200,
+        await tx(input, (s) =>
+          takeoff.confirm(
+            s,
+            project(input.params),
+            measurementIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+          ),
+        ),
+      ),
     listTenderPackages: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>

@@ -584,6 +584,29 @@ export const CreateRfiResponseRequestSchema = z.object({
 }).strict();
 export type CreateRfiResponseRequest = z.infer<typeof CreateRfiResponseRequestSchema>;
 
+export const TakeoffKindSchema = z.enum(["length", "area", "count"]);
+export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
+
+export const TakeoffGeometrySchema = z.object({
+  "type": z.enum(["polyline", "polygon", "points"]),
+  "points": z.array(z.array(z.number()).min(2).max(2)).min(1).max(5000),
+}).strict();
+export type TakeoffGeometry = z.infer<typeof TakeoffGeometrySchema>;
+
+export const CreateTakeoffMeasurementRequestSchema = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "label": z.string().min(1).max(200),
+  "kind": TakeoffKindSchema,
+  "geometry": TakeoffGeometrySchema,
+  "quantity": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,3})?$")),
+  "unit": z.string().min(1).max(20),
+  "source": z.enum(["manual", "assisted"]).optional(),
+  "confidence": z.number().min(0).max(1).optional(),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")).optional(),
+  "scopeKey": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")).optional(),
+}).strict();
+export type CreateTakeoffMeasurementRequest = z.infer<typeof CreateTakeoffMeasurementRequestSchema>;
+
 export const ScopeLineSchema = z.object({
   "key": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")),
   "description": z.string().min(1).max(500),
@@ -2244,6 +2267,32 @@ export const SyncPushResponseSchema = z.object({
 });
 export type SyncPushResponse = z.infer<typeof SyncPushResponseSchema>;
 
+export const TakeoffMeasurementSchema = z.object({
+  "id": z.string(),
+  "revisionId": z.string(),
+  "label": z.string(),
+  "kind": TakeoffKindSchema,
+  "geometry": TakeoffGeometrySchema,
+  "quantity": z.string(),
+  "unit": z.string(),
+  "source": z.enum(["manual", "assisted", "auto"]),
+  "confidence": z.number().nullable(),
+  "packageId": z.string().nullable(),
+  "scopeKey": z.string().nullable(),
+  "confirmedBy": z.string().nullable(),
+  "confirmedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type TakeoffMeasurement = z.infer<typeof TakeoffMeasurementSchema>;
+
+export const TakeoffMeasurementPageSchema = z.object({
+  "data": z.array(TakeoffMeasurementSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type TakeoffMeasurementPage = z.infer<typeof TakeoffMeasurementPageSchema>;
+
 export const TenderPackageSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -2534,6 +2583,17 @@ export const UpdateRfiRequestSchema = z.object({
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
+
+export const UpdateTakeoffMeasurementRequestSchema = z.object({
+  "label": z.string().min(1).max(200).optional(),
+  "geometry": TakeoffGeometrySchema.optional(),
+  "quantity": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,3})?$")).optional(),
+  "unit": z.string().min(1).max(20).optional(),
+  "confidence": z.number().min(0).max(1).nullable().optional(),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "scopeKey": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")).nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateTakeoffMeasurementRequest = z.infer<typeof UpdateTakeoffMeasurementRequestSchema>;
 
 export const UpdateTenderPackageRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
