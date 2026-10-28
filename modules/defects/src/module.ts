@@ -1,16 +1,32 @@
-import { defineModule, type KernelServices } from '@archova/kernel';
+import { encodeId } from '@archova/domain';
+import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import { createDefectService, type DefectsDeps } from './application/defects';
 import { defectsRoutes } from './api/routes';
+import { toDefectDto } from './api/mappers';
 import { DEFECTS_PERMISSIONS } from './permissions';
 
 export function createDefectsModule(services: KernelServices, deps: DefectsDeps) {
   const service = createDefectService(deps);
+  const syncSource: SyncSource = {
+    module: 'defects',
+    permission: 'defects.defects.read',
+    publicId: (_type, id) => encodeId('defect', id),
+    async load(scope, { projectId, ids }) {
+      if (!projectId) return new Map();
+      const { rows, viewer } = await service.visibleAmong(scope, projectId, ids);
+      return new Map(
+        rows.map((r) => [r.id, { version: r.version, data: toDefectDto(r, viewer) as never }]),
+      );
+    },
+  };
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
     routes: defectsRoutes(services.database, service),
     api: {
       /** Nova F5: live defects the caller can see near a point on a sheet, for duplicate checks. Called by `ai` only. */
       openNear: service.openNear,
+      /** What the mobile pull reads (modules/sync). */
+      syncSource,
     },
   };
 }
