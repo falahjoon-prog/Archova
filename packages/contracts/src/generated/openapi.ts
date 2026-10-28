@@ -192,6 +192,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/public/price-book": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The published price book for the pricing page. Never returns a draft. */
+        get: operations["getPublicPriceBook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/entitlements": {
         parameters: {
             query?: never;
@@ -3059,6 +3076,31 @@ export interface components {
             denied: string[];
             companyScopedTools: string[];
         };
+        PublicPriceBook: {
+            version: string;
+            /** Format: date-time */
+            effectiveFrom: string | null;
+            /** @enum {string} */
+            currency: "AUD";
+            /** @description Amounts are ex GST when false. */
+            gstIncluded: boolean;
+            plans: {
+                code: string;
+                name: string;
+                blurb: string;
+                features: string[];
+                cta: {
+                    label: string;
+                    href: string;
+                };
+                price: {
+                    /** @enum {string} */
+                    unit: "free" | "user_month" | "year";
+                    fromPrice: boolean;
+                    amountCents: number | null;
+                };
+            }[];
+        };
         Entitlements: {
             orgId: string;
             plan: string;
@@ -5377,6 +5419,27 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Org"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPublicPriceBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The live price book */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublicPriceBook"];
                 };
             };
             default: components["responses"]["Problem"];

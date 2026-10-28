@@ -7,6 +7,7 @@ import {
   createBillingModule,
   type EntitlementProvider,
 } from '@archova/mod-billing';
+import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
@@ -36,17 +37,33 @@ export interface ModuleOptions {
   messages: MessageSender;
   /** The web origin access links point at. */
   linkBaseUrl: string;
+  backoffice: BackofficeConfig;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
   const identity = await createIdentityModule(services, opts.identity);
-  const billing = createBillingModule(opts.entitlements ? { entitlements: opts.entitlements } : {});
+  const billing = createBillingModule(
+    services,
+    opts.entitlements ? { entitlements: opts.entitlements } : {},
+  );
+  const backoffice = createBackofficeModule(services, {
+    catalogue: billing.api.catalogue,
+    config: opts.backoffice,
+  });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
   let access: ReturnType<typeof createAccessModule> | null = null;
   const platform = createPlatformModule(services, {
     identity: identity.api,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
+    onOrgCreated: (scope, org, entitlements) =>
+      backoffice.api.directory.upsert(scope.tx, {
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        planCode: entitlements.plan,
+        state: entitlements.state,
+      }),
   });
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
@@ -148,6 +165,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform,
     access,
     billing,
+    backoffice,
     files,
     ai,
     documents,
@@ -170,6 +188,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform,
     access,
     billing,
+    backoffice,
     files,
     ai,
     documents,

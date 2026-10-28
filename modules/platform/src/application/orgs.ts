@@ -18,6 +18,12 @@ export interface OrgDeps {
   database: Database;
   access: AccessService;
   defaultEntitlements: Entitlements;
+  /** Runs in the org's creation transaction, e.g. to enter the org in the console's tenant directory. */
+  onOrgCreated?: (
+    scope: TenantScope,
+    org: { id: string; name: string; slug: string },
+    entitlements: Entitlements,
+  ) => Promise<void>;
 }
 
 export interface TenantAccess {
@@ -25,7 +31,7 @@ export interface TenantAccess {
   orgRole: TenantContext['orgRole'];
 }
 
-export function createOrgService({ database, access, defaultEntitlements }: OrgDeps) {
+export function createOrgService({ database, access, defaultEntitlements, onOrgCreated }: OrgDeps) {
   async function createOrg(principal: Principal, input: CreateOrgRequest, requestId: string) {
     const baseSlug = input.slug ?? (slugify(input.name).padEnd(3, '0') || 'org');
     for (let attempt = 0; attempt < 4; attempt++) {
@@ -88,6 +94,7 @@ export function createOrgService({ database, access, defaultEntitlements }: OrgD
             entityVersion: 1,
             data: { orgId, ownerUserId: principal.userId },
           });
+          await onOrgCreated?.(scope, org!, defaultEntitlements);
           return org!;
         });
       } catch (e) {

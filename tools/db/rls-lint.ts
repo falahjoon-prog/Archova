@@ -13,6 +13,16 @@ export const GLOBAL_TABLES = new Set([
   'identity.oauth_clients',
   'identity.oauth_codes',
   'kernel.schema_migrations',
+  // Owner console and price book: staff-only and public catalogue data, no org content (backend 09).
+  'billing.plans',
+  'billing.plan_versions',
+  'billing.price_books',
+  'billing.prices',
+  'backoffice.staff_users',
+  'backoffice.staff_role_assignments',
+  'backoffice.staff_sessions',
+  'backoffice.requests',
+  'backoffice.tenant_directory',
 ]);
 
 /** Tenant tables keyed by something other than org_id. */

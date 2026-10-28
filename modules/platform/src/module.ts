@@ -3,7 +3,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
 import { createCompanyService } from './application/companies';
 import { createMemberService } from './application/members';
-import { createOrgService } from './application/orgs';
+import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
 import { platformRoutes } from './api/routes';
 
@@ -14,6 +14,7 @@ export function createPlatformModule(
     /** Resolved lazily: access and platform depend on each other's public interfaces. */
     access: () => AccessService;
     defaultEntitlements: Entitlements;
+    onOrgCreated?: OrgDeps['onOrgCreated'];
   },
 ) {
   const access = new Proxy({} as AccessService, {
@@ -23,6 +24,7 @@ export function createPlatformModule(
     database: services.database,
     access,
     defaultEntitlements: deps.defaultEntitlements,
+    ...(deps.onOrgCreated ? { onOrgCreated: deps.onOrgCreated } : {}),
   });
   const projects = createProjectService(access);
   const companies = createCompanyService();
