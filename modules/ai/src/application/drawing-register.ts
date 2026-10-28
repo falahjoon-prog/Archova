@@ -85,12 +85,16 @@ const TASK_PERMISSIONS: Readonly<Record<string, string>> = {
   'induction.draft': 'ai.induction.draft',
   // F4: whoever can write the diary takes or discards the summary draft.
   'diary.summary': 'diary.entries.write',
-  // F5: the person who asked for the tag decides it; it is theirs alone (see PRIVATE_TASKS).
+  // F5, F3: the person who asked for the tag or draft decides it; it is theirs alone (see PRIVATE_TASKS).
   'defect.tag': 'defects.defects.create',
+  'rfi.draft': 'rfis.rfis.create',
 };
 
-/** Tasks whose suggestions only the person who asked can list or decide. */
-const PRIVATE_TASKS = ['defect.tag'] as const;
+/**
+ * Tasks whose suggestions only the person who asked can list or decide: the note, photo or markup they came from
+ * is theirs until they raise the defect or RFI. Their forms are edited in place, so `edited` needs no fields.
+ */
+const PRIVATE_TASKS = ['defect.tag', 'rfi.draft'] as const;
 const isPrivateTask = (task: string) => (PRIVATE_TASKS as readonly string[]).includes(task);
 
 export async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (t: T) => Promise<R>) {
@@ -345,8 +349,7 @@ export function createDrawingRegisterService(deps: DrawingRegisterDeps) {
     if (row.status !== 'pending')
       throw new AppError('conflict', 'This suggestion has already been decided.');
     const isSheet = row.task === TITLEBLOCK_TASK;
-    // A defect form is edited in place, so the person says whether they changed Nova's tags (no fields to send).
-    if (input.decision === 'edited' && !isSheet && row.task !== 'defect.tag')
+    if (input.decision === 'edited' && !isSheet && !isPrivateTask(row.task))
       throw new AppError('validation_failed', 'Edit this draft in its editor, then accept it.', [
         { path: 'decision', message: 'Only accepted or rejected' },
       ]);

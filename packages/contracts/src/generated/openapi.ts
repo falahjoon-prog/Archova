@@ -1000,8 +1000,10 @@ export interface paths {
          * @description A note, a markup with text on it, a site photo, or any mix of them is needed. Nova turns them into an RFI subject and question, citing the drawings and spec clauses it refers to
          *     from the current revisions the caller can open. It also lists RFIs already raised on the same subject that
          *     the caller can see, and suggests assignees from who was asked those. Numbers in the draft that appear in
-         *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nothing is
-         *     saved: the draft fills the RFI form and the person edits and sends it. Costs one Nova credit.
+         *     neither the note nor a cited passage are listed in `unsupportedNumbers` for the person to check. Nova sends
+         *     nothing: the draft fills the RFI form and the person edits and sends it, passing `suggestionId` as
+         *     `aiSuggestionId` when they create the RFI. The draft is kept for the caller alone (it doesn't show in the
+         *     project's suggestion list for anyone else). Costs one Nova credit.
          */
         post: operations["draftRfiWithNova"];
         delete?: never;
@@ -3267,6 +3269,12 @@ export interface components {
         NovaRfiDraft: {
             /** @description For feedback (`air_`) */
             runId: string;
+            /**
+             * @description The saved draft (`ais_`), private to the caller. Pass it as `aiSuggestionId` when creating the RFI,
+             *     then decide it: `accepted` as is, `edited` when the person changed the draft, `rejected` when they
+             *     raised nothing from it.
+             */
+            suggestionId: string;
             subject: string;
             question: string;
             /**
@@ -3999,6 +4007,8 @@ export interface components {
             costEstimate?: string;
             scheduleImpactDays?: number;
             pin?: components["schemas"]["RfiPinInput"];
+            /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
+            aiSuggestionId?: string;
         };
         UpdateRfiRequest: {
             subject?: string;

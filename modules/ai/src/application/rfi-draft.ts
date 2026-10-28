@@ -1,7 +1,8 @@
 // F3 RFI auto-draft (ai/01 F3, product/03 RFI "Nova"): a note typed on site becomes an RFI subject and question,
 // with references to the drawings and spec clauses the caller can open, the RFIs already asked on the same subject,
-// and who answered them. Nothing is saved: the draft fills the RFI form and the PM edits and sends it (Nova never
-// sends an RFI). Retrieval is one search under the caller's access scopes (ai/04 §3). A drawing markup can stand in
+// and who answered them. Nova never sends an RFI: the draft fills the RFI form and the PM edits and sends it,
+// passing `suggestionId` so the RFI records where it came from. The draft is kept as a pending `ai_suggestions` row
+// that only the person who asked can see or decide. Retrieval is one search under the caller's access scopes (ai/04 §3). A drawing markup can stand in
 // for, or add to, the typed note: its words and the sheet text around it go to the model, and the draft says where
 // to pin the RFI.
 import {
@@ -10,7 +11,9 @@ import {
   type RfiDraftMarkup,
   type RfiDraftPhoto,
 } from '@archova/ai-prompts';
+import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
+import { suggestions } from '../infra/tables';
 import {
   markupContext,
   reviewRfiDraft,
@@ -51,8 +54,32 @@ export interface RfiDraftDeps {
   ) => Promise<{ shapes: unknown }>;
 }
 
+/** The `ai_suggestions` row kind for a draft; `targetType` `project` with the project as the target. */
+export const RFI_DRAFT_TASK = 'rfi.draft';
+
+/** `ai_suggestions.payload` for `rfi.draft`: what Nova proposed, as ids the pilot metrics can compare with the RFI. */
+export interface RfiDraftPayload {
+  subject: string;
+  question: string;
+  discipline: ReviewedRfiDraft['discipline'];
+  gaps: ReviewedRfiDraft['gaps'];
+  /** The drawings and clauses the draft cites (no quotes). */
+  references: Array<{
+    sourceType: AnswerSource['sourceType'];
+    sourceId: string;
+    revisionId: string;
+    page: number;
+  }>;
+  similarRfiIds: string[];
+  suggestedAssigneeIds: string[];
+  /** The sheet and spot the draft says to pin the RFI at. */
+  pin: { drawingRevisionId: string; x: number; y: number } | null;
+}
+
 export interface RfiDraft extends Omit<ReviewedRfiDraft, 'references'> {
   runId: string;
+  /** The saved `ai_suggestions` row; pass it as `aiSuggestionId` when the RFI is created, then decide it. */
+  suggestionId: string;
   references: Array<AnswerSource & { quote: string }>;
   similarRfis: Array<Omit<SimilarRfi, 'assigneeUserIds'>>;
   /** Users asked the most similar RFIs; the PM picks the assignee. */
@@ -213,7 +240,7 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
         }),
       ro,
     );
-    return {
+    const result = {
       runId: run.runId,
       ...reviewed,
       references: reviewed.references.map((c) => {
@@ -233,6 +260,44 @@ export function createRfiDraftService(deps: RfiDraftDeps) {
       suggestedAssigneeIds: suggestAssignees(similar),
       drawing,
     };
+    const payload: RfiDraftPayload = {
+      subject: result.subject,
+      question: result.question,
+      discipline: result.discipline,
+      gaps: result.gaps,
+      references: result.references.map((r) => ({
+        sourceType: r.sourceType,
+        sourceId: r.sourceId,
+        revisionId: r.revisionId,
+        page: r.page,
+      })),
+      similarRfiIds: result.similarRfis.map((r) => r.id),
+      suggestedAssigneeIds: result.suggestedAssigneeIds,
+      pin: result.drawing
+        ? { drawingRevisionId: result.drawing.revisionId, ...result.drawing.pin }
+        : null,
+    };
+    const suggestionId = await database.withTenantTx(ctx, async (scope) => {
+      const [row] = await scope.tx
+        .insert(suggestions)
+        .values({
+          id: uuidv7(),
+          orgId: scope.ctx.orgId,
+          projectId,
+          targetType: 'project',
+          targetId: projectId,
+          task: RFI_DRAFT_TASK,
+          promptVersion: rfiDraftPrompt.version,
+          payload,
+          status: 'pending',
+          runId: run.runId,
+          createdBy: scope.ctx.userId,
+          updatedBy: scope.ctx.userId,
+        })
+        .returning({ id: suggestions.id });
+      return row!.id;
+    });
+    return { ...result, suggestionId };
   }
 
   return { draft };
