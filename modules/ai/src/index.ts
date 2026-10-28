@@ -38,10 +38,12 @@ import type { SimilarRfi } from './domain/rfi-draft';
 import type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 import type { TranslationLanguage } from './domain/translation';
 import type { Raster as VisualRaster } from './domain/visual-diff';
-import { createProvider, type ProviderConfig } from './infra/providers';
+import { createProvider } from './infra/providers';
+import { FAKE_EMBEDDING_MODEL, type AiConfig } from './config';
 import { AI_PERMISSIONS } from './permissions';
 
 export { AI_PERMISSIONS } from './permissions';
+export { FAKE_EMBEDDING_MODEL, FAKE_MODELS, loadAiConfig, type AiConfig } from './config';
 export { TASK_CREDITS, decideBudget, effectiveAllowance } from './domain/credits';
 export { checkCitations, type CheckedCitation } from './domain/citations';
 export {
@@ -154,25 +156,6 @@ export {
   selectTitleBlockText,
   type TextItem,
 } from './domain/titleblock';
-
-export interface AiConfig {
-  provider: ProviderConfig;
-  /** Model id per tier. Prices default to ai/02 §4 list prices. */
-  models: Readonly<Record<ModelTier, string>>;
-  prices?: Partial<Record<ModelTier, ModelPrice>>;
-  /** Embedding model for Ask Nova retrieval (1024 dimensions). Defaults to the fake one. */
-  embedding?: { model: string; pricePerMTok?: number };
-}
-
-/** Embedding model id the fake provider reports. */
-export const FAKE_EMBEDDING_MODEL = 'fake-embed';
-
-/** Model ids the fake provider reports; any id works with it. */
-export const FAKE_MODELS: Readonly<Record<ModelTier, string>> = {
-  fast: 'fake-fast',
-  standard: 'fake-standard',
-  advanced: 'fake-advanced',
-};
 
 export function buildRoutingTable(
   models: Readonly<Record<ModelTier, string>>,
