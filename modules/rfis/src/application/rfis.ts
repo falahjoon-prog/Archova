@@ -42,10 +42,11 @@ export interface RfisDeps {
   now?: () => Date;
 }
 
+/** A drawing revision, with a position on the sheet when marked (x and y come together). */
 export interface PinInput {
   drawingRevisionId: string;
-  x: number;
-  y: number;
+  x?: number;
+  y?: number;
 }
 
 export interface RfiFields {
@@ -300,6 +301,35 @@ export function createRfiService(deps: RfisDeps) {
     return { rfi, responses: rs };
   }
 
+  /**
+   * What happened to the RFI, oldest first, read from the events the service wrote (RFI-AC10). Visible to anyone
+   * who can see the RFI. Event payloads are cut down to the fields below, so ids of other records stay out.
+   */
+  async function activity(scope: TenantScope, projectId: string, rfiId: string) {
+    await getVisible(scope, projectId, rfiId);
+    const { rows } = await scope.tx.execute(sql`
+      select id, type, actor, data, occurred_at
+      from shared.outbox
+      where entity_type = 'rfi' and entity_id = ${rfiId} and type like 'rfis.rfi.%'
+      order by occurred_at, id
+      limit 500`);
+    return (
+      rows as Array<{
+        id: string;
+        type: string;
+        actor: { type: string; id: string };
+        data: Record<string, unknown>;
+        occurred_at: Date | string;
+      }>
+    ).map((r) => ({
+      id: r.id,
+      kind: r.type.replace(/^rfis\.rfi\./, '').replace(/\.v\d+$/, ''),
+      at: new Date(r.occurred_at),
+      actorId: r.actor?.type === 'user' ? r.actor.id : null,
+      data: r.data,
+    }));
+  }
+
   function assertTransition(status: RfiStatus, action: RfiAction): RfiStatus {
     const next = nextStatus(status, action);
     if (!next)
@@ -328,6 +358,10 @@ export function createRfiService(deps: RfisDeps) {
   }
 
   async function checkPin(scope: TenantScope, projectId: string, pin: PinInput) {
+    if ((pin.x === undefined) !== (pin.y === undefined))
+      throw new AppError('validation_failed', 'Give both x and y, or neither.', [
+        { path: pin.x === undefined ? 'pin/x' : 'pin/y', message: 'x and y come together' },
+      ]);
     const rev = await deps.documents.getDrawingRevision(scope, projectId, pin.drawingRevisionId);
     if (rev.status === 'draft') throw new AppError('drawing_revision.not_found');
   }
@@ -566,7 +600,7 @@ export function createRfiService(deps: RfisDeps) {
     scope: TenantScope,
     projectId: string,
     rfiId: string,
-    input: { body: string; fileIds?: string[] },
+    input: { body: string; fileIds?: string[]; aiSuggestionId?: string },
   ) {
     const { rfi, viewer: v } = await getVisible(scope, projectId, rfiId);
     const assignee = rfi.assignees.find((a) => a.userId === scope.ctx.userId);
@@ -590,6 +624,7 @@ export function createRfiService(deps: RfisDeps) {
       body: { type: 'text', text: input.body },
       bodyText: input.body,
       fileIds: input.fileIds ?? [],
+      aiSuggestionId: input.aiSuggestionId ?? null,
       createdBy: scope.ctx.userId,
       updatedBy: scope.ctx.userId,
     });
@@ -812,6 +847,7 @@ export function createRfiService(deps: RfisDeps) {
   return {
     list,
     detail,
+    activity,
     create,
     update,
     open,
