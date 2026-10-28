@@ -2722,7 +2722,8 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /** Roll calls, newest first (at most 20); `open=true` finds the evacuation still in progress. */
+        get: operations["listRollCalls"];
         put?: never;
         /** Start an evacuation roll call from who is on site now (ATT-AC5). */
         post: operations["startRollCall"];
@@ -5858,6 +5859,9 @@ export interface components {
             };
             /** @description Sorted by company, then name. */
             people: components["schemas"]["RollCallPerson"][];
+        };
+        RollCallList: {
+            data: components["schemas"]["RollCall"][];
         };
         StartRollCallRequest: {
             siteId?: string;
@@ -11007,6 +11011,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AttendanceSessionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRollCalls: {
+        parameters: {
+            query?: {
+                open?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RollCallList"];
                 };
             };
             default: components["responses"]["Problem"];

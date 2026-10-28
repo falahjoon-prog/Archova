@@ -343,8 +343,20 @@ describe('site sign-in (product/12)', () => {
       status: 'accounted_for',
     });
     expect(marked.json().counts).toMatchObject({ accountedFor: 1, unmarked: 1 });
+    // After the app is closed mid-evacuation, the supervisor finds the open roll call again, with its marks.
+    const open = (await s.sub.browser.get(`${s.base}/attendance/roll-calls?open=true`)).json().data;
+    expect(open.map((c: { id: string }) => c.id)).toEqual([call.id]);
+    expect(open[0].counts).toMatchObject({ accountedFor: 1, unmarked: 1 });
     const ended = await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/end`);
     expect(ended.json().endedAt).toBeTruthy();
+    const none = (await s.sub.browser.get(`${s.base}/attendance/roll-calls?open=true`)).json().data;
+    expect(none).toEqual([]);
+    const closed = (await s.sm.browser.get(`${s.base}/attendance/roll-calls?open=false`)).json()
+      .data;
+    expect(closed.map((c: { id: string }) => c.id)).toEqual([call.id]);
+    expect((await s.sm.browser.get(`${s.base}/attendance/roll-calls?open=maybe`)).statusCode).toBe(
+      422,
+    );
     const late = await s.sm.browser.post(`${s.base}/attendance/roll-calls/${call.id}/marks`, {
       workerId: subWorker.workerId,
       status: 'missing',
