@@ -38,7 +38,14 @@ export function createFilesModule(
   return {
     definition: defineModule({ name: 'files' }),
     routes: filesRoutes(services.database, service),
-    api: { getFile: service.get, readFileBytes: service.readBytes },
+    api: {
+      getFile: service.get,
+      readFileBytes: service.readBytes,
+      /** For access-link flows (X45): the module checks the link, then passes `authorised`. */
+      createUpload: service.createUpload,
+      completeUpload: service.complete,
+      downloadUrl: service.downloadUrl,
+    },
   };
 }
 

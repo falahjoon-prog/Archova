@@ -50,6 +50,11 @@ const Env = z.object({
   API_AI_MODEL_ADVANCED: z.string().optional(),
   // Ask Nova embeddings: Titan Text Embeddings V2 in Sydney (ai/02 §6), 1024 dimensions.
   API_AI_MODEL_EMBEDDING: z.string().default('amazon.titan-embed-text-v2:0'),
+  // One-time codes and link invites (security-licensing/11). `log` writes them to the log instead of sending: local
+  // and demo only. SES and AWS End User Messaging SMS in Sydney arrive with the infrastructure work.
+  API_MESSAGES: z.enum(['log', 'disabled']).default('disabled'),
+  // The web origin access links point at; defaults to the first app origin.
+  API_LINK_BASE_URL: z.string().url().optional(),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -100,6 +105,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       },
       embeddingModel: e.API_AI_MODEL_EMBEDDING,
     },
+    messages: e.API_MESSAGES,
+    linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,
     logLevel: e.LOG_LEVEL,
   };
   if (config.ai.provider === 'bedrock') {

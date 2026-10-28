@@ -125,6 +125,18 @@ export const PROBLEM_CODES = {
   'induction.completed': 409,
   'induction.white_card_required': 422,
   'credential.not_found': 404,
+  // access links (X45, Sam security-licensing/11)
+  /** Expired, revoked, used up or unknown: the page says only that the link no longer works. */
+  'access_link.invalid': 410,
+  'access_link.not_found': 404,
+  'access_link.session_required': 401,
+  'access_link.not_verified': 403,
+  'access_link.code_invalid': 422,
+  'access_link.code_expired': 422,
+  'access_link.too_many_codes': 429,
+  'access_link.rate_limited': 429,
+  /** No SMS or email provider is configured in this environment. */
+  'messages.unavailable': 503,
 } as const;
 
 export type ProblemCode = keyof typeof PROBLEM_CODES;

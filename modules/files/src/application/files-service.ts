@@ -92,11 +92,16 @@ export function createFilesService({
     }
   }
 
+  /**
+   * `authorised`: the caller has already checked access some other way (an access link, X45), so the member
+   * permission check is skipped. Only module code passes it; routes never do.
+   */
   async function createUpload(
     scope: TenantScope,
     input: Omit<CreateUploadRequest, 'projectId'> & { projectId: string | null },
+    opts: { authorised?: boolean } = {},
   ) {
-    await authorise(scope, input.projectId, 'upload', input.module);
+    if (!opts.authorised) await authorise(scope, input.projectId, 'upload', input.module);
     if (!ALLOWED_MIME_TYPES.has(input.mime)) {
       throw new AppError(
         'upload.mime_not_allowed',
@@ -304,14 +309,18 @@ export function createFilesService({
    * Phase 0 resolver: project files need `files.objects.read` on the project. Feature modules will register
    * record resolvers so a file is visible exactly when the record it belongs to is (backend 06 §5).
    */
-  async function get(scope: TenantScope, fileId: string) {
+  async function get(scope: TenantScope, fileId: string, opts: { authorised?: boolean } = {}) {
     const f = await getFileRow(scope, fileId);
-    await authorise(scope, f.projectId, 'read');
+    if (!opts.authorised) await authorise(scope, f.projectId, 'read');
     return settle(scope, f);
   }
 
-  async function downloadUrl(scope: TenantScope, fileId: string) {
-    const f = await get(scope, fileId);
+  async function downloadUrl(
+    scope: TenantScope,
+    fileId: string,
+    opts: { authorised?: boolean } = {},
+  ) {
+    const f = await get(scope, fileId, opts);
     assertFileReady(f);
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
