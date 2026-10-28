@@ -92,6 +92,7 @@ export function workforceRoutes(
   const LINK_HEADERS = {
     'referrer-policy': 'no-referrer',
     'x-robots-tag': 'noindex, nofollow',
+    'cache-control': 'no-store',
   };
   const facts = (input: { ip: string; userAgent: string | null; requestId: string }) => ({
     ip: input.ip,
@@ -738,7 +739,7 @@ export function workforceRoutes(
     }),
     getLinkInductionTranslation: async (input) => ({
       status: 200,
-      body: await links.translation(linkCookie(input), input.query.lang, facts(input)),
+      body: await links.translation(linkCookie(input), input.body.lang, facts(input)),
       headers: LINK_HEADERS,
     }),
   });

@@ -663,7 +663,7 @@ describe('online inductions (product/14)', () => {
         answer: expect.any(String),
         citations: expect.any(Array),
       });
-      const tr = await guest.get('/v1/induction-access/translation?lang=zz');
+      const tr = await guest.post('/v1/induction-access/translation', { lang: 'zz' });
       expect(tr.json().code).toBe('ai.translation.language_unavailable');
 
       // The site manager sees the link used; the register shows the worker as inducted by link.
@@ -713,6 +713,48 @@ describe('online inductions (product/14)', () => {
       await guest.post('/v1/induction-access/codes', { channel: 'sms', to: mobile });
       const third = await guest.post('/v1/induction-access/codes', { channel: 'sms', to: mobile });
       expect(third.json().code).toBe('access_link.too_many_codes');
+    });
+
+    it('maxUses counts openings and never ends a session already open', async () => {
+      const s = await setup('ind-link-uses');
+      const { induction } = await publishInduction(s);
+      const first = await openLink(s, induction.id, { maxUses: 2 });
+      const second = new Browser(t.app);
+      expect(
+        (await second.post('/v1/induction-access', { token: first.link.token })).statusCode,
+      ).toBe(200);
+      // Both people are in, and the link is now used up for anyone new.
+      expect((await first.guest.get('/v1/induction-access')).statusCode).toBe(200);
+      expect((await second.get('/v1/induction-access')).statusCode).toBe(200);
+      const third = await new Browser(t.app).post('/v1/induction-access', {
+        token: first.link.token,
+      });
+      expect(third.json().code).toBe('access_link.invalid');
+      expect((await first.guest.get('/v1/induction-access')).statusCode).toBe(200);
+    });
+
+    it('sends codes only to Australian mobiles, and to the named recipient when there is one', async () => {
+      const s = await setup('ind-link-dest');
+      const { induction } = await publishInduction(s);
+      const open = await openLink(s, induction.id);
+      const abroad = await open.guest.post('/v1/induction-access/codes', {
+        channel: 'sms',
+        to: '+14155550123',
+      });
+      expect(abroad.json().code).toBe('validation_failed');
+      expect(t.messages.sent.some((m) => m.to === '+14155550123')).toBe(false);
+
+      const named = await openLink(s, induction.id, { recipientPhone: '+61412000111' });
+      const other = await named.guest.post('/v1/induction-access/codes', {
+        channel: 'sms',
+        to: '+61412000222',
+      });
+      expect(other.json().code).toBe('validation_failed');
+      const ok = await named.guest.post('/v1/induction-access/codes', {
+        channel: 'sms',
+        to: '+61412000111',
+      });
+      expect(ok.statusCode).toBe(202);
     });
 
     it('stops working when its creator loses access', async () => {

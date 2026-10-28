@@ -52,6 +52,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     void reply.header('referrer-policy', 'no-referrer');
   });
 
+  if (config.messages === 'log' && config.env === 'production')
+    deps.logger.warn(
+      'API_MESSAGES=log prints one-time codes and phone numbers to the log: demo cell with synthetic data only',
+    );
+
   const modules = await loadModules(
     { database: deps.database, redis: deps.redis, logger: deps.logger },
     {

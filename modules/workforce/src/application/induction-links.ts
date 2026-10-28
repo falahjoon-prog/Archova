@@ -43,6 +43,12 @@ export const LINK_ENTITY = 'induction';
 /** What a link on an induction lets the holder do (Sam 11 §2). Fixed: a link never carries more. */
 export const LINK_ACTIONS = ['view', 'respond'] as const;
 const CODE_RESEND_S = 30;
+/** Nova on a link spends the org's credits, so it is capped per session and per link (Sam 11 §8). */
+const NOVA_QUESTIONS_PER_SESSION = 30;
+const NOVA_TRANSLATIONS_PER_SESSION = 6;
+const NOVA_QUESTIONS_PER_LINK_DAY = 600;
+const NOVA_TRANSLATIONS_PER_LINK_DAY = 60;
+const NOVA_BUSY = "That's enough questions for now. Ask the site manager.";
 
 export interface InductionLinkDeps {
   database: Database;
@@ -53,6 +59,10 @@ export interface InductionLinkDeps {
     'getProject' | 'getOrg' | 'projectCompanies' | 'getProjectMembership' | 'resolveTenantAccess'
   >;
   entitlements: (orgId: string) => Promise<Entitlements>;
+  /** The permission engine, used to re-check the link's creator (Sam 11 §8). */
+  access: {
+    can(scope: TenantScope, key: string, resource: { projectId?: string | null }): Promise<boolean>;
+  };
   files: {
     createUpload(
       scope: TenantScope,
@@ -158,20 +168,39 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
 
   // ---------------------------------------------------------------------------------------- limits
 
-  /** Sam 11 §6: token lookups per IP, 30 a minute and 300 an hour; unknown tokens count double. */
-  async function limit(ip: string, weight: number) {
+  // Redis when there is one; otherwise this process counts, which is right for tests and a single host.
+  const local = new Map<string, { n: number; until: number }>();
+  const translations = new Map<string, AiTranslation>();
+
+  /** Adds `weight` to a counter and fails with `rate_limited` over `max` in the window. */
+  async function bump(key: string, windowS: number, max: number, weight: number, message: string) {
     const redis = deps.redis;
-    if (!redis) return;
-    const keys: Array<[string, number, number]> = [
-      [`g:alrl:m:${ip}`, 60, 30],
-      [`g:alrl:h:${ip}`, 3600, 300],
-    ];
-    for (const [key, windowS, max] of keys) {
-      const n = await redis.incrby(key, weight);
+    let n: number;
+    if (redis) {
+      n = await redis.incrby(key, weight);
       if (n === weight) await redis.expire(key, windowS);
-      if (n > max) throw new AppError('access_link.rate_limited', 'Too many tries. Wait a minute.');
+    } else {
+      const t = now().getTime();
+      const cur = local.get(key);
+      const live = cur && cur.until > t ? cur : { n: 0, until: t + windowS * 1000 };
+      live.n += weight;
+      local.set(key, live);
+      n = live.n;
+      if (local.size > 5000) for (const [k, v] of local) if (v.until <= t) local.delete(k);
     }
+    if (n > max) throw new AppError('access_link.rate_limited', message);
   }
+
+  /** Sam 11 §8: token lookups per IP, 30 a minute and 300 an hour; unknown tokens count double. Used only to open
+   *  a link, send a code and verify: a crew on one site Wi-Fi shares an address. */
+  async function limit(ip: string, weight: number) {
+    await bump(`g:alrl:m:${ip}`, 60, 30, weight, 'Too many tries. Wait a minute.');
+    await bump(`g:alrl:h:${ip}`, 3600, 300, weight, 'Too many tries. Wait a minute.');
+  }
+
+  /** Everything else inside a session is limited per session (about 25 requests make one induction). */
+  const bumpSession = (sessionId: string) =>
+    bump(`g:alrl:s:${sessionId}`, 3600, 600, 1, 'Too many tries. Wait a minute.');
 
   // ------------------------------------------------------------------------------ the builder's side
 
@@ -218,6 +247,13 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
       expiresAt: new Date(now().getTime() + days * 86_400_000),
       maxUses: input.maxUses ?? null,
     });
+    scope.events.add({
+      type: 'workforce.induction.link.created.v1',
+      projectId,
+      entityType: 'induction',
+      entityId: inductionId,
+      data: { linkId: link.id, expiresAt: link.expiresAt.toISOString(), maxUses: link.maxUses },
+    });
     return { body: { link: dto(link, inductionId), token, url: `${deps.baseUrl}/i/${token}` } };
   }
 
@@ -236,7 +272,15 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
     await inductions.getRow(scope, projectId, inductionId);
     const existing = await getAccessLink(scope, linkId);
     if (!existing || existing.entityId !== inductionId) throw new AppError('access_link.not_found');
-    return dto(await revokeAccessLink(scope, linkId), inductionId);
+    const revoked = await revokeAccessLink(scope, linkId);
+    scope.events.add({
+      type: 'workforce.induction.link.revoked.v1',
+      projectId,
+      entityType: 'induction',
+      entityId: inductionId,
+      data: { linkId },
+    });
+    return dto(revoked, inductionId);
   }
 
   // ------------------------------------------------------------------------------ resolving a request
@@ -247,7 +291,7 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
       'This link no longer works. Ask the site office for a new one.',
     );
 
-  /** Sam 11 §2: a link dies with its creator's access. Org admins, or an active member of the project. */
+  /** Sam 11 §8: a link dies with its creator's access. They must still hold the permission that made it. */
   async function creatorStillAllowed(scope: TenantScope, link: AccessLink) {
     const access = await deps.platform.resolveTenantAccess(
       scope.ctx.orgId,
@@ -257,13 +301,25 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
     if (!access) return false;
     if (access.orgRole === 'owner' || access.orgRole === 'admin') return true;
     if (!link.projectId) return false;
-    const member = await deps.platform.getProjectMembership(scope, link.projectId, link.createdBy);
-    return Boolean(member);
+    const asCreator: TenantScope = {
+      ...scope,
+      ctx: {
+        ...scope.ctx,
+        userId: link.createdBy,
+        principalType: 'member',
+        orgRole: access.orgRole,
+        actor: undefined,
+      },
+    };
+    return deps.access.can(asCreator, 'workforce.inductions.manage', { projectId: link.projectId });
   }
 
-  async function usable(scope: TenantScope, link: AccessLink) {
+  /** `opening` is the one place a used-up link is refused: `maxUses` counts openings and never ends a session. */
+  async function usable(scope: TenantScope, link: AccessLink, opening = false) {
     if (link.entityType !== LINK_ENTITY || !link.projectId) throw invalid();
-    if (accessLinkState(link, now()) !== 'active') throw invalid();
+    const state = accessLinkState(link, now());
+    if (state === 'revoked' || state === 'expired' || (state === 'used_up' && opening))
+      throw invalid();
     if (!(await creatorStillAllowed(scope, link))) throw invalid();
     const ent = scope.ctx.entitlements;
     if (!ent.modules.includes('workforce') || ent.state === 'cancelled') throw invalid();
@@ -299,12 +355,13 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
   async function resolve(
     cookie: string | undefined,
     facts: RequestFacts,
-    opts: { write?: boolean; verified?: boolean } = {},
+    opts: { write?: boolean; verified?: boolean; ip?: boolean } = {},
   ): Promise<LinkRequest> {
-    await limit(facts.ip, 1);
     const orgId = cookie ? accessTokenOrg(cookie, 'lns') : null;
-    if (!cookie || !orgId)
+    if (!cookie || !orgId) {
+      await limit(facts.ip, 2);
       throw new AppError('access_link.session_required', 'Open your link again to continue.');
+    }
     const base = await baseContext(orgId, facts);
     const found = await database.withTenantTx(
       base,
@@ -316,8 +373,12 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
       },
       { readOnly: true },
     );
-    if (!found)
+    if (!found) {
+      await limit(facts.ip, 2);
       throw new AppError('access_link.session_required', 'Open your link again to continue.');
+    }
+    if (opts.ip) await limit(facts.ip, 1);
+    await bumpSession(found.session.id);
     if (opts.write && base.entitlements.state === 'read_only')
       throw new AppError('org.read_only', 'This site is read-only right now. Ask the site office.');
     if (opts.verified && (!found.session.verifiedAt || !found.session.subjectId))
@@ -397,7 +458,7 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
     const opened = await database.withTenantTx(base, async (scope) => {
       const link = await findAccessLink(scope, token);
       if (!link) return null;
-      await usable(scope, link);
+      await usable(scope, link, true);
       await countAccessLinkUse(scope, link.id);
       const { session, token: cookie } = await openAccessLinkSession(scope, link, {
         ip: facts.ip,
@@ -436,17 +497,26 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
     input: { channel: 'sms' | 'email'; to: string },
     facts: RequestFacts,
   ) {
-    const r = await resolve(cookie, facts, { write: true });
+    const r = await resolve(cookie, facts, { write: true, ip: true });
     const to = input.to.trim();
-    const valid =
-      input.channel === 'sms' ? /^\+[1-9][0-9]{6,14}$/.test(to) : /^\S+@\S+\.\S+$/.test(to);
+    // Text messages go to Australian mobiles only (Sam 11 §8): no premium-rate or international pumping.
+    const valid = input.channel === 'sms' ? /^\+614[0-9]{8}$/.test(to) : /^\S+@\S+\.\S+$/.test(to);
     if (!valid)
       throw new AppError('validation_failed', 'Check the number or address.', [
         {
           path: 'to',
           message:
-            input.channel === 'sms' ? 'Use +61 and your mobile number' : 'Not an email address',
+            input.channel === 'sms'
+              ? 'Use +61 and your Australian mobile number'
+              : 'Not an email address',
         },
+      ]);
+    // A link made for one person sends codes only to them.
+    const named = r.link.recipientPhone || r.link.recipientEmail;
+    const allowed = input.channel === 'sms' ? r.link.recipientPhone : r.link.recipientEmail;
+    if (named && (allowed ?? '').toLowerCase() !== to.toLowerCase())
+      throw new AppError('validation_failed', "This link wasn't made for that number.", [
+        { path: 'to', message: 'Use the number or address the site office gave' },
       ]);
     const issued = await database.withTenantTx(r.ctx, async (scope) => {
       const org = await deps.platform.getOrg(scope);
@@ -457,11 +527,28 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
       });
       return { res, orgName: org.name };
     });
-    if (!issued.res.ok)
+    if (!issued.res.ok) {
+      if (issued.res.reason === 'link' || issued.res.reason === 'org') {
+        // Someone is pumping codes through a shared link: tell the security log and the creator's audit trail.
+        deps.logger?.warn(
+          { linkId: r.link.id, orgId: r.ctx.orgId, cap: issued.res.reason },
+          'access link code cap reached',
+        );
+        await database.withTenantTx(r.ctx, async (scope) => {
+          scope.events.add({
+            type: 'workforce.induction.link.code_limited.v1',
+            projectId: r.projectId,
+            entityType: 'induction',
+            entityId: r.inductionId,
+            data: { linkId: r.link.id, cap: issued.res.ok ? null : issued.res.reason },
+          });
+        });
+      }
       throw new AppError(
         'access_link.too_many_codes',
         "That's too many codes. Try again in an hour, or ask the site office.",
       );
+    }
     const body = `${issued.res.code} is your ${issued.orgName} site induction code. It lasts 10 minutes. Don't share it.`;
     if (input.channel === 'sms') await deps.messages.sms(to, body);
     else
@@ -504,7 +591,7 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
     },
     facts: RequestFacts,
   ) {
-    const r = await resolve(cookie, facts, { write: true });
+    const r = await resolve(cookie, facts, { write: true, ip: true });
     const outcome = await database.withTenantTx(r.ctx, async (scope) => {
       const checked = await verifyAccessLinkCode(scope, r.session, {
         code: input.code,
@@ -686,6 +773,8 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
 
   async function ask(cookie: string | undefined, question: string, facts: RequestFacts) {
     const r = await resolve(cookie, facts, { write: true, verified: true });
+    await bump(`g:alai:q:s:${r.session.id}`, 86_400, NOVA_QUESTIONS_PER_SESSION, 1, NOVA_BUSY);
+    await bump(`g:alai:q:l:${r.link.id}`, 86_400, NOVA_QUESTIONS_PER_LINK_DAY, 1, NOVA_BUSY);
     const version = await loadVersion(r);
     const a = await deps.ai.askInduction(r.ctx, {
       projectId: r.projectId,
@@ -707,7 +796,16 @@ export function createInductionLinkService(deps: InductionLinkDeps) {
   async function translation(cookie: string | undefined, language: string, facts: RequestFacts) {
     const r = await resolve(cookie, facts, { write: true, verified: true });
     const version = await loadVersion(r);
-    const t = await deps.ai.translateInduction(r.ctx, aiContent(version), language);
+    // One translation per version and language, shared by everyone on the link; only a miss spends credits.
+    const cacheKey = `${version.id}:${language}`;
+    let t = translations.get(cacheKey);
+    if (!t) {
+      await bump(`g:alai:t:s:${r.session.id}`, 86_400, NOVA_TRANSLATIONS_PER_SESSION, 1, NOVA_BUSY);
+      await bump(`g:alai:t:l:${r.link.id}`, 86_400, NOVA_TRANSLATIONS_PER_LINK_DAY, 1, NOVA_BUSY);
+      t = await deps.ai.translateInduction(r.ctx, aiContent(version), language);
+      if (translations.size >= 200) translations.delete(translations.keys().next().value!);
+      translations.set(cacheKey, t);
+    }
     const sources = slideSources(version);
     const sections = new Map<number, Map<number, AiTranslation['slides']>>();
     t.slides.forEach((s, i) => {

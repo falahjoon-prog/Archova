@@ -107,6 +107,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     hooks: { onVersionPublished: (ctx, content) => ai.api.indexInductionVersion(ctx, content) },
     links: {
+      access: access.api,
       platform: platform.api,
       files: files.api,
       entitlements: billing.api.entitlements.forOrg,
