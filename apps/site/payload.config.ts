@@ -25,7 +25,7 @@ if (!secret) throw new Error('SITE_PAYLOAD_SECRET is required in production.');
 
 export default buildConfig({
   secret,
-  serverURL: process.env.SITE_ORIGIN ?? 'http://localhost:3007',
+  serverURL: process.env.SITE_ORIGIN ?? 'http://localhost:3100',
   routes: { admin: '/cms' },
   admin: {
     user: Users.slug,

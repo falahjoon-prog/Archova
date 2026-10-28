@@ -22,4 +22,4 @@ export async function getSettings(): Promise<SiteSetting> {
   return (await payload.findGlobal({ slug: 'site-settings' })) as SiteSetting;
 }
 
-export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'http://localhost:3007';
+export const SITE_ORIGIN = process.env.SITE_ORIGIN ?? 'http://localhost:3100';

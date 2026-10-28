@@ -20,8 +20,8 @@ pnpm site:local
 
 The first start builds the site and adds starter content (about two minutes). Then:
 
-- Website: http://localhost:3007
-- Editor: http://localhost:3007/cms, sign in with `admin@archova.local` and `Archova-Local-1`. These work on your computer only.
+- Website: http://localhost:3100
+- Editor: http://localhost:3100/cms, sign in with `admin@archova.local` and `Archova-Local-1`. These work on your computer only.
 
 Stop with `Ctrl+C`. Starting again keeps your edits. To start fresh, delete the `apps/site/data` folder.
 
