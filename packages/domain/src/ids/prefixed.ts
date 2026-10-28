@@ -17,6 +17,7 @@ export const ID_PREFIXES = {
   revision: 'rev',
   rfi: 'rfi',
   defect: 'dfx',
+  defectEvent: 'dfe',
   diary: 'dia',
   claim: 'clm',
   event: 'evt',

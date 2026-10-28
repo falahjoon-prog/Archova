@@ -1128,6 +1128,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The defect register. Subcontractors see their company's defects and ones they raised (DEF-AC9). */
+        get: operations["listDefects"];
+        put?: never;
+        /** Draft a defect pinned on a drawing. It is numbered DEF-0001 per project (DEF-AC2, AC3). */
+        post: operations["createDefect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getDefect"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a defect that is not closed or void. Builder staff edit any; an author edits their own draft. */
+        patch: operations["updateDefect"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Move a defect through its lifecycle with the shared state machine. Issue needs `defects.defects.create`; markReadyForReview and dispute need `defects.defects.respond`; close, reject, reassign and void need `defects.defects.close`. The state machine decides whether the caller's side (builder or assigned company) may take the action. */
+        post: operations["transitionDefect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/rfis": {
         parameters: {
             query?: never;
@@ -3825,6 +3888,114 @@ export interface components {
             reason: string;
         };
         /** @enum {string} */
+        DefectStatus: "draft" | "open" | "ready_for_review" | "closed" | "disputed" | "void";
+        /** @enum {string} */
+        DefectPriority: "low" | "medium" | "high" | "critical";
+        /**
+         * @description Contract milestone the defect is reported against (DEF-AC7)
+         * @enum {string}
+         */
+        DefectStage: "pre_pc" | "pc" | "dlp";
+        /** @enum {string} */
+        DefectAction: "issue" | "markReadyForReview" | "close" | "reject" | "dispute" | "reassign" | "void";
+        /** @enum {string} */
+        DefectSource: "manual" | "inspection" | "ai_suggested";
+        Defect: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description DEF-0042 */
+            numberLabel: string;
+            title: string;
+            description: string;
+            status: components["schemas"]["DefectStatus"];
+            priority: components["schemas"]["DefectPriority"];
+            category: string | null;
+            trade: string | null;
+            stage: components["schemas"]["DefectStage"];
+            pin: components["schemas"]["DrawingPin"] | null;
+            assigneeCompanyId: string | null;
+            assigneeUserId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            /** @description Open or disputed and past its due date in the project's time zone */
+            isOverdue: boolean;
+            raisedByCompanyId: string | null;
+            /** Format: date-time */
+            issuedAt: string | null;
+            /** Format: date-time */
+            readyForReviewAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            closedBy: string | null;
+            source: components["schemas"]["DefectSource"];
+            /** @description Actions the caller can take now, for showing buttons */
+            availableActions: components["schemas"]["DefectAction"][];
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        DefectEvent: {
+            id: string;
+            defectId: string;
+            /** @description The lifecycle action, or `create` */
+            action: string;
+            fromStatus: string | null;
+            toStatus: components["schemas"]["DefectStatus"];
+            /** @description The reason given, shown to the subcontractor on a reject */
+            note: string | null;
+            fileIds: string[];
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        DefectDetail: {
+            defect: components["schemas"]["Defect"];
+            /** @description Status history, oldest first */
+            events: components["schemas"]["DefectEvent"][];
+        };
+        DefectPage: {
+            data: components["schemas"]["Defect"][];
+            nextCursor: string | null;
+        };
+        CreateDefectRequest: {
+            title: string;
+            description?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            category?: string;
+            trade?: string;
+            stage?: components["schemas"]["DefectStage"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            assigneeUserId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            dueDate?: string;
+            pin: components["schemas"]["DrawingPin"];
+        };
+        UpdateDefectRequest: {
+            title?: string;
+            description?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            category?: string | null;
+            trade?: string | null;
+            stage?: components["schemas"]["DefectStage"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
+            assigneeUserId?: components["schemas"]["UserRef"] | null;
+            /** Format: date */
+            dueDate?: string | null;
+            pin?: components["schemas"]["DrawingPin"];
+        };
+        DefectTransitionRequest: {
+            action: components["schemas"]["DefectAction"];
+            /** @description Required for reject, dispute and void. A reject reason is shown to the subcontractor. */
+            reason?: string;
+            /** @description Photos for this step. Marking ready for review needs at least one (DEF-AC5). */
+            fileIds?: components["schemas"]["FileRef"][];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+        };
+        /** @enum {string} */
         DiaryStatus: "draft" | "submitted" | "signed_off";
         /** @enum {string} */
         DiaryDelayType: "weather" | "client" | "design" | "subcontractor" | "authority" | "industrial" | "other";
@@ -4907,6 +5078,7 @@ export interface components {
         MarkupId: string;
         TransmittalId: string;
         RfiId: string;
+        DefectId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -6750,6 +6922,164 @@ export interface operations {
                 };
             };
             426: components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDefects: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["DefectStatus"];
+                assigneeCompanyId?: components["schemas"]["CompanyRef"];
+                stage?: components["schemas"]["DefectStage"];
+                priority?: components["schemas"]["DefectPriority"];
+                trade?: string;
+                overdue?: "true" | "false";
+                drawingRevisionId?: string;
+                q?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDefect: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateDefectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDefect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateDefect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateDefectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionDefect: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                defectId: components["parameters"]["DefectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DefectTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
             default: components["responses"]["Problem"];
         };
     };

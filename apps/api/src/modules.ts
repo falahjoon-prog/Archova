@@ -7,6 +7,7 @@ import {
   createBillingModule,
   type EntitlementProvider,
 } from '@archova/mod-billing';
+import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { DIARY_PERMISSIONS, createDiaryModule } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import { createFilesModule, type MalwareScanner, type ObjectStore } from '@archova/mod-files';
@@ -21,6 +22,7 @@ export const MODULE_PERMISSIONS = [
   AI_PERMISSIONS,
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
+  DEFECTS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
 ];
@@ -55,8 +57,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     store: opts.files.store,
     scanner: opts.files.scanner,
-    // Anyone who can sign in on a project can upload their own white card and licence photos.
-    uploadPermissions: { workforce: 'workforce.attendance.sign_in_self' },
+    uploadPermissions: {
+      // Anyone who can sign in on a project can upload their own white card and licence photos.
+      workforce: 'workforce.attendance.sign_in_self',
+      // The assigned subcontractor's "after" photo when marking a defect ready for review (DEF-AC5).
+      defects: 'defects.defects.respond',
+    },
   });
 
   const documents = createDocumentsModule(services, {
@@ -67,6 +73,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const rfis = createRfisModule(services, {
+    access: access.api,
+    platform: platform.api,
+    documents: documents.api,
+    files: files.api,
+  });
+
+  const defects = createDefectsModule(services, {
     access: access.api,
     platform: platform.api,
     documents: documents.api,
@@ -134,6 +147,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    defects,
     diary,
     workforce,
     sync,
@@ -155,6 +169,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    defects,
     sync,
     diary,
     workforce,
