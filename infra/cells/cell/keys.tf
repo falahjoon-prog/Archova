@@ -49,7 +49,7 @@ module "kms_ai_provider_secrets" {
   alias                  = "archova-${var.env}-ai-provider-secrets"
   description            = "BYO AI provider credentials (X28), ${var.env}"
   admin_only_for_account = true
-  usage_role_arns        = [aws_iam_role.task["api"].arn]
+  usage_role_arns        = [aws_iam_role.task["api"].arn, aws_iam_role.task["ai-worker"].arn]
   usage_via_services     = ["secretsmanager.${local.region}.amazonaws.com"]
   multi_region           = true
   tags                   = merge(local.tags, { service = "ai" })

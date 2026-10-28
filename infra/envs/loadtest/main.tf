@@ -41,10 +41,11 @@ module "cell" {
   backup                       = null
 
   images = {
-    api     = "${var.image_registry}/archova/api:bootstrap"
-    web     = "${var.image_registry}/archova/web:bootstrap"
-    migrate = "${var.image_registry}/archova/migrate:bootstrap"
-    worker  = "${var.image_registry}/archova/worker:bootstrap"
+    api       = "${var.image_registry}/archova/api:bootstrap"
+    web       = "${var.image_registry}/archova/web:bootstrap"
+    migrate   = "${var.image_registry}/archova/migrate:bootstrap"
+    worker    = "${var.image_registry}/archova/worker:bootstrap"
+    ai-worker = "${var.image_registry}/archova/ai-worker:bootstrap"
   }
 
   # Target tier from infrastructure/04 §3: api 10-40 (max 60), web 6-20 (max 30).
