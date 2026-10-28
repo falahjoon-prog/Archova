@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nav, renderInProject } from '@/test/render';
 import { inductionBuilderSource, resetInductionBuilderPreview } from '../data/source';
+import { parseLinkForm } from '../components/LinksPanel';
 import { InductionEditorScreen } from '../screens/InductionEditorScreen';
 import { InductionListScreen } from '../screens/InductionListScreen';
 import { InductionRegisterScreen } from '../screens/InductionRegisterScreen';
@@ -105,5 +106,47 @@ describe('Induction builder screens (preview data)', () => {
     expect(screen.getByText('Current')).toBeTruthy();
     expect(screen.getByText('v1')).toBeTruthy();
     expect(screen.getByText('White card')).toBeTruthy();
+  });
+
+  it('creates a link once, shows its address, and revokes it', async () => {
+    const id = await sampleId();
+    let induction = await inductionBuilderSource.get('prj_test', id);
+    for (const n of [0, 1]) {
+      induction = await inductionBuilderSource.approve('prj_test', induction, n);
+    }
+    await inductionBuilderSource.publish('prj_test', induction, {
+      redo: 'none',
+      graceDays: 0,
+      changeNote: '',
+    });
+    const user = userEvent.setup();
+    renderInProject(<InductionEditorScreen inductionId={id} />);
+    await user.click(await screen.findByRole('tab', { name: /Links/ }));
+    expect(await screen.findByText('No links yet')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Create link' }));
+    const form = screen.getByRole('dialog', { name: 'Create link' });
+    await user.type(within(form).getByLabelText(/Who it is for/), 'Gate poster');
+    await user.click(within(form).getByRole('button', { name: 'Create link' }));
+    const ready = await screen.findByRole('dialog', { name: 'Your link is ready' });
+    expect((within(ready).getByLabelText('Link') as HTMLInputElement).value).toMatch(/\/i\/arl_/);
+    await user.click(within(ready).getByRole('button', { name: 'Done' }));
+    expect(await screen.findByText('Gate poster')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Revoke Gate poster' }));
+    expect(await screen.findByText('Revoked')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Revoke Gate poster' })).toBeNull();
+  });
+
+  it('checks the link form before sending', () => {
+    expect(parseLinkForm({ label: ' ', expiresInDays: '30', maxUses: '' })).toEqual({
+      ok: true,
+      input: { expiresInDays: 30 },
+    });
+    expect(parseLinkForm({ label: 'Crew', expiresInDays: '7', maxUses: '25' })).toEqual({
+      ok: true,
+      input: { label: 'Crew', expiresInDays: 7, maxUses: 25 },
+    });
+    const bad = parseLinkForm({ label: '', expiresInDays: '120', maxUses: '0' });
+    expect(bad.ok).toBe(false);
+    if (!bad.ok) expect(Object.keys(bad.errors)).toEqual(['expiresInDays', 'maxUses']);
   });
 });
