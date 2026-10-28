@@ -191,6 +191,8 @@ Endpoints from [api.md §7](../architecture/api.md#7-mobile-sync-endpoints); cli
                   "version": 7, "server": { …current DTO… }, "problem": { "code": "…" } } ] }
 ```
 
+**As built (push):** `modules/sync` runs the mutations in order, each in its own transaction, and looks the `command` up among the `SyncCommand`s modules export (`module.api.syncCommands`, a `@archova/kernel` type; only `defects.transition` so far). A command names its licensed module (checked as on REST, plus the read-only organisation state), runs the same service function as the REST endpoint, and says how to read the caller's current copy for a conflict. `sync.mutations` (per org, user and `mutation_id`) is written in the command's own transaction, so a failed command leaves no row; a replay returns the stored `applied` or `rejected` result. `version_conflict` is answered `conflict` with the server copy and is not stored; an `access.revoked` rejection is not stored either (the drain-grant retry has to run). One id reused for a different command or entity is refused. Not built yet: drain-grant issue and accept (`pending_review`), field-level merge, and the other commands (diary lines, RFIs, attendance). Rows older than 30 days are for the worker to sweep.
+
 - Max 100 mutations per call, applied in order, each in its own transaction (one failure doesn't roll back the batch).
 - `command` names map one-to-one onto module use cases (the same ones the REST endpoints call), so permission checks, state machines and audit are identical online and offline.
 - Conflict rule: field-level merge when the fields changed since `baseVersion` don't overlap; otherwise `conflict` with the server copy. Append-only records (comments, photos, defect events, diary lines) never conflict.

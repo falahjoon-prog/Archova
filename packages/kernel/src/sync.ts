@@ -21,3 +21,30 @@ export interface SyncSource {
     request: { projectId: string | null; entityType: string; ids: readonly string[] },
   ): Promise<Map<string, { version: number; data: Record<string, unknown> }>>;
 }
+
+/** One queued change from a device (backend 04 §4 push), with the entity id as the device knows it. */
+export interface SyncMutationInput {
+  entityId: string;
+  /** The version the change was made against; `null` for a create. */
+  baseVersion: number | null;
+  clientAt: Date;
+  payload: Record<string, unknown>;
+}
+
+/**
+ * A module use case a device may queue offline (backend 04 §4 push). It runs the same service function as the REST
+ * endpoint, so permissions, state machines and audit are identical online and offline. A failed precondition throws
+ * `versionConflict()` (reported as a conflict, with `current`) or any other `AppError` (reported as a rejection).
+ */
+export interface SyncCommand {
+  /** `module.useCase`, e.g. `defects.transition`. */
+  name: string;
+  /** Whose licence the command needs: the same module the REST endpoint is under. */
+  module: string;
+  run(scope: TenantScope, mutation: SyncMutationInput): Promise<{ version: number }>;
+  /** The caller's current copy of the record, for a conflict result; null when it is gone or not visible. */
+  current(
+    scope: TenantScope,
+    entityId: string,
+  ): Promise<{ version: number; data: Record<string, unknown> } | null>;
+}

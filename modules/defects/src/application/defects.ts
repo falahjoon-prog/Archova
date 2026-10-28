@@ -181,6 +181,16 @@ export function createDefectService(deps: DefectsDeps) {
     return { defect: view(row, await today(scope, projectId)), viewer: v };
   }
 
+  /** The project a defect is in, for sync commands that name only the defect. */
+  async function projectOf(scope: TenantScope, defectId: string): Promise<string | null> {
+    const [row] = await scope.tx
+      .select({ projectId: defects.projectId })
+      .from(defects)
+      .where(and(eq(defects.id, defectId), isNull(defects.deletedAt)))
+      .limit(1);
+    return row?.projectId ?? null;
+  }
+
   async function detail(scope: TenantScope, projectId: string, defectId: string) {
     const { defect, viewer: v } = await getVisible(scope, projectId, defectId);
     const history = await scope.tx
@@ -625,6 +635,7 @@ export function createDefectService(deps: DefectsDeps) {
     transition,
     openNear,
     visibleAmong,
+    projectOf,
     aiSources,
     aiAccessScopes,
   };

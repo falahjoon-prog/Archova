@@ -1,8 +1,9 @@
 import { AppError, defineRoutes, requireTenant, type Database } from '@archova/kernel';
 import type { PullService } from '../application/pull';
+import type { PushService } from '../application/push';
 import { parseScopes } from '../domain/scopes';
 
-export function syncRoutes(database: Database, pull: PullService) {
+export function syncRoutes(database: Database, pull: PullService, push: PushService) {
   return defineRoutes({
     syncPull: async (input) => {
       const q = input.query;
@@ -26,8 +27,14 @@ export function syncRoutes(database: Database, pull: PullService) {
       );
       return { status: 200, body };
     },
-    syncPush: async () => {
-      throw new AppError('not_implemented', 'Mobile sync push is not available yet.');
+    syncPush: async (input) => {
+      const tenant = requireTenant(input);
+      if (tenant.actor)
+        throw new AppError(
+          'access.denied',
+          'Offline sync is for signed-in people, not link sessions.',
+        );
+      return { status: 200, body: await push.push(tenant, input.body) };
     },
   });
 }
