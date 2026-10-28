@@ -309,7 +309,7 @@ resource "linode_nodebalancer" "this" {
   vpcs = [{ subnet_id = linode_vpc_subnet.app.id }]
 }
 
-# TLS ends here with TLS 1.2+ ciphers; Caddy on each server routes by path like CloudFront does on AWS.
+# TLS ends here with TLS 1.2+ ciphers (certificate: docs/infrastructure/10 §Certificate renewal); Caddy on each server routes by path like CloudFront does on AWS.
 resource "linode_nodebalancer_config" "https" {
   nodebalancer_id = linode_nodebalancer.this.id
   port            = 443
@@ -324,6 +324,12 @@ resource "linode_nodebalancer_config" "https" {
   check_timeout   = 5
   check_attempts  = 3
   check_passive   = true
+
+  lifecycle {
+    # The certificate is renewed every month by .github/workflows/linode-cert.yml, which updates this config through
+    # the Linode API; the variables only seed the first apply.
+    ignore_changes = [ssl_cert, ssl_key]
+  }
 }
 
 # Plain HTTP only redirects to HTTPS (Caddy answers 308 when X-Forwarded-Proto is http).

@@ -24,7 +24,8 @@
     "db:lint": "tsx tools/db/lint-migrations.ts",
     "db:reset": "tsx tools/db/bootstrap.ts --reset && tsx tools/db/migrate.ts",
     "check:boundaries": "tsx tools/boundaries/check-boundaries.ts",
-    "check:egress": "tsx tools/infra/check-egress-allowlist.ts && tsx --test tools/infra/egress-allowlist.test.ts tools/infra/linode-corefile.test.ts tools/infra/linode-host-files.test.ts",
+    "check:egress": "tsx tools/infra/check-egress-allowlist.ts && tsx --test tools/infra/egress-allowlist.test.ts tools/infra/linode-corefile.test.ts tools/infra/linode-host-files.test.ts tools/infra/linode-cors.test.ts",
+    "infra:linode-cors": "tsx tools/infra/linode-cors.ts",
     "infra:linode-corefile": "tsx tools/infra/linode-corefile.ts",
     "infra:linode-host-files": "tsx tools/infra/linode-host-files.ts",
     "demo:seed": "tsx tools/demo-seed/seed.ts"
