@@ -143,9 +143,21 @@ async function flushOutbox(tx: Tx, ctx: TenantContext, events: readonly PendingE
       insert into shared.outbox
         (id, org_id, type, project_id, entity_type, entity_id, entity_version, actor, data, trace_id, occurred_at)
       values (${uuidv7()}, ${ctx.orgId}, ${e.type}, ${e.projectId ?? null}, ${e.entityType}, ${e.entityId},
-              ${e.entityVersion ?? null}, ${JSON.stringify({ type: 'user', id: ctx.userId })}::jsonb,
+              ${e.entityVersion ?? null}, ${JSON.stringify(actorOf(ctx))}::jsonb,
               ${JSON.stringify(e.data)}::jsonb, ${traceId}, now())`);
   }
+}
+
+/** The event actor: a signed-in user, or a person on an access link (Sam 11 §3: `actor.type = link`). */
+function actorOf(ctx: TenantContext) {
+  return ctx.actor
+    ? {
+        type: 'link',
+        id: ctx.actor.linkId,
+        subjectType: ctx.actor.subjectType,
+        subjectId: ctx.actor.subjectId,
+      }
+    : { type: 'user', id: ctx.userId };
 }
 
 /** Shape of an outbox row once relayed; used by the worker's dispatcher. */

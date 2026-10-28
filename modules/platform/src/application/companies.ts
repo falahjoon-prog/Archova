@@ -1,8 +1,8 @@
-import { and, asc, eq, gt, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, or, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { CreateCompanyRequest } from '@archova/contracts';
 import { decodeCursor, toPage, type TenantScope } from '@archova/kernel';
-import { companies } from '../infra/tables';
+import { companies, projectMembers } from '../infra/tables';
 
 export function createCompanyService() {
   async function list(scope: TenantScope, opts: { limit: number; cursor?: string }) {
@@ -52,6 +52,28 @@ export function createCompanyService() {
     return row!;
   }
 
+  /**
+   * Companies working on a project: those with an active member, plus the builder's own. Names only; used where
+   * a worker without an account picks their company (design/08 B2).
+   */
+  async function onProject(scope: TenantScope, projectId: string) {
+    const members = scope.tx
+      .selectDistinct({ id: projectMembers.companyId })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.status, 'active')));
+    return scope.tx
+      .select({ id: companies.id, name: companies.name })
+      .from(companies)
+      .where(
+        and(
+          isNull(companies.deletedAt),
+          or(eq(companies.isOwnCompany, true), inArray(companies.id, members)),
+        ),
+      )
+      .orderBy(asc(companies.name), asc(companies.id))
+      .limit(500);
+  }
+
   async function exists(scope: TenantScope, companyId: string): Promise<boolean> {
     const [row] = await scope.tx
       .select({ id: companies.id })
@@ -61,7 +83,7 @@ export function createCompanyService() {
     return Boolean(row);
   }
 
-  return { list, create, exists };
+  return { list, create, exists, onProject };
 }
 
 export type CompanyService = ReturnType<typeof createCompanyService>;

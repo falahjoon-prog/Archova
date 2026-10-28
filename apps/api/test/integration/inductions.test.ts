@@ -2,7 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sql } from 'drizzle-orm';
 import { decodeId, encodeId, uuidv7 } from '@archova/domain';
 import { addMonths } from '@archova/mod-workforce';
+import { hexToBase64, quarantineKey } from '@archova/mod-files';
 import { localDateOf } from '@archova/time';
+import { createHash } from 'node:crypto';
 import {
   addMember,
   createOrg,
@@ -10,6 +12,7 @@ import {
   createTestContext,
   signUp,
   uploadFile,
+  Browser,
   type TestContext,
 } from './helpers';
 
@@ -469,5 +472,269 @@ describe('online inductions (product/14)', () => {
     expect(full.json().content.sections[1].blocks[0].body).toBe(
       'Toilets are behind the site shed.',
     );
+  });
+  describe('over an access link (X45)', () => {
+    const MOBILE = '+61412345678';
+    const COOKIE = '__Host-lnk';
+
+    async function openLink(s: Setup, inductionId: string, body: Record<string, unknown> = {}) {
+      const res = await s.sm.browser.post(`${s.base}/inductions/${inductionId}/links`, {
+        label: 'Formco crew',
+        ...body,
+      });
+      expect(res.statusCode).toBe(201);
+      const link = res.json() as { token: string; url: string; link: { id: string } };
+      const guest = new Browser(t.app);
+      const opened = await guest.post('/v1/induction-access', { token: link.token });
+      return { link, guest, opened };
+    }
+
+    async function verifyMobile(guest: Browser, s: Setup, name: string, mobile = MOBILE) {
+      const sent = await guest.post('/v1/induction-access/codes', { channel: 'sms', to: mobile });
+      expect(sent.statusCode).toBe(202);
+      const last = t.messages.sent.filter((m) => m.to === mobile).at(-1)!;
+      const code = /(\d{6}) is your/.exec(last.text)![1]!;
+      const access = (await guest.get('/v1/induction-access')).json();
+      const company = access.companies.find((c: { name: string }) => c.name === 'Formco');
+      return {
+        code,
+        verify: (extra: Record<string, unknown> = {}, useCode = code) =>
+          guest.post('/v1/induction-access/verify', {
+            code: useCode,
+            fullName: name,
+            companyId: company.id,
+            ...extra,
+          }),
+      };
+    }
+
+    it('lets a worker with no account do the induction on their phone, verified by SMS', async () => {
+      const s = await setup('ind-link');
+      const { induction, version } = await publishInduction(s);
+
+      // Only people who run inductions can make links.
+      expect(
+        (await s.sub.browser.post(`${s.base}/inductions/${induction.id}/links`, {})).statusCode,
+      ).toBe(403);
+
+      const { link, guest, opened } = await openLink(s, induction.id);
+      expect(link.url).toMatch(/\/i\/arl_/);
+      expect(opened.statusCode).toBe(200);
+      expect(opened.headers['referrer-policy']).toBe('no-referrer');
+      expect(opened.headers['x-robots-tag']).toContain('noindex');
+      expect(guest.cookies.has(COOKIE)).toBe(true);
+      expect(opened.json()).toMatchObject({
+        inductionTitle: 'Wharf St induction',
+        versionNumber: version.number,
+        verified: false,
+        worker: null,
+        completionStatus: 'not_started',
+        sectionCount: 9,
+      });
+      expect(opened.json().companies.map((c: { name: string }) => c.name)).toContain('Formco');
+
+      // A link that doesn't exist, or a session that doesn't, says nothing about the record.
+      const unknown = await new Browser(t.app).post('/v1/induction-access', {
+        token: `arl_${'A'.repeat(64)}`,
+      });
+      expect(unknown.statusCode).toBe(410);
+      expect(unknown.json().code).toBe('access_link.invalid');
+      expect((await new Browser(t.app).get('/v1/induction-access')).json().code).toBe(
+        'access_link.session_required',
+      );
+
+      // Nothing past the first page until the mobile is verified.
+      expect((await guest.get('/v1/induction-access/completion')).json().code).toBe(
+        'access_link.not_verified',
+      );
+      const v = await verifyMobile(guest, s, 'Pat Plasterer');
+      expect((await v.verify({}, v.code === '000000' ? '111111' : '000000')).json().code).toBe(
+        'access_link.code_invalid',
+      );
+      const verified = await v.verify();
+      expect(verified.statusCode).toBe(200);
+      expect(verified.json()).toMatchObject({
+        verified: true,
+        verifiedTo: '+61•••••678',
+        worker: { fullName: 'Pat Plasterer', companyName: 'Formco', returning: false },
+        completionStatus: 'in_progress',
+      });
+      // A code works once.
+      expect((await v.verify()).json().code).toBe('access_link.code_expired');
+
+      const c = (await guest.get('/v1/induction-access/completion')).json();
+      expect(c).toMatchObject({ status: 'in_progress', method: 'link' });
+      expect(c.worker.phone).toBeNull();
+      expect(c.content.quiz[0]).not.toHaveProperty('answerIndex');
+      for (let i = 0; i < c.content.sections.length; i++)
+        await guest.post('/v1/induction-access/progress', { section: i, seconds: 20 });
+      const answers = answersFor(c, induction.draft);
+      expect(
+        (
+          await guest.post('/v1/induction-access/quiz-attempts', {
+            answers: answersFor(c, induction.draft, true),
+          })
+        ).json(),
+      ).toMatchObject({ passed: false });
+      expect(
+        (await guest.post('/v1/induction-access/quiz-attempts', { answers })).json(),
+      ).toMatchObject({ passed: true, score: 100 });
+
+      // The induction's own video downloads; no other file does.
+      const videoId = c.content.sections[0].blocks.find((b: { type: string }) => b.type === 'video')
+        .fileId as string;
+      expect((await guest.get(`/v1/induction-access/files/${videoId}/download`)).statusCode).toBe(
+        200,
+      );
+      const other = await uploadFile(t, s.pm.browser, s.org.id, s.project.id, 'plans.pdf');
+      expect((await guest.get(`/v1/induction-access/files/${other}/download`)).statusCode).toBe(
+        404,
+      );
+
+      // The white card photo goes through the normal upload checks and scan.
+      const bytes = 'card photo bytes';
+      const sha256 = createHash('sha256').update(bytes).digest('hex');
+      const up = await guest.post('/v1/induction-access/uploads', {
+        filename: 'card.jpg',
+        mime: 'image/jpeg',
+        sizeBytes: bytes.length,
+        sha256,
+      });
+      expect(up.statusCode).toBe(201);
+      t.store.put(
+        quarantineKey(decodeId('upload', up.json().id)!),
+        bytes.length,
+        hexToBase64(sha256),
+      );
+      const stored = await guest.post(`/v1/induction-access/uploads/${up.json().id}/complete`);
+      expect(stored.json()).toMatchObject({ status: 'ready', module: 'workforce' });
+      // Someone else's file, even in this project, can't be put on a card.
+      const cardFor = (fileIds: string[]) =>
+        guest.post('/v1/induction-access/credentials', {
+          kind: 'white_card',
+          number: 'CGI 777888',
+          issuingState: 'QLD',
+          fileIds,
+        });
+      expect((await cardFor([other])).json().code).toBe('file.not_in_project');
+      expect((await cardFor([stored.json().id])).statusCode).toBe(201);
+
+      const signed = await guest.post('/v1/induction-access/sign', {
+        typedName: 'Pat Plasterer',
+        signature: { format: 'svg', data: 'M1 1 L5 5' },
+        fitForWork: true,
+        agreed: true,
+      });
+      expect(signed.statusCode).toBe(200);
+      expect(signed.json()).toMatchObject({ status: 'completed', method: 'link' });
+
+      // The verified number is in the sealed evidence.
+      const [row] = (
+        await t.adminDb.withTenantTx(
+          {
+            orgId: decodeId('org', s.org.id)!,
+            userId: decodeId('user', s.sm.userId)!,
+            principalType: 'member',
+            orgRole: 'owner',
+            entitlements: { plan: 'x', state: 'active', modules: [], limits: {} },
+            requestId: 't',
+          },
+          ({ tx }) =>
+            tx.execute(sql`select method, verified_channel, verified_to, access_link_id, evidence_hash
+                           from workforce.induction_completions
+                           where id = ${decodeId('inductionCompletion', c.id)!}`),
+        )
+      ).rows as Array<Record<string, string>>;
+      expect(row).toMatchObject({
+        method: 'link',
+        verified_channel: 'sms',
+        verified_to: MOBILE,
+        access_link_id: decodeId('accessLink', link.link.id),
+      });
+      expect(row!.evidence_hash).toMatch(/^[0-9a-f]{64}$/);
+
+      // Ask Nova answers from this induction only; an untranslatable language says so plainly.
+      const asked = await guest.post('/v1/induction-access/questions', {
+        question: 'Where is the assembly point?',
+      });
+      expect(asked.statusCode).toBe(200);
+      expect(asked.json()).toEqual({
+        found: expect.any(Boolean),
+        answer: expect.any(String),
+        citations: expect.any(Array),
+      });
+      const tr = await guest.get('/v1/induction-access/translation?lang=zz');
+      expect(tr.json().code).toBe('ai.translation.language_unavailable');
+
+      // The site manager sees the link used; the register shows the worker as inducted by link.
+      const links = (await s.sm.browser.get(`${s.base}/inductions/${induction.id}/links`)).json();
+      expect(links.data[0]).toMatchObject({ state: 'active', useCount: 1, label: 'Formco crew' });
+      expect((await s.sm.browser.get(`${s.base}/induction-register`)).json().data[0]).toMatchObject(
+        {
+          status: 'current',
+          completion: { method: 'link' },
+        },
+      );
+
+      // The same person on another link is welcomed back and keeps their record.
+      const second = await openLink(s, induction.id, { label: 'Second' });
+      const again = await verifyMobile(second.guest, s, 'Pat P');
+      expect((await again.verify()).json()).toMatchObject({
+        worker: { fullName: 'Pat Plasterer', returning: true },
+        completionStatus: 'completed',
+      });
+
+      // Revoking works at once, for new visitors and for browsers already in.
+      const revoked = await s.sm.browser.post(
+        `${s.base}/inductions/${induction.id}/links/${link.link.id}/revoke`,
+      );
+      expect(revoked.json()).toMatchObject({ state: 'revoked' });
+      expect((await guest.get('/v1/induction-access')).json().code).toBe('access_link.invalid');
+      expect(
+        (await new Browser(t.app).post('/v1/induction-access', { token: link.token })).json().code,
+      ).toBe('access_link.invalid');
+    });
+
+    it('limits one-time codes: five tries, then a new code', async () => {
+      const s = await setup('ind-link-codes');
+      const { induction } = await publishInduction(s);
+      const { guest } = await openLink(s, induction.id, { maxUses: 2 });
+      const mobile = '+61498765432';
+      const v = await verifyMobile(guest, s, 'Lee Labourer', mobile);
+      const wrong = v.code === '123456' ? '654321' : '123456';
+      for (let i = 0; i < 4; i++)
+        expect((await v.verify({}, wrong)).json().code).toBe('access_link.code_invalid');
+      expect((await v.verify({}, wrong)).json().code).toBe('access_link.code_expired');
+      // The right code no longer works once attempts are used up; a fresh one does.
+      expect((await v.verify()).json().code).toBe('access_link.code_expired');
+      const fresh = await verifyMobile(guest, s, 'Lee Labourer', mobile);
+      expect((await fresh.verify()).statusCode).toBe(200);
+      // A third code in the hour is refused.
+      await guest.post('/v1/induction-access/codes', { channel: 'sms', to: mobile });
+      const third = await guest.post('/v1/induction-access/codes', { channel: 'sms', to: mobile });
+      expect(third.json().code).toBe('access_link.too_many_codes');
+    });
+
+    it('stops working when its creator loses access', async () => {
+      const s = await setup('ind-link-creator');
+      const { induction } = await publishInduction(s);
+      const { guest } = await openLink(s, induction.id);
+      expect((await guest.get('/v1/induction-access')).statusCode).toBe(200);
+      // There is no remove-member route yet, so end the creator's membership directly.
+      await t.adminDb.withTenantTx(
+        {
+          orgId: decodeId('org', s.org.id)!,
+          userId: decodeId('user', s.pm.userId)!,
+          principalType: 'member',
+          orgRole: 'owner',
+          entitlements: { plan: 'x', state: 'active', modules: [], limits: {} },
+          requestId: 't',
+        },
+        ({ tx }) =>
+          tx.execute(sql`update platform.project_members set status = 'removed', removed_at = now()
+                         where user_id = ${decodeId('user', s.sm.userId)!}`),
+      );
+      expect((await guest.get('/v1/induction-access')).json().code).toBe('access_link.invalid');
+    });
   });
 });

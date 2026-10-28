@@ -1,6 +1,8 @@
 import type { ProblemCode } from '@archova/contracts';
-import { decodeId, type IdKind } from '@archova/domain';
+import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
+  ACCESS_LINK_COOKIE,
+  ACCESS_LINK_SESSION_MS,
   AppError,
   defineRoutes,
   etag,
@@ -12,6 +14,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { InductionLinkService } from '../application/induction-links';
 import { aiContent, type InductionService } from '../application/inductions';
 import {
   fromContentDto,
@@ -77,12 +80,26 @@ export function workforceRoutes(
   database: Database,
   svc: AttendanceService,
   ind: InductionService,
+  links: InductionLinkService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn, { readOnly: true });
+
+  /** Pages reached by an access link are never indexed, and the token never leaks through a referrer (Sam 11 §3). */
+  const LINK_HEADERS = {
+    'referrer-policy': 'no-referrer',
+    'x-robots-tag': 'noindex, nofollow',
+  };
+  const facts = (input: { ip: string; userAgent: string | null; requestId: string }) => ({
+    ip: input.ip,
+    userAgent: input.userAgent,
+    requestId: input.requestId,
+  });
+  const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
+    input.cookies[ACCESS_LINK_COOKIE];
 
   return defineRoutes({
     listAttendanceSites: async (input) => {
@@ -558,5 +575,171 @@ export function workforceRoutes(
       );
       return { status: 200, body: toCredentialDto(row), headers: { etag: etag(row.version) } };
     },
+    // -------------------------------------------------------------------- inductions over an access link
+
+    listInductionLinks: async (input) => {
+      const body = await read(input, (s) =>
+        links.listLinks(s, project(input.params), induction(input.params)),
+      );
+      return { status: 200, body };
+    },
+    createInductionLink: async (input) => {
+      const r = await tx(input, (s) =>
+        links.createLink(s, project(input.params), induction(input.params), input.body),
+      );
+      return { status: 201, body: r.body, headers: { 'cache-control': 'no-store' } };
+    },
+    revokeInductionLink: async (input) => {
+      const body = await tx(input, (s) =>
+        links.revokeLink(
+          s,
+          project(input.params),
+          induction(input.params),
+          id('accessLink', input.params.linkId, 'access_link.not_found'),
+        ),
+      );
+      return { status: 200, body };
+    },
+    openInductionAccess: async (input) => {
+      const r = await links.open(input.body.token, facts(input));
+      return {
+        status: 200,
+        body: r.body,
+        headers: LINK_HEADERS,
+        setCookies: [
+          {
+            name: ACCESS_LINK_COOKIE,
+            value: r.cookie,
+            httpOnly: true,
+            maxAgeSeconds: Math.floor(ACCESS_LINK_SESSION_MS / 1000),
+          },
+        ],
+      };
+    },
+    getInductionAccess: async (input) => ({
+      status: 200,
+      body: await links.view(linkCookie(input), facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    sendInductionAccessCode: async (input) => ({
+      status: 202,
+      body: await links.sendCode(linkCookie(input), input.body, facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    verifyInductionAccess: async (input) => {
+      const b = input.body;
+      return {
+        status: 200,
+        body: await links.verify(
+          linkCookie(input),
+          {
+            code: b.code,
+            fullName: b.fullName,
+            ...(b.companyId ? { companyId: ref('company', b.companyId, 'companyId') } : {}),
+            ...(b.companyName ? { companyName: b.companyName } : {}),
+          },
+          facts(input),
+        ),
+        headers: LINK_HEADERS,
+      };
+    },
+    getLinkInductionCompletion: async (input) => ({
+      status: 200,
+      body: toCompletionDto(await links.completion(linkCookie(input), facts(input))),
+      headers: LINK_HEADERS,
+    }),
+    recordLinkInductionProgress: async (input) => ({
+      status: 200,
+      body: toCompletionDto(await links.progress(linkCookie(input), input.body, facts(input))),
+      headers: LINK_HEADERS,
+    }),
+    submitLinkInductionQuiz: async (input) => {
+      const r = await links.quiz(linkCookie(input), input.body.answers, facts(input));
+      return {
+        status: 200,
+        body: {
+          attempt: r.attempt,
+          score: r.score,
+          passed: r.passed,
+          criticalMissed: !r.criticalOk,
+          reviewSections: r.reviewSections,
+          seeSiteOffice: r.seeSiteOffice,
+        },
+        headers: LINK_HEADERS,
+      };
+    },
+    createLinkInductionUpload: async (input) => ({
+      status: 201,
+      body: await links.createUpload(linkCookie(input), input.body, facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    completeLinkInductionUpload: async (input) => {
+      const uploadId = decodeId('upload', input.params.uploadId);
+      if (!uploadId) throw new AppError('upload.not_found');
+      const f = await links.completeUpload(linkCookie(input), uploadId, facts(input));
+      return {
+        status: 200,
+        body: {
+          id: encodeId('file', f.id),
+          projectId: f.projectId ? encodeId('project', f.projectId) : null,
+          module: f.module,
+          filename: f.filename,
+          mime: f.mime,
+          sizeBytes: f.sizeBytes,
+          sha256: f.sha256,
+          status: f.status as 'scanning' | 'ready' | 'infected' | 'failed',
+          capture: null,
+          createdAt: f.createdAt.toISOString(),
+        },
+        headers: LINK_HEADERS,
+      };
+    },
+    getLinkInductionFileDownload: async (input) => {
+      const fileId = decodeId('file', input.params.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const l = await links.download(linkCookie(input), fileId, facts(input));
+      return {
+        status: 200,
+        body: { url: l.url, expiresAt: l.expiresAt.toISOString() },
+        headers: { ...LINK_HEADERS, 'cache-control': 'no-store' },
+      };
+    },
+    addLinkInductionCredential: async (input) => ({
+      status: 201,
+      body: toCredentialDto(
+        await links.addCredential(linkCookie(input), credentialInput(input.body), facts(input)),
+      ),
+      headers: LINK_HEADERS,
+    }),
+    signLinkInduction: async (input) => {
+      const b = input.body;
+      return {
+        status: 200,
+        body: toCompletionDto(
+          await links.sign(
+            linkCookie(input),
+            {
+              typedName: b.typedName,
+              signature: b.signature,
+              fitForWork: b.fitForWork,
+              agreed: b.agreed,
+              ...(b.clientAt ? { clientAt: date(b.clientAt)! } : {}),
+            },
+            facts(input),
+          ),
+        ),
+        headers: LINK_HEADERS,
+      };
+    },
+    askLinkInduction: async (input) => ({
+      status: 200,
+      body: await links.ask(linkCookie(input), input.body.question, facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    getLinkInductionTranslation: async (input) => ({
+      status: 200,
+      body: await links.translation(linkCookie(input), input.query.lang, facts(input)),
+      headers: LINK_HEADERS,
+    }),
   });
 }
