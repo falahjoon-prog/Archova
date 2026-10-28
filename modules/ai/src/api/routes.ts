@@ -105,11 +105,11 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
 }
 
 /**
- * Document, drawing, RFI or defect ids in a citation, as public ids (an RFI or a defect has no revisions: its id
- * stands for both).
+ * Document, drawing, RFI, defect or diary ids in a citation, as public ids (an RFI, a defect or a diary day has no
+ * revisions: its id stands for both).
  */
 function sourceIds(c: { sourceType: string; sourceId: string; revisionId: string | null }) {
-  if (c.sourceType === 'rfi' || c.sourceType === 'defect') {
+  if (c.sourceType === 'rfi' || c.sourceType === 'defect' || c.sourceType === 'diary') {
     const id = encodeId(c.sourceType, c.sourceId);
     return { sourceId: id, revisionId: id };
   }

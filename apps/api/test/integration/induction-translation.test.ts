@@ -47,6 +47,8 @@ beforeAll(async () => {
       rfiAccessScopes: async () => [],
       defectSources: async () => [],
       defectAccessScopes: async () => [],
+      diarySources: async () => [],
+      diaryAccessScopes: async () => [],
       similarRfis: async () => [],
       getDrawingRevision: async () => {
         throw new Error('unused');
