@@ -2653,13 +2653,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        get?: never;
+        put?: never;
         /**
          * The induction in the worker's language, machine translated by Nova (ai/12 I4, design/08 C2).
-         * @description Labelled as machine translation; the English version is the official one and the signature always points to it. The language shown is kept on the completion.
+         * @description Labelled as machine translation; the English version is the official one and the signature always points to it. The language shown is kept on the completion, which is why this is a POST. Translations are cached per version and language, and capped per session.
          */
-        get: operations["getLinkInductionTranslation"];
-        put?: never;
-        post?: never;
+        post: operations["getLinkInductionTranslation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4758,6 +4758,9 @@ export interface components {
             mime: "image/jpeg" | "image/png" | "image/heic" | "image/webp" | "application/pdf";
             sizeBytes: number;
             sha256: string;
+        };
+        TranslateInductionRequest: {
+            lang: string;
         };
         AskInductionRequest: {
             question: string;
@@ -9244,14 +9247,16 @@ export interface operations {
     };
     getLinkInductionTranslation: {
         parameters: {
-            query: {
-                lang: string;
-            };
+            query?: never;
             header?: never;
             path?: never;
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TranslateInductionRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

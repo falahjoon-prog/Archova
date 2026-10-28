@@ -1893,6 +1893,11 @@ export const TokenResponseSchema = z.object({
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
 
+export const TranslateInductionRequestSchema = z.object({
+  "lang": z.string().regex(new RegExp("^[a-z]{2,3}(-[A-Za-z]{2,4})?$")),
+}).strict();
+export type TranslateInductionRequest = z.infer<typeof TranslateInductionRequestSchema>;
+
 export const TransmittalSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),

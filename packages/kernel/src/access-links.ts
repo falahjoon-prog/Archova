@@ -263,7 +263,15 @@ export async function bindAccessLinkSession(
 // ----------------------------------------------------------------------------------------- one-time codes
 
 export type IssueCodeResult =
-  { ok: true; code: string; expiresAt: Date } | { ok: false; reason: 'too_many_codes' };
+  | { ok: true; code: string; expiresAt: Date }
+  | { ok: false; reason: 'session' | 'destination' | 'link' | 'org' };
+
+/** Code-send caps (Sam security-licensing/11 §8). The creator can lower the per-link ones; nobody can raise them. */
+export const ACCESS_CODE_LIMITS = {
+  perLinkHour: 60,
+  perLinkDay: 300,
+  perOrgDay: 1000,
+};
 
 /** A new 6-digit code for the session; the caller sends it. Earlier codes for the session stop working. */
 export async function issueAccessLinkCode(
@@ -273,18 +281,33 @@ export async function issueAccessLinkCode(
 ): Promise<IssueCodeResult> {
   const hourAgo = new Date(input.now.getTime() - 60 * 60 * 1000).toISOString();
   const dayAgo = new Date(input.now.getTime() - 24 * 60 * 60 * 1000).toISOString();
-  const counts = await scope.tx.execute<{ session: string; destination: string }>(sql`
+  // Codes belong to sessions, sessions to a link; RLS keeps the org count to this org.
+  const counts = await scope.tx.execute<{
+    session: string;
+    destination: string;
+    link_hour: string;
+    link_day: string;
+    org_day: string;
+  }>(sql`
     select
-      count(*) filter (where session_id = ${session.id} and created_at > ${hourAgo}) as session,
-      count(*) filter (where destination = ${input.destination} and created_at > ${dayAgo}) as destination
-    from shared.access_link_codes
-    where session_id = ${session.id} or destination = ${input.destination}`);
+      count(*) filter (where c.session_id = ${session.id} and c.created_at > ${hourAgo}) as session,
+      count(*) filter (where c.destination = ${input.destination} and c.created_at > ${dayAgo}) as destination,
+      count(*) filter (where s.link_id = ${session.linkId} and c.created_at > ${hourAgo}) as link_hour,
+      count(*) filter (where s.link_id = ${session.linkId} and c.created_at > ${dayAgo}) as link_day,
+      count(*) filter (where c.created_at > ${dayAgo}) as org_day
+    from shared.access_link_codes c
+    join shared.access_link_sessions s on s.id = c.session_id
+    where c.created_at > ${dayAgo}`);
   const c = counts.rows[0]!;
+  if (Number(c.session) >= CODES_PER_SESSION_HOUR) return { ok: false, reason: 'session' };
+  if (Number(c.destination) >= CODES_PER_DESTINATION_DAY)
+    return { ok: false, reason: 'destination' };
   if (
-    Number(c.session) >= CODES_PER_SESSION_HOUR ||
-    Number(c.destination) >= CODES_PER_DESTINATION_DAY
+    Number(c.link_hour) >= ACCESS_CODE_LIMITS.perLinkHour ||
+    Number(c.link_day) >= ACCESS_CODE_LIMITS.perLinkDay
   )
-    return { ok: false, reason: 'too_many_codes' };
+    return { ok: false, reason: 'link' };
+  if (Number(c.org_day) >= ACCESS_CODE_LIMITS.perOrgDay) return { ok: false, reason: 'org' };
   await scope.tx.execute(sql`
     update shared.access_link_codes set used_at = ${input.now.toISOString()}
     where session_id = ${session.id} and used_at is null`);
