@@ -5,3 +5,5 @@ docs/
 dist/
 coverage/
 db/migrations/
+apps/site/payload-types.ts
+apps/site/app/(payload)/
