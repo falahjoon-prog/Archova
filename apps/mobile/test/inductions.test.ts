@@ -144,3 +144,80 @@ describe('unsupported blocks', () => {
     expect(unsupportedBlocksMessage(kinds)).toContain('a video and a SWMS');
   });
 });
+
+describe('white card', () => {
+  it('normalises and checks the card number', async () => {
+    const { normaliseCardNumber, cardNumberProblem } = await import('../features/inductions');
+    expect(normaliseCardNumber(' ab-12 34 ')).toBe('AB1234');
+    expect(cardNumberProblem('')).toMatch(/Enter/);
+    expect(cardNumberProblem('a!')).toMatch(/letters and digits/);
+    expect(cardNumberProblem('ab 1234')).toBeNull();
+  });
+
+  it('uploads a photo to storage and completes it', async () => {
+    const { uploadCredentialPhoto } = await import('../features/inductions');
+    const calls: string[] = [];
+    const uploads = {
+      createUpload: async (body: { module: string; projectId?: string }) => {
+        calls.push(`create:${body.module}:${body.projectId}`);
+        return {
+          id: 'upl_1',
+          status: 'pending',
+          uploadUrl: 'https://s3/x',
+          uploadMethod: 'PUT',
+          uploadHeaders: { a: 'b' },
+          expiresAt: '',
+        };
+      },
+      completeUpload: async (id: string) => {
+        calls.push(`complete:${id}`);
+        return { id: 'fil_1' };
+      },
+    };
+    const transfer = { put: async (url: string) => (calls.push(`put:${url}`), { status: 200 }) };
+    const photo = {
+      localUri: 'file:///a.jpg',
+      filename: 'a.jpg',
+      mime: 'image/jpeg',
+      sizeBytes: 1,
+      sha256: 'x',
+    };
+    const file = await uploadCredentialPhoto(uploads as never, transfer, {
+      projectId: 'prj_1',
+      idempotencyKey: 'k',
+      photo,
+    });
+    expect(file.id).toBe('fil_1');
+    expect(calls).toEqual(['create:workforce:prj_1', 'put:https://s3/x', 'complete:upl_1']);
+  });
+
+  it('does not complete an upload the storage refused', async () => {
+    const { uploadCredentialPhoto } = await import('../features/inductions');
+    const completeUpload = async () => ({ id: 'never' });
+    const uploads = {
+      createUpload: async () => ({
+        id: 'u',
+        status: 'pending',
+        uploadUrl: 'u',
+        uploadMethod: 'PUT',
+        uploadHeaders: {},
+        expiresAt: '',
+      }),
+      completeUpload,
+    };
+    const photo = {
+      localUri: 'f',
+      filename: 'a.jpg',
+      mime: 'image/jpeg',
+      sizeBytes: 1,
+      sha256: 'x',
+    };
+    await expect(
+      uploadCredentialPhoto(
+        uploads as never,
+        { put: async () => ({ status: 403 }) },
+        { projectId: 'p', idempotencyKey: 'k', photo },
+      ),
+    ).rejects.toThrow(/refused/);
+  });
+});
