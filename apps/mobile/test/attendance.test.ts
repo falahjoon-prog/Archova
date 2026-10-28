@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { SignInResult } from '@archova/contracts';
 import {
+  findOpenRollCall,
   groupByCompany,
   parseGateCode,
   progressLabel,
@@ -107,5 +108,23 @@ describe('roll call display', () => {
     expect(progressLabel({ total: 5, accountedFor: 5, missing: 0, unmarked: 0 })).toBe(
       '5 of 5 accounted for',
     );
+  });
+});
+
+describe('findOpenRollCall', () => {
+  const ok = (data: unknown[]) =>
+    vi.fn().mockResolvedValue({ data: { data }, response: { ok: true, status: 200 } });
+
+  it('asks for open roll calls and returns the newest', async () => {
+    const GET = ok([{ id: 'rlc_new' }, { id: 'rlc_old' }]);
+    const found = await findOpenRollCall({ GET } as never, { orgId: 'o', projectId: 'p' });
+    expect(found).toEqual({ id: 'rlc_new' });
+    expect(GET.mock.calls[0]![1].params.query).toEqual({ open: 'true' });
+  });
+
+  it('returns null when none is open', async () => {
+    expect(
+      await findOpenRollCall({ GET: ok([]) } as never, { orgId: 'o', projectId: 'p' }),
+    ).toBeNull();
   });
 });
