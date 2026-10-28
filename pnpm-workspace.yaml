@@ -8,6 +8,12 @@ onlyBuiltDependencies:
   - esbuild
   - sharp
 overrides:
+  # Advisories published after the lockfile was last updated; sharp and dompurify arrive through Payload (apps/site), the rest through vitest in apps/api.
+  'sharp@<0.35.5': '^0.35.5'
+  'dompurify@<3.4.17': '^3.4.17'
+  'tinypool@<2.1.2': '^2.1.2'
+  'vite@>=7.0.0 <7.3.7': '^7.3.7'
+  'happy-dom@<21.0.4': '^21.0.4'
   # Next 15 pins postcss 8.4.31, which has GHSA-6g55-p6wh-862q and GHSA-r28c-9q8g-f849 (build time only).
   'postcss@<8.5.18': '^8.5.18'
 auditConfig:
