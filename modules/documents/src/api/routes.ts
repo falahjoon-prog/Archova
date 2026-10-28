@@ -231,6 +231,9 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
         d.drawings.addDraft(s, project(input.params), setId, {
           ...input.body,
           fileId: ref('file', input.body.fileId, 'fileId'),
+          ...(input.body.aiSuggestionId
+            ? { aiSuggestionId: ref('aiSuggestion', input.body.aiSuggestionId, 'aiSuggestionId') }
+            : {}),
         }),
       );
       return { status: 201, body: toDrawingRevisionDto(row), headers: { etag: etag(row.version) } };

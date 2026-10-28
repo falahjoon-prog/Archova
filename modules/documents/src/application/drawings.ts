@@ -30,6 +30,8 @@ export interface DraftInput {
   fileId: string;
   pageIndex?: number;
   drawingDate?: string | null;
+  /** The Nova suggestion the sheet was read from; recorded on the revision and its publish event. */
+  aiSuggestionId?: string;
 }
 
 /** A revision with what the superseded banner needs (DOC-AC6). */
@@ -176,6 +178,7 @@ export function createDrawingService(c: DocumentsContext) {
         pageIndex: input.pageIndex ?? 0,
         status: 'draft',
         drawingDate: input.drawingDate ?? null,
+        aiSuggestionId: input.aiSuggestionId ?? null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -349,6 +352,7 @@ export function createDrawingService(c: DocumentsContext) {
           pageIndex: d.pageIndex,
           setId,
           newSheet: !prior,
+          aiSuggestionId: d.aiSuggestionId,
           reason: published!.publishReason,
         },
       });

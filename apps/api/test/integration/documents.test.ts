@@ -194,6 +194,53 @@ describe('drawing register (DOC-AC3–AC6)', () => {
     expect(archOnly.map((x: { sheetNumber: string }) => x.sheetNumber)).toEqual(['S-001']);
   });
 
+  it('records the Nova suggestion a sheet came from on its publish event', async () => {
+    const s = await setup();
+    const suggestionId = `ais_${'0'.repeat(25)}1`;
+    const set = (await s.owner.browser.post(`${s.base}/drawing-sets`, { name: 'Nova set' })).json();
+    const fileId = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'a-201.pdf');
+    const draft = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/revisions`, {
+      sheetNumber: 'A-201',
+      title: 'Sections',
+      rev: 'A',
+      fileId,
+      aiSuggestionId: suggestionId,
+    });
+    expect(draft.statusCode).toBe(201);
+    const bad = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/revisions`, {
+      sheetNumber: 'A-202',
+      title: 'Sections',
+      rev: 'A',
+      fileId,
+      aiSuggestionId: 'nope',
+    });
+    expect(bad.statusCode).toBe(422);
+    const published = await s.owner.browser.post(`${s.base}/drawing-sets/${set.id}/publish`, {
+      confirmNewSheets: true,
+    });
+    expect(published.statusCode).toBe(200);
+    const orgId = decodeId('org', s.org.id)!;
+    const userId = decodeId('user', s.owner.userId)!;
+    const rows = (
+      await t.adminDb.withTenantTx(
+        {
+          orgId,
+          userId,
+          principalType: 'member' as const,
+          orgRole: 'owner' as const,
+          entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+          requestId: 'test',
+        },
+        ({ tx }) =>
+          tx.execute(sql`select data from shared.outbox
+                         where org_id = ${orgId} and type = 'documents.drawing.revision.published.v1'`),
+      )
+    ).rows as Array<{ data: { aiSuggestionId: string | null } }>;
+    expect(rows.map((r) => r.data.aiSuggestionId)).toEqual([
+      decodeId('aiSuggestion', suggestionId),
+    ]);
+  });
+
   it('blocks publishing until conflicts are resolved', async () => {
     const s = await setup();
     await publishSet(s, 'Set 1', [{ sheetNumber: 'A-101', rev: 'C' }]);
