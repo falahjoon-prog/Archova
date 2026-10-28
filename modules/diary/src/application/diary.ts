@@ -449,7 +449,13 @@ export function createDiaryService(deps: DiaryDeps) {
     const t = LINE_TABLES[kind];
     if (v.scopedCompanyId && !COMPANY_SCOPED_KINDS[kind]) return { entries: [], lines: [] };
     const where: SQL[] = [eq(t.projectId, projectId), inArray(t.id, [...ids]), isNull(t.deletedAt)];
-    if (v.scopedCompanyId) where.push(sql`company_id = ${v.scopedCompanyId}`);
+    // As with entries, a company's lines are theirs only on days when it has labour (matches `list`).
+    if (v.scopedCompanyId)
+      where.push(
+        sql`company_id = ${v.scopedCompanyId}`,
+        sql`exists (select 1 from diary.labour l where l.entry_id = ${t.entryId}
+            and l.company_id = ${v.scopedCompanyId} and l.deleted_at is null)`,
+      );
     const rows = (await scope.tx
       .select()
       .from(t)
