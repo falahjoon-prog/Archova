@@ -7,6 +7,7 @@ settings:
 overrides:
   sharp@<0.35.5: ^0.35.5
   dompurify@<3.4.17: ^3.4.17
+  graphql-scalars@<2.0.1: ^2.0.1
   tinypool@<2.1.2: ^2.1.2
   vite@>=7.0.0 <7.3.7: ^7.3.7
   happy-dom@<21.0.4: ^21.0.4
@@ -113,6 +114,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@archova/compose':
+        specifier: workspace:*
+        version: link:../../packages/compose
       '@archova/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -543,6 +547,9 @@ importers:
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-sync':
+        specifier: workspace:*
+        version: link:../../modules/sync
       bullmq:
         specifier: ^5.58.0
         version: 5.81.5
@@ -1330,6 +1337,73 @@ importers:
       vitest:
         specifier: ^3.2.0
         version: 3.2.7(@types/debug@4.1.13)(@types/node@22.20.5)(happy-dom@21.0.4)(jsdom@26.1.0)(lightningcss@1.33.0)(sass@1.77.4)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)
+
+  packages/compose:
+    dependencies:
+      '@archova/kernel':
+        specifier: workspace:*
+        version: link:../kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../../modules/access
+      '@archova/mod-ai':
+        specifier: workspace:*
+        version: link:../../modules/ai
+      '@archova/mod-backoffice':
+        specifier: workspace:*
+        version: link:../../modules/backoffice
+      '@archova/mod-billing':
+        specifier: workspace:*
+        version: link:../../modules/billing
+      '@archova/mod-defects':
+        specifier: workspace:*
+        version: link:../../modules/defects
+      '@archova/mod-diary':
+        specifier: workspace:*
+        version: link:../../modules/diary
+      '@archova/mod-documents':
+        specifier: workspace:*
+        version: link:../../modules/documents
+      '@archova/mod-estimating':
+        specifier: workspace:*
+        version: link:../../modules/estimating
+      '@archova/mod-files':
+        specifier: workspace:*
+        version: link:../../modules/files
+      '@archova/mod-identity':
+        specifier: workspace:*
+        version: link:../../modules/identity
+      '@archova/mod-integrations':
+        specifier: workspace:*
+        version: link:../../modules/integrations
+      '@archova/mod-platform':
+        specifier: workspace:*
+        version: link:../../modules/platform
+      '@archova/mod-rfis':
+        specifier: workspace:*
+        version: link:../../modules/rfis
+      '@archova/mod-sync':
+        specifier: workspace:*
+        version: link:../../modules/sync
+      '@archova/mod-workforce':
+        specifier: workspace:*
+        version: link:../../modules/workforce
+    devDependencies:
+      '@archova/config-eslint':
+        specifier: workspace:*
+        version: link:../config-eslint
+      '@archova/config-ts':
+        specifier: workspace:*
+        version: link:../config-ts
+      '@types/node':
+        specifier: ^22.18.0
+        version: 22.20.5
+      eslint:
+        specifier: ^9.39.0
+        version: 9.39.5
+      typescript:
+        specifier: ~5.9.3
+        version: 5.9.3
 
   packages/config-eslint:
     dependencies:
@@ -6022,11 +6096,11 @@ packages:
   graphql-playground-html@1.6.30:
     resolution: {integrity: sha512-tpCujhsJMva4aqE8ULnF7/l3xw4sNRZcSHu+R00VV+W0mfp+Q20Plvcrp+5UXD+2yS6oyCXncA+zoQJQqhGCEw==}
 
-  graphql-scalars@1.22.2:
-    resolution: {integrity: sha512-my9FB4GtghqXqi/lWSVAOPiTzTnnEzdOXCsAC2bb5V7EFNQjVjwy3cSSbUvgYOtDuDibd+ZsCDhz+4eykYOlhQ==}
+  graphql-scalars@2.0.1:
+    resolution: {integrity: sha512-/BkY0J5/1L9e+mTfCTzmpV78mNh95ZpiJWfAkaIYHE5B7hrvgRpB5//rXVTFD1aaKGcRUCHj/vpNcgtrenwZNA==}
     engines: {node: '>=10'}
     peerDependencies:
-      graphql: ^0.8.0 || ^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0 || ^14.0.0 || ^15.0.0 || ^16.0.0
+      graphql: ^16.0.0 || ^17.0.0
 
   graphql@16.14.2:
     resolution: {integrity: sha512-Chq1s4CY7jmh8gO2qvLIJyfCDIN+EHLFW/9iShnp1z8FjBQMoodWP1kDC36VAMXXIvAjj4ARa7ntfAV2BrjsbA==}
@@ -10682,7 +10756,7 @@ snapshots:
   '@payloadcms/graphql@3.92.1(graphql@16.14.2)(payload@3.92.1(graphql@16.14.2)(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
       graphql: 16.14.2
-      graphql-scalars: 1.22.2(graphql@16.14.2)
+      graphql-scalars: 2.0.1(graphql@16.14.2)
       payload: 3.92.1(graphql@16.14.2)(typescript@5.9.3)
       pluralize: 8.0.0
       ts-essentials: 10.0.3(typescript@5.9.3)
@@ -12902,7 +12976,7 @@ snapshots:
     dependencies:
       xss: 1.0.17
 
-  graphql-scalars@1.22.2(graphql@16.14.2):
+  graphql-scalars@2.0.1(graphql@16.14.2):
     dependencies:
       graphql: 16.14.2
       tslib: 2.8.1

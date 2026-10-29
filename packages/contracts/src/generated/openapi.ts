@@ -1424,6 +1424,75 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/late-submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Changes held for review because the sender's access ended before their phone sent them (X38). */
+        get: operations["listLateSubmissions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/late-submissions/{lateSubmissionId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lateSubmissionId: components["parameters"]["LateSubmissionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a held change as the approving admin; their own permissions, the record's rules and its version all apply.
+         * @description The change runs exactly as if the admin had made it: the permission for the action, the state machine, the
+         *     base-version check and the file checks all run for the admin, and it is refused when the organisation is
+         *     read-only or the plan no longer includes the module. It is refused too when the record is not in the project
+         *     the device named, or that the grant did not cover. A refused accept leaves the change waiting, so it can be
+         *     rejected with a note. The record's history shows who sent it late and who accepted it.
+         */
+        post: operations["acceptLateSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/late-submissions/{lateSubmissionId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lateSubmissionId: components["parameters"]["LateSubmissionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decline a held change; it is never applied, even if the device sends it again. */
+        post: operations["rejectLateSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages": {
         parameters: {
             query?: never;
@@ -3909,19 +3978,19 @@ export interface components {
             skippedPages: number[];
             refusedPages: number[];
         };
-        /** @description A document or drawing revision page, or an RFI, Nova used. */
+        /** @description A document or drawing revision page, an RFI, a defect or a site diary day, Nova used. */
         NovaSource: {
             /** @enum {string} */
-            sourceType: "document" | "drawing" | "rfi";
-            /** @description The document (`doc_`), drawing sheet (`dsh_`) or RFI (`rfi_`). */
+            sourceType: "document" | "drawing" | "rfi" | "defect" | "diary";
+            /** @description The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`), defect (`dfx_`) or diary day (`dia_`). */
             sourceId: string;
-            /** @description The document revision (`rev_`) or drawing revision (`drv_`); for an RFI, its own `rfi_` id. */
+            /** @description The document revision (`rev_`) or drawing revision (`drv_`). For an RFI, a defect or a diary day, its own id. */
             revisionId: string;
-            /** @description The revision label; for an RFI */
+            /** @description The revision label. For an RFI or a defect, its status. For a diary day, submitted or signed off. */
             revision: string;
-            /** @description The document or sheet title; for an RFI */
+            /** @description The document or sheet title. For an RFI, its subject. For a defect, its title. For a diary day, "Site diary Monday 12 October 2026". */
             title: string;
-            /** @description Document or sheet number */
+            /** @description The document or sheet number, the RFI number, the defect number, or for a diary day its date (`YYYY-MM-DD`). */
             reference: string | null;
             page: number;
         };
@@ -4257,6 +4326,14 @@ export interface components {
             changeIds: string[];
         };
         NovaIndexReport: {
+            /** @description Submitted and signed-off diary days indexed in this run (new or changed). */
+            diaryIndexed: number;
+            /** @description Diary days already indexed at their current text. */
+            diaryUnchanged: number;
+            /** @description Issued defects indexed in this run (new or changed) */
+            defectsIndexed: number;
+            /** @description Issued defects already indexed at their current text */
+            defectsUnchanged: number;
             /** @description Sent RFIs indexed in this run (new */
             rfisIndexed: number;
             /** @description Sent RFIs already indexed at their current text */
@@ -4738,6 +4815,8 @@ export interface components {
             /** @description A module use case, e.g. `defects.markReadyForReview`. */
             command: string;
             entityId: string;
+            /** @description The project the change belongs to. Required when sending with a drain grant (X38), where the server checks it against the grant and never reads the record; ignored otherwise. */
+            projectId?: string;
             /** @description The version the change was made against; `null` for a create. */
             baseVersion: number | null;
             /**
@@ -4748,6 +4827,39 @@ export interface components {
             payload: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * @description A change held after the sender's access ended (X38). `clientAt` is the sender's phone clock and is not
+         *     verified; `receivedAt` is when the server got it. Show both and never treat `clientAt` as when it happened.
+         */
+        LateSubmission: {
+            id: string;
+            projectId: string;
+            module: string;
+            command: string;
+            entityId: string;
+            baseVersion: number | null;
+            submittedBy: string;
+            /** Format: date-time */
+            clientAt: string;
+            /** Format: date-time */
+            receivedAt: string;
+            /** @enum {string} */
+            status: "pending" | "accepted" | "rejected";
+            /** @description What the sender asked for, dropped once decided. Any text in it is the sender's own words: show it as plain text, marked as theirs, never as part of the system's description of the change. */
+            payload?: {
+                [key: string]: unknown;
+            };
+            decidedBy?: string | null;
+            /** Format: date-time */
+            decidedAt?: string | null;
+            decisionNote?: string | null;
+            /** @description The record's version after an accept. */
+            version?: number | null;
+        };
+        LateSubmissionList: {
+            items: components["schemas"]["LateSubmission"][];
+            pendingCount: number;
         };
         SyncPushRequest: {
             mutations: components["schemas"]["SyncMutation"][];
@@ -6567,6 +6679,7 @@ export interface components {
         QuoteId: string;
         TakeoffMeasurementId: string;
         ImportJobId: string;
+        LateSubmissionId: string;
         Limit: number;
         Cursor: string;
         IdempotencyKey: string;
@@ -8710,6 +8823,89 @@ export interface operations {
                 };
             };
             426: components["responses"]["Problem"];
+            default: components["responses"]["Problem"];
+        };
+    };
+    listLateSubmissions: {
+        parameters: {
+            query?: {
+                status?: "pending" | "accepted" | "rejected";
+                limit?: components["parameters"]["Limit"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Newest first, with how many are still waiting in this project */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateSubmissionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acceptLateSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lateSubmissionId: components["parameters"]["LateSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted and applied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateSubmission"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectLateSubmission: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                lateSubmissionId: components["parameters"]["LateSubmissionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": {
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Rejected */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateSubmission"];
+                };
+            };
             default: components["responses"]["Problem"];
         };
     };

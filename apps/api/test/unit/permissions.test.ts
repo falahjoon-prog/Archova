@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { operations } from '@archova/contracts';
 import { FOUNDATION_PERMISSIONS, buildRegistry } from '@archova/domain/permissions';
-import { MODULE_PERMISSIONS } from '../../src/modules';
+import { MODULE_PERMISSIONS } from '@archova/compose';
 
 describe('permission registry', () => {
   const registry = buildRegistry(FOUNDATION_PERMISSIONS, ...MODULE_PERMISSIONS);

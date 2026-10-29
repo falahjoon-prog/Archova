@@ -1820,6 +1820,79 @@ paths:
               schema: { $ref: '#/components/schemas/SyncPushResponse' }
         '426': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/late-submissions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listLateSubmissions
+      tags: [sync]
+      x-module: sync
+      x-permission: sync.late.review
+      summary: Changes held for review because the sender's access ended before their phone sent them (X38).
+      parameters:
+        - name: status
+          in: query
+          schema: { type: string, enum: [pending, accepted, rejected], default: pending }
+        - $ref: '#/components/parameters/Limit'
+      responses:
+        '200':
+          description: Newest first, with how many are still waiting in this project
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LateSubmissionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/late-submissions/{lateSubmissionId}/accept:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/LateSubmissionId'
+    post:
+      operationId: acceptLateSubmission
+      tags: [sync]
+      x-module: sync
+      x-permission: sync.late.review
+      summary: Run a held change as the approving admin; their own permissions, the record's rules and its version all apply.
+      description: |
+        The change runs exactly as if the admin had made it: the permission for the action, the state machine, the
+        base-version check and the file checks all run for the admin, and it is refused when the organisation is
+        read-only or the plan no longer includes the module. It is refused too when the record is not in the project
+        the device named, or that the grant did not cover. A refused accept leaves the change waiting, so it can be
+        rejected with a note. The record's history shows who sent it late and who accepted it.
+      responses:
+        '200':
+          description: Accepted and applied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LateSubmission' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/late-submissions/{lateSubmissionId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/LateSubmissionId'
+    post:
+      operationId: rejectLateSubmission
+      tags: [sync]
+      x-module: sync
+      x-permission: sync.late.review
+      summary: Decline a held change; it is never applied, even if the device sends it again.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: Rejected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LateSubmission' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4934,6 +5007,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^imp_[0-9A-Za-z]{26}$' }
+    LateSubmissionId:
+      name: lateSubmissionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^lsb_[0-9A-Za-z]{26}$' }
     Limit:
       name: limit
       in: query
@@ -5583,21 +5661,26 @@ components:
           type: array
           items: { type: integer }
     NovaSource:
-      description: A document or drawing revision page, or an RFI, Nova used.
+      description: A document or drawing revision page, an RFI, a defect or a site diary day, Nova used.
       type: object
       required: [sourceType, sourceId, revisionId, revision, title, reference, page]
       properties:
-        sourceType: { type: string, enum: [document, drawing, rfi] }
+        sourceType: { type: string, enum: [document, drawing, rfi, defect, diary] }
         sourceId:
-          description: The document (`doc_`), drawing sheet (`dsh_`) or RFI (`rfi_`).
+          description: The document (`doc_`), drawing sheet (`dsh_`), RFI (`rfi_`), defect (`dfx_`) or diary day (`dia_`).
           type: string
         revisionId:
-          description: The document revision (`rev_`) or drawing revision (`drv_`); for an RFI, its own `rfi_` id.
+          description: The document revision (`rev_`) or drawing revision (`drv_`). For an RFI, a defect or a diary day, its own id.
           type: string
-        revision: { type: string, description: The revision label; for an RFI, its status }
-        title: { type: string, description: The document or sheet title; for an RFI, its subject }
+        revision:
+          description: The revision label. For an RFI or a defect, its status. For a diary day, submitted or signed off.
+          type: string
+        title:
+          description: The document or sheet title. For an RFI, its subject. For a defect, its title. For a diary day, "Site diary Monday 12 October 2026".
+          type: string
         reference:
-          { type: [string, 'null'], description: Document or sheet number, or the RFI number }
+          description: The document or sheet number, the RFI number, the defect number, or for a diary day its date (`YYYY-MM-DD`).
+          type: [string, 'null']
         page: { type: integer, minimum: 1 }
     NovaCitation:
       allOf:
@@ -6157,8 +6240,31 @@ components:
     NovaIndexReport:
       type: object
       required:
-        [indexed, unchanged, noText, ocrPages, unsupported, chunks, rfisIndexed, rfisUnchanged]
+        [
+          indexed,
+          unchanged,
+          noText,
+          ocrPages,
+          unsupported,
+          chunks,
+          rfisIndexed,
+          rfisUnchanged,
+          defectsIndexed,
+          defectsUnchanged,
+          diaryIndexed,
+          diaryUnchanged,
+        ]
       properties:
+        diaryIndexed:
+          description: Submitted and signed-off diary days indexed in this run (new or changed).
+          type: integer
+        diaryUnchanged:
+          description: Diary days already indexed at their current text.
+          type: integer
+        defectsIndexed:
+          { type: integer, description: Issued defects indexed in this run (new or changed) }
+        defectsUnchanged:
+          { type: integer, description: Issued defects already indexed at their current text }
         rfisIndexed:
           {
             type: integer,
@@ -6902,6 +7008,12 @@ components:
           pattern: '^[a-z][a-z_]*\.[A-Za-z][A-Za-z0-9]*$'
           description: A module use case, e.g. `defects.markReadyForReview`.
         entityId: { type: string, minLength: 1, maxLength: 64 }
+        projectId:
+          type: string
+          pattern: '^prj_[0-9A-Za-z]{26}$'
+          description: >-
+            The project the change belongs to. Required when sending with a drain grant (X38), where the server
+            checks it against the grant and never reads the record; ignored otherwise.
         baseVersion:
           type: [integer, 'null']
           minimum: 0
@@ -6911,6 +7023,55 @@ components:
           format: date-time
           description: When the user made the change on the device.
         payload: { type: object, additionalProperties: true }
+    LateSubmission:
+      type: object
+      additionalProperties: false
+      required:
+        [
+          id,
+          projectId,
+          module,
+          command,
+          entityId,
+          baseVersion,
+          submittedBy,
+          clientAt,
+          receivedAt,
+          status,
+        ]
+      description: |
+        A change held after the sender's access ended (X38). `clientAt` is the sender's phone clock and is not
+        verified; `receivedAt` is when the server got it. Show both and never treat `clientAt` as when it happened.
+      properties:
+        id: { type: string, pattern: '^lsb_[0-9A-Za-z]{26}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        module: { type: string }
+        command: { type: string }
+        entityId: { type: string }
+        baseVersion: { type: [integer, 'null'] }
+        submittedBy: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        clientAt: { type: string, format: date-time }
+        receivedAt: { type: string, format: date-time }
+        status: { type: string, enum: [pending, accepted, rejected] }
+        payload:
+          type: object
+          additionalProperties: true
+          description: >-
+            What the sender asked for, dropped once decided. Any text in it is the sender's own words: show it as
+            plain text, marked as theirs, never as part of the system's description of the change.
+        decidedBy: { type: [string, 'null'] }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+        version: { type: [integer, 'null'], description: The record's version after an accept. }
+    LateSubmissionList:
+      type: object
+      additionalProperties: false
+      required: [items, pendingCount]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/LateSubmission' }
+        pendingCount: { type: integer, minimum: 0 }
     SyncPushRequest:
       type: object
       additionalProperties: false

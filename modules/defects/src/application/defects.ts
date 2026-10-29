@@ -60,6 +60,8 @@ export interface TransitionInput {
   fileIds?: string[];
   /** For `reassign`: the company that takes the defect now. */
   assigneeCompanyId?: string;
+  /** Set when an admin accepts a change the sender made after losing access (X38); added to the history note. */
+  lateNote?: string;
 }
 
 export function createDefectService(deps: DefectsDeps) {
@@ -179,6 +181,16 @@ export function createDefectService(deps: DefectsDeps) {
     const v = await viewer(scope, projectId);
     if (!canSeeDefect(row, v)) throw new AppError('defect.not_found');
     return { defect: view(row, await today(scope, projectId)), viewer: v };
+  }
+
+  /** The project a defect is in, for sync commands that name only the defect. */
+  async function projectOf(scope: TenantScope, defectId: string): Promise<string | null> {
+    const [row] = await scope.tx
+      .select({ projectId: defects.projectId })
+      .from(defects)
+      .where(and(eq(defects.id, defectId), isNull(defects.deletedAt)))
+      .limit(1);
+    return row?.projectId ?? null;
   }
 
   async function detail(scope: TenantScope, projectId: string, defectId: string) {
@@ -485,7 +497,10 @@ export function createDefectService(deps: DefectsDeps) {
     await recordEvent(scope, row, {
       action: input.action,
       from: defect.status,
-      note: input.reason ?? null,
+      // The server's own line first; whatever the sender wrote is added after it and labelled as theirs.
+      note: input.lateNote
+        ? `${input.lateNote}${input.reason ? `. The sender wrote: ${input.reason}` : ''}`
+        : (input.reason ?? null),
       fileIds,
     });
     await changed(scope, row);
@@ -552,7 +567,72 @@ export function createDefectService(deps: DefectsDeps) {
     }));
   }
 
-  return { list, create, detail, update, transition, openNear, visibleAmong };
+  /**
+   * Nova Ask (F2): every issued defect on the project with the notes on its history, for the `ai` indexer. Drafts and
+   * voided defects are left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by
+   * `aiAccessScopes`.
+   */
+  async function aiSources(scope: TenantScope, projectId: string, only?: string) {
+    const live = and(
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      sql`${defects.status} not in ('draft', 'void')`,
+      only ? eq(defects.id, only) : undefined,
+    );
+    const rows = await scope.tx.select().from(defects).where(live).orderBy(asc(defects.number));
+    if (!rows.length) return [];
+    const notes = await scope.tx
+      .select({
+        defectId: events.defectId,
+        action: events.action,
+        note: events.note,
+      })
+      .from(events)
+      .innerJoin(defects, eq(defects.id, events.defectId))
+      .where(and(live, sql`${events.note} is not null and btrim(${events.note}) <> ''`))
+      .orderBy(asc(events.at), asc(events.id));
+    const companies = new Map(
+      (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      number: r.number,
+      title: r.title,
+      description: r.description,
+      status: r.status,
+      priority: r.priority,
+      stage: r.stage,
+      category: r.category,
+      trade: r.trade,
+      assignee: r.assigneeCompanyId ? (companies.get(r.assigneeCompanyId) ?? null) : null,
+      dueDate: r.dueDate,
+      notes: notes
+        .filter((n) => n.defectId === r.id)
+        .map((n) => ({ action: n.action, text: n.note! })),
+    }));
+  }
+
+  /**
+   * The Ask scopes this caller holds for defects. Builder staff with defects read access hold `defects`; everyone else
+   * holds none, so a subcontractor never retrieves defect text through Ask (they work from their own list in the register).
+   */
+  async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
+    if (scope.ctx.principalType !== 'member') return [];
+    return (await deps.access.can(scope, 'defects.defects.read', { projectId })) ? ['defects'] : [];
+  }
+
+  return {
+    list,
+    create,
+    detail,
+    update,
+    transition,
+    openNear,
+    visibleAmong,
+    projectOf,
+    aiSources,
+    aiAccessScopes,
+  };
 }
 
 function verb(action: DefectAction): string {

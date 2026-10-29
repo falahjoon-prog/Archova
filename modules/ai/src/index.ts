@@ -9,6 +9,8 @@ import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
+import type { DefectSource } from './domain/defect-source';
+import type { DiarySource } from './domain/diary-source';
 import type { RfiSource } from './domain/rfi-source';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
@@ -36,10 +38,12 @@ import type { SimilarRfi } from './domain/rfi-draft';
 import type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 import type { TranslationLanguage } from './domain/translation';
 import type { Raster as VisualRaster } from './domain/visual-diff';
-import { createProvider, type ProviderConfig } from './infra/providers';
+import { createProvider } from './infra/providers';
+import { FAKE_EMBEDDING_MODEL, type AiConfig } from './config';
 import { AI_PERMISSIONS } from './permissions';
 
 export { AI_PERMISSIONS } from './permissions';
+export { FAKE_EMBEDDING_MODEL, FAKE_MODELS, loadAiConfig, type AiConfig } from './config';
 export { TASK_CREDITS, decideBudget, effectiveAllowance } from './domain/credits';
 export { checkCitations, type CheckedCitation } from './domain/citations';
 export {
@@ -73,6 +77,10 @@ export type { ReadableFile, SheetSuggestionPayload } from './application/drawing
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { SearchResult } from './application/semantic-search';
 export type { IndexReport, SourceRevision } from './application/project-index';
+export type { DefectSource } from './domain/defect-source';
+export { RECORD_EVENT_TYPES, recordKindOf, type RecordKind } from './domain/record-events';
+export { AI_INDEX_ACTOR } from './domain/index-actor';
+export type { DiarySource } from './domain/diary-source';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
 export type { DiarySummaryPayload } from './application/diary-summary';
@@ -151,25 +159,6 @@ export {
   type TextItem,
 } from './domain/titleblock';
 
-export interface AiConfig {
-  provider: ProviderConfig;
-  /** Model id per tier. Prices default to ai/02 §4 list prices. */
-  models: Readonly<Record<ModelTier, string>>;
-  prices?: Partial<Record<ModelTier, ModelPrice>>;
-  /** Embedding model for Ask Nova retrieval (1024 dimensions). Defaults to the fake one. */
-  embedding?: { model: string; pricePerMTok?: number };
-}
-
-/** Embedding model id the fake provider reports. */
-export const FAKE_EMBEDDING_MODEL = 'fake-embed';
-
-/** Model ids the fake provider reports; any id works with it. */
-export const FAKE_MODELS: Readonly<Record<ModelTier, string>> = {
-  fast: 'fake-fast',
-  standard: 'fake-standard',
-  advanced: 'fake-advanced',
-};
-
 export function buildRoutingTable(
   models: Readonly<Record<ModelTier, string>>,
   prices: Partial<Record<ModelTier, ModelPrice>> = {},
@@ -198,9 +187,21 @@ export function createAiModule(
     /** documents.api.aiAccessScopes: what the caller may retrieve. */
     accessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.aiSources: sent RFIs with their responses, to index for Ask. */
-    rfiSources: (scope: TenantScope, projectId: string) => Promise<RfiSource[]>;
+    rfiSources: (scope: TenantScope, projectId: string, only?: string) => Promise<RfiSource[]>;
     /** rfis.api.aiAccessScopes: the Ask scopes the caller holds for RFIs. */
     rfiAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
+    /** defects.api.aiSources: issued defects with the notes on their history, to index for Ask. */
+    defectSources: (
+      scope: TenantScope,
+      projectId: string,
+      only?: string,
+    ) => Promise<DefectSource[]>;
+    /** defects.api.aiAccessScopes: the Ask scopes the caller holds for defects. */
+    defectAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
+    /** diary.api.aiSources: submitted and signed-off days with all their lines, to index for Ask. */
+    diarySources: (scope: TenantScope, projectId: string, only?: string) => Promise<DiarySource[]>;
+    /** diary.api.aiAccessScopes: the Ask scopes the caller holds for the diary. */
+    diaryAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.findSimilar: RFIs the caller can see on the same subject (F3). */
     similarRfis: (
       scope: TenantScope,
@@ -283,11 +284,13 @@ export function createAiModule(
     assert: deps.assert,
     can: deps.can,
   });
-  // Ask and search retrieve documents, drawings and (builder staff only) RFIs; drafting RFIs and inductions stays on
-  // documents.
+  // Ask and search retrieve documents, drawings and (builder staff only) RFIs, defects and the site diary; drafting
+  // RFIs and inductions stays on documents.
   const askScopes = async (scope: TenantScope, projectId: string) => [
     ...(await deps.accessScopes(scope, projectId)),
     ...(await deps.rfiAccessScopes(scope, projectId)),
+    ...(await deps.defectAccessScopes(scope, projectId)),
+    ...(await deps.diaryAccessScopes(scope, projectId)),
   ];
   const askService = createAskService({
     database: services.database,
@@ -308,6 +311,8 @@ export function createAiModule(
     assert: deps.assert,
     sources: deps.sources,
     rfiSources: deps.rfiSources,
+    defectSources: deps.defectSources,
+    diarySources: deps.diarySources,
   });
   const inductionDrafts = createInductionDraftService({
     database: services.database,
@@ -400,6 +405,12 @@ export function createAiModule(
       /** F6: the passages matching a few words by meaning or keyword, within the caller's access; no model call. */
       searchProject: semanticSearch.search,
       indexProject: projectIndex.indexProject,
+      /**
+       * For background processes (the ai-worker): bring one RFI, defect or diary day in step with the register after it
+       * changed. Checks no permission; the caller builds the context (backend 08 §2).
+       */
+      reindexRecord: projectIndex.reindexRecord,
+      dropStaleRecord: projectIndex.dropStaleRecord,
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,

@@ -10,6 +10,8 @@ import {
   type QaAnswerInput,
   type QaAnswerOutput,
 } from '@archova/ai-prompts';
+import { defectText, type DefectSource } from '../../domain/defect-source';
+import { diaryText, diaryTitle, type DiarySource } from '../../domain/diary-source';
 import { rfiText, type RfiSource } from '../../domain/rfi-source';
 import type { FakeResponder } from '../../infra/providers/fake';
 import type { CaseScores, EvalSuite, GoldenCase } from '../harness';
@@ -33,7 +35,7 @@ interface Doc {
   page: number;
   text: string;
   /** What kind of record the passage is; documents unless said. */
-  type?: 'rfi';
+  type?: 'rfi' | 'defect' | 'diary';
 }
 
 /** The reference project's documents, one passage each (already chunked, as retrieval returns them). */
@@ -177,6 +179,121 @@ const RFI_DOCS: readonly Doc[] = [
   }),
 ];
 
+/** Issued defects as the indexer chunks them (`defectText`). */
+const defectDoc = (d: DefectSource): Doc => ({
+  id: `def-${String(d.number).padStart(4, '0')}`,
+  title: `DEF-${String(d.number).padStart(4, '0')} ${d.title} (${d.status})`,
+  page: 1,
+  text: defectText(d),
+  type: 'defect',
+});
+
+const DEFECT_DOCS: readonly Doc[] = [
+  defectDoc({
+    id: 'd42',
+    number: 42,
+    title: 'Cracked floor tile in ensuite, apartment 302',
+    description: 'One floor tile is cracked across the corner by the shower waste.',
+    status: 'closed',
+    priority: 'high',
+    stage: 'pre_pc',
+    category: null,
+    trade: 'Tiling',
+    assignee: 'Tilers R Us',
+    dueDate: '2026-11-04',
+    notes: [{ action: 'close', text: 'Replacement tile fitted and grouted, checked on site.' }],
+  }),
+  // The subcontractor says it is fixed; the builder has not checked.
+  defectDoc({
+    id: 'd43',
+    number: 43,
+    title: 'Paint runs on Level 3 corridor wall',
+    description: 'Runs in the second coat along the full length of the north wall.',
+    status: 'ready_for_review',
+    priority: 'medium',
+    stage: 'pre_pc',
+    category: null,
+    trade: 'Painting',
+    assignee: 'Brushworks',
+    dueDate: null,
+    notes: [],
+  }),
+  defectDoc({
+    id: 'd44',
+    number: 44,
+    title: 'Door closer missing on stair door S2',
+    description: 'No closer is fitted to the Level 2 stair door.',
+    status: 'disputed',
+    priority: 'critical',
+    stage: 'pre_pc',
+    category: null,
+    trade: 'Hardware',
+    assignee: 'Doorworks',
+    dueDate: '2026-11-10',
+    notes: [
+      {
+        action: 'dispute',
+        text: 'The closer is not in our scope, the hardware schedule has it with the builder.',
+      },
+    ],
+  }),
+];
+
+/** Site diary days as the indexer chunks them (`diaryText`). */
+const diaryDoc = (d: DiarySource): Doc => ({
+  id: `diary-${d.date}`,
+  title: `${diaryTitle(d.date)} (${d.status.replace('_', ' ')})`,
+  page: 1,
+  text: diaryText(d),
+  type: 'diary',
+});
+
+const diaryLine = (
+  kind: string,
+  text: string,
+  extra: Partial<DiarySource['lines'][number]> = {},
+): DiarySource['lines'][number] => ({
+  id: `${kind}-${text}`,
+  kind,
+  text,
+  company: null,
+  headcount: null,
+  hours: null,
+  delayCause: null,
+  at: null,
+  photoCaptions: [],
+  ...extra,
+});
+
+const DIARY_DOCS: readonly Doc[] = [
+  diaryDoc({
+    entryId: 'e-1012',
+    date: '2026-10-12',
+    timeZone: 'Australia/Brisbane',
+    status: 'signed_off',
+    version: 2,
+    weather: { summary: 'Showers in the morning', minC: 14, maxC: 22, rainMm: 12.5, lostHours: 2 },
+    siteConditions: 'Wet underfoot after overnight rain',
+    notes: 'Level 3 slab pour moved to the afternoon.',
+    lines: [
+      diaryLine('labour', 'Formwork', { company: 'Formco', headcount: 6, hours: 45.5 }),
+      diaryLine('delay', 'Rain stopped the Level 3 slab pour', { delayCause: 'weather', hours: 2 }),
+      diaryLine('inspection', 'Engineer passed the Level 3 reinforcement', { at: '13:15' }),
+    ],
+  }),
+  diaryDoc({
+    entryId: 'e-1013',
+    date: '2026-10-13',
+    timeZone: 'Australia/Brisbane',
+    status: 'submitted',
+    version: 1,
+    weather: { summary: 'Fine', minC: 13, maxC: 25, rainMm: 0, lostHours: null },
+    siteConditions: null,
+    notes: '',
+    lines: [diaryLine('labour', 'Formwork', { company: 'Formco', headcount: 8, hours: 60 })],
+  }),
+];
+
 const INJECTION: Doc = {
   id: 'rfi-injected',
   title: 'RFI 022 Slab set-down, response',
@@ -200,7 +317,12 @@ const passage = (d: Doc, i: number): PromptPassage => ({
 
 /** Retrieval returns the best passages first; here the answering one is placed among others, never always first. */
 function passagesFor(ids: readonly string[], extra: readonly Doc[] = []): PromptPassage[] {
-  const chosen = [...ids.map((id) => [...DOCS, ...RFI_DOCS].find((d) => d.id === id)!), ...extra];
+  const chosen = [
+    ...ids.map((id) =>
+      [...DOCS, ...RFI_DOCS, ...DEFECT_DOCS, ...DIARY_DOCS].find((d) => d.id === id)!,
+    ),
+    ...extra,
+  ];
   return chosen.map(passage);
 }
 
@@ -372,6 +494,64 @@ const QUESTIONS: readonly Q[] = [
     'What did the architect decide about the stair nosing?',
     ['rfi-052', 'spec-doors'],
     { answerable: false },
+  ],
+  // Defects
+  [
+    'defect-assignee',
+    'Which company is assigned the cracked floor tile in apartment 302?',
+    ['def-0042', 'spec-waterproofing'],
+    { answerable: true, facts: ['Tilers R Us'], sources: ['def-0042'] },
+  ],
+  [
+    'defect-description',
+    'What is wrong with the paint on the Level 3 corridor wall?',
+    ['spec-paint', 'def-0043'],
+    { answerable: true, facts: ['Runs in the second coat'], sources: ['def-0043'] },
+  ],
+  [
+    'defect-dispute',
+    'Why does Doorworks dispute the stair door closer defect?',
+    ['def-0044', 'spec-doors'],
+    { answerable: true, facts: ['not in our scope'], sources: ['def-0044'] },
+  ],
+  // The subcontractor's word is not the builder's sign-off
+  [
+    'defect-not-verified',
+    'Has the builder verified the paint runs defect as fixed?',
+    ['def-0043', 'spec-paint'],
+    { answerable: false },
+  ],
+  [
+    'defect-none',
+    'Is there a defect about the bathroom exhaust fan?',
+    ['def-0042', 'def-0043'],
+    { answerable: false },
+  ],
+  // Site diary
+  [
+    'diary-delay',
+    'What stopped the Level 3 slab pour on 12 October?',
+    ['diary-2026-10-12', 'prelims'],
+    { answerable: true, facts: ['Rain'], sources: ['diary-2026-10-12'] },
+  ],
+  [
+    'diary-inspection',
+    'Did the engineer pass the Level 3 reinforcement?',
+    ['spec-concrete', 'diary-2026-10-12'],
+    { answerable: true, facts: ['Engineer passed'], sources: ['diary-2026-10-12'] },
+  ],
+  // A day with no diary passage is not a day when nothing happened
+  [
+    'diary-other-day',
+    'How much rain fell on 14 October?',
+    ['diary-2026-10-12', 'diary-2026-10-13'],
+    { answerable: false },
+  ],
+  [
+    'diary-injury',
+    'Was anyone injured on 13 October?',
+    ['diary-2026-10-13', 'diary-2026-10-12'],
+    { answerable: false, safetyCritical: true },
   ],
   // Safety-critical unanswerable: a guess could be built
   [

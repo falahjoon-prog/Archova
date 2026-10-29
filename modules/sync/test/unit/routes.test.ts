@@ -3,24 +3,26 @@ import { isAppError } from '@archova/kernel';
 import { createSyncModule } from '../../src';
 
 describe('sync routes', () => {
-  it('registers both sync operations; push answers 501 until it lands', async () => {
+  it('registers the sync operations', () => {
     const { routes } = createSyncModule({} as never, {
       access: { can: async () => true },
       sources: [],
+      commands: [],
     });
-    expect(Object.keys(routes).sort()).toEqual(['syncPull', 'syncPush']);
-    const error: unknown = await (routes.syncPush as () => Promise<unknown>)().catch(
-      (e: unknown) => e,
-    );
-    expect(isAppError(error) && error.code === 'not_implemented' && error.status === 501).toBe(
-      true,
-    );
+    expect(Object.keys(routes).sort()).toEqual([
+      'acceptLateSubmission',
+      'listLateSubmissions',
+      'rejectLateSubmission',
+      'syncPull',
+      'syncPush',
+    ]);
   });
 
   it('refuses access-link sessions', async () => {
     const { routes } = createSyncModule({} as never, {
       access: { can: async () => true },
       sources: [],
+      commands: [],
     });
     const call = (tenant: object) =>
       (routes.syncPull as (i: unknown) => Promise<unknown>)({
@@ -32,6 +34,11 @@ describe('sync routes', () => {
     ]) {
       const error = await call(tenant);
       expect(isAppError(error) && error.code === 'access.denied').toBe(true);
+      const push: unknown = await (routes.syncPush as (i: unknown) => Promise<unknown>)({
+        tenant,
+        body: { mutations: [] },
+      }).catch((e: unknown) => e);
+      expect(isAppError(push) && push.code === 'access.denied').toBe(true);
     }
   });
 });

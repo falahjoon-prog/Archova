@@ -1,8 +1,8 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { hiddenFolderIds } from '../domain/folders';
-import { folders } from '../infra/tables';
+import { documentsTable, folders } from '../infra/tables';
 import type { DocumentsContext } from './context';
 import { uniqueViolation } from './errors';
 
@@ -39,6 +39,12 @@ export function createFolderService(c: DocumentsContext) {
     const rows = await all(scope, projectId);
     const hidden = await hiddenIds(scope, projectId, rows);
     return rows.filter((f) => !hidden.has(f.id));
+  }
+
+  /** Mobile pull (modules/sync): the folders among `ids` the caller may open; the rest go out as deletes. */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    const wanted = new Set(ids);
+    return (await list(scope, projectId)).filter((f) => wanted.has(f.id));
   }
 
   /** A folder the caller can open; hidden folders are a 404, like folders in other projects. */
@@ -146,6 +152,12 @@ export function createFolderService(c: DocumentsContext) {
       projectId,
       isPrivate: row.isPrivate,
     });
+    if (
+      input.isPrivate !== undefined ||
+      input.allowedUserIds !== undefined ||
+      input.allowedCompanyIds !== undefined
+    )
+      await recordSubtree(scope, projectId, folderId);
     scope.events.add({
       type: 'documents.folder.updated.v1',
       projectId,
@@ -157,7 +169,53 @@ export function createFolderService(c: DocumentsContext) {
     return row;
   }
 
-  return { list, getVisible, hiddenIds, create, update };
+  /**
+   * A folder's access changed, so what the phone may hold under it changed too. Write change rows for its
+   * subfolders and documents; the pull sends each caller an upsert or a delete according to what they can now see.
+   */
+  async function recordSubtree(scope: TenantScope, projectId: string, folderId: string) {
+    const rows = await all(scope, projectId);
+    const ids = new Set<string>();
+    const walk = (id: string) => {
+      for (const f of rows)
+        if (f.parentId === id && !ids.has(f.id)) {
+          ids.add(f.id);
+          walk(f.id);
+        }
+    };
+    walk(folderId);
+    for (const f of rows.filter((x) => ids.has(x.id)))
+      await scope.recordChange({
+        module: 'documents',
+        entityType: 'folder',
+        entityId: f.id,
+        op: 'upsert',
+        version: f.version,
+        projectId,
+        isPrivate: f.isPrivate,
+      });
+    const docs = await scope.tx
+      .select({ id: documentsTable.id, version: documentsTable.version })
+      .from(documentsTable)
+      .where(
+        and(
+          eq(documentsTable.projectId, projectId),
+          isNull(documentsTable.deletedAt),
+          inArray(documentsTable.folderId, [folderId, ...ids]),
+        ),
+      );
+    for (const d of docs)
+      await scope.recordChange({
+        module: 'documents',
+        entityType: 'document',
+        entityId: d.id,
+        op: 'upsert',
+        version: d.version,
+        projectId,
+      });
+  }
+
+  return { list, visibleAmong, getVisible, hiddenIds, create, update };
 }
 
 const nameTaken = () =>

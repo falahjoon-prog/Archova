@@ -30,7 +30,7 @@ import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
-import { createSyncModule } from '@archova/mod-sync';
+import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
 export const MODULE_PERMISSIONS = [
@@ -42,6 +42,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  SYNC_PERMISSIONS,
 ];
 
 export interface ModuleOptions {
@@ -146,8 +147,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     can: (scope, key, target) => access!.api.can(scope, key, target),
     sources: (scope, projectId) => documents.api.aiSources(scope, projectId),
     accessScopes: (scope, projectId) => documents.api.aiAccessScopes(scope, projectId),
-    rfiSources: (scope, projectId) => rfis.api.aiSources(scope, projectId),
+    rfiSources: (scope, projectId, only) => rfis.api.aiSources(scope, projectId, only),
     rfiAccessScopes: (scope, projectId) => rfis.api.aiAccessScopes(scope, projectId),
+    defectSources: (scope, projectId, only) => defects.api.aiSources(scope, projectId, only),
+    defectAccessScopes: (scope, projectId) => defects.api.aiAccessScopes(scope, projectId),
+    diarySources: (scope, projectId, only) => diaryApi!.aiSources(scope, projectId, only),
+    diaryAccessScopes: (scope, projectId) => diaryApi!.aiAccessScopes(scope, projectId),
     similarRfis: (scope, projectId, input) => rfis.api.findSimilar(scope, projectId, input),
     getDrawingRevision: (scope, projectId, id) =>
       documents.api.getDrawingRevision(scope, projectId, id),
@@ -174,11 +179,6 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   diaryApi = diary.api;
 
-  const sync = createSyncModule(services, {
-    access: access.api,
-    sources: [defects.api.syncSource],
-  });
-
   const workforce = createWorkforceModule(services, {
     access: access.api,
     platform: platform.api,
@@ -201,6 +201,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       redis: services.redis,
       logger: services.logger,
     },
+  });
+
+  const sync = createSyncModule(services, {
+    access: access.api,
+    sources: [
+      defects.api.syncSource,
+      diary.api.syncSource,
+      rfis.api.syncSource,
+      documents.api.syncSource,
+      workforce.api.syncSource,
+    ],
+    commands: [...defects.api.syncCommands],
   });
 
   const all = [

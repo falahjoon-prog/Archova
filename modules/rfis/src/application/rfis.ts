@@ -192,18 +192,14 @@ export function createRfiService(deps: RfisDeps) {
    * Nova Ask (F2): every sent RFI on the project with its responses, for the `ai` indexer. Drafts and voided RFIs are
    * left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by `aiAccessScopes`.
    */
-  async function aiSources(scope: TenantScope, projectId: string) {
-    const rows = await scope.tx
-      .select()
-      .from(rfis)
-      .where(
-        and(
-          eq(rfis.projectId, projectId),
-          isNull(rfis.deletedAt),
-          sql`${rfis.status} not in ('draft', 'void')`,
-        ),
-      )
-      .orderBy(asc(rfis.id));
+  async function aiSources(scope: TenantScope, projectId: string, only?: string) {
+    const live = and(
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} not in ('draft', 'void')`,
+      only ? eq(rfis.id, only) : undefined,
+    );
+    const rows = await scope.tx.select().from(rfis).where(live).orderBy(asc(rfis.id));
     const replies = rows.length
       ? await scope.tx
           .select({
@@ -214,13 +210,7 @@ export function createRfiService(deps: RfisDeps) {
           })
           .from(responses)
           .innerJoin(rfis, eq(rfis.id, responses.rfiId))
-          .where(
-            and(
-              eq(rfis.projectId, projectId),
-              isNull(rfis.deletedAt),
-              sql`${rfis.status} not in ('draft', 'void')`,
-            ),
-          )
+          .where(live)
           .orderBy(asc(responses.createdAt), asc(responses.id))
       : [];
     return rows.map((r) => ({
@@ -907,6 +897,28 @@ export function createRfiService(deps: RfisDeps) {
     return { id, created: true };
   }
 
+  /**
+   * Mobile pull (modules/sync): the RFIs among `ids` the caller may see, by the same rule as `list` and `detail`;
+   * ids not returned are sent to the device as deletes.
+   */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length) return [];
+    const { date } = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      inArray(rfis.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(rfis)
+      .where(and(...conditions));
+    return withAssignees(scope, rows, date);
+  }
+
   return {
     list,
     detail,
@@ -924,6 +936,7 @@ export function createRfiService(deps: RfisDeps) {
     aiAccessScopes,
     openOnDrawing,
     ballInCourt,
+    visibleAmong,
   };
 }
 

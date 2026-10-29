@@ -1643,6 +1643,31 @@ export const JwksSchema = z.object({
 });
 export type Jwks = z.infer<typeof JwksSchema>;
 
+export const LateSubmissionSchema = z.object({
+  "id": z.string().regex(new RegExp("^lsb_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "module": z.string(),
+  "command": z.string(),
+  "entityId": z.string(),
+  "baseVersion": z.number().int().nullable(),
+  "submittedBy": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")),
+  "clientAt": z.string().datetime({ offset: true }),
+  "receivedAt": z.string().datetime({ offset: true }),
+  "status": z.enum(["pending", "accepted", "rejected"]),
+  "payload": z.record(z.string(), z.unknown()).optional(),
+  "decidedBy": z.string().nullable().optional(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "decisionNote": z.string().nullable().optional(),
+  "version": z.number().int().nullable().optional(),
+}).strict();
+export type LateSubmission = z.infer<typeof LateSubmissionSchema>;
+
+export const LateSubmissionListSchema = z.object({
+  "items": z.array(LateSubmissionSchema),
+  "pendingCount": z.number().int().min(0),
+}).strict();
+export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
+
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
   "password": z.string().min(1).max(256),
@@ -1702,7 +1727,7 @@ export const MeSchema = z.object({
 export type Me = z.infer<typeof MeSchema>;
 
 export const NovaSourceSchema = z.object({
-  "sourceType": z.enum(["document", "drawing", "rfi"]),
+  "sourceType": z.enum(["document", "drawing", "rfi", "defect", "diary"]),
   "sourceId": z.string(),
   "revisionId": z.string(),
   "revision": z.string(),
@@ -1863,6 +1888,10 @@ export const NovaImportMappingSchema = z.object({
 export type NovaImportMapping = z.infer<typeof NovaImportMappingSchema>;
 
 export const NovaIndexReportSchema = z.object({
+  "diaryIndexed": z.number().int(),
+  "diaryUnchanged": z.number().int(),
+  "defectsIndexed": z.number().int(),
+  "defectsUnchanged": z.number().int(),
   "rfisIndexed": z.number().int(),
   "rfisUnchanged": z.number().int(),
   "indexed": z.number().int(),
@@ -2533,6 +2562,7 @@ export const SyncMutationSchema = z.object({
   "mutationId": z.string(),
   "command": z.string().regex(new RegExp("^[a-z][a-z_]*\\.[A-Za-z][A-Za-z0-9]*$")),
   "entityId": z.string().min(1).max(64),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
   "baseVersion": z.number().int().min(0).nullable(),
   "clientAt": z.string().datetime({ offset: true }),
   "payload": z.record(z.string(), z.unknown()),

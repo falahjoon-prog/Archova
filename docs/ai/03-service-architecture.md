@@ -71,7 +71,7 @@ Triggered by `document.revision.uploaded`, `photo.added`, `rfi.created/updated`,
 3. **Search** keyword (OpenSearch) and vector (pgvector) in parallel, top ~50 each; merge with reciprocal rank fusion.
 4. **Re-rank** top ~30 to ~8–12 passages (Fast tier).
 5. **Answer** with the Standard tier, passing passages as citable documents; the model must cite each claim.
-6. **Check:** every citation must point at a passage we supplied and that the user can access; if there are no valid citations the answer is replaced with "I couldn't find this in the project documents" plus the closest matches as links.
+6. **Check:** every citation must point at a passage we supplied and that the user can access; if there are no valid citations the answer is replaced with "I couldn't find this in the project records" plus the closest matches as links.
 
 ## 5. Data model additions (for Ben and Ava to confirm)
 

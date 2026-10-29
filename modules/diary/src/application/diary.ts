@@ -90,6 +90,13 @@ export interface DiaryDayForSummary {
   }>;
 }
 
+/** A whole day for Ask: the summary's view of it plus the day's own words. */
+export interface DiaryDayForAsk extends DiaryDayForSummary {
+  siteConditions: string | null;
+  /** The day's notes as plain text. */
+  notes: string;
+}
+
 export interface HeaderPatch {
   weatherOverride?: Weather | null;
   weatherNotes?: string | null;
@@ -409,6 +416,60 @@ export function createDiaryService(deps: DiaryDeps) {
     };
   }
 
+  /**
+   * For the mobile pull: the records among `ids` the caller can see, as list/detail rows. Entries and lines follow the
+   * same company scoping as `list` and `detail`; ids not returned are sent to the device as deletes.
+   */
+  async function visibleAmong(
+    scope: TenantScope,
+    projectId: string,
+    entityType: string,
+    ids: readonly string[],
+  ): Promise<{ entries: EntryView[]; lines: Array<{ kind: LineKind; row: LineRow }> }> {
+    const v = await viewer(scope, projectId);
+    if (entityType === 'diary_entry') {
+      const { timezone } = await projectInfo(scope, projectId);
+      const where: SQL[] = [eq(entries.projectId, projectId), inArray(entries.id, [...ids])];
+      if (v.scopedCompanyId)
+        where.push(sql`exists (select 1 from diary.labour l where l.entry_id = ${entries.id}
+                       and l.company_id = ${v.scopedCompanyId} and l.deleted_at is null)`);
+      const rows = await scope.tx
+        .select()
+        .from(entries)
+        .where(and(...where));
+      const totals = await totalsFor(
+        scope,
+        rows.map((r) => r.id),
+        v,
+      );
+      return {
+        entries: rows.map((r) => ({
+          ...headerFor(r, v),
+          totals: totals.get(r.id) ?? emptyTotals(),
+          lateAfter: lateCutoff(r.date, timezone),
+        })),
+        lines: [],
+      };
+    }
+    const kind = (Object.keys(SYNC_TYPE) as LineKind[]).find((k) => SYNC_TYPE[k] === entityType);
+    if (!kind) return { entries: [], lines: [] };
+    const t = LINE_TABLES[kind];
+    if (v.scopedCompanyId && !COMPANY_SCOPED_KINDS[kind]) return { entries: [], lines: [] };
+    const where: SQL[] = [eq(t.projectId, projectId), inArray(t.id, [...ids]), isNull(t.deletedAt)];
+    // As with entries, a company's lines are theirs only on days when it has labour (matches `list`).
+    if (v.scopedCompanyId)
+      where.push(
+        sql`company_id = ${v.scopedCompanyId}`,
+        sql`exists (select 1 from diary.labour l where l.entry_id = ${t.entryId}
+            and l.company_id = ${v.scopedCompanyId} and l.deleted_at is null)`,
+      );
+    const rows = (await scope.tx
+      .select()
+      .from(t)
+      .where(and(...where))) as LineRow[];
+    return { entries: [], lines: rows.map((row) => ({ kind, row })) };
+  }
+
   async function list(scope: TenantScope, projectId: string, from: LocalDate, to: LocalDate) {
     const span = daysBetween(from, to);
     if (span < 0)
@@ -515,22 +576,20 @@ export function createDiaryService(deps: DiaryDeps) {
     };
   }
 
-  /**
-   * The day's lines for the diary summary, with internal ids. Null when there is no entry or the caller can't
-   * read the diary; a company-scoped reader gets only their own lines, as in `detail`. Photos carry no captions.
-   */
-  async function dayForSummary(
-    scope: TenantScope,
-    projectId: string,
-    date: LocalDate,
-  ): Promise<DiaryDayForSummary | null> {
-    if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return null;
-    if (!(await findEntry(scope, projectId, date))) return null;
-    const { entry, lines } = await detail(scope, projectId, date);
-    const { timezone } = await projectInfo(scope, projectId);
-    const names = new Map(
+  /** Names of the companies on the project, by id, for naming who did the work. */
+  async function companyNames(scope: TenantScope, projectId: string) {
+    return new Map(
       (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
     );
+  }
+
+  /** One day as the summary reads it: the entry's weather and every line it was given, in the shape `ai` expects. */
+  function summaryDay(
+    entry: EntryRow,
+    lines: Record<LineKind, LineRow[]>,
+    names: Map<string, string>,
+    timezone: string,
+  ): DiaryDayForSummary {
     const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : null);
     const company = (id: string | null | undefined) => (id ? (names.get(id) ?? null) : null);
     const join = (...parts: Array<string | null | undefined>) =>
@@ -607,6 +666,85 @@ export function createDiaryService(deps: DiaryDeps) {
           : null,
       lines: out,
     };
+  }
+
+  /**
+   * The day's lines for the diary summary, with internal ids. Null when there is no entry or the caller can't
+   * read the diary; a company-scoped reader gets only their own lines, as in `detail`. Photos carry no captions.
+   */
+  async function dayForSummary(
+    scope: TenantScope,
+    projectId: string,
+    date: LocalDate,
+  ): Promise<DiaryDayForSummary | null> {
+    if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return null;
+    if (!(await findEntry(scope, projectId, date))) return null;
+    const { entry, lines } = await detail(scope, projectId, date);
+    const { timezone } = await projectInfo(scope, projectId);
+    return summaryDay(entry, lines, await companyNames(scope, projectId), timezone);
+  }
+
+  /**
+   * Nova Ask (F2): every submitted or signed-off day on the project with all its lines and its notes, for the `ai`
+   * indexer. Days still being written (drafts) are left out. Not narrowed to the caller, and not company-scoped:
+   * who may retrieve what is decided when Ask searches, by `aiAccessScopes`.
+   */
+  async function aiSources(
+    scope: TenantScope,
+    projectId: string,
+    only?: string,
+  ): Promise<DiaryDayForAsk[]> {
+    const days = await scope.tx
+      .select()
+      .from(entries)
+      .where(
+        and(
+          eq(entries.projectId, projectId),
+          sql`${entries.status} in ('submitted', 'signed_off')`,
+          only ? eq(entries.id, only) : undefined,
+        ),
+      )
+      .orderBy(asc(entries.date));
+    if (!days.length) return [];
+    const { timezone } = await projectInfo(scope, projectId);
+    const names = await companyNames(scope, projectId);
+    const ids = days.map((d) => d.id);
+    const byDay = new Map<string, Record<LineKind, LineRow[]>>();
+    for (const d of days)
+      byDay.set(d.id, {
+        labour: [],
+        plant: [],
+        delivery: [],
+        delay: [],
+        visitor: [],
+        event: [],
+        stand_down: [],
+      });
+    for (const kind of Object.keys(LINE_TABLES) as LineKind[]) {
+      const t = LINE_TABLES[kind];
+      const rows = (await scope.tx
+        .select()
+        .from(t)
+        .where(and(eq(t.projectId, projectId), inArray(t.entryId, ids), isNull(t.deletedAt)))
+        .orderBy(asc(t.createdAt), asc(t.id))) as LineRow[];
+      for (const r of rows) byDay.get(r.entryId)?.[kind].push(r);
+    }
+    return days.map((d) => ({
+      ...summaryDay(d, byDay.get(d.id)!, names, timezone),
+      siteConditions: d.siteConditions?.trim() || null,
+      notes: d.notesText.trim(),
+    }));
+  }
+
+  /**
+   * The Ask scopes this caller holds for the diary. Builder staff who read the whole diary hold `diary`; a reader
+   * limited to their own company's labour (a subcontractor, or a member scoped by company) and everyone outside the
+   * organisation hold none, so the notes, delays and other companies' labour never reach them through Ask.
+   */
+  async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
+    if (scope.ctx.principalType !== 'member') return [];
+    if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return [];
+    return (await viewer(scope, projectId)).scopedCompanyId === null ? ['diary'] : [];
   }
 
   // --------------------------------------------------------------------------------------------- header
@@ -1018,7 +1156,10 @@ export function createDiaryService(deps: DiaryDeps) {
     list,
     detail,
     applyAttendanceTotals,
+    visibleAmong,
     dayForSummary,
+    aiSources,
+    aiAccessScopes,
     saveHeader,
     submit,
     signOff,

@@ -5,7 +5,9 @@
 //  - no app depends on another app;
 //  - no source file reaches outside its own package with a relative import (use the package's public index);
 //  - AI vendor SDKs are imported only by the provider adapter in the `ai` module, and no self-hosted model
-//    runtime is used anywhere (X25, X26; ai/02 §5).
+//    runtime is used anywhere (X25, X26; ai/02 §5);
+//  - the ai module's background re-index entry points check no permission, so only the ai module itself and the
+//    worker may name them (tests aside).
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -42,8 +44,13 @@ function workspaces(): Pkg[] {
 
 const FRONTEND_APPS = new Set(['@archova/web', '@archova/mobile', '@archova/admin']);
 const BACKEND = (p: Pkg) =>
-  ['@archova/api', '@archova/worker', '@archova/realtime', '@archova/kernel'].includes(p.name) ||
-  p.name.startsWith('@archova/mod-');
+  [
+    '@archova/api',
+    '@archova/worker',
+    '@archova/realtime',
+    '@archova/kernel',
+    '@archova/compose',
+  ].includes(p.name) || p.name.startsWith('@archova/mod-');
 const PURE = new Set([
   '@archova/domain',
   '@archova/contracts',
@@ -58,7 +65,10 @@ const PURE = new Set([
   '@archova/design-tokens',
 ]);
 const BACKEND_ONLY = (d: string) =>
-  d === '@archova/kernel' || d.startsWith('@archova/mod-') || d === '@archova/ai-prompts';
+  d === '@archova/kernel' ||
+  d === '@archova/compose' ||
+  d.startsWith('@archova/mod-') ||
+  d === '@archova/ai-prompts';
 const CLIENT_ONLY = new Set([
   '@archova/ui',
   '@archova/ui-native',
@@ -97,6 +107,12 @@ const SELF_HOSTED_MODEL =
   /^(ollama|node-llama-cpp|onnxruntime-(node|web|react-native)|@xenova\/transformers|@huggingface\/transformers|@tensorflow\/tfjs.*|@mlc-ai\/.+)(\/.*)?$/;
 const AI_MODULE = '@archova/mod-ai';
 const AI_ADAPTER_DIR = join(ROOT, 'modules/ai/src/infra/providers') + '/';
+// Entry points that act for the system, not a person: they check no permission (Sam, 28 Oct 2026).
+const BACKGROUND_ONLY = /\b(reindexRecord|dropStaleRecord)\b/;
+const BACKGROUND_CALLERS = [
+  join(ROOT, 'modules/ai/src') + '/',
+  join(ROOT, 'apps/worker/src') + '/',
+];
 
 const problems: string[] = [];
 const pkgs = workspaces();
@@ -133,6 +149,15 @@ const IMPORT_RE =
 for (const p of pkgs) {
   for (const file of sourceFiles(p.dir)) {
     const text = readFileSync(file, 'utf8');
+    if (
+      BACKGROUND_ONLY.test(text) &&
+      !BACKGROUND_CALLERS.some((dir) => file.startsWith(dir)) &&
+      !/[\\/]test[\\/]/.test(relative(ROOT, file))
+    ) {
+      problems.push(
+        `${relative(ROOT, file)} names a background re-index entry point of the ai module (reindexRecord, dropStaleRecord); only modules/ai and apps/worker may call them`,
+      );
+    }
     for (const m of text.matchAll(IMPORT_RE)) {
       const spec = m[1] ?? m[2]!;
       if (spec.startsWith('.')) {
