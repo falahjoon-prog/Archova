@@ -96,8 +96,8 @@ export function sanitizeFailure(err: unknown): Error {
   return out;
 }
 
-/** Deleting needs no plan, so stage 1 runs with an empty one. */
-const NO_PLAN: Entitlements = { plan: 'system', state: 'active', modules: [], limits: {} };
+/** Deleting and re-stamping need no plan, so they run with an empty one. */
+export const NO_PLAN: Entitlements = { plan: 'system', state: 'active', modules: [], limits: {} };
 
 export function createReindex(deps: ReindexDeps) {
   const now = deps.now ?? (() => new Date());

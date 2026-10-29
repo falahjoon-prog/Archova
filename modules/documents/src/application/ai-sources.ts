@@ -29,8 +29,15 @@ export function createAiSourceService(
   c: DocumentsContext,
   folderService: ReturnType<typeof createFolderService>,
 ) {
-  /** Every published revision in the project, current and superseded. Drafts in review are left out. */
-  async function aiSources(scope: TenantScope, projectId: string): Promise<AiSourceRevision[]> {
+  /**
+   * Every published revision in the project, current and superseded. Drafts in review are left out. With `only`
+   * (a document id or a drawing sheet id) just that record's revisions, for the re-stamp that follows a change.
+   */
+  async function aiSources(
+    scope: TenantScope,
+    projectId: string,
+    only?: string,
+  ): Promise<AiSourceRevision[]> {
     const docs = await scope.tx
       .select({
         documentId: documentsTable.id,
@@ -44,7 +51,13 @@ export function createAiSourceService(
       })
       .from(documentRevisions)
       .innerJoin(documentsTable, eq(documentsTable.id, documentRevisions.documentId))
-      .where(and(eq(documentsTable.projectId, projectId), isNull(documentsTable.deletedAt)));
+      .where(
+        and(
+          eq(documentsTable.projectId, projectId),
+          isNull(documentsTable.deletedAt),
+          only ? eq(documentsTable.id, only) : undefined,
+        ),
+      );
     const sheets = await scope.tx
       .select()
       .from(drawingRevisions)
@@ -53,6 +66,7 @@ export function createAiSourceService(
           eq(drawingRevisions.projectId, projectId),
           inArray(drawingRevisions.status, ['current', 'superseded']),
           isNotNull(drawingRevisions.sheetId),
+          only ? eq(drawingRevisions.sheetId, only) : undefined,
         ),
       );
     return [

@@ -108,7 +108,7 @@ const SELF_HOSTED_MODEL =
 const AI_MODULE = '@archova/mod-ai';
 const AI_ADAPTER_DIR = join(ROOT, 'modules/ai/src/infra/providers') + '/';
 // Entry points that act for the system, not a person: they check no permission (Sam, 28 Oct 2026).
-const BACKGROUND_ONLY = /\b(reindexRecord|dropStaleRecord)\b/;
+const BACKGROUND_ONLY = /\b(reindexRecord|dropStaleRecord|restampSource)\b/;
 const BACKGROUND_CALLERS = [
   join(ROOT, 'modules/ai/src') + '/',
   join(ROOT, 'apps/worker/src') + '/',
@@ -155,7 +155,7 @@ for (const p of pkgs) {
       !/[\\/]test[\\/]/.test(relative(ROOT, file))
     ) {
       problems.push(
-        `${relative(ROOT, file)} names a background re-index entry point of the ai module (reindexRecord, dropStaleRecord); only modules/ai and apps/worker may call them`,
+        `${relative(ROOT, file)} names a background re-index entry point of the ai module (reindexRecord, dropStaleRecord, restampSource); only modules/ai and apps/worker may call them`,
       );
     }
     for (const m of text.matchAll(IMPORT_RE)) {
