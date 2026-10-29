@@ -20,6 +20,8 @@ const Env = z.object({
   API_APP_ORIGINS: list.prefault('http://localhost:3000'),
   API_PUBLIC_HOSTS: list.prefault('localhost:4000'),
   API_TRUST_PROXY: bool.prefault('false'),
+  // Proxies in front of the API that append to X-Forwarded-For (CloudFront + ALB = 2); 0 = use the socket address.
+  API_CLIENT_IP_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   API_JWT_PRIVATE_JWK: z.string().optional(),
   API_JWT_ISSUER: z.string().optional(),
   API_WEB_SIGN_IN_URL: z.string().url().default('http://localhost:3000/login'),
@@ -77,6 +79,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     appHosts: appOrigins.map((o) => new URL(o).host),
     publicHosts: e.API_PUBLIC_HOSTS,
     trustProxy: e.API_TRUST_PROXY,
+    clientIpHops: e.API_CLIENT_IP_HOPS,
     jwtPrivateJwk: e.API_JWT_PRIVATE_JWK ?? null,
     jwtIssuer: e.API_JWT_ISSUER ?? `https://${e.API_PUBLIC_HOSTS[0] ?? 'api.localhost'}`,
     webSignInUrl: e.API_WEB_SIGN_IN_URL,

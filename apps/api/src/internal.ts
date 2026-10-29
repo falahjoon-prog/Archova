@@ -4,6 +4,7 @@ import { internalOperations, type InternalOperationId } from '@archova/contracts
 import { AppError, runWithRequestContext } from '@archova/kernel';
 import type { BackofficeModule, InternalResult, StaffContext } from '@archova/mod-backoffice';
 import type { ApiConfig } from './config';
+import { clientIp } from './util';
 
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -81,7 +82,7 @@ export function registerInternalOperations(
             query: parse(def.query, req.query, false),
             body: parse(def.body, req.body, false),
             staff,
-            ip: req.ip,
+            ip: clientIp(req, config.clientIpHops),
             userAgent: req.headers['user-agent'] ?? null,
           });
           if (result.sessionCookie)

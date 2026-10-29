@@ -37,7 +37,11 @@ locals {
         API_JWT_ISSUER      = "https://${var.api_host}"
         # CloudFront and the ALB forward the viewer Host unchanged, so the api must not trust X-Forwarded-Host
         # (a client could send its own through CloudFront).
-        API_TRUST_PROXY  = "false"
+        API_TRUST_PROXY = "false"
+
+        # CloudFront and the ALB each append the address they saw to X-Forwarded-For; the client is 2nd from the right.
+        API_CLIENT_IP_HOPS = "2"
+
         API_FILES_STORE  = "s3"
         API_FILES_BUCKET = module.files.id
         API_FILES_REGION = local.region

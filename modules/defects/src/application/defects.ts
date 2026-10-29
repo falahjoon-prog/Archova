@@ -60,6 +60,8 @@ export interface TransitionInput {
   fileIds?: string[];
   /** For `reassign`: the company that takes the defect now. */
   assigneeCompanyId?: string;
+  /** Set when an admin accepts a change the sender made after losing access (X38); added to the history note. */
+  lateNote?: string;
 }
 
 export function createDefectService(deps: DefectsDeps) {
@@ -179,6 +181,16 @@ export function createDefectService(deps: DefectsDeps) {
     const v = await viewer(scope, projectId);
     if (!canSeeDefect(row, v)) throw new AppError('defect.not_found');
     return { defect: view(row, await today(scope, projectId)), viewer: v };
+  }
+
+  /** The project a defect is in, for sync commands that name only the defect. */
+  async function projectOf(scope: TenantScope, defectId: string): Promise<string | null> {
+    const [row] = await scope.tx
+      .select({ projectId: defects.projectId })
+      .from(defects)
+      .where(and(eq(defects.id, defectId), isNull(defects.deletedAt)))
+      .limit(1);
+    return row?.projectId ?? null;
   }
 
   async function detail(scope: TenantScope, projectId: string, defectId: string) {
@@ -485,7 +497,10 @@ export function createDefectService(deps: DefectsDeps) {
     await recordEvent(scope, row, {
       action: input.action,
       from: defect.status,
-      note: input.reason ?? null,
+      // The server's own line first; whatever the sender wrote is added after it and labelled as theirs.
+      note: input.lateNote
+        ? `${input.lateNote}${input.reason ? `. The sender wrote: ${input.reason}` : ''}`
+        : (input.reason ?? null),
       fileIds,
     });
     await changed(scope, row);
@@ -614,6 +629,7 @@ export function createDefectService(deps: DefectsDeps) {
     transition,
     openNear,
     visibleAmong,
+    projectOf,
     aiSources,
     aiAccessScopes,
   };

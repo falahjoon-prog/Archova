@@ -1,5 +1,11 @@
-import { encodeId } from '@archova/domain';
-import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
+import { decodeId, encodeId } from '@archova/domain';
+import {
+  AppError,
+  defineModule,
+  type KernelServices,
+  type SyncCommand,
+  type SyncSource,
+} from '@archova/kernel';
 import { createDefectService, type DefectsDeps } from './application/defects';
 import { defectsRoutes } from './api/routes';
 import { toDefectDto } from './api/mappers';
@@ -19,6 +25,80 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       );
     },
   };
+  const invalid = (path: string) =>
+    new AppError('validation_failed', 'Invalid id', [{ path, message: 'Invalid id' }]);
+  const id = (kind: 'defect' | 'file' | 'company', value: unknown, path: string) => {
+    const uuid = typeof value === 'string' ? decodeId(kind, value) : null;
+    if (!uuid) throw invalid(path);
+    return uuid;
+  };
+  const textField = (value: unknown, path: string) => {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string')
+      throw new AppError('validation_failed', 'Expected text', [
+        { path, message: 'Expected text' },
+      ]);
+    return value;
+  };
+  /** `defects.transition`: the REST transition (issue, markReadyForReview, close, reject, reassign, ...) queued offline. */
+  const transitionCommand: SyncCommand = {
+    name: 'defects.transition',
+    module: 'defects',
+    // Worth an admin's look if the person lost access first (X38); a grant only queues it.
+    drainable: true,
+    async projectOf(scope, entityId) {
+      const defectId = typeof entityId === 'string' ? decodeId('defect', entityId) : null;
+      return defectId ? service.projectOf(scope, defectId) : null;
+    },
+    async run(scope, m) {
+      const defectId = id('defect', m.entityId, 'entityId');
+      if (m.baseVersion === null)
+        throw new AppError(
+          'validation_failed',
+          'A transition needs the version it was made against.',
+          [{ path: 'baseVersion', message: 'Required' }],
+        );
+      const p = m.payload;
+      if (typeof p.action !== 'string')
+        throw new AppError('validation_failed', 'Name the action.', [
+          { path: 'payload/action', message: 'Required' },
+        ]);
+      const reason = textField(p.reason, 'payload/reason');
+      const fileIds = p.fileIds === undefined ? undefined : p.fileIds;
+      if (fileIds !== undefined && !Array.isArray(fileIds)) throw invalid('payload/fileIds');
+      const projectId = await service.projectOf(scope, defectId);
+      if (!projectId) throw new AppError('defect.not_found');
+      const detail = await service.transition(scope, projectId, defectId, m.baseVersion, {
+        action: p.action as never,
+        ...(reason ? { reason } : {}),
+        ...(fileIds
+          ? { fileIds: fileIds.map((f, i) => id('file', f, `payload/fileIds/${i}`)) }
+          : {}),
+        ...(p.assigneeCompanyId !== undefined
+          ? { assigneeCompanyId: id('company', p.assigneeCompanyId, 'payload/assigneeCompanyId') }
+          : {}),
+        ...(m.late
+          ? {
+              lateNote: `Sent late by ${encodeId('user', m.late.userId)} (device time ${m.late.clientAt.toISOString()}, not verified; received ${m.late.receivedAt.toISOString()})`,
+            }
+          : {}),
+      });
+      return { version: detail.defect.version };
+    },
+    async current(scope, entityId) {
+      const defectId = typeof entityId === 'string' ? decodeId('defect', entityId) : null;
+      if (!defectId) return null;
+      const projectId = await service.projectOf(scope, defectId);
+      if (!projectId) return null;
+      try {
+        const { defect, viewer } = await service.detail(scope, projectId, defectId);
+        return { version: defect.version, data: toDefectDto(defect, viewer) as never };
+      } catch (e) {
+        if (e instanceof AppError && e.code === 'defect.not_found') return null;
+        throw e;
+      }
+    },
+  };
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
     routes: defectsRoutes(services.database, service),
@@ -31,6 +111,8 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       aiAccessScopes: service.aiAccessScopes,
       /** What the mobile pull reads (modules/sync). */
       syncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: [transitionCommand],
     },
   };
 }

@@ -13,10 +13,11 @@ import {
   type TenantContext,
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE } from '@archova/mod-identity';
+import { isDrainToken } from '@archova/mod-sync';
 import type { ApiConfig } from './config';
 import type { Modules } from '@archova/compose';
 import type { IdempotencyStore } from './plugins/idempotency';
-import { safeEqualStrings } from './util';
+import { clientIp, safeEqualStrings } from './util';
 
 type Surface = 'app' | 'api';
 const UNSAFE = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
@@ -78,6 +79,12 @@ export function registerOperations(
         'The access token is invalid, expired or revoked.',
       );
     return { principal, viaCookie: false };
+  }
+
+  /** The drain-grant token in a Bearer header, or null; the `dg_` prefix keeps it apart from access tokens. */
+  function drainTokenOf(req: FastifyRequest): string | null {
+    const m = /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? '');
+    return m && isDrainToken(m[1]!) ? m[1]! : null;
   }
 
   /** ADR-0004 §5: Origin check on every unsafe browser request, plus double-submit token when a session is used. */
@@ -198,6 +205,28 @@ export function registerOperations(
         return runWithRequestContext(ctx, async () => {
           const surface = surfaceOf(req);
           if (!surface) throw new AppError('not_found');
+          const drainToken = surface === 'api' ? drainTokenOf(req) : null;
+          if (drainToken) {
+            // A drain grant (X38) is for one route, alone: not on any other operation, never next to a session.
+            if (operationId !== 'syncPush' || req.cookies[SESSION_COOKIE])
+              throw new AppError('auth.unauthenticated', 'That token cannot be used here.');
+            const params = parse(def.params, req.params, true) as Record<string, string>;
+            const orgId = decodeId('org', params.orgId ?? '');
+            if (!orgId) throw new AppError('org.not_found');
+            const body = parse(def.body, req.body, false) as Parameters<
+              Modules['sync']['api']['drain']['handle']
+            >[2];
+            return send(reply, {
+              status: 200,
+              body: await modules.sync.api.drain.handle(
+                orgId,
+                drainToken,
+                body,
+                requestId,
+                clientIp(req, config.clientIpHops),
+              ),
+            });
+          }
           const { principal, viaCookie } = await authenticate(req, surface);
           if (def.auth === 'required' && !principal)
             throw new AppError('auth.unauthenticated', 'Sign in to continue.');
@@ -233,7 +262,7 @@ export function registerOperations(
             principal,
             tenant,
             requestId,
-            ip: req.ip,
+            ip: clientIp(req, config.clientIpHops),
             userAgent: req.headers['user-agent'] ?? null,
           };
 
