@@ -3,13 +3,19 @@ import { isAppError } from '@archova/kernel';
 import { createSyncModule } from '../../src';
 
 describe('sync routes', () => {
-  it('registers both sync operations', () => {
+  it('registers the sync operations', () => {
     const { routes } = createSyncModule({} as never, {
       access: { can: async () => true },
       sources: [],
       commands: [],
     });
-    expect(Object.keys(routes).sort()).toEqual(['syncPull', 'syncPush']);
+    expect(Object.keys(routes).sort()).toEqual([
+      'acceptLateSubmission',
+      'listLateSubmissions',
+      'rejectLateSubmission',
+      'syncPull',
+      'syncPush',
+    ]);
   });
 
   it('refuses access-link sessions', async () => {

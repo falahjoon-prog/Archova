@@ -24,6 +24,7 @@ export const ID_PREFIXES = {
   takeoffMeasurement: 'tkm',
   importJob: 'imp',
   importRow: 'imr',
+  lateSubmission: 'lsb',
   diary: 'dia',
   claim: 'clm',
   event: 'evt',

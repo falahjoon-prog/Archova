@@ -27,6 +27,7 @@ export const drainGrants = syncSchema.table('drain_grants', {
 });
 
 export const lateSubmissions = syncSchema.table('late_submissions', {
+  id: uuid('id').notNull().defaultRandom(),
   orgId: uuid('org_id').notNull(),
   userId: uuid('user_id').notNull(),
   mutationId: uuid('mutation_id').notNull(),
@@ -42,4 +43,6 @@ export const lateSubmissions = syncSchema.table('late_submissions', {
   status: text('status').$type<'pending' | 'accepted' | 'rejected'>().notNull().default('pending'),
   decidedBy: uuid('decided_by'),
   decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decisionNote: text('decision_note'),
+  acceptedVersion: integer('accepted_version'),
 });

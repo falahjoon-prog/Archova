@@ -46,6 +46,10 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
     module: 'defects',
     // Worth an admin's look if the person lost access first (X38); a grant only queues it.
     drainable: true,
+    async projectOf(scope, entityId) {
+      const defectId = typeof entityId === 'string' ? decodeId('defect', entityId) : null;
+      return defectId ? service.projectOf(scope, defectId) : null;
+    },
     async run(scope, m) {
       const defectId = id('defect', m.entityId, 'entityId');
       if (m.baseVersion === null)
@@ -72,6 +76,11 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
           : {}),
         ...(p.assigneeCompanyId !== undefined
           ? { assigneeCompanyId: id('company', p.assigneeCompanyId, 'payload/assigneeCompanyId') }
+          : {}),
+        ...(m.late
+          ? {
+              lateNote: `Sent late by ${encodeId('user', m.late.userId)} (device time ${m.late.clientAt.toISOString()}, not verified; received ${m.late.receivedAt.toISOString()})`,
+            }
           : {}),
       });
       return { version: detail.defect.version };

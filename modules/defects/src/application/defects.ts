@@ -60,6 +60,8 @@ export interface TransitionInput {
   fileIds?: string[];
   /** For `reassign`: the company that takes the defect now. */
   assigneeCompanyId?: string;
+  /** Set when an admin accepts a change the sender made after losing access (X38); added to the history note. */
+  lateNote?: string;
 }
 
 export function createDefectService(deps: DefectsDeps) {
@@ -495,7 +497,7 @@ export function createDefectService(deps: DefectsDeps) {
     await recordEvent(scope, row, {
       action: input.action,
       from: defect.status,
-      note: input.reason ?? null,
+      note: [input.reason, input.lateNote].filter(Boolean).join(' — ') || null,
       fileIds,
     });
     await changed(scope, row);

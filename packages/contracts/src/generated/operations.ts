@@ -404,6 +404,27 @@ export const SyncPushParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const SyncPushBody = s.SyncPushRequestSchema;
+export const ListLateSubmissionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListLateSubmissionsQuery = z.object({
+  "status": z.enum(["pending", "accepted", "rejected"]).default("pending"),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+});
+export const AcceptLateSubmissionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lateSubmissionId": z.string().regex(new RegExp("^lsb_[0-9A-Za-z]{26}$")),
+});
+export const RejectLateSubmissionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lateSubmissionId": z.string().regex(new RegExp("^lsb_[0-9A-Za-z]{26}$")),
+});
+export const RejectLateSubmissionBody = z.object({
+  "note": z.string().max(1000).optional(),
+}).strict();
 export const ListTenderPackagesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2051,6 +2072,42 @@ export const operations = {
     params: SyncPushParams,
     query: null,
     body: SyncPushBody,
+  },
+  listLateSubmissions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/late-submissions',
+    module: "sync",
+    auth: "required",
+    permission: "sync.late.review",
+    internal: false,
+    contentType: null,
+    params: ListLateSubmissionsParams,
+    query: ListLateSubmissionsQuery,
+    body: null,
+  },
+  acceptLateSubmission: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/late-submissions/{lateSubmissionId}/accept',
+    module: "sync",
+    auth: "required",
+    permission: "sync.late.review",
+    internal: false,
+    contentType: null,
+    params: AcceptLateSubmissionParams,
+    query: null,
+    body: null,
+  },
+  rejectLateSubmission: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/late-submissions/{lateSubmissionId}/reject',
+    module: "sync",
+    auth: "required",
+    permission: "sync.late.review",
+    internal: false,
+    contentType: "application/json",
+    params: RejectLateSubmissionParams,
+    query: null,
+    body: RejectLateSubmissionBody,
   },
   listTenderPackages: {
     method: 'GET',
