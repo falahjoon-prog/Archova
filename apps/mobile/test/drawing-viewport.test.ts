@@ -5,6 +5,7 @@ import {
   levelForScale,
   levelSize,
   panViewport,
+  pinsOnRevision,
   pinToScreen,
   screenToPin,
   tileCacheKey,
@@ -108,5 +109,44 @@ describe('gestures', () => {
   it('will not zoom out past fit or in past the maximum', () => {
     expect(zoomViewport(p, zoomed, 0.001, { x: 0, y: 0 }).scale).toBeCloseTo(fit.scale);
     expect(zoomViewport(p, zoomed, 100, { x: 0, y: 0 }, 2).scale).toBe(2);
+  });
+});
+
+describe('defect pins', () => {
+  const d = (over: Record<string, unknown>) => ({
+    id: 'dfc_1',
+    number: 12,
+    title: 'Cracked slab',
+    status: 'open',
+    priority: 'high',
+    drawingRevisionId: 'rev_1',
+    pinX: 0.25,
+    pinY: 0.5,
+    ...over,
+  });
+
+  it('keeps only pinned defects on this revision', () => {
+    const pins = pinsOnRevision(
+      [
+        d({}),
+        d({ id: 'dfc_2', drawingRevisionId: 'rev_2' }),
+        d({ id: 'dfc_3', pinX: null }),
+        d({ id: 'dfc_4', status: 'draft' }),
+      ],
+      'rev_1',
+    );
+    expect(pins.map((x) => x.defectId)).toEqual(['dfc_1']);
+    expect(pins[0]).toMatchObject({ label: '#12', pinX: 0.25, resolved: false });
+  });
+
+  it('marks an unsynced defect and draws resolved pins first', () => {
+    const pins = pinsOnRevision(
+      [d({ id: 'a', number: null }), d({ id: 'b', status: 'closed' })],
+      'rev_1',
+    );
+    expect(pins.map((x) => [x.defectId, x.label, x.resolved])).toEqual([
+      ['b', '#12', true],
+      ['a', 'New', false],
+    ]);
   });
 });

@@ -1,14 +1,19 @@
 // Drawing viewer (docs/mobile/03 §3.3): overview image at once, sharp tiles on top, pan and pinch.
 // While the server has not built tiles for a sheet, say so rather than show a blank.
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { Image, PanResponder, View, type LayoutChangeEvent } from 'react-native';
+import { Image, PanResponder, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { useTheme } from '@archova/ui-native';
+import { mobileRoutes } from '@archova/routes';
+import { Button, useTheme } from '@archova/ui-native';
 import { queries } from '../../../lib/api';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
+import { listDefects } from '../../defects';
+import { pinsOnRevision, type SheetPin } from '../pins';
 import {
   fitViewport,
   panViewport,
+  pinToScreen,
   tileCacheKey,
   tileUrl,
   visibleTiles,
@@ -27,13 +32,26 @@ function SheetCanvas({
   revisionId,
   overviewUrl,
   tileUrlTemplate,
+  pins,
+  onOpenPin,
 }: {
   pyramid: Pyramid;
   revisionId: string;
   overviewUrl: string | undefined;
   tileUrlTemplate: string;
+  pins: SheetPin[];
+  onOpenPin: (pin: SheetPin) => void;
 }) {
   const t = useTheme();
+  const [selected, setSelected] = useState<SheetPin | null>(null);
+  const pinColor = (pin: SheetPin) =>
+    pin.resolved
+      ? t.color.statusNeutral
+      : pin.priority === 'critical' || pin.priority === 'high'
+        ? t.color.statusDanger
+        : pin.priority === 'medium'
+          ? t.color.statusWarning
+          : t.color.statusInfo;
   const [size, setSize] = useState<{ w: number; h: number } | null>(null);
   const [view, setView] = useState<Viewport | null>(null);
   const viewRef = useRef<Viewport | null>(null);
@@ -136,7 +154,55 @@ function SheetCanvas({
               />
             );
           })}
+          {pins.map((pin) => {
+            const at = pinToScreen(pyramid, view, pin);
+            if (!at.onScreen) return null;
+            return (
+              <Pressable
+                key={pin.defectId}
+                onPress={() => setSelected(pin)}
+                accessibilityRole="button"
+                accessibilityLabel={`Defect ${pin.label}: ${pin.title}`}
+                style={{
+                  position: 'absolute',
+                  left: at.x - 16,
+                  top: at.y - 16,
+                  minWidth: 32,
+                  height: 32,
+                  paddingHorizontal: 6,
+                  borderRadius: t.radius.full,
+                  backgroundColor: pinColor(pin),
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pin.resolved ? 0.6 : 1,
+                }}
+              >
+                <Text style={{ color: t.color.surface, fontSize: 12, fontWeight: '700' }}>
+                  {pin.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </>
+      ) : null}
+      {selected ? (
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            padding: t.space[3],
+            gap: t.space[2],
+            backgroundColor: t.color.surface,
+          }}
+        >
+          <Text style={{ color: t.color.text, fontWeight: '700' }}>
+            {selected.label} · {selected.title}
+          </Text>
+          <Button label="Open defect" onPress={() => onOpenPin(selected)} />
+          <Button label="Close" variant="secondary" onPress={() => setSelected(null)} />
+        </View>
       ) : null}
     </View>
   );
@@ -149,7 +215,14 @@ export function DrawingViewerScreen({
   projectId: string;
   revisionId: string;
 }) {
+  const router = useRouter();
   const { orgId } = useCurrentOrg();
+  const device = useDeviceData();
+  const defects = useLocalQuery(
+    device.status === 'ready' ? () => listDefects(device.data.store, projectId) : null,
+    [device.status === 'ready' ? device.data : null, projectId],
+  );
+  const pins = pinsOnRevision(defects.value ?? [], revisionId);
   const tiles = useQuery({
     ...queries.drawingTiles(orgId ?? '', projectId, revisionId),
     enabled: orgId !== null,
@@ -183,6 +256,8 @@ export function DrawingViewerScreen({
       revisionId={revisionId}
       overviewUrl={d.overviewUrl}
       tileUrlTemplate={d.tileUrlTemplate}
+      pins={pins}
+      onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
     />
   );
 }
