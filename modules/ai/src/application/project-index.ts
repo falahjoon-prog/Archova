@@ -385,7 +385,14 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
         pieces.map((p) => `${r.header}\n${p.text}`),
         { purpose: 'document', feature: 'ask', projectId },
       );
-      await database.withTenantTx(ctx, async (scope) => {
+      const written = await database.withTenantTx(ctx, async (scope) => {
+        // The record can change while its text is being embedded (voided, sent back to draft, amended). Write only
+        // what is still current: the page is read again here, in the transaction that inserts.
+        const current = await recordPages(scope, projectId, sourceType, r.sourceId);
+        if (!current.some((p) => p.revisionId === r.revisionId)) {
+          await reconcileRecords(scope, projectId, sourceType, current, r.sourceId);
+          return false;
+        }
         await scope.tx
           .insert(chunks)
           .values(
@@ -413,8 +420,13 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
         await recordEntries(scope, projectId, [
           { rev, outcome: 'indexed', pages: 1, chunks: pieces.length },
         ]);
+        return true;
       });
+      if (!written) continue;
       counts.indexed++;
+      // A change that commits between the check above and this commit is dropped here: its own event reaches
+      // `dropStaleRecord` only after it commits, and one of the two always sees the other's write.
+      await settleRecord(ctx, projectId, sourceType, r.sourceId);
     }
     return counts;
   }
@@ -560,6 +572,16 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
    * source, which is whether its current text may still need embedding. Same caller rules as `reindexRecord`.
    */
   async function dropStaleRecord(
+    ctx: TenantContext,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ): Promise<{ isSource: boolean }> {
+    return settleRecord(ctx, projectId, kind, recordId);
+  }
+
+  /** Deletes whatever of one record's stored text the register no longer matches; says if the record is still a source. */
+  async function settleRecord(
     ctx: TenantContext,
     projectId: string,
     kind: RecordKind,

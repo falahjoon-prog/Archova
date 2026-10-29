@@ -361,6 +361,63 @@ describe('Re-indexing one record after it changes', () => {
     embed.mockRestore();
   });
 
+  // The embedding call takes a moment, and the record can change in it. The hook below runs the change at the point
+  // where the old text has been read and is being embedded.
+  const duringEmbed = (change: () => Promise<void>) => {
+    const real = t.ai.embed.bind(t.ai);
+    return vi.spyOn(t.ai, 'embed').mockImplementationOnce(async (...args) => {
+      await change();
+      return real(...args);
+    });
+  };
+
+  it('writes nothing for a record voided while its text was being embedded', async () => {
+    const s = await setup('re-race-void');
+    const grout = await issuedDefect(s, 'Bathroom 302 finishes', 'Grout is missing at the waste.');
+    const embed = duringEmbed(async () => {
+      const voided = await s.pm.browser.post(
+        `${s.base}/defects/${grout.id}/transition`,
+        { action: 'void', reason: 'Raised twice' },
+        { 'if-match': grout.etag },
+      );
+      expect(voided.statusCode, voided.body).toBe(200);
+    });
+
+    expect(await reindex(s, 'defect', grout.id)).toEqual({ indexed: 0, unchanged: 0 });
+    expect(embed).toHaveBeenCalledTimes(1);
+    // The voided text was embedded and then discarded: not stored, not found, not counted as indexed.
+    expect(await chunkRows(s, 'defect')).toEqual([]);
+    expect(await entryCount(s, 'defect')).toBe(0);
+    expect(await found(s.pm.browser, s, 'grout missing at the waste')).not.toContain(grout.id);
+    embed.mockRestore();
+  });
+
+  it('writes nothing for the old text of a record amended while it was being embedded', async () => {
+    const s = await setup('re-race-amend');
+    const tile = await issuedDefect(s, 'Ensuite tiles', 'Floor tiles are lipping at the doorway.');
+    const embed = duringEmbed(async () => {
+      const disputed = await s.sub.browser.post(
+        `${s.base}/defects/${tile.id}/transition`,
+        { action: 'dispute', reason: 'The substrate was out of level when we started.' },
+        { 'if-match': tile.etag },
+      );
+      expect(disputed.statusCode, disputed.body).toBe(200);
+    });
+
+    expect(await reindex(s, 'defect', tile.id)).toEqual({ indexed: 0, unchanged: 0 });
+    expect(await chunkRows(s, 'defect')).toEqual([]);
+    expect(await entryCount(s, 'defect')).toBe(0);
+    embed.mockRestore();
+
+    // The next run (the amendment's own job) stores the text the record has now, and only that.
+    expect(await reindex(s, 'defect', tile.id)).toEqual({ indexed: 1, unchanged: 0 });
+    const rows = await chunkRows(s, 'defect');
+    expect(rows).toHaveLength(1);
+    const a = (await ask(s.pm.browser, s, 'Why was the substrate out of level?')).json();
+    expect(a.found).toBe(true);
+    expect(a.citations[0]).toMatchObject({ sourceId: tile.id, revision: 'disputed' });
+  });
+
   it('gives the worker an actor that holds no permission and retrieves from no scope', async () => {
     const s = await setup('re-actor');
     const registry = buildRegistry(FOUNDATION_PERMISSIONS, ...MODULE_PERMISSIONS);

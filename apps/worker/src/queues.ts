@@ -3,10 +3,19 @@ import type { Database } from '@archova/kernel';
 import type { Publish, RelayedEvent } from './relay';
 import type pg from 'pg';
 import { fanOut, runTenantJob, type TenantJob } from './scheduler';
-import { loadEvent, subscribersFor, subscriberJobId, type Subscriber } from './subscribers';
+import {
+  loadEvent,
+  subscribersFor,
+  subscriberJobId,
+  type Subscriber,
+  type SubscriberQueue,
+  type SubscriberRoute,
+} from './subscribers';
 
 export const EVENTS_QUEUE = 'events';
 export const SUBSCRIBERS_QUEUE = 'subscribers';
+/** Subscribers that run in the ai-worker (`src/ai.ts`): the dispatcher fills it, only that role empties it. */
+export const AI_SUBSCRIBERS_QUEUE = 'subscribers-ai';
 export const SCHEDULED_QUEUE = 'scheduled';
 export const MAINTENANCE_QUEUE = 'maintenance';
 
@@ -39,24 +48,58 @@ export function eventsPublisher(queue: Queue): Publish {
 /** Dispatcher: fans an event out to each matching subscriber as its own job (`jobId = eventId.subscriber`). */
 export async function dispatch(
   event: RelayedEvent,
-  registry: readonly Subscriber[],
+  registry: readonly SubscriberRoute[],
   subscribers: Pick<Queue, 'addBulk'>,
+  /** The queues of other roles, by `SubscriberRoute.queue`. */
+  routed: Partial<Record<SubscriberQueue, Pick<Queue, 'addBulk'>>> = {},
 ): Promise<number> {
   const targets = subscribersFor(registry, event.type);
-  if (targets.length === 0) return 0;
-  await subscribers.addBulk(
-    targets.map((s) => ({
-      name: s.name,
-      data: event,
-      opts: {
-        jobId: subscriberJobId(event.id, s.name),
-        attempts: 5,
-        backoff: { type: 'exponential' as const, delay: 2000 },
-        ...KEEP,
-      },
-    })),
-  );
+  const byQueue = new Map<Pick<Queue, 'addBulk'>, SubscriberRoute[]>();
+  for (const s of targets) {
+    const queue = s.queue ? routed[s.queue] : subscribers;
+    if (!queue) throw new Error(`No queue for subscriber ${s.name} (${s.queue})`);
+    byQueue.set(queue, [...(byQueue.get(queue) ?? []), s]);
+  }
+  for (const [queue, routes] of byQueue) {
+    await queue.addBulk(
+      routes.map((s) => ({
+        name: s.name,
+        data: event,
+        opts: {
+          jobId: subscriberJobId(event.id, s.name),
+          attempts: 5,
+          backoff: { type: 'exponential' as const, delay: 2000 },
+          ...KEEP,
+        },
+      })),
+    );
+  }
   return targets.length;
+}
+
+/**
+ * Runs the subscribers of one queue: each job reads its event as the tenant, then hands it to the subscriber named
+ * on the job. Shared by the default worker and the ai-worker, which consume different queues.
+ */
+export function subscriberRunner(
+  connection: ConnectionOptions,
+  queue: string,
+  database: Database,
+  registry: readonly Subscriber[],
+  concurrency: number,
+) {
+  const byName = new Map(registry.map((s) => [s.name, s]));
+  return new Worker<RelayedEvent>(
+    queue,
+    async (job) => {
+      const s = byName.get(job.name);
+      if (!s) throw new Error(`No subscriber ${job.name}`);
+      const event = await loadEvent(database, job.data.orgId, job.data.id);
+      if (!event) throw new Error(`Event ${job.data.id} not found`);
+      await s.handle(event, { database });
+    },
+    { connection, concurrency },
+  );
 }
 
 /** Per-org jobs keep their ids (so a re-delivered fan-out is a no-op) and retry with backoff. */
@@ -89,28 +132,22 @@ export function startQueues(
     platform: pg.Pool;
     jobs: readonly TenantJob[];
     log: (msg: string, o: object) => void;
+    /** Subscribers whose handlers run in another role: routed by the dispatcher, never run here. */
+    routes?: readonly SubscriberRoute[];
   },
 ): { publish: Publish; running: Running } {
   const connection = connectionFor(redisUrl);
   const events = new Queue(EVENTS_QUEUE, { connection });
   const subscribers = new Queue(SUBSCRIBERS_QUEUE, { connection });
+  // The ai-worker's subscribers are only routed from here: their handlers (and the AI dependencies) live in its image.
+  const aiSubscribers = new Queue(AI_SUBSCRIBERS_QUEUE, { connection });
+  const routes: readonly SubscriberRoute[] = [...registry, ...(scheduled.routes ?? [])];
   const dispatcher = new Worker<RelayedEvent>(
     EVENTS_QUEUE,
-    (job) => dispatch(job.data, registry, subscribers),
+    (job) => dispatch(job.data, routes, subscribers, { ai: aiSubscribers }),
     { connection, concurrency: 20 },
   );
-  const byName = new Map(registry.map((s) => [s.name, s]));
-  const runner = new Worker<RelayedEvent>(
-    SUBSCRIBERS_QUEUE,
-    async (job) => {
-      const s = byName.get(job.name);
-      if (!s) throw new Error(`No subscriber ${job.name}`);
-      const event = await loadEvent(database, job.data.orgId, job.data.id);
-      if (!event) throw new Error(`Event ${job.data.id} not found`);
-      await s.handle(event, { database });
-    },
-    { connection, concurrency: 10 },
-  );
+  const runner = subscriberRunner(connection, SUBSCRIBERS_QUEUE, database, registry, 10);
 
   // Scheduled jobs: one repeatable fan-out per job (a fixed scheduler id keeps it to one instance cluster-wide),
   // then one maintenance job per org that runs as that org.
@@ -161,6 +198,7 @@ export function startQueues(
         await Promise.all([
           events.close(),
           subscribers.close(),
+          aiSubscribers.close(),
           scheduler.close(),
           maintenance.close(),
         ]);

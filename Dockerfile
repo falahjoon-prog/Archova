@@ -66,24 +66,29 @@ COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
 COPY --from=build /repo/apps/worker/dist /app/dist
 CMD ["--enable-source-maps", "dist/main.js"]
 
-# --- ai-worker (the worker with WORKER_ROLE=ai: renders drawing pages for Nova's vision pass) ------------------------
-# pdf.js needs a native canvas (@napi-rs/canvas) and its fonts, which only this image carries; the api and worker
-# images stay free of them. The packages sit outside the bundle (apps/worker/build.mjs), at the lockfile's versions.
+# --- ai-worker (apps/worker's second entry, dist/ai.js: Nova's background work, WORKER_ROLE=ai) ------------------------
+# It loads the modules as the api does, so it carries what the api image carries (argon2 for identity, pdf.js) and, for
+# rendering drawing pages, a native canvas and its fonts; the api and worker images stay free of the canvas, and the
+# worker image of all three. The packages sit outside the bundle (apps/worker/build.mjs), at the lockfile's versions.
 FROM build AS ai-worker-deps
 WORKDIR /out/ai-worker
 RUN CANVAS=$(node -p "require('/repo/node_modules/.pnpm/node_modules/@napi-rs/canvas/package.json').version") \
  && PDFJS=$(node -p "require('/repo/modules/ai/node_modules/pdfjs-dist/package.json').version") \
+ && ARGON2=$(node -p "require('/repo/apps/api/node_modules/@node-rs/argon2/package.json').version") \
  && echo '{"name":"ai-worker-runtime","private":true,"type":"module"}' > package.json \
- && npm install --omit=dev --no-audit --no-fund "@napi-rs/canvas@${CANVAS}" "pdfjs-dist@${PDFJS}" \
+ && npm install --omit=dev --no-audit --no-fund "@napi-rs/canvas@${CANVAS}" "pdfjs-dist@${PDFJS}" "@node-rs/argon2@${ARGON2}" \
  && node --input-type=commonjs -e "require('@napi-rs/canvas').createCanvas(8, 8).toBuffer('image/png')" \
- && cp -r /repo/apps/worker/dist ./dist
+ && cp -r /repo/apps/worker/dist ./dist \
+ && (DATABASE_URL='' node dist/ai.js > start.log 2>&1 || true) \
+ && grep -q 'Missing environment variable DATABASE_URL' start.log \
+ && rm start.log
 
 FROM ${RUNTIME_IMAGE} AS ai-worker
 WORKDIR /app
 ENV NODE_ENV=production NODE_EXTRA_CA_CERTS=/etc/ssl/rds-ca.pem
 COPY --from=build /out/rds-ca.pem /etc/ssl/rds-ca.pem
 COPY --from=ai-worker-deps /out/ai-worker /app
-CMD ["--enable-source-maps", "dist/main.js"]
+CMD ["--enable-source-maps", "dist/ai.js"]
 
 # --- migrate (one-off ECS tasks: tools/db/migrate.js as app_migrator; tools/db/roles.js as the master user) ------
 FROM ${RUNTIME_IMAGE} AS migrate

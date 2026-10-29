@@ -2,7 +2,11 @@
 # added by DevOps on top of this.
 name: CI
 
-# Docs-only pull requests skip this workflow (Actions minutes); every push to main still runs it.
+# Docs-only pull requests skip this workflow (Actions minutes); every push to main still runs it. On a pull request,
+# turbo lints, typechecks, tests and builds only the packages the diff touches (and what depends on them), the Nova
+# evals run only when Nova's code changed, and the Postgres integration job runs only when backend code or the
+# database changed. A change to the lockfile, root config or this workflow runs everything. Skipped jobs report as
+# passed, so they do not block a required check.
 on:
   pull_request:
     paths-ignore: ['docs/**', '**/*.md']
@@ -17,12 +21,44 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: What changed
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      all: ${{ steps.scope.outputs.all }}
+      backend: ${{ steps.scope.outputs.backend }}
+      ai: ${{ steps.scope.outputs.ai }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -z "$BASE_SHA" ]; then
+            echo "all=true" >> "$GITHUB_OUTPUT"; echo "backend=true" >> "$GITHUB_OUTPUT"; echo "ai=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE_SHA"...HEAD)
+          echo "$files"
+          any() { echo "$files" | grep -Eq "$1" && echo true || echo false; }
+          # Root config, the lockfile and this workflow can change any package: run everything.
+          echo "all=$(any '^(package\.json|pnpm-lock\.yaml|pnpm-workspace\.yaml|turbo\.json|\.nvmrc|tsconfig[^/]*\.json|\.github/workflows/ci\.yml|packages/config-[^/]+/)')" >> "$GITHUB_OUTPUT"
+          # Anything the api, worker or realtime service builds on, and the database.
+          echo "backend=$(any '^(modules/|apps/(api|worker|realtime)/|db/|packages/(kernel|domain|compose|contracts|time|testing)/)')" >> "$GITHUB_OUTPUT"
+          echo "ai=$(any '^(modules/ai/|packages/ai-prompts/)')" >> "$GITHUB_OUTPUT"
+
   checks:
     name: Lint, typecheck, unit tests, build
+    needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -40,12 +76,23 @@ jobs:
       - name: Workspace boundaries
         run: pnpm check:boundaries
       - name: Nova evals (fake provider; schema, citation and safety bars gate, ai/06 §4)
+        if: needs.changes.outputs.all == 'true' || needs.changes.outputs.ai == 'true' || github.event_name == 'push'
         run: pnpm --filter @archova/mod-ai eval
       - name: Lint, typecheck, unit tests, build
-        run: pnpm turbo run lint typecheck test build
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          ALL: ${{ needs.changes.outputs.all }}
+        run: |
+          if [ -n "$BASE_SHA" ] && [ "$ALL" != "true" ]; then
+            pnpm turbo run lint typecheck test build --filter="...[$BASE_SHA]"
+          else
+            pnpm turbo run lint typecheck test build
+          fi
 
   integration:
     name: Integration tests (Postgres + Valkey, RLS on)
+    needs: changes
+    if: github.event_name == 'push' || needs.changes.outputs.all == 'true' || needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     services:

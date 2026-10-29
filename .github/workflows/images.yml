@@ -105,7 +105,7 @@ jobs:
 
   a11y:
     name: Accessibility (axe, serious and critical fail)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04 # Playwright 1.56 has no browser for the 26.04 that ubuntu-latest now points to
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
