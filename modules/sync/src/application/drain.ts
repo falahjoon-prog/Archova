@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, count, eq, gt, isNull } from 'drizzle-orm';
+import { and, count, eq, gt, isNull, sql } from 'drizzle-orm';
 import type { DrainGrant, SyncPushRequest, SyncPushResponse } from '@archova/contracts';
 import { decodeId, encodeId } from '@archova/domain';
 import {
@@ -288,6 +288,10 @@ export function createDrainService(deps: DrainDeps) {
         )
         .limit(1);
       if (!grant) throw invalid();
+      // Two requests for the same person and scope take turns, so the queue cap cannot be passed together.
+      await scope.tx.execute(
+        sql`select pg_advisory_xact_lock(hashtextextended(${`${grant.userId}:${grant.projectId ?? ''}:${grant.module ?? ''}`}, 0))`,
+      );
       // Counted by grant, which exists in the table, not by whatever token a caller made up.
       if (!perGrant.hit(grant.id)) throw tooMany();
 

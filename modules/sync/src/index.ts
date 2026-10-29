@@ -28,12 +28,7 @@ export function createSyncModule(services: KernelServices, deps: SyncDeps) {
   const drain = createDrainService({ database: services.database, commands: deps.commands });
   return {
     definition: defineModule({ name: 'sync', permissions: SYNC_PERMISSIONS }),
-    routes: syncRoutes(
-      services.database,
-      pull,
-      push,
-      createReviewService({ commands: deps.commands }),
-    ),
+    routes: syncRoutes(services.database, pull, push, review),
     /** `drain`: the late-submission queue (X38). The API pipeline calls `handle` for a drain-grant Bearer on `syncPush`. */
     api: { drain, review },
   };
