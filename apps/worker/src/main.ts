@@ -1,7 +1,7 @@
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
-import { AI_REINDEX_ROUTE } from './ai/declaration';
+import { AI_ROUTES } from './ai/declaration';
 import { loadConfig, workerRole } from './config';
 import { startQueues } from './queues';
 import { runRelay } from './relay';
@@ -15,7 +15,7 @@ import type { Subscriber } from './subscribers';
 /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
 const SUBSCRIBERS: Subscriber[] = [];
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
-const ROUTES = [AI_REINDEX_ROUTE];
+const ROUTES = AI_ROUTES;
 
 async function main() {
   const log = createLogger('worker');

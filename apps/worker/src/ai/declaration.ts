@@ -11,3 +11,22 @@ export const AI_REINDEX_ROUTE: SubscriberRoute = {
   types: ['rfis.rfi.*', 'defects.defect.*', 'diary.entry.*'],
   queue: 'ai',
 };
+
+export const AI_RESTAMP_SUBSCRIBER = 'ai.restamp-documents';
+
+/**
+ * The same list as `DOCUMENT_EVENT_TYPES` in mod-ai (a unit test compares them): events that change which revision of
+ * a stored document or sheet is current, or the folder (and so the access scope) a document sits in.
+ */
+export const AI_RESTAMP_ROUTE: SubscriberRoute = {
+  name: AI_RESTAMP_SUBSCRIBER,
+  types: [
+    'documents.document.updated.v1',
+    'documents.document.revision.added.v1',
+    'documents.drawing.revision.published.v1',
+  ],
+  queue: 'ai',
+};
+
+/** Everything the dispatcher routes to the ai-worker. */
+export const AI_ROUTES: readonly SubscriberRoute[] = [AI_REINDEX_ROUTE, AI_RESTAMP_ROUTE];

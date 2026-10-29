@@ -38,7 +38,8 @@ export interface ProjectIndexDeps {
   gateway: Pick<Gateway, 'embed' | 'ocr'>;
   readFile: (scope: TenantScope, fileId: string, maxBytes: number) => Promise<ReadableFile>;
   assert: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<void>;
-  sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
+  /** `documents.api.aiSources`: with `only`, the revisions of one document or drawing sheet. */
+  sources: (scope: TenantScope, projectId: string, only?: string) => Promise<SourceRevision[]>;
   /** `rfis.api.aiSources`: the sent RFIs with their responses. */
   rfiSources: (scope: TenantScope, projectId: string, only?: string) => Promise<RfiSource[]>;
   /** `defects.api.aiSources`: the issued defects with the notes on their history. */
@@ -229,11 +230,12 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     report.diaryIndexed = diaryCounts.indexed;
     report.diaryUnchanged = diaryCounts.unchanged;
 
+    // Read the register again: the run took a while, and reconciling against its starting snapshot would put back
+    // the access scope, status or text of a record that has changed since.
     await database.withTenantTx(ctx, async (scope) => {
-      await reconcile(scope, projectId, sources);
-      await reconcileRecords(scope, projectId, 'rfi', rfiPages);
-      await reconcileRecords(scope, projectId, 'defect', defectPages);
-      await reconcileRecords(scope, projectId, 'diary', diaryPages);
+      await reconcile(scope, projectId, await deps.sources(scope, projectId));
+      for (const kind of ['rfi', 'defect', 'diary'] as const)
+        await reconcileRecords(scope, projectId, kind, await recordPages(scope, projectId, kind));
     });
     return report;
   }
@@ -301,7 +303,16 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
         pieces.map((p) => `${header}\n${p.text}`),
         { purpose: 'document', feature: 'ask', projectId },
       );
-      await database.withTenantTx(ctx, async (scope) => {
+      const written = await database.withTenantTx(ctx, async (scope) => {
+        // Reading and embedding take a while, and the document can change in them: deleted, replaced by a newer
+        // revision, or moved to a private folder. The register is read again here, in the transaction that inserts,
+        // so only a revision that is still listed is stored, with the status and access scope it has now.
+        const live = await deps.sources(scope, projectId, rev.sourceId);
+        const now = live.find((l) => l.revisionId === rev.revisionId);
+        if (!now) {
+          await reconcile(scope, projectId, live, rev.sourceId);
+          return false;
+        }
         await scope.tx
           .insert(chunks)
           .values(
@@ -320,8 +331,8 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
               text: p.text,
               embedding: vectors[i]!,
               embeddingModel: model,
-              accessScope: rev.accessScope,
-              status: rev.status,
+              accessScope: now.accessScope,
+              status: now.status,
               pipelineVersion: PIPELINE_VERSION,
             })),
           )
@@ -329,7 +340,12 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
         await recordEntries(scope, projectId, [
           { rev, outcome: 'indexed', pages: pages.length, chunks: pieces.length },
         ]);
+        return true;
       });
+      if (!written) continue;
+      // A change that commits between that read and this commit is caught here; its own event reaches
+      // `restampSource` only after it commits, and one of the two always sees the other's write.
+      await restampSource(ctx, projectId, rev.sourceId);
       report.indexed++;
       report.chunks += pieces.length;
     }
@@ -476,13 +492,20 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
    * old one's chunks, a document moved to another folder takes its new access scope, deleted records and older
    * pipeline versions drop out.
    */
-  async function reconcile(scope: TenantScope, projectId: string, sources: SourceRevision[]) {
+  async function reconcile(
+    scope: TenantScope,
+    projectId: string,
+    sources: SourceRevision[],
+    /** Reconcile one document or sheet instead of the whole project. */
+    onlySource?: string,
+  ) {
     const live = sources.map((s) => s.revisionId);
     // Only what `documents` supplies: induction chunks (induction-qa.ts) are kept in step by their own versions.
     const inProject = and(
       eq(chunks.orgId, scope.ctx.orgId),
       eq(chunks.projectId, projectId),
       inArray(chunks.sourceType, DOCUMENT_SOURCES),
+      onlySource ? eq(chunks.sourceId, onlySource) : undefined,
     );
     await scope.tx
       .delete(chunks)
@@ -494,8 +517,10 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       .delete(indexEntries)
       .where(
         and(
+          eq(indexEntries.orgId, scope.ctx.orgId),
           eq(indexEntries.projectId, projectId),
           inArray(indexEntries.sourceType, DOCUMENT_SOURCES),
+          onlySource ? eq(indexEntries.sourceId, onlySource) : undefined,
           live.length ? notInArray(indexEntries.revisionId, live) : sql`true`,
         ),
       );
@@ -520,12 +545,12 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     }
   }
 
-  /** The page of one record, or none when it is not a source (a draft, voided, deleted or not found). */
+  /** The page of one record (or of every record of the kind), none for one that is not a source (a draft, voided, deleted). */
   async function recordPages(
     scope: TenantScope,
     projectId: string,
     kind: RecordKind,
-    recordId: string,
+    recordId?: string,
   ): Promise<RecordPage[]> {
     if (kind === 'rfi') return (await deps.rfiSources(scope, projectId, recordId)).map(rfiPage);
     if (kind === 'defect')
@@ -594,7 +619,23 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     });
   }
 
-  return { indexProject, reindexRecord, dropStaleRecord };
+  /**
+   * Brings one document's or drawing sheet's stored text in line with the register after it changed, with no model
+   * call: chunks of a revision that is gone drop out, a superseded revision stops being current, and a document that
+   * moved to another folder takes that folder's access scope, so what it says is retrievable only by those who can
+   * open it now. New text is not embedded here (the full index does that). Same caller rules as `reindexRecord`.
+   */
+  async function restampSource(
+    ctx: TenantContext,
+    projectId: string,
+    sourceId: string,
+  ): Promise<void> {
+    await database.withTenantTx(ctx, async (scope) => {
+      await reconcile(scope, projectId, await deps.sources(scope, projectId, sourceId), sourceId);
+    });
+  }
+
+  return { indexProject, reindexRecord, dropStaleRecord, restampSource };
 }
 
 export type ProjectIndexService = ReturnType<typeof createProjectIndexService>;

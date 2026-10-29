@@ -1,7 +1,7 @@
 import { build } from 'esbuild';
 import { describe, expect, it, vi } from 'vitest';
-import { RECORD_EVENT_TYPES } from '@archova/mod-ai';
-import { AI_REINDEX_ROUTE } from '../../src/ai/declaration';
+import { DOCUMENT_EVENT_TYPES, RECORD_EVENT_TYPES } from '@archova/mod-ai';
+import { AI_REINDEX_ROUTE, AI_RESTAMP_ROUTE, AI_ROUTES } from '../../src/ai/declaration';
 import { dispatch } from '../../src/queues';
 import type { Subscriber } from '../../src/subscribers';
 
@@ -10,6 +10,28 @@ const audit: Subscriber = { name: 'audit', types: ['*'], handle: async () => {} 
 describe('the ai re-index route', () => {
   it('asks for the events the ai module says change a record', () => {
     expect([...AI_REINDEX_ROUTE.types]).toEqual([...RECORD_EVENT_TYPES]);
+  });
+
+  it('asks for the events the ai module says change a stored document or sheet', () => {
+    expect([...AI_RESTAMP_ROUTE.types]).toEqual([...DOCUMENT_EVENT_TYPES]);
+  });
+
+  it('sends every ai route to the ai queue, so the default worker never runs one', () => {
+    expect(AI_ROUTES.map((r) => r.queue)).toEqual(['ai', 'ai']);
+    expect(new Set(AI_ROUTES.map((r) => r.name)).size).toBe(AI_ROUTES.length);
+  });
+
+  it('sends a document move or a drawing publish to the restamp, and not to the re-index', async () => {
+    const def = { addBulk: vi.fn(async (_jobs: unknown[]) => []) };
+    const ai = { addBulk: vi.fn(async (_jobs: unknown[]) => []) };
+    for (const type of DOCUMENT_EVENT_TYPES) {
+      ai.addBulk.mockClear();
+      expect(await dispatch({ id: 'e9', orgId: 'o1', type }, AI_ROUTES, def, { ai })).toBe(1);
+      expect(ai.addBulk.mock.calls[0]![0]).toMatchObject([
+        { name: 'ai.restamp-documents', opts: { jobId: 'e9.ai.restamp-documents' } },
+      ]);
+    }
+    expect(def.addBulk).not.toHaveBeenCalled();
   });
 
   it('sends record events to the ai queue only, and leaves every other event to the default queue', async () => {

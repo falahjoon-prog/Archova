@@ -80,6 +80,7 @@ export type { IndexReport, SourceRevision } from './application/project-index';
 export type { DefectSource } from './domain/defect-source';
 export { RECORD_EVENT_TYPES, recordKindOf, type RecordKind } from './domain/record-events';
 export { AI_INDEX_ACTOR } from './domain/index-actor';
+export { DOCUMENT_EVENT_TYPES, documentSourceOf } from './domain/document-events';
 export type { DiarySource } from './domain/diary-source';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
@@ -183,7 +184,7 @@ export function createAiModule(
     /** access.can: like `assert`, but answers instead of throwing (who may see a suggestion). */
     can: (scope: TenantScope, key: string, target: { projectId: string }) => Promise<boolean>;
     /** documents.api.aiSources: what to index, with access scopes. */
-    sources: (scope: TenantScope, projectId: string) => Promise<SourceRevision[]>;
+    sources: (scope: TenantScope, projectId: string, only?: string) => Promise<SourceRevision[]>;
     /** documents.api.aiAccessScopes: what the caller may retrieve. */
     accessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
     /** rfis.api.aiSources: sent RFIs with their responses, to index for Ask. */
@@ -411,6 +412,7 @@ export function createAiModule(
        */
       reindexRecord: projectIndex.reindexRecord,
       dropStaleRecord: projectIndex.dropStaleRecord,
+      restampSource: projectIndex.restampSource,
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
