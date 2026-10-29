@@ -9,6 +9,7 @@ import { Button, useTheme } from '@archova/ui-native';
 import { queries } from '../../../lib/api';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
 import { listDefects } from '../../defects';
+import { supersededNotice } from '../banner';
 import { pinsOnRevision, type SheetPin } from '../pins';
 import {
   fitViewport,
@@ -215,6 +216,7 @@ export function DrawingViewerScreen({
   projectId: string;
   revisionId: string;
 }) {
+  const t = useTheme();
   const router = useRouter();
   const { orgId } = useCurrentOrg();
   const device = useDeviceData();
@@ -223,6 +225,11 @@ export function DrawingViewerScreen({
     [device.status === 'ready' ? device.data : null, projectId],
   );
   const pins = pinsOnRevision(defects.value ?? [], revisionId);
+  const revision = useQuery({
+    ...queries.drawingRevision(orgId ?? '', projectId, revisionId),
+    enabled: orgId !== null,
+  });
+  const notice = revision.data ? supersededNotice(revision.data) : null;
   const tiles = useQuery({
     ...queries.drawingTiles(orgId ?? '', projectId, revisionId),
     enabled: orgId !== null,
@@ -251,13 +258,37 @@ export function DrawingViewerScreen({
     );
   }
   return (
-    <SheetCanvas
-      pyramid={{ width: d.width, height: d.height, tileSize: d.tileSize ?? 256, levels: d.levels }}
-      revisionId={revisionId}
-      overviewUrl={d.overviewUrl}
-      tileUrlTemplate={d.tileUrlTemplate}
-      pins={pins}
-      onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
-    />
+    <View style={{ flex: 1 }}>
+      {notice ? (
+        <View
+          accessibilityRole="alert"
+          style={{ padding: t.space[3], gap: t.space[2], backgroundColor: t.color.statusWarning }}
+        >
+          <Text style={{ color: t.color.surface, fontWeight: '700' }}>{notice.message}</Text>
+          {notice.latestRevisionId ? (
+            <Button
+              label="Open latest"
+              variant="secondary"
+              onPress={() =>
+                router.replace(mobileRoutes.drawingSheet(projectId, notice.latestRevisionId))
+              }
+            />
+          ) : null}
+        </View>
+      ) : null}
+      <SheetCanvas
+        pyramid={{
+          width: d.width,
+          height: d.height,
+          tileSize: d.tileSize ?? 256,
+          levels: d.levels,
+        }}
+        revisionId={revisionId}
+        overviewUrl={d.overviewUrl}
+        tileUrlTemplate={d.tileUrlTemplate}
+        pins={pins}
+        onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
+      />
+    </View>
   );
 }
