@@ -36,3 +36,4 @@ export function createSyncModule(services: KernelServices, deps: SyncDeps) {
 
 export { isDrainToken } from './application/drain';
 export { SYNC_PERMISSIONS } from './permissions';
+export { purgeSyncHolds, SYNC_RETENTION_DAYS, type SyncPurgeResult } from './application/retention';

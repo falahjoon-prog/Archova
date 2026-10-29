@@ -546,6 +546,9 @@ importers:
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
+      '@archova/mod-sync':
+        specifier: workspace:*
+        version: link:../../modules/sync
       bullmq:
         specifier: ^5.58.0
         version: 5.81.5
