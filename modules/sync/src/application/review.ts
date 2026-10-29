@@ -48,6 +48,9 @@ export function createReviewService(deps: { commands: readonly SyncCommand[] }) 
     if (!row) throw new AppError('late_submission.not_found');
     if (row.status !== 'pending')
       throw new AppError('late_submission.decided', `That change was already ${row.status}.`);
+    // Nobody decides on their own late change, whatever they hold now.
+    if (row.userId === scope.ctx.userId)
+      throw new AppError('access.denied', 'You can not decide on a change you sent yourself.');
     return row;
   }
 

@@ -497,7 +497,10 @@ export function createDefectService(deps: DefectsDeps) {
     await recordEvent(scope, row, {
       action: input.action,
       from: defect.status,
-      note: [input.reason, input.lateNote].filter(Boolean).join(' — ') || null,
+      // The server's own line first; whatever the sender wrote is added after it and labelled as theirs.
+      note: input.lateNote
+        ? `${input.lateNote}${input.reason ? `. The sender wrote: ${input.reason}` : ''}`
+        : (input.reason ?? null),
       fileIds,
     });
     await changed(scope, row);

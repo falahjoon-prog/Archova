@@ -7056,7 +7056,9 @@ components:
         payload:
           type: object
           additionalProperties: true
-          description: What the sender asked for; dropped once decided.
+          description: >-
+            What the sender asked for, dropped once decided. Any text in it is the sender's own words: show it as
+            plain text, marked as theirs, never as part of the system's description of the change.
         decidedBy: { type: [string, 'null'] }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }

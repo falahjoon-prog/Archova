@@ -4846,7 +4846,7 @@ export interface components {
             receivedAt: string;
             /** @enum {string} */
             status: "pending" | "accepted" | "rejected";
-            /** @description What the sender asked for; dropped once decided. */
+            /** @description What the sender asked for, dropped once decided. Any text in it is the sender's own words: show it as plain text, marked as theirs, never as part of the system's description of the change. */
             payload?: {
                 [key: string]: unknown;
             };

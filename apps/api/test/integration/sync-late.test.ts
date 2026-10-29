@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
+import { TRIAL_ENTITLEMENTS } from '@archova/mod-billing';
 import {
   API_HOST,
   addMember,
@@ -22,7 +23,7 @@ beforeAll(async () => {
 });
 afterAll(() => t.close());
 
-const TRIAL = { plan: 'trial', state: 'trialing' as const, modules: [] as string[], limits: {} };
+const TRIAL = TRIAL_ENTITLEMENTS;
 
 /** A builder (admin), a subcontractor who sends a change after losing access, and a defect for them to act on. */
 async function world(label: string) {
@@ -187,6 +188,11 @@ describe('late submissions: deciding (X38)', () => {
     const accept = await w.pm.browser.post(`${w.base}/late-submissions/${q.items[0]!.id}/accept`);
     expect(accept.statusCode).toBe(412);
     expect((await w.queue()).pendingCount).toBe(1);
+    // Nothing was claimed and the payload is still there for the admin to read.
+    expect(
+      await w.rows(sql`select 1 from sync.mutations where mutation_id = ${stale.m.mutationId}`),
+    ).toHaveLength(0);
+    expect((await w.queue()).items[0]!.payload).toBeDefined();
 
     const rejected = await w.pm.browser.post(
       `${w.base}/late-submissions/${q.items[0]!.id}/reject`,
@@ -236,5 +242,58 @@ describe('late submissions: deciding (X38)', () => {
       expect((refused as { code?: string }).code).toBe('org.read_only');
     }
     expect((await w.queue()).pendingCount).toBe(1);
+  });
+
+  it("does not let the sender decide on their own change, or an admin without the action's permission", async () => {
+    const w = await world('late-perm');
+    const g = await w.grant(w.project.id);
+    await w.sendLate(g.token, w.project.id);
+    const q = await w.queue();
+    const id = q.items[0]!.id;
+    const claimed = () =>
+      w.rows(
+        sql`select 1 from sync.mutations where command = 'defects.transition' and status = 'applied' and mutation_id in (select mutation_id from sync.late_submissions)`,
+      );
+
+    // A second admin who may review the queue but whose close permission has been taken away.
+    const adm = await signUp(t.app, 'late-perm-adm');
+    await addMember(w.pm.browser, w.org.id, w.project.id, adm.email, 'Project Admin', 'Admin Co');
+    // On the builder's side, so the defect is visible to them and only the permission is in question.
+    await w.rows(sql`update platform.companies set type = 'builder' where name = 'Admin Co'`);
+    await w.rows(sql`insert into access.project_member_overrides (id, org_id, project_member_id, permission_key, effect)
+      select gen_random_uuid(), org_id, id, 'defects.defects.close', 'deny' from platform.project_members where user_id = ${decodeId('user', adm.userId)!}`);
+    // They can see the queue (the review permission) ...
+    expect((await adm.browser.get(`${w.base}/late-submissions`)).statusCode).toBe(200);
+    // ... but accepting runs the action's own permission as them, and that is refused.
+    const denied = await t.database
+      .withTenantTx(
+        { ...w.ctx, userId: decodeId('user', adm.userId)!, orgRole: 'member' },
+        (scope) =>
+          t.modules.sync.api.review.accept(
+            scope,
+            decodeId('project', w.project.id)!,
+            decodeId('lateSubmission', id)!,
+          ),
+      )
+      .catch((e: { code?: string }) => e);
+    expect((denied as { code?: string }).code).toBe('access.denied');
+    expect(await claimed()).toHaveLength(0);
+    expect((await w.queue()).pendingCount).toBe(1);
+    expect((await w.pm.browser.get(`${w.base}/defects/${w.defectId}`)).json().defect.version).toBe(
+      3,
+    );
+
+    // The sender, even holding the review permission, cannot accept or reject their own change.
+    const own = await t.database
+      .withTenantTx({ ...w.ctx, userId: decodeId('user', w.sub.userId)! }, (scope) =>
+        t.modules.sync.api.review.reject(
+          scope,
+          decodeId('project', w.project.id)!,
+          decodeId('lateSubmission', id)!,
+          undefined,
+        ),
+      )
+      .catch((e: { code?: string }) => e);
+    expect((own as { code?: string }).code).toBe('access.denied');
   });
 });
