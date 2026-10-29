@@ -26,10 +26,29 @@ export interface QueueAge {
 
 export const LAG_ALERT_MS = 5 * 60_000;
 
+/**
+ * How many jobs of one state are read to find the oldest. Position does not say: the delayed set is ordered by when each
+ * retry next runs, and a retry promoted from it joins the back of the waiting list with its first timestamp. A backlog
+ * longer than this is far past the alert already.
+ */
+const SCAN = 500;
+
+/** The earliest creation time among the first `SCAN` jobs in one state, if there are any. */
+async function oldestIn(
+  queue: AgeQueue,
+  state: 'waiting' | 'delayed',
+): Promise<number | undefined> {
+  const jobs = await queue.getJobs([state], 0, SCAN - 1, true);
+  return jobs.length ? Math.min(...jobs.map((j) => j.timestamp)) : undefined;
+}
+
 export async function measureQueue(queue: AgeQueue, now: number): Promise<QueueAge> {
   const counts = await queue.getJobCounts('waiting', 'delayed', 'active');
-  const oldest = await queue.getJobs(['waiting', 'delayed'], 0, 0, true);
-  const created = oldest.map((j) => j.timestamp);
+  // One state at a time: a combined read returns a list, not the oldest of the two, and a fresh waiting job would hide
+  // an old one that is waiting for its retry.
+  const created = [await oldestIn(queue, 'waiting'), await oldestIn(queue, 'delayed')].filter(
+    (t): t is number => t !== undefined,
+  );
   return {
     queue: queue.name,
     waiting: counts.waiting ?? 0,

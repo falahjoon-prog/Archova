@@ -110,15 +110,21 @@ describe('the nightly sweep', () => {
 
 describe('the queue age report', () => {
   const NOW = 1_000_000_000;
-  const fakeQueue = (over: Partial<AgeQueue> & { timestamps?: number[] } = {}): AgeQueue => ({
+  const fakeQueue = (
+    over: Partial<AgeQueue> & { waiting?: number[]; delayed?: number[] } = {},
+  ): AgeQueue => ({
     name: 'subscribers-ai',
     getJobCounts: async () => ({ waiting: 4, delayed: 1, active: 2 }),
-    getJobs: async () => (over.timestamps ?? [NOW - 90_000]).map((timestamp) => ({ timestamp })),
+    // Jobs of the one state asked for, in the order that state keeps them.
+    getJobs: async (types) =>
+      (types[0] === 'waiting' ? (over.waiting ?? [NOW - 90_000]) : (over.delayed ?? [])).map(
+        (timestamp) => ({ timestamp }),
+      ),
     ...over,
   });
 
   it('reports counts and the age of the oldest job waiting or retrying', async () => {
-    expect(await measureQueue(fakeQueue({ timestamps: [NOW - 90_000] }), NOW)).toEqual({
+    expect(await measureQueue(fakeQueue({ waiting: [NOW - 90_000] }), NOW)).toEqual({
       queue: 'subscribers-ai',
       waiting: 4,
       retrying: 1,
@@ -127,8 +133,21 @@ describe('the queue age report', () => {
     });
   });
 
+  it('takes the oldest job whichever state holds it, and wherever it sits in that state', async () => {
+    const fresh = NOW - 1_000;
+    const old = NOW - 20 * 60_000;
+    const age = async (waiting: number[], delayed: number[]) =>
+      (await measureQueue(fakeQueue({ waiting, delayed }), NOW)).oldestMs;
+    // A fresh waiting job does not hide an old one waiting for its retry, nor the other way round.
+    expect(await age([fresh], [old])).toBe(20 * 60_000);
+    expect(await age([old], [fresh])).toBe(20 * 60_000);
+    // A retry promoted from the delayed set sits behind newer jobs with its first timestamp.
+    expect(await age([fresh, fresh - 5, old], [])).toBe(20 * 60_000);
+    expect(await age([], [fresh, old])).toBe(20 * 60_000);
+  });
+
   it('says zero for an empty queue', async () => {
-    const q = fakeQueue({ getJobCounts: async () => ({}), timestamps: [] });
+    const q = fakeQueue({ getJobCounts: async () => ({}), waiting: [] });
     expect(await measureQueue(q, NOW)).toMatchObject({ waiting: 0, retrying: 0, oldestMs: 0 });
   });
 
