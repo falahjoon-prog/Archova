@@ -413,6 +413,7 @@ export function createAiModule(
       reindexRecord: projectIndex.reindexRecord,
       dropStaleRecord: projectIndex.dropStaleRecord,
       restampSource: projectIndex.restampSource,
+      sweepOrg: projectIndex.sweepOrg,
       draftInduction: inductionDrafts.draft,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,

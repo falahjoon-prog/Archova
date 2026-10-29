@@ -30,7 +30,7 @@ Ava's base set plus three backend-specific queues for heavy or bursty work. Each
 | `drawings` | medium | split sets, rasterise, deep-zoom tiles, auto-hyperlinks | memory heavy, larger tasks, per-org concurrency cap |
 | `pdf-export` | medium | RFI/minutes/diary/claim PDFs, evidence packs, bulk exports | headless Chromium |
 | `search-index` | low | OpenSearch upserts from change feed | |
-| `ai` | low (interactive AI is not a job) | extraction, chunking, embeddings, title blocks, tagging, digests | Ari's governor pauses it when interactive latency rises. Built so far: `subscribers-ai` (record and document change events, consumed by the ai-worker only: the drop and the document re-stamp) and `ai-reindex` (one delayed embedding job per record per minute); see `apps/worker/README.md` |
+| `ai` | low (interactive AI is not a job) | extraction, chunking, embeddings, title blocks, tagging, digests | Ari's governor pauses it when interactive latency rises. Built so far: `subscribers-ai` (record and document change events, consumed by the ai-worker only: the drop and the document re-stamp) `ai-reindex` (one delayed embedding job per record per minute) and `maintenance-ai` (the nightly sweep, one job per org); routed jobs retry 20 times on a capped backoff, about an hour; see `apps/worker/README.md` |
 | `webhooks` | low | outbound deliveries | per-endpoint concurrency 1–5 |
 | `integrations` | low | Xero/MYOB sync | per-connection lock |
 | `scheduled` | — | cron fan-outs (below) | |
@@ -60,6 +60,7 @@ Repeatable jobs, one instance cluster-wide (fixed `jobId`). Scans that cross ten
 | `audit.anchor` | hourly | latest chain hash per org → S3 Object Lock (Sam 07 §4) |
 | `audit.verify` | weekly | re-walk chains, report breaks |
 | `files.orphans` | daily | expire upload sessions not completed after 24 h, delete quarantine objects |
+| `ai.sweep` | daily 17:20 UTC | per org, on the ai-worker's `maintenance-ai` queue: reconcile each indexed project's stored text, access scope and status with the registers; no model call, no plan needed |
 | `maintenance.partitions` | daily | `pg_partman` run; detach + archive old partitions to S3 Parquet |
 | `identity.prune` | daily | expired sessions, devices not seen in 60 days |
 | `financials.public-holidays` | yearly + manual | load next year's holidays per state |

@@ -1,7 +1,7 @@
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
-import { AI_ROUTES } from './ai/declaration';
+import { AI_JOBS, AI_ROUTES } from './ai/declaration';
 import { loadConfig, workerRole } from './config';
 import { startQueues } from './queues';
 import { runRelay } from './relay';
@@ -43,6 +43,7 @@ async function main() {
     platform,
     jobs,
     routes: ROUTES,
+    routedJobs: AI_JOBS,
     log: (msg, o) => log.info(o, msg),
   });
 

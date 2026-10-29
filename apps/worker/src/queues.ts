@@ -2,7 +2,7 @@ import { Queue, Worker, type ConnectionOptions } from 'bullmq';
 import type { Database } from '@archova/kernel';
 import type { Publish, RelayedEvent } from './relay';
 import type pg from 'pg';
-import { fanOut, runTenantJob, type TenantJob } from './scheduler';
+import { fanOut, runTenantJob, type ScheduledRoute, type TenantJob } from './scheduler';
 import {
   loadEvent,
   subscribersFor,
@@ -18,6 +18,23 @@ export const SUBSCRIBERS_QUEUE = 'subscribers';
 export const AI_SUBSCRIBERS_QUEUE = 'subscribers-ai';
 export const SCHEDULED_QUEUE = 'scheduled';
 export const MAINTENANCE_QUEUE = 'maintenance';
+/** Per-org jobs that run in the ai-worker: the default worker fills it, only that role empties it. */
+export const AI_MAINTENANCE_QUEUE = 'maintenance-ai';
+
+/**
+ * Retry policy for work routed to the ai-worker. A missed drop or re-stamp leaves stale access or stale text
+ * searchable, so these retry for about an hour (20 attempts, 2 s doubling to a 5 minute cap) before a job gives up;
+ * the nightly sweep is the backstop after that. BullMQ has no cap on its built-in exponential backoff, so the
+ * ai-worker's workers carry `cappedBackoff` under the type name `capped`.
+ */
+export const ROUTED_RETRY = {
+  attempts: 20,
+  backoff: { type: 'capped', delay: 2000 },
+} as const;
+export const BACKOFF_CAP_MS = 5 * 60_000;
+/** The delay before retry number `attemptsMade`: 2 s, doubling, never more than the cap. */
+export const cappedBackoff = (attemptsMade: number): number =>
+  Math.min(BACKOFF_CAP_MS, ROUTED_RETRY.backoff.delay * 2 ** Math.max(0, attemptsMade - 1));
 
 const KEEP = { removeOnComplete: { age: 3600, count: 10_000 }, removeOnFail: { age: 14 * 86_400 } };
 
@@ -67,8 +84,10 @@ export async function dispatch(
         data: event,
         opts: {
           jobId: subscriberJobId(event.id, s.name),
-          attempts: 5,
-          backoff: { type: 'exponential' as const, delay: 2000 },
+          // Routed subscribers (the ai-worker's) retry for much longer: see `ROUTED_RETRY`.
+          ...(s.queue
+            ? { ...ROUTED_RETRY }
+            : { attempts: 5, backoff: { type: 'exponential' as const, delay: 2000 } }),
           ...KEEP,
         },
       })),
@@ -87,6 +106,8 @@ export function subscriberRunner(
   database: Database,
   registry: readonly Subscriber[],
   concurrency: number,
+  /** Only the ai-worker sets this, for the `capped` backoff its jobs are queued with. */
+  settings?: { backoffStrategy: (attemptsMade: number) => number },
 ) {
   const byName = new Map(registry.map((s) => [s.name, s]));
   return new Worker<RelayedEvent>(
@@ -98,12 +119,12 @@ export function subscriberRunner(
       if (!event) throw new Error(`Event ${job.data.id} not found`);
       await s.handle(event, { database });
     },
-    { connection, concurrency },
+    { connection, concurrency, ...(settings ? { settings } : {}) },
   );
 }
 
 /** Per-org jobs keep their ids (so a re-delivered fan-out is a no-op) and retry with backoff. */
-export function maintenanceBulk(queue: Pick<Queue, 'addBulk'>) {
+export function maintenanceBulk(queue: Pick<Queue, 'addBulk'>, routed = false) {
   return {
     addBulk: (jobs: Parameters<Queue['addBulk']>[0]) =>
       queue.addBulk(
@@ -111,8 +132,9 @@ export function maintenanceBulk(queue: Pick<Queue, 'addBulk'>) {
           ...j,
           opts: {
             ...j.opts,
-            attempts: 3,
-            backoff: { type: 'exponential' as const, delay: 5000 },
+            ...(routed
+              ? { ...ROUTED_RETRY }
+              : { attempts: 3, backoff: { type: 'exponential' as const, delay: 5000 } }),
             ...KEEP,
           },
         })),
@@ -134,6 +156,8 @@ export function startQueues(
     log: (msg: string, o: object) => void;
     /** Subscribers whose handlers run in another role: routed by the dispatcher, never run here. */
     routes?: readonly SubscriberRoute[];
+    /** Per-org jobs whose handlers run in another role: fanned out here, queued for that role, never run here. */
+    routedJobs?: readonly ScheduledRoute[];
   },
 ): { publish: Publish; running: Running } {
   const connection = connectionFor(redisUrl);
@@ -153,7 +177,9 @@ export function startQueues(
   // then one maintenance job per org that runs as that org.
   const scheduler = new Queue(SCHEDULED_QUEUE, { connection });
   const maintenance = new Queue(MAINTENANCE_QUEUE, { connection });
-  for (const job of scheduled.jobs) {
+  const aiMaintenance = new Queue(AI_MAINTENANCE_QUEUE, { connection });
+  const routedJobs = scheduled.routedJobs ?? [];
+  for (const job of [...scheduled.jobs, ...routedJobs]) {
     scheduler
       .upsertJobScheduler(
         job.name,
@@ -170,9 +196,11 @@ export function startQueues(
   const fanOutWorker = new Worker(
     SCHEDULED_QUEUE,
     async (job) => {
-      const def = scheduled.jobs.find((j) => j.name === job.name);
+      const routed = routedJobs.find((j) => j.name === job.name);
+      const def = routed ?? scheduled.jobs.find((j) => j.name === job.name);
       if (!def) throw new Error(`No scheduled job ${job.name}`);
-      const orgs = await fanOut(scheduled.platform, maintenanceBulk(maintenance), def, new Date());
+      const target = routed ? maintenanceBulk(aiMaintenance, true) : maintenanceBulk(maintenance);
+      const orgs = await fanOut(scheduled.platform, target, def, new Date());
       scheduled.log('scheduled fan-out', { job: def.name, orgs });
     },
     { connection, concurrency: 1 },
@@ -201,6 +229,7 @@ export function startQueues(
           aiSubscribers.close(),
           scheduler.close(),
           maintenance.close(),
+          aiMaintenance.close(),
         ]);
       },
     },

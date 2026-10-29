@@ -1,6 +1,6 @@
 import type pg from 'pg';
 import type { Database } from '@archova/kernel';
-import { jobContext } from './subscribers';
+import { jobContext, type SubscriberQueue } from './subscribers';
 
 /**
  * Scheduled jobs (backend 05 §3). A repeatable job on `scheduled` lists the live orgs as `app_platform` (ids and time
@@ -14,6 +14,14 @@ export interface TenantJob {
   cron: string;
   /** Idempotent: the same org may be handed this twice. Returns a small summary for the log. */
   run(database: Database, orgId: string, now: Date): Promise<Record<string, number>>;
+}
+
+/**
+ * A scheduled per-org job whose handler runs in another role's process (the ai-worker): the default worker fans it
+ * out over the live orgs and queues one job per org there, and runs nothing itself.
+ */
+export interface ScheduledRoute extends Pick<TenantJob, 'name' | 'cron'> {
+  queue: SubscriberQueue;
 }
 
 export interface OrgRef {
