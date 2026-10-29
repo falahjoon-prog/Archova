@@ -33,7 +33,7 @@ export const DRAIN_LIMITS = {
 } as const;
 
 /** Fixed-window counter by key. Entries age out from the oldest, so a call never scans the whole map. */
-function createLimiter(limit: number) {
+export function createLimiter(limit: number) {
   const entries = new Map<string, { start: number; n: number }>();
   const sweep = (now: number) => {
     for (const [k, v] of entries) {
@@ -43,18 +43,19 @@ function createLimiter(limit: number) {
     }
   };
   return {
+    size: () => entries.size,
     over(key: string) {
       const e = entries.get(key);
       return Boolean(e && Date.now() - e.start <= DRAIN_LIMITS.windowMs && e.n >= limit);
     },
     hit(key: string) {
       const now = Date.now();
-      sweep(now);
       const e = entries.get(key);
       if (!e || now - e.start > DRAIN_LIMITS.windowMs) {
         entries.delete(key);
         entries.set(key, { start: now, n: 1 });
       } else e.n += 1;
+      sweep(now);
       return (entries.get(key)?.n ?? 0) <= limit;
     },
   };
