@@ -1,0 +1,186 @@
+// Keeps Nova's index in step with RFIs, defects and diary days (backend 08 §2, ai/03 §5). Loaded by the ai-worker only.
+//
+// Two stages per change event, so a record is never searchable in a form it no longer has:
+//  1. at once (`subscribers-ai`): delete whatever stored text no longer matches the register, with no model call;
+//  2. after a short window (`ai-reindex`): embed the current text. One job per record per window, so a burst of
+//     edits to one record is a single embedding run that reads the latest text.
+// The worker acts as `AI_INDEX_ACTOR` in the event's own org: no person, no org role, no project membership.
+import { isAppError, type Entitlements, type TenantContext } from '@archova/kernel';
+import { AI_INDEX_ACTOR, recordKindOf, type RecordKind } from '@archova/mod-ai';
+import type { StoredEvent, Subscriber } from '../subscribers';
+import { AI_REINDEX_ROUTE } from './declaration';
+
+export const REINDEX_QUEUE = 'ai-reindex';
+export const REINDEX_JOB = 'reindex-record';
+/** How long a record's changes are gathered before its text is embedded. Also the width of the dedupe bucket. */
+export const DEBOUNCE_MS = 60_000;
+/** Added to the delay so a job never starts inside the window whose events it stands for, whatever the clock skew. */
+const SLACK_MS = 2_000;
+
+export interface ReindexJob {
+  orgId: string;
+  projectId: string;
+  kind: RecordKind;
+  recordId: string;
+}
+
+/** The two entry points of `modules.ai.api` the job calls; they check no permission, so only this file names them. */
+export interface RecordIndexer {
+  dropStaleRecord(
+    ctx: TenantContext,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ): Promise<{ isSource: boolean }>;
+  reindexRecord(
+    ctx: TenantContext,
+    projectId: string,
+    kind: RecordKind,
+    recordId: string,
+  ): Promise<unknown>;
+}
+
+export interface ReindexDeps {
+  ai: RecordIndexer;
+  /** The org's plan as billing reports it now. */
+  entitlementsFor(orgId: string): Promise<Entitlements>;
+  /** False once the org is deleted. */
+  orgExists(orgId: string): Promise<boolean>;
+  queue: {
+    add(
+      name: string,
+      data: ReindexJob,
+      opts: {
+        jobId: string;
+        delay: number;
+        attempts: number;
+        backoff: { type: 'exponential'; delay: number };
+        removeOnComplete: { age: number; count: number };
+        removeOnFail: { age: number };
+      },
+    ): Promise<unknown>;
+  };
+  /** Counts and ids only: chunk text and record text are never logged. */
+  log: (msg: string, o: object) => void;
+  now?: () => Date;
+  debounceMs?: number;
+}
+
+/** Why a plan or an org setting means no embedding happens: not a failure, so the job ends without a retry. */
+const NOVA_UNAVAILABLE = new Set(['entitlement-required', 'ai.disabled', 'ai.feature_disabled']);
+
+/** The context for Nova's background work: the org's own plan, the system actor, nothing else. */
+export function indexContext(
+  orgId: string,
+  entitlements: Entitlements,
+  requestId: string,
+): TenantContext {
+  return {
+    orgId,
+    userId: AI_INDEX_ACTOR,
+    principalType: 'member',
+    orgRole: null,
+    entitlements,
+    requestId,
+  };
+}
+
+/**
+ * What a failed job leaves behind: its kind, never its message or stack. BullMQ keeps a failed job's reason and stack
+ * trace in Redis for 14 days, and a message from a provider or the database could carry some of the text being embedded.
+ */
+export function sanitizeFailure(err: unknown): Error {
+  const kind = isAppError(err) ? err.code : err instanceof Error ? err.name : 'unknown';
+  const out = new Error(`ai job failed: ${kind}`);
+  out.stack = `Error: ${out.message}`;
+  return out;
+}
+
+/** Deleting needs no plan, so stage 1 runs with an empty one. */
+const NO_PLAN: Entitlements = { plan: 'system', state: 'active', modules: [], limits: {} };
+
+export function createReindex(deps: ReindexDeps) {
+  const now = deps.now ?? (() => new Date());
+  const window = deps.debounceMs ?? DEBOUNCE_MS;
+
+  /** Stage 1: runs for every change event of an RFI, defect or diary day. */
+  async function dropAndSchedule(event: StoredEvent) {
+    const kind = recordKindOf(event.type);
+    if (!kind || !event.projectId) return;
+    const ctx = indexContext(event.orgId, NO_PLAN, `ai-drop:${event.id}`);
+    const { isSource } = await deps.ai.dropStaleRecord(ctx, event.projectId, kind, event.entityId);
+    // Voided, deleted or still a draft: nothing to embed, and nothing left to find.
+    if (!isSource) return;
+    const bucket = Math.floor(now().getTime() / window);
+    const job: ReindexJob = {
+      orgId: event.orgId,
+      projectId: event.projectId,
+      kind,
+      recordId: event.entityId,
+    };
+    await deps.queue.add(REINDEX_JOB, job, {
+      // Same record, same window: one job. The next window gets its own, so a change made while one runs is not lost.
+      jobId: `${event.orgId}.${kind}.${event.entityId}.${bucket}`,
+      delay: window + SLACK_MS,
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 5_000 },
+      removeOnComplete: { age: 3600, count: 10_000 },
+      removeOnFail: { age: 14 * 86_400 },
+    });
+  }
+
+  const subscriber: Subscriber = {
+    ...AI_REINDEX_ROUTE,
+    async handle(event) {
+      try {
+        await dropAndSchedule(event);
+      } catch (err) {
+        throw sanitizeFailure(err);
+      }
+    },
+  };
+
+  /** Stage 2: embeds the record's current text if it is new. Safe to repeat. */
+  async function embedRecord(job: ReindexJob): Promise<void> {
+    const where = {
+      orgId: job.orgId,
+      projectId: job.projectId,
+      kind: job.kind,
+      recordId: job.recordId,
+    };
+    if (!(await deps.orgExists(job.orgId))) {
+      deps.log('ai re-index skipped', { ...where, reason: 'org_deleted' });
+      return;
+    }
+    const entitlements = await deps.entitlementsFor(job.orgId);
+    if (entitlements.state === 'read_only' || entitlements.state === 'cancelled') {
+      deps.log('ai re-index skipped', { ...where, reason: `org_${entitlements.state}` });
+      return;
+    }
+    const ctx = indexContext(job.orgId, entitlements, `ai-reindex:${job.kind}:${job.recordId}`);
+    try {
+      const counts = await deps.ai.reindexRecord(ctx, job.projectId, job.kind, job.recordId);
+      deps.log('ai re-index done', { ...where, counts });
+    } catch (err) {
+      // No Nova on the plan, or switched off for the org or the feature: the stale text is already gone (stage 1).
+      if (isAppError(err) && NOVA_UNAVAILABLE.has(err.code)) {
+        deps.log('ai re-index skipped', { ...where, reason: err.code });
+        return;
+      }
+      throw err;
+    }
+  }
+
+  async function reindex(job: ReindexJob): Promise<void> {
+    try {
+      await embedRecord(job);
+    } catch (err) {
+      throw sanitizeFailure(err);
+    }
+  }
+
+  return { subscriber, reindex };
+}
+
+/** Whether `err` is the platform module saying the org is gone; used to build `orgExists`. */
+export const isOrgGone = (err: unknown) => isAppError(err) && err.code === 'org.not_found';

@@ -1,9 +1,11 @@
-// Bundles the worker with its workspace packages and npm dependencies into dist/ for the container image
+// Bundles the workers with their workspace packages and npm dependencies into dist/ for the container images.
+//  - dist/main.js: the relay, dispatcher and scheduled jobs (image `worker`);
+//  - dist/ai.js: the ai-worker (image `ai-worker`), which alone loads the modules and so Nova's dependencies.
 import { build } from 'esbuild';
 
 await build({
-  entryPoints: ['src/main.ts'],
-  outfile: 'dist/main.js',
+  entryPoints: { main: 'src/main.ts', ai: 'src/ai.ts' },
+  outdir: 'dist',
   bundle: true,
   platform: 'node',
   target: 'node22',

@@ -1,7 +1,8 @@
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
-import { loadConfig } from './config';
+import { AI_REINDEX_ROUTE } from './ai/declaration';
+import { loadConfig, workerRole } from './config';
 import { startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
@@ -13,9 +14,15 @@ import type { Subscriber } from './subscribers';
 
 /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
 const SUBSCRIBERS: Subscriber[] = [];
+/** Subscribers whose handlers run in another role's process: routed here, never run here. */
+const ROUTES = [AI_REINDEX_ROUTE];
 
 async function main() {
   const log = createLogger('worker');
+  if (workerRole() === 'ai')
+    throw new Error(
+      'WORKER_ROLE=ai runs dist/ai.js (the ai-worker image), not the relay and dispatcher',
+    );
   const config = loadConfig();
   const database = createDatabase(config.databaseUrl);
   /** Nightly and hourly per-org jobs (backend 05 §3). */
@@ -35,6 +42,7 @@ async function main() {
   const { publish, running } = startQueues(config.redisUrl, database, SUBSCRIBERS, {
     platform,
     jobs,
+    routes: ROUTES,
     log: (msg, o) => log.info(o, msg),
   });
 
@@ -43,7 +51,10 @@ async function main() {
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);
 
-  log.info({ subscribers: SUBSCRIBERS.map((s) => s.name) }, 'worker started');
+  log.info(
+    { subscribers: SUBSCRIBERS.map((s) => s.name), routed: ROUTES.map((s) => s.name) },
+    'worker started',
+  );
   await runRelay(platform, publish, stop.signal, {
     onError: (err) => log.error({ err }, 'relay pass failed'),
   });
