@@ -30,7 +30,7 @@ import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
-import { createSyncModule } from '@archova/mod-sync';
+import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
 export const MODULE_PERMISSIONS = [
@@ -42,6 +42,7 @@ export const MODULE_PERMISSIONS = [
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
   WORKFORCE_PERMISSIONS,
+  SYNC_PERMISSIONS,
 ];
 
 export interface ModuleOptions {

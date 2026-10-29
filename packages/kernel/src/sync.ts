@@ -29,6 +29,12 @@ export interface SyncMutationInput {
   baseVersion: number | null;
   clientAt: Date;
   payload: Record<string, unknown>;
+  /**
+   * Set only when an admin accepts a change that was held after the sender's access ended (X38). The command runs as
+   * the admin; this says whose change it is, so the record can show "submitted late by X, accepted by Y".
+   * `clientAt` is the device's clock and is not verified.
+   */
+  late?: { userId: string; clientAt: Date; receivedAt: Date };
 }
 
 /**
@@ -41,6 +47,16 @@ export interface SyncCommand {
   name: string;
   /** Whose licence the command needs: the same module the REST endpoint is under. */
   module: string;
+  /**
+   * True when a person whose access just ended may still send it with a drain grant (X38). The server then only
+   * queues it for an admin and never runs it, so it is set for commands whose late result is worth reviewing.
+   */
+  drainable?: boolean;
+  /**
+   * The project the entity really belongs to, read from the record. Required for a `drainable` command: the project
+   * a device sends with a drain grant is its own claim, and the accept step checks it against this.
+   */
+  projectOf?(scope: TenantScope, entityId: string): Promise<string | null>;
   run(scope: TenantScope, mutation: SyncMutationInput): Promise<{ version: number }>;
   /** The caller's current copy of the record, for a conflict result; null when it is gone or not visible. */
   current(
