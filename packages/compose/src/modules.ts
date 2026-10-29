@@ -145,7 +145,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       await access!.api.assert(scope, key, target);
     },
     can: (scope, key, target) => access!.api.can(scope, key, target),
-    sources: (scope, projectId) => documents.api.aiSources(scope, projectId),
+    sources: (scope, projectId, only) => documents.api.aiSources(scope, projectId, only),
     accessScopes: (scope, projectId) => documents.api.aiAccessScopes(scope, projectId),
     rfiSources: (scope, projectId, only) => rfis.api.aiSources(scope, projectId, only),
     rfiAccessScopes: (scope, projectId) => rfis.api.aiAccessScopes(scope, projectId),

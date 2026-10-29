@@ -30,7 +30,7 @@ Ava's base set plus three backend-specific queues for heavy or bursty work. Each
 | `drawings` | medium | split sets, rasterise, deep-zoom tiles, auto-hyperlinks | memory heavy, larger tasks, per-org concurrency cap |
 | `pdf-export` | medium | RFI/minutes/diary/claim PDFs, evidence packs, bulk exports | headless Chromium |
 | `search-index` | low | OpenSearch upserts from change feed | |
-| `ai` | low (interactive AI is not a job) | extraction, chunking, embeddings, title blocks, tagging, digests | Ari's governor pauses it when interactive latency rises. Built so far: `subscribers-ai` (record change events, consumed by the ai-worker only) and `ai-reindex` (one delayed embedding job per record per minute); see `apps/worker/README.md` |
+| `ai` | low (interactive AI is not a job) | extraction, chunking, embeddings, title blocks, tagging, digests | Ari's governor pauses it when interactive latency rises. Built so far: `subscribers-ai` (record and document change events, consumed by the ai-worker only: the drop and the document re-stamp) and `ai-reindex` (one delayed embedding job per record per minute); see `apps/worker/README.md` |
 | `webhooks` | low | outbound deliveries | per-endpoint concurrency 1–5 |
 | `integrations` | low | Xero/MYOB sync | per-connection lock |
 | `scheduled` | — | cron fan-outs (below) | |

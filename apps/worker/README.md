@@ -18,7 +18,9 @@ The default worker's dispatcher routes every `rfis.rfi.*`, `defects.defect.*` an
 1. **At once**, subscriber `ai.reindex-records`: `dropStaleRecord` deletes whatever stored text no longer matches the register, in the event's own org, with no model call and whatever the plan. A voided or deleted record, or a day sent back to draft, stops being searchable here.
 2. **After about a minute**, queue `ai-reindex`: if the record is still a source, one delayed job per record per 60 s window (job id `org.kind.record.window`, so a burst of edits is one run that reads the latest text) calls `reindexRecord`. It is skipped for a deleted org, a `read_only` or `cancelled` plan, and when Nova is off (`entitlement-required`, `ai.disabled`, `ai.feature_disabled`); any other error retries with backoff.
 
-Both stages act as `AI_INDEX_ACTOR`, a reserved id in no project with no org role: every `access.can` fails for it, so nothing it does can read as a person's. Logs carry ids and counts only, never record text. Not covered yet: documents and drawings, whose chunks take their access scope when indexed (follow-up before use beyond the pilot).
+Documents and drawings have a third subscriber, `ai.restamp-documents`, on `documents.document.updated.v1`, `documents.document.revision.added.v1` and `documents.drawing.revision.published.v1` (a test keeps the list equal to `DOCUMENT_EVENT_TYPES` in mod-ai). Their text never changes, so it embeds nothing and runs for any plan: `restampSource` reconciles that one document or sheet with the register, so a document moved into a private folder takes that folder's access scope at once and an old revision becomes superseded. New revisions are embedded by the project index. A folder made private needs no re-stamp, because a person's folders are read when they search.
+
+All of these act as `AI_INDEX_ACTOR`, a reserved id in no project with no org role: every `access.can` fails for it, so nothing it does can read as a person's. Logs carry ids and counts only, never record text, and a failed job keeps only its error code (BullMQ stores a failed job's reason and stack for 14 days).
 
 ## Database access
 
