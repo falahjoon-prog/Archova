@@ -28,7 +28,7 @@ export const queryKeys = {
   drawingRevision: (
     orgId: string,
     revisionId: string,
-    part: 'geometry' | 'markups' | 'pins' | 'tiles',
+    part: 'geometry' | 'markups' | 'pins' | 'tiles' | 'detail',
   ) => ['orgs', orgId, 'drawing-revisions', revisionId, part] as const,
   assistantConversation: (orgId: string, conversationId: string) =>
     ['orgs', orgId, 'ai', 'conversations', conversationId] as const,
@@ -114,6 +114,18 @@ export function createQueries(api: ApiClient) {
             await api.GET('/v1/orgs/{orgId}/projects/{projectId}/drawings', {
               params: { path: { orgId, projectId }, query: { limit: 200 } },
             }),
+          ),
+      }),
+    /** One drawing revision with its status, so a viewer can say when a sheet has been superseded. */
+    drawingRevision: (orgId: string, projectId: string, revisionId: string) =>
+      queryOptions({
+        queryKey: [...queryKeys.drawingRevision(orgId, revisionId, 'detail')],
+        queryFn: async () =>
+          unwrap(
+            await api.GET(
+              '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}',
+              { params: { path: { orgId, projectId, drawingRevisionId: revisionId } } },
+            ),
           ),
       }),
     /** Tile pyramid state for one drawing revision; the signed URLs expire, so keep it short-lived. */
