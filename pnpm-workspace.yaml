@@ -11,6 +11,7 @@ overrides:
   # Advisories published after the lockfile was last updated; sharp and dompurify arrive through Payload (apps/site), the rest through vitest in apps/api.
   'sharp@<0.35.5': '^0.35.5'
   'dompurify@<3.4.17': '^3.4.17'
+  'graphql-scalars@<2.0.1': '^2.0.1'
   'tinypool@<2.1.2': '^2.1.2'
   'vite@>=7.0.0 <7.3.7': '^7.3.7'
   'happy-dom@<21.0.4': '^21.0.4'

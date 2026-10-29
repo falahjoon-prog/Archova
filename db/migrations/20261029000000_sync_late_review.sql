@@ -3,7 +3,6 @@
 -- decided one keeps its row (who, when, why) but not what was asked for.
 
 alter table sync.late_submissions
-  add column id            uuid not null default gen_random_uuid(),
+  add column id            uuid not null default gen_random_uuid() unique,
   add column decision_note text,
   add column accepted_version int;
-create unique index late_submissions_id on sync.late_submissions (id);
