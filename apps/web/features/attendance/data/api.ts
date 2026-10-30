@@ -1,12 +1,32 @@
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
-import type { AttendanceEntry, AttendanceSite, Gate, OnSite } from '../lib/types';
+import type { AttendanceEntry, AttendanceSite, Gate, OnSite, RollCall } from '../lib/types';
 import type { AttendanceSource } from './source';
 
 type ApiEntry = components['schemas']['AttendanceEntry'];
 type ApiSite = components['schemas']['AttendanceSite'];
 type ApiGate = components['schemas']['Gate'];
+type ApiRollCall = components['schemas']['RollCall'];
+
+export const toRollCall = (r: ApiRollCall): RollCall => ({
+  id: r.id,
+  siteId: r.siteId,
+  reason: r.reason,
+  startedAt: r.startedAt,
+  endedAt: r.endedAt,
+  counts: r.counts,
+  people: r.people.map((p) => ({
+    workerId: p.workerId,
+    fullName: p.fullName,
+    phone: p.phone,
+    companyId: p.companyId,
+    companyNameOther: p.companyNameOther,
+    signedInAt: p.signedInAt,
+    status: p.status,
+    markedAt: p.markedAt,
+  })),
+});
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/attendance' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
@@ -127,6 +147,44 @@ export function createAttendanceApi(orgId: string): AttendanceSource {
         }),
       );
       return { gate: toGate(r.gate), code: r.code };
+    },
+    async rollCalls(projectId) {
+      const r = unwrap(
+        await api.GET(`${P}/roll-calls`, { params: { path: { orgId, projectId } } }),
+      );
+      return r.data.map(toRollCall);
+    },
+    async startRollCall(projectId, input) {
+      return toRollCall(
+        unwrap(
+          await api.POST(`${P}/roll-calls`, {
+            params: {
+              path: { orgId, projectId },
+              header: { 'Idempotency-Key': crypto.randomUUID() },
+            },
+            body: input,
+          }),
+        ),
+      );
+    },
+    async markRollCall(projectId, rollCallId, workerId, status) {
+      return toRollCall(
+        unwrap(
+          await api.POST(`${P}/roll-calls/{rollCallId}/marks`, {
+            params: { path: { orgId, projectId, rollCallId } },
+            body: { workerId, status },
+          }),
+        ),
+      );
+    },
+    async endRollCall(projectId, rollCallId) {
+      return toRollCall(
+        unwrap(
+          await api.POST(`${P}/roll-calls/{rollCallId}/end`, {
+            params: { path: { orgId, projectId, rollCallId } },
+          }),
+        ),
+      );
     },
   };
 }

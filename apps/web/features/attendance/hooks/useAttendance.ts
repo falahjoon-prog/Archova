@@ -8,7 +8,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createAttendanceApi } from '../data/api';
 import { attendancePreview, type AttendanceSource } from '../data/source';
-import type { AttendanceSite, Gate, SiteInput } from '../lib/types';
+import type { AttendanceSite, Gate, RollCall, RollMark, SiteInput } from '../lib/types';
 
 function useAttendanceSource(): AttendanceSource {
   const { orgId } = useCurrentOrg();
@@ -77,6 +77,52 @@ export function useSiteMutations() {
     }),
     reissueGate: useMutation({
       mutationFn: async (gate: Gate) => settle(await source.reissueGate(projectId, gate)),
+    }),
+  };
+}
+
+/** Roll calls, newest first. While one is open the list refreshes every 10 seconds so other supervisors' ticks show. */
+export function useRollCalls() {
+  const source = useAttendanceSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'attendance', { view: 'roll-calls' }),
+    queryFn: () => source.rollCalls(projectId),
+    refetchInterval: (q) => (q.state.data?.some((r) => !r.endedAt) ? 10_000 : false),
+  });
+}
+
+/** Marks are a record of an emergency, so they are saved first and shown from the server's answer. */
+export function useRollCallMutations() {
+  const source = useAttendanceSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const qc = useQueryClient();
+  const key = queryKeys.toolList(orgId, projectId, 'attendance', { view: 'roll-calls' });
+  const put = (rc: RollCall) => {
+    qc.setQueryData<RollCall[]>(key, (list) => {
+      const rest = (list ?? []).filter((r) => r.id !== rc.id);
+      return [rc, ...rest].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    });
+    void qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'attendance') });
+    return rc;
+  };
+  return {
+    start: useMutation({
+      mutationFn: async (input: { reason: string; siteId?: string }) =>
+        put(await source.startRollCall(projectId, input)),
+    }),
+    mark: useMutation({
+      mutationFn: async (v: {
+        rollCallId: string;
+        workerId: string;
+        status: Exclude<RollMark, 'unmarked'>;
+      }) => put(await source.markRollCall(projectId, v.rollCallId, v.workerId, v.status)),
+    }),
+    end: useMutation({
+      mutationFn: async (rollCallId: string) =>
+        put(await source.endRollCall(projectId, rollCallId)),
     }),
   };
 }
