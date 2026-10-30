@@ -31,6 +31,8 @@ tags:
   - name: ai
   - name: rfis
   - name: defects
+  - name: quality
+  - name: safety
   - name: estimating
   - name: integrations
   - name: sync
@@ -5934,8 +5936,561 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InductionTranslation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listInspectionTemplates
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.read
+      summary: Checklists on the project, newest version of each name first. Builder staff only.
+      parameters:
+        - { name: published, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Draft a checklist (ITP, pre-pour, handover, safety walk). A draft can be edited until it is published.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInspectionTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionTemplateId'
+    get:
+      operationId: getInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.read
+      summary: A checklist with its items in order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Replace the name, type or items of a draft. A published checklist is frozen.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateInspectionTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionTemplateId'
+    post:
+      operationId: publishInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Freeze the checklist so inspections can use it.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionTemplateId'
+    post:
+      operationId: newInspectionTemplateVersion
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Copy a published checklist into a new draft version. Inspections already started keep the version they used.
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listInspections
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: The inspection register, newest first. Builder staff only.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/InspectionStatus' } }
+        - {
+            name: templateId,
+            in: query,
+            schema: { type: string, pattern: '^itp_[0-9A-Za-z]{26}$' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Start an inspection from a published checklist. It is numbered INS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInspectionRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    get:
+      operationId: getInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: An inspection with its checklist items, answers, and what is still unanswered.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    put:
+      operationId: recordInspectionResponses
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Save answers (any subset of items) until the inspection is submitted. The first save moves it to in progress.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordInspectionResponsesRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: submitInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Sign and submit. Every required item must be answered. Failed items flagged to raise a defect are listed in `failedItemIds`.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitInspectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/close:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: closeInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.close
+      summary: Close a submitted inspection once its failed items are dealt with.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listObservations
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: The observation register. Subcontractors see their company's observations and ones they raised.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ObservationStatus' } }
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/ObservationType' } }
+        - {
+            name: assigneeCompanyId,
+            in: query,
+            schema: { $ref: '#/components/schemas/CompanyRef' },
+          }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/DefectPriority' } }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.create
+      summary: Raise a safety, quality, environmental or commercial observation. It is numbered OBS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateObservationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ObservationId'
+    get:
+      operationId: getObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: One observation.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.create
+      summary: Edit an observation that is not closed. Builder staff edit any; others edit their own.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateObservationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ObservationId'
+    post:
+      operationId: transitionObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: resolve (the assigned company or the builder), close and reopen (builder admin; reopen needs a reason), or stopWork on a safety observation linked to a SWMS, which sends that SWMS back for review.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ObservationTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.read
+      summary: The SWMS register. Subcontractors see their own company's.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/SwmsStatus' } }
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+        - {
+            name: category,
+            in: query,
+            schema: { $ref: '#/components/schemas/HighRiskWorkCategory' },
+          }
+        - { name: expired, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.submit
+      summary: Submit a SWMS for review. It is numbered SWMS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSwmsRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    get:
+      operationId: getSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.read
+      summary: A SWMS with its history, this revision's acknowledgements, missing required content and reviewer advisories.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.submit
+      summary: Revise a SWMS. Any change starts a new revision and sends it back for review.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSwmsRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/check:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    get:
+      operationId: checkSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.read
+      summary: Checks a SWMS against the required content (compliance 03 §3) and lists advisories. This is a checklist, not a statement that the SWMS is compliant.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    post:
+      operationId: transitionSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.review
+      summary: markReviewed, accept, reject (reason) or reopen (reason). Accepting needs every required item present and the reviewer's confirmation that it is readily understandable.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SwmsTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/acknowledge:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    post:
+      operationId: acknowledgeSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.acknowledge
+      summary: A worker records that they have read the accepted revision. Repeating it is harmless.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcknowledgeSwmsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    InspectionTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^itp_[0-9A-Za-z]{26}$' }
+    InspectionId:
+      name: inspectionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ins_[0-9A-Za-z]{26}$' }
+    ObservationId:
+      name: observationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    SwmsId:
+      name: swmsId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
     OrgId:
       name: orgId
       in: path
@@ -11871,3 +12426,601 @@ components:
               translated: { type: boolean }
               question: { type: string }
               options: { type: array, items: { type: string } }
+    InspectionResponseType:
+      type: string
+      enum: [pass_fail_na, yes_no, number, text, photo, signature, select]
+    InspectionResult:
+      type: string
+      enum: [pass, fail, na]
+    InspectionStatus:
+      type: string
+      enum: [scheduled, in_progress, submitted, closed]
+    InspectionTemplate:
+      type: object
+      required: [id, projectId, name, type, version, published, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        type: { type: string, description: 'ITP, pre-pour, handover, safety walk or your own' }
+        version: { type: integer }
+        published: { type: boolean }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    InspectionTemplateItem:
+      type: object
+      required: [id, section, sort, prompt, responseType, options, required, createsDefectOnFail]
+      properties:
+        id: { type: string }
+        section: { type: string }
+        sort: { type: integer }
+        prompt: { type: string }
+        responseType: { $ref: '#/components/schemas/InspectionResponseType' }
+        options: { type: array, items: { type: string } }
+        required: { type: boolean }
+        createsDefectOnFail: { type: boolean }
+    InspectionTemplateDetail:
+      type: object
+      required: [template, items]
+      properties:
+        template: { $ref: '#/components/schemas/InspectionTemplate' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionTemplateItem' }
+    InspectionTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionTemplate' }
+    InspectionTemplateItemInput:
+      type: object
+      additionalProperties: false
+      required: [prompt, responseType]
+      properties:
+        section: { type: string, maxLength: 200 }
+        prompt: { type: string, minLength: 1, maxLength: 1000 }
+        responseType: { $ref: '#/components/schemas/InspectionResponseType' }
+        options:
+          type: array
+          maxItems: 30
+          description: The choices for a `select` item (at least two).
+          items: { type: string, minLength: 1, maxLength: 200 }
+        required: { type: boolean }
+        createsDefectOnFail:
+          type: boolean
+          description: Only for `pass_fail_na`. A failed answer is listed so a defect can be raised from it.
+    CreateInspectionTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, items]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { type: string, minLength: 1, maxLength: 50 }
+        items:
+          type: array
+          maxItems: 300
+          items: { $ref: '#/components/schemas/InspectionTemplateItemInput' }
+    UpdateInspectionTemplateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { type: string, minLength: 1, maxLength: 50 }
+        items:
+          type: array
+          maxItems: 300
+          items: { $ref: '#/components/schemas/InspectionTemplateItemInput' }
+    InspectionSignature:
+      type: object
+      required: [name, fileId, at]
+      properties:
+        name: { type: string }
+        fileId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    Inspection:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          templateId,
+          templateVersion,
+          title,
+          location,
+          status,
+          inspectorId,
+          scheduledFor,
+          completedAt,
+          signedBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'INS-0042' }
+        templateId: { type: string }
+        templateVersion: { type: integer }
+        title: { type: string }
+        location: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/InspectionStatus' }
+        inspectorId: { type: [string, 'null'] }
+        scheduledFor: { type: [string, 'null'], format: date }
+        completedAt: { type: [string, 'null'], format: date-time }
+        signedBy:
+          oneOf: [{ $ref: '#/components/schemas/InspectionSignature' }, { type: 'null' }]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    InspectionItemResponse:
+      type: object
+      required: [templateItemId, value, result, note, fileIds, defectId, updatedAt]
+      properties:
+        templateItemId: { type: string }
+        value:
+          description: 'The answer for yes_no (boolean), number, text, select and signature (typed name) items. Null for pass/fail items, which use `result`.'
+          oneOf: [{ type: string }, { type: number }, { type: boolean }, { type: 'null' }]
+        result:
+          oneOf: [{ $ref: '#/components/schemas/InspectionResult' }, { type: 'null' }]
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        defectId: { type: [string, 'null'] }
+        updatedAt: { type: string, format: date-time }
+    InspectionDetail:
+      type: object
+      required: [inspection, items, responses, missingRequiredItemIds, failedItemIds]
+      properties:
+        inspection: { $ref: '#/components/schemas/Inspection' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionTemplateItem' }
+        responses:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionItemResponse' }
+        missingRequiredItemIds:
+          type: array
+          items: { type: string }
+        failedItemIds:
+          type: array
+          items: { type: string }
+    InspectionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Inspection' }
+        nextCursor: { type: [string, 'null'] }
+    CreateInspectionRequest:
+      type: object
+      additionalProperties: false
+      required: [templateId]
+      properties:
+        templateId: { type: string, pattern: '^itp_[0-9A-Za-z]{26}$' }
+        title:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 300,
+            description: 'Defaults to the checklist name.',
+          }
+        location: { type: string, minLength: 1, maxLength: 300 }
+        scheduledFor: { type: string, format: date }
+        inspectorId: { $ref: '#/components/schemas/UserRef' }
+    InspectionResponseInput:
+      type: object
+      additionalProperties: false
+      required: [templateItemId]
+      properties:
+        templateItemId: { type: string, pattern: '^iti_[0-9A-Za-z]{26}$' }
+        value:
+          oneOf: [{ type: string, maxLength: 5000 }, { type: number }, { type: boolean }]
+        result: { $ref: '#/components/schemas/InspectionResult' }
+        note: { type: string, maxLength: 2000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    RecordInspectionResponsesRequest:
+      type: object
+      additionalProperties: false
+      required: [responses]
+      properties:
+        responses:
+          type: array
+          minItems: 1
+          maxItems: 300
+          items: { $ref: '#/components/schemas/InspectionResponseInput' }
+    SubmitInspectionRequest:
+      type: object
+      additionalProperties: false
+      required: [signedByName]
+      properties:
+        signedByName: { type: string, minLength: 1, maxLength: 200 }
+        signatureFileId: { $ref: '#/components/schemas/FileRef' }
+    ObservationType:
+      type: string
+      enum: [safety, quality, environmental, commercial]
+    ObservationStatus:
+      type: string
+      enum: [open, resolved, closed]
+    ObservationAction:
+      type: string
+      enum: [resolve, close, reopen, stopWork]
+    Observation:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          type,
+          hazard,
+          description,
+          location,
+          priority,
+          assigneeCompanyId,
+          raisedByCompanyId,
+          status,
+          dueDate,
+          isOverdue,
+          swmsId,
+          resolutionNote,
+          fileIds,
+          resolvedAt,
+          closedAt,
+          availableActions,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'OBS-0042' }
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: [string, 'null'] }
+        description: { type: string }
+        location: { type: [string, 'null'] }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId: { type: [string, 'null'] }
+        raisedByCompanyId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ObservationStatus' }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        swmsId:
+          {
+            type: [string, 'null'],
+            description: 'The SWMS this observation is about (stop work: SWMS not followed).',
+          }
+        resolutionNote: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        availableActions:
+          type: array
+          description: What the caller can do now, from status, side and permissions.
+          items: { $ref: '#/components/schemas/ObservationAction' }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    ObservationPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Observation' }
+        nextCursor: { type: [string, 'null'] }
+    CreateObservationRequest:
+      type: object
+      additionalProperties: false
+      required: [type, description]
+      properties:
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 20000 }
+        location: { type: string, minLength: 1, maxLength: 300 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate: { type: string, format: date }
+        swmsId: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    UpdateObservationRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 20000 }
+        location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        swmsId:
+          oneOf: [{ type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }, { type: 'null' }]
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    ObservationTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { $ref: '#/components/schemas/ObservationAction' }
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required for reopen and stopWork. For resolve it is the resolution note.
+        fileIds:
+          type: array
+          maxItems: 20
+          description: Photos showing the fix, added when resolving.
+          items: { $ref: '#/components/schemas/FileRef' }
+        swmsId:
+          type: string
+          pattern: '^sws_[0-9A-Za-z]{26}$'
+          description: For stopWork when the observation is not already linked to a SWMS.
+    HighRiskWorkCategory:
+      type: string
+      description: The 19 high-risk construction work categories (compliance 03 §2), the same in every state.
+      enum:
+        - fall_2m
+        - telco_tower
+        - demolition_load_bearing
+        - demolition_integrity
+        - asbestos
+        - temp_support
+        - confined_space
+        - shaft_trench_tunnel
+        - explosives
+        - pressurised_gas
+        - chemical_fuel_refrigerant
+        - energised_electrical
+        - contaminated_atmosphere
+        - tilt_up_precast
+        - traffic_corridor
+        - mobile_plant
+        - extreme_temperature
+        - drowning
+        - diving
+    SwmsStatus:
+      type: string
+      enum: [submitted, reviewed, accepted, rejected]
+    SwmsAction:
+      type: string
+      enum: [markReviewed, accept, reject, reopen]
+    SwmsControlLevel:
+      type: string
+      description: Hierarchy of controls, highest first.
+      enum: [eliminate, substitute, isolate, engineer, administrative, ppe]
+    SwmsContent:
+      type: object
+      additionalProperties: false
+      properties:
+        workDescription: { type: string, maxLength: 5000 }
+        hazardsAndRisks: { type: string, maxLength: 20000 }
+        controlMeasures:
+          type: array
+          maxItems: 100
+          items:
+            type: object
+            additionalProperties: false
+            required: [level, description]
+            properties:
+              level: { $ref: '#/components/schemas/SwmsControlLevel' }
+              description: { type: string, maxLength: 2000 }
+        implementation:
+          type: string
+          maxLength: 10000
+          description: How the controls will be implemented, monitored and reviewed.
+        siteSpecific:
+          type: string
+          maxLength: 10000
+          description: The circumstances at this workplace.
+        whsPlanApplies:
+          { type: boolean, description: 'True on projects of $250,000 or more (Vic $350,000).' }
+        whsPlanConsidered: { type: string, maxLength: 5000 }
+        fallControlsConsidered: { type: string, maxLength: 5000 }
+        responsiblePeople: { type: string, maxLength: 2000 }
+        reviewDate: { type: string, format: date }
+    Swms:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          companyId,
+          highRiskWorkCategories,
+          content,
+          fileId,
+          revision,
+          status,
+          reviewedBy,
+          reviewedAt,
+          expiresOn,
+          isExpired,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'SWMS-0042' }
+        title: { type: string }
+        companyId: { type: [string, 'null'] }
+        highRiskWorkCategories:
+          type: array
+          items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+        content: { $ref: '#/components/schemas/SwmsContent' }
+        fileId: { type: [string, 'null'] }
+        revision: { type: integer }
+        status: { $ref: '#/components/schemas/SwmsStatus' }
+        reviewedBy: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        expiresOn: { type: [string, 'null'], format: date }
+        isExpired: { type: boolean }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    SwmsEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, revision, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromStatus: { type: [string, 'null'] }
+        toStatus: { type: string }
+        revision: { type: integer }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    SwmsAcknowledgement:
+      type: object
+      required: [userId, workerName, language, revision, at]
+      properties:
+        userId: { type: string }
+        workerName: { type: string }
+        language: { type: string }
+        revision: { type: integer }
+        at: { type: string, format: date-time }
+    SwmsGap:
+      type: object
+      required: [item, field, message]
+      properties:
+        item:
+          type: integer
+          description: The row in compliance 03 §3 this relates to.
+        field: { type: string }
+        message: { type: string }
+    SwmsAdvisory:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, enum: [only_admin_or_ppe, silica, asbestos_register] }
+        message: { type: string }
+    SwmsCheck:
+      type: object
+      required: [gaps, advisories]
+      properties:
+        gaps:
+          type: array
+          description: Required content still missing. Accepting needs this to be empty.
+          items: { $ref: '#/components/schemas/SwmsGap' }
+        advisories:
+          type: array
+          description: Things a reviewer should look at. They never block acceptance.
+          items: { $ref: '#/components/schemas/SwmsAdvisory' }
+    SwmsDetail:
+      type: object
+      required: [swms, events, acknowledgements, gaps, advisories, availableActions]
+      properties:
+        swms: { $ref: '#/components/schemas/Swms' }
+        events:
+          type: array
+          description: History, oldest first.
+          items: { $ref: '#/components/schemas/SwmsEvent' }
+        acknowledgements:
+          type: array
+          description: Acknowledgements of the current revision.
+          items: { $ref: '#/components/schemas/SwmsAcknowledgement' }
+        gaps:
+          type: array
+          items: { $ref: '#/components/schemas/SwmsGap' }
+        advisories:
+          type: array
+          items: { $ref: '#/components/schemas/SwmsAdvisory' }
+        availableActions:
+          type: array
+          description: Review actions the caller can take now, from status and permissions.
+          items: { $ref: '#/components/schemas/SwmsAction' }
+    SwmsPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Swms' }
+        nextCursor: { type: [string, 'null'] }
+    CreateSwmsRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        highRiskWorkCategories:
+          type: array
+          maxItems: 19
+          items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+        content: { $ref: '#/components/schemas/SwmsContent' }
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        expiresOn: { type: string, format: date }
+    UpdateSwmsRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        highRiskWorkCategories:
+          type: array
+          maxItems: 19
+          items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+        content: { $ref: '#/components/schemas/SwmsContent' }
+        fileId: { oneOf: [{ $ref: '#/components/schemas/FileRef' }, { type: 'null' }] }
+        expiresOn: { type: [string, 'null'], format: date }
+    SwmsTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { $ref: '#/components/schemas/SwmsAction' }
+        reason:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 1000,
+            description: Required for reject and reopen.,
+          }
+        confirmedUnderstandable:
+          type: boolean
+          description: Required to accept. The reviewer confirms the SWMS is set out so the people who use it can readily understand it (r299).
+    AcknowledgeSwmsRequest:
+      type: object
+      additionalProperties: false
+      required: [workerName]
+      properties:
+        workerName: { type: string, minLength: 1, maxLength: 200 }
+        language:
+          {
+            type: string,
+            minLength: 2,
+            maxLength: 10,
+            description: The language the SWMS was shown in.,
+          }

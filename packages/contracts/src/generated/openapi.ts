@@ -4318,6 +4318,366 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspection-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Checklists on the project, newest version of each name first. Builder staff only. */
+        get: operations["listInspectionTemplates"];
+        put?: never;
+        /** Draft a checklist (ITP, pre-pour, handover, safety walk). A draft can be edited until it is published. */
+        post: operations["createInspectionTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        /** A checklist with its items in order. */
+        get: operations["getInspectionTemplate"];
+        /** Replace the name, type or items of a draft. A published checklist is frozen. */
+        put: operations["updateInspectionTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze the checklist so inspections can use it. */
+        post: operations["publishInspectionTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a published checklist into a new draft version. Inspections already started keep the version they used. */
+        post: operations["newInspectionTemplateVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The inspection register, newest first. Builder staff only. */
+        get: operations["listInspections"];
+        put?: never;
+        /** Start an inspection from a published checklist. It is numbered INS-0001 per project. */
+        post: operations["createInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        /** An inspection with its checklist items, answers, and what is still unanswered. */
+        get: operations["getInspection"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save answers (any subset of items) until the inspection is submitted. The first save moves it to in progress. */
+        put: operations["recordInspectionResponses"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign and submit. Every required item must be answered. Failed items flagged to raise a defect are listed in `failedItemIds`. */
+        post: operations["submitInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a submitted inspection once its failed items are dealt with. */
+        post: operations["closeInspection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/observations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The observation register. Subcontractors see their company's observations and ones they raised. */
+        get: operations["listObservations"];
+        put?: never;
+        /** Raise a safety, quality, environmental or commercial observation. It is numbered OBS-0001 per project. */
+        post: operations["createObservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: components["parameters"]["ObservationId"];
+            };
+            cookie?: never;
+        };
+        /** One observation. */
+        get: operations["getObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an observation that is not closed. Builder staff edit any; others edit their own. */
+        patch: operations["updateObservation"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: components["parameters"]["ObservationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** resolve (the assigned company or the builder), close and reopen (builder admin; reopen needs a reason), or stopWork on a safety observation linked to a SWMS, which sends that SWMS back for review. */
+        post: operations["transitionObservation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/swms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The SWMS register. Subcontractors see their own company's. */
+        get: operations["listSwms"];
+        put?: never;
+        /** Submit a SWMS for review. It is numbered SWMS-0001 per project. */
+        post: operations["createSwms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        /** A SWMS with its history, this revision's acknowledgements, missing required content and reviewer advisories. */
+        get: operations["getSwms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Revise a SWMS. Any change starts a new revision and sends it back for review. */
+        patch: operations["updateSwms"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        /** Checks a SWMS against the required content (compliance 03 §3) and lists advisories. This is a checklist, not a statement that the SWMS is compliant. */
+        get: operations["checkSwms"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** markReviewed, accept, reject (reason) or reopen (reason). Accepting needs every required item present and the reviewer's confirmation that it is readily understandable. */
+        post: operations["transitionSwms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A worker records that they have read the accepted revision. Repeating it is harmless. */
+        post: operations["acknowledgeSwms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7972,6 +8332,353 @@ export interface components {
                 options: string[];
             }[];
         };
+        /** @enum {string} */
+        InspectionResponseType: "pass_fail_na" | "yes_no" | "number" | "text" | "photo" | "signature" | "select";
+        /** @enum {string} */
+        InspectionResult: "pass" | "fail" | "na";
+        /** @enum {string} */
+        InspectionStatus: "scheduled" | "in_progress" | "submitted" | "closed";
+        InspectionTemplate: {
+            id: string;
+            projectId: string;
+            name: string;
+            /** @description ITP, pre-pour, handover, safety walk or your own */
+            type: string;
+            version: number;
+            published: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        InspectionTemplateItem: {
+            id: string;
+            section: string;
+            sort: number;
+            prompt: string;
+            responseType: components["schemas"]["InspectionResponseType"];
+            options: string[];
+            required: boolean;
+            createsDefectOnFail: boolean;
+        };
+        InspectionTemplateDetail: {
+            template: components["schemas"]["InspectionTemplate"];
+            items: components["schemas"]["InspectionTemplateItem"][];
+        };
+        InspectionTemplateList: {
+            data: components["schemas"]["InspectionTemplate"][];
+        };
+        InspectionTemplateItemInput: {
+            section?: string;
+            prompt: string;
+            responseType: components["schemas"]["InspectionResponseType"];
+            /** @description The choices for a `select` item (at least two). */
+            options?: string[];
+            required?: boolean;
+            /** @description Only for `pass_fail_na`. A failed answer is listed so a defect can be raised from it. */
+            createsDefectOnFail?: boolean;
+        };
+        CreateInspectionTemplateRequest: {
+            name: string;
+            type?: string;
+            items: components["schemas"]["InspectionTemplateItemInput"][];
+        };
+        UpdateInspectionTemplateRequest: {
+            name?: string;
+            type?: string;
+            items?: components["schemas"]["InspectionTemplateItemInput"][];
+        };
+        InspectionSignature: {
+            name: string;
+            fileId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        Inspection: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description INS-0042 */
+            numberLabel: string;
+            templateId: string;
+            templateVersion: number;
+            title: string;
+            location: string | null;
+            status: components["schemas"]["InspectionStatus"];
+            inspectorId: string | null;
+            /** Format: date */
+            scheduledFor: string | null;
+            /** Format: date-time */
+            completedAt: string | null;
+            signedBy: components["schemas"]["InspectionSignature"] | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        InspectionItemResponse: {
+            templateItemId: string;
+            /** @description The answer for yes_no (boolean), number, text, select and signature (typed name) items. Null for pass/fail items, which use `result`. */
+            value: string | number | boolean | null;
+            result: components["schemas"]["InspectionResult"] | null;
+            note: string | null;
+            fileIds: string[];
+            defectId: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        InspectionDetail: {
+            inspection: components["schemas"]["Inspection"];
+            items: components["schemas"]["InspectionTemplateItem"][];
+            responses: components["schemas"]["InspectionItemResponse"][];
+            missingRequiredItemIds: string[];
+            failedItemIds: string[];
+        };
+        InspectionPage: {
+            data: components["schemas"]["Inspection"][];
+            nextCursor: string | null;
+        };
+        CreateInspectionRequest: {
+            templateId: string;
+            /** @description Defaults to the checklist name. */
+            title?: string;
+            location?: string;
+            /** Format: date */
+            scheduledFor?: string;
+            inspectorId?: components["schemas"]["UserRef"];
+        };
+        InspectionResponseInput: {
+            templateItemId: string;
+            value?: string | number | boolean;
+            result?: components["schemas"]["InspectionResult"];
+            note?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        RecordInspectionResponsesRequest: {
+            responses: components["schemas"]["InspectionResponseInput"][];
+        };
+        SubmitInspectionRequest: {
+            signedByName: string;
+            signatureFileId?: components["schemas"]["FileRef"];
+        };
+        /** @enum {string} */
+        ObservationType: "safety" | "quality" | "environmental" | "commercial";
+        /** @enum {string} */
+        ObservationStatus: "open" | "resolved" | "closed";
+        /** @enum {string} */
+        ObservationAction: "resolve" | "close" | "reopen" | "stopWork";
+        Observation: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description OBS-0042 */
+            numberLabel: string;
+            type: components["schemas"]["ObservationType"];
+            hazard: string | null;
+            description: string;
+            location: string | null;
+            priority: components["schemas"]["DefectPriority"];
+            assigneeCompanyId: string | null;
+            raisedByCompanyId: string | null;
+            status: components["schemas"]["ObservationStatus"];
+            /** Format: date */
+            dueDate: string | null;
+            isOverdue: boolean;
+            /** @description The SWMS this observation is about (stop work: SWMS not followed). */
+            swmsId: string | null;
+            resolutionNote: string | null;
+            fileIds: string[];
+            /** Format: date-time */
+            resolvedAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description What the caller can do now, from status, side and permissions. */
+            availableActions: components["schemas"]["ObservationAction"][];
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        ObservationPage: {
+            data: components["schemas"]["Observation"][];
+            nextCursor: string | null;
+        };
+        CreateObservationRequest: {
+            type: components["schemas"]["ObservationType"];
+            hazard?: string;
+            description: string;
+            location?: string;
+            priority?: components["schemas"]["DefectPriority"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            /** Format: date */
+            dueDate?: string;
+            swmsId?: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        UpdateObservationRequest: {
+            type?: components["schemas"]["ObservationType"];
+            hazard?: string | null;
+            description?: string;
+            location?: string | null;
+            priority?: components["schemas"]["DefectPriority"];
+            assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
+            /** Format: date */
+            dueDate?: string | null;
+            swmsId?: string | null;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        ObservationTransitionRequest: {
+            action: components["schemas"]["ObservationAction"];
+            /** @description Required for reopen and stopWork. For resolve it is the resolution note. */
+            reason?: string;
+            /** @description Photos showing the fix, added when resolving. */
+            fileIds?: components["schemas"]["FileRef"][];
+            /** @description For stopWork when the observation is not already linked to a SWMS. */
+            swmsId?: string;
+        };
+        /**
+         * @description The 19 high-risk construction work categories (compliance 03 §2), the same in every state.
+         * @enum {string}
+         */
+        HighRiskWorkCategory: "fall_2m" | "telco_tower" | "demolition_load_bearing" | "demolition_integrity" | "asbestos" | "temp_support" | "confined_space" | "shaft_trench_tunnel" | "explosives" | "pressurised_gas" | "chemical_fuel_refrigerant" | "energised_electrical" | "contaminated_atmosphere" | "tilt_up_precast" | "traffic_corridor" | "mobile_plant" | "extreme_temperature" | "drowning" | "diving";
+        /** @enum {string} */
+        SwmsStatus: "submitted" | "reviewed" | "accepted" | "rejected";
+        /** @enum {string} */
+        SwmsAction: "markReviewed" | "accept" | "reject" | "reopen";
+        /**
+         * @description Hierarchy of controls, highest first.
+         * @enum {string}
+         */
+        SwmsControlLevel: "eliminate" | "substitute" | "isolate" | "engineer" | "administrative" | "ppe";
+        SwmsContent: {
+            workDescription?: string;
+            hazardsAndRisks?: string;
+            controlMeasures?: {
+                level: components["schemas"]["SwmsControlLevel"];
+                description: string;
+            }[];
+            /** @description How the controls will be implemented, monitored and reviewed. */
+            implementation?: string;
+            /** @description The circumstances at this workplace. */
+            siteSpecific?: string;
+            /** @description True on projects of $250,000 or more (Vic $350,000). */
+            whsPlanApplies?: boolean;
+            whsPlanConsidered?: string;
+            fallControlsConsidered?: string;
+            responsiblePeople?: string;
+            /** Format: date */
+            reviewDate?: string;
+        };
+        Swms: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description SWMS-0042 */
+            numberLabel: string;
+            title: string;
+            companyId: string | null;
+            highRiskWorkCategories: components["schemas"]["HighRiskWorkCategory"][];
+            content: components["schemas"]["SwmsContent"];
+            fileId: string | null;
+            revision: number;
+            status: components["schemas"]["SwmsStatus"];
+            reviewedBy: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            isExpired: boolean;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        SwmsEvent: {
+            id: string;
+            action: string;
+            fromStatus: string | null;
+            toStatus: string;
+            revision: number;
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        SwmsAcknowledgement: {
+            userId: string;
+            workerName: string;
+            language: string;
+            revision: number;
+            /** Format: date-time */
+            at: string;
+        };
+        SwmsGap: {
+            /** @description The row in compliance 03 §3 this relates to. */
+            item: number;
+            field: string;
+            message: string;
+        };
+        SwmsAdvisory: {
+            /** @enum {string} */
+            code: "only_admin_or_ppe" | "silica" | "asbestos_register";
+            message: string;
+        };
+        SwmsCheck: {
+            /** @description Required content still missing. Accepting needs this to be empty. */
+            gaps: components["schemas"]["SwmsGap"][];
+            /** @description Things a reviewer should look at. They never block acceptance. */
+            advisories: components["schemas"]["SwmsAdvisory"][];
+        };
+        SwmsDetail: {
+            swms: components["schemas"]["Swms"];
+            /** @description History, oldest first. */
+            events: components["schemas"]["SwmsEvent"][];
+            /** @description Acknowledgements of the current revision. */
+            acknowledgements: components["schemas"]["SwmsAcknowledgement"][];
+            gaps: components["schemas"]["SwmsGap"][];
+            advisories: components["schemas"]["SwmsAdvisory"][];
+            /** @description Review actions the caller can take now, from status and permissions. */
+            availableActions: components["schemas"]["SwmsAction"][];
+        };
+        SwmsPage: {
+            data: components["schemas"]["Swms"][];
+            nextCursor: string | null;
+        };
+        CreateSwmsRequest: {
+            title: string;
+            companyId?: components["schemas"]["CompanyRef"];
+            highRiskWorkCategories?: components["schemas"]["HighRiskWorkCategory"][];
+            content?: components["schemas"]["SwmsContent"];
+            fileId?: components["schemas"]["FileRef"];
+            /** Format: date */
+            expiresOn?: string;
+        };
+        UpdateSwmsRequest: {
+            title?: string;
+            companyId?: components["schemas"]["CompanyRef"] | null;
+            highRiskWorkCategories?: components["schemas"]["HighRiskWorkCategory"][];
+            content?: components["schemas"]["SwmsContent"];
+            fileId?: components["schemas"]["FileRef"] | null;
+            /** Format: date */
+            expiresOn?: string | null;
+        };
+        SwmsTransitionRequest: {
+            action: components["schemas"]["SwmsAction"];
+            /** @description Required for reject and reopen. */
+            reason?: string;
+            /** @description Required to accept. The reviewer confirms the SWMS is set out so the people who use it can readily understand it (r299). */
+            confirmedUnderstandable?: boolean;
+        };
+        AcknowledgeSwmsRequest: {
+            workerName: string;
+            /** @description The language the SWMS was shown in. */
+            language?: string;
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -7985,6 +8692,10 @@ export interface components {
         };
     };
     parameters: {
+        InspectionTemplateId: string;
+        InspectionId: string;
+        ObservationId: string;
+        SwmsId: string;
         OrgId: string;
         ProjectId: string;
         FileId: string;
@@ -14968,6 +15679,708 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InductionTranslation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspectionTemplates: {
+        parameters: {
+            query?: {
+                published?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createInspectionTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInspectionTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionTemplateDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInspectionTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionTemplateDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateInspectionTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateInspectionTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionTemplateDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishInspectionTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionTemplateDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    newInspectionTemplateVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                templateId: components["parameters"]["InspectionTemplateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionTemplateDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listInspections: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["InspectionStatus"];
+                templateId?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createInspection: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInspection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordInspectionResponses: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordInspectionResponsesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitInspectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    closeInspection: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                inspectionId: components["parameters"]["InspectionId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InspectionDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listObservations: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["ObservationStatus"];
+                type?: components["schemas"]["ObservationType"];
+                assigneeCompanyId?: components["schemas"]["CompanyRef"];
+                priority?: components["schemas"]["DefectPriority"];
+                overdue?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObservationPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createObservation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateObservationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: components["parameters"]["ObservationId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateObservation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: components["parameters"]["ObservationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateObservationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionObservation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                observationId: components["parameters"]["ObservationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ObservationTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Observation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSwms: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["SwmsStatus"];
+                companyId?: components["schemas"]["CompanyRef"];
+                category?: components["schemas"]["HighRiskWorkCategory"];
+                expired?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSwms: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSwmsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSwms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateSwms: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSwmsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    checkSwms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsCheck"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionSwms: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwmsTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acknowledgeSwms: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                swmsId: components["parameters"]["SwmsId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcknowledgeSwmsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SwmsDetail"];
                 };
             };
             default: components["responses"]["Problem"];

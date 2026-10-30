@@ -16,6 +16,8 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
+import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
+import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
@@ -46,6 +48,8 @@ export const MODULE_PERMISSIONS = [
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
+  QUALITY_PERMISSIONS,
+  SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
@@ -118,6 +122,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce: 'workforce.attendance.sign_in_self',
       // The assigned subcontractor's "after" photo when marking a defect ready for review (DEF-AC5).
       defects: 'defects.defects.respond',
+      // Photos on an observation, and a SWMS document from the subcontractor who wrote it.
+      quality: 'quality.observations.create',
+      safety: 'safety.swms.submit',
       // A subcontractor attaches their quote PDF to a tender package they were invited to.
       estimating: 'estimating.quotes.submit',
       // A subcontractor attaches the shop drawing package to the item they are responsible for.
@@ -155,6 +162,19 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+  });
+
+  const safety = createSafetyModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+  });
+
+  const quality = createQualityModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    safety: safety.api,
   });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -273,6 +293,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     defects,
+    quality,
+    safety,
     estimating,
     integrations,
     diary,
@@ -300,6 +322,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis,
     submittals,
     defects,
+    quality,
+    safety,
     estimating,
     integrations,
     sync,
