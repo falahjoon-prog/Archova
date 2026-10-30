@@ -51,8 +51,21 @@ export function quizOutcome(result: {
   };
 }
 
-/** Block kinds the phone can show in full today. Videos, documents, images and SWMS need file viewing, which is later. */
-const READABLE_BLOCKS = new Set(['text', 'slides']);
+/** Block kinds the phone shows in full: text and slides inline, images and documents from a download link. */
+const READABLE_BLOCKS = new Set(['text', 'slides', 'image', 'document']);
+
+/** A document must stay open this long before it counts as read; opening it and closing it at once is not reading. */
+export const MIN_DOCUMENT_MS = 5000;
+
+/**
+ * Images and documents in a section the worker has not yet viewed. "Seen to the end" is the record, so the
+ * section cannot be ticked until each one has been.
+ */
+export function unviewedFiles(section: Section, viewed: ReadonlySet<string>): string[] {
+  return section.blocks.flatMap((b) =>
+    (b.type === 'image' || b.type === 'document') && !viewed.has(b.fileId) ? [b.fileId] : [],
+  );
+}
 
 /**
  * Block kinds in a section the phone cannot show yet. A section with any of these cannot be marked as seen:

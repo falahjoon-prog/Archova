@@ -7,6 +7,8 @@ import {
   signInduction,
   unsupportedBlockKinds,
   unsupportedBlocksMessage,
+  unviewedFiles,
+  getInductionFile,
   signaturePath,
   thinStroke,
 } from '../features/inductions';
@@ -142,6 +144,48 @@ describe('unsupported blocks', () => {
     const kinds = unsupportedBlockKinds(section('text', 'video', 'video', 'swms'));
     expect(kinds).toEqual(['video', 'swms']);
     expect(unsupportedBlocksMessage(kinds)).toContain('a video and a SWMS');
+  });
+});
+
+describe('image and document blocks', () => {
+  const withFiles = {
+    key: 'site',
+    title: 'Site',
+    blocks: [
+      { type: 'text', body: 'x' },
+      { type: 'image', fileId: 'fil_a' },
+      { type: 'document', fileId: 'fil_b' },
+    ],
+  } as never;
+
+  it('shows them, so they no longer block the section', () => {
+    expect(unsupportedBlockKinds(withFiles)).toEqual([]);
+  });
+
+  it('keeps the section from being ticked until each file was viewed', () => {
+    expect(unviewedFiles(withFiles, new Set())).toEqual(['fil_a', 'fil_b']);
+    expect(unviewedFiles(withFiles, new Set(['fil_a']))).toEqual(['fil_b']);
+    expect(unviewedFiles(withFiles, new Set(['fil_a', 'fil_b']))).toEqual([]);
+  });
+
+  it('fetches a download link for the induction file', async () => {
+    const GET = vi.fn(async () => ({
+      data: { url: 'https://files.test/x', expiresAt: '2026-10-30T06:00:00Z' },
+      response: new Response(null, { status: 200 }),
+    }));
+    const link = await getInductionFile(
+      { GET } as never,
+      { orgId: 'o', projectId: 'p' },
+      'inc_1',
+      'fil_a',
+    );
+    expect(link.url).toBe('https://files.test/x');
+    expect(GET).toHaveBeenCalledWith(
+      expect.stringContaining('/files/{fileId}/download'),
+      expect.objectContaining({
+        params: { path: { orgId: 'o', projectId: 'p', completionId: 'inc_1', fileId: 'fil_a' } },
+      }),
+    );
   });
 });
 
