@@ -2202,6 +2202,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/submittals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The submittal register in number order, with submit-by dates and their amber/red state (SUB-AC2). */
+        get: operations["listSubmittals"];
+        put?: never;
+        /** Add an item to the register. It gets the next number unless `numberLabel` is given (SUB-AC1). */
+        post: operations["createSubmittal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        /** One item with every revision and its review steps (SUB-US7). */
+        get: operations["getSubmittal"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft item, or one sent back for resubmission. */
+        patch: operations["updateSubmittal"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the package for review, or resubmit it as the next revision. The builder reviews first, then the consultants in order. */
+        post: operations["submitSubmittal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/steps/{stepId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+                stepId: components["parameters"]["SubmittalStepId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer the step that is waiting. The builder forwards or returns a status; a consultant approves, approves as noted, or sends it back. */
+        post: operations["respondToSubmittalStep"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close an approved item. */
+        post: operations["closeSubmittal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/rfis": {
         parameters: {
             query?: never;
@@ -5253,6 +5360,143 @@ export interface components {
             results: components["schemas"]["SyncPushResult"][];
         };
         /** @enum {string} */
+        SubmittalStatus: "draft" | "submitted" | "in_review" | "approved" | "approved_as_noted" | "revise_resubmit" | "rejected" | "closed";
+        /** @enum {string} */
+        SubmittalType: "shop_drawing" | "product_data" | "sample" | "mock_up" | "certificate" | "other";
+        /** @enum {string} */
+        SubmittalStepResponse: "pending" | "forwarded" | "approved" | "approved_as_noted" | "revise_resubmit" | "rejected" | "skipped";
+        /** @enum {string} */
+        SubmittalReviewAnswer: "forwarded" | "approved" | "approved_as_noted" | "revise_resubmit" | "rejected";
+        SubmittalBall: {
+            /** @enum {string|null} */
+            side: "subcontractor" | "builder" | "consultant" | null;
+            userIds: string[];
+            /** @description The review step that is waiting */
+            stepId: string | null;
+            /**
+             * Format: date
+             * @description When that step is due
+             */
+            dueDate: string | null;
+        };
+        Submittal: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description SD-014, or the company numbering such as 0331-1 */
+            numberLabel: string;
+            title: string;
+            type: components["schemas"]["SubmittalType"];
+            specSection: string | null;
+            responsibleCompanyId: string | null;
+            /** @description The builder reviewer for the first step */
+            managerId: string | null;
+            /** Format: date */
+            requiredOnSite: string | null;
+            leadTimeDays: number;
+            /** @description Business days allowed for the whole review */
+            reviewDays: number;
+            /**
+             * Format: date
+             * @description Required on site − lead time − review time, in business days
+             */
+            submitBy: string | null;
+            /**
+             * @description Amber once the submit-by date passes with nothing submitted, red five business days later or once required-on-site passes
+             * @enum {string}
+             */
+            submitByState: "none" | "ok" | "amber" | "red";
+            status: components["schemas"]["SubmittalStatus"];
+            currentRevision: number;
+            ballInCourt: components["schemas"]["SubmittalBall"];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            returnedAt: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        SubmittalStep: {
+            id: string;
+            step: number;
+            /** @enum {string} */
+            kind: "builder" | "consultant";
+            approverId: string;
+            companyId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            response: components["schemas"]["SubmittalStepResponse"];
+            comments: string;
+            fileIds: string[];
+            /** Format: date-time */
+            respondedAt: string | null;
+        };
+        SubmittalRevision: {
+            /** @description Starts at 0; each resubmission adds one */
+            revision: number;
+            submittedBy: string | null;
+            /** Format: date-time */
+            submittedAt: string;
+            note: string;
+            fileIds: string[];
+            /** @enum {string} */
+            status: "in_review" | "approved" | "approved_as_noted" | "revise_resubmit" | "rejected";
+            /** Format: date-time */
+            returnedAt: string | null;
+            steps: components["schemas"]["SubmittalStep"][];
+        };
+        SubmittalDetail: {
+            submittal: components["schemas"]["Submittal"];
+            revisions: components["schemas"]["SubmittalRevision"][];
+        };
+        SubmittalPage: {
+            data: components["schemas"]["Submittal"][];
+            nextCursor: string | null;
+        };
+        CreateSubmittalRequest: {
+            title: string;
+            numberLabel?: string;
+            type?: components["schemas"]["SubmittalType"];
+            specSection?: string;
+            responsibleCompanyId?: components["schemas"]["CompanyRef"];
+            managerId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            requiredOnSite?: string;
+            leadTimeDays?: number;
+            /** @description Defaults to 10 business days */
+            reviewDays?: number;
+        };
+        UpdateSubmittalRequest: {
+            title?: string;
+            numberLabel?: string;
+            type?: components["schemas"]["SubmittalType"];
+            specSection?: string | null;
+            responsibleCompanyId?: components["schemas"]["CompanyRef"] | null;
+            managerId?: components["schemas"]["UserRef"] | null;
+            /** Format: date */
+            requiredOnSite?: string | null;
+            leadTimeDays?: number;
+            reviewDays?: number;
+        };
+        SubmitSubmittalRequest: {
+            fileIds: components["schemas"]["FileRef"][];
+            note?: string;
+            /** @description Consultants in review order. A resubmission keeps the last path when this is left out. */
+            reviewerIds?: components["schemas"]["UserRef"][];
+        };
+        RespondSubmittalStepRequest: {
+            response: components["schemas"]["SubmittalReviewAnswer"];
+            comments?: string;
+            /** @description Marked-up PDFs (SUB-AC4) */
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        /** @enum {string} */
         RfiStatus: "draft" | "open" | "answered" | "closed" | "void";
         /** @enum {string} */
         CostImpact: "yes" | "no" | "tbc";
@@ -7047,6 +7291,8 @@ export interface components {
         DrawingRevisionId: string;
         MarkupId: string;
         TransmittalId: string;
+        SubmittalId: string;
+        SubmittalStepId: string;
         RfiId: string;
         DefectId: string;
         TenderPackageId: string;
@@ -10498,6 +10744,221 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DefectDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSubmittals: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["SubmittalStatus"];
+                type?: components["schemas"]["SubmittalType"];
+                /** @description Only submittals waiting on this user */
+                ballInCourt?: components["schemas"]["UserRef"];
+                q?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSubmittal: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSubmittalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSubmittal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateSubmittal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSubmittalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitSubmittal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitSubmittalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondToSubmittalStep: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+                stepId: components["parameters"]["SubmittalStepId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondSubmittalStepRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    closeSubmittal: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                submittalId: components["parameters"]["SubmittalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SubmittalDetail"];
                 };
             };
             default: components["responses"]["Problem"];

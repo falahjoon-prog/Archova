@@ -606,6 +606,22 @@ export const CreateRfiResponseRequestSchema = z.object({
 }).strict();
 export type CreateRfiResponseRequest = z.infer<typeof CreateRfiResponseRequestSchema>;
 
+export const SubmittalTypeSchema = z.enum(["shop_drawing", "product_data", "sample", "mock_up", "certificate", "other"]);
+export type SubmittalType = z.infer<typeof SubmittalTypeSchema>;
+
+export const CreateSubmittalRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "numberLabel": z.string().min(1).max(40).optional(),
+  "type": SubmittalTypeSchema.optional(),
+  "specSection": z.string().max(200).optional(),
+  "responsibleCompanyId": CompanyRefSchema.optional(),
+  "managerId": UserRefSchema.optional(),
+  "requiredOnSite": z.string().date().optional(),
+  "leadTimeDays": z.number().int().min(0).max(1000).optional(),
+  "reviewDays": z.number().int().min(0).max(250).optional(),
+}).strict();
+export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema>;
+
 export const TakeoffKindSchema = z.enum(["length", "area", "count"]);
 export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
 
@@ -2343,6 +2359,16 @@ export const RemoveProjectMemberRequestSchema = z.object({
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
 
+export const SubmittalReviewAnswerSchema = z.enum(["forwarded", "approved", "approved_as_noted", "revise_resubmit", "rejected"]);
+export type SubmittalReviewAnswer = z.infer<typeof SubmittalReviewAnswerSchema>;
+
+export const RespondSubmittalStepRequestSchema = z.object({
+  "response": SubmittalReviewAnswerSchema,
+  "comments": z.string().max(20000).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+}).strict();
+export type RespondSubmittalStepRequest = z.infer<typeof RespondSubmittalStepRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
@@ -2610,6 +2636,93 @@ export const SubmitInductionQuizRequestSchema = z.object({
 }).strict()).max(15),
 }).strict();
 export type SubmitInductionQuizRequest = z.infer<typeof SubmitInductionQuizRequestSchema>;
+
+export const SubmitSubmittalRequestSchema = z.object({
+  "fileIds": z.array(FileRefSchema).min(1).max(50),
+  "note": z.string().max(5000).optional(),
+  "reviewerIds": z.array(UserRefSchema).max(10).optional(),
+}).strict();
+export type SubmitSubmittalRequest = z.infer<typeof SubmitSubmittalRequestSchema>;
+
+export const SubmittalStatusSchema = z.enum(["draft", "submitted", "in_review", "approved", "approved_as_noted", "revise_resubmit", "rejected", "closed"]);
+export type SubmittalStatus = z.infer<typeof SubmittalStatusSchema>;
+
+export const SubmittalBallSchema = z.object({
+  "side": z.enum(["subcontractor", "builder", "consultant"]).nullable(),
+  "userIds": z.array(z.string()),
+  "stepId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+});
+export type SubmittalBall = z.infer<typeof SubmittalBallSchema>;
+
+export const SubmittalSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "type": SubmittalTypeSchema,
+  "specSection": z.string().nullable(),
+  "responsibleCompanyId": z.string().nullable(),
+  "managerId": z.string().nullable(),
+  "requiredOnSite": z.string().date().nullable(),
+  "leadTimeDays": z.number().int(),
+  "reviewDays": z.number().int(),
+  "submitBy": z.string().date().nullable(),
+  "submitByState": z.enum(["none", "ok", "amber", "red"]),
+  "status": SubmittalStatusSchema,
+  "currentRevision": z.number().int(),
+  "ballInCourt": SubmittalBallSchema,
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "returnedAt": z.string().datetime({ offset: true }).nullable(),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Submittal = z.infer<typeof SubmittalSchema>;
+
+export const SubmittalStepResponseSchema = z.enum(["pending", "forwarded", "approved", "approved_as_noted", "revise_resubmit", "rejected", "skipped"]);
+export type SubmittalStepResponse = z.infer<typeof SubmittalStepResponseSchema>;
+
+export const SubmittalStepSchema = z.object({
+  "id": z.string(),
+  "step": z.number().int(),
+  "kind": z.enum(["builder", "consultant"]),
+  "approverId": z.string(),
+  "companyId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "response": SubmittalStepResponseSchema,
+  "comments": z.string(),
+  "fileIds": z.array(z.string()),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type SubmittalStep = z.infer<typeof SubmittalStepSchema>;
+
+export const SubmittalRevisionSchema = z.object({
+  "revision": z.number().int(),
+  "submittedBy": z.string().nullable(),
+  "submittedAt": z.string().datetime({ offset: true }),
+  "note": z.string(),
+  "fileIds": z.array(z.string()),
+  "status": z.enum(["in_review", "approved", "approved_as_noted", "revise_resubmit", "rejected"]),
+  "returnedAt": z.string().datetime({ offset: true }).nullable(),
+  "steps": z.array(SubmittalStepSchema),
+});
+export type SubmittalRevision = z.infer<typeof SubmittalRevisionSchema>;
+
+export const SubmittalDetailSchema = z.object({
+  "submittal": SubmittalSchema,
+  "revisions": z.array(SubmittalRevisionSchema),
+});
+export type SubmittalDetail = z.infer<typeof SubmittalDetailSchema>;
+
+export const SubmittalPageSchema = z.object({
+  "data": z.array(SubmittalSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type SubmittalPage = z.infer<typeof SubmittalPageSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),
@@ -3015,6 +3128,19 @@ export const UpdateRfiRequestSchema = z.object({
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
+
+export const UpdateSubmittalRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "numberLabel": z.string().min(1).max(40).optional(),
+  "type": SubmittalTypeSchema.optional(),
+  "specSection": z.string().max(200).nullable().optional(),
+  "responsibleCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "managerId": z.union([UserRefSchema, z.null()]).optional(),
+  "requiredOnSite": z.string().date().nullable().optional(),
+  "leadTimeDays": z.number().int().min(0).max(1000).optional(),
+  "reviewDays": z.number().int().min(0).max(250).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateSubmittalRequest = z.infer<typeof UpdateSubmittalRequestSchema>;
 
 export const UpdateTakeoffMeasurementRequestSchema = z.object({
   "label": z.string().min(1).max(200).optional(),

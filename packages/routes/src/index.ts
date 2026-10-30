@@ -31,6 +31,10 @@ export const webRoutes = {
   newRfi: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis/new`,
   rfi: (orgSlug: string, projectId: string, rfiId: string) =>
     `${p(orgSlug, projectId)}/rfis/${enc(rfiId)}`,
+  submittals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals`,
+  newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
+  submittal: (orgSlug: string, projectId: string, submittalId: string) =>
+    `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
   /** The diary for a project-local date (`YYYY-MM-DD`); without a date it opens today. */
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,

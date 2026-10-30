@@ -38,6 +38,8 @@ export const ID_PREFIXES = {
   aiRun: 'air',
   aiSuggestion: 'ais',
   rfiResponse: 'rfr',
+  submittal: 'sbm',
+  submittalStep: 'sbs',
   diaryLabour: 'dlb',
   diaryPlant: 'dpl',
   diaryDelivery: 'ddv',

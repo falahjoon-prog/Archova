@@ -30,6 +30,7 @@ import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -37,6 +38,7 @@ export const MODULE_PERMISSIONS = [
   AI_PERMISSIONS,
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
+  SUBMITTALS_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
@@ -99,6 +101,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       defects: 'defects.defects.respond',
       // A subcontractor attaches their quote PDF to a tender package they were invited to.
       estimating: 'estimating.quotes.submit',
+      // A subcontractor attaches the shop drawing package to the item they are responsible for.
+      submittals: 'submittals.submittals.submit',
     },
   });
 
@@ -118,6 +122,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     documents: documents.api,
+    files: files.api,
+  });
+
+  const submittals = createSubmittalsModule(services, {
+    access: access.api,
+    platform: platform.api,
     files: files.api,
   });
 
@@ -232,6 +242,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    submittals,
     defects,
     estimating,
     integrations,
@@ -257,6 +268,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ai,
     documents,
     rfis,
+    submittals,
     defects,
     estimating,
     integrations,

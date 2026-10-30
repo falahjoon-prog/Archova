@@ -2,3 +2,4 @@
 export { ProjectListScreen } from './screens/ProjectListScreen';
 export { ProjectDetailScreen } from './screens/ProjectDetailScreen';
 export { ProjectShell } from './components/ProjectShell';
+export { useProjectPermissions } from './hooks/useProjectQueries';
