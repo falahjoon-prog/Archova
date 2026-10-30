@@ -15,6 +15,7 @@ import {
   type NewDrawingSetInput,
   type ReviewSheetPatch,
 } from '../data/source';
+import type { DrawingPin } from '../lib/types';
 
 /** The API source, or the in-browser preview when preview data is on (shared/lib/data-mode). */
 export function useDrawingsSource(): DrawingsSource {
@@ -104,6 +105,19 @@ export function useConfirmPinLocation(projectId: string, revisionId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (pinId: string) => drawingsSource.confirmPinLocation(projectId, revisionId, pinId),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: queryKeys.drawingRevision(orgId, revisionId, 'pins') }),
+  });
+}
+
+/** Moves an RFI's or a defect's pin on the sheet; the pins refetch from the records. */
+export function useMovePin(projectId: string, revisionId: string) {
+  const { orgId } = useCurrentOrg();
+  const drawingsSource = useDrawingsSource();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { pin: DrawingPin; at: { x: number; y: number } }) =>
+      drawingsSource.movePin(projectId, revisionId, v.pin, v.at),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.drawingRevision(orgId, revisionId, 'pins') }),
   });
