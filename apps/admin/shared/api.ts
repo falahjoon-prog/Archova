@@ -9,6 +9,7 @@ import {
   type OrgDetailDto,
   type OrgListItemDto,
   type SuspendCategory,
+  type SupportAccessDto,
   type Page,
   type PlanDraftInput,
   type PlanDto,
@@ -90,6 +91,12 @@ export const api = {
   orgs: (query: { q?: string; cursor?: string; limit?: number }) =>
     call<Page<OrgListItemDto>>('listOrgs', { query }),
   org: (orgId: string) => call<OrgDetailDto>('getOrg', { params: { orgId } }),
+  supportAccess: (orgId: string) =>
+    call<SupportAccessDto>('getOrgSupportAccess', { params: { orgId } }),
+  startSupportSession: (orgId: string, ticketRef: string) =>
+    call<SupportAccessDto>('startSupportSession', { params: { orgId }, body: { ticketRef } }),
+  endSupportSession: (orgId: string, sessionId: string) =>
+    call<SupportAccessDto>('endSupportSession', { params: { orgId, sessionId } }),
   trialExtend: (orgId: string, body: { days: number; reason: string; ticketRef: string }) =>
     call<OrgDetailDto>('trialExtendOrg', { params: { orgId }, body }),
   changePlan: (orgId: string, body: { planCode: string; reason: string; ticketRef: string }) =>

@@ -278,6 +278,59 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Org' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportAccess
+      tags: [orgs]
+      x-module: platform
+      summary: Support access grants and the support sessions held under them (org owners and admins).
+      responses:
+        '200':
+          description: Grants and sessions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: createSupportAccessGrant
+      tags: [orgs]
+      x-module: platform
+      summary: Let Archova support view this organisation for a limited time (off by default).
+      description: |
+        A one-time grant is tied to a support ticket and lasts up to 72 hours. It is view-only. Support staff
+        then start sessions of at most one hour inside it. Only org owners and admins can grant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSupportAccessGrantRequest' }
+      responses:
+        '201':
+          description: The grant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccessGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/grants/{grantId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: grantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: revokeSupportAccessGrant
+      tags: [orgs]
+      x-module: platform
+      summary: Take support access back. Open support sessions end at once.
+      responses:
+        '204': { description: Revoked }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/public/price-book:
     get:
       operationId: getPublicPriceBook
@@ -5852,6 +5905,47 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    SupportAccessGrant:
+      type: object
+      required: [id, ticketRef, level, createdAt, expiresAt, grantedBy, status]
+      properties:
+        id: { type: string, format: uuid }
+        ticketRef: { type: string }
+        level: { type: string, enum: [view] }
+        grantedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [active, expired, revoked] }
+    SupportAccessSession:
+      type: object
+      required: [id, grantId, staffName, ticketRef, startedAt, expiresAt, status]
+      properties:
+        id: { type: string, format: uuid }
+        grantId: { type: string, format: uuid }
+        staffName: { type: string }
+        ticketRef: { type: string }
+        startedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [open, ended, expired, revoked] }
+    SupportAccess:
+      type: object
+      required: [grants, sessions]
+      properties:
+        grants:
+          type: array
+          items: { $ref: '#/components/schemas/SupportAccessGrant' }
+        sessions:
+          type: array
+          items: { $ref: '#/components/schemas/SupportAccessSession' }
+    CreateSupportAccessGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [ticketRef, hours]
+      properties:
+        ticketRef: { type: string, minLength: 2, maxLength: 60 }
+        hours: { type: integer, minimum: 1, maximum: 72 }
     Abn:
       type: string
       pattern: '^[0-9]{11}$'

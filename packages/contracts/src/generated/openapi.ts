@@ -232,6 +232,68 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/support-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Support access grants and the support sessions held under them (org owners and admins). */
+        get: operations["getSupportAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Let Archova support view this organisation for a limited time (off by default).
+         * @description A one-time grant is tied to a support ticket and lasts up to 72 hours. It is view-only. Support staff
+         *     then start sessions of at most one hour inside it. Only org owners and admins can grant.
+         */
+        post: operations["createSupportAccessGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access/grants/{grantId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take support access back. Open support sessions end at once. */
+        post: operations["revokeSupportAccessGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/public/price-book": {
         parameters: {
             query?: never;
@@ -4166,6 +4228,46 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        SupportAccessGrant: {
+            /** Format: uuid */
+            id: string;
+            ticketRef: string;
+            /** @enum {string} */
+            level: "view";
+            grantedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            revokedAt?: string | null;
+            /** @enum {string} */
+            status: "active" | "expired" | "revoked";
+        };
+        SupportAccessSession: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            grantId: string;
+            staffName: string;
+            ticketRef: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            endedAt?: string | null;
+            /** @enum {string} */
+            status: "open" | "ended" | "expired" | "revoked";
+        };
+        SupportAccess: {
+            grants: components["schemas"]["SupportAccessGrant"][];
+            sessions: components["schemas"]["SupportAccessSession"][];
+        };
+        CreateSupportAccessGrantRequest: {
+            ticketRef: string;
+            hours: number;
+        };
         Abn: string;
         CreateOrgRequest: {
             name: string;
@@ -7949,6 +8051,78 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Org"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSupportAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grants and sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSupportAccessGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupportAccessGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description The grant */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccessGrant"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeSupportAccessGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

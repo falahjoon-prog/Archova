@@ -6,7 +6,7 @@ import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
-import { platformRoutes } from './api/routes';
+import { platformRoutes, type SupportAccessPort } from './api/routes';
 
 export function createPlatformModule(
   services: KernelServices,
@@ -16,6 +16,7 @@ export function createPlatformModule(
     access: () => AccessService;
     defaultEntitlements: Entitlements;
     onOrgCreated?: OrgDeps['onOrgCreated'];
+    supportAccess?: SupportAccessPort;
   },
 ) {
   const access = new Proxy({} as AccessService, {
@@ -41,6 +42,7 @@ export function createPlatformModule(
       keyDates,
       companies,
       members,
+      ...(deps.supportAccess ? { supportAccess: deps.supportAccess } : {}),
     }),
     api: {
       resolveTenantAccess: orgs.resolveTenantAccess,
