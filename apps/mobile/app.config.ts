@@ -39,6 +39,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ],
     'expo-secure-store',
     'expo-web-browser',
+    'expo-video',
     // SQLCipher for the per-organisation device database (mobile 02 §2.3); lib/db refuses to open without it.
     ['expo-sqlite', { useSQLCipher: true }],
     [
