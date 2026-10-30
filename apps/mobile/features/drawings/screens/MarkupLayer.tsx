@@ -2,9 +2,8 @@
 import { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import Svg, { Ellipse, Line, Path, Text as SvgText } from 'react-native-svg';
-import type { Markup } from '@archova/contracts';
 import { useTheme } from '@archova/ui-native';
-import { markupPrimitives } from '../markup';
+import { markupPrimitives, type DrawnMarkup } from '../markup';
 import type { Pyramid, Viewport } from '../viewport';
 
 export function MarkupLayer({
@@ -14,7 +13,7 @@ export function MarkupLayer({
 }: {
   pyramid: Pyramid;
   view: Viewport;
-  markups: readonly Markup[];
+  markups: readonly DrawnMarkup[];
 }) {
   const t = useTheme();
   const items = useMemo(
