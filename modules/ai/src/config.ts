@@ -13,6 +13,8 @@ export interface AiConfig {
   embedding?: { model: string; pricePerMTok?: number };
   /** Tokens of documents and records one org may have embedded in a local day (ai/05 §4). Unset means the default. */
   embedDailyTokens?: number;
+  /** Scanned pages one org may have read with OCR in a local day (ai/05 §4). Unset means the default. */
+  ocrDailyPages?: number;
 }
 
 /** Embedding model id the fake provider reports. */
@@ -55,7 +57,11 @@ export function loadAiConfig(env: NodeJS.ProcessEnv = process.env): AiConfig {
   if (kind !== 'fake' && kind !== 'bedrock')
     throw new Error(`API_AI_PROVIDER must be fake or bedrock, not ${kind}`);
   const embedDailyTokens = wholeNumber(env, 'API_AI_EMBED_DAILY_TOKENS');
-  const cap = embedDailyTokens === undefined ? {} : { embedDailyTokens };
+  const ocrDailyPages = wholeNumber(env, 'API_AI_OCR_DAILY_PAGES');
+  const cap = {
+    ...(embedDailyTokens === undefined ? {} : { embedDailyTokens }),
+    ...(ocrDailyPages === undefined ? {} : { ocrDailyPages }),
+  };
   if (kind === 'fake') return { provider: { kind: 'fake' }, models: FAKE_MODELS, ...cap };
 
   const region = env.API_AI_REGION || 'ap-southeast-2';

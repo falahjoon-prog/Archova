@@ -34,6 +34,8 @@ export interface GatewayDeps {
   ocrPriceMicros?: number;
   /** Tokens of documents and records an org may have embedded in a local day; defaults to `DEFAULT_EMBED_DAILY_TOKENS`. */
   embedDailyTokens?: number;
+  /** Scanned pages an org may have read with OCR in a local day; defaults to `DEFAULT_OCR_DAILY_PAGES`. */
+  ocrDailyPages?: number;
   redis: RedisClient | null;
   logger: Logger;
   /** The org's IANA zone, for the ledger day (X34). Supplied by `platform`. */
@@ -98,6 +100,13 @@ export interface EmbedOptions {
  */
 export const DEFAULT_EMBED_DAILY_TOKENS = 25_000_000;
 
+/**
+ * Scanned pages one org may have read with OCR in a local day (ai/05 §4). The same kind of backstop as the embedding
+ * cap, but a page costs far more than its embedding: at Textract's list price (US$1.50 per 1,000 pages) this is about
+ * US$4.50 an org a day. Priya and Sam to confirm.
+ */
+export const DEFAULT_OCR_DAILY_PAGES = 3_000;
+
 /** Texts per provider call; Titan takes one at a time anyway, Cohere up to 96. */
 const EMBED_BATCH = 64;
 
@@ -113,19 +122,23 @@ export function createGateway(deps: GatewayDeps) {
   const timeouts = deps.timeouts ?? DEFAULT_TIMEOUTS;
   const now = deps.now ?? (() => new Date());
   const embedDailyTokens = deps.embedDailyTokens ?? DEFAULT_EMBED_DAILY_TOKENS;
+  const ocrDailyPages = deps.ocrDailyPages ?? DEFAULT_OCR_DAILY_PAGES;
   const onceADay = createOnceADay(deps.redis);
 
   /**
-   * Says in the log, once an org-day, that an org's daily embedding cap is reached (Jeff alerts on this line). Ids and
-   * numbers only. `resetsAt` changes each local day, so it stands for the day.
+   * Says in the log, once an org-day, that an org reached a daily cap (Jeff alerts on these lines). Ids and numbers
+   * only. `resetsAt` changes each local day, so it stands for the day.
    */
-  async function noteEmbeddingCap(orgId: string, err: AppError) {
+  async function noteCap(
+    orgId: string,
+    task: string,
+    err: AppError,
+    cap: Record<string, number>,
+    msg: string,
+  ) {
     const resetsAt = String(err.extra?.resetsAt ?? '');
-    if (!(await onceADay.first(orgId, 'embed.document', resetsAt))) return;
-    deps.logger.warn(
-      { orgId, task: 'embed.document', capTokens: embedDailyTokens, resetsAt },
-      'ai daily embedding cap reached',
-    );
+    if (!(await onceADay.first(orgId, task, resetsAt))) return;
+    deps.logger.warn({ orgId, task, ...cap, resetsAt }, msg);
   }
 
   /** Steps 1–2: is Nova on for this org, feature and caller, and is there allowance left? */
@@ -189,6 +202,33 @@ export function createGateway(deps: GatewayDeps) {
     throw new AppError(
       'ai.embedding_limit',
       'Nova has read as much as it can for your organisation today. It picks up again tomorrow, so try this again then.',
+      undefined,
+      { resetsAt: endOfLocalDay(a.day, a.tz).toISOString() },
+    );
+  }
+
+  /**
+   * Refuses OCR once reading these pages would take the org past `ocrDailyPages` for its local day. Pages are known up
+   * front and dear, so the call must fit, with one exception: the first call of a day always runs, so a document longer
+   * than the cap can still be read once. Counts pages Textract read, not ones that failed.
+   */
+  async function assertOcrRoom(scope: TenantScope, a: { day: string; tz: string }, pages: number) {
+    const [row] = await scope.tx
+      .select({ n: sql<string>`count(*)` })
+      .from(requests)
+      .where(
+        and(
+          eq(requests.orgId, scope.ctx.orgId),
+          eq(requests.task, 'ocr.page'),
+          eq(requests.outcome, 'ok'),
+          gte(requests.createdAt, startOfLocalDay(a.day, a.tz)),
+        ),
+      );
+    const used = Number(row?.n ?? 0);
+    if (used === 0 || used + pages <= ocrDailyPages) return;
+    throw new AppError(
+      'ai.ocr_limit',
+      'Nova has read as many scanned pages as it can for your organisation today. It picks up again tomorrow, so try this again then.',
       undefined,
       { resetsAt: endOfLocalDay(a.day, a.tz).toISOString() },
     );
@@ -317,7 +357,13 @@ export function createGateway(deps: GatewayDeps) {
       )
       .catch(async (err: unknown) => {
         if (err instanceof AppError && err.code === 'ai.embedding_limit')
-          await noteEmbeddingCap(ctx.orgId, err);
+          await noteCap(
+            ctx.orgId,
+            'embed.document',
+            err,
+            { capTokens: embedDailyTokens },
+            'ai daily embedding cap reached',
+          );
         throw err;
       });
     if (opts.rateLimited) await checkRateLimit(ctx, 'rlq', queryRateLimit);
@@ -362,7 +408,8 @@ export function createGateway(deps: GatewayDeps) {
 
   /**
    * Reads the text off scanned page images (ai/03 §3 step 2). Background work like embeddings: 0 credits and never
-   * stopped by the allowance (ai/05 §4), but behind the org and feature switches, and logged and costed per page.
+   * stopped by the allowance (ai/05 §4), but behind the org and feature switches, held to the org's daily page cap
+   * (`ai.ocr_limit`), and logged and costed per page.
    */
   async function ocr(
     ctx: TenantContext,
@@ -377,7 +424,27 @@ export function createGateway(deps: GatewayDeps) {
       kind: 'background' as const,
     };
     const ro = { readOnly: true } as const;
-    const { day } = await deps.database.withTenantTx(ctx, (s) => admit(s, prompt, 0), ro);
+    const { day } = await deps.database
+      .withTenantTx(
+        ctx,
+        async (s) => {
+          const admitted = await admit(s, prompt, 0);
+          await assertOcrRoom(s, admitted, images.length);
+          return admitted;
+        },
+        ro,
+      )
+      .catch(async (err: unknown) => {
+        if (err instanceof AppError && err.code === 'ai.ocr_limit')
+          await noteCap(
+            ctx.orgId,
+            'ocr.page',
+            err,
+            { capPages: ocrDailyPages },
+            'ai daily ocr cap reached',
+          );
+        throw err;
+      });
     const price = deps.ocrPriceMicros ?? DEFAULT_OCR_PRICE_MICROS;
     const results: OcrResponse[] = [];
     const calls: CallRecord[] = [];

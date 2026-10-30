@@ -277,6 +277,7 @@ export function createAiModule(
       pricePerMTok: deps.config.embedding?.pricePerMTok ?? DEFAULT_EMBEDDING_PRICE,
     },
     ...(deps.config.embedDailyTokens ? { embedDailyTokens: deps.config.embedDailyTokens } : {}),
+    ...(deps.config.ocrDailyPages ? { ocrDailyPages: deps.config.ocrDailyPages } : {}),
     redis: services.redis,
     logger: services.logger,
     orgTimeZone: deps.orgTimeZone,
