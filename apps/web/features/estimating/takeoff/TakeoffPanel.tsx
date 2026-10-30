@@ -23,6 +23,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { measurementsToCsv } from '../data/takeoff-source';
 import { usePackages } from '../hooks/useQuotes';
 import { useMeasurements, useTakeoffMutations } from '../hooks/useTakeoff';
+import { formatPackageNumber } from '../lib/quote-types';
 import { TRADES, type NewMeasurement, type TakeoffMeasurement } from '../lib/takeoff-types';
 import { ScaleSection } from './ScaleSection';
 import { CursorLayer, GeometrySvg } from './TakeoffLayer';
@@ -484,7 +485,10 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
                 placeholder="Choose a package"
                 options={(packages.data ?? [])
                   .filter((p) => p.status !== 'awarded' && p.status !== 'cancelled')
-                  .map((p) => ({ value: p.id, label: `${p.name} (${p.trade})` }))}
+                  .map((p) => ({
+                    value: p.id,
+                    label: `${formatPackageNumber(p.number)} ${p.name} (${p.trade})`,
+                  }))}
                 onChange={(e) => setPackageId(e.target.value)}
               />
               <div>
