@@ -1502,6 +1502,55 @@ fieldset.worker-card > legend {
   padding-bottom: 0;
 }
 
+/* Settings → API access: token and webhook rows stack their lines and wrap long addresses on a phone. */
+.api-access__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.api-access__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.api-access__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.api-access__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.api-access__scopes {
+  display: grid;
+  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.api-access__secret {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+@media (min-width: 768px) {
+  .api-access__scopes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Nova on the quote comparison: clip beside the controls from 768px, stacked below it. */
 .negotiate__layout {
   display: grid;

@@ -128,6 +128,7 @@ export type ApiTokenCreated = z.infer<typeof ApiTokenCreatedSchema>;
 
 export const ApiTokenListSchema = z.object({
   "data": z.array(ApiTokenSchema),
+  "availableScopes": z.array(z.string()),
 });
 export type ApiTokenList = z.infer<typeof ApiTokenListSchema>;
 

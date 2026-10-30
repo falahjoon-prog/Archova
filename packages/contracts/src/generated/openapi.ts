@@ -6565,6 +6565,8 @@ export interface components {
         };
         ApiTokenList: {
             data: components["schemas"]["ApiToken"][];
+            /** @description The scopes a new token can be given (`<area>:read` or `<area>:write`). */
+            availableScopes: string[];
         };
         ApiTokenCreated: components["schemas"]["ApiToken"] & {
             /** @description The secret (`pk_live_…`). Shown once; store it safely. */

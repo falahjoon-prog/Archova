@@ -9585,11 +9585,15 @@ components:
         createdAt: { type: string, format: date-time }
     ApiTokenList:
       type: object
-      required: [data]
+      required: [data, availableScopes]
       properties:
         data:
           type: array
           items: { $ref: '#/components/schemas/ApiToken' }
+        availableScopes:
+          type: array
+          items: { type: string }
+          description: The scopes a new token can be given (`<area>:read` or `<area>:write`).
     ApiTokenCreated:
       allOf:
         - $ref: '#/components/schemas/ApiToken'
