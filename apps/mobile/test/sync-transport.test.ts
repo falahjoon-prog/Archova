@@ -111,13 +111,29 @@ describe('createSyncTransport', () => {
     expect(error).toMatchObject({ status: 429, retryAfterMs: 7000 });
   });
 
-  it('refuses a drain push until the contract carries the drain grant', async () => {
+  it('refuses a drain push that has no grant', async () => {
     const { api, calls } = fakeApi(() => json(200, { results: [] }));
     const error = await createSyncTransport(api, 'org1')
       .push({ mutations: [mutation] }, { drain: true })
       .catch((e: unknown) => e);
-    expect(error).toMatchObject({ status: 501, code: 'not_implemented' });
+    expect(error).toMatchObject({ status: 403, code: 'access.revoked' });
     expect(calls).toHaveLength(0);
+  });
+
+  it('sends a drain push with the grant token as the bearer', async () => {
+    const { api, calls } = fakeApi(() => json(200, { results: [] }));
+    const grant = {
+      token: 'dg_secret',
+      expiresAt: '2026-11-02T00:00:00Z',
+      orgId: 'org1',
+      projectId: null,
+      module: null,
+    };
+    await createSyncTransport(api, 'org1').push({ mutations: [mutation] }, { drain: true, grant });
+    expect(calls).toHaveLength(1);
+    expect((calls[0]!.init as { headers: Record<string, string> }).headers).toEqual({
+      Authorization: 'Bearer dg_secret',
+    });
   });
 });
 

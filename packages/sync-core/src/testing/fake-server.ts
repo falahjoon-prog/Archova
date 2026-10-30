@@ -4,6 +4,7 @@
 
 import { SyncHttpError, type SyncTransport } from '../transport';
 import type {
+  DrainGrant,
   PullChange,
   PullRequest,
   PullResponse,
@@ -43,7 +44,7 @@ export class FakeSyncServer {
   readonly applied = new Map<string, PushResult>();
   /** Drain pushes held for an admin (`shared.late_submissions`). */
   readonly lateSubmissions: PushMutation[] = [];
-  readonly pushLog: { mutations: PushMutation[]; drain: boolean }[] = [];
+  readonly pushLog: { mutations: PushMutation[]; drain: boolean; grant?: DrainGrant }[] = [];
   readonly pullLog: PullRequest[] = [];
 
   /** Records whose file the scan has not cleared: `file.not_ready` (retry) or `file.blocked` (final). */
@@ -157,11 +158,18 @@ export class FakeSyncServer {
     };
   }
 
-  async push(request: PushRequest, options: { drain: boolean }): Promise<PushResponse> {
+  async push(
+    request: PushRequest,
+    options: { drain: boolean; grant?: DrainGrant },
+  ): Promise<PushResponse> {
     this.takeFailure();
     if (this.accessEndedAt && !options.drain)
       throw new SyncHttpError(401, { code: 'access.revoked' });
-    this.pushLog.push({ mutations: structuredClone(request.mutations), drain: options.drain });
+    this.pushLog.push({
+      mutations: structuredClone(request.mutations),
+      drain: options.drain,
+      ...(options.grant ? { grant: options.grant } : {}),
+    });
     if (request.mutations.length > 100) throw new SyncHttpError(400, { code: 'batch.too_large' });
     return { results: request.mutations.map((m) => this.applyOne(m, options.drain)) };
   }
@@ -192,7 +200,14 @@ export class FakeSyncServer {
     }
     if (this.isRevoked(projectId, command.module)) {
       // Not remembered: the device re-sends the same mutation with the drain grant (X38).
-      return { mutationId: m.mutationId, status: 'rejected', problem: { code: 'access.revoked' } };
+      const grant = this.revoked.find(
+        (r) => r.projectId === projectId && (r.module === null || r.module === command.module),
+      )?.drainGrant;
+      return {
+        mutationId: m.mutationId,
+        status: 'rejected',
+        problem: { code: 'access.revoked', ...(grant ? { drainGrant: grant } : {}) },
+      };
     }
 
     const k = key(command.entityType, m.entityId);
