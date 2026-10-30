@@ -12,7 +12,3 @@ create table backoffice.support_events (
 create index support_events_session on backoffice.support_events (session_id, created_at);
 
 select kernel.grant_module_schema('backoffice');
-
--- One live session per person per company, enforced by the database as well as the service (Sam, 30 Oct 2026).
-create unique index support_sessions_one_open on backoffice.support_sessions (target_org_id, staff_id)
-  where ended_at is null;
