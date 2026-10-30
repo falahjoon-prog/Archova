@@ -56,6 +56,9 @@ beforeEach(() => {
     ],
     nextCursor: null,
   }));
+  fake.on('GET', '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/activity', () => ({
+    data: [],
+  }));
 });
 
 describe('RFIs API source', () => {
@@ -159,5 +162,94 @@ describe('RFIs API source', () => {
       'If-Match': '"1"',
     });
     expect(opened).toMatchObject({ status: 'open', number: 4 });
+  });
+
+  it('shows the activity feed with who did what, and a due date change as before and after', async () => {
+    fake.on('GET', `${P}/{rfiId}`, () => ({
+      rfi: apiRfi(),
+      responses: [
+        {
+          id: 'rfr_1',
+          rfiId: 'rfi_1',
+          authorId: 'usr_elec',
+          body: 'Six.',
+          fileIds: [],
+          isOfficial: false,
+          aiSuggestionId: 'ais_9',
+          createdAt: '2026-10-02T00:00:00Z',
+        },
+      ],
+    }));
+    fake.on('GET', `${P}/{rfiId}/activity`, () => ({
+      data: [
+        { id: 'a1', kind: 'opened', at: '2026-10-01T00:00:00Z', actorId: 'usr_pm', details: {} },
+        {
+          id: 'a2',
+          kind: 'updated',
+          at: '2026-10-02T00:00:00Z',
+          actorId: 'usr_pm',
+          details: { changed: ['dueDate'], dueDate: ['2026-10-09', '2026-10-12'] },
+        },
+        {
+          id: 'a3',
+          kind: 'reopened',
+          at: '2026-10-03T00:00:00Z',
+          actorId: null,
+          details: { reason: 'Wrong sheet' },
+        },
+      ],
+    }));
+    const rfi = await createRfisApi('org_1').get('prj_1', 'rfi_1');
+    expect(rfi.responses[0]?.aiSuggestionId).toBe('ais_9');
+    expect(rfi.activity).toEqual([
+      { id: 'a1', actor: 'Dana Okafor', action: 'submitted the RFI', at: '2026-10-01T00:00:00Z' },
+      {
+        id: 'a2',
+        actor: 'Dana Okafor',
+        action: 'updated the RFI',
+        before: '9 Oct 2026',
+        after: '12 Oct 2026',
+        at: '2026-10-02T00:00:00Z',
+      },
+      {
+        id: 'a3',
+        actor: 'Someone on an access link or the system',
+        action: 'reopened the RFI',
+        detail: 'Wrong sheet',
+        at: '2026-10-03T00:00:00Z',
+      },
+    ]);
+  });
+
+  it('pins a new RFI to the chosen drawing revision and passes a Nova answer draft id on respond', async () => {
+    fake.on('POST', P, () => ({ rfi: apiRfi({ status: 'draft', number: null }), responses: [] }));
+    const source = createRfisApi('org_1');
+    await source.create(
+      'prj_1',
+      {
+        subject: 'S',
+        question: 'Q',
+        assigneeId: null,
+        dueDate: null,
+        distributionCompanyIds: [],
+        costImpact: null,
+        scheduleImpactDays: null,
+        drawing: { sheetId: 'dsh_1', revisionId: 'drv_01M65EMFSJEDZRH3DXQVSTGVX5', label: 'A-001' },
+        specSection: null,
+        location: null,
+        isPrivate: false,
+      },
+      actor,
+      false,
+    );
+    expect(fake.callsTo('POST', P)[0]!.init.body).toMatchObject({
+      pin: { drawingRevisionId: 'drv_01M65EMFSJEDZRH3DXQVSTGVX5' },
+    });
+    fake.on('POST', `${P}/{rfiId}/responses`, () => ({ rfi: apiRfi(), responses: [] }));
+    await source.respond('prj_1', 'rfi_1', { body: ' Six. ', aiSuggestionId: 'ais_9' }, actor);
+    expect(fake.callsTo('POST', `${P}/{rfiId}/responses`)[0]!.init.body).toEqual({
+      body: 'Six.',
+      aiSuggestionId: 'ais_9',
+    });
   });
 });
