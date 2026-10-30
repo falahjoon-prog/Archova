@@ -750,10 +750,13 @@ describe('customer account actions', () => {
     );
 
     const lead = await staff(['security_lead']);
+    // A Security lead suspends only for a security emergency.
+    expect((await act(lead, c.orgRef, 'suspend', { category: 'fraud' })).statusCode).toBe(403);
     const done = await act(lead, c.orgRef, 'suspend', { category: 'security' });
     expect(done.statusCode, done.body).toBe(200);
     expect(done.json()).toMatchObject({
       account: { state: 'suspended', suspended: { category: 'security' } },
+      actions: [{ summary: 'Suspended (security) by security lead' }],
     });
     expect(code(await act(lead, c.orgRef, 'suspend', { category: 'security' }))).toBe(
       'backoffice.already_suspended',
@@ -773,5 +776,30 @@ describe('customer account actions', () => {
       201,
     );
     expect(code(await act(lead, c.orgRef, 'reactivate', {}))).toBe('backoffice.not_suspended');
+  });
+
+  it('fails closed for a plan with no version, and keeps a retired plan for companies on it', async () => {
+    const c = await company('ghost');
+    const orgUuid = decodeId('org', c.orgRef)!;
+    await t.adminDb.db.execute(sql`
+      insert into billing.org_accounts (id, plan_code, state) values (${orgUuid}, 'ghost_plan', 'active')`);
+    const denied = await c.browser.get(c.attendance);
+    expect(denied.statusCode).toBe(403);
+    expect(code(denied)).toBe('entitlement-required');
+    expect(code(await c.browser.post(c.projects, { name: 'Nope', state: 'QLD' }))).toBe(
+      'org.read_only',
+    );
+
+    // A plan retired from sale still gives its latest version to companies already on it.
+    const db = t.adminDb.db;
+    await db.execute(sql`insert into billing.plans (code, sort_order) values ('legacy_plan', 5)`);
+    await db.execute(sql`
+      insert into billing.plan_versions
+        (id, plan_code, version, status, name, blurb, features, modules, ai_credits_monthly, cta_label, cta_href)
+      values (gen_random_uuid(), 'legacy_plan', 1, 'retired', 'Legacy', 'Old plan', '{}', array['workforce'], 10, 'Ask', '/demo')`);
+    await db.execute(
+      sql`update billing.org_accounts set plan_code = 'legacy_plan' where id = ${orgUuid}`,
+    );
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
   });
 });

@@ -136,11 +136,20 @@ export function createOrgActionService(deps: OrgActionDeps) {
     });
   }
 
+  const actingRole = (staff: StaffContext) =>
+    (staff.roles.includes('owner') ? 'owner' : (staff.roles[0] ?? 'staff')).replace(/_/g, ' ');
+
   async function suspend(
     staff: StaffContext,
     orgId: string,
     input: Common & { category: SuspendCategory },
   ) {
+    // A Security lead may suspend only in a security emergency; the other reasons are the Owner's (Sam 12 §3).
+    if (!staff.roles.includes('owner') && input.category !== 'security')
+      throw new AppError(
+        'backoffice.permission_denied',
+        'Only an Owner can suspend for abuse, fraud or a legal order.',
+      );
     await tx(async (t) => {
       const a = await deps.accounts.suspend(t, orgId, await seed(t, orgId), input.category, now());
       await syncDirectory(t, orgId, a);
@@ -149,7 +158,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         orgId,
         staff,
         'suspend',
-        `Suspended (${input.category.replace('_', ' ')})`,
+        `Suspended (${input.category.replace('_', ' ')}) by ${actingRole(staff)}`,
         input,
       );
     });
@@ -160,7 +169,14 @@ export function createOrgActionService(deps: OrgActionDeps) {
       await seed(t, orgId);
       const a = await deps.accounts.reactivate(t, orgId);
       await syncDirectory(t, orgId, a);
-      await log(t, orgId, staff, 'reactivate', 'Reactivated after suspension', input);
+      await log(
+        t,
+        orgId,
+        staff,
+        'reactivate',
+        `Reactivated after suspension by ${actingRole(staff)}`,
+        input,
+      );
     });
   }
 

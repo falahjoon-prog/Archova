@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq, inArray } from 'drizzle-orm';
 import { CORE_MODULES } from '@archova/domain';
 import type { Entitlements, KernelServices } from '@archova/kernel';
 import { orgAccounts, planVersions } from '../infra/tables';
@@ -54,36 +54,46 @@ export function createDbEntitlementProvider(
       const found = await services.database.withGlobalTx('billing', async (tx) => {
         const [acct] = await tx.select().from(orgAccounts).where(eq(orgAccounts.id, orgId));
         if (!acct) return null;
-        const [plan] =
-          acct.planCode === 'trial'
-            ? []
-            : await tx
-                .select({
-                  modules: planVersions.modules,
-                  aiCreditsMonthly: planVersions.aiCreditsMonthly,
-                })
-                .from(planVersions)
-                .where(
-                  and(
-                    eq(planVersions.planCode, acct.planCode),
-                    eq(planVersions.status, 'published'),
-                  ),
-                );
+        if (acct.planCode === 'trial') return { acct, plan: null };
+        const pick = {
+          modules: planVersions.modules,
+          aiCreditsMonthly: planVersions.aiCreditsMonthly,
+        };
+        // The published version; if the plan was retired from sale, its latest version, so a company
+        // already on it keeps what it bought. A plan with no version at all gets nothing (fails closed).
+        const [plan] = await tx
+          .select(pick)
+          .from(planVersions)
+          .where(
+            and(
+              eq(planVersions.planCode, acct.planCode),
+              inArray(planVersions.status, ['published', 'retired']),
+            ),
+          )
+          .orderBy(desc(planVersions.version))
+          .limit(1);
         return { acct, plan };
       });
       if (!found) return TRIAL_ENTITLEMENTS;
       const { acct, plan } = found;
-      const modules = plan
-        ? [...CORE_MODULES, 'billing', ...plan.modules]
-        : TRIAL_ENTITLEMENTS.modules;
+      if (acct.planCode === 'trial')
+        return {
+          ...TRIAL_ENTITLEMENTS,
+          state: acct.suspendedAt ? 'read_only' : acct.state,
+        };
+      // A plan with no version: core modules only, read-only, no Nova, until staff fix the plan.
+      if (!plan)
+        return {
+          plan: acct.planCode,
+          state: 'read_only',
+          modules: [...CORE_MODULES, 'billing'],
+          limits: { ...TRIAL_ENTITLEMENTS.limits, 'limit.ai_credits': 0 },
+        };
       return {
         plan: acct.planCode,
         state: acct.suspendedAt ? 'read_only' : acct.state,
-        modules,
-        limits: {
-          ...TRIAL_ENTITLEMENTS.limits,
-          'limit.ai_credits': plan ? plan.aiCreditsMonthly : null,
-        },
+        modules: [...CORE_MODULES, 'billing', ...plan.modules],
+        limits: { ...TRIAL_ENTITLEMENTS.limits, 'limit.ai_credits': plan.aiCreditsMonthly },
       };
     },
   };
