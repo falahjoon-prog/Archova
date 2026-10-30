@@ -1,36 +1,36 @@
-// Elena on the quote comparison (EST-AC6), as the preview shows her: `POST …/ai/quote-negotiations` answers with the gap
+// Nova on the quote comparison (EST-AC6), as the preview shows it: `POST …/ai/quote-negotiations` answers with the gap
 // to the target price or the field's median, points to raise, levers, a counter-offer to consider and a draft message.
 // The preview works the gap out the same way the server does and answers from fixed wording; the real answer comes from
-// Nova. Elena is shown prices and terms only, never the company, contacts, notes or the estimator's allowances.
+// Nova. Nova is shown prices and terms only, never the company, contacts, notes or the estimator's allowances.
 import type { LevelRow, QuoteTotals } from './levelling';
 import type { Quote } from './quote-types';
 
-export type ElenaStance = 'above' | 'within' | 'below' | 'no_reference';
-export type ElenaTopic = 'overview' | 'counter' | 'scope' | 'message';
+export type NegotiateStance = 'above' | 'within' | 'below' | 'no_reference';
+export type NegotiateTopic = 'overview' | 'counter' | 'scope' | 'message';
 
 /** Within this many percent of the reference a quote is "within" it (same rule as the server). */
 export const WITHIN_PERCENT = 5;
 /** Quotes needed before the field's median can stand in for a target price. */
 export const MIN_FIELD_FOR_MEDIAN = 3;
-export const ELENA_DISCLAIMER =
-  'Elena is an AI assistant, not a licensed agent. She suggests; you decide, and nothing is agreed or awarded from here.';
+export const NEGOTIATE_DISCLAIMER =
+  'Nova is an AI assistant, not a licensed agent. Nova suggests; you decide, and nothing is agreed or awarded from here.';
 
-export interface ElenaGap {
+export interface NegotiateGap {
   against: 'target' | 'median' | null;
   referenceCents: number | null;
   differenceCents: number | null;
   percent: number | null;
-  stance: ElenaStance;
+  stance: NegotiateStance;
 }
 
-export interface ElenaTurn {
-  role: 'estimator' | 'elena';
+export interface NegotiationTurn {
+  role: 'estimator' | 'nova';
   text: string;
 }
 
-export interface ElenaAnswer {
-  stance: ElenaStance;
-  gap: ElenaGap;
+export interface NegotiateAnswer {
+  stance: NegotiateStance;
+  gap: NegotiateGap;
   reply: string;
   points: Array<{ scopeKey: string | null; text: string }>;
   levers: string[];
@@ -45,11 +45,11 @@ export function medianOf(values: readonly number[]): number {
   return s.length % 2 ? s[mid]! : Math.round((s[mid - 1]! + s[mid]!) / 2);
 }
 
-export function elenaGap(
+export function negotiateGap(
   totalCents: number,
   targetCents: number | null,
   fieldTotals: readonly number[],
-): ElenaGap {
+): NegotiateGap {
   const reference: ['target' | 'median', number] | null =
     targetCents !== null
       ? ['target', targetCents]
@@ -66,7 +66,7 @@ export function elenaGap(
     };
   const difference = totalCents - reference[1];
   const percent = Math.round((difference / reference[1]) * 1000) / 10;
-  const stance: ElenaStance =
+  const stance: NegotiateStance =
     Math.abs(percent) <= WITHIN_PERCENT ? 'within' : difference > 0 ? 'above' : 'below';
   return {
     against: reference[0],
@@ -80,24 +80,24 @@ export function elenaGap(
 const dollars = (cents: number) =>
   new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(cents / 100);
 
-export function previewElena(input: {
+export function previewNegotiate(input: {
   quote: Quote;
   rows: readonly LevelRow[];
   totals: readonly QuoteTotals[];
   trade: string;
   targetCents: number | null;
-  topic: ElenaTopic;
-}): ElenaAnswer {
+  topic: NegotiateTopic;
+}): NegotiateAnswer {
   const { quote, rows, totals, topic } = input;
   const mine = totals.find((t) => t.quoteId === quote.id)!;
-  const gap = elenaGap(
+  const gap = negotiateGap(
     mine.quotedCents,
     input.targetCents,
     totals.map((t) => t.normalisedCents),
   );
   const index = totals.findIndex((t) => t.quoteId === quote.id);
 
-  const points: ElenaAnswer['points'] = [];
+  const points: NegotiateAnswer['points'] = [];
   for (const r of rows) {
     const cell = r.cells[index]!;
     if (cell.flags.includes('excluded'))

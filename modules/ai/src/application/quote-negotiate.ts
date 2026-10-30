@@ -1,6 +1,6 @@
-// Elena on the quote comparison (ai/10): help negotiating one confirmed subcontractor quote. The service hands the model
+// Nova on the quote comparison (ai/10): help negotiating one confirmed subcontractor quote. The service hands the model
 // the quote's prices and terms and a gap that code worked out against the estimator's target price or the field's median,
-// then checks the answer (a counter-offer that makes sense, only figures the quote holds). Elena sees no company,
+// then checks the answer (a counter-offer that makes sense, only figures the quote holds). Nova sees no company,
 // contact, note or allowance, only what `estimating.api.quoteForNegotiation` returns. Nothing is saved, sent or agreed.
 import {
   MAX_NEGOTIATE_LINES,
@@ -10,7 +10,7 @@ import {
 } from '@archova/ai-prompts';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import {
-  ELENA_DISCLAIMER,
+  NEGOTIATE_DISCLAIMER,
   computeGap,
   reviewNegotiation,
   toCents,
@@ -51,7 +51,7 @@ export interface QuoteNegotiation extends ReviewedNegotiation {
   gap: Gap;
   stance: Gap['stance'];
   disclaimer: string;
-  /** Pass back with the next question so Elena remembers the conversation; the server keeps none. */
+  /** Pass back with the next question so Nova remembers the conversation; the server keeps none. */
   history: NegotiateTurn[];
 }
 
@@ -113,7 +113,7 @@ export function createQuoteNegotiateService(deps: QuoteNegotiateDeps) {
       { projectId, ...(signal ? { signal } : {}) },
     );
     if (run.status !== 'ok')
-      throw new AppError('ai.invalid_output', "Elena couldn't help with this quote. Try again.");
+      throw new AppError('ai.invalid_output', "Nova couldn't help with this quote. Try again.");
     const reviewed = reviewNegotiation(run.output, {
       scopeKeys: new Set(lines.map((l) => l.scopeKey)),
       totalExGst: q.totalExGst,
@@ -125,14 +125,14 @@ export function createQuoteNegotiateService(deps: QuoteNegotiateDeps) {
     const history: NegotiateTurn[] = [
       ...input.history,
       ...(question ? [{ role: 'estimator' as const, text: question }] : []),
-      { role: 'elena' as const, text: reviewed.reply.slice(0, 1500) },
+      { role: 'nova' as const, text: reviewed.reply.slice(0, 1500) },
     ].slice(-10);
     return {
       ...reviewed,
       runId: run.runId,
       gap,
       stance: gap.stance,
-      disclaimer: ELENA_DISCLAIMER,
+      disclaimer: NEGOTIATE_DISCLAIMER,
       history,
     };
   }

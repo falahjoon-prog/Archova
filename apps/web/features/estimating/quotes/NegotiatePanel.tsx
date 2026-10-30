@@ -4,17 +4,17 @@ import { useEffect, useState } from 'react';
 import { Button, Card, Select, StatusPill, Textarea, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { companyName } from '@/shared/mocks/directory';
-import { useElena } from '../hooks/useQuotes';
+import { useNegotiate } from '../hooks/useQuotes';
 import {
-  ELENA_DISCLAIMER,
-  type ElenaAnswer,
-  type ElenaStance,
-  type ElenaTopic,
-} from '../lib/elena';
+  NEGOTIATE_DISCLAIMER,
+  type NegotiateAnswer,
+  type NegotiateStance,
+  type NegotiateTopic,
+} from '../lib/negotiate';
 import type { Quote } from '../lib/quote-types';
 import { money, parseDollars } from './money';
 
-const TOPICS: ReadonlyArray<{ id: ElenaTopic; label: string }> = [
+const TOPICS: ReadonlyArray<{ id: NegotiateTopic; label: string }> = [
   { id: 'overview', label: 'Read this quote' },
   { id: 'counter', label: 'Counter-offer ideas' },
   { id: 'scope', label: 'Scope gaps' },
@@ -22,7 +22,7 @@ const TOPICS: ReadonlyArray<{ id: ElenaTopic; label: string }> = [
 ];
 
 const STANCE: Record<
-  ElenaStance,
+  NegotiateStance,
   { tone: 'warning' | 'info' | 'success' | 'neutral'; label: string }
 > = {
   above: { tone: 'warning', label: 'Above the reference' },
@@ -33,8 +33,8 @@ const STANCE: Record<
 
 type Clip = 'idle' | 'talking' | 'presenting';
 
-/** Elena's clip: idle at rest, talking while she works, presenting when she has a counter-offer to show. */
-function ElenaClip({ clip }: { clip: Clip }) {
+/** Nova's clip: idle at rest, talking while Nova works, presenting when Nova has a counter-offer to show. */
+function NegotiateClip({ clip }: { clip: Clip }) {
   const [still, setStill] = useState(false);
   useEffect(() => {
     const q = window.matchMedia?.('(prefers-reduced-motion: reduce)');
@@ -46,14 +46,14 @@ function ElenaClip({ clip }: { clip: Clip }) {
   }, []);
   const base = `/elena/elena-video-${clip}`;
   return (
-    <div className="elena__clip">
+    <div className="negotiate__clip">
       {still ? (
         // eslint-disable-next-line @next/next/no-img-element -- a small static poster, decorative
-        <img src={`${base}.jpg`} alt="" className="elena__media" />
+        <img src={`${base}.jpg`} alt="" className="negotiate__media" />
       ) : (
         <video
           key={clip}
-          className="elena__media"
+          className="negotiate__media"
           poster={`${base}.jpg`}
           autoPlay
           loop
@@ -69,13 +69,19 @@ function ElenaClip({ clip }: { clip: Clip }) {
   );
 }
 
-/** Elena helps negotiate one confirmed quote: the gap to the target or the field, points to raise, a counter to consider. */
-export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: readonly Quote[] }) {
-  const ask = useElena(packageId);
+/** Nova helps negotiate one confirmed quote: the gap to the target or the field, points to raise, a counter to consider. */
+export function NegotiatePanel({
+  packageId,
+  quotes,
+}: {
+  packageId: string;
+  quotes: readonly Quote[];
+}) {
+  const ask = useNegotiate(packageId);
   const [quoteId, setQuoteId] = useState(quotes[0]?.id ?? '');
   const [target, setTarget] = useState('');
-  const [topic, setTopic] = useState<ElenaTopic>('overview');
-  const [answer, setAnswer] = useState<ElenaAnswer | null>(null);
+  const [topic, setTopic] = useState<NegotiateTopic>('overview');
+  const [answer, setAnswer] = useState<NegotiateAnswer | null>(null);
   const [draft, setDraft] = useState('');
   const targetCents = parseDollars(target);
   const targetError = target.trim() !== '' && (targetCents === null || targetCents === 0);
@@ -87,7 +93,7 @@ export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: r
     ask.reset();
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const run = (next: ElenaTopic) => {
+  const run = (next: NegotiateTopic) => {
     setTopic(next);
     ask.mutate(
       { quoteId: selected, targetCents: target.trim() === '' ? null : targetCents, topic: next },
@@ -104,20 +110,20 @@ export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: r
 
   return (
     <Card
-      title="Elena: negotiation help"
+      title="Nova: negotiation help"
       headingLevel={3}
       actions={<StatusPill tone="ai">AI assistant</StatusPill>}
-      className="elena"
+      className="negotiate"
     >
-      <div className="elena__layout">
-        <ElenaClip clip={clip} />
-        <div className="stack elena__body">
+      <div className="negotiate__layout">
+        <NegotiateClip clip={clip} />
+        <div className="stack negotiate__body">
           <p className="u-m-0">
-            Pick a confirmed quote and Elena will set it against your target price, or the median of
-            the quotes, and suggest what to raise with the subcontractor. She sees prices and terms
+            Pick a confirmed quote and Nova will set it against your target price, or the median of
+            the quotes, and suggest what to raise with the subcontractor. Nova sees prices and terms
             only.
           </p>
-          <div className="elena__controls">
+          <div className="negotiate__controls">
             <Select
               label="Quote"
               value={selected}
@@ -133,10 +139,10 @@ export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: r
               value={target}
               onChange={(e) => setTarget(e.target.value)}
               error={targetError ? 'Enter an amount above zero, like 45000' : undefined}
-              hint="Without one, Elena uses the median of three or more quotes."
+              hint="Without one, Nova uses the median of three or more quotes."
             />
           </div>
-          <div className="row-actions" role="group" aria-label="Ask Elena">
+          <div className="row-actions" role="group" aria-label="Ask Nova">
             {TOPICS.map((t) => (
               <Button
                 key={t.id}
@@ -148,13 +154,13 @@ export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: r
               </Button>
             ))}
           </div>
-          <ErrorAlert error={ask.error} title="Elena couldn't help with this quote" />
+          <ErrorAlert error={ask.error} title="Nova couldn't help with this quote" />
           <div aria-live="polite" className="stack">
             {ask.isPending ? (
-              <p className="u-caption u-m-0">Elena is looking at the quote…</p>
+              <p className="u-caption u-m-0">Nova is looking at the quote…</p>
             ) : null}
             {answer && !ask.isPending ? (
-              <div className="stack elena__answer">
+              <div className="stack negotiate__answer">
                 {stance ? <StatusPill tone={stance.tone}>{stance.label}</StatusPill> : null}
                 <p className="u-m-0">{answer.reply}</p>
                 {answer.points.length ? (
@@ -172,7 +178,7 @@ export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: r
                   </ul>
                 ) : null}
                 {answer.counterCents ? (
-                  <p className="elena__counter u-m-0">
+                  <p className="negotiate__counter u-m-0">
                     <strong>Counter-offer to consider: {money(answer.counterCents)} ex GST.</strong>{' '}
                     {answer.counterReason}
                   </p>
@@ -193,7 +199,7 @@ export function ElenaPanel({ packageId, quotes }: { packageId: string; quotes: r
               </div>
             ) : null}
           </div>
-          <p className="u-caption u-m-0">{ELENA_DISCLAIMER}</p>
+          <p className="u-caption u-m-0">{NEGOTIATE_DISCLAIMER}</p>
         </div>
       </div>
     </Card>

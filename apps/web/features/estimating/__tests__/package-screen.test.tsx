@@ -104,11 +104,11 @@ describe('PackageScreen', () => {
   });
 });
 
-describe('Elena on the comparison', () => {
+describe('Nova on the comparison', () => {
   it('reads a quote against the field, drafts a message and never sends anything', async () => {
     const user = userEvent.setup();
     renderInProject(<PackageScreen packageId="pkg_1" />);
-    const panel = await screen.findByRole('region', { name: /Elena: negotiation help/ });
+    const panel = await screen.findByRole('region', { name: /Nova: negotiation help/ });
     expect(within(panel).getByText('AI assistant')).toBeTruthy();
     expect(within(panel).getByText(/not a licensed agent/)).toBeTruthy();
 
@@ -125,7 +125,7 @@ describe('Elena on the comparison', () => {
   it('asks for a sensible target and says so when there is nothing to compare with', async () => {
     const user = userEvent.setup();
     renderInProject(<PackageScreen packageId="pkg_1" />);
-    const panel = await screen.findByRole('region', { name: /Elena: negotiation help/ });
+    const panel = await screen.findByRole('region', { name: /Nova: negotiation help/ });
     await user.type(within(panel).getByLabelText(/Target price/), '0');
     expect(within(panel).getByText(/above zero/)).toBeTruthy();
     expect(

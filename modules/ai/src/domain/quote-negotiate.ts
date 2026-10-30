@@ -1,6 +1,6 @@
-// Elena's negotiation help on a quote (ai/10): code works out the gap before the model sees it and checks what comes
-// back. A counter-offer is kept only when it is a price the estimator could sensibly try, and every dollar figure in her
-// words must be one the input holds, so she cannot invent a budget or a competitor's price. Pure, no IO.
+// Nova's negotiation help on a quote (ai/10): code works out the gap before the model sees it and checks what comes
+// back. A counter-offer is kept only when it is a price the estimator could sensibly try, and every dollar figure in its
+// words must be one the input holds, so it cannot invent a budget or a competitor's price. Pure, no IO.
 import type { NegotiateStance, QuoteNegotiateOutput } from '@archova/ai-prompts';
 
 /** Within this many percent of the reference a quote is "within" it. */
@@ -10,8 +10,8 @@ export const MIN_FIELD_FOR_MEDIAN = 3;
 /** A counter-offer may not go below this share of the quote total. */
 export const MIN_COUNTER_SHARE = 0.5;
 
-export const ELENA_DISCLAIMER =
-  'Elena is an AI assistant, not a licensed agent. She suggests; you decide, and nothing is agreed or awarded from here.';
+export const NEGOTIATE_DISCLAIMER =
+  'Nova is an AI assistant, not a licensed agent. Nova suggests; you decide, and nothing is agreed or awarded from here.';
 
 export const toCents = (v: string): number => {
   const m = /^(-?)(\d+)(?:\.(\d{1,2}))?$/.exec(v);

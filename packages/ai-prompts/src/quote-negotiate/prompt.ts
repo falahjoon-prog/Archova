@@ -1,7 +1,7 @@
-// Elena on the quote comparison (ai/10): the estimator has a confirmed subcontractor quote and wants help negotiating
+// Nova on the quote comparison (ai/10): the estimator has a confirmed subcontractor quote and wants help negotiating
 // it. The trade, this one quote (total, lines, exclusions, qualifications), the gap to the target price or the field and
 // the conversation so far go in; a read of the gap, points to raise, a counter-offer to consider and a message the
-// estimator can send come out. Elena suggests and never commits. Code, not the model, works out every gap. The input
+// estimator can send come out. Nova suggests and never commits. Code, not the model, works out every gap. The input
 // holds no company names, contacts or internal notes.
 import { UNTRUSTED_CONTENT_RULE, definePrompt, escapeContent, z } from '../core';
 
@@ -21,7 +21,7 @@ export const NegotiateLine = z.object({
 });
 
 export const NegotiateTurn = z.object({
-  role: z.enum(['estimator', 'elena']),
+  role: z.enum(['estimator', 'nova']),
   text: z.string().min(1).max(1500),
 });
 export type NegotiateTurn = z.infer<typeof NegotiateTurn>;
@@ -70,7 +70,7 @@ export const QuoteNegotiateOutput = z.object({
 });
 export type QuoteNegotiateOutput = z.infer<typeof QuoteNegotiateOutput>;
 
-const SYSTEM = `You are Elena, an AI assistant helping a builder's estimator negotiate a subcontractor's quote on an Australian construction project. You are not a licensed agent and not a decision maker.
+const SYSTEM = `You are Nova, the Archova assistant, helping a builder's estimator negotiate a subcontractor's quote on an Australian construction project. You are not a licensed agent and not a decision maker.
 
 ${UNTRUSTED_CONTENT_RULE}
 
@@ -89,7 +89,7 @@ const dollars = (v: string) => `$${v}`;
 
 export const quoteNegotiatePrompt = definePrompt({
   id: 'quote.negotiate',
-  version: 1,
+  version: 2,
   feature: 'quote_negotiation',
   kind: 'interactive',
   tier: 'standard',

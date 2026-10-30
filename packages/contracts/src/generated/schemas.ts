@@ -1222,37 +1222,6 @@ export const EffectivePermissionsSchema = z.object({
 });
 export type EffectivePermissions = z.infer<typeof EffectivePermissionsSchema>;
 
-export const ElenaTurnSchema = z.object({
-  "role": z.enum(["estimator", "elena"]),
-  "text": z.string().min(1).max(1500),
-}).strict();
-export type ElenaTurn = z.infer<typeof ElenaTurnSchema>;
-
-export const ElenaQuoteAdviceSchema = z.object({
-  "runId": z.string(),
-  "stance": z.enum(["above", "within", "below", "no_reference"]),
-  "gap": z.object({
-  "against": z.enum(["target", "median"]).nullable(),
-  "referenceExGst": z.string().nullable(),
-  "differenceExGst": z.string().nullable(),
-  "percent": z.number().nullable(),
-  "stance": z.enum(["above", "within", "below", "no_reference"]),
-}),
-  "reply": z.string(),
-  "points": z.array(z.object({
-  "scopeKey": z.string().nullable(),
-  "text": z.string(),
-})),
-  "levers": z.array(z.string()),
-  "counterExGst": z.string().nullable(),
-  "counterReason": z.string(),
-  "draftMessage": z.string().nullable(),
-  "notes": z.array(z.string()),
-  "history": z.array(ElenaTurnSchema),
-  "disclaimer": z.string(),
-});
-export type ElenaQuoteAdvice = z.infer<typeof ElenaQuoteAdviceSchema>;
-
 export const EligibilityReasonSchema = z.object({
   "code": z.string(),
   "blocking": z.boolean(),
@@ -1886,6 +1855,12 @@ export const MeSchema = z.object({
 });
 export type Me = z.infer<typeof MeSchema>;
 
+export const NegotiationTurnSchema = z.object({
+  "role": z.enum(["estimator", "nova"]),
+  "text": z.string().min(1).max(1500),
+}).strict();
+export type NegotiationTurn = z.infer<typeof NegotiationTurnSchema>;
+
 export const NovaSourceSchema = z.object({
   "sourceType": z.enum(["document", "drawing", "rfi", "defect", "diary"]),
   "sourceId": z.string(),
@@ -2445,6 +2420,31 @@ export const QuoteComparisonSchema = z.object({
 }),
 });
 export type QuoteComparison = z.infer<typeof QuoteComparisonSchema>;
+
+export const QuoteNegotiationAdviceSchema = z.object({
+  "runId": z.string(),
+  "stance": z.enum(["above", "within", "below", "no_reference"]),
+  "gap": z.object({
+  "against": z.enum(["target", "median"]).nullable(),
+  "referenceExGst": z.string().nullable(),
+  "differenceExGst": z.string().nullable(),
+  "percent": z.number().nullable(),
+  "stance": z.enum(["above", "within", "below", "no_reference"]),
+}),
+  "reply": z.string(),
+  "points": z.array(z.object({
+  "scopeKey": z.string().nullable(),
+  "text": z.string(),
+})),
+  "levers": z.array(z.string()),
+  "counterExGst": z.string().nullable(),
+  "counterReason": z.string(),
+  "draftMessage": z.string().nullable(),
+  "notes": z.array(z.string()),
+  "history": z.array(NegotiationTurnSchema),
+  "disclaimer": z.string(),
+});
+export type QuoteNegotiationAdvice = z.infer<typeof QuoteNegotiationAdviceSchema>;
 
 export const QuotePageSchema = z.object({
   "data": z.array(QuoteSchema),

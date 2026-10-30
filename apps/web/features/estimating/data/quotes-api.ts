@@ -10,7 +10,7 @@ import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectMembers } from '@/shared/lib/people';
 import { uploadFile } from '@/shared/lib/uploads';
-import type { ElenaAnswer, ElenaTopic } from '../lib/elena';
+import type { NegotiateAnswer, NegotiateTopic } from '../lib/negotiate';
 import type { Quote, QuoteLine, QuoteNote, ScopeLine, TenderPackage } from '../lib/quote-types';
 import type { QuotesSource } from './quotes-source';
 
@@ -24,7 +24,7 @@ const P = '/v1/orgs/{orgId}/projects/{projectId}/tender-packages' as const;
 const PKG = `${P}/{packageId}` as const;
 const QUOTES = `${PKG}/quotes` as const;
 const QUOTE = `${QUOTES}/{quoteId}` as const;
-const ELENA_QUESTION: Record<ElenaTopic, string> = {
+const NEGOTIATE_QUESTION: Record<NegotiateTopic, string> = {
   overview: 'How does this quote compare, and what should I raise with the subcontractor?',
   counter: 'What counter-offer should I consider?',
   scope: 'Which scope lines, exclusions or qualifications should I query?',
@@ -400,7 +400,7 @@ export function createQuotesApi(orgId: string): QuotesSource {
       return toPackage(awarded, await names(projectId));
     },
 
-    async askElena(projectId, packageId, { quoteId, targetCents, topic }) {
+    async askNova(projectId, packageId, { quoteId, targetCents, topic }) {
       await ensureCsrfToken();
       const advice = unwrap(
         await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations', {
@@ -409,12 +409,12 @@ export function createQuotesApi(orgId: string): QuotesSource {
             packageId,
             quoteId,
             targetExGst: targetCents === null ? null : fromCents(targetCents),
-            question: ELENA_QUESTION[topic],
+            question: NEGOTIATE_QUESTION[topic],
           },
         }),
       );
       const cents = (s: string | null) => (s === null ? null : toCents(s));
-      const answer: ElenaAnswer = {
+      const answer: NegotiateAnswer = {
         stance: advice.stance,
         gap: {
           against: advice.gap.against,

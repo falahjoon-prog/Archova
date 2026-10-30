@@ -875,8 +875,8 @@ export function createTenderService(deps: EstimatingDeps) {
   }
 
   /**
-   * For Elena on the comparison (ai/10): one confirmed quote's lines, exclusions and qualifications set against the field.
-   * Builder staff with `quotes.review` only. No company, contact, note or allowance leaves here: Elena sees prices and
+   * For Nova on the comparison (ai/10): one confirmed quote's lines, exclusions and qualifications set against the field.
+   * Builder staff with `quotes.review` only. No company, contact, note or allowance leaves here: Nova sees prices and
    * terms, not who quoted or what the estimator allowed.
    */
   async function quoteForNegotiation(

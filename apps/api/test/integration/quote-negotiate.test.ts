@@ -68,7 +68,7 @@ async function setup() {
   return { pm, subs, base, pkg: id, quote };
 }
 
-describe('Elena quote negotiation (EST-AC6)', () => {
+describe('Nova quote negotiation (EST-AC6)', () => {
   it('sets a confirmed quote against the field and sees no company, contact or note', async () => {
     const s = await setup();
     const dear = await s.quote(s.subs[0]!.browser, '30000.00', {
@@ -88,7 +88,7 @@ describe('Elena quote negotiation (EST-AC6)', () => {
     expect(d.stance).toBe('above');
     expect(d.gap).toMatchObject({ against: 'median', referenceExGst: '26000.00' });
     expect(d.disclaimer).toMatch(/not a licensed agent/);
-    expect(d.history.at(-1).role).toBe('elena');
+    expect(d.history.at(-1).role).toBe('nova');
     const call = t.ai.calls.slice(before).find((c) => c.task === 'quote.negotiate')!;
     expect(call.text).toContain('Scaffolding');
     expect(call.text).not.toMatch(/Secret Tiling|@|allowance/i);

@@ -1427,8 +1427,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Elena helps negotiate a confirmed subcontractor quote (EST-AC6).
-         * @description Elena sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
+         * Nova helps negotiate a confirmed subcontractor quote (EST-AC6).
+         * @description Nova sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
          *     levelled totals when three or more quotes compete, and answers the estimator's question with the gap, points
          *     to raise (unpriced scope lines, provisional sums, exclusions, qualifications, expired validity), levers that
          *     could close the gap, a counter-offer to consider and, when asked, a draft message to the subcontractor. Code
@@ -1439,7 +1439,7 @@ export interface paths {
          *     licensed agent (`disclaimer`). Costs half a Nova credit. Builder staff with `estimating.quotes.review` only,
          *     and only for a confirmed quote of the package.
          */
-        post: operations["negotiateQuoteWithElena"];
+        post: operations["negotiateQuote"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4738,12 +4738,12 @@ export interface components {
             /** @description Required fields that no column fills. */
             missingRequired: string[];
         };
-        ElenaTurn: {
+        NegotiationTurn: {
             /** @enum {string} */
-            role: "estimator" | "elena";
+            role: "estimator" | "nova";
             text: string;
         };
-        ElenaQuoteAdvice: {
+        QuoteNegotiationAdvice: {
             runId: string;
             /** @enum {string} */
             stance: "above" | "within" | "below" | "no_reference";
@@ -4767,7 +4767,7 @@ export interface components {
             counterReason: string;
             draftMessage: string | null;
             notes: string[];
-            history: components["schemas"]["ElenaTurn"][];
+            history: components["schemas"]["NegotiationTurn"][];
             disclaimer: string;
         };
         NovaQuoteReading: {
@@ -9792,7 +9792,7 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
-    negotiateQuoteWithElena: {
+    negotiateQuote: {
         parameters: {
             query?: never;
             header?: never;
@@ -9810,18 +9810,18 @@ export interface operations {
                     /** @description The estimator's target price, ex GST. */
                     targetExGst?: string | null;
                     question?: string;
-                    history?: components["schemas"]["ElenaTurn"][];
+                    history?: components["schemas"]["NegotiationTurn"][];
                 };
             };
         };
         responses: {
-            /** @description Elena's answer */
+            /** @description Nova's answer */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ElenaQuoteAdvice"];
+                    "application/json": components["schemas"]["QuoteNegotiationAdvice"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -252,7 +252,7 @@ export function createAiModule(
       projectId: string,
       packageId: string,
     ) => Promise<{ id: string; trade: string; scope: QuoteScopeLine[] }>;
-    /** estimating.api.quoteForNegotiation: one confirmed quote's prices and terms against the field, no company (Elena). */
+    /** estimating.api.quoteForNegotiation: one confirmed quote's prices and terms against the field, no company (Nova). */
     quoteForNegotiation: (
       scope: TenantScope,
       projectId: string,
@@ -483,7 +483,7 @@ export function createAiModule(
       suggestImportMapping: importMappings.suggest,
       /** F22: a subcontractor's PDF quote read into lines, exclusions and qualifications; no quote is saved. */
       readQuote: quoteReads.read,
-      /** Elena: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
+      /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,

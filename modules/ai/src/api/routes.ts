@@ -440,7 +440,7 @@ export function aiRoutes(
         },
       };
     },
-    negotiateQuoteWithElena: async (input) => {
+    negotiateQuote: async (input) => {
       const packageId = decodeId('tenderPackage', input.body.packageId);
       if (!packageId) throw new AppError('tender.not_found');
       const quoteId = decodeId('quote', input.body.quoteId);

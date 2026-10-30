@@ -1870,13 +1870,13 @@ paths:
       - $ref: '#/components/parameters/OrgId'
       - $ref: '#/components/parameters/ProjectId'
     post:
-      operationId: negotiateQuoteWithElena
+      operationId: negotiateQuote
       tags: [ai]
       x-module: ai
       x-permission: estimating.quotes.review
-      summary: Elena helps negotiate a confirmed subcontractor quote (EST-AC6).
+      summary: Nova helps negotiate a confirmed subcontractor quote (EST-AC6).
       description: |
-        Elena sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
+        Nova sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
         levelled totals when three or more quotes compete, and answers the estimator's question with the gap, points
         to raise (unpriced scope lines, provisional sums, exclusions, qualifications, expired validity), levers that
         could close the gap, a counter-offer to consider and, when asked, a draft message to the subcontractor. Code
@@ -1905,13 +1905,13 @@ paths:
                 history:
                   type: array
                   maxItems: 10
-                  items: { $ref: '#/components/schemas/ElenaTurn' }
+                  items: { $ref: '#/components/schemas/NegotiationTurn' }
       responses:
         '200':
-          description: Elena's answer
+          description: Nova's answer
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/ElenaQuoteAdvice' }
+              schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
@@ -6767,14 +6767,14 @@ components:
           description: Required fields that no column fills.
           type: array
           items: { type: string }
-    ElenaTurn:
+    NegotiationTurn:
       type: object
       additionalProperties: false
       required: [role, text]
       properties:
-        role: { type: string, enum: [estimator, elena] }
+        role: { type: string, enum: [estimator, nova] }
         text: { type: string, minLength: 1, maxLength: 1500 }
-    ElenaQuoteAdvice:
+    QuoteNegotiationAdvice:
       type: object
       required:
         [
@@ -6818,7 +6818,7 @@ components:
         counterReason: { type: string }
         draftMessage: { type: [string, 'null'] }
         notes: { type: array, items: { type: string } }
-        history: { type: array, items: { $ref: '#/components/schemas/ElenaTurn' } }
+        history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
         disclaimer: { type: string }
     NovaQuoteReading:
       type: object

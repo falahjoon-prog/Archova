@@ -42,7 +42,7 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
   'quote.read': 1.5,
-  // Elena: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
+  // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
   'minutes.extract': 1.5,
 };

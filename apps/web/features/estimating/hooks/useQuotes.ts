@@ -10,7 +10,7 @@ import { useMemo } from 'react';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { createQuotesApi } from '../data/quotes-api';
 import { quotesSource as previewSource, type QuotesSource } from '../data/quotes-source';
-import type { ElenaTopic } from '../lib/elena';
+import type { NegotiateTopic } from '../lib/negotiate';
 import type { PackageAction, ScopeLine } from '../lib/quote-types';
 
 /** The API once the estimating endpoints are reachable; the in-browser preview store in preview mode and tests. */
@@ -118,12 +118,12 @@ export function useCreatePackage() {
   });
 }
 
-/** Elena's help on one confirmed quote. Nothing is saved, so no cache is touched. */
-export function useElena(packageId: string) {
+/** Nova's help on one confirmed quote. Nothing is saved, so no cache is touched. */
+export function useNegotiate(packageId: string) {
   const quotesSource = useQuotesSource();
   const { projectId, timezone } = useCurrentProject();
   return useMutation({
-    mutationFn: (v: { quoteId: string; targetCents: number | null; topic: ElenaTopic }) =>
-      quotesSource.askElena(projectId, packageId, { ...v, today: todayIn(timezone) }),
+    mutationFn: (v: { quoteId: string; targetCents: number | null; topic: NegotiateTopic }) =>
+      quotesSource.askNova(projectId, packageId, { ...v, today: todayIn(timezone) }),
   });
 }
