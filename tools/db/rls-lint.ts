@@ -23,6 +23,11 @@ export const GLOBAL_TABLES = new Set([
   'backoffice.staff_sessions',
   'backoffice.requests',
   'backoffice.tenant_directory',
+  'backoffice.cohorts',
+  'backoffice.cohort_members',
+  'backoffice.flags',
+  'backoffice.flag_targets',
+  'backoffice.flag_changes',
 ]);
 
 /** Tenant tables keyed by something other than org_id. */

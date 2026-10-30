@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { StaffRole } from '@archova/contracts';
+import { decodeId } from '@archova/domain';
 import { createOrg, createTestContext, signUp, type TestContext } from './helpers';
 
 let t: TestContext;
@@ -512,5 +513,137 @@ describe('plans', () => {
     ).json() as { plans: Array<{ code: string }> };
     expect(live.plans.map((p) => p.code)).not.toContain('starter');
     expect((await editor.call('DELETE', '/plans/starter/draft')).statusCode).toBe(204);
+  });
+});
+
+describe('feature flags and pilot cohorts', () => {
+  const flagOf = async (c: Console, key: string) =>
+    ((await c.get('/flags')).json() as { items: Array<Record<string, unknown>> }).items.find(
+      (f) => f.key === key,
+    )!;
+
+  it('lists registry flags off by default and evaluates per org, cohort and percentage', async () => {
+    const { browser } = await signUp(t.app, 'flags');
+    await createOrg(browser, 'Flag Pilot Builders');
+    await createOrg(browser, 'Flag Other Builders');
+    const owner = await staff(['owner']);
+    const orgs = (
+      (await owner.get('/orgs?q=flag%20')).json() as {
+        items: Array<{ orgId: string; name: string }>;
+      }
+    ).items;
+    const pilot = orgs.find((o) => o.name === 'Flag Pilot Builders')!;
+    const other = orgs.find((o) => o.name === 'Flag Other Builders')!;
+
+    const key = 'nova_estimating';
+    expect(await flagOf(owner, key)).toMatchObject({ enabledForAll: false, percent: 0, orgs: [] });
+
+    const support = await staff(['support']);
+    // A single org is a within-limit change for support, and it needs a reason.
+    expect(
+      (
+        await support.put(`/flags/${key}`, {
+          scope: 'org',
+          orgId: pilot.orgId,
+          on: true,
+          reason: 'x',
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect(
+      (
+        await support.put(`/flags/${key}`, {
+          scope: 'org',
+          orgId: pilot.orgId,
+          on: true,
+          reason: 'Pilot builder asked for it',
+        })
+      ).statusCode,
+    ).toBe(200);
+    expect(await flagOf(support, key)).toMatchObject({
+      orgs: [{ orgId: pilot.orgId, name: 'Flag Pilot Builders' }],
+      lastChange: { summary: 'Turned on for Flag Pilot Builders', by: expect.any(String) },
+    });
+
+    // The kernel-side evaluation sees the rule: on for the pilot org, off for the other.
+    const isOn = t.modules.backoffice.api.flags.isOn;
+    expect(await isOn(key, decodeId('org', pilot.orgId)!)).toBe(true);
+    expect(await isOn(key, decodeId('org', other.orgId)!)).toBe(false);
+
+    // Cohorts: create, add the other org, turn the flag on for the cohort, then remove the org.
+    const cohort = (
+      await support.post('/cohorts', { name: 'Flag Pilot Builders Group' })
+    ).json() as {
+      id: string;
+    };
+    expect(code(await support.post('/cohorts', { name: 'flag pilot builders group' }))).toBe(
+      'backoffice.cohort_exists',
+    );
+    expect(
+      (await support.post(`/cohorts/${cohort.id}/members`, { orgId: other.orgId })).statusCode,
+    ).toBe(200);
+    await support.put(`/flags/${key}`, {
+      scope: 'cohort',
+      cohortId: cohort.id,
+      on: true,
+      reason: 'Pilot cohort rollout',
+    });
+    const list = (await support.get('/cohorts')).json() as {
+      items: Array<{ id: string; members: Array<{ name: string }> }>;
+    };
+    expect(list.items.find((c) => c.id === cohort.id)!.members.map((m) => m.name)).toEqual([
+      'Flag Other Builders',
+    ]);
+    expect(
+      (await support.call('DELETE', `/cohorts/${cohort.id}/members/${other.orgId}`)).statusCode,
+    ).toBe(204);
+
+    expect(await isOn(key, decodeId('org', pilot.orgId)!)).toBe(true);
+
+    // Kill switch: no approval, everything off, and it is logged.
+    const kill = await support.post(`/flags/${key}/kill`, { reason: 'Pilot paused after a bug' });
+    expect(kill.statusCode).toBe(200);
+    expect(await isOn(key, decodeId('org', pilot.orgId)!)).toBe(false);
+    expect(await flagOf(support, key)).toMatchObject({
+      orgs: [],
+      cohorts: [],
+      enabledForAll: false,
+      lastChange: { reason: 'Pilot paused after a bug' },
+    });
+  });
+
+  it('keeps all-orgs and percentage rollouts to an Owner with a fresh password check', async () => {
+    const key = 'photo_progress_flags';
+    const support = await staff(['support']);
+    const denied = await support.put(`/flags/${key}`, {
+      scope: 'all',
+      on: true,
+      reason: 'Launch it everywhere',
+    });
+    expect(denied.statusCode).toBe(403);
+    expect(code(denied)).toBe('backoffice.owner_required');
+
+    const owner = await staff(['owner']);
+    expect(
+      (await owner.put(`/flags/${key}`, { scope: 'percent', percent: 150, reason: 'Too high' }))
+        .statusCode,
+    ).toBe(422);
+    expect(
+      (await owner.put(`/flags/${key}`, { scope: 'percent', percent: 25, reason: 'Gradual start' }))
+        .statusCode,
+    ).toBe(200);
+    expect(await flagOf(owner, key)).toMatchObject({ percent: 25 });
+    expect(
+      (await owner.put('/flags/not_a_flag', { scope: 'all', on: true, reason: 'No flag' }))
+        .statusCode,
+    ).toBe(404);
+    await owner.post(`/flags/${key}/kill`, { reason: 'Reset after test' });
+  });
+
+  it('is read-only for roles without flag edit', async () => {
+    const reader = await staff(['finance_read']);
+    expect((await reader.get('/flags')).statusCode).toBe(200);
+    const res = await reader.post('/cohorts', { name: 'Not allowed' });
+    expect(res.statusCode).toBe(403);
   });
 });

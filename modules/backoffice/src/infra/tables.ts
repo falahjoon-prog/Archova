@@ -4,6 +4,7 @@ import {
   integer,
   jsonb,
   pgSchema,
+  primaryKey,
   text,
   timestamp,
   uuid,
@@ -78,4 +79,53 @@ export const tenantDirectory = backofficeSchema.table('tenant_directory', {
   cell: text('cell').notNull().default('local'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cohorts = backofficeSchema.table('cohorts', {
+  id: uuid('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const cohortMembers = backofficeSchema.table(
+  'cohort_members',
+  {
+    cohortId: uuid('cohort_id').notNull(),
+    orgId: uuid('member_org_id').notNull(),
+    addedBy: uuid('added_by'),
+    addedAt: timestamp('added_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.cohortId, t.orgId] })],
+);
+
+export const flags = backofficeSchema.table('flags', {
+  key: text('key').primaryKey(),
+  enabledForAll: boolean('enabled_for_all').notNull().default(false),
+  percent: integer('percent').notNull().default(0),
+  updatedBy: uuid('updated_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const flagTargets = backofficeSchema.table(
+  'flag_targets',
+  {
+    flagKey: text('flag_key').notNull(),
+    kind: text('kind').$type<'org' | 'cohort'>().notNull(),
+    refId: uuid('ref_id').notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.flagKey, t.kind, t.refId] })],
+);
+
+export const flagChanges = backofficeSchema.table('flag_changes', {
+  id: uuid('id').primaryKey(),
+  flagKey: text('flag_key').notNull(),
+  summary: text('summary').notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref'),
+  staffId: uuid('staff_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
