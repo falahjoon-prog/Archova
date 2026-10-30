@@ -43,6 +43,7 @@ export function createPlatformModule(
       resolveTenantAccess: orgs.resolveTenantAccess,
       getProjectMembership: members.getProjectMembership,
       getProjectAccessState: members.getProjectAccessState,
+      contactsOfCompany: members.contactsOfCompany,
       getProject: projects.get,
       getOrg: orgs.getOrg,
       companyExists: companies.exists,
