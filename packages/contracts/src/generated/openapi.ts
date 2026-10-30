@@ -1361,14 +1361,49 @@ export interface paths {
          * @description Compares the documents and drawing sheets the draft cited with the register now. A source with a newer
          *     published revision, or one that is gone, is listed in `changed` with the revision cited and the current one,
          *     the sections that rest on it and how many quiz questions cite it. Pass the draft an induction was built from
-         *     (`draftAiSuggestionId` on the induction, `aiSuggestionId` on a published version). Read when asked, so the
-         *     answer is never behind. A change in a source the caller cannot open (a private folder) is counted in
+         *     (`draftAiSuggestionId` on the induction, `aiSuggestionId` on a published version), or a refresh of one.
+         *     Read when asked, so the answer is never behind. A change in a source the caller cannot open (a private folder) is counted in
          *     `hiddenChanges` and never named. RFIs, defects and diary days a draft cited are not checked: they have no
          *     revisions. Free; no model is called.
          */
         get: operations["getInductionDraftCurrency"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova redrafts the sections of an induction draft whose cited documents have changed (F33 I2).
+         * @description For a draft (or an earlier refresh) whose cited documents have a newer revision, Nova searches the current
+         *     documents the caller can open for just the sections that rest on the change, and redrafts those with the same
+         *     checks as a full draft (citations, numbers, banned words). The result is a whole induction as the draft had
+         *     it with the redrafted sections swapped in: `payload.refresh.sections` lists what Nova redrafted, and every
+         *     other section and quiz question is copied unchanged from the draft. The induction editor takes the redrafted
+         *     sections into the induction being edited, so the builder's own edits to other sections stand. A section that
+         *     also rests on a changed document the caller cannot open is left as it was and listed in
+         *     `payload.refresh.skipped`. A section whose document was withdrawn, with nothing current to replace it, comes
+         *     back `missing` with what to add. The result is a pending suggestion (task `induction.refresh`), decided with
+         *     the suggestion decision endpoint like a draft. Nothing is drafted, and nothing charged, when the draft is up
+         *     to date (409), when the changes are all in documents the caller cannot open (422), or when Nova has not yet
+         *     read the newest revision (409: try again shortly). Costs 1 Nova credit.
+         */
+        post: operations["refreshInductionDraft"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8819,6 +8854,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InductionCurrency"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    refreshInductionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The refresh, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
                 };
             };
             default: components["responses"]["Problem"];

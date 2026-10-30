@@ -28,6 +28,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'qa.rerank': heuristicQaRerank,
   'qa.answer': heuristicQaAnswer,
   'induction.draft': heuristicInductionDraft,
+  'induction.refresh': heuristicInductionDraft,
   'induction.ask': heuristicQaAnswer,
   'translation.translate': fakeTranslate,
   'translation.check': fakeTranslationCheck,

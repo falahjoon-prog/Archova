@@ -7,6 +7,7 @@ import { createAskService } from './application/ask';
 import { createSemanticSearchService } from './application/semantic-search';
 import { createInductionCurrencyService } from './application/induction-currency';
 import { createInductionDraftService } from './application/induction-draft';
+import { createInductionRefreshService } from './application/induction-refresh';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
 import { createProjectIndexService, type SourceRevision } from './application/project-index';
@@ -85,6 +86,7 @@ export { DOCUMENT_EVENT_TYPES, documentSourceOf } from './domain/document-events
 export type { DiarySource } from './domain/diary-source';
 export type { RfiSource } from './domain/rfi-source';
 export type { InductionDraftPayload } from './application/induction-draft';
+export type { InductionRefreshPayload } from './application/induction-refresh';
 export type { DiarySummaryPayload } from './application/diary-summary';
 export type { DiaryWeeklyPayload } from './application/diary-weekly';
 export { compareVisually } from './application/visual-compare';
@@ -328,6 +330,11 @@ export function createAiModule(
     accessScopes: deps.accessScopes,
     sources: deps.sources,
   });
+  const inductionRefresh = createInductionRefreshService({
+    database: services.database,
+    gateway,
+    currency: inductionCurrency,
+  });
   const rfiDrafts = createRfiDraftService({
     database: services.database,
     gateway,
@@ -396,6 +403,7 @@ export function createAiModule(
       projectIndex,
       inductionDrafts,
       inductionCurrency,
+      inductionRefresh,
       rfiDrafts,
       drawingCompare,
       diarySummary,
@@ -425,6 +433,8 @@ export function createAiModule(
       draftInduction: inductionDrafts.draft,
       /** F33 I2: whether the documents a drafted induction cited still stand, and which sections rest on a changed one. */
       inductionDraftCurrency: inductionCurrency.check,
+      /** F33 I2: Nova redrafts the sections of a drafted induction that rest on a changed document. */
+      refreshInductionDraft: inductionRefresh.refresh,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
       /** F5: a title, trade, priority and assignee companies from a defect photo and its pin; nothing is saved. */

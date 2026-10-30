@@ -2,7 +2,7 @@
 // documents and drawing sheets a draft cites, and, given what the register says now, which of them have a newer
 // revision or are gone. The register is read on request rather than on a document event, so the answer is never
 // behind and no event can be missed.
-import type { InductionSection } from '@archova/ai-prompts';
+import { INDUCTION_SECTIONS, type InductionSection } from '@archova/ai-prompts';
 
 /** The part of a stored `induction.draft` payload this reads. */
 export interface CitingDraft {
@@ -107,9 +107,10 @@ export function compareSources(
   cited: readonly CitedSource[],
   live: ReadonlyMap<string, readonly LiveRevision[]>,
   readable: ReadonlySet<string>,
-): { changed: SourceChange[]; hidden: number } {
+): { changed: SourceChange[]; hidden: number; hiddenSections: InductionSection[] } {
   const changed: SourceChange[] = [];
   let hidden = 0;
+  const hiddenSections = new Set<InductionSection>();
   for (const c of cited) {
     const revisions = live.get(c.sourceId) ?? [];
     const current = revisions.find((r) => r.status === 'current');
@@ -119,6 +120,7 @@ export function compareSources(
     // A source that is gone has no scope to check: it was cited, so the draft's own reader could open it then.
     if (scope !== undefined && !readable.has(scope)) {
       hidden += 1;
+      for (const section of c.sections) hiddenSections.add(section);
       continue;
     }
     const citedLabel = revisions.find((r) => c.revisionIds.includes(r.revisionId))?.revisionLabel;
@@ -133,5 +135,32 @@ export function compareSources(
       quizQuestions: c.quizQuestions,
     });
   }
-  return { changed, hidden };
+  return { changed, hidden, hiddenSections: inOrder(hiddenSections) };
+}
+
+const inOrder = (sections: ReadonlySet<InductionSection>): InductionSection[] =>
+  INDUCTION_SECTIONS.filter((s) => sections.has(s));
+
+export interface RefreshPlan {
+  /** Sections to redraft: they rest on a changed source the caller can open and on no other the caller cannot. */
+  refresh: InductionSection[];
+  /** Sections left as they are because they also rest on a changed source the caller cannot open. */
+  skipped: InductionSection[];
+}
+
+/**
+ * Which sections a refresh redrafts (ai/12 §1 I2). Nova redrafts only from what the caller may open, so a section that
+ * also rests on a changed source they cannot open is left alone: a redraft without that source would quietly drop what
+ * it said. The caller is told which sections were left, never why.
+ */
+export function planRefresh(
+  changed: readonly SourceChange[],
+  hiddenSections: readonly InductionSection[],
+): RefreshPlan {
+  const affected = new Set(changed.flatMap((c) => c.sections));
+  const hidden = new Set(hiddenSections);
+  return {
+    refresh: INDUCTION_SECTIONS.filter((s) => affected.has(s) && !hidden.has(s)),
+    skipped: INDUCTION_SECTIONS.filter((s) => hidden.has(s)),
+  };
 }
