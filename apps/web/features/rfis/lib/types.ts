@@ -109,6 +109,13 @@ export interface NovaDraft {
   unreadFiles: string[];
 }
 
+/** What Nova drafts a new RFI from: a note, a site photo, a drawing markup, or any mix (F3). */
+export interface NovaRfiSource {
+  note: string;
+  photo?: File | null;
+  markup?: { revisionId: string; markupId: string } | null;
+}
+
 /** Nova's draft of a new RFI from a site note (F3): it fills the form, and the person edits and sends it. */
 export interface NovaRfiDraft {
   suggestionId: string;

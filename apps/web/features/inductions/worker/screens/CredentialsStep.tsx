@@ -6,7 +6,7 @@ import { Plus } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatLocalDate } from '@/shared/lib/format';
 import { useInductionSource, useProgressMutation } from '../hooks/useInduction';
-import { compressPhoto } from '../lib/compress-photo';
+import { compressPhoto } from '@/shared/lib/compress-photo';
 import { stepNumber, totalSteps } from '../lib/flow';
 import type { CredentialType, WorkerCredential } from '../lib/types';
 import { StickyButton, WorkerShell } from '../components/WorkerShell';

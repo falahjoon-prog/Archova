@@ -5,7 +5,7 @@ import { useState, type FormEvent } from 'react';
 import { Alert, Button, Checkbox, NovaSuggestion, Select, TextField, Textarea } from '@archova/ui';
 import { NovaIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
-import { useSheetPicker } from '@/features/drawings';
+import { useMarkupPicker, useSheetPicker } from '@/features/drawings';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { businessDaysBetween, dueInBusinessDays, todayIn } from '@/shared/lib/format';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
@@ -74,6 +74,11 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
   const [improved, setImproved] = useState<NovaWording | null>(null);
   const [questionFromNova, setQuestionFromNova] = useState(false);
   const [note, setNote] = useState('');
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [markupSheet, setMarkupSheet] = useState('');
+  const [markupId, setMarkupId] = useState('');
+  const markupRevision = sheets.options.find((o) => o.sheetId === markupSheet)?.revisionId;
+  const markups = useMarkupPicker(project.projectId, markupRevision);
   const [draft, setDraft] = useState<NovaRfiDraft | null>(null);
 
   const set = <K extends keyof RfiInput>(key: K, value: RfiInput[K]) =>
@@ -119,13 +124,65 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
           hint="A few words are enough. Nova drafts the subject and question from them; you edit and send."
           onChange={(e) => setNote(e.target.value)}
         />
+        <div className="form-row">
+          <div className="stack">
+            <label className="ac-field__label" htmlFor="rfi-photo">
+              Site photo (optional)
+            </label>
+            <input
+              id="rfi-photo"
+              className="file-input"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
+            />
+          </div>
+          <Select
+            label="Drawing markup (optional)"
+            value={markupSheet}
+            placeholder={sheets.isPending ? 'Loading drawings…' : 'No markup'}
+            options={sheets.options.map((s) => ({
+              value: s.sheetId,
+              label: `${s.label} · ${s.title}`,
+            }))}
+            onChange={(e) => {
+              setMarkupSheet(e.target.value);
+              setMarkupId('');
+            }}
+          />
+          {markupSheet ? (
+            <Select
+              label="Markup"
+              value={markupId}
+              placeholder={
+                markups.isPending
+                  ? 'Loading markups…'
+                  : markups.options.length
+                    ? 'Choose a markup'
+                    : 'No markups on this sheet'
+              }
+              options={markups.options.map((m) => ({ value: m.markupId, label: m.label }))}
+              onChange={(e) => setMarkupId(e.target.value)}
+            />
+          ) : null}
+        </div>
         <div>
           <Button
             type="button"
             variant="nova"
             size="sm"
-            disabled={!note.trim() || nova.draftRfi.isPending}
-            onClick={() => nova.draftRfi.mutate(note, { onSuccess: setDraft })}
+            disabled={(!note.trim() && !photo && !markupId) || nova.draftRfi.isPending}
+            onClick={() =>
+              nova.draftRfi.mutate(
+                {
+                  note,
+                  photo,
+                  markup:
+                    markupId && markupRevision ? { revisionId: markupRevision, markupId } : null,
+                },
+                { onSuccess: setDraft },
+              )
+            }
           >
             <NovaIcon size={16} aria-hidden="true" />
             {nova.draftRfi.isPending ? 'Drafting…' : 'Draft with Nova'}

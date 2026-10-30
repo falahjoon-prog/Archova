@@ -10,6 +10,7 @@ import type {
   NovaReference,
   NovaWording,
   NovaRfiDraft,
+  NovaRfiSource,
   Rfi,
   RfiInput,
   RfiStatus,
@@ -422,8 +423,12 @@ export const rfisSource = {
     );
   },
 
-  async novaDraftRfi(_projectId: string, note: string): Promise<NovaRfiDraft> {
-    const text = note.trim().replace(/\s+/g, ' ');
+  async novaDraftRfi(_projectId: string, source: NovaRfiSource): Promise<NovaRfiDraft> {
+    const text =
+      source.note.trim().replace(/\s+/g, ' ') ||
+      (source.photo
+        ? 'the condition in the attached photo.'
+        : 'the marked-up area of the drawing.');
     return delay(
       {
         suggestionId: mockId('ais'),
@@ -431,7 +436,7 @@ export const rfisSource = {
         question: `On site we found: ${text} Please confirm how this should be built and say whether it changes scope or time.`,
         discipline: null,
         references: [],
-        gaps: ['location', 'proposed_solution'],
+        gaps: source.markup ? ['proposed_solution'] : ['location', 'proposed_solution'],
         unsupportedNumbers: [],
         similar: [],
         drawing: null,
