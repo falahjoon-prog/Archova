@@ -784,7 +784,7 @@ describe('online inductions (product/14)', () => {
           requestId: 't',
         },
         ({ tx }) =>
-          tx.execute(sql`update platform.project_members set status = 'removed', removed_at = now()
+          tx.execute(sql`update platform.project_members set status = 'removed', removed_at = now(), removal_kind = 'ordinary'
                          where user_id = ${decodeId('user', s.sm.userId)!}`),
       );
       expect((await guest.get('/v1/induction-access')).json().code).toBe('access_link.invalid');

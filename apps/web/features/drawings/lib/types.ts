@@ -110,6 +110,8 @@ export interface DrawingPin {
   y: number;
   /** Carried forward from a superseded revision and not yet confirmed (DOC-AC8, RFI-AC5). */
   checkLocation: boolean;
+  /** The record holds this pin itself, so the viewer can move it. A pin held by a markup moves with the markup. */
+  movable?: boolean;
   /** The API markup holding this pin, for confirming its location. */
   markupId?: string;
   version?: number;

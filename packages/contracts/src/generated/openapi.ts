@@ -286,6 +286,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a person's access to the project, saying how (X38).
+         * @description `ordinary` lets their phone send the work it had queued before access ended (held for an admin to accept or
+         *     reject); `for_cause` and `wipe_now` do not. Adding the person again starts a new access episode.
+         */
+        post: operations["removeProjectMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/permissions": {
         parameters: {
             query?: never;
@@ -3963,6 +3988,11 @@ export interface components {
             companyId: string;
             permissionTemplateId: string;
         };
+        RemoveProjectMemberRequest: {
+            /** @enum {string} */
+            kind: "ordinary" | "for_cause" | "wipe_now";
+            reason?: string;
+        };
         ProjectMemberPage: {
             data: components["schemas"]["ProjectMember"][];
             nextCursor: string | null;
@@ -5144,6 +5174,10 @@ export interface components {
             scheduleImpactDays: number | null;
             /** @description Days of delay caused by a late answer */
             delayDays: number | null;
+            /** @description As written on the form. */
+            specSection: string | null;
+            /** @description As written on the form. */
+            location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
             officialResponseId: string | null;
             createdBy: string | null;
@@ -5190,6 +5224,10 @@ export interface components {
             costImpact?: components["schemas"]["CostImpact"];
             costEstimate?: string;
             scheduleImpactDays?: number;
+            /** @description The spec section it concerns, as written (e.g. `03 30 00 Concrete`). */
+            specSection?: string;
+            /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
+            location?: string;
             pin?: components["schemas"]["RfiPinInput"];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
@@ -5209,6 +5247,8 @@ export interface components {
             costEstimate?: string | null;
             scheduleImpactDays?: number | null;
             delayDays?: number | null;
+            specSection?: string | null;
+            location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
         };
         CreateRfiResponseRequest: {
@@ -7341,6 +7381,37 @@ export interface operations {
         responses: {
             /** @description Added */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeProjectMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveProjectMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Removed */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

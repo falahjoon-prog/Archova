@@ -144,6 +144,20 @@ export const drawingsSource = {
     return delay(stores.get(projectId).pins.get(revisionId) ?? []);
   },
 
+  async movePin(
+    projectId: string,
+    revisionId: string,
+    pin: DrawingPin,
+    at: { x: number; y: number },
+  ): Promise<void> {
+    const found = stores
+      .get(projectId)
+      .pins.get(revisionId)
+      ?.find((p) => p.id === pin.id);
+    if (found) Object.assign(found, { x: at.x, y: at.y, checkLocation: false });
+    return delay(undefined);
+  },
+
   async confirmPinLocation(projectId: string, revisionId: string, pinId: string): Promise<void> {
     const pin = stores
       .get(projectId)

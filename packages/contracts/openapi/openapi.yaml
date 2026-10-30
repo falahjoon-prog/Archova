@@ -370,6 +370,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProjectMember' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: memberId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pmb_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: removeProjectMember
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.project_members.manage
+      summary: End a person's access to the project, saying how (X38).
+      description: |
+        `ordinary` lets their phone send the work it had queued before access ended (held for an admin to accept or
+        reject); `for_cause` and `wipe_now` do not. Adding the person again starts a new access episode.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RemoveProjectMemberRequest' }
+      responses:
+        '200':
+          description: Removed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/permissions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5549,6 +5582,13 @@ components:
         email: { $ref: '#/components/schemas/Email' }
         companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
         permissionTemplateId: { type: string, pattern: '^ptp_[0-9A-Za-z]{26}$' }
+    RemoveProjectMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [ordinary, for_cause, wipe_now] }
+        reason: { type: string, maxLength: 500 }
     ProjectMemberPage:
       type: object
       required: [data, nextCursor]
@@ -7435,6 +7475,8 @@ components:
           costEstimate,
           scheduleImpactDays,
           delayDays,
+          specSection,
+          location,
           pin,
           officialResponseId,
           createdBy,
@@ -7476,6 +7518,8 @@ components:
           { type: [string, 'null'], description: 'Decimal string in the project currency (AUD)' }
         scheduleImpactDays: { type: [integer, 'null'] }
         delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
+        specSection: { type: [string, 'null'], description: 'As written on the form.' }
+        location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
@@ -7547,6 +7591,18 @@ components:
         costImpact: { $ref: '#/components/schemas/CostImpact' }
         costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        specSection:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'The spec section it concerns, as written (e.g. `03 30 00 Concrete`).',
+          }
+        location:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'Where on the project, as written (e.g. `Level 2, gridline C`).',
+          }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
         aiSuggestionId:
           type: string
@@ -7578,6 +7634,8 @@ components:
         costEstimate: { type: [string, 'null'], pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        specSection: { type: [string, 'null'], maxLength: 200 }
+        location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
     CreateRfiResponseRequest:
       type: object

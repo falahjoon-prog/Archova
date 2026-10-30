@@ -63,6 +63,8 @@ export interface RfiFields {
   costEstimate?: string | null;
   scheduleImpactDays?: number | null;
   delayDays?: number | null;
+  specSection?: string | null;
+  location?: string | null;
   pin?: PinInput | null;
 }
 
@@ -461,6 +463,8 @@ export function createRfiService(deps: RfisDeps) {
     if (f.costEstimate !== undefined) v.costEstimate = f.costEstimate;
     if (f.scheduleImpactDays !== undefined) v.scheduleImpactDays = f.scheduleImpactDays;
     if (f.delayDays !== undefined) v.delayDays = f.delayDays;
+    if (f.specSection !== undefined) v.specSection = f.specSection?.trim() || null;
+    if (f.location !== undefined) v.location = f.location?.trim() || null;
     if (f.pin !== undefined) {
       v.drawingRevisionId = f.pin?.drawingRevisionId ?? null;
       v.pinX = f.pin?.x ?? null;

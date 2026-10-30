@@ -592,6 +592,8 @@ export const CreateRfiRequestSchema = z.object({
   "costImpact": CostImpactSchema.optional(),
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).optional(),
+  "specSection": z.string().max(200).optional(),
+  "location": z.string().max(200).optional(),
   "pin": RfiPinInputSchema.optional(),
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
@@ -2320,6 +2322,12 @@ export const RecordAttendanceRequestSchema = z.object({
 }).strict();
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
 
+export const RemoveProjectMemberRequestSchema = z.object({
+  "kind": z.enum(["ordinary", "for_cause", "wipe_now"]),
+  "reason": z.string().max(500).optional(),
+}).strict();
+export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
@@ -2377,6 +2385,8 @@ export const RfiSchema = z.object({
   "costEstimate": z.string().nullable(),
   "scheduleImpactDays": z.number().int().nullable(),
   "delayDays": z.number().int().nullable(),
+  "specSection": z.string().nullable(),
+  "location": z.string().nullable(),
   "pin": z.union([RfiPinSchema, z.null()]),
   "officialResponseId": z.string().nullable(),
   "createdBy": z.string().nullable(),
@@ -2953,6 +2963,8 @@ export const UpdateRfiRequestSchema = z.object({
   "costEstimate": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")).nullable().optional(),
   "scheduleImpactDays": z.number().int().min(0).max(3650).nullable().optional(),
   "delayDays": z.number().int().min(0).max(3650).nullable().optional(),
+  "specSection": z.string().max(200).nullable().optional(),
+  "location": z.string().max(200).nullable().optional(),
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
