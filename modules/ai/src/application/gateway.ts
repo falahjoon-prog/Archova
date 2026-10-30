@@ -76,6 +76,11 @@ export interface OcrOptions {
   /** Feature the text serves, for the feature switch and the ledger (`ask`, `drawings`). */
   feature: string;
   projectId?: string | null;
+  /**
+   * A bulk job nobody is waiting on (the project index). It stops at `OCR_BULK_SHARE` of the daily page cap, leaving
+   * the rest for scanned pages a person has asked for (quotes, sheet text, the drawing register).
+   */
+  bulk?: boolean;
 }
 
 export interface EmbedOptions {
@@ -107,6 +112,9 @@ export const DEFAULT_EMBED_DAILY_TOKENS = 25_000_000;
  */
 export const DEFAULT_OCR_DAILY_PAGES = 3_000;
 
+/** Share of the daily OCR page cap a bulk job may use; the rest is kept for features a person is waiting on. */
+export const OCR_BULK_SHARE = 0.8;
+
 /** Texts per provider call; Titan takes one at a time anyway, Cohere up to 96. */
 const EMBED_BATCH = 64;
 
@@ -123,6 +131,7 @@ export function createGateway(deps: GatewayDeps) {
   const now = deps.now ?? (() => new Date());
   const embedDailyTokens = deps.embedDailyTokens ?? DEFAULT_EMBED_DAILY_TOKENS;
   const ocrDailyPages = deps.ocrDailyPages ?? DEFAULT_OCR_DAILY_PAGES;
+  const ocrBulkPages = Math.floor(ocrDailyPages * OCR_BULK_SHARE);
   const onceADay = createOnceADay(deps.redis);
 
   /**
@@ -208,11 +217,17 @@ export function createGateway(deps: GatewayDeps) {
   }
 
   /**
-   * Refuses OCR once reading these pages would take the org past `ocrDailyPages` for its local day. Pages are known up
-   * front and dear, so the call must fit, with one exception: the first call of a day always runs, so a document longer
-   * than the cap can still be read once. Counts pages Textract read, not ones that failed.
+   * Says whether reading these pages would take the org past its OCR line for its local day, and which line: the daily
+   * cap, or for a bulk job the share of it kept back for features a person is waiting on. Pages are known up front
+   * and dear, so the call must fit, with one exception: the first call of a day always runs, so a document longer
+   * than the line can still be read once. Counts pages Textract read, not ones that failed.
    */
-  async function assertOcrRoom(scope: TenantScope, a: { day: string; tz: string }, pages: number) {
+  async function ocrRefusal(
+    scope: TenantScope,
+    a: { day: string; tz: string },
+    pages: number,
+    bulk: boolean,
+  ): Promise<'cap' | 'bulk' | null> {
     const [row] = await scope.tx
       .select({ n: sql<string>`count(*)` })
       .from(requests)
@@ -225,13 +240,9 @@ export function createGateway(deps: GatewayDeps) {
         ),
       );
     const used = Number(row?.n ?? 0);
-    if (used === 0 || used + pages <= ocrDailyPages) return;
-    throw new AppError(
-      'ai.ocr_limit',
-      'Nova has read as many scanned pages as it can for your organisation today. It picks up again tomorrow, so try this again then.',
-      undefined,
-      { resetsAt: endOfLocalDay(a.day, a.tz).toISOString() },
-    );
+    if (used === 0) return null;
+    if (used + pages > ocrDailyPages) return 'cap';
+    return bulk && used + pages > ocrBulkPages ? 'bulk' : null;
   }
 
   async function creditsUsedSince(scope: TenantScope, fromDay: string): Promise<number> {
@@ -409,7 +420,7 @@ export function createGateway(deps: GatewayDeps) {
   /**
    * Reads the text off scanned page images (ai/03 §3 step 2). Background work like embeddings: 0 credits and never
    * stopped by the allowance (ai/05 §4), but behind the org and feature switches, held to the org's daily page cap
-   * (`ai.ocr_limit`), and logged and costed per page.
+   * (`ai.ocr_limit`; a bulk job stops sooner, at `OCR_BULK_SHARE` of it), and logged and costed per page.
    */
   async function ocr(
     ctx: TenantContext,
@@ -424,27 +435,52 @@ export function createGateway(deps: GatewayDeps) {
       kind: 'background' as const,
     };
     const ro = { readOnly: true } as const;
-    const { day } = await deps.database
-      .withTenantTx(
-        ctx,
-        async (s) => {
-          const admitted = await admit(s, prompt, 0);
-          await assertOcrRoom(s, admitted, images.length);
-          return admitted;
-        },
-        ro,
-      )
-      .catch(async (err: unknown) => {
-        if (err instanceof AppError && err.code === 'ai.ocr_limit')
-          await noteCap(
-            ctx.orgId,
-            'ocr.page',
-            err,
-            { capPages: ocrDailyPages },
-            'ai daily ocr cap reached',
-          );
-        throw err;
-      });
+    const { day, tz, refusal } = await deps.database.withTenantTx(
+      ctx,
+      async (s) => {
+        const admitted = await admit(s, prompt, 0);
+        return {
+          ...admitted,
+          refusal: await ocrRefusal(s, admitted, images.length, opts.bulk === true),
+        };
+      },
+      ro,
+    );
+    if (refusal) {
+      const resetsAt = endOfLocalDay(day, tz).toISOString();
+      const err =
+        refusal === 'cap'
+          ? new AppError(
+              'ai.ocr_limit',
+              'Nova has read as many scanned pages as it can for your organisation today. It picks up again tomorrow, so try this again then.',
+              undefined,
+              { resetsAt },
+            )
+          : new AppError(
+              'ai.ocr_limit',
+              'Nova has read as many scanned pages for indexing as it can today, and is keeping the rest for scanned pages you ask about. Indexing picks up again tomorrow, so run it again then.',
+              undefined,
+              { resetsAt },
+            );
+      // The bulk share has its own task key and line, so an alert on the real cap stays clean.
+      if (refusal === 'cap')
+        await noteCap(
+          ctx.orgId,
+          'ocr.page',
+          err,
+          { capPages: ocrDailyPages },
+          'ai daily ocr cap reached',
+        );
+      else
+        await noteCap(
+          ctx.orgId,
+          'ocr.page.bulk',
+          err,
+          { capPages: ocrDailyPages, bulkPages: ocrBulkPages },
+          'ai daily ocr bulk share reached',
+        );
+      throw err;
+    }
     const price = deps.ocrPriceMicros ?? DEFAULT_OCR_PRICE_MICROS;
     const results: OcrResponse[] = [];
     const calls: CallRecord[] = [];
