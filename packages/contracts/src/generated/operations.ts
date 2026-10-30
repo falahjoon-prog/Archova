@@ -5,6 +5,17 @@ import * as s from './schemas';
 
 export const SignupBody = s.SignupRequestSchema;
 export const LoginBody = s.LoginRequestSchema;
+export const ListApiTokensParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateApiTokenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateApiTokenBody = s.CreateApiTokenRequestSchema;
+export const RevokeApiTokenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "apiTokenId": z.string().regex(new RegExp("^tok_[0-9A-Za-z]{26}$")),
+});
 export const OauthAuthorizeQuery = z.object({
   "response_type": z.enum(["code"]),
   "client_id": z.string(),
@@ -18,6 +29,20 @@ export const OauthRevokeBody = s.RevokeRequestSchema;
 export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSupportAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSupportBannerParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateSupportAccessGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateSupportAccessGrantBody = s.CreateSupportAccessGrantRequestSchema;
+export const RevokeSupportAccessGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string(),
 });
 export const GetEntitlementsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -422,6 +447,14 @@ export const NegotiateQuoteBody = z.object({
   "targetExGst": z.string().regex(new RegExp("^\\d{1,12}(\\.\\d{1,2})?$")).nullable().optional(),
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
+}).strict();
+export const TranscribeSpeechParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const TranscribeSpeechBody = z.object({
+  "audio": z.string().min(1).max(900000),
+  "mimeType": z.enum(["audio/webm", "audio/ogg", "audio/mp4", "audio/wav"]),
 }).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1322,6 +1355,42 @@ export const operations = {
     query: null,
     body: null,
   },
+  listApiTokens: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/api-tokens',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListApiTokensParams,
+    query: null,
+    body: null,
+  },
+  createApiToken: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/api-tokens',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: CreateApiTokenParams,
+    query: null,
+    body: CreateApiTokenBody,
+  },
+  revokeApiToken: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/api-tokens/{apiTokenId}',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RevokeApiTokenParams,
+    query: null,
+    body: null,
+  },
   oauthAuthorize: {
     method: 'GET',
     path: '/v1/oauth/authorize',
@@ -1403,6 +1472,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetOrgParams,
+    query: null,
+    body: null,
+  },
+  getSupportAccess: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportAccessParams,
+    query: null,
+    body: null,
+  },
+  getSupportBanner: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/banner',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportBannerParams,
+    query: null,
+    body: null,
+  },
+  createSupportAccessGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/support-access/grants',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: CreateSupportAccessGrantParams,
+    query: null,
+    body: CreateSupportAccessGrantBody,
+  },
+  revokeSupportAccessGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/support-access/grants/{grantId}/revoke',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RevokeSupportAccessGrantParams,
     query: null,
     body: null,
   },
@@ -2257,6 +2374,18 @@ export const operations = {
     params: NegotiateQuoteParams,
     query: null,
     body: NegotiateQuoteBody,
+  },
+  transcribeSpeech: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: TranscribeSpeechParams,
+    query: null,
+    body: TranscribeSpeechBody,
   },
   summariseDiaryDayWithNova: {
     method: 'POST',

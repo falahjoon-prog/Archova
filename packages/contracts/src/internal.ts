@@ -212,6 +212,30 @@ export type OrgDetailDto = OrgListItemDto & {
   actions: OrgActionDto[];
 };
 
+export type SupportGrantDto = {
+  id: string;
+  ticketRef: string;
+  level: 'view';
+  grantedBy: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  status: 'active' | 'expired' | 'revoked';
+};
+export type SupportSessionDto = {
+  id: string;
+  grantId: string;
+  staffName: string;
+  ticketRef: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  status: 'open' | 'ended' | 'expired' | 'revoked';
+};
+/** Names and status only; a support session never sees documents, files or claims. */
+export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
+export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
+
 export type FlagOrgRef = { orgId: string; name: string };
 export type FlagDto = {
   key: string;
@@ -358,6 +382,43 @@ export const internalOperations = {
       kind: z.enum(CREDIT_GRANT_KINDS),
       ...withTicket,
     }),
+  }),
+  getOrgSupportAccess: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access',
+    auth: 'staff',
+    permission: 'backoffice.customers.read',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  startSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ ticketRef }),
+  }),
+  endSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions/{sessionId}/end',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: z.object({ orgId: orgRef, sessionId: uuid }),
+    query: noParams,
+    body: null,
+  }),
+  listSupportProjects: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access/projects',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: orgOnly,
+    query: noParams,
+    body: null,
   }),
   listPlans: op({
     method: 'GET',

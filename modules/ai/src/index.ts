@@ -26,6 +26,7 @@ import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
 } from './application/quote-negotiate';
+import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
 import {
   createDrawingCompareService,
@@ -409,6 +410,11 @@ export function createAiModule(
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
   });
+  const speech = createSpeechService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+  });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
     gateway,
@@ -456,6 +462,7 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      speech,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -495,6 +502,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** Nova listening: a short spoken question turned into text, in Australia; the clip is not kept. */
+      transcribeSpeech: speech.transcribe,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */

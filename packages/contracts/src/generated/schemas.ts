@@ -108,6 +108,29 @@ export const AiUsageSchema = z.object({
 });
 export type AiUsage = z.infer<typeof AiUsageSchema>;
 
+export const ApiTokenSchema = z.object({
+  "id": z.string(),
+  "userId": z.string(),
+  "name": z.string(),
+  "prefix": z.string(),
+  "scopes": z.array(z.string()),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "lastUsedAt": z.string().datetime({ offset: true }).nullable(),
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ApiToken = z.infer<typeof ApiTokenSchema>;
+
+export const ApiTokenCreatedSchema = z.intersection(ApiTokenSchema, z.object({
+  "token": z.string(),
+}));
+export type ApiTokenCreated = z.infer<typeof ApiTokenCreatedSchema>;
+
+export const ApiTokenListSchema = z.object({
+  "data": z.array(ApiTokenSchema),
+});
+export type ApiTokenList = z.infer<typeof ApiTokenListSchema>;
+
 export const ApproveInductionSectionRequestSchema = z.object({
   "section": z.number().int().min(0).max(29),
 }).strict();
@@ -265,6 +288,13 @@ export type ConfirmSheetScaleRequest = z.infer<typeof ConfirmSheetScaleRequestSc
 
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
+
+export const CreateApiTokenRequestSchema = z.object({
+  "name": z.string().min(1).max(80),
+  "scopes": z.array(z.string().max(40)).min(1).max(30),
+  "expiresInDays": z.number().int().min(1).max(365).optional(),
+}).strict();
+export type CreateApiTokenRequest = z.infer<typeof CreateApiTokenRequestSchema>;
 
 export const CreateAttendanceSiteRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -622,6 +652,12 @@ export const CreateSubmittalRequestSchema = z.object({
   "reviewDays": z.number().int().min(0).max(250).optional(),
 }).strict();
 export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema>;
+
+export const CreateSupportAccessGrantRequestSchema = z.object({
+  "ticketRef": z.string().min(2).max(60),
+  "hours": z.number().int().min(1).max(72),
+}).strict();
+export type CreateSupportAccessGrantRequest = z.infer<typeof CreateSupportAccessGrantRequestSchema>;
 
 export const TakeoffKindSchema = z.enum(["length", "area", "count"]);
 export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
@@ -2831,6 +2867,43 @@ export const SubmittalPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type SubmittalPage = z.infer<typeof SubmittalPageSchema>;
+
+export const SupportAccessGrantSchema = z.object({
+  "id": z.string(),
+  "ticketRef": z.string(),
+  "level": z.enum(["view"]),
+  "grantedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["active", "expired", "revoked"]),
+});
+export type SupportAccessGrant = z.infer<typeof SupportAccessGrantSchema>;
+
+export const SupportAccessSessionSchema = z.object({
+  "pagesViewed": z.number().int(),
+  "id": z.string(),
+  "grantId": z.string(),
+  "staffName": z.string(),
+  "ticketRef": z.string(),
+  "startedAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "endedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["open", "ended", "expired", "revoked"]),
+});
+export type SupportAccessSession = z.infer<typeof SupportAccessSessionSchema>;
+
+export const SupportAccessSchema = z.object({
+  "grants": z.array(SupportAccessGrantSchema),
+  "sessions": z.array(SupportAccessSessionSchema),
+});
+export type SupportAccess = z.infer<typeof SupportAccessSchema>;
+
+export const SupportBannerSchema = z.object({
+  "active": z.boolean(),
+  "since": z.string().datetime({ offset: true }).nullable(),
+});
+export type SupportBanner = z.infer<typeof SupportBannerSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),

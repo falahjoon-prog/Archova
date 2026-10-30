@@ -11,6 +11,7 @@ export const ID_PREFIXES = {
   projectMember: 'pmb',
   permissionTemplate: 'ptp',
   session: 'ses',
+  apiToken: 'tok',
   upload: 'upl',
   file: 'fil',
   document: 'doc',

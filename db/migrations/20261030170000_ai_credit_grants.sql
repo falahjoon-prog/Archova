@@ -1,4 +1,4 @@
--- Composed from modules/ai/db/migrations/20261030150000_ai_credit_grants.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/ai/db/migrations/20261030170000_ai_credit_grants.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Extra Nova credits granted to an org by staff (top-ups, goodwill, promotions; ai/05 §4, §5). A grant adds to the
 -- allowance of one calendar month (the org's local month, `period_start` is its first day) and does not roll over.
 -- Rows are append-only: a mistaken grant is corrected with a later entry, never edited.

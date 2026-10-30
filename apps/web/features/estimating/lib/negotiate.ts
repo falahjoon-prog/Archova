@@ -191,3 +191,12 @@ export function previewNegotiate(input: {
     draftMessage: message,
   };
 }
+
+/** The preview has no model to read a spoken or typed question, so it picks the closest of the four helps. */
+export function topicFromQuestion(question: string): NegotiateTopic {
+  const q = question.toLowerCase();
+  if (/message|email|write|draft/.test(q)) return 'message';
+  if (/counter|offer|price|cheaper|lower/.test(q)) return 'counter';
+  if (/scope|exclusion|qualification|missing|gap/.test(q)) return 'scope';
+  return 'overview';
+}

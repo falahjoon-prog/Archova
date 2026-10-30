@@ -24,7 +24,20 @@ import {
   toProjectMemberDto,
 } from './mappers';
 
+/** Support access lives with the console's records; the org's own admin reads and changes it through these. */
+export interface SupportAccessPort {
+  list(orgId: string): Promise<unknown>;
+  grant(
+    orgId: string,
+    by: { userId: string; name: string },
+    input: { ticketRef: string; hours: number },
+  ): Promise<unknown>;
+  revoke(orgId: string, grantId: string): Promise<void>;
+  banner(orgId: string): Promise<{ active: boolean; since: string | null }>;
+}
+
 export interface PlatformRouteDeps {
+  supportAccess?: SupportAccessPort;
   database: Database;
   identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   orgs: OrgService;
@@ -49,6 +62,17 @@ const decodeRef = (kind: 'company' | 'permissionTemplate', id: string) => {
 
 export function platformRoutes(d: PlatformRouteDeps) {
   const ro = { readOnly: true } as const;
+  const supportPort = () => {
+    if (!d.supportAccess) throw new AppError('not_implemented', 'Support access is not set up.');
+    return d.supportAccess;
+  };
+  /** Only an org owner or admin can see or change support access. */
+  const requireOrgAdmin = (input: { tenant: Parameters<typeof requireTenant>[0]['tenant'] }) => {
+    const t = requireTenant(input);
+    if (t.orgRole !== 'owner' && t.orgRole !== 'admin')
+      throw new AppError('access.denied', 'Only an org owner or admin can manage support access.');
+    return t;
+  };
   return defineRoutes({
     getMe: async (input) => {
       const principal = requirePrincipal(input);
@@ -77,6 +101,30 @@ export function platformRoutes(d: PlatformRouteDeps) {
     getOrg: async (input) => {
       const org = await d.database.withTenantTx(requireTenant(input), (s) => d.orgs.getOrg(s), ro);
       return { status: 200, body: toOrgDto(org), headers: { etag: etag(org.version) } };
+    },
+    getSupportAccess: async (input) => {
+      const t = requireOrgAdmin(input);
+      return { status: 200, body: await supportPort().list(t.orgId) };
+    },
+    createSupportAccessGrant: async (input) => {
+      const t = requireOrgAdmin(input);
+      const user = await d.identity.getUser(t.userId);
+      const grant = await supportPort().grant(
+        t.orgId,
+        { userId: t.userId, name: user?.name ?? 'An org admin' },
+        input.body,
+      );
+      return { status: 201, body: grant };
+    },
+    getSupportBanner: async (input) => {
+      // Any signed-in user of the company, not only admins: the banner tells everyone who is looking.
+      const t = requireTenant(input);
+      return { status: 200, body: await supportPort().banner(t.orgId) };
+    },
+    revokeSupportAccessGrant: async (input) => {
+      const t = requireOrgAdmin(input);
+      await supportPort().revoke(t.orgId, input.params.grantId);
+      return { status: 204 };
     },
     listProjects: async (input) => {
       const page = await d.database.withTenantTx(

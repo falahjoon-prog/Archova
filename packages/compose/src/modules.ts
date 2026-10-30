@@ -67,12 +67,16 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
-  // backoffice grants Nova credits through `ai`, which is built later; resolve lazily.
+  // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
   let aiApi: AiApi | null = null;
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
     credits: () => ({ grantCredits: aiApi!.grantCredits }),
+    supportReads: () => ({
+      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+    }),
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
@@ -81,6 +85,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
+    supportAccess: backoffice.api.support,
+    hasOpenSupportSession: backoffice.api.support.hasOpenSession,
     onOrgCreated: (scope, org, entitlements) =>
       backoffice.api.directory.upsert(scope.tx, {
         id: org.id,
@@ -90,6 +96,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
         state: entitlements.state,
       }),
   });
+  platformApi = platform.api;
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
       platform.api.getProjectMembership(scope, projectId, userId),

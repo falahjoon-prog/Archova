@@ -15,6 +15,7 @@ import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import type { ApiConfig } from './config';
 import { loadModules, type Modules } from '@archova/compose';
+import { apiRateLimiter } from './plugins/rate-limit';
 import { registerInternalOperations } from './internal';
 import { registerOperations } from './pipeline';
 import { idempotencyStore } from './plugins/idempotency';
@@ -119,6 +120,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     modules,
     routes: modules.routes,
     idempotency: deps.redis ? idempotencyStore(deps.redis) : null,
+    rateLimiter: deps.redis ? apiRateLimiter(deps.redis) : null,
   });
   registerInternalOperations(app, { config, backoffice: modules.backoffice });
   return app;

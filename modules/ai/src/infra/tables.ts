@@ -49,7 +49,7 @@ export const requests = ai.table('ai_requests', {
   promptVersion: integer('prompt_version').notNull(),
   provider: text('provider').notNull(),
   model: text('model').notNull(),
-  tier: text('tier').$type<ModelTier | 'embedding' | 'ocr'>().notNull(),
+  tier: text('tier').$type<ModelTier | 'embedding' | 'ocr' | 'speech'>().notNull(),
   attempt: smallint('attempt').notNull(),
   tokensIn: integer('tokens_in').notNull().default(0),
   tokensOut: integer('tokens_out').notNull().default(0),

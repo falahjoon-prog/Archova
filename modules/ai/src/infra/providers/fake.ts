@@ -9,6 +9,8 @@ import type {
   ModelUsage,
   OcrRequest,
   OcrResponse,
+  SpeechRequest,
+  SpeechResponse,
   StopReason,
 } from '../../domain/provider';
 import { ProviderError } from '../../domain/provider';
@@ -21,6 +23,10 @@ export type FakeResponder = (req: ModelRequest) => FakeReply | Promise<FakeReply
 
 /** Fake OCR: tests script what a page "says"; by default a scan reads as blank. */
 export type FakeOcrResponder = (req: OcrRequest) => OcrResponse | Promise<OcrResponse>;
+
+/** Fake speech to text: tests script what a clip "says"; by default it hears a fixed stand-in question, so local runs
+ * show the voice flow without a speech service. */
+export type FakeSpeechResponder = (req: SpeechRequest) => SpeechResponse | Promise<SpeechResponse>;
 
 /** Rough token count (4 characters a token) so cost accounting has realistic numbers in tests. */
 export const approxTokens = (text: string) => Math.ceil(text.length / 4);
@@ -47,10 +53,14 @@ export interface FakeProvider extends ModelProvider {
   on(task: string, responder: FakeResponder): void;
   /** Registers or replaces the OCR responder. */
   onOcr(responder: FakeOcrResponder): void;
+  /** Registers or replaces the speech-to-text responder. */
+  onSpeech(responder: FakeSpeechResponder): void;
   /** Every request seen, newest last. */
   readonly calls: ModelRequest[];
   /** Every OCR request seen, newest last. */
   readonly ocrCalls: OcrRequest[];
+  /** Every speech-to-text request seen, newest last. */
+  readonly speechCalls: SpeechRequest[];
 }
 
 export function createFakeProvider(
@@ -60,17 +70,25 @@ export function createFakeProvider(
   const table = new Map(Object.entries(responders));
   const calls: ModelRequest[] = [];
   const ocrCalls: OcrRequest[] = [];
+  const speechCalls: SpeechRequest[] = [];
   let ocr: FakeOcrResponder = () => ({ lines: [] });
+  let speech: FakeSpeechResponder = () => ({
+    text: 'How does this quote compare with the others?',
+  });
   return {
     name: 'fake',
     region: opts.region ?? 'ap-southeast-2',
     calls,
     ocrCalls,
+    speechCalls,
     on(task, responder) {
       table.set(task, responder);
     },
     onOcr(responder) {
       ocr = responder;
+    },
+    onSpeech(responder) {
+      speech = responder;
     },
     async complete(req: ModelRequest): Promise<ModelResponse> {
       calls.push(req);
@@ -101,6 +119,10 @@ export function createFakeProvider(
     async detectText(req: OcrRequest): Promise<OcrResponse> {
       ocrCalls.push(req);
       return ocr(req);
+    },
+    async transcribe(req: SpeechRequest): Promise<SpeechResponse> {
+      speechCalls.push(req);
+      return speech(req);
     },
   };
 }

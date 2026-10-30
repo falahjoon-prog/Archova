@@ -74,6 +74,19 @@ export interface OcrResponse {
   lines: OcrLine[];
 }
 
+/** A short spoken clip for speech to text (Nova listening): one question, not a recording of a meeting. */
+export interface SpeechRequest {
+  audio: Uint8Array;
+  mimeType: string;
+  /** BCP 47 language of the speaker; Australian English unless said otherwise. */
+  language: string;
+  timeoutMs: number;
+}
+
+export interface SpeechResponse {
+  text: string;
+}
+
 /** Error categories every adapter maps vendor errors to (ai/02 §5). */
 export type ProviderErrorKind =
   'rate_limited' | 'overloaded' | 'timeout' | 'unavailable' | 'invalid_request' | 'auth';
@@ -108,4 +121,6 @@ export interface ModelProvider {
   embed(req: EmbedRequest): Promise<EmbedResponse>;
   /** Reads the text off a scanned page (OCR), for search and title blocks. */
   detectText(req: OcrRequest): Promise<OcrResponse>;
+  /** Turns a short spoken clip into text (speech to text), in Australia (X25). */
+  transcribe(req: SpeechRequest): Promise<SpeechResponse>;
 }

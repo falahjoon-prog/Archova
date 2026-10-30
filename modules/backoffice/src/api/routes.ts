@@ -10,6 +10,7 @@ import { AppError } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
 import type { FlagService } from '../application/flags';
+import type { SupportAccessService } from '../application/support-access';
 import type { OrgActionService } from '../application/org-actions';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
@@ -45,6 +46,7 @@ export interface InternalDeps {
   catalogue: CatalogueService;
   flags: FlagService;
   orgActions: OrgActionService;
+  support: SupportAccessService;
 }
 
 const me = (input: { staff: StaffContext | null }) => {
@@ -93,6 +95,19 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       const id = decodeId('org', i.params.orgId);
       if (!id) throw new AppError('org.not_found');
       return ok(await orgDetail(id));
+    },
+    getOrgSupportAccess: async (i) => ok(await d.support.list(orgId(i.params.orgId))),
+    startSupportSession: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.support.start(me(i), id, i.body.ticketRef);
+      return ok(await d.support.list(id), 201);
+    },
+    listSupportProjects: async (i) =>
+      ok({ items: await d.support.viewProjects(me(i), orgId(i.params.orgId)) }),
+    endSupportSession: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.support.end(me(i), id, i.params.sessionId);
+      return ok(await d.support.list(id));
     },
     trialExtendOrg: async (i) => {
       const id = orgId(i.params.orgId);
