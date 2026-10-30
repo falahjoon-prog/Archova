@@ -89,7 +89,8 @@ export type AccessStateLookup = (
 export interface DrainDeps {
   database: Database;
   commands: readonly SyncCommand[];
-  accessState?: AccessStateLookup;
+  /** Required: a grant is only honoured while the platform says the person's access ended in the ordinary way. */
+  accessState: AccessStateLookup;
 }
 
 /**
@@ -308,12 +309,18 @@ export function createDrainService(deps: DrainDeps) {
         )
         .limit(1);
       if (!grant) throw invalid();
-      // Added back since (or removed again in a later episode): the normal sync is the way in, not this grant.
-      if (grant.projectId && deps.accessState) {
-        const state = await deps.accessState(scope, grant.projectId, grant.userId);
-        if (!state || state.status !== 'removed' || state.episode !== grant.accessEpisode)
-          throw invalid();
-      }
+      // Fails closed. Organisation-wide revocation is not built, so a grant with no project has nothing to check
+      // and is refused. A project grant stands only while the person is still off the project, removed in the
+      // ordinary way, in the same episode it was minted for (a re-add or a later removal ends it).
+      if (!grant.projectId) throw invalid();
+      const state = await deps.accessState(scope, grant.projectId, grant.userId);
+      if (
+        !state ||
+        state.status !== 'removed' ||
+        state.kind !== 'ordinary' ||
+        state.episode !== grant.accessEpisode
+      )
+        throw invalid();
       // Two requests for the same person and scope take turns, so the queue cap cannot be passed together.
       await scope.tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${`${grant.userId}:${grant.projectId ?? ''}:${grant.module ?? ''}`}, 0))`,

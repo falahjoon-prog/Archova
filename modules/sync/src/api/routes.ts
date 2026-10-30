@@ -89,7 +89,8 @@ export function syncRoutes(
           return drainGrant ? { ...r, drainGrant } : r;
         });
       }
-      return { status: 200, body };
+      // The body can carry a drain grant, a secret: no cache, whatever sits in front.
+      return { status: 200, body, headers: { 'cache-control': 'no-store' } };
     },
     syncPush: async (input) => {
       const tenant = requireTenant(input);

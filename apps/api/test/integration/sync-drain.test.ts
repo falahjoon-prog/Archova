@@ -160,13 +160,11 @@ describe('drain grant (X38), queueing', () => {
       expect(r.json().results[0].problem.code).toBe('validation_failed');
     }
 
+    // Organisation-wide revocation is not built: a grant with no project has nothing to check, so it is refused.
     const org = (await w.grant(null))!;
-    const both = await send(w.org.id, org.token, [mutation(w.a.id), mutation(w.b.id)]);
-    expect(both.json().results.map((r: { status: string }) => r.status)).toEqual([
-      'pending_review',
-      'pending_review',
-    ]);
-    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(2);
+    const wide = await send(w.org.id, org.token, [mutation(w.a.id), mutation(w.b.id)]);
+    expect(wide.statusCode).toBe(401);
+    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(0);
   });
 
   it('caps payloads and the queue', async () => {

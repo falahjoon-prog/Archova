@@ -82,7 +82,11 @@ async function world(label: string) {
     requestId: 'test',
   };
   const grant = async (projectId: string | null) => {
-    await removeMember(pm.browser, org.id, project.id, sub.email);
+    // Off the project in the ordinary way first: a grant is only honoured for someone who was removed.
+    const on = projectId ?? project.id;
+    if (on !== project.id)
+      await addMember(pm.browser, org.id, on, sub.email, 'Subcontractor', `Other ${on.slice(-4)}`);
+    await removeMember(pm.browser, org.id, on, sub.email);
     return (await t.database.withTenantTx(ctx, (scope) =>
       t.modules.sync.api.drain.issue(scope, {
         userId: decodeId('user', sub.userId)!,
@@ -162,8 +166,8 @@ describe('late submissions: deciding (X38)', () => {
 
   it('refuses an accept whose record is in another project than the device said, and leaves it waiting', async () => {
     const w = await world('late-mismatch');
-    // An organisation-wide grant lets the device name any project; this defect is in w.project.
-    const g = await w.grant(null);
+    // A grant for the other project lets the device name it; this defect is in w.project.
+    const g = await w.grant(w.other.id);
     await w.sendLate(g.token, w.other.id);
     const q = await w.queue();
     expect(q.pendingCount).toBe(0);

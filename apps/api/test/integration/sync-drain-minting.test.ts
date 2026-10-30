@@ -93,6 +93,24 @@ describe('drain grant (X38), handed out on the pull', () => {
     expect(sent.json().results[0].status).toBe('pending_review');
   });
 
+  it('is never cached, and a grant stops working if the removal is escalated', async () => {
+    const w = await world('mint-escalate');
+    const sam = await w.worker('sam');
+    await removeMember(w.pm.browser, w.org.id, w.project.id, sam.email, 'ordinary');
+    const res = await sam.browser.get(
+      `/v1/orgs/${w.org.id}/sync/pull?scopes=${encodeURIComponent(`project:${w.project.id}:defects`)}&since=0`,
+    );
+    expect(res.headers['cache-control']).toBe('no-store');
+    const grant = res.json().revokedScopes[0].drainGrant;
+    expect((await w.late(grant.token)).statusCode).toBe(200);
+    // An admin decides it was for cause after all: the phone's grant is dead at once.
+    await t.adminDb.withTenantTx(w.ctx, ({ tx }) =>
+      tx.execute(sql`update platform.project_members set removal_kind = 'for_cause'
+                     where user_id = ${decodeId('user', sam.userId)!}`),
+    );
+    expect((await w.late(grant.token)).statusCode).toBe(401);
+  });
+
   it('gives nothing to someone removed for cause or told to wipe now', async () => {
     const w = await world('mint-none');
     const cause = await w.worker('cause');

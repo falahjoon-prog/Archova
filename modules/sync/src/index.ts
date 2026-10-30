@@ -20,18 +20,18 @@ export interface SyncDeps {
   /** The use cases a device may queue offline; a command absent here is rejected. */
   commands: readonly SyncCommand[];
   /** How someone's access to a project stands (platform); lets the pull hand out drain grants (X38). */
-  accessState?: AccessStateLookup;
+  accessState: AccessStateLookup;
 }
 
 export function createSyncModule(services: KernelServices, deps: SyncDeps) {
   const drain = createDrainService({
     database: services.database,
     commands: deps.commands,
-    ...(deps.accessState ? { accessState: deps.accessState } : {}),
+    accessState: deps.accessState,
   });
   const pull = createPullService({
     ...deps,
-    ...(deps.accessState ? { drain: { service: drain, accessState: deps.accessState } } : {}),
+    drain: { service: drain, accessState: deps.accessState },
   });
   const push = createPushService({ database: services.database, commands: deps.commands });
   const review = createReviewService({ commands: deps.commands });

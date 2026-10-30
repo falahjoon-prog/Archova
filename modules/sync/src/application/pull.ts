@@ -9,8 +9,8 @@ import { DRAIN_WINDOW_MS, type AccessStateLookup, type DrainService } from './dr
 export interface PullDeps {
   access: Pick<AccessService, 'can'>;
   sources: readonly SyncSource[];
-  /** Hands a device the grant for work it queued before it lost a project (X38); absent where drain is off. */
-  drain?: {
+  /** Hands a device the grant for work it queued before it lost a project (X38). */
+  drain: {
     service: Pick<DrainService, 'issue'>;
     accessState: AccessStateLookup;
   };
@@ -40,7 +40,6 @@ export function createPullService(deps: PullDeps) {
    * are not over. For cause and wipe-now removals get none, so the phone has nothing to send (Sam, X38).
    */
   async function grantFor(scope: TenantScope, projectId: string) {
-    if (!deps.drain) return null;
     const state = await deps.drain.accessState(scope, projectId, scope.ctx.userId);
     if (!state || state.status !== 'removed' || state.kind !== 'ordinary' || !state.removedAt)
       return null;
