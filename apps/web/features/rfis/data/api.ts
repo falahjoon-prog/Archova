@@ -1,7 +1,7 @@
 // RFIs against the rfis module's endpoints (backend 04 §3, Ben's PR #10), with the same interface as the preview
 // source so the screens and hooks don't change. People and companies come back as ids; names are resolved from the
 // project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed;
-// it has no spec section or location yet, and Nova's answer drafts aren't served yet.
+// Nova's answer drafts aren't served yet.
 
 import { ApiError, unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
@@ -103,8 +103,8 @@ export function toRfi(
     scheduleImpactDays: r.scheduleImpactDays,
     // The sheet and label are looked up from the register on screen; the API stores the revision only.
     drawing: r.pin ? { sheetId: '', revisionId: r.pin.drawingRevisionId, label: 'Drawing' } : null,
-    specSection: null,
-    location: null,
+    specSection: r.specSection,
+    location: r.location,
     responses: responses.map((x) => toResponse(x, members)),
     officialResponseId: r.officialResponseId,
     activity: [],
@@ -115,7 +115,7 @@ export function toRfi(
   };
 }
 
-/** The fields the API accepts from the form. Spec section and location aren't stored by the API yet. */
+/** The fields the API accepts from the form. */
 function toRequest(input: RfiInput, pin?: unknown) {
   return {
     subject: input.subject,
@@ -129,6 +129,18 @@ function toRequest(input: RfiInput, pin?: unknown) {
     ...(pin !== undefined ? { pin: pin as never } : {}),
   };
 }
+
+/** Creating leaves an empty spec section or location out. */
+const createRefs = (input: RfiInput) => ({
+  ...(input.specSection ? { specSection: input.specSection } : {}),
+  ...(input.location ? { location: input.location } : {}),
+});
+
+/** Editing sends null to clear one. */
+const editRefs = (input: RfiInput) => ({
+  specSection: input.specSection || null,
+  location: input.location || null,
+});
 
 export function createRfisApi(orgId: string): RfisSource {
   const members = (projectId: string) => projectMembers(orgId, projectId);
@@ -264,6 +276,7 @@ export function createRfisApi(orgId: string): RfisSource {
                   ? { drawingRevisionId: input.drawing.revisionId, ...input.drawing.pin }
                   : undefined,
               ),
+              ...createRefs(input),
               ...(input.nova ? { aiSuggestionId: input.nova.suggestionId } : {}),
             },
           }),
@@ -289,7 +302,12 @@ export function createRfisApi(orgId: string): RfisSource {
       const pin = was === now ? undefined : now ? { drawingRevisionId: now } : null;
       return detail(
         projectId,
-        unwrap(await api.PATCH(`${P}/{rfiId}`, { params, body: toRequest(input, pin) })),
+        unwrap(
+          await api.PATCH(`${P}/{rfiId}`, {
+            params,
+            body: { ...toRequest(input, pin), ...editRefs(input) },
+          }),
+        ),
       );
     },
 

@@ -3,13 +3,15 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
+import * as WebBrowser from 'expo-web-browser';
 import { useQuery } from '@tanstack/react-query';
 import { mobileRoutes } from '@archova/routes';
 import { Button, useTheme } from '@archova/ui-native';
-import { queries } from '../../../lib/api';
+import { api, queries } from '../../../lib/api';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
 import { listDefects } from '../../defects';
 import { supersededNotice } from '../banner';
+import { drawingPdfUrl } from '../pdf';
 import { pinsOnRevision, type SheetPin } from '../pins';
 import {
   fitViewport,
@@ -260,6 +262,7 @@ export function DrawingViewerScreen({
   });
   const notice = revision.data ? supersededNotice(revision.data) : null;
   const [placing, setPlacing] = useState(false);
+  const [pdfError, setPdfError] = useState(false);
   const sheetId = revision.data?.sheetId ?? null;
   // Defects are raised on the current sheet only, never on one that has been replaced.
   const canPin = sheetId !== null && notice === null;
@@ -283,11 +286,33 @@ export function DrawingViewerScreen({
   }
   const d = tiles.data;
   if (d.status !== 'ready' || !d.width || !d.height || !d.levels || !d.tileUrlTemplate) {
+    const file = revision.data;
     return (
-      <StateMessage
-        loading
-        message="This sheet is still being prepared. It will appear here shortly."
-      />
+      <View style={{ flex: 1 }}>
+        <StateMessage
+          loading
+          message="This sheet is still being prepared. It will appear here shortly."
+        />
+        {file ? (
+          <View style={{ padding: t.space[3], gap: t.space[2] }}>
+            <Button
+              label="Open the PDF meanwhile"
+              variant="secondary"
+              onPress={() => {
+                setPdfError(false);
+                drawingPdfUrl(api, orgId, file.fileId, file.pageIndex)
+                  .then((url) => WebBrowser.openBrowserAsync(url))
+                  .catch(() => setPdfError(true));
+              }}
+            />
+            {pdfError ? (
+              <Text style={{ color: t.color.statusDanger }}>
+                Could not open the PDF. Check your connection.
+              </Text>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
     );
   }
   return (

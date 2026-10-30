@@ -8,7 +8,6 @@ import { webRoutes } from '@archova/routes';
 import { useSheetPicker } from '@/features/drawings';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { businessDaysBetween, dueInBusinessDays, todayIn } from '@/shared/lib/format';
-import { previewDataOnly } from '@/shared/lib/data-mode';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
@@ -391,7 +390,6 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
           References and impact
         </h2>
         <div className="form-row">
-          {/* The API stores a pin to a drawing revision, but no spec section or location yet. */}
           <Select
             label="Drawing"
             value={v.drawing?.sheetId ?? ''}
@@ -408,22 +406,18 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
               );
             }}
           />
-          {previewDataOnly ? (
-            <>
-              <TextField
-                label="Spec section"
-                placeholder="0331 Structural concrete"
-                value={v.specSection ?? ''}
-                onChange={(e) => set('specSection', e.target.value || null)}
-              />
-              <TextField
-                label="Location"
-                placeholder="Level 2, grid C"
-                value={v.location ?? ''}
-                onChange={(e) => set('location', e.target.value || null)}
-              />
-            </>
-          ) : null}
+          <TextField
+            label="Spec section"
+            placeholder="0331 Structural concrete"
+            value={v.specSection ?? ''}
+            onChange={(e) => set('specSection', e.target.value || null)}
+          />
+          <TextField
+            label="Location"
+            placeholder="Level 2, grid C"
+            value={v.location ?? ''}
+            onChange={(e) => set('location', e.target.value || null)}
+          />
           <Select
             label="Cost impact"
             value={v.costImpact ?? ''}

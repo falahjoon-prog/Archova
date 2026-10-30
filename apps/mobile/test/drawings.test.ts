@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DrawingSheet as Sheet } from '@archova/contracts';
-import { registerRows } from '../features/drawings';
+import { drawingPdfUrl, pdfPageUrl, registerRows } from '../features/drawings';
 
 vi.mock('../features/drawings/screens/DrawingRegisterScreen', () => ({}));
 vi.mock('../features/drawings/screens/DrawingViewerScreen', () => ({}));
@@ -32,5 +32,27 @@ describe('registerRows', () => {
   it('says so when a sheet has no current revision', () => {
     const [row] = registerRows([sheet({ discipline: null })]);
     expect(row).toMatchObject({ subtitle: 'No current revision', hasRevision: false });
+  });
+});
+
+describe('sheet PDF fallback', () => {
+  it("opens the sheet's page (1-based in the PDF fragment)", () => {
+    expect(pdfPageUrl('https://files.test/a.pdf?sig=1', 0)).toBe(
+      'https://files.test/a.pdf?sig=1#page=1',
+    );
+    expect(pdfPageUrl('https://files.test/a.pdf#old', 4)).toBe('https://files.test/a.pdf#page=5');
+    expect(pdfPageUrl('https://files.test/a.pdf', -2)).toBe('https://files.test/a.pdf#page=1');
+  });
+
+  it('fetches a fresh download link for the revision file', async () => {
+    const GET = vi.fn(async () => ({
+      data: { url: 'https://files.test/x.pdf', expiresAt: '2026-10-30T06:00:00Z' },
+      response: new Response(null, { status: 200 }),
+    }));
+    const url = await drawingPdfUrl({ GET } as never, 'org1', 'fil_1', 2);
+    expect(url).toBe('https://files.test/x.pdf#page=3');
+    expect(GET).toHaveBeenCalledWith('/v1/orgs/{orgId}/files/{fileId}/download', {
+      params: { path: { orgId: 'org1', fileId: 'fil_1' } },
+    });
   });
 });
