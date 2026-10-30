@@ -400,7 +400,7 @@ export function createQuotesApi(orgId: string): QuotesSource {
       return toPackage(awarded, await names(projectId));
     },
 
-    async askNova(projectId, packageId, { quoteId, targetCents, topic }) {
+    async askNova(projectId, packageId, { quoteId, targetCents, topic, question }) {
       await ensureCsrfToken();
       const advice = unwrap(
         await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations', {
@@ -409,7 +409,7 @@ export function createQuotesApi(orgId: string): QuotesSource {
             packageId,
             quoteId,
             targetExGst: targetCents === null ? null : fromCents(targetCents),
-            question: NEGOTIATE_QUESTION[topic],
+            question: question?.trim() ? question.trim().slice(0, 1000) : NEGOTIATE_QUESTION[topic],
           },
         }),
       );
@@ -432,6 +432,26 @@ export function createQuotesApi(orgId: string): QuotesSource {
         draftMessage: advice.draftMessage,
       };
       return answer;
+    },
+
+    async listen(projectId, clip) {
+      await ensureCsrfToken();
+      const bytes = new Uint8Array(await clip.arrayBuffer());
+      let binary = '';
+      for (let i = 0; i < bytes.length; i += 0x8000)
+        binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      const base = clip.type.split(';')[0] ?? '';
+      const mimeType = (['audio/webm', 'audio/ogg', 'audio/mp4', 'audio/wav'] as const).find(
+        (m) => m === base,
+      );
+      if (!mimeType) throw new Error('This browser recorded in a format Nova cannot listen to.');
+      const heard = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions', {
+          params: { path: { orgId, projectId } },
+          body: { audio: btoa(binary), mimeType },
+        }),
+      );
+      return heard.text;
     },
   };
 }

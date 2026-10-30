@@ -1480,6 +1480,28 @@ fieldset.worker-card > legend {
   border-bottom: 0;
 }
 
+/* Settings → Support access: the session list reads as a stack of two lines, wrapping on a phone. */
+.support-access__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.support-access__session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.support-access__session:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
 /* Nova on the quote comparison: clip beside the controls from 768px, stacked below it. */
 .negotiate__layout {
   display: grid;
@@ -1505,6 +1527,10 @@ fieldset.worker-card > legend {
   display: grid;
   gap: var(--space-4);
   grid-template-columns: minmax(0, 1fr);
+}
+.negotiate__ask {
+  display: grid;
+  gap: var(--space-3);
 }
 .negotiate__answer {
   border-top: 1px solid var(--c-border-divider);

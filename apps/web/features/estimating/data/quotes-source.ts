@@ -5,7 +5,12 @@
 import type { TakeoffUnit } from '@archova/markup';
 import { companyName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
-import { previewNegotiate, type NegotiateAnswer, type NegotiateTopic } from '../lib/negotiate';
+import {
+  previewNegotiate,
+  topicFromQuestion,
+  type NegotiateAnswer,
+  type NegotiateTopic,
+} from '../lib/negotiate';
 import { allowanceKey, comparableQuotes, levelQuotes, lowestQuoteId } from '../lib/levelling';
 import type { PackageAction, Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
 
@@ -299,8 +304,17 @@ export interface QuotesSource {
   askNova(
     projectId: string,
     packageId: string,
-    input: { quoteId: string; targetCents: number | null; topic: NegotiateTopic; today: string },
+    input: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      /** What the person typed or said; the API answers it, the preview only picks the closest help. */
+      question?: string;
+      today: string;
+    },
   ): Promise<NegotiateAnswer>;
+  /** Nova listening (`POST …/ai/speech-transcriptions`): a short recording turned into text, not kept. */
+  listen(projectId: string, clip: Blob): Promise<string>;
 }
 
 export const quotesSource: QuotesSource & {
@@ -316,7 +330,13 @@ export const quotesSource: QuotesSource & {
   async askNova(
     projectId: string,
     packageId: string,
-    input: { quoteId: string; targetCents: number | null; topic: NegotiateTopic; today: string },
+    input: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      question?: string;
+      today: string;
+    },
   ): Promise<NegotiateAnswer> {
     const pkg = findPackage(projectId, packageId);
     const quotes = comparableQuotes(
@@ -335,9 +355,14 @@ export const quotesSource: QuotesSource & {
         totals,
         trade: pkg.trade,
         targetCents: input.targetCents,
-        topic: input.topic,
+        topic: input.question ? topicFromQuestion(input.question) : input.topic,
       }),
     );
+  },
+
+  /** Preview of Nova listening: the preview store has no speech service, so it hears a stand-in question. */
+  async listen(): Promise<string> {
+    return delay('How does this quote compare with the others?');
   },
 
   async listPackages(projectId: string): Promise<TenderPackage[]> {

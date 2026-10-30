@@ -21,6 +21,8 @@ const Env = z.object({
   API_PUBLIC_HOSTS: list.prefault('localhost:4000'),
   API_TRUST_PROXY: bool.prefault('false'),
   // Proxies in front of the API that append to X-Forwarded-For (CloudFront + ALB = 2); 0 = use the socket address.
+  // Public API requests per minute for one org when its plan sets no `limit.api_rpm` (integrations/06 §3: Business 600).
+  API_RATE_LIMIT_ORG_RPM: z.coerce.number().int().min(1).default(600),
   API_CLIENT_IP_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   API_JWT_PRIVATE_JWK: z.string().optional(),
   API_JWT_ISSUER: z.string().optional(),
@@ -60,8 +62,14 @@ const Env = z.object({
   // Allows password sign-in and a short solo-owner delay in production: the demo cell with synthetic data only.
   API_STAFF_DEMO_CELL: bool.prefault('false'),
   API_STAFF_SOLO_COOLING_OFF_HOURS: z.coerce.number().min(0).default(24),
+  // Seals webhook signing secrets (32 bytes, base64). The worker reads the same key as WORKER_WEBHOOK_SECRET_KEY.
+  // Required in production; elsewhere a fixed development key is used.
+  API_WEBHOOK_SECRET_KEY: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
 });
+
+/** Development and test only: production refuses to start without API_WEBHOOK_SECRET_KEY. */
+export const DEV_WEBHOOK_KEY = Buffer.alloc(32, 7).toString('base64');
 
 export type ApiConfig = ReturnType<typeof loadConfig>;
 
@@ -107,6 +115,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
         timeoutMs: e.API_CLAMAV_TIMEOUT_MS,
       },
     },
+    apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
+    webhookSecretKey: e.API_WEBHOOK_SECRET_KEY ?? null,
     ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,
@@ -119,6 +129,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     logLevel: e.LOG_LEVEL,
   };
+  if (config.webhookSecretKey && Buffer.from(config.webhookSecretKey, 'base64').length !== 32)
+    throw new Error('API_WEBHOOK_SECRET_KEY must be 32 bytes, base64 encoded');
   const cdnSet = [e.API_FILES_CDN_DOMAIN, e.API_FILES_CDN_KEY_PAIR_ID, e.API_FILES_CDN_PRIVATE_KEY];
   if (cdnSet.some(Boolean) && !cdnSet.every(Boolean))
     throw new Error(
@@ -153,6 +165,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (config.ai.provider.kind !== 'bedrock') missing.push('API_AI_PROVIDER=bedrock (Nova)');
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
+    if (!config.webhookSecretKey) missing.push('API_WEBHOOK_SECRET_KEY (32 bytes, base64)');
     if (missing.length)
       throw new Error(`Refusing to start in production without: ${missing.join(', ')}`);
   }

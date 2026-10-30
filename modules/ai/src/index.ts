@@ -5,6 +5,7 @@ import { defineModule, type KernelServices, type TenantScope } from '@archova/ke
 import { createContractPlaybookService } from './application/contract-playbook';
 import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
+import { createCreditGrantService } from './application/credit-grants';
 import { createAskService } from './application/ask';
 import { createSemanticSearchService } from './application/semantic-search';
 import { createInductionCurrencyService } from './application/induction-currency';
@@ -27,6 +28,7 @@ import {
   createQuoteNegotiateService,
   type QuoteForNegotiation,
 } from './application/quote-negotiate';
+import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
 import {
   createDrawingCompareService,
@@ -53,6 +55,7 @@ import { AI_PERMISSIONS } from './permissions';
 
 export { AI_PERMISSIONS } from './permissions';
 export { FAKE_EMBEDDING_MODEL, FAKE_MODELS, loadAiConfig, type AiConfig } from './config';
+export { MAX_GRANT_CREDITS } from './application/credit-grants';
 export { TASK_CREDITS, decideBudget, effectiveAllowance } from './domain/credits';
 export { checkCitations, type CheckedCitation } from './domain/citations';
 export {
@@ -286,7 +289,12 @@ export function createAiModule(
   },
 ) {
   const provider = deps.provider ?? createProvider(deps.config.provider);
+  const grants = createCreditGrantService({
+    database: services.database,
+    orgTimeZone: deps.orgTimeZone,
+  });
   const gateway = createGateway({
+    grants,
     database: services.database,
     provider,
     routing: buildRoutingTable(deps.config.models, deps.config.prices),
@@ -300,7 +308,7 @@ export function createAiModule(
     logger: services.logger,
     orgTimeZone: deps.orgTimeZone,
   });
-  const admin = createAdminService({ orgTimeZone: deps.orgTimeZone });
+  const admin = createAdminService({ orgTimeZone: deps.orgTimeZone, grants });
   const drawingRegister = createDrawingRegisterService({
     database: services.database,
     gateway,
@@ -413,6 +421,11 @@ export function createAiModule(
     assert: deps.assert,
     quote: deps.quoteForNegotiation,
   });
+  const speech = createSpeechService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+  });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
     gateway,
@@ -462,11 +475,15 @@ export function createAiModule(
       quoteNegotiations,
       contractPlaybooks,
       contractReviews,
+      speech,
     ),
     permissions: AI_PERMISSIONS,
     provider,
     api: {
       runTask: gateway.runTask,
+      /** Owner console: add credits to an org's month, and read its grants. Staff actions; the caller checks the role. */
+      grantCredits: grants.grant,
+      listCreditGrants: grants.list,
       getSettings: admin.getSettings,
       extractDrawingRegister: drawingRegister.extract,
       ask: askService.ask,
@@ -500,6 +517,8 @@ export function createAiModule(
       negotiateQuote: quoteNegotiations.negotiate,
       /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
       reviewContract: contractReviews.review,
+      /** Nova listening: a short spoken question turned into text, in Australia; the clip is not kept. */
+      transcribeSpeech: speech.transcribe,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */

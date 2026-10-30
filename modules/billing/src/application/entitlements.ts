@@ -23,6 +23,8 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'correspondence',
     'workforce',
     'estimating',
+    // Public API access (integrations/06): personal access tokens. A paid plan includes it from Business up.
+    'api',
     // Nova is on every plan with a monthly credit allowance (X27); null = unlimited during the trial.
     'ai',
   ],

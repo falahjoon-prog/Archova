@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, isNull, type SQL } from 'drizzle-orm';
-import { STATE_TIME_ZONES, uuidv7 } from '@archova/domain';
+import { STATE_TIME_ZONES, encodeId, uuidv7 } from '@archova/domain';
 import type { CreateProjectRequest, UpdateProjectRequest } from '@archova/contracts';
 import {
   AppError,
@@ -20,6 +20,22 @@ const isOrgAdmin = (scope: TenantScope) =>
 
 export function createProjectService(access: AccessService) {
   /** Org owners/admins see every project; everyone else sees projects they're an active member of. */
+  /** Names and status only, for the owner console's support view. */
+  async function listForSupport(scope: TenantScope) {
+    const rows = await scope.tx
+      .select()
+      .from(projects)
+      .where(isNull(projects.deletedAt))
+      .orderBy(asc(projects.id))
+      .limit(200);
+    return rows.map((r) => ({
+      id: encodeId('project', r.id),
+      name: r.name,
+      number: r.number,
+      status: r.status,
+    }));
+  }
+
   async function list(scope: TenantScope, opts: { limit: number; cursor?: string }) {
     const after = decodeCursor<{ id: string }>(opts.cursor);
     const conditions: SQL[] = [isNull(projects.deletedAt)];
@@ -235,7 +251,7 @@ export function createProjectService(access: AccessService) {
     return row;
   }
 
-  return { list, get, create, update };
+  return { list, listForSupport, get, create, update };
 }
 
 export type ProjectService = ReturnType<typeof createProjectService>;

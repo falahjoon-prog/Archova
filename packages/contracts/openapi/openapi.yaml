@@ -98,6 +98,59 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SessionInfo' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/api-tokens:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listApiTokens
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Personal access tokens in the organisation. A member sees their own; an owner or admin sees everyone's. The
+        secret is never returned again after creation.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiTokenList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createApiToken
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Create a personal access token for the public API (integrations/06). Needs a signed-in session, not another
+        token. The secret is in the response once. A token works in this organisation only and never does more than
+        its owner may.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateApiTokenRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiTokenCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/api-tokens/{apiTokenId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ApiTokenId'
+    delete:
+      operationId: revokeApiToken
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: Revoke a token at once. A member can revoke their own; an owner or admin can revoke any.
+      responses:
+        '204':
+          description: Revoked
+        default: { $ref: '#/components/responses/Problem' }
   /v1/oauth/authorize:
     get:
       operationId: oauthAuthorize
@@ -224,6 +277,74 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Org' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportAccess
+      tags: [orgs]
+      x-module: platform
+      summary: Support access grants and the support sessions held under them (org owners and admins).
+      responses:
+        '200':
+          description: Grants and sessions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/banner:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportBanner
+      tags: [orgs]
+      x-module: platform
+      summary: Whether an Archova support session is open now. Every signed-in user of the company sees the banner.
+      responses:
+        '200':
+          description: Banner state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportBanner' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: createSupportAccessGrant
+      tags: [orgs]
+      x-module: platform
+      summary: Let Archova support view this organisation for a limited time (off by default).
+      description: |
+        A one-time grant is tied to a support ticket and lasts up to 72 hours. It is view-only. Support staff
+        then start sessions of at most one hour inside it. Only org owners and admins can grant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSupportAccessGrantRequest' }
+      responses:
+        '201':
+          description: The grant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccessGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/grants/{grantId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: grantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: revokeSupportAccessGrant
+      tags: [orgs]
+      x-module: platform
+      summary: Take support access back. Open support sessions end at once.
+      responses:
+        '204': { description: Revoked }
         default: { $ref: '#/components/responses/Problem' }
   /v1/public/price-book:
     get:
@@ -2012,6 +2133,44 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: transcribeSpeech
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Nova listens to a short spoken question and returns it as text.
+      description: |
+        The browser records one short clip (about a minute at most) and sends it here as base64. It is turned into
+        text by the speech service in Australia (X25) and is not kept; only the text comes back, for the person to
+        read and edit before asking. Costs a tenth of a Nova credit. When nothing can be heard the answer is
+        `ai.nothing_heard`; the person types instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [audio, mimeType]
+              properties:
+                audio: { type: string, format: byte, minLength: 1, maxLength: 900000 }
+                mimeType: { type: string, enum: [audio/webm, audio/ogg, audio/mp4, audio/wav] }
+      responses:
+        '200':
+          description: What was said
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runId, text]
+                properties:
+                  runId: { type: string }
+                  text: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -2860,6 +3019,78 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listWebhooks
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: Webhook endpoints in the organisation, and the event types they can subscribe to.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWebhook
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: >-
+        Subscribe an HTTPS endpoint to public events (integrations/06 §5). The endpoint must answer a signed test
+        event with a 2xx before it is saved. The signing secret is in the response once. Needs a signed-in session,
+        not a token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWebhookRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+    delete:
+      operationId: deleteWebhook
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: Delete an endpoint and its delivery history. Deliveries not yet sent are dropped.
+      responses:
+        '204':
+          description: Deleted
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+    get:
+      operationId: listWebhookDeliveries
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: The latest 50 deliveries to an endpoint, newest first, with the last response status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
     parameters:
@@ -5705,6 +5936,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    ApiTokenId:
+      name: apiTokenId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tok_[0-9A-Za-z]{26}$' }
+    WebhookId:
+      name: webhookId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^whk_[0-9A-Za-z]{26}$' }
     ImportJobId:
       name: importJobId
       in: path
@@ -5893,6 +6134,54 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    SupportAccessGrant:
+      type: object
+      required: [id, ticketRef, level, createdAt, expiresAt, grantedBy, status]
+      properties:
+        id: { type: string, format: uuid }
+        ticketRef: { type: string }
+        level: { type: string, enum: [view] }
+        grantedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [active, expired, revoked] }
+    SupportAccessSession:
+      type: object
+      required: [id, grantId, staffName, ticketRef, startedAt, expiresAt, pagesViewed, status]
+      properties:
+        pagesViewed: { type: integer }
+        id: { type: string, format: uuid }
+        grantId: { type: string, format: uuid }
+        staffName: { type: string }
+        ticketRef: { type: string }
+        startedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [open, ended, expired, revoked] }
+    SupportAccess:
+      type: object
+      required: [grants, sessions]
+      properties:
+        grants:
+          type: array
+          items: { $ref: '#/components/schemas/SupportAccessGrant' }
+        sessions:
+          type: array
+          items: { $ref: '#/components/schemas/SupportAccessSession' }
+    SupportBanner:
+      type: object
+      required: [active, since]
+      properties:
+        active: { type: boolean }
+        since: { type: [string, 'null'], format: date-time }
+    CreateSupportAccessGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [ticketRef, hours]
+      properties:
+        ticketRef: { type: string, minLength: 2, maxLength: 60 }
+        hours: { type: integer, minimum: 1, maximum: 72 }
     Abn:
       type: string
       pattern: '^[0-9]{11}$'
@@ -6421,11 +6710,16 @@ components:
         ]
     AiUsage:
       type: object
-      required: [periodStart, timezone, allowance, used, remaining, byFeature]
+      required: [periodStart, timezone, allowance, granted, used, remaining, byFeature]
       properties:
         periodStart: { type: string, format: date }
         timezone: { type: string }
         allowance: { type: [number, 'null'], description: null means unlimited }
+        granted:
+          {
+            type: number,
+            description: Credits staff added to this month; already part of the allowance,
+          }
         used: { type: number }
         remaining: { type: [number, 'null'] }
         byFeature:
@@ -9569,6 +9863,119 @@ components:
         updatedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
+    ApiToken:
+      type: object
+      required: [id, userId, name, prefix, scopes, expiresAt, lastUsedAt, revokedAt, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        prefix:
+          { type: string, description: The first characters of the token, to tell tokens apart. }
+        scopes: { type: array, items: { type: string } }
+        expiresAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    ApiTokenList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ApiToken' }
+    ApiTokenCreated:
+      allOf:
+        - $ref: '#/components/schemas/ApiToken'
+        - type: object
+          required: [token]
+          properties:
+            token:
+              { type: string, description: The secret (`pk_live_…`). Shown once; store it safely. }
+    CreateApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [name, scopes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        scopes:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string, maxLength: 40 }
+        expiresInDays: { type: integer, minimum: 1, maximum: 365, description: Defaults to 90. }
+    Webhook:
+      type: object
+      required: [id, url, description, eventTypes, projectIds, status, disabledReason, createdAt]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        description: { type: [string, 'null'] }
+        eventTypes: { type: array, items: { type: string } }
+        projectIds:
+          type: [array, 'null']
+          items: { type: string }
+          description: Null means every project in the organisation.
+        status: { type: string, enum: [active, disabled] }
+        disabledReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    WebhookList:
+      type: object
+      required: [data, availableEventTypes]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Webhook' }
+        availableEventTypes: { type: array, items: { type: string } }
+    WebhookCreated:
+      allOf:
+        - $ref: '#/components/schemas/Webhook'
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              {
+                type: string,
+                description: The signing secret (`whsec_…`). Shown once; store it safely.,
+              }
+    CreateWebhookRequest:
+      type: object
+      additionalProperties: false
+      required: [url, eventTypes]
+      properties:
+        url: { type: string, maxLength: 2000, description: An https URL on the public internet. }
+        description: { type: string, maxLength: 200 }
+        eventTypes:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { type: string, maxLength: 80 }
+        projectIds:
+          type: array
+          maxItems: 100
+          items: { type: string }
+          description: Only events on these projects. Omit for every project.
+    WebhookDelivery:
+      type: object
+      required:
+        [id, eventId, eventType, status, attempts, lastStatus, lastError, createdAt, deliveredAt]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        eventType: { type: string }
+        status: { type: string, enum: [pending, succeeded, abandoned] }
+        attempts: { type: integer }
+        lastStatus: { type: [integer, 'null'] }
+        lastError: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+    WebhookDeliveryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WebhookDelivery' }
     ImportJobPage:
       type: object
       required: [data, nextCursor]

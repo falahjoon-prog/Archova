@@ -1,11 +1,13 @@
 // Public interface of @archova/mod-backoffice: the owner console's backend (backend 09). It changes nothing by
 // itself: catalogue changes go through `billing`, and every change that needs a second person is a request here.
+import type { SupportProjectDto } from '@archova/contracts';
 import { defineModule, type KernelServices } from '@archova/kernel';
 import type { AccountService, CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
-import { createOrgActionService } from './application/org-actions';
+import { createOrgActionService, type OrgActionDeps } from './application/org-actions';
+import { createSupportAccessService } from './application/support-access';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
 
@@ -26,6 +28,8 @@ export function createBackofficeModule(
   deps: {
     catalogue: CatalogueService;
     accounts: AccountService;
+    credits: OrgActionDeps['credits'];
+    supportReads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -46,6 +50,12 @@ export function createBackofficeModule(
   const orgActions = createOrgActionService({
     database: services.database,
     accounts: deps.accounts,
+    credits: deps.credits,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const support = createSupportAccessService({
+    database: services.database,
+    reads: deps.supportReads,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const flags = createFlagService({ database: services.database, staff });
@@ -60,6 +70,7 @@ export function createBackofficeModule(
       catalogue: deps.catalogue,
       flags,
       orgActions,
+      support,
     }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */
@@ -67,6 +78,14 @@ export function createBackofficeModule(
       requireStepUp: staff.requireStepUp,
       /** Keeps the tenant directory current; `platform` calls it inside its own transaction. */
       directory: { upsert: customers.upsert },
+      /** Customer-side support access: the org's own admin grants, revokes and reads (platform calls these). */
+      support: {
+        list: support.list,
+        grant: support.grant,
+        revoke: support.revoke,
+        banner: support.banner,
+        hasOpenSession: support.hasOpenSession,
+      },
       /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
       flags: { isOn: flags.isOn },
       /** Creates or updates a staff account; used by the seed command only. */

@@ -68,6 +68,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Personal access tokens in the organisation. A member sees their own; an owner or admin sees everyone's. The secret is never returned again after creation. */
+        get: operations["listApiTokens"];
+        put?: never;
+        /** Create a personal access token for the public API (integrations/06). Needs a signed-in session, not another token. The secret is in the response once. A token works in this organisation only and never does more than its owner may. */
+        post: operations["createApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/api-tokens/{apiTokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                apiTokenId: components["parameters"]["ApiTokenId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a token at once. A member can revoke their own; an owner or admin can revoke any. */
+        delete: operations["revokeApiToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/authorize": {
         parameters: {
             query?: never;
@@ -186,6 +226,87 @@ export interface paths {
         get: operations["getOrg"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Support access grants and the support sessions held under them (org owners and admins). */
+        get: operations["getSupportAccess"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether an Archova support session is open now. Every signed-in user of the company sees the banner. */
+        get: operations["getSupportBanner"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access/grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Let Archova support view this organisation for a limited time (off by default).
+         * @description A one-time grant is tied to a support ticket and lasts up to 72 hours. It is view-only. Support staff
+         *     then start sessions of at most one hour inside it. Only org owners and admins can grant.
+         */
+        post: operations["createSupportAccessGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access/grants/{grantId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Take support access back. Open support sessions end at once. */
+        post: operations["revokeSupportAccessGrant"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1503,6 +1624,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova listens to a short spoken question and returns it as text.
+         * @description The browser records one short clip (about a minute at most) and sends it here as base64. It is turned into
+         *     text by the speech service in Australia (X25) and is not kept; only the text comes back, for the person to
+         *     read and edit before asking. Costs a tenth of a Nova credit. When nothing can be heard the answer is
+         *     `ai.nothing_heard`; the person types instead.
+         */
+        post: operations["transcribeSpeech"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
         parameters: {
             query?: never;
@@ -2157,6 +2304,66 @@ export interface paths {
         put?: never;
         /** A person accepts a measurement so its quantity can feed a scope line or estimate. */
         post: operations["confirmTakeoffMeasurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Webhook endpoints in the organisation, and the event types they can subscribe to. */
+        get: operations["listWebhooks"];
+        put?: never;
+        /** Subscribe an HTTPS endpoint to public events (integrations/06 §5). The endpoint must answer a signed test event with a 2xx before it is saved. The signing secret is in the response once. Needs a signed-in session, not a token. */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/webhooks/{webhookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an endpoint and its delivery history. Deliveries not yet sent are dropped. */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        /** The latest 50 deliveries to an endpoint, newest first, with the last response status. */
+        get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4183,6 +4390,52 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        SupportAccessGrant: {
+            /** Format: uuid */
+            id: string;
+            ticketRef: string;
+            /** @enum {string} */
+            level: "view";
+            grantedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            revokedAt?: string | null;
+            /** @enum {string} */
+            status: "active" | "expired" | "revoked";
+        };
+        SupportAccessSession: {
+            pagesViewed: number;
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            grantId: string;
+            staffName: string;
+            ticketRef: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            endedAt?: string | null;
+            /** @enum {string} */
+            status: "open" | "ended" | "expired" | "revoked";
+        };
+        SupportAccess: {
+            grants: components["schemas"]["SupportAccessGrant"][];
+            sessions: components["schemas"]["SupportAccessSession"][];
+        };
+        SupportBanner: {
+            active: boolean;
+            /** Format: date-time */
+            since: string | null;
+        };
+        CreateSupportAccessGrantRequest: {
+            ticketRef: string;
+            hours: number;
+        };
         Abn: string;
         CreateOrgRequest: {
             name: string;
@@ -4543,6 +4796,8 @@ export interface components {
             timezone: string;
             /** @description null means unlimited */
             allowance: number | null;
+            /** @description Credits staff added to this month; already part of the allowance */
+            granted: number;
             used: number;
             remaining: number | null;
             byFeature: {
@@ -6461,6 +6716,81 @@ export interface components {
             finishedAt: string | null;
             version: number;
         };
+        ApiToken: {
+            id: string;
+            userId: string;
+            name: string;
+            /** @description The first characters of the token */
+            prefix: string;
+            scopes: string[];
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApiTokenList: {
+            data: components["schemas"]["ApiToken"][];
+        };
+        ApiTokenCreated: components["schemas"]["ApiToken"] & {
+            /** @description The secret (`pk_live_…`). Shown once; store it safely. */
+            token: string;
+        };
+        CreateApiTokenRequest: {
+            name: string;
+            scopes: string[];
+            /** @description Defaults to 90. */
+            expiresInDays?: number;
+        };
+        Webhook: {
+            id: string;
+            url: string;
+            description: string | null;
+            eventTypes: string[];
+            /** @description Null means every project in the organisation. */
+            projectIds: string[] | null;
+            /** @enum {string} */
+            status: "active" | "disabled";
+            disabledReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WebhookList: {
+            data: components["schemas"]["Webhook"][];
+            availableEventTypes: string[];
+        };
+        WebhookCreated: components["schemas"]["Webhook"] & {
+            /** @description The signing secret (`whsec_…`). Shown once; store it safely. */
+            secret: string;
+        };
+        CreateWebhookRequest: {
+            /** @description An https URL on the public internet. */
+            url: string;
+            description?: string;
+            eventTypes: string[];
+            /** @description Only events on these projects. Omit for every project. */
+            projectIds?: string[];
+        };
+        WebhookDelivery: {
+            id: string;
+            eventId: string;
+            eventType: string;
+            /** @enum {string} */
+            status: "pending" | "succeeded" | "abandoned";
+            attempts: number;
+            lastStatus: number | null;
+            lastError: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            deliveredAt: string | null;
+        };
+        WebhookDeliveryList: {
+            data: components["schemas"]["WebhookDelivery"][];
+        };
         ImportJobPage: {
             data: components["schemas"]["ImportJob"][];
             nextCursor: string | null;
@@ -7707,6 +8037,8 @@ export interface components {
         TenderPackageId: string;
         QuoteId: string;
         TakeoffMeasurementId: string;
+        ApiTokenId: string;
+        WebhookId: string;
         ImportJobId: string;
         LateSubmissionId: string;
         Limit: number;
@@ -7810,6 +8142,78 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listApiTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApiTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                apiTokenId: components["parameters"]["ApiTokenId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -7976,6 +8380,101 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Org"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSupportAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Grants and sessions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSupportBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Banner state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportBanner"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSupportAccessGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSupportAccessGrantRequest"];
+            };
+        };
+        responses: {
+            /** @description The grant */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccessGrant"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeSupportAccessGrant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -10093,6 +10592,42 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    transcribeSpeech: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: byte */
+                    audio: string;
+                    /** @enum {string} */
+                    mimeType: "audio/webm" | "audio/ogg" | "audio/mp4" | "audio/wav";
+                };
+            };
+        };
+        responses: {
+            /** @description What was said */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        runId: string;
+                        text: string;
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     summariseDiaryDayWithNova: {
         parameters: {
             query?: never;
@@ -11034,6 +11569,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWebhookDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryList"];
                 };
             };
             default: components["responses"]["Problem"];

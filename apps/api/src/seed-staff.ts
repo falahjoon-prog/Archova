@@ -25,6 +25,12 @@ const billing = createBillingModule(services);
 const backoffice = createBackofficeModule(services, {
   catalogue: billing.api.catalogue,
   accounts: billing.api.accounts,
+  credits: () => {
+    throw new Error('Granting credits is not available from the seed command');
+  },
+  supportReads: () => {
+    throw new Error('The seed command does not read customer data');
+  },
   config: { localLogin: true, soloCoolingOffHours: 24 },
 });
 const id = await backoffice.api.upsertLocalStaff({

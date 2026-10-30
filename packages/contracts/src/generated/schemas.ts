@@ -97,6 +97,7 @@ export const AiUsageSchema = z.object({
   "periodStart": z.string().date(),
   "timezone": z.string(),
   "allowance": z.number().nullable(),
+  "granted": z.number(),
   "used": z.number(),
   "remaining": z.number().nullable(),
   "byFeature": z.array(z.object({
@@ -106,6 +107,29 @@ export const AiUsageSchema = z.object({
 })),
 });
 export type AiUsage = z.infer<typeof AiUsageSchema>;
+
+export const ApiTokenSchema = z.object({
+  "id": z.string(),
+  "userId": z.string(),
+  "name": z.string(),
+  "prefix": z.string(),
+  "scopes": z.array(z.string()),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "lastUsedAt": z.string().datetime({ offset: true }).nullable(),
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ApiToken = z.infer<typeof ApiTokenSchema>;
+
+export const ApiTokenCreatedSchema = z.intersection(ApiTokenSchema, z.object({
+  "token": z.string(),
+}));
+export type ApiTokenCreated = z.infer<typeof ApiTokenCreatedSchema>;
+
+export const ApiTokenListSchema = z.object({
+  "data": z.array(ApiTokenSchema),
+});
+export type ApiTokenList = z.infer<typeof ApiTokenListSchema>;
 
 export const ApproveInductionSectionRequestSchema = z.object({
   "section": z.number().int().min(0).max(29),
@@ -296,6 +320,13 @@ export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
+
+export const CreateApiTokenRequestSchema = z.object({
+  "name": z.string().min(1).max(80),
+  "scopes": z.array(z.string().max(40)).min(1).max(30),
+  "expiresInDays": z.number().int().min(1).max(365).optional(),
+}).strict();
+export type CreateApiTokenRequest = z.infer<typeof CreateApiTokenRequestSchema>;
 
 export const CreateAttendanceSiteRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -654,6 +685,12 @@ export const CreateSubmittalRequestSchema = z.object({
 }).strict();
 export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema>;
 
+export const CreateSupportAccessGrantRequestSchema = z.object({
+  "ticketRef": z.string().min(2).max(60),
+  "hours": z.number().int().min(1).max(72),
+}).strict();
+export type CreateSupportAccessGrantRequest = z.infer<typeof CreateSupportAccessGrantRequestSchema>;
+
 export const TakeoffKindSchema = z.enum(["length", "area", "count"]);
 export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
 
@@ -735,6 +772,14 @@ export const CreateUploadRequestSchema = z.object({
   "capture": CaptureSchema.optional(),
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
+
+export const CreateWebhookRequestSchema = z.object({
+  "url": z.string().max(2000),
+  "description": z.string().max(200).optional(),
+  "eventTypes": z.array(z.string().max(80)).min(1).max(40),
+  "projectIds": z.array(z.string()).max(100).optional(),
+}).strict();
+export type CreateWebhookRequest = z.infer<typeof CreateWebhookRequestSchema>;
 
 export const WorkerCredentialKindSchema = z.enum(["white_card", "high_risk_licence", "trade_licence", "other"]);
 export type WorkerCredentialKind = z.infer<typeof WorkerCredentialKindSchema>;
@@ -2917,6 +2962,43 @@ export const SubmittalPageSchema = z.object({
 });
 export type SubmittalPage = z.infer<typeof SubmittalPageSchema>;
 
+export const SupportAccessGrantSchema = z.object({
+  "id": z.string(),
+  "ticketRef": z.string(),
+  "level": z.enum(["view"]),
+  "grantedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["active", "expired", "revoked"]),
+});
+export type SupportAccessGrant = z.infer<typeof SupportAccessGrantSchema>;
+
+export const SupportAccessSessionSchema = z.object({
+  "pagesViewed": z.number().int(),
+  "id": z.string(),
+  "grantId": z.string(),
+  "staffName": z.string(),
+  "ticketRef": z.string(),
+  "startedAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "endedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["open", "ended", "expired", "revoked"]),
+});
+export type SupportAccessSession = z.infer<typeof SupportAccessSessionSchema>;
+
+export const SupportAccessSchema = z.object({
+  "grants": z.array(SupportAccessGrantSchema),
+  "sessions": z.array(SupportAccessSessionSchema),
+});
+export type SupportAccess = z.infer<typeof SupportAccessSchema>;
+
+export const SupportBannerSchema = z.object({
+  "active": z.boolean(),
+  "since": z.string().datetime({ offset: true }).nullable(),
+});
+export type SupportBanner = z.infer<typeof SupportBannerSchema>;
+
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),
   "id": z.string().min(1).max(64),
@@ -3401,6 +3483,47 @@ export const VerifyInductionAccessRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type VerifyInductionAccessRequest = z.infer<typeof VerifyInductionAccessRequestSchema>;
+
+export const WebhookSchema = z.object({
+  "id": z.string(),
+  "url": z.string(),
+  "description": z.string().nullable(),
+  "eventTypes": z.array(z.string()),
+  "projectIds": z.array(z.string()).nullable(),
+  "status": z.enum(["active", "disabled"]),
+  "disabledReason": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Webhook = z.infer<typeof WebhookSchema>;
+
+export const WebhookCreatedSchema = z.intersection(WebhookSchema, z.object({
+  "secret": z.string(),
+}));
+export type WebhookCreated = z.infer<typeof WebhookCreatedSchema>;
+
+export const WebhookDeliverySchema = z.object({
+  "id": z.string(),
+  "eventId": z.string(),
+  "eventType": z.string(),
+  "status": z.enum(["pending", "succeeded", "abandoned"]),
+  "attempts": z.number().int(),
+  "lastStatus": z.number().int().nullable(),
+  "lastError": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type WebhookDelivery = z.infer<typeof WebhookDeliverySchema>;
+
+export const WebhookDeliveryListSchema = z.object({
+  "data": z.array(WebhookDeliverySchema),
+});
+export type WebhookDeliveryList = z.infer<typeof WebhookDeliveryListSchema>;
+
+export const WebhookListSchema = z.object({
+  "data": z.array(WebhookSchema),
+  "availableEventTypes": z.array(z.string()),
+});
+export type WebhookList = z.infer<typeof WebhookListSchema>;
 
 export const WorkerCredentialListSchema = z.object({
   "data": z.array(WorkerCredentialSchema),

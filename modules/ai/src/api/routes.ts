@@ -14,6 +14,7 @@ import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diar
 import type { AnswerSource, AskService } from '../application/ask';
 import type { ContractPlaybookService } from '../application/contract-playbook';
 import type { ContractReviewPayload, ContractReviewService } from '../application/contract-review';
+import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
@@ -240,6 +241,7 @@ export function aiRoutes(
   quoteNegotiations: QuoteNegotiateService,
   playbooks: ContractPlaybookService,
   contractReviews: ContractReviewService,
+  speech: SpeechService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -487,6 +489,13 @@ export function aiRoutes(
           suggestionId: encodeId('aiSuggestion', suggestionId),
         },
       };
+    },
+    transcribeSpeech: async (input) => {
+      const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
+        audio: Buffer.from(input.body.audio, 'base64'),
+        mimeType: input.body.mimeType,
+      });
+      return { status: 200, body: { runId: encodeId('aiRun', r.runId), text: r.text } };
     },
     negotiateQuote: async (input) => {
       const packageId = decodeId('tenderPackage', input.body.packageId);

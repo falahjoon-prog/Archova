@@ -46,6 +46,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.negotiate': 0.5,
   // F34: a whole contract read at the advanced tier; the design's estimate (design/09 CR1). Priya to confirm.
   'contract.review': 40,
+  // Nova listening: one short spoken question turned into text. Priya to confirm.
+  'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
 };
 
@@ -65,13 +67,24 @@ export interface AllowanceInput {
   orgCap: number | null;
   /** Credits used so far this month. */
   used: number;
+  /** Extra credits staff granted for this month; they lift the plan's allowance and the admin's cap alike. */
+  granted?: number;
 }
 
-/** The allowance that applies: the lower of the plan's and the admin's cap. */
-export function effectiveAllowance(a: Pick<AllowanceInput, 'planAllowance' | 'orgCap'>) {
-  if (a.planAllowance === null) return a.orgCap;
-  if (a.orgCap === null) return a.planAllowance;
-  return Math.min(a.planAllowance, a.orgCap);
+/**
+ * The allowance that applies: the lower of the plan's and the admin's cap, plus this month's grants. An unlimited
+ * allowance with no cap stays unlimited (null).
+ */
+export function effectiveAllowance(
+  a: Pick<AllowanceInput, 'planAllowance' | 'orgCap' | 'granted'>,
+) {
+  const base =
+    a.planAllowance === null
+      ? a.orgCap
+      : a.orgCap === null
+        ? a.planAllowance
+        : Math.min(a.planAllowance, a.orgCap);
+  return base === null ? null : base + (a.granted ?? 0);
 }
 
 export type BudgetDecision =

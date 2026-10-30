@@ -3,6 +3,7 @@ import type { Database, KernelServices, MessageSender, RouteTable } from '@archo
 import {
   AI_PERMISSIONS,
   createAiModule,
+  type AiApi,
   type AiConfig,
   type ModelProvider,
   type RasterizePage,
@@ -16,7 +17,11 @@ import {
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
-import { INTEGRATIONS_PERMISSIONS, createIntegrationsModule } from '@archova/mod-integrations';
+import {
+  INTEGRATIONS_PERMISSIONS,
+  createIntegrationsModule,
+  type WebhooksDeps,
+} from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import {
@@ -58,6 +63,8 @@ export interface ModuleOptions {
   /** The web origin access links point at. */
   linkBaseUrl: string;
   backoffice: BackofficeConfig;
+  /** Outbound webhooks: the vault that seals signing secrets and the sender used for the test event. */
+  webhooks: WebhooksDeps;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -66,9 +73,16 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
+  // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
+  let aiApi: AiApi | null = null;
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
+    credits: () => ({ grantCredits: aiApi!.grantCredits }),
+    supportReads: () => ({
+      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+    }),
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
@@ -77,6 +91,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
+    supportAccess: backoffice.api.support,
+    hasOpenSupportSession: backoffice.api.support.hasOpenSession,
     onOrgCreated: (scope, org, entitlements) =>
       backoffice.api.directory.upsert(scope.tx, {
         id: org.id,
@@ -86,6 +102,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
         state: entitlements.state,
       }),
   });
+  platformApi = platform.api;
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
       platform.api.getProjectMembership(scope, projectId, userId),
@@ -152,6 +169,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const integrations = createIntegrationsModule(services, {
     platform: platform.api,
     files: files.api,
+    webhooks: opts.webhooks,
   });
 
   const ai = createAiModule(services, {
@@ -190,6 +208,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
+  aiApi = ai.api;
 
   const diary = createDiaryModule(services, {
     access: access.api,
