@@ -137,4 +137,13 @@ describe('Induction builder API source', () => {
       body: { content, aiSuggestionId: SID },
     });
   });
+
+  it('asks Nova to draft the induction with the trimmed site name', async () => {
+    const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai';
+    fake.on('POST', `${AI}/induction-drafts`, () => ({ id: 'ais_00000000000000000000000002' }));
+    await createInductionBuilderApi('org_1').draftInduction('prj_1', '  Harbour St ');
+    expect(fake.callsTo('POST', `${AI}/induction-drafts`)[0]?.init).toMatchObject({
+      body: { siteName: 'Harbour St' },
+    });
+  });
 });

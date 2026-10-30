@@ -155,6 +155,9 @@ export function useInductionRefresh() {
     redraft: useMutation({
       mutationFn: (suggestionId: string) => source.refreshDraft(projectId, suggestionId),
     }),
+    draft: useMutation({
+      mutationFn: (siteName: string) => source.draftInduction(projectId, siteName),
+    }),
     decide: useMutation({
       mutationFn: (v: { suggestionId: string; decision: 'accepted' | 'edited' | 'rejected' }) =>
         source.decideSuggestion(projectId, v.suggestionId, v.decision),
