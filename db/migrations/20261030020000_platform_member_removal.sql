@@ -7,5 +7,7 @@ alter table platform.project_members add column removal_reason text;
 alter table platform.project_members add column access_episode int not null default 1;
 alter table platform.project_members add constraint project_members_removal_kind
   check (removal_kind in ('ordinary', 'for_cause', 'wipe_now'));
+-- Not validated against existing rows: no path to 'removed' existed before this migration, so there are none to check,
+-- and a backfill would need the tenant context a migration does not have (RLS). New and changed rows are checked.
 alter table platform.project_members add constraint project_members_removal_shape
-  check ((status = 'removed') = (removal_kind is not null));
+  check ((status = 'removed') = (removal_kind is not null)) not valid;
