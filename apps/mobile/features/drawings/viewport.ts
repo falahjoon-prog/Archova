@@ -152,3 +152,8 @@ export function zoomViewport(
     maxScale,
   );
 }
+
+/** A touch that barely moved is a tap, not a pan. `slop` is in screen pixels. */
+export function isTap(totalDx: number, totalDy: number, slop = 8): boolean {
+  return Math.hypot(totalDx, totalDy) <= slop;
+}

@@ -4,6 +4,7 @@ import {
   fitViewport,
   levelForScale,
   levelSize,
+  isTap,
   panViewport,
   supersededNotice,
   pinsOnRevision,
@@ -172,5 +173,14 @@ describe('superseded banner', () => {
     const n = supersededNotice({ status: 'superseded', rev: 'B', supersededBy: null });
     expect(n?.message).toMatch(/out of date/);
     expect(n?.latestRevisionId).toBe('');
+  });
+});
+
+describe('tap detection', () => {
+  it('treats a small movement as a tap and a drag as a pan', () => {
+    expect(isTap(2, 3)).toBe(true);
+    expect(isTap(0, 0)).toBe(true);
+    expect(isTap(20, 0)).toBe(false);
+    expect(isTap(6, 6)).toBe(false);
   });
 });
