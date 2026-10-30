@@ -35,6 +35,8 @@ export interface InductionBuilderSource {
   ): Promise<Induction>;
   /** Whether the documents a Nova draft cited still stand. Free; no model is called. */
   currency(projectId: string, suggestionId: string): Promise<InductionCurrency>;
+  /** Nova drafts a whole induction from the project's documents (3 credits). A pending suggestion comes back. */
+  draftInduction(projectId: string, siteName: string): Promise<AiSuggestion>;
   /** Nova redrafts the sections a changed document touches (1 credit). A pending suggestion comes back. */
   refreshDraft(projectId: string, suggestionId: string): Promise<AiSuggestion>;
   decideSuggestion(
@@ -98,12 +100,12 @@ const staleDrafts = new Set([PREVIEW_DRAFT_ID]);
 
 const stores = projectStores<Map<string, Row>>(() => {
   const rows = new Map<string, Row>();
-  const row = seedRow('Paddington Terraces site induction', SAMPLE);
+  const row = seedRow('Paddington Terraces site induction', SAMPLE, PREVIEW_DRAFT_ID);
   rows.set(row.induction.id, row);
   return rows;
 });
 
-function seedRow(title: string, content: InductionContent): Row {
+function seedRow(title: string, content: InductionContent, draftId: string | null = null): Row {
   const now = nowIso();
   return {
     approved: new Map(),
@@ -115,7 +117,7 @@ function seedRow(title: string, content: InductionContent): Row {
       status: 'draft',
       validityMonths: 12,
       draft: content,
-      draftAiSuggestionId: PREVIEW_DRAFT_ID,
+      draftAiSuggestionId: draftId,
       approvals: [],
       problems: [],
       currentVersion: null,
@@ -217,6 +219,66 @@ export const inductionBuilderSource: InductionBuilderSource = {
           }
         : { suggestionId, upToDate: true, hiddenChanges: 0, changed: [] },
     ),
+  draftInduction(_projectId, siteName) {
+    return delay({
+      id: 'ais_PREVIEWNEWDRAFT00000000001',
+      projectId: 'preview',
+      task: 'induction.draft',
+      targetType: 'induction',
+      targetId: null,
+      status: 'pending',
+      confidence: null,
+      runId: 'run_preview',
+      createdAt: nowIso(),
+      decidedAt: null,
+      payload: {
+        siteName,
+        sections: [
+          {
+            section: 'emergencies_and_first_aid',
+            status: 'covered',
+            gap: null,
+            slides: [
+              {
+                title: 'Assembly point',
+                points: [{ text: 'Assemble at the front gate.', citations: [] }],
+                script: [],
+              },
+            ],
+          },
+          {
+            section: 'ppe',
+            status: 'covered',
+            gap: null,
+            slides: [
+              {
+                title: 'PPE',
+                points: [{ text: 'Hard hat, hi-vis and boots at all times.', citations: [] }],
+                script: [],
+              },
+            ],
+          },
+          {
+            section: 'high_risk_work_and_permits',
+            status: 'missing',
+            gap: 'Not found in your project documents. Add this section, or upload the document that covers it.',
+            slides: [],
+          },
+        ],
+        quiz: [
+          {
+            section: 'emergencies_and_first_aid',
+            question: 'Where is the assembly point?',
+            options: ['Front gate', 'Site office'],
+            answerIndex: 0,
+            critical: true,
+            citations: [],
+          },
+        ],
+        warnings: [{ code: 'uncited', section: 'ppe', text: 'Gloves for all trades.' }],
+      },
+    });
+  },
   refreshDraft(_projectId, suggestionId) {
     if (!staleDrafts.has(suggestionId))
       return problem(
@@ -275,8 +337,8 @@ export const inductionBuilderSource: InductionBuilderSource = {
   },
   decideSuggestion(_projectId, suggestionId, decision) {
     // A refresh the builder took in clears the stale mark from the draft it replaced.
-    if (decision !== 'rejected') staleDrafts.clear();
-    void suggestionId;
+    if (decision !== 'rejected' && suggestionId === 'ais_PREVIEWREFRESH00000000001')
+      staleDrafts.clear();
     return delay(undefined);
   },
   approve(projectId, induction, section) {

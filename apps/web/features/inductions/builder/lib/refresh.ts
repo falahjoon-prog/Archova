@@ -34,17 +34,34 @@ const text = (v: unknown) => (typeof v === 'string' ? v : (v as { text?: unknown
 
 /** Reads the suggestion's payload defensively: it is open-ended JSON on the wire. */
 export function parseRefresh(s: AiSuggestion): ParsedRefresh {
+  return parsePayload(s, null);
+}
+
+/** A whole Nova draft (`induction.draft`): every section it covers, every quiz question. */
+export function parseDraft(s: AiSuggestion): ParsedRefresh {
+  return parsePayload(s, 'all');
+}
+
+/** The draft taken in whole: Nova's sections and questions replace the builder's, whose pass mark stands. */
+export function applyDraft(content: InductionContent, r: ParsedRefresh): InductionContent {
+  return { ...content, sections: r.redrafted, quiz: r.quiz.slice(0, 15) };
+}
+
+function parsePayload(s: AiSuggestion, mode: 'all' | null): ParsedRefresh {
   const p = s.payload as {
     sections?: Array<{ section?: unknown; status?: unknown; gap?: unknown; slides?: unknown }>;
     quiz?: Array<Record<string, unknown>>;
     refresh?: { sections?: unknown[]; skipped?: unknown[] };
   };
-  const refreshed = (p.refresh?.sections ?? []).filter(isKey);
+  const refreshed =
+    mode === 'all'
+      ? (p.sections ?? []).map((x) => x.section).filter(isKey)
+      : (p.refresh?.sections ?? []).filter(isKey);
   const out: ParsedRefresh = {
     suggestionId: s.id,
     redrafted: [],
     quiz: [],
-    skipped: (p.refresh?.skipped ?? []).filter(isKey),
+    skipped: mode === 'all' ? [] : (p.refresh?.skipped ?? []).filter(isKey),
     missing: [],
   };
   for (const key of refreshed) {

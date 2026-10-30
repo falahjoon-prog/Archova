@@ -179,3 +179,25 @@ describe('Induction currency check (preview data)', () => {
     expect(screen.getByRole('button', { name: 'Redraft with Nova' })).toBeTruthy();
   });
 });
+
+describe('Nova induction draft (preview data)', () => {
+  it('drafts with Nova, takes it in, and saves it against the suggestion (F33 I1)', async () => {
+    resetInductionBuilderPreview('prj_test');
+    const created = await inductionBuilderSource.create('prj_test', {
+      title: 'Harbour induction',
+      validityMonths: 12,
+    });
+    const user = userEvent.setup();
+    renderInProject(<InductionEditorScreen inductionId={created.id} />);
+    await user.click(await screen.findByRole('button', { name: 'Draft with Nova' }));
+    expect(await screen.findByText("Nova's draft is ready")).toBeTruthy();
+    expect(screen.getByText(/High-risk work and permits/)).toBeTruthy(); // missing: told what to add
+    await user.click(screen.getByRole('button', { name: /Take Nova's draft/ }));
+    expect(await screen.findByText('Unsaved changes')).toBeTruthy();
+    expect(screen.getByRole('region', { name: 'PPE' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    // Saved against the suggestion: the currency check now follows it.
+    expect(await screen.findByText('Up to date')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Draft with Nova' })).toBeNull();
+  });
+});

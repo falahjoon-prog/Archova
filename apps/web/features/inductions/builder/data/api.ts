@@ -60,6 +60,15 @@ export function createInductionBuilderApi(orgId: string): InductionBuilderSource
         }),
       );
     },
+    async draftInduction(projectId, siteName) {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${AI}/induction-drafts`, {
+          params: { path: { orgId, projectId } },
+          body: { siteName: siteName.trim() },
+        }),
+      );
+    },
     async refreshDraft(projectId, suggestionId) {
       await ensureCsrfToken();
       return unwrap(
