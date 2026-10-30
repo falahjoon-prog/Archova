@@ -87,7 +87,8 @@ export function useInductionMutations(induction: Induction) {
       onSuccess: settle,
     }),
     saveDraft: useMutation({
-      mutationFn: (content: InductionContent) => source.saveDraft(projectId, induction, content),
+      mutationFn: (v: { content: InductionContent; aiSuggestionId?: string }) =>
+        source.saveDraft(projectId, induction, v.content, v.aiSuggestionId),
       onSuccess: settle,
     }),
     approve: useMutation({
@@ -130,6 +131,36 @@ export function useInductionLinkMutations(inductionId: string) {
     revoke: useMutation({
       mutationFn: (linkId: string) => source.revokeLink(projectId, inductionId, linkId),
       onSuccess: refresh,
+    }),
+  };
+}
+
+/** The currency check reads when asked (no model, no credit), so it is always current; refetch it after a save. */
+export function useInductionCurrency(suggestionId: string | null) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useBuilderSource();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'inductions', { currency: suggestionId }),
+    queryFn: () => source.currency(projectId, suggestionId!),
+    enabled: suggestionId !== null,
+  });
+}
+
+/** Nova calls are explicit user actions (P6): the redraft is a pending suggestion until the builder takes it in. */
+export function useInductionRefresh() {
+  const { projectId } = useCurrentProject();
+  const source = useBuilderSource();
+  return {
+    redraft: useMutation({
+      mutationFn: (suggestionId: string) => source.refreshDraft(projectId, suggestionId),
+    }),
+    draft: useMutation({
+      mutationFn: (siteName: string) => source.draftInduction(projectId, siteName),
+    }),
+    decide: useMutation({
+      mutationFn: (v: { suggestionId: string; decision: 'accepted' | 'edited' | 'rejected' }) =>
+        source.decideSuggestion(projectId, v.suggestionId, v.decision),
     }),
   };
 }
