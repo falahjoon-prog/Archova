@@ -1370,3 +1370,39 @@ fieldset.worker-card > legend {
   gap: var(--space-2);
   min-height: 2.75rem;
 }
+
+/* Transmittals */
+.check-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+.check-group > legend {
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+.u-block {
+  display: block;
+}
+/* The recipient's page opened from an emailed link: one narrow column, phone first, no app shell. */
+.link-page {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: var(--space-6) var(--space-4);
+  min-height: 100dvh;
+  background: var(--c-bg);
+}
+.link-item {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.link-item > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

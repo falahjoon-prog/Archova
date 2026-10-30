@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
 import {
   addMember,
+  Browser,
   createOrg,
   createProject,
   createTestContext,
@@ -474,6 +475,109 @@ describe('transmittals (DOC-AC10–AC12)', () => {
       { 'if-match': empty.headers.etag as string },
     );
     expect(none.json().code).toBe('transmittal.empty');
+  });
+});
+
+describe('transmittals to people without an account (X45)', () => {
+  const tokenIn = (to: string) => {
+    const mail = t.messages.sent.filter((m) => m.to === to).at(-1)!;
+    return /\/t\/(arl_[A-Za-z0-9_-]+)/.exec(mail.text)![1]!;
+  };
+
+  it('emails a link that records opened, downloaded and acknowledged, and can be replaced', async () => {
+    const s = await setup();
+    await publishSet(s, 'IFC', [{ sheetNumber: 'S-001', rev: '0', discipline: 'S' }]);
+    const draft = await s.owner.browser.post(`${s.base}/transmittals`, {
+      subject: 'Structural IFC',
+      purpose: 'for_construction',
+      message: 'Please confirm receipt.',
+      recipients: [{ email: 'engineer@example.com', name: 'Eli Engineer' }],
+      currentSetDisciplines: ['S'],
+    });
+    const tr = draft.json();
+    const sent = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/send`,
+      undefined,
+      { 'if-match': draft.headers.etag as string },
+    );
+    expect(sent.statusCode).toBe(200);
+    // The response never carries the token or the file behind an item.
+    expect(JSON.stringify(sent.json())).not.toMatch(/arl_|fileId/);
+    expect(sent.json().recipients[0].deliveredAt).toBeTruthy();
+    expect(sent.json().recipients[0].openedAt).toBeNull();
+
+    const guest = new Browser(t.app);
+    const first = tokenIn('engineer@example.com');
+    const opened = await guest.post('/v1/transmittal-access', { token: first });
+    expect(opened.statusCode).toBe(200);
+    expect(opened.headers['referrer-policy']).toBe('no-referrer');
+    const view = opened.json();
+    expect(view.transmittal).toMatchObject({
+      number: 1,
+      subject: 'Structural IFC',
+      fromOrg: 'Docs Builder',
+    });
+    expect(view.items.map((i: { number: string }) => i.number)).toEqual(['S-001']);
+    expect(view.recipient.openedAt).toBeTruthy();
+    expect(view.recipient.acknowledgedAt).toBeNull();
+
+    const dl = await guest.post('/v1/transmittal-access/download', {
+      revisionType: 'drawing',
+      revisionId: view.items[0].revisionId,
+    });
+    expect(dl.statusCode).toBe(200);
+    expect(dl.json().url).toBeTruthy();
+    // Only items on this transmittal can be fetched.
+    const other = await guest.post('/v1/transmittal-access/download', {
+      revisionType: 'drawing',
+      revisionId: 'drv_00000000000000000000000000',
+    });
+    expect(other.json().code).toBe('transmittal.item_not_found');
+
+    const ack = await guest.post('/v1/transmittal-access/acknowledge', {});
+    expect(ack.json().recipient.acknowledgedAt).toBeTruthy();
+
+    const detail = (
+      await s.owner.browser.get(`${s.base}/transmittals/${tr.transmittal.id}`)
+    ).json();
+    expect(detail.recipients[0]).toMatchObject({ email: 'engineer@example.com' });
+    expect(detail.recipients[0].openedAt).toBeTruthy();
+    expect(detail.recipients[0].downloadedAt).toBeTruthy();
+    expect(detail.recipients[0].acknowledgedAt).toBeTruthy();
+
+    // A lost email: resend replaces the link, and the old one stops working at once.
+    const resent = await s.owner.browser.post(
+      `${s.base}/transmittals/${tr.transmittal.id}/recipients/${detail.recipients[0].id}/resend`,
+    );
+    expect(resent.statusCode).toBe(200);
+    expect(resent.json().deliveredAt).toBeTruthy();
+    expect(tokenIn('engineer@example.com')).not.toBe(first);
+    expect((await guest.get('/v1/transmittal-access')).json().code).toBe('access_link.invalid');
+    expect(
+      (await new Browser(t.app).post('/v1/transmittal-access', { token: first })).json().code,
+    ).toBe('access_link.invalid');
+    const again = new Browser(t.app);
+    expect(
+      (await again.post('/v1/transmittal-access', { token: tokenIn('engineer@example.com') }))
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it('refuses people who are not the issuer, and an induction link or no cookie', async () => {
+    const s = await setup();
+    const none = await new Browser(t.app).get('/v1/transmittal-access');
+    expect(none.json().code).toBe('access_link.session_required');
+    const sub = await signUp(t.app, 'tx-nolink');
+    await addMember(s.owner.browser, s.org.id, s.project.id, sub.email, 'Subcontractor');
+    const draft = await s.owner.browser.post(`${s.base}/transmittals`, {
+      subject: 'x',
+      purpose: 'for_information',
+      recipients: [{ email: 'nobody@example.com' }],
+    });
+    const resend = await sub.browser.post(
+      `${s.base}/transmittals/${draft.json().transmittal.id}/recipients/trr_00000000000000000000000000/resend`,
+    );
+    expect(resend.statusCode).toBe(403);
   });
 });
 

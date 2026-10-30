@@ -1,6 +1,7 @@
 import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
+import type { Entitlements, MessageSender } from '@archova/kernel';
 import type { FilesModule } from '@archova/mod-files';
 import type { IdentityApi } from '@archova/mod-identity';
 import type { PlatformApi } from '@archova/mod-platform';
@@ -13,6 +14,7 @@ import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
 import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
+import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
 import { toDocumentDto, toFolderDto } from './api/mappers';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
@@ -21,9 +23,16 @@ export function createDocumentsModule(
   services: KernelServices,
   deps: {
     access: AccessService;
-    platform: Pick<PlatformApi, 'getProject'>;
-    files: Pick<FilesModule['api'], 'getFile' | 'signTiles'>;
+    platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
+    files: Pick<FilesModule['api'], 'getFile' | 'signTiles' | 'downloadUrl'>;
     identity: Pick<IdentityApi, 'findUserByEmail'>;
+    /** Transmittal emails for recipients without an account (X45). */
+    links: {
+      messages: MessageSender;
+      entitlements: (orgId: string) => Promise<Entitlements>;
+      /** The public web origin the link points at, e.g. `https://app.archova.com.au`. */
+      baseUrl: string;
+    };
   },
 ) {
   const c = createContext(deps);
@@ -34,6 +43,16 @@ export function createDocumentsModule(
   const geometry = createGeometryService(drawings);
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
+  const transmittalLinks = createTransmittalLinkService({
+    database: services.database,
+    transmittals,
+    c,
+    platform: deps.platform,
+    files: deps.files,
+    entitlements: deps.links.entitlements,
+    redis: services.redis,
+    logger: services.logger,
+  });
   const aiSources = createAiSourceService(c, folders);
   const syncSource: SyncSource = {
     module: 'documents',
@@ -70,6 +89,11 @@ export function createDocumentsModule(
       geometry,
       tiles,
       transmittals,
+      links: transmittalLinks,
+      platform: deps.platform,
+      messages: deps.links.messages,
+      baseUrl: deps.links.baseUrl,
+      logger: services.logger,
     }),
     api: {
       /** What the mobile pull reads (modules/sync): folders and documents. */

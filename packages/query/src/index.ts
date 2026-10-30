@@ -39,6 +39,7 @@ export type ProjectTool =
   | 'documents'
   | 'drawings'
   | 'drawing-sets'
+  | 'transmittals'
   | 'rfis'
   | 'diary'
   | 'defects'

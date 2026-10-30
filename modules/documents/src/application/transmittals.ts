@@ -1,9 +1,12 @@
-import { and, desc, eq, isNull, lt, sql, type SQL } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import {
   AppError,
+  ACCESS_LINK_DEFAULT_DAYS,
+  createAccessLink,
   decodeCursor,
   nextNumber,
+  revokeAccessLink,
   toPage,
   versionConflict,
   type TenantScope,
@@ -40,12 +43,29 @@ export interface CreateTransmittalInput {
   currentSetDisciplines?: string[];
 }
 
+/** What a link on a transmittal lets the holder do (Sam 11 §2). Fixed: a link never carries more. */
+export const TRANSMITTAL_LINK_ENTITY = 'transmittal';
+export const TRANSMITTAL_LINK_ACTIONS = ['view', 'download', 'acknowledge'] as const;
+/** Sam 11 §2: a link allows 50 views by default. */
+const TRANSMITTAL_LINK_MAX_USES = 50;
+
+/** A new link for a recipient with no account; the token is shown once, in their email. */
+export interface IssuedLink {
+  recipientId: string;
+  email: string;
+  name: string | null;
+  token: string;
+  expiresAt: Date;
+}
+
 export interface TransmittalItemView {
   revisionType: 'document' | 'drawing';
   revisionId: string;
   title: string;
   number: string | null;
   rev: string;
+  /** Internal: the file behind the revision. Never put in a response; downloads go through a signed URL. */
+  fileId: string;
 }
 
 export function createTransmittalService(
@@ -101,7 +121,12 @@ export function createTransmittalService(
     return row;
   }
 
-  async function itemsOf(scope: TenantScope, projectId: string, transmittalId: string) {
+  async function itemsOf(
+    scope: TenantScope,
+    projectId: string,
+    transmittalId: string,
+    opts: { authorised?: boolean } = {},
+  ) {
     const items = await scope.tx
       .select()
       .from(transmittalItems)
@@ -111,7 +136,10 @@ export function createTransmittalService(
     const drvIds = items.filter((i) => i.revisionType === 'drawing').map((i) => i.revisionId);
     // Item titles come from the revisions themselves, so a transmittal shows what was sent at the time.
     const docs = new Map(
-      (await documents.revisionsByIds(scope, projectId, docIds)).map((r) => [r.revision.id, r]),
+      (await documents.revisionsByIds(scope, projectId, docIds, opts)).map((r) => [
+        r.revision.id,
+        r,
+      ]),
     );
     const drvs = new Map(
       (await drawings.revisionsByIds(scope, projectId, drvIds)).map((r) => [r.id, r]),
@@ -127,6 +155,7 @@ export function createTransmittalService(
             title: d.document.title,
             number: d.document.docNumber,
             rev: d.revision.rev,
+            fileId: d.revision.fileId,
           });
       } else {
         const d = drvs.get(i.revisionId);
@@ -137,6 +166,7 @@ export function createTransmittalService(
             title: d.title,
             number: d.sheetNumber,
             rev: d.rev,
+            fileId: d.fileId,
           });
       }
     }
@@ -258,6 +288,36 @@ export function createTransmittalService(
       .select()
       .from(transmittalRecipients)
       .where(eq(transmittalRecipients.transmittalId, id));
+    // People with an account see it in the app straight away. Everyone else gets a personal link (X45).
+    const links: IssuedLink[] = [];
+    const expiresAt = new Date(now.getTime() + ACCESS_LINK_DEFAULT_DAYS * 86_400_000);
+    for (const r of recipients) {
+      if (r.userId) continue;
+      const { link, token } = await createAccessLink(scope, {
+        projectId,
+        entityType: TRANSMITTAL_LINK_ENTITY,
+        entityId: id,
+        allowedActions: TRANSMITTAL_LINK_ACTIONS,
+        label: `Transmittal ${number}`,
+        recipientEmail: r.email,
+        expiresAt,
+        maxUses: TRANSMITTAL_LINK_MAX_USES,
+      });
+      await scope.tx
+        .update(transmittalRecipients)
+        .set({ accessLinkId: link.id })
+        .where(eq(transmittalRecipients.id, r.id));
+      links.push({ recipientId: r.id, email: r.email, name: r.name, token, expiresAt });
+    }
+    await scope.tx
+      .update(transmittalRecipients)
+      .set({ deliveredAt: now })
+      .where(
+        and(
+          eq(transmittalRecipients.transmittalId, id),
+          sql`${transmittalRecipients.userId} is not null`,
+        ),
+      );
     await changed(scope, row);
     scope.events.add({
       type: 'documents.transmittal.sent.v1',
@@ -273,7 +333,64 @@ export function createTransmittalService(
         recipientIds: recipients.map((r) => r.id),
       },
     });
-    return detail(scope, projectId, id);
+    return { ...(await detail(scope, projectId, id)), links };
+  }
+
+  /** The email went out; the receipt shows "sent" (DOC-AC11). */
+  async function markDelivered(scope: TenantScope, recipientIds: string[]) {
+    if (!recipientIds.length) return;
+    await scope.tx
+      .update(transmittalRecipients)
+      .set({ deliveredAt: new Date() })
+      .where(
+        and(
+          inArray(transmittalRecipients.id, recipientIds),
+          isNull(transmittalRecipients.deliveredAt),
+        ),
+      );
+  }
+
+  /**
+   * Replaces a recipient's link after a lost email: the old one stops, a new one is issued. Only for recipients
+   * without an account, on a sent transmittal.
+   */
+  async function resend(scope: TenantScope, projectId: string, id: string, recipientId: string) {
+    const t = await getRow(scope, projectId, id);
+    if (t.status !== 'sent')
+      throw new AppError('transmittal.not_sent', 'Send the transmittal first.');
+    const [r] = await scope.tx
+      .select()
+      .from(transmittalRecipients)
+      .where(
+        and(eq(transmittalRecipients.id, recipientId), eq(transmittalRecipients.transmittalId, id)),
+      )
+      .limit(1);
+    if (!r) throw new AppError('transmittal.recipient_not_found');
+    if (r.userId)
+      throw new AppError(
+        'transmittal.has_account',
+        'This person opens it from their Archova account.',
+      );
+    if (r.accessLinkId) await revokeAccessLink(scope, r.accessLinkId);
+    const expiresAt = new Date(Date.now() + ACCESS_LINK_DEFAULT_DAYS * 86_400_000);
+    const { link, token } = await createAccessLink(scope, {
+      projectId,
+      entityType: TRANSMITTAL_LINK_ENTITY,
+      entityId: id,
+      allowedActions: TRANSMITTAL_LINK_ACTIONS,
+      label: `Transmittal ${t.number}`,
+      recipientEmail: r.email,
+      expiresAt,
+      maxUses: TRANSMITTAL_LINK_MAX_USES,
+    });
+    await scope.tx
+      .update(transmittalRecipients)
+      .set({ accessLinkId: link.id, deliveredAt: null })
+      .where(eq(transmittalRecipients.id, r.id));
+    return {
+      transmittal: t,
+      link: { recipientId: r.id, email: r.email, name: r.name, token, expiresAt },
+    };
   }
 
   /** A recipient's receipt (DOC-AC11). Each timestamp is set once; repeats return the existing receipt. */
@@ -330,7 +447,7 @@ export function createTransmittalService(
     return row ?? mine;
   }
 
-  return { list, detail, create, send, acknowledge };
+  return { list, detail, create, send, resend, markDelivered, acknowledge, getRow, itemsOf };
 }
 
 async function changed(scope: TenantScope, t: TransmittalRow) {

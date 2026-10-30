@@ -274,6 +274,14 @@ export const AcknowledgeTransmittalParams = z.object({
   "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeTransmittalBody = s.AcknowledgeTransmittalRequestSchema;
+export const ResendTransmittalLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
+  "recipientId": z.string().regex(new RegExp("^trr_[0-9A-Za-z]{26}$")),
+});
+export const OpenTransmittalAccessBody = s.OpenInductionAccessRequestSchema;
+export const DownloadTransmittalAccessItemBody = s.DownloadTransmittalItemRequestSchema;
 export const GetAiSettingsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1880,6 +1888,66 @@ export const operations = {
     params: AcknowledgeTransmittalParams,
     query: null,
     body: AcknowledgeTransmittalBody,
+  },
+  resendTransmittalLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/recipients/{recipientId}/resend',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.manage",
+    internal: false,
+    contentType: null,
+    params: ResendTransmittalLinkParams,
+    query: null,
+    body: null,
+  },
+  getTransmittalAccess: {
+    method: 'GET',
+    path: '/v1/transmittal-access',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openTransmittalAccess: {
+    method: 'POST',
+    path: '/v1/transmittal-access',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenTransmittalAccessBody,
+  },
+  acknowledgeTransmittalAccess: {
+    method: 'POST',
+    path: '/v1/transmittal-access/acknowledge',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  downloadTransmittalAccessItem: {
+    method: 'POST',
+    path: '/v1/transmittal-access/download',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DownloadTransmittalAccessItemBody,
   },
   getAiSettings: {
     method: 'GET',

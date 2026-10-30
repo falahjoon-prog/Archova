@@ -89,6 +89,10 @@ export const PROBLEM_CODES = {
   'transmittal.already_sent': 409,
   'transmittal.empty': 422,
   'transmittal.not_recipient': 403,
+  'transmittal.not_sent': 409,
+  'transmittal.recipient_not_found': 404,
+  'transmittal.has_account': 409,
+  'transmittal.item_not_found': 404,
   // ai (Nova)
   'ai.disabled': 403,
   'ai.feature_disabled': 403,

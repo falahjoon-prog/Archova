@@ -9,6 +9,7 @@ import {
   DefectsIcon,
   DiaryIcon,
   DocumentsIcon,
+  TransmittalsIcon,
   DrawingsIcon,
   EstimatingIcon,
   HomeIcon,
@@ -94,6 +95,11 @@ export function projectToolGroups(
       href: webRoutes.drawings(orgSlug, projectId),
       label: 'Drawings',
       icon: DrawingsIcon,
+    },
+    canRead('documents') && {
+      href: webRoutes.transmittals(orgSlug, projectId),
+      label: 'Transmittals',
+      icon: TransmittalsIcon,
     },
     canRead('rfis') && { href: webRoutes.rfis(orgSlug, projectId), label: 'RFIs', icon: RfisIcon },
     canRead('diary') && {

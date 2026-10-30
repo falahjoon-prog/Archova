@@ -1019,6 +1019,12 @@ export const DownloadLinkSchema = z.object({
 });
 export type DownloadLink = z.infer<typeof DownloadLinkSchema>;
 
+export const DownloadTransmittalItemRequestSchema = z.object({
+  "revisionType": z.enum(["document", "drawing"]),
+  "revisionId": z.string().regex(new RegExp("^(rev|drv)_[0-9A-Za-z]{26}$")),
+}).strict();
+export type DownloadTransmittalItemRequest = z.infer<typeof DownloadTransmittalItemRequestSchema>;
+
 export const IssuedForSchema = z.enum(["preliminary", "for_tender", "for_approval", "for_construction"]);
 export type IssuedFor = z.infer<typeof IssuedForSchema>;
 
@@ -2760,6 +2766,31 @@ export const TransmittalItemSchema = z.object({
 });
 export type TransmittalItem = z.infer<typeof TransmittalItemSchema>;
 
+export const TransmittalAccessSchema = z.object({
+  "transmittal": z.object({
+  "number": z.number().int(),
+  "subject": z.string(),
+  "purpose": TransmittalPurposeSchema,
+  "message": z.string().nullable(),
+  "responseDue": z.string().date().nullable(),
+  "sentAt": z.string().datetime({ offset: true }),
+  "fromOrg": z.string(),
+  "projectName": z.string(),
+}),
+  "items": z.array(TransmittalItemSchema),
+  "recipient": z.object({
+  "email": z.string(),
+  "name": z.string().nullable(),
+  "role": z.enum(["to", "cc"]),
+  "openedAt": z.string().datetime({ offset: true }).nullable(),
+  "downloadedAt": z.string().datetime({ offset: true }).nullable(),
+  "acknowledgedAt": z.string().datetime({ offset: true }).nullable(),
+}),
+  "actions": z.array(z.enum(["view", "download", "acknowledge"])),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type TransmittalAccess = z.infer<typeof TransmittalAccessSchema>;
+
 export const TransmittalRecipientSchema = z.object({
   "id": z.string(),
   "userId": z.string().nullable(),
@@ -2780,6 +2811,13 @@ export const TransmittalDetailSchema = z.object({
   "recipients": z.array(TransmittalRecipientSchema),
 });
 export type TransmittalDetail = z.infer<typeof TransmittalDetailSchema>;
+
+export const TransmittalDownloadSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "filename": z.string(),
+});
+export type TransmittalDownload = z.infer<typeof TransmittalDownloadSchema>;
 
 export const TransmittalPageSchema = z.object({
   "data": z.array(TransmittalSchema),

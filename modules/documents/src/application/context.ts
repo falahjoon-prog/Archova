@@ -6,7 +6,7 @@ import type { PlatformApi } from '@archova/mod-platform';
 /** Other modules' public interfaces `documents` uses (no cross-module SQL). */
 export interface DocumentsDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject'>;
+  platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
   files: Pick<FilesModule['api'], 'getFile'>;
 }
 
