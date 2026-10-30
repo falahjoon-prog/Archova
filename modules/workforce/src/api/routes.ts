@@ -513,6 +513,24 @@ export function workforceRoutes(
         headers: { 'cache-control': 'no-store' },
       };
     },
+    getInductionSwmsDownload: async (input) => {
+      const documentId = decodeId('document', input.params.documentId);
+      if (!documentId) throw new AppError('document.not_found');
+      const l = await read(input, (s) =>
+        ind.downloadSwms(s, project(input.params), completion(input.params), documentId),
+      );
+      return {
+        status: 200,
+        body: {
+          url: l.url,
+          expiresAt: l.expiresAt.toISOString(),
+          title: l.title,
+          docNumber: l.docNumber,
+          rev: l.rev,
+        },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
     recordInductionProgress: async (input) => {
       const v = await tx(input, (s) =>
         ind.recordProgress(s, project(input.params), completion(input.params), input.body),

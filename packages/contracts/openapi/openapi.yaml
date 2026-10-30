@@ -4569,6 +4569,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/DownloadLink' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/swms/{documentId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+      - $ref: '#/components/parameters/DocumentId'
+    get:
+      operationId: getInductionSwmsDownload
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: A short-lived download link for the current revision of a SWMS this induction names (and no other document).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionSwmsDownload' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6612,6 +6636,15 @@ components:
       properties:
         url: { type: string }
         expiresAt: { type: string, format: date-time }
+    InductionSwmsDownload:
+      type: object
+      required: [url, expiresAt, title, docNumber, rev]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        title: { type: string }
+        docNumber: { type: [string, 'null'] }
+        rev: { type: string }
     FileRef:
       type: string
       pattern: '^fil_[0-9A-Za-z]{26}$'

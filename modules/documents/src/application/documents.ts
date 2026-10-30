@@ -296,6 +296,34 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
   }
 
   /**
+   * The current revision's file of a live document in this project, with no folder check: the caller is another
+   * module that has already authorised the read (an induction's SWMS for a worker who holds only sign-in).
+   */
+  async function currentFileAuthorised(scope: TenantScope, projectId: string, documentId: string) {
+    const [row] = await scope.tx
+      .select()
+      .from(documentsTable)
+      .where(
+        and(
+          eq(documentsTable.id, documentId),
+          eq(documentsTable.projectId, projectId),
+          isNull(documentsTable.deletedAt),
+        ),
+      )
+      .limit(1);
+    const [withCurrent] = row ? await attachCurrent(scope, [row]) : [];
+    if (!withCurrent?.current) throw new AppError('document.not_found');
+    const { current } = withCurrent;
+    return {
+      id: withCurrent.id,
+      title: withCurrent.title,
+      docNumber: withCurrent.docNumber,
+      rev: current.rev,
+      fileId: current.fileId,
+    };
+  }
+
+  /**
    * Mobile pull (modules/sync): the documents among `ids` the caller may see, by the same rule as `list`
    * (nothing in a folder they can't open); ids not returned are sent to the device as deletes.
    */
@@ -315,7 +343,17 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
     return attachCurrent(scope, rows);
   }
 
-  return { list, detail, create, addRevision, update, revisionsByIds, ref, visibleAmong };
+  return {
+    list,
+    detail,
+    create,
+    addRevision,
+    update,
+    revisionsByIds,
+    ref,
+    currentFileAuthorised,
+    visibleAmong,
+  };
 }
 
 async function changed(scope: TenantScope, projectId: string, id: string, version: number) {
