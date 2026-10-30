@@ -26,7 +26,8 @@ const READ: BackofficePermission[] = [
 ];
 
 export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]> = {
-  owner: BACKOFFICE_PERMISSIONS,
+  // Support access is for Support and Security lead only; Owner, Sales and Finance never hold it (Sam 12 §4a).
+  owner: BACKOFFICE_PERMISSIONS.filter((p) => p !== 'backoffice.support.access'),
   pricing_approver: [
     ...READ,
     'backoffice.pricing.edit',

@@ -19,6 +19,20 @@ export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetSupportAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSupportBannerParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateSupportAccessGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateSupportAccessGrantBody = s.CreateSupportAccessGrantRequestSchema;
+export const RevokeSupportAccessGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string(),
+});
 export const GetEntitlementsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -103,19 +117,6 @@ export const CreateCompanyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const CreateCompanyBody = s.CreateCompanyRequestSchema;
-export const GetSupportAccessParams = z.object({
-  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-});
-export const GrantSupportAccessParams = z.object({
-  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-});
-export const GrantSupportAccessBody = s.GrantSupportAccessRequestSchema;
-export const RevokeSupportAccessParams = z.object({
-  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-});
-export const GetSupportBannerParams = z.object({
-  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-});
 export const CreateUploadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1419,6 +1420,54 @@ export const operations = {
     query: null,
     body: null,
   },
+  getSupportAccess: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportAccessParams,
+    query: null,
+    body: null,
+  },
+  getSupportBanner: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/banner',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportBannerParams,
+    query: null,
+    body: null,
+  },
+  createSupportAccessGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/support-access/grants',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: CreateSupportAccessGrantParams,
+    query: null,
+    body: CreateSupportAccessGrantBody,
+  },
+  revokeSupportAccessGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/support-access/grants/{grantId}/revoke',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RevokeSupportAccessGrantParams,
+    query: null,
+    body: null,
+  },
   getPublicPriceBook: {
     method: 'GET',
     path: '/v1/public/price-book',
@@ -1622,54 +1671,6 @@ export const operations = {
     params: CreateCompanyParams,
     query: null,
     body: CreateCompanyBody,
-  },
-  getSupportAccess: {
-    method: 'GET',
-    path: '/v1/orgs/{orgId}/support-access',
-    module: "platform",
-    auth: "required",
-    permission: "platform.support_access.manage",
-    internal: false,
-    contentType: null,
-    params: GetSupportAccessParams,
-    query: null,
-    body: null,
-  },
-  grantSupportAccess: {
-    method: 'PUT',
-    path: '/v1/orgs/{orgId}/support-access',
-    module: "platform",
-    auth: "required",
-    permission: "platform.support_access.manage",
-    internal: false,
-    contentType: "application/json",
-    params: GrantSupportAccessParams,
-    query: null,
-    body: GrantSupportAccessBody,
-  },
-  revokeSupportAccess: {
-    method: 'DELETE',
-    path: '/v1/orgs/{orgId}/support-access',
-    module: "platform",
-    auth: "required",
-    permission: "platform.support_access.manage",
-    internal: false,
-    contentType: null,
-    params: RevokeSupportAccessParams,
-    query: null,
-    body: null,
-  },
-  getSupportBanner: {
-    method: 'GET',
-    path: '/v1/orgs/{orgId}/support-access/banner',
-    module: "platform",
-    auth: "required",
-    permission: null,
-    internal: false,
-    contentType: null,
-    params: GetSupportBannerParams,
-    query: null,
-    body: null,
   },
   createUpload: {
     method: 'POST',

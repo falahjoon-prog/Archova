@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { use, useState } from 'react';
 import {
@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   DescriptionList,
+  FormError,
   PageHeader,
   Select,
   SkeletonRows,
@@ -41,72 +42,126 @@ const CATEGORY_LABEL: Record<SuspendCategory, string> = {
   legal_order: 'Legal order',
 };
 
-/**
- * Support access (Sam 12 §4a): staff see only the customer's consent here. A session needs the ticket the customer
- * named, a fresh password check and a reason; it is read only and lasts at most an hour.
- */
-function SupportAccess({ org }: { org: OrgDetailDto }) {
+const SUPPORT_TONE = {
+  active: 'success',
+  open: 'success',
+  expired: 'neutral',
+  ended: 'neutral',
+  revoked: 'warning',
+} as const;
+
+function SupportAccess({ orgId }: { orgId: string }) {
   const staff = useStaff();
   const qc = useQueryClient();
   const withStepUp = useStepUp();
-  const [open, setOpen] = useState(false);
-  const allowed = can(staff, 'backoffice.support.access');
-  const { grant, session } = org.support;
+  const [ticket, setTicket] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const access = useQuery({
+    queryKey: ['support-access', orgId],
+    queryFn: () => api.supportAccess(orgId),
+  });
+  const canStart = can(staff, 'backoffice.support.access');
+  const refresh = (fresh: Awaited<ReturnType<typeof api.supportAccess>>) => {
+    qc.setQueryData(['support-access', orgId], fresh);
+    setError(null);
+  };
+  const start = useMutation({
+    mutationFn: () => withStepUp(() => api.startSupportSession(orgId, ticket.trim())),
+    onSuccess: (fresh) => {
+      refresh(fresh);
+      setTicket('');
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+  const end = useMutation({
+    mutationFn: (id: string) => api.endSupportSession(orgId, id),
+    onSuccess: refresh,
+    onError: (e: Error) => setError(e.message),
+  });
+  const activeGrant = access.data?.grants.find((g) => g.status === 'active');
+  const open = access.data?.sessions.find((s) => s.status === 'open');
   const projects = useQuery({
-    queryKey: ['support-projects', org.orgId, session?.startedAt],
-    queryFn: () => api.supportProjects(org.orgId),
-    enabled: allowed && Boolean(session),
+    queryKey: ['support-projects', orgId, open?.id],
+    queryFn: () => api.supportProjects(orgId),
+    enabled: canStart && Boolean(open),
     retry: false,
   });
-  if (!allowed) return null;
-  const done = (fresh: OrgDetailDto) => {
-    qc.setQueryData(['org', org.orgId], fresh);
-  };
 
   return (
     <Card title="Support access">
-      {!grant ? (
-        <p className="muted">
-          The customer has not allowed support access. An owner or admin turns it on from Settings
-          in their app, for one ticket.
-        </p>
-      ) : (
-        <DescriptionList
-          items={[
-            {
-              label: 'Customer allowed',
-              value: `Ticket ${grant.ticketRef}, by ${grant.grantedBy}`,
-            },
-            { label: 'Allowed until', value: formatDateTime(grant.expiresAt) },
-            ...(session
-              ? [{ label: 'Your session ends', value: formatDateTime(session.expiresAt) }]
-              : []),
-          ]}
-        />
-      )}
-      {grant && !session ? (
-        <div className="row">
-          <Button onClick={() => setOpen(true)}>Start read-only session</Button>
-        </div>
-      ) : null}
-      {session ? (
-        <>
-          <div className="row">
-            <Button variant="secondary" onClick={async () => done(await api.endSupport(org.orgId))}>
-              End session
-            </Button>
-          </div>
-          <h3>Projects (read only)</h3>
-          {projects.isPending ? <SkeletonRows rows={2} /> : null}
-          {projects.isError ? (
-            <Alert tone="danger" title="Could not load projects">
-              {projects.error.message}
-            </Alert>
+      {access.isPending ? <SkeletonRows rows={2} /> : null}
+      {access.isError ? <Alert tone="danger">{access.error.message}</Alert> : null}
+      {access.data ? (
+        <div className="stack">
+          <p className="muted">
+            Off unless the company's owner or admin grants it. A grant is view-only, tied to a
+            ticket and lasts up to 72 hours; a session lasts up to an hour. In a session staff see
+            project names only, and each view is logged for the customer.
+          </p>
+          {access.data.grants.length === 0 ? (
+            <p>No grant. This company has not given Archova support access.</p>
+          ) : (
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {access.data.grants.slice(0, 5).map((g) => (
+                <li key={g.id} className="row">
+                  <StatusPill tone={SUPPORT_TONE[g.status]}>{g.status}</StatusPill>
+                  <span>
+                    Ticket {g.ticketRef}{' '}
+                    <span className="muted">
+                      · granted by {g.grantedBy} · until {formatDateTime(g.expiresAt)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {access.data.sessions.length ? (
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {access.data.sessions.slice(0, 5).map((s) => (
+                <li key={s.id} className="row">
+                  <StatusPill tone={SUPPORT_TONE[s.status]}>{`session ${s.status}`}</StatusPill>
+                  <span>
+                    {s.staffName}{' '}
+                    <span className="muted">
+                      · {s.ticketRef} · {formatDateTime(s.startedAt)}
+                    </span>
+                  </span>
+                  {s.status === 'open' && canStart ? (
+                    <Button variant="tertiary" size="sm" onClick={() => end.mutate(s.id)}>
+                      End session
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           ) : null}
-          {projects.data ? (
-            projects.data.items.length ? (
+          {canStart && activeGrant && !open ? (
+            <div className="row">
+              <TextField
+                label="Ticket reference"
+                value={ticket}
+                onChange={(e) => setTicket(e.target.value)}
+                hint={`Must match the grant's ticket (${activeGrant.ticketRef}).`}
+              />
+              <Button
+                onClick={() => start.mutate()}
+                loading={start.isPending}
+                disabled={ticket.trim().length < 2}
+              >
+                Start session
+              </Button>
+            </div>
+          ) : null}
+          {open && canStart ? (
+            <div className="stack">
+              <h3>Projects (read only)</h3>
+              {projects.isPending ? <SkeletonRows rows={2} /> : null}
+              {projects.isError ? <Alert tone="danger">{projects.error.message}</Alert> : null}
+              {projects.data?.items.length === 0 ? (
+                <p className="muted">This company has no projects.</p>
+              ) : null}
               <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-                {projects.data.items.map((p) => (
+                {projects.data?.items.map((p) => (
                   <li key={p.id}>
                     {p.name}{' '}
                     <span className="muted">
@@ -115,20 +170,11 @@ function SupportAccess({ org }: { org: OrgDetailDto }) {
                   </li>
                 ))}
               </ul>
-            ) : (
-              <p className="muted">This customer has no projects.</p>
-            )
+            </div>
           ) : null}
-        </>
+          <FormError message={error} />
+        </div>
       ) : null}
-      <OrgActionDialog
-        open={open}
-        title="Start a support session"
-        description="Read only, at most one hour. The customer's users will see a banner, and the customer is shown your name and how many pages you view. Use the ticket they named."
-        confirmLabel="Start session"
-        onClose={() => setOpen(false)}
-        onConfirm={async (i) => done(await withStepUp(() => api.startSupport(org.orgId, i)))}
-      />
     </Card>
   );
 }
@@ -310,7 +356,7 @@ export default function CustomerPage({ params }: { params: Promise<{ orgId: stri
         />
       </Card>
       <AccountActions org={o} />
-      <SupportAccess org={o} />
+      <SupportAccess orgId={o.orgId} />
       <Card title="Staff actions on this customer">
         {o.actions.length ? (
           <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>

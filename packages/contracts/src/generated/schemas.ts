@@ -622,6 +622,12 @@ export const CreateSubmittalRequestSchema = z.object({
 }).strict();
 export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema>;
 
+export const CreateSupportAccessGrantRequestSchema = z.object({
+  "ticketRef": z.string().min(2).max(60),
+  "hours": z.number().int().min(1).max(72),
+}).strict();
+export type CreateSupportAccessGrantRequest = z.infer<typeof CreateSupportAccessGrantRequestSchema>;
+
 export const TakeoffKindSchema = z.enum(["length", "area", "count"]);
 export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
 
@@ -1282,13 +1288,6 @@ export const GateWithCodeSchema = z.object({
   "code": z.string(),
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
-
-export const GrantSupportAccessRequestSchema = z.object({
-  "ticketRef": z.string().min(1).max(60),
-  "hours": z.number().int().min(1).max(72),
-  "note": z.string().max(500).optional(),
-}).strict();
-export type GrantSupportAccessRequest = z.infer<typeof GrantSupportAccessRequestSchema>;
 
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
@@ -2838,27 +2837,34 @@ export const SubmittalPageSchema = z.object({
 });
 export type SubmittalPage = z.infer<typeof SubmittalPageSchema>;
 
-export const SupportSessionSummarySchema = z.object({
+export const SupportAccessGrantSchema = z.object({
+  "id": z.string(),
+  "ticketRef": z.string(),
+  "level": z.enum(["view"]),
+  "grantedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["active", "expired", "revoked"]),
+});
+export type SupportAccessGrant = z.infer<typeof SupportAccessGrantSchema>;
+
+export const SupportAccessSessionSchema = z.object({
+  "pagesViewed": z.number().int(),
+  "id": z.string(),
+  "grantId": z.string(),
   "staffName": z.string(),
   "ticketRef": z.string(),
   "startedAt": z.string().datetime({ offset: true }),
   "expiresAt": z.string().datetime({ offset: true }),
-  "endedAt": z.string().datetime({ offset: true }).nullable(),
-  "endedReason": z.enum(["staff", "customer_revoked", "expired"]).nullable(),
-  "pagesViewed": z.number().int(),
+  "endedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["open", "ended", "expired", "revoked"]),
 });
-export type SupportSessionSummary = z.infer<typeof SupportSessionSummarySchema>;
+export type SupportAccessSession = z.infer<typeof SupportAccessSessionSchema>;
 
 export const SupportAccessSchema = z.object({
-  "grant": z.object({
-  "ticketRef": z.string(),
-  "note": z.string().nullable(),
-  "grantedBy": z.string(),
-  "grantedAt": z.string().datetime({ offset: true }),
-  "expiresAt": z.string().datetime({ offset: true }),
-}).nullable(),
-  "session": z.union([SupportSessionSummarySchema, z.null()]),
-  "history": z.array(SupportSessionSummarySchema),
+  "grants": z.array(SupportAccessGrantSchema),
+  "sessions": z.array(SupportAccessSessionSchema),
 });
 export type SupportAccess = z.infer<typeof SupportAccessSchema>;
 

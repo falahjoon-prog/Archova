@@ -19,24 +19,26 @@ const HOURS = [
   { value: '72', label: '3 days (the most)' },
 ];
 
-const END_LABEL = {
-  staff: 'Ended by support',
-  customer_revoked: 'You withdrew access',
+const SESSION_LABEL: Record<SupportSession['status'], string> = {
+  open: 'Open now',
+  ended: 'Ended by support',
   expired: 'Timed out',
-} as const;
+  revoked: 'You withdrew access',
+};
 
 const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 const when = (iso: string) => formatInstant(iso, tz());
 
 function SessionRow({ s }: { s: SupportSession }) {
+  const pages = s.pagesViewed ?? 0;
   return (
     <li className="support-access__session">
       <span>
         <strong>{s.staffName}</strong> · ticket {s.ticketRef}
       </span>
       <span className="u-caption">
-        {when(s.startedAt)} · {s.endedAt && s.endedReason ? END_LABEL[s.endedReason] : 'Open now'} ·{' '}
-        {s.pagesViewed} {s.pagesViewed === 1 ? 'page' : 'pages'} viewed
+        {when(s.startedAt)} · {SESSION_LABEL[s.status]} · {pages} {pages === 1 ? 'page' : 'pages'}{' '}
+        viewed
       </span>
     </li>
   );
@@ -52,31 +54,22 @@ export function SupportAccessScreen() {
   const revoke = useRevokeSupportAccess();
   const [ticketRef, setTicketRef] = useState('');
   const [hours, setHours] = useState('24');
-  const [note, setNote] = useState('');
   const server = serverFieldErrors(grant.error);
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!ticketRef.trim()) return;
+    if (ticketRef.trim().length < 2) return;
     grant.mutate(
-      {
-        ticketRef: ticketRef.trim(),
-        hours: Number(hours),
-        ...(note.trim() ? { note: note.trim() } : {}),
-      },
-      {
-        onSuccess: () => {
-          setTicketRef('');
-          setNote('');
-        },
-      },
+      { ticketRef: ticketRef.trim(), hours: Number(hours) },
+      { onSuccess: () => setTicketRef('') },
     );
   }
 
   if (status.isPending) return <SkeletonRows rows={3} label="Loading support access…" />;
   if (status.isError)
     return <ErrorAlert error={status.error} title="We couldn't load support access" />;
-  const { grant: g, session, history } = status.data;
+  const active = status.data.grants.find((g) => g.status === 'active');
+  const open = status.data.sessions.find((s) => s.status === 'open');
 
   return (
     <div className="stack">
@@ -88,38 +81,36 @@ export function SupportAccessScreen() {
       </p>
 
       <Card title="Access">
-        {g ? (
+        {active ? (
           <div className="stack">
             <p>
-              <StatusPill tone={session ? 'warning' : 'info'}>
-                {session ? 'Support is viewing now' : 'Allowed'}
+              <StatusPill tone={open ? 'warning' : 'info'}>
+                {open ? 'Support is viewing now' : 'Allowed'}
               </StatusPill>
             </p>
             <dl className="details">
               <div>
                 <dt>Ticket</dt>
-                <dd>{g.ticketRef}</dd>
+                <dd>{active.ticketRef}</dd>
               </div>
               <div>
                 <dt>Allowed by</dt>
-                <dd>{g.grantedBy}</dd>
+                <dd>{active.grantedBy}</dd>
               </div>
               <div>
                 <dt>Until</dt>
-                <dd>{when(g.expiresAt)}</dd>
+                <dd>{when(active.expiresAt)}</dd>
               </div>
-              {g.note ? (
-                <div>
-                  <dt>Note</dt>
-                  <dd>{g.note}</dd>
-                </div>
-              ) : null}
             </dl>
             {revoke.isError ? (
               <ErrorAlert error={revoke.error} title="We couldn't withdraw access" />
             ) : null}
             <div>
-              <Button variant="danger" onClick={() => revoke.mutate()} disabled={revoke.isPending}>
+              <Button
+                variant="danger"
+                onClick={() => revoke.mutate(active.id)}
+                disabled={revoke.isPending}
+              >
                 Withdraw access now
               </Button>
             </div>
@@ -144,18 +135,11 @@ export function SupportAccessScreen() {
               onChange={(e) => setHours(e.target.value)}
               options={HOURS}
             />
-            <TextField
-              label="Note for support (optional)"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              error={server.note}
-              maxLength={500}
-            />
             {grant.isError && !Object.keys(server).length ? (
               <ErrorAlert error={grant.error} title="We couldn't allow access" />
             ) : null}
             <div>
-              <Button type="submit" disabled={grant.isPending || !ticketRef.trim()}>
+              <Button type="submit" disabled={grant.isPending || ticketRef.trim().length < 2}>
                 Allow support access
               </Button>
             </div>
@@ -164,10 +148,10 @@ export function SupportAccessScreen() {
       </Card>
 
       <Card title="Recent sessions">
-        {history.length ? (
+        {status.data.sessions.length ? (
           <ul className="support-access__list">
-            {history.map((s) => (
-              <SessionRow key={`${s.startedAt}-${s.staffName}`} s={s} />
+            {status.data.sessions.slice(0, 10).map((s) => (
+              <SessionRow key={s.id} s={s} />
             ))}
           </ul>
         ) : (

@@ -146,8 +146,8 @@ export const supportGrants = backofficeSchema.table('support_grants', {
   id: uuid('id').primaryKey(),
   targetOrgId: uuid('target_org_id').notNull(),
   ticketRef: text('ticket_ref').notNull(),
-  note: text('note'),
-  grantedBy: uuid('granted_by').notNull(),
+  level: text('level').$type<'view'>().notNull().default('view'),
+  grantedByUser: uuid('granted_by_user').notNull(),
   grantedByName: text('granted_by_name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
@@ -160,11 +160,10 @@ export const supportSessions = backofficeSchema.table('support_sessions', {
   targetOrgId: uuid('target_org_id').notNull(),
   staffId: uuid('staff_id').notNull(),
   ticketRef: text('ticket_ref').notNull(),
-  reason: text('reason').notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
-  endedReason: text('ended_reason').$type<'staff' | 'customer_revoked' | 'expired'>(),
+  endReason: text('end_reason').$type<'ended' | 'revoked'>(),
 });
 
 export const supportEvents = backofficeSchema.table('support_events', {

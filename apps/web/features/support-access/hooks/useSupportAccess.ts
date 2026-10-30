@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { createSupportAccessApi, type GrantSupportAccess } from '../data/api';
+import { createSupportAccessApi, type CreateGrant } from '../data/api';
 
 const keys = (orgId: string) => ({
   all: ['orgs', orgId, 'support-access'] as const,
@@ -38,7 +38,7 @@ export function useGrantSupportAccess() {
   const source = useApi();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: GrantSupportAccess) => source.grant(body),
+    mutationFn: (body: CreateGrant) => source.grant(body),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys(orgId).all }),
   });
 }
@@ -48,7 +48,7 @@ export function useRevokeSupportAccess() {
   const source = useApi();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: () => source.revoke(),
+    mutationFn: (grantId: string) => source.revoke(grantId),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys(orgId).all }),
   });
 }

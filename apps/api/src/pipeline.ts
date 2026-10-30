@@ -162,7 +162,7 @@ export function registerOperations(
       UNSAFE.has(method) &&
       module !== 'billing' &&
       // Withdrawing consent for support access must work however the account stands.
-      operationId !== 'revokeSupportAccess'
+      operationId !== 'revokeSupportAccessGrant'
     ) {
       throw new AppError(
         'org.read_only',

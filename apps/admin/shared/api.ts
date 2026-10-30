@@ -9,6 +9,7 @@ import {
   type OrgDetailDto,
   type OrgListItemDto,
   type SuspendCategory,
+  type SupportAccessDto,
   type SupportProjectDto,
   type Page,
   type PlanDraftInput,
@@ -91,6 +92,14 @@ export const api = {
   orgs: (query: { q?: string; cursor?: string; limit?: number }) =>
     call<Page<OrgListItemDto>>('listOrgs', { query }),
   org: (orgId: string) => call<OrgDetailDto>('getOrg', { params: { orgId } }),
+  supportAccess: (orgId: string) =>
+    call<SupportAccessDto>('getOrgSupportAccess', { params: { orgId } }),
+  supportProjects: (orgId: string) =>
+    call<{ items: SupportProjectDto[] }>('listSupportProjects', { params: { orgId } }),
+  startSupportSession: (orgId: string, ticketRef: string) =>
+    call<SupportAccessDto>('startSupportSession', { params: { orgId }, body: { ticketRef } }),
+  endSupportSession: (orgId: string, sessionId: string) =>
+    call<SupportAccessDto>('endSupportSession', { params: { orgId, sessionId } }),
   trialExtend: (orgId: string, body: { days: number; reason: string; ticketRef: string }) =>
     call<OrgDetailDto>('trialExtendOrg', { params: { orgId }, body }),
   changePlan: (orgId: string, body: { planCode: string; reason: string; ticketRef: string }) =>
@@ -101,11 +110,6 @@ export const api = {
   ) => call<OrgDetailDto>('suspendOrg', { params: { orgId }, body }),
   reactivate: (orgId: string, body: { reason: string; ticketRef: string }) =>
     call<OrgDetailDto>('reactivateOrg', { params: { orgId }, body }),
-  startSupport: (orgId: string, body: { reason: string; ticketRef: string }) =>
-    call<OrgDetailDto>('startSupportSession', { params: { orgId }, body }),
-  endSupport: (orgId: string) => call<OrgDetailDto>('endSupportSession', { params: { orgId } }),
-  supportProjects: (orgId: string) =>
-    call<{ items: SupportProjectDto[] }>('listSupportProjects', { params: { orgId } }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),

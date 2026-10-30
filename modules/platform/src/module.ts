@@ -1,13 +1,12 @@
 import { defineModule, type Entitlements, type KernelServices } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
-import type { SupportAccessPort } from './application/support-access';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
-import { platformRoutes } from './api/routes';
+import { platformRoutes, type SupportAccessPort } from './api/routes';
 
 export function createPlatformModule(
   services: KernelServices,
@@ -17,7 +16,7 @@ export function createPlatformModule(
     access: () => AccessService;
     defaultEntitlements: Entitlements;
     onOrgCreated?: OrgDeps['onOrgCreated'];
-    support: SupportAccessPort;
+    supportAccess?: SupportAccessPort;
   },
 ) {
   const access = new Proxy({} as AccessService, {
@@ -43,7 +42,7 @@ export function createPlatformModule(
       keyDates,
       companies,
       members,
-      support: deps.support,
+      ...(deps.supportAccess ? { supportAccess: deps.supportAccess } : {}),
     }),
     api: {
       resolveTenantAccess: orgs.resolveTenantAccess,
@@ -51,7 +50,7 @@ export function createPlatformModule(
       getProjectAccessState: members.getProjectAccessState,
       getProject: projects.get,
       getOrg: orgs.getOrg,
-      /** Project names for an open support session; read-only, org-wide, never a member's view (Sam 12 §4a). */
+      /** Project names for an open support session; read-only and org-wide, never a member's view (Sam 12 §4a). */
       listProjectsForSupport: (orgId: string, staffId: string) =>
         services.database.withTenantTx(
           {

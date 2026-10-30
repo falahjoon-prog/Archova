@@ -10,10 +10,10 @@ import { AppError } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
 import type { FlagService } from '../application/flags';
+import type { SupportAccessService } from '../application/support-access';
 import type { OrgActionService } from '../application/org-actions';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
-import type { SupportAccessService } from '../application/support-access';
 
 type Ops = typeof internalOperations;
 type Infer<T> = T extends z.ZodType ? z.infer<T> : Record<string, never>;
@@ -62,15 +62,14 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     if (!id) throw new AppError('org.not_found');
     return id;
   };
-  const orgDetail = async (id: string, staffId: string): Promise<OrgDetailDto> => {
-    const [org, history, account, actions, support] = await Promise.all([
+  const orgDetail = async (id: string): Promise<OrgDetailDto> => {
+    const [org, history, account, actions] = await Promise.all([
       d.customers.get(id),
       d.requests.list({ orgId: id, limit: 20 }),
       d.orgActions.account(id),
       d.orgActions.list(id),
-      d.support.forStaff(id, staffId),
     ]);
-    return { ...org, history, account, actions, support };
+    return { ...org, history, account, actions };
   };
   return {
     login: async (i) => {
@@ -95,41 +94,40 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     getOrg: async (i) => {
       const id = decodeId('org', i.params.orgId);
       if (!id) throw new AppError('org.not_found');
-      return ok(await orgDetail(id, me(i).staffId));
+      return ok(await orgDetail(id));
+    },
+    getOrgSupportAccess: async (i) => ok(await d.support.list(orgId(i.params.orgId))),
+    startSupportSession: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.support.start(me(i), id, i.body.ticketRef);
+      return ok(await d.support.list(id), 201);
+    },
+    listSupportProjects: async (i) =>
+      ok({ items: await d.support.viewProjects(me(i), orgId(i.params.orgId)) }),
+    endSupportSession: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.support.end(me(i), id, i.params.sessionId);
+      return ok(await d.support.list(id));
     },
     trialExtendOrg: async (i) => {
       const id = orgId(i.params.orgId);
       await d.orgActions.extendTrial(me(i), id, i.body);
-      return ok(await orgDetail(id, me(i).staffId));
+      return ok(await orgDetail(id));
     },
     changeOrgPlan: async (i) => {
       const id = orgId(i.params.orgId);
       await d.orgActions.changePlan(me(i), id, i.body);
-      return ok(await orgDetail(id, me(i).staffId));
+      return ok(await orgDetail(id));
     },
     suspendOrg: async (i) => {
       const id = orgId(i.params.orgId);
       await d.orgActions.suspend(me(i), id, i.body);
-      return ok(await orgDetail(id, me(i).staffId));
+      return ok(await orgDetail(id));
     },
     reactivateOrg: async (i) => {
       const id = orgId(i.params.orgId);
       await d.orgActions.reactivate(me(i), id, i.body);
-      return ok(await orgDetail(id, me(i).staffId));
-    },
-    startSupportSession: async (i) => {
-      const id = orgId(i.params.orgId);
-      await d.support.start(me(i), id, i.body);
-      return ok(await orgDetail(id, me(i).staffId), 201);
-    },
-    endSupportSession: async (i) => {
-      const id = orgId(i.params.orgId);
-      await d.support.end(me(i), id);
-      return ok(await orgDetail(id, me(i).staffId));
-    },
-    listSupportProjects: async (i) => {
-      const id = orgId(i.params.orgId);
-      return ok({ items: await d.support.viewProjects(me(i), id) });
+      return ok(await orgDetail(id));
     },
     listPlans: async () => ok({ items: await d.catalogue.listPlans() }),
     createPlan: async (i) => {

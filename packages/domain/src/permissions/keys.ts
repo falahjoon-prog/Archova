@@ -14,7 +14,6 @@ export const FOUNDATION_PERMISSIONS: readonly PermissionDefinition[] = [
     orgRoles: ['member', 'billing_admin'],
   },
   { key: 'platform.companies.manage', scope: 'org', tool: null, level: 'admin' },
-  { key: 'platform.support_access.manage', scope: 'org', tool: null, level: 'admin' },
   { key: 'access.templates.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
   { key: 'access.templates.manage', scope: 'org', tool: null, level: 'admin' },
   { key: 'platform.projects.read', scope: 'project', tool: null, level: 'read' },

@@ -1,295 +1,311 @@
-import { and, count, desc, eq, gt, isNull, lt } from 'drizzle-orm';
-import type { SupportProjectDto, SupportStaffDto } from '@archova/contracts';
+import { and, count, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
+import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
-import { staffUsers, supportEvents, supportGrants, supportSessions } from '../infra/tables';
+import {
+  staffUsers,
+  supportEvents,
+  supportGrants,
+  supportSessions,
+  tenantDirectory,
+} from '../infra/tables';
 import type { StaffContext } from './staff';
 
 const HOUR_MS = 3_600_000;
-const MAX_GRANT_HOURS = 72;
+/** A grant lasts up to 72 hours and a support session up to one hour (Sam 12 §4a). */
+export const MAX_GRANT_HOURS = 72;
+export const MAX_SESSION_MINUTES = 60;
 
-/** What the customer sees of a session: the staff member's name, never their email or role. */
-export interface SupportSessionView {
+export type GrantStatus = 'active' | 'expired' | 'revoked';
+export type SessionStatus = 'open' | 'ended' | 'expired' | 'revoked';
+export interface GrantView {
+  id: string;
+  ticketRef: string;
+  level: 'view';
+  grantedBy: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  status: GrantStatus;
+}
+export interface SessionView {
+  id: string;
+  grantId: string;
   staffName: string;
   ticketRef: string;
   startedAt: string;
   expiresAt: string;
   endedAt: string | null;
-  endedReason: 'staff' | 'customer_revoked' | 'expired' | null;
+  /** How many times the session read customer records (each is logged by record id). */
   pagesViewed: number;
+  status: SessionStatus;
 }
-
-export interface CustomerSupportStatus {
-  grant: {
-    ticketRef: string;
-    note: string | null;
-    grantedBy: string;
-    grantedAt: string;
-    expiresAt: string;
-  } | null;
-  session: SupportSessionView | null;
-  history: SupportSessionView[];
+export interface SupportAccessView {
+  grants: GrantView[];
+  sessions: SessionView[];
 }
-
-export interface SupportDeps extends Pick<KernelServices, 'database'> {
-  /** Reads a customer's projects under a read-only tenant transaction; wired lazily because `platform` is built later. */
-  reads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
-  now?: () => Date;
-}
-
-const norm = (ref: string) => ref.trim().toLowerCase();
 
 /**
- * Support access (Sam 12 §4a, X56). The customer's admin grants it for one ticket; staff with the Support or
- * Security lead role may then open a read-only session of at most one hour, only for that ticket and never past
- * the grant. Revoking ends every open session in the same transaction. Each project list a session reads is logged
- * by record id, and the customer sees the sessions with the staff member's name.
+ * Support access (Sam 12 §4a). Customers grant it, staff hold sessions inside a grant, and every grant, revoke and
+ * session is a row the customer can read. This slice is the consent and audit record; it does not let staff browse
+ * project content yet.
  */
-export function createSupportAccessService(deps: SupportDeps) {
+export function createSupportAccessService(
+  deps: Pick<KernelServices, 'database'> & {
+    /** Read-only views of customer data; `platform` is built after this module, so it is resolved lazily. */
+    reads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
+    now?: () => Date;
+  },
+) {
   const now = deps.now ?? (() => new Date());
   const tx = <T>(fn: (t: Tx) => Promise<T>) => deps.database.withGlobalTx('backoffice', fn);
 
-  /** The customer's open grant, or null when none, revoked or past its time. */
-  async function openGrant(t: Tx, orgId: string) {
-    const [g] = await t
-      .select()
-      .from(supportGrants)
-      .where(
-        and(
-          eq(supportGrants.targetOrgId, orgId),
-          isNull(supportGrants.revokedAt),
-          gt(supportGrants.expiresAt, now()),
-        ),
-      );
-    return g ?? null;
-  }
+  const grantStatus = (g: typeof supportGrants.$inferSelect, at: Date): GrantStatus =>
+    g.revokedAt ? 'revoked' : g.expiresAt <= at ? 'expired' : 'active';
+  const sessionStatus = (s: typeof supportSessions.$inferSelect, at: Date): SessionStatus =>
+    s.endedAt
+      ? s.endReason === 'revoked'
+        ? 'revoked'
+        : 'ended'
+      : s.expiresAt <= at
+        ? 'expired'
+        : 'open';
 
-  /** Sessions past their time are closed when next looked at, so history never shows an open one that has lapsed. */
-  async function closeLapsed(t: Tx, orgId: string) {
-    await t
-      .update(supportSessions)
-      .set({ endedAt: now(), endedReason: 'expired' })
-      .where(
-        and(
-          eq(supportSessions.targetOrgId, orgId),
-          isNull(supportSessions.endedAt),
-          lt(supportSessions.expiresAt, now()),
-        ),
-      );
-  }
-
-  async function sessionViews(t: Tx, orgId: string, limit: number): Promise<SupportSessionView[]> {
-    const rows = await t
-      .select({
-        s: supportSessions,
-        name: staffUsers.name,
-        pages: count(supportEvents.id),
-      })
-      .from(supportSessions)
-      .innerJoin(staffUsers, eq(staffUsers.id, supportSessions.staffId))
-      .leftJoin(supportEvents, eq(supportEvents.sessionId, supportSessions.id))
-      .where(eq(supportSessions.targetOrgId, orgId))
-      .groupBy(supportSessions.id, staffUsers.name)
-      .orderBy(desc(supportSessions.startedAt))
-      .limit(limit);
+  async function view(t: Tx, orgId: string): Promise<SupportAccessView> {
     const at = now();
-    return rows.map(({ s, name, pages }) => {
-      // A lapsed session is shown as ended without a write, so customer reads stay read-only.
-      const lapsed = s.endedAt === null && s.expiresAt <= at;
-      const endedAt = lapsed ? s.expiresAt : s.endedAt;
-      return {
-        staffName: name,
+    const [grants, sessions] = await Promise.all([
+      t
+        .select()
+        .from(supportGrants)
+        .where(eq(supportGrants.targetOrgId, orgId))
+        .orderBy(desc(supportGrants.createdAt))
+        .limit(50),
+      t
+        .select({ s: supportSessions, staffName: staffUsers.name })
+        .from(supportSessions)
+        .innerJoin(staffUsers, eq(staffUsers.id, supportSessions.staffId))
+        .where(eq(supportSessions.targetOrgId, orgId))
+        .orderBy(desc(supportSessions.startedAt))
+        .limit(50),
+    ]);
+    const pages = sessions.length
+      ? await t
+          .select({ id: supportEvents.sessionId, n: count() })
+          .from(supportEvents)
+          .where(
+            inArray(
+              supportEvents.sessionId,
+              sessions.map(({ s }) => s.id),
+            ),
+          )
+          .groupBy(supportEvents.sessionId)
+      : [];
+    const pagesBySession = new Map(pages.map((r) => [r.id, Number(r.n)]));
+    return {
+      grants: grants.map((g) => ({
+        id: g.id,
+        ticketRef: g.ticketRef,
+        level: g.level,
+        grantedBy: g.grantedByName,
+        createdAt: g.createdAt.toISOString(),
+        expiresAt: g.expiresAt.toISOString(),
+        revokedAt: g.revokedAt?.toISOString() ?? null,
+        status: grantStatus(g, at),
+      })),
+      sessions: sessions.map(({ s, staffName }) => ({
+        id: s.id,
+        grantId: s.grantId,
+        staffName,
         ticketRef: s.ticketRef,
         startedAt: s.startedAt.toISOString(),
         expiresAt: s.expiresAt.toISOString(),
-        endedAt: endedAt?.toISOString() ?? null,
-        endedReason: lapsed ? ('expired' as const) : s.endedReason,
-        pagesViewed: Number(pages),
-      };
-    });
-  }
-
-  // ---- customer side: called by `platform` inside the admin's own transaction ----
-
-  async function status(t: Tx, orgId: string): Promise<CustomerSupportStatus> {
-    const [g, history] = await Promise.all([openGrant(t, orgId), sessionViews(t, orgId, 10)]);
-    return {
-      grant: g
-        ? {
-            ticketRef: g.ticketRef,
-            note: g.note,
-            grantedBy: g.grantedByName,
-            grantedAt: g.createdAt.toISOString(),
-            expiresAt: g.expiresAt.toISOString(),
-          }
-        : null,
-      session: history.find((h) => h.endedAt === null) ?? null,
-      history,
+        endedAt: s.endedAt?.toISOString() ?? null,
+        pagesViewed: pagesBySession.get(s.id) ?? 0,
+        status: sessionStatus(s, at),
+      })),
     };
   }
 
-  /** The banner every user of the company sees while a session is open. */
-  async function banner(t: Tx, orgId: string): Promise<{ active: boolean; since: string | null }> {
-    const open = (await sessionViews(t, orgId, 10)).find((h) => h.endedAt === null);
-    return { active: Boolean(open), since: open?.startedAt ?? null };
-  }
+  const list = (orgId: string) => tx((t) => view(t, orgId));
 
+  /** Customer side: an org owner or admin grants view access (the caller checks the role). */
   async function grant(
-    t: Tx,
     orgId: string,
     by: { userId: string; name: string },
-    input: { ticketRef: string; hours: number; note?: string | undefined },
-  ) {
-    if (!Number.isInteger(input.hours) || input.hours < 1 || input.hours > MAX_GRANT_HOURS)
-      throw new AppError('validation_failed', `Choose 1 to ${MAX_GRANT_HOURS} hours.`);
-    // A grant that has lapsed without being revoked must not block a new one.
-    await t
-      .update(supportGrants)
-      .set({ revokedAt: now() })
-      .where(
-        and(
-          eq(supportGrants.targetOrgId, orgId),
-          isNull(supportGrants.revokedAt),
-          lt(supportGrants.expiresAt, now()),
-        ),
-      );
-    if (await openGrant(t, orgId))
-      throw new AppError(
-        'backoffice.support_grant_exists',
-        'Support access is already on. Withdraw it first to change it.',
-      );
+    input: { ticketRef: string; hours: number },
+  ): Promise<GrantView> {
+    if (input.hours < 1 || input.hours > MAX_GRANT_HOURS)
+      throw new AppError('validation_failed', `A grant lasts 1 to ${MAX_GRANT_HOURS} hours.`);
     const at = now();
-    await t.insert(supportGrants).values({
-      id: uuidv7(),
-      targetOrgId: orgId,
-      ticketRef: input.ticketRef.trim(),
-      note: input.note?.trim() || null,
-      grantedBy: by.userId,
-      grantedByName: by.name,
-      createdAt: at,
-      expiresAt: new Date(at.getTime() + input.hours * HOUR_MS),
+    const id = uuidv7();
+    await tx(async (t) => {
+      const [org] = await t
+        .select({ id: tenantDirectory.id })
+        .from(tenantDirectory)
+        .where(eq(tenantDirectory.id, orgId));
+      if (!org) throw new AppError('org.not_found');
+      await t.insert(supportGrants).values({
+        id,
+        targetOrgId: orgId,
+        ticketRef: input.ticketRef.trim(),
+        grantedByUser: by.userId,
+        grantedByName: by.name,
+        createdAt: at,
+        expiresAt: new Date(at.getTime() + input.hours * HOUR_MS),
+      });
+    });
+    const found = (await list(orgId)).grants.find((g) => g.id === id);
+    return found!;
+  }
+
+  /** Customer side: revoking takes effect at once and ends every open session under the grant. */
+  async function revoke(orgId: string, grantId: string) {
+    const at = now();
+    await tx(async (t) => {
+      const done = await t
+        .update(supportGrants)
+        .set({ revokedAt: at })
+        .where(
+          and(
+            eq(supportGrants.id, grantId),
+            eq(supportGrants.targetOrgId, orgId),
+            isNull(supportGrants.revokedAt),
+          ),
+        )
+        .returning({ id: supportGrants.id });
+      if (!done.length) throw new AppError('backoffice.support_grant_not_found');
+      await t
+        .update(supportSessions)
+        .set({ endedAt: at, endReason: 'revoked' })
+        .where(and(eq(supportSessions.grantId, grantId), isNull(supportSessions.endedAt)));
     });
   }
 
-  /** Withdraws consent and ends every open session now. Idempotent. */
-  async function revoke(t: Tx, orgId: string) {
-    const at = now();
-    await t
-      .update(supportGrants)
-      .set({ revokedAt: at })
-      .where(and(eq(supportGrants.targetOrgId, orgId), isNull(supportGrants.revokedAt)));
-    await t
-      .update(supportSessions)
-      .set({ endedAt: at, endedReason: 'customer_revoked' })
-      .where(and(eq(supportSessions.targetOrgId, orgId), isNull(supportSessions.endedAt)));
-  }
-
-  // ---- staff side ----
-
-  async function openSession(t: Tx, orgId: string, staffId: string) {
-    await closeLapsed(t, orgId);
-    const [s] = await t
-      .select()
-      .from(supportSessions)
-      .where(
-        and(
-          eq(supportSessions.targetOrgId, orgId),
-          eq(supportSessions.staffId, staffId),
-          isNull(supportSessions.endedAt),
-        ),
-      );
-    return s ?? null;
-  }
-
-  async function staffView(t: Tx, orgId: string, staffId: string): Promise<SupportStaffDto> {
-    const [g, s] = await Promise.all([openGrant(t, orgId), openSession(t, orgId, staffId)]);
-    return {
-      grant: g
-        ? {
-            ticketRef: g.ticketRef,
-            grantedBy: g.grantedByName,
-            expiresAt: g.expiresAt.toISOString(),
-          }
-        : null,
-      session: s
-        ? {
-            startedAt: s.startedAt.toISOString(),
-            expiresAt: s.expiresAt.toISOString(),
-            ticketRef: s.ticketRef,
-          }
-        : null,
-    };
-  }
-
-  const forStaff = (orgId: string, staffId: string) => tx((t) => staffView(t, orgId, staffId));
-
+  /** Staff side: start a session inside an active grant, for the grant's ticket, for at most an hour. */
   async function start(
     staff: StaffContext,
     orgId: string,
-    input: { reason: string; ticketRef: string },
-  ) {
+    ticketRef: string,
+  ): Promise<SessionView> {
+    const at = now();
+    const id = uuidv7();
     await tx(async (t) => {
-      const g = await openGrant(t, orgId);
+      const [g] = await t
+        .select()
+        .from(supportGrants)
+        .where(
+          and(
+            eq(supportGrants.targetOrgId, orgId),
+            isNull(supportGrants.revokedAt),
+            gt(supportGrants.expiresAt, at),
+          ),
+        )
+        .orderBy(desc(supportGrants.createdAt))
+        .limit(1);
       if (!g)
         throw new AppError(
-          'backoffice.support_not_granted',
-          'This company has not allowed support access, or it has lapsed.',
+          'backoffice.no_support_grant',
+          'This company has not granted support access, or the grant has ended.',
         );
-      // The customer named the ticket; staff must work to that one.
-      if (norm(g.ticketRef) !== norm(input.ticketRef))
+      if (g.ticketRef.toLowerCase() !== ticketRef.trim().toLowerCase())
         throw new AppError(
           'backoffice.support_ticket_mismatch',
-          'The ticket does not match the one the customer allowed.',
+          `The grant is for ticket ${g.ticketRef}.`,
         );
-      if (await openSession(t, orgId, staff.staffId))
-        throw new AppError(
-          'backoffice.support_session_open',
-          'You already have a session open here.',
-        );
-      const at = now();
-      await t.insert(supportSessions).values({
-        id: uuidv7(),
-        grantId: g.id,
-        targetOrgId: orgId,
-        staffId: staff.staffId,
-        ticketRef: g.ticketRef,
-        reason: input.reason,
-        startedAt: at,
-        // One hour, and never beyond what the customer allowed.
-        expiresAt: new Date(Math.min(at.getTime() + HOUR_MS, g.expiresAt.getTime())),
-      });
-    });
-    return forStaff(orgId, staff.staffId);
-  }
-
-  async function end(staff: StaffContext, orgId: string) {
-    await tx(async (t) => {
-      await t
-        .update(supportSessions)
-        .set({ endedAt: now(), endedReason: 'staff' })
+      const [open] = await t
+        .select({ id: supportSessions.id })
+        .from(supportSessions)
         .where(
           and(
             eq(supportSessions.targetOrgId, orgId),
             eq(supportSessions.staffId, staff.staffId),
             isNull(supportSessions.endedAt),
+            gt(supportSessions.expiresAt, at),
           ),
         );
+      if (open)
+        throw new AppError('backoffice.support_session_open', 'You already have a session open.');
+      await t.insert(supportSessions).values({
+        id,
+        grantId: g.id,
+        targetOrgId: orgId,
+        staffId: staff.staffId,
+        ticketRef: g.ticketRef,
+        startedAt: at,
+        expiresAt: new Date(
+          Math.min(at.getTime() + MAX_SESSION_MINUTES * 60_000, g.expiresAt.getTime()),
+        ),
+      });
     });
-    return forStaff(orgId, staff.staffId);
+    return (await list(orgId)).sessions.find((s) => s.id === id)!;
   }
 
-  /** Reads project names for the open session and logs the record ids that were shown. */
+  async function end(staff: StaffContext, orgId: string, sessionId: string) {
+    const done = await tx((t) =>
+      t
+        .update(supportSessions)
+        .set({ endedAt: now(), endReason: 'ended' })
+        .where(
+          and(
+            eq(supportSessions.id, sessionId),
+            eq(supportSessions.targetOrgId, orgId),
+            eq(supportSessions.staffId, staff.staffId),
+            isNull(supportSessions.endedAt),
+          ),
+        )
+        .returning({ id: supportSessions.id }),
+    );
+    if (!done.length) throw new AppError('backoffice.support_session_not_found');
+  }
+
+  /** Customer side: the banner every user of the company sees while a session is open. Read only. */
+  async function banner(orgId: string): Promise<{ active: boolean; since: string | null }> {
+    const at = now();
+    const [open] = await tx((t) =>
+      t
+        .select({ startedAt: supportSessions.startedAt })
+        .from(supportSessions)
+        .where(
+          and(
+            eq(supportSessions.targetOrgId, orgId),
+            isNull(supportSessions.endedAt),
+            gt(supportSessions.expiresAt, at),
+          ),
+        )
+        .orderBy(desc(supportSessions.startedAt))
+        .limit(1),
+    );
+    return { active: Boolean(open), since: open?.startedAt.toISOString() ?? null };
+  }
+
+  /**
+   * Staff side: project names and status for the caller's open session, logged by record id. The session must still
+   * sit inside an unrevoked, unexpired grant, so withdrawing consent stops reads at the next call.
+   */
   async function viewProjects(staff: StaffContext, orgId: string): Promise<SupportProjectDto[]> {
+    const at = now();
     const session = await tx(async (t) => {
-      const s = await openSession(t, orgId, staff.staffId);
-      // The grant may have been revoked or lapsed since the session began.
-      if (!s || !(await openGrant(t, orgId)))
-        throw new AppError(
-          'backoffice.support_no_session',
-          'Start a support session for this company first.',
+      const [s] = await t
+        .select({ id: supportSessions.id })
+        .from(supportSessions)
+        .innerJoin(supportGrants, eq(supportGrants.id, supportSessions.grantId))
+        .where(
+          and(
+            eq(supportSessions.targetOrgId, orgId),
+            eq(supportSessions.staffId, staff.staffId),
+            isNull(supportSessions.endedAt),
+            gt(supportSessions.expiresAt, at),
+            isNull(supportGrants.revokedAt),
+            gt(supportGrants.expiresAt, at),
+          ),
         );
       return s;
     });
+    if (!session)
+      throw new AppError(
+        'backoffice.support_no_session',
+        'Start a support session for this company first.',
+      );
     const projects = await deps.reads().projects(orgId, staff.staffId);
     await tx((t) =>
       t.insert(supportEvents).values({
@@ -303,7 +319,7 @@ export function createSupportAccessService(deps: SupportDeps) {
     return projects;
   }
 
-  return { status, banner, grant, revoke, forStaff, start, end, viewProjects };
+  return { list, grant, revoke, start, end, banner, viewProjects };
 }
 
 export type SupportAccessService = ReturnType<typeof createSupportAccessService>;
