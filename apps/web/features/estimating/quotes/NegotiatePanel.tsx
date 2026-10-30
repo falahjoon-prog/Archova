@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Button, Card, Select, StatusPill, Textarea, TextField } from '@archova/ui';
+import { Button, Card, Checkbox, Select, StatusPill, Textarea, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { companyName } from '@/shared/mocks/directory';
 import { useNegotiate } from '../hooks/useQuotes';
@@ -12,6 +12,7 @@ import {
   type NegotiateTopic,
 } from '../lib/negotiate';
 import type { Quote } from '../lib/quote-types';
+import { speak, speechSupported, stopSpeaking } from '../lib/speech';
 import { money, parseDollars } from './money';
 
 const TOPICS: ReadonlyArray<{ id: NegotiateTopic; label: string }> = [
@@ -83,12 +84,23 @@ export function NegotiatePanel({
   const [topic, setTopic] = useState<NegotiateTopic>('overview');
   const [answer, setAnswer] = useState<NegotiateAnswer | null>(null);
   const [draft, setDraft] = useState('');
+  const [readAloud, setReadAloud] = useState(false);
+  const [speaking, setSpeaking] = useState(false);
+  const canSpeak = speechSupported();
   const targetCents = parseDollars(target);
   const targetError = target.trim() !== '' && (targetCents === null || targetCents === 0);
   const selected = quotes.some((q) => q.id === quoteId) ? quoteId : (quotes[0]?.id ?? '');
 
+  useEffect(() => stopSpeaking, []);
+
+  const say = (text: string) => {
+    setSpeaking(true);
+    speak(text, () => setSpeaking(false));
+  };
+
   // A different quote is a different conversation.
   useEffect(() => {
+    stopSpeaking();
     setAnswer(null);
     ask.reset();
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,11 +113,13 @@ export function NegotiatePanel({
         onSuccess: (a) => {
           setAnswer(a);
           setDraft(a.draftMessage ?? '');
+          if (readAloud) say(a.reply);
         },
       },
     );
   };
-  const clip: Clip = ask.isPending ? 'talking' : answer?.counterCents ? 'presenting' : 'idle';
+  const clip: Clip =
+    ask.isPending || speaking ? 'talking' : answer?.counterCents ? 'presenting' : 'idle';
   const stance = answer ? STANCE[answer.stance] : null;
 
   return (
@@ -154,6 +168,34 @@ export function NegotiatePanel({
               </Button>
             ))}
           </div>
+          {canSpeak ? (
+            <div className="row-actions">
+              <Checkbox
+                label="Read Nova's replies aloud"
+                checked={readAloud}
+                onChange={(e) => {
+                  setReadAloud(e.target.checked);
+                  if (!e.target.checked) {
+                    stopSpeaking();
+                    setSpeaking(false);
+                  }
+                }}
+              />
+              {answer && !ask.isPending ? (
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    if (speaking) {
+                      stopSpeaking();
+                      setSpeaking(false);
+                    } else say(answer.reply);
+                  }}
+                >
+                  {speaking ? 'Stop' : 'Read aloud'}
+                </Button>
+              ) : null}
+            </div>
+          ) : null}
           <ErrorAlert error={ask.error} title="Nova couldn't help with this quote" />
           <div aria-live="polite" className="stack">
             {ask.isPending ? (
