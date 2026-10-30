@@ -282,8 +282,19 @@ describe('drawings API source', () => {
       files: [new File(['%PDF'], 'IFC4.pdf')],
     });
     expect(created).toEqual([
-      expect.objectContaining({ sheetNumber: 'A-101', rev: 'D', discipline: 'A', pageIndex: 0 }),
-      expect.objectContaining({ sheetNumber: 'A-11O', rev: '?', pageIndex: 1 }),
+      expect.objectContaining({
+        sheetNumber: 'A-101',
+        rev: 'D',
+        discipline: 'A',
+        pageIndex: 0,
+        aiSuggestionId: 'ais_1',
+      }),
+      expect.objectContaining({
+        sheetNumber: 'A-11O',
+        rev: '?',
+        pageIndex: 1,
+        aiSuggestionId: 'ais_2',
+      }),
     ]);
     expect(set.sheets.map((s) => s.fileName)).toEqual(['IFC4.pdf', 'IFC4.pdf']);
     expect(set.sheets[1]?.conflict).toBe('new_sheet');
