@@ -9,7 +9,14 @@ import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
-import type { CostImpact, Rfi, RfiActivity, RfiInput, RfiResponse } from '../lib/types';
+import type {
+  CostImpact,
+  NovaRfiDraft,
+  Rfi,
+  RfiActivity,
+  RfiInput,
+  RfiResponse,
+} from '../lib/types';
 import { rfisSource, type RfiFilters, type RfisSource } from './source';
 
 type ApiRfi = components['schemas']['Rfi'];
@@ -185,9 +192,63 @@ export function createRfisApi(orgId: string): RfisSource {
       unwrap(await api.POST(`${P}/{rfiId}/open`, { params: await current(projectId, rfiId) })),
     );
 
+  const decide = async (
+    projectId: string,
+    suggestionId: string,
+    decision: 'accepted' | 'edited' | 'rejected',
+  ) => {
+    await ensureCsrfToken();
+    unwrap(
+      await api.POST(
+        '/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision',
+        {
+          params: { path: { orgId, projectId, suggestionId } },
+          body: { decision },
+        },
+      ),
+    );
+  };
+
   return {
     list,
     get,
+    novaDecide: decide,
+
+    async novaDraftRfi(projectId, note): Promise<NovaRfiDraft> {
+      await ensureCsrfToken();
+      const d = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts', {
+          params: { path: { orgId, projectId } },
+          body: { note: note.trim() },
+        }),
+      );
+      return {
+        suggestionId: d.suggestionId,
+        subject: d.subject,
+        question: d.question,
+        discipline: d.discipline,
+        references: d.references.map((r, i) => ({
+          id: `${r.revisionId}:${r.page}:${i}`,
+          kind: r.sourceType,
+          sourceId: r.sourceId,
+          revisionId: r.revisionId,
+          label: `${r.reference ?? r.title}${r.sourceType === 'drawing' ? ` Rev ${r.revision}` : ''}`,
+          quote: r.quote,
+        })),
+        gaps: d.gaps,
+        unsupportedNumbers: d.unsupportedNumbers,
+        similar: d.similarRfis.map(({ id, number, subject }) => ({ id, number, subject })),
+        drawing: d.drawing
+          ? {
+              revisionId: d.drawing.drawingRevisionId,
+              label: `${d.drawing.sheetNumber} Rev ${d.drawing.rev}`,
+              x: d.drawing.pin.x,
+              y: d.drawing.pin.y,
+              scanned: d.drawing.scanned,
+            }
+          : null,
+      };
+    },
 
     async create(projectId, input, _actor, submit) {
       await ensureCsrfToken();
@@ -196,13 +257,27 @@ export function createRfisApi(orgId: string): RfisSource {
         unwrap(
           await api.POST(P, {
             params: { path: { orgId, projectId }, header: idempotencyKey() },
-            body: toRequest(
-              input,
-              input.drawing ? { drawingRevisionId: input.drawing.revisionId } : undefined,
-            ),
+            body: {
+              ...toRequest(
+                input,
+                input.drawing
+                  ? { drawingRevisionId: input.drawing.revisionId, ...input.drawing.pin }
+                  : undefined,
+              ),
+              ...(input.nova ? { aiSuggestionId: input.nova.suggestionId } : {}),
+            },
           }),
         ),
       );
+      // The draft is decided once the RFI exists: as it was, or edited. A failed record must not lose the RFI.
+      if (input.nova) {
+        const same =
+          input.subject.trim() === input.nova.subject.trim() &&
+          input.question.trim() === input.nova.question.trim();
+        await decide(projectId, input.nova.suggestionId, same ? 'accepted' : 'edited').catch(
+          () => undefined,
+        );
+      }
       return submit ? open(projectId, created.id) : created;
     },
 

@@ -89,6 +89,14 @@ export function useRfiMutations(projectId: string) {
 export function useRfiNova(projectId: string) {
   const rfisSource = useRfisSource();
   return {
+    /** F3: a new RFI drafted from a note typed on site. */
+    draftRfi: useMutation({
+      mutationFn: (note: string) => rfisSource.novaDraftRfi(projectId, note),
+    }),
+    decide: useMutation({
+      mutationFn: (v: { id: string; decision: 'accepted' | 'edited' | 'rejected' }) =>
+        rfisSource.novaDecide(projectId, v.id, v.decision),
+    }),
     draftResponse: useMutation({
       mutationFn: (rfiId: string) => rfisSource.novaDraftResponse(projectId, rfiId),
     }),

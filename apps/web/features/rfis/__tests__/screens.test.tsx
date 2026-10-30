@@ -54,6 +54,25 @@ async function renderNewRfi() {
 }
 
 describe('RfiNewScreen', () => {
+  it('fills the subject and question from a Nova draft of a site note, only when accepted (F3)', async () => {
+    const user = userEvent.setup();
+    renderInProject(<RfiNewScreen />);
+    await enterText(
+      user,
+      await screen.findByLabelText('What did you find on site?'),
+      'Slab edge at grid C is 20 mm proud.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Draft with Nova' }));
+    expect(await screen.findByText('Drafted RFI')).toBeTruthy();
+    expect((screen.getByLabelText(/^Subject/) as HTMLInputElement).value).toBe('');
+    await user.click(screen.getByRole('button', { name: 'Use this draft' }));
+    expect((screen.getByLabelText(/^Subject/) as HTMLInputElement).value).toMatch(/Slab edge/);
+    expect(
+      (screen.getByRole('textbox', { name: /^Question/ }) as HTMLTextAreaElement).value,
+    ).toMatch(/Please confirm/);
+    expect(screen.queryByText('Drafted RFI')).toBeNull();
+  });
+
   it('defaults the due date to 5 business days and blocks submit until required fields are set', async () => {
     const user = userEvent.setup();
     await renderNewRfi();
