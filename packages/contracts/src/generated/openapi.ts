@@ -1117,6 +1117,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/rfis/{rfiId}/answer-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a response to an RFI that already exists (F3).
+         * @description For the person who will answer: the builder's staff, or an assignee on the RFI. It is the same check as
+         *     sending a response, so an RFI the caller can't see is `rfi.not_found`, one they may not respond to is
+         *     `rfi.response_not_allowed`, and one that is not open or answered is `rfi.invalid_transition`.
+         *
+         *     Nova reads the question, the responses so far, the PDFs attached to them (text layer only, the first three pages)
+         *     and photos attached to them (up to three), and searches the project documents the caller can open, and for
+         *     builder staff earlier RFIs, for what bears on the question. It drafts only what those and the optional
+         *     `direction` support. It never decides for the person: what the documents and the direction leave open comes
+         *     back in `needsDecision`, and `basis` says what the draft rests on (`documents` when it cites a passage,
+         *     `direction` when only the person's direction supports it, `none` when nothing does, which the screen should
+         *     say before the person sends it). Numbers in the answer that appear in none of the thread, the direction, the
+         *     PDFs or a cited passage are listed in `unsupportedNumbers` for the person to check. Nova sends nothing: the
+         *     draft fills the response box, and the person edits and sends it with `addRfiResponse`, passing
+         *     `suggestionId` as `aiSuggestionId`, then decides the suggestion (`accepted` as is, `edited` when they changed
+         *     it, `rejected` when they sent something else). The draft is kept for the caller alone. Costs one Nova credit.
+         */
+        post: operations["draftRfiAnswerWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags": {
         parameters: {
             query?: never;
@@ -4175,6 +4213,39 @@ export interface components {
                 scanned: boolean;
             } | null;
         };
+        NovaRfiAnswerDraft: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /**
+             * @description The saved draft (`ais_`), private to the caller. Pass it as `aiSuggestionId` when sending the response,
+             *     then decide it: `accepted` as is, `edited` when the person changed the draft, `rejected` when they sent
+             *     something else.
+             */
+            suggestionId: string;
+            /** @description The RFI (`rfi_`) */
+            rfiId: string;
+            /** @description The response */
+            answer: string;
+            /**
+             * @description What the draft rests on: `documents` when it cites at least one passage, `direction` when it cites none but
+             *     the person gave a direction, `none` when nothing supports it.
+             * @enum {string}
+             */
+            basis: "documents" | "direction" | "none";
+            /** @description Points the thread, the direction and the documents leave open, for the person to settle before sending. */
+            needsDecision: string[];
+            /** @description Drawings, spec clauses and earlier RFIs the answer relies on, each with the words that support it. */
+            references: components["schemas"]["NovaCitation"][];
+            /** @description Numbers in the answer found in none of the thread, the direction, the PDFs or a cited passage. */
+            unsupportedNumbers: string[];
+            /** @description Files attached to the responses that Nova looked at, newest first, and whether it could use each. */
+            attachments: {
+                fileId: string;
+                name: string;
+                /** @description A photo was shown to Nova, or a PDF's text was read. A scan, a large photo or a file the caller can't open is not read. */
+                read: boolean;
+            }[];
+        };
         /** @enum {string} */
         ImportEntity: "rfi" | "defect" | "drawing_register" | "company";
         NovaImportMapping: {
@@ -5143,7 +5214,7 @@ export interface components {
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
-            /** @description The Nova `rfi.draft` suggestion this response was drafted from. */
+            /** @description The Nova `rfi.answer` suggestion this response was drafted from. */
             aiSuggestionId?: string;
         };
         RfiActivityItem: {
@@ -8645,6 +8716,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaRfiDraft"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftRfiAnswerWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /**
+                     * @description What the person wants the answer to say, in their own words ("approve the substitution", "use the
+                     *     90 minute rating"). Nova follows it and does not add decisions of its own. May be empty.
+                     */
+                    direction?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaRfiAnswerDraft"];
                 };
             };
             default: components["responses"]["Problem"];

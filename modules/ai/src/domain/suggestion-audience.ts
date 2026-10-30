@@ -32,6 +32,8 @@ export const SUGGESTION_TASKS: Readonly<Record<string, SuggestionTask>> = {
   // F5, F3: the person who asked for the tag or draft decides it; the photo, note or markup is theirs until they raise it.
   'defect.tag': { permission: 'defects.defects.create', audience: 'creator' },
   'rfi.draft': { permission: 'rfis.rfis.create', audience: 'creator' },
+  // F3: the person who asked for the response decides it; their direction and the thread are theirs until they send it.
+  'rfi.answer': { permission: 'rfis.rfis.respond', audience: 'creator' },
   // F31: the person who asked for the mapping confirms it; their file is theirs until they run the import.
   'import.mapping': { permission: 'ai.import_mapping.suggest', audience: 'creator' },
   // F22: the estimator who asked for the reading decides it (a subcontractor's prices are commercial in confidence).

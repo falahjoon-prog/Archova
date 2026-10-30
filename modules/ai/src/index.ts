@@ -17,6 +17,7 @@ import type { RfiSource } from './domain/rfi-source';
 import { createDiarySummaryService } from './application/diary-summary';
 import { createDiaryWeeklyService } from './application/diary-weekly';
 import type { DiaryDayForSummary } from './domain/diary-summary';
+import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
 import { createRfiDraftService } from './application/rfi-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createImportMappingService } from './application/import-mapping';
@@ -100,6 +101,7 @@ export type { VisualRaster };
 /** Renders one PDF page as greyscale (the whole page, longer side 2,000 px) for the linework compare. */
 export type RasterizePage = (file: ReadableFile, pageIndex: number) => Promise<VisualRaster>;
 export type { RfiDraft } from './application/rfi-draft';
+export type { RfiAnswerDraft, RfiForAnswer } from './application/rfi-answer';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';
 export type { QuoteReading } from './application/quote-read';
@@ -117,6 +119,7 @@ export {
   type SheetChange,
   type SheetLine,
 } from './domain/drawing-compare';
+export { reviewRfiAnswer, type ReviewedRfiAnswer, type RfiAnswerBasis } from './domain/rfi-answer';
 export {
   reviewRfiDraft,
   similarityPhrases,
@@ -206,6 +209,8 @@ export function createAiModule(
     diarySources: (scope: TenantScope, projectId: string, only?: string) => Promise<DiarySource[]>;
     /** diary.api.aiAccessScopes: the Ask scopes the caller holds for the diary. */
     diaryAccessScopes: (scope: TenantScope, projectId: string) => Promise<string[]>;
+    /** rfis.api.forAnswerDraft: an RFI and its responses, if the caller could respond to it (F3 answer draft). */
+    rfiForAnswer: (scope: TenantScope, projectId: string, rfiId: string) => Promise<RfiForAnswer>;
     /** rfis.api.findSimilar: RFIs the caller can see on the same subject (F3). */
     similarRfis: (
       scope: TenantScope,
@@ -347,6 +352,18 @@ export function createAiModule(
     getRevision: deps.getDrawingRevision,
     getMarkup: deps.getMarkup,
   });
+  // An answer may lean on earlier RFIs as precedent, so it searches documents and (builder staff only) RFIs.
+  const rfiAnswers = createRfiAnswerService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    accessScopes: async (scope, projectId) => [
+      ...(await deps.accessScopes(scope, projectId)),
+      ...(await deps.rfiAccessScopes(scope, projectId)),
+    ],
+    rfi: deps.rfiForAnswer,
+    readFile: deps.readFile,
+  });
   const defectTags = createDefectTagService({
     database: services.database,
     gateway,
@@ -407,6 +424,7 @@ export function createAiModule(
       inductionCurrency,
       inductionRefresh,
       rfiDrafts,
+      rfiAnswers,
       drawingCompare,
       diarySummary,
       diaryWeekly,
@@ -439,6 +457,8 @@ export function createAiModule(
       refreshInductionDraft: inductionRefresh.refresh,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
+      /** F3: a response to an RFI that exists, from its thread, its files and the project documents; nothing is sent. */
+      draftRfiAnswer: rfiAnswers.draft,
       /** F5: a title, trade, priority and assignee companies from a defect photo and its pin; nothing is saved. */
       tagDefect: defectTags.tag,
       /** F31: which field each column of an import file fills, and what its status values mean; nothing is imported. */

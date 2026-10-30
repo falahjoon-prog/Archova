@@ -455,6 +455,9 @@ describe('Nova induction drafts: refresh after a document changes (F33 I2)', () 
           diarySources: async () => [],
           diaryAccessScopes: async () => [],
           similarRfis: async () => [],
+          rfiForAnswer: async () => {
+            throw new Error('not used');
+          },
           getDrawingRevision: async () => {
             throw new Error('unused');
           },

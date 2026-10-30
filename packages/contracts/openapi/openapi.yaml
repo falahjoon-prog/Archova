@@ -1456,6 +1456,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaRfiDraft' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/rfis/{rfiId}/answer-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    post:
+      operationId: draftRfiAnswerWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: rfis.rfis.respond
+      summary: Nova drafts a response to an RFI that already exists (F3).
+      description: |
+        For the person who will answer: the builder's staff, or an assignee on the RFI. It is the same check as
+        sending a response, so an RFI the caller can't see is `rfi.not_found`, one they may not respond to is
+        `rfi.response_not_allowed`, and one that is not open or answered is `rfi.invalid_transition`.
+
+        Nova reads the question, the responses so far, the PDFs attached to them (text layer only, the first three pages)
+        and photos attached to them (up to three), and searches the project documents the caller can open, and for
+        builder staff earlier RFIs, for what bears on the question. It drafts only what those and the optional
+        `direction` support. It never decides for the person: what the documents and the direction leave open comes
+        back in `needsDecision`, and `basis` says what the draft rests on (`documents` when it cites a passage,
+        `direction` when only the person's direction supports it, `none` when nothing does, which the screen should
+        say before the person sends it). Numbers in the answer that appear in none of the thread, the direction, the
+        PDFs or a cited passage are listed in `unsupportedNumbers` for the person to check. Nova sends nothing: the
+        draft fills the response box, and the person edits and sends it with `addRfiResponse`, passing
+        `suggestionId` as `aiSuggestionId`, then decides the suggestion (`accepted` as is, `edited` when they changed
+        it, `rejected` when they sent something else). The draft is kept for the caller alone. Costs one Nova credit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                direction:
+                  type: string
+                  maxLength: 2000
+                  description: |
+                    What the person wants the answer to say, in their own words ("approve the substitution", "use the
+                    90 minute rating"). Nova follows it and does not add decisions of its own. May be empty.
+      responses:
+        '200':
+          description: The draft
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaRfiAnswerDraft' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/defect-tags:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5944,6 +5992,60 @@ components:
             scanned:
               type: boolean
               description: The sheet was read with OCR, so the person should check the quoted text against the drawing.
+    NovaRfiAnswerDraft:
+      type: object
+      required:
+        [
+          runId,
+          suggestionId,
+          rfiId,
+          answer,
+          basis,
+          needsDecision,
+          references,
+          unsupportedNumbers,
+          attachments,
+        ]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        suggestionId:
+          type: string
+          description: |
+            The saved draft (`ais_`), private to the caller. Pass it as `aiSuggestionId` when sending the response,
+            then decide it: `accepted` as is, `edited` when the person changed the draft, `rejected` when they sent
+            something else.
+        rfiId: { type: string, description: The RFI (`rfi_`) }
+        answer: { type: string, description: The response, written as the person answering. }
+        basis:
+          description: |
+            What the draft rests on: `documents` when it cites at least one passage, `direction` when it cites none but
+            the person gave a direction, `none` when nothing supports it.
+          type: string
+          enum: [documents, direction, none]
+        needsDecision:
+          description: Points the thread, the direction and the documents leave open, for the person to settle before sending.
+          type: array
+          items: { type: string }
+        references:
+          description: Drawings, spec clauses and earlier RFIs the answer relies on, each with the words that support it.
+          type: array
+          items: { $ref: '#/components/schemas/NovaCitation' }
+        unsupportedNumbers:
+          description: Numbers in the answer found in none of the thread, the direction, the PDFs or a cited passage.
+          type: array
+          items: { type: string }
+        attachments:
+          description: Files attached to the responses that Nova looked at, newest first, and whether it could use each.
+          type: array
+          items:
+            type: object
+            required: [fileId, name, read]
+            properties:
+              fileId: { type: string }
+              name: { type: string }
+              read:
+                type: boolean
+                description: A photo was shown to Nova, or a PDF's text was read. A scan, a large photo or a file the caller can't open is not read.
     ImportEntity:
       type: string
       enum: [rfi, defect, drawing_register, company]
@@ -7490,7 +7592,7 @@ components:
         aiSuggestionId:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
-          description: The Nova `rfi.draft` suggestion this response was drafted from.
+          description: The Nova `rfi.answer` suggestion this response was drafted from.
     RfiActivityItem:
       type: object
       required: [id, kind, at, actorId, details]
