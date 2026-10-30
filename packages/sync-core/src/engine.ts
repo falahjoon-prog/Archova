@@ -5,6 +5,7 @@ import { backoffDelay, DEFAULT_BACKOFF, type BackoffOptions } from './backoff';
 import {
   commandModule,
   type AttentionReason,
+  type Drain,
   type OutboxEntry,
   type SyncStore,
   type WipeCounts,
@@ -32,20 +33,7 @@ export interface Clock {
 
 export const systemClock: Clock = { now: () => Date.now() };
 
-/**
- * Access that has ended while the device still holds unsent work. `projectId: null` is the whole
- * organisation (signed out by an admin or removed); otherwise one project, or one module of it.
- */
-export interface Drain {
-  projectId: string | null;
-  module: string | null;
-  /** When access ended, if the server said; queued work created after it is not sent. */
-  revokedAt: string | null;
-  /** Epoch ms after which the remaining work is discarded and the data wiped. */
-  until: number;
-  /** The server's drain-only grant. The first one is kept: a later one would replace it server-side (X38). */
-  grant?: DrainGrant;
-}
+export type { Drain };
 
 export type SyncPhase =
   | 'idle'
@@ -125,6 +113,10 @@ function countByType(entries: OutboxEntry[]): WipeCounts {
   return counts;
 }
 
+function sameDrain(a: Drain, b: Drain) {
+  return a.projectId === b.projectId && a.module === b.module;
+}
+
 function sameRevokedScope(a: RevokedScope, b: RevokedScope) {
   return a.projectId === b.projectId && a.module === b.module;
 }
@@ -141,6 +133,7 @@ export class SyncEngine {
 
   private readonly listeners = new Set<(event: SyncEvent) => void>();
   private drains: Drain[] = [];
+  private restored = false;
   /** Revoked scopes not to request again, even if the app still lists them. */
   private revoked: RevokedScope[] = [];
   private phase: SyncPhase = 'idle';
@@ -176,6 +169,28 @@ export class SyncEngine {
     );
   }
 
+  /**
+   * Load the drains saved before the app last stopped. The app calls this once after creating the engine, before
+   * showing anything that depends on `canEdit`; `sync` also does it if the app did not.
+   */
+  async restore(): Promise<void> {
+    if (this.restored) return;
+    this.restored = true;
+    const saved = await this.store.loadDrains();
+    for (const drain of saved) {
+      if (this.drains.some((d) => sameDrain(d, drain))) continue;
+      this.drains.push(drain);
+      if (drain.projectId !== null) {
+        const scope = { projectId: drain.projectId, module: drain.module };
+        if (!this.revoked.some((r) => sameRevokedScope(r, scope))) this.revoked.push(scope);
+      }
+    }
+  }
+
+  private async persistDrains(): Promise<void> {
+    await this.store.saveDrains(this.drains);
+  }
+
   getDrains(): readonly Drain[] {
     return this.drains;
   }
@@ -196,6 +211,7 @@ export class SyncEngine {
         ...(first ? { grant: first } : {}),
       },
     ];
+    await this.persistDrains();
     await this.emitStatus();
   }
 
@@ -208,6 +224,7 @@ export class SyncEngine {
     await this.store.wipe();
     const discarded = countByType(unsent);
     this.drains = [];
+    await this.store.saveDrains([]);
     this.phase = 'wiped';
     this.emit({ type: 'purged', scope: null, discarded });
     await this.emitStatus();
@@ -257,6 +274,7 @@ export class SyncEngine {
     this.phase = 'syncing';
     await this.emitStatus();
     try {
+      await this.restore();
       const orgDrain = this.drains.find((d) => d.projectId === null);
       if (orgDrain) {
         await this.runDrain(orgDrain);
@@ -275,6 +293,17 @@ export class SyncEngine {
       await this.emitStatus();
       return { ok: true };
     } catch (error) {
+      // Access to the organisation ended (signed out by an admin, or removed): the 401 carries the drain grant.
+      // Send the queued work with it instead of asking for a new sign-in.
+      if (
+        error instanceof SyncHttpError &&
+        error.status === 401 &&
+        error.code === 'access.revoked' &&
+        !this.drains.some((d) => d.projectId === null)
+      ) {
+        await this.beginOrgDrain(null, error.drainGrant);
+        return this.run(options);
+      }
       return this.fail(error);
     }
   }
@@ -393,6 +422,7 @@ export class SyncEngine {
             : {}),
         });
       }
+      if (lostAccess.length > 0) await this.persistDrains();
       // A file still being scanned (409 `file.not_ready`) is not a failure: the command stays queued and the run
       // backs off. A blocked file (`file.blocked`, 422) is final and falls through to needs attention.
       const notReady = results.filter(
@@ -479,6 +509,7 @@ export class SyncEngine {
         this.emit({ type: 'purged', scope: revoked, discarded: countByType(unsent) });
       }
     }
+    await this.persistDrains();
   }
 
   private startProjectDrain(scope: RevokedScope) {
@@ -538,6 +569,7 @@ export class SyncEngine {
       await this.store.purgeScope({ projectId: drain.projectId, module: drain.module });
     }
     this.drains = this.drains.filter((d) => d !== drain);
+    await this.persistDrains();
     this.emit({
       type: 'purged',
       scope: drain.projectId === null ? null : { projectId: drain.projectId, module: drain.module },

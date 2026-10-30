@@ -20,16 +20,24 @@ export class SyncHttpError extends Error {
   readonly status: number;
   readonly code: string | undefined;
   readonly retryAfterMs: number | undefined;
+  /** The drain-only grant that came with an `access.revoked` problem (X38). */
+  readonly drainGrant: DrainGrant | undefined;
 
   constructor(
     status: number,
-    options: { code?: string; retryAfterMs?: number; message?: string } = {},
+    options: {
+      code?: string;
+      retryAfterMs?: number;
+      message?: string;
+      drainGrant?: DrainGrant;
+    } = {},
   ) {
     super(options.message ?? `Sync request failed with status ${status}`);
     this.name = 'SyncHttpError';
     this.status = status;
     this.code = options.code;
     this.retryAfterMs = options.retryAfterMs;
+    this.drainGrant = options.drainGrant;
   }
 }
 

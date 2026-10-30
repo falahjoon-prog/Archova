@@ -86,6 +86,17 @@ export const MIGRATIONS: readonly string[] = [
   ) WITHOUT ROWID;
   CREATE INDEX gate_queue_created ON gate_queue (created_at);
   `,
+  // 4: drains in progress (X38), so a restart inside the 72-hour window does not forget unsent work or its grant.
+  `
+  CREATE TABLE sync_drain (
+    project_id TEXT NOT NULL,
+    module     TEXT NOT NULL,
+    revoked_at TEXT,
+    until_ms   INTEGER NOT NULL,
+    grant_json TEXT,
+    PRIMARY KEY (project_id, module)
+  ) WITHOUT ROWID;
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

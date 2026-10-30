@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DRAIN_WINDOW_MS, projectScope, SyncHttpError, type SyncEvent } from '../src';
+import { DRAIN_WINDOW_MS, projectScope, SyncEngine, SyncHttpError, type SyncEvent } from '../src';
 import { addPhoto, createDefect, PROJECT_A, PROJECT_B, setup, updateDefect } from './helpers';
 
 describe('push', () => {
@@ -377,6 +377,78 @@ describe('lost access', () => {
     await engine.beginOrgDrain(null, grant('first'));
     await engine.beginOrgDrain(null, grant('second'));
     expect(engine.getDrains()[0]?.grant?.token).toBe('first');
+  });
+
+  it('remembers a drain across an app restart and still sends with its grant', async () => {
+    const first = setup();
+    await first.engine.sync();
+    await createDefect(first.store, first.clock, { title: 'Written before removal' });
+    // The app is killed while the drain push is on its way: the push never gets through.
+    let offline = true;
+    const real = first.server.transport();
+    const transport = {
+      pull: real.pull,
+      push: (...args: Parameters<typeof real.push>) =>
+        offline && args[1].drain ? Promise.reject(new SyncHttpError(0)) : real.push(...args),
+    };
+    const firstEngine = new SyncEngine({
+      store: first.store,
+      transport,
+      scopes: () => [projectScope(PROJECT_A, 'defects')],
+      clock: first.clock,
+      random: () => 0.5,
+    });
+    const grant = {
+      token: 'kept',
+      expiresAt: '2026-11-02T00:00:00Z',
+      orgId: 'org_1',
+      projectId: PROJECT_A,
+      module: null,
+    };
+    first.server.revoke({ projectId: PROJECT_A, module: null, drainGrant: grant });
+    expect(await firstEngine.sync()).toMatchObject({ ok: false, kind: 'retry' });
+    expect(await first.store.loadDrains()).toEqual([
+      expect.objectContaining({ projectId: PROJECT_A, grant }),
+    ]);
+    offline = false;
+
+    // The app restarts: a new engine over the same device database.
+    const second = new SyncEngine({
+      store: first.store,
+      transport: first.server.transport(),
+      scopes: () => [projectScope(PROJECT_A, 'defects')],
+      clock: first.clock,
+      random: () => 0.5,
+    });
+    expect(second.getDrains()).toEqual([]);
+    await second.restore();
+    expect(second.getDrains()).toEqual([expect.objectContaining({ projectId: PROJECT_A })]);
+    expect(second.canEdit(PROJECT_A, 'defects')).toBe(false);
+
+    await second.sync();
+    const drainPush = first.server.pushLog.find((p) => p.drain);
+    expect(drainPush?.grant?.token).toBe('kept');
+    expect(first.server.lateSubmissions).toHaveLength(1);
+    expect(await first.store.loadDrains()).toEqual([]);
+  });
+
+  it('starts an organisation drain from the access.revoked 401 and its grant', async () => {
+    const { server, store, clock, engine } = setup();
+    await createDefect(store, clock, { title: 'Before' });
+    clock.advance(60_000);
+    server.endAccess(clock.iso());
+    const grant = {
+      token: 'from-401',
+      expiresAt: '2026-11-02T00:00:00Z',
+      orgId: 'org_1',
+      projectId: null,
+      module: null,
+    };
+    server.failNext(1, new SyncHttpError(401, { code: 'access.revoked', drainGrant: grant }));
+
+    expect(await engine.sync()).toEqual({ ok: true });
+    expect(server.pushLog.find((p) => p.drain)?.grant?.token).toBe('from-401');
+    expect((await engine.status()).phase).toBe('wiped');
   });
 
   it('drains unsent work in a revoked project, then purges it', async () => {

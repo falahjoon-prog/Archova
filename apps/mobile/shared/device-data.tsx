@@ -69,7 +69,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
       keyOptions: { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY },
       randomBytes,
     })
-      .then((db) => {
+      .then(async (db) => {
         if (!alive) {
           void db.closeAsync();
           return;
@@ -87,6 +87,12 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           transport: createSyncTransport(api, orgId),
           scopes: () => deviceScopes(api, orgId),
         });
+        // Drains saved before the app last stopped, so the unsent work of a lost project is still sent.
+        await engine.restore();
+        if (!alive) {
+          void db.closeAsync();
+          return;
+        }
         const scheduler = new SyncScheduler(createDeviceSync({ uploads, signIns, engine }), {
           setTimeout: (cb, ms) => setTimeout(cb, ms),
           clearTimeout: (h) => clearTimeout(h as ReturnType<typeof setTimeout>),
