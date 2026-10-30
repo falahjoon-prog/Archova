@@ -4464,6 +4464,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InductionCompletion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/files/{fileId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getInductionFileDownload
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: A short-lived download link for a video, PDF or image this induction uses (and no other file).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadLink' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress:
     parameters:
       - $ref: '#/components/parameters/OrgId'

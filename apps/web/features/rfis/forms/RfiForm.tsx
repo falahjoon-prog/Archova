@@ -15,7 +15,20 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { RfiStatusPill } from '../components/RfiChips';
 import { useRfiNova } from '../hooks/useRfis';
 import { submitErrors } from '../lib/lifecycle';
-import { formatRfiNumber, type CostImpact, type NovaDraft, type RfiInput } from '../lib/types';
+import {
+  formatRfiNumber,
+  type CostImpact,
+  type NovaDraft,
+  type NovaRfiDraft,
+  type RfiInput,
+} from '../lib/types';
+
+const GAP_LABELS: Record<string, string> = {
+  location: 'where it is',
+  drawing_reference: 'which drawing',
+  proposed_solution: 'what you propose',
+  impact: 'the cost or time impact',
+};
 
 /** RFI-AC3: the project setting defaults to 5 business days. */
 export const DEFAULT_DUE_BUSINESS_DAYS = 5;
@@ -60,6 +73,8 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [improved, setImproved] = useState<NovaDraft | null>(null);
   const [questionFromNova, setQuestionFromNova] = useState(false);
+  const [note, setNote] = useState('');
+  const [draft, setDraft] = useState<NovaRfiDraft | null>(null);
 
   const set = <K extends keyof RfiInput>(key: K, value: RfiInput[K]) =>
     setV((prev) => ({ ...prev, [key]: value }));
@@ -97,6 +112,107 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
         <h2 id="rfi-question" className="panel-heading">
           Question
         </h2>
+        <Textarea
+          label="What did you find on site?"
+          rows={3}
+          value={note}
+          hint="A few words are enough. Nova drafts the subject and question from them; you edit and send."
+          onChange={(e) => setNote(e.target.value)}
+        />
+        <div>
+          <Button
+            type="button"
+            variant="nova"
+            size="sm"
+            disabled={!note.trim() || nova.draftRfi.isPending}
+            onClick={() => nova.draftRfi.mutate(note, { onSuccess: setDraft })}
+          >
+            <NovaIcon size={16} aria-hidden="true" />
+            {nova.draftRfi.isPending ? 'Drafting…' : 'Draft with Nova'}
+          </Button>
+        </div>
+        <ErrorAlert error={nova.draftRfi.error} title="Nova couldn't draft an RFI" />
+        {draft ? (
+          <NovaSuggestion
+            title="Drafted RFI"
+            citations={draft.references.map((r) => ({
+              id: r.id,
+              label: r.label,
+              href:
+                r.kind === 'drawing'
+                  ? `${webRoutes.drawing(org.orgSlug, project.projectId, r.sourceId, r.revisionId)}`
+                  : r.kind === 'rfi'
+                    ? webRoutes.rfi(org.orgSlug, project.projectId, r.sourceId)
+                    : webRoutes.documents(org.orgSlug, project.projectId),
+            }))}
+            actions={
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setV((prev) => ({
+                      ...prev,
+                      subject: draft.subject,
+                      question: draft.question,
+                      drawing: draft.drawing
+                        ? {
+                            sheetId:
+                              sheets.options.find((o) => o.revisionId === draft.drawing!.revisionId)
+                                ?.sheetId ?? '',
+                            revisionId: draft.drawing.revisionId,
+                            label: draft.drawing.label,
+                            pin: { x: draft.drawing.x, y: draft.drawing.y },
+                          }
+                        : prev.drawing,
+                      nova: {
+                        suggestionId: draft.suggestionId,
+                        subject: draft.subject,
+                        question: draft.question,
+                      },
+                    }));
+                    setQuestionFromNova(true);
+                    setDraft(null);
+                  }}
+                >
+                  Use this draft
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="tertiary"
+                  onClick={() => {
+                    nova.decide.mutate({ id: draft.suggestionId, decision: 'rejected' });
+                    setDraft(null);
+                  }}
+                >
+                  Discard
+                </Button>
+              </>
+            }
+          >
+            <p className="u-m-0">
+              <strong>{draft.subject}</strong>
+            </p>
+            <p className="u-m-0">{draft.question}</p>
+            {draft.gaps.length ? (
+              <p className="u-caption u-m-0">
+                Still to add: {draft.gaps.map((g) => GAP_LABELS[g] ?? g).join(', ')}.
+              </p>
+            ) : null}
+            {draft.unsupportedNumbers.length ? (
+              <p className="u-caption u-m-0">
+                Check these numbers, they aren&apos;t in your note or the drawings:{' '}
+                {draft.unsupportedNumbers.join(', ')}.
+              </p>
+            ) : null}
+            {draft.drawing?.scanned ? (
+              <p className="u-caption u-m-0">
+                The sheet was read from a scan, so check the quoted text against the drawing.
+              </p>
+            ) : null}
+          </NovaSuggestion>
+        ) : null}
         <TextField
           label="Subject"
           value={v.subject}
@@ -275,25 +391,25 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
           References and impact
         </h2>
         <div className="form-row">
-          {/* The API pins an RFI to a point on a sheet from the viewer, and has no spec or location fields yet. */}
+          {/* The API stores a pin to a drawing revision, but no spec section or location yet. */}
+          <Select
+            label="Drawing"
+            value={v.drawing?.sheetId ?? ''}
+            placeholder={sheets.isPending ? 'Loading drawings…' : 'No drawing'}
+            options={sheets.options.map((s) => ({
+              value: s.sheetId,
+              label: `${s.label} · ${s.title}`,
+            }))}
+            onChange={(e) => {
+              const s = sheets.options.find((o) => o.sheetId === e.target.value);
+              set(
+                'drawing',
+                s ? { sheetId: s.sheetId, revisionId: s.revisionId, label: s.label } : null,
+              );
+            }}
+          />
           {previewDataOnly ? (
             <>
-              <Select
-                label="Drawing"
-                value={v.drawing?.sheetId ?? ''}
-                placeholder={sheets.isPending ? 'Loading drawings…' : 'No drawing'}
-                options={sheets.options.map((s) => ({
-                  value: s.sheetId,
-                  label: `${s.label} · ${s.title}`,
-                }))}
-                onChange={(e) => {
-                  const s = sheets.options.find((o) => o.sheetId === e.target.value);
-                  set(
-                    'drawing',
-                    s ? { sheetId: s.sheetId, revisionId: s.revisionId, label: s.label } : null,
-                  );
-                }}
-              />
               <TextField
                 label="Spec section"
                 placeholder="0331 Structural concrete"

@@ -98,6 +98,11 @@ export type InductionDeps = WorkforceDeps & {
       fileId: string,
       opts?: { authorised?: boolean },
     ): Promise<{ projectId: string | null; status: string; createdBy: string | null }>;
+    downloadUrl(
+      scope: TenantScope,
+      fileId: string,
+      opts: { authorised: boolean },
+    ): Promise<{ url: string; expiresAt: Date }>;
   };
   documents: {
     getDocumentRef(
@@ -690,6 +695,31 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     return view(scope, completion, viewer);
   }
 
+  /**
+   * A video, PDF or image the worker's own induction uses, and nothing else. A worker holding only the sign-in
+   * permission has no `files.objects.read`, so the completion (theirs, or a manager's to see) is the grant.
+   */
+  async function downloadFile(
+    scope: TenantScope,
+    projectId: string,
+    completionId: string,
+    fileId: string,
+  ) {
+    const { completion } = await loadCompletion(scope, projectId, completionId);
+    const [version] = await scope.tx
+      .select({ content: inductionVersions.content })
+      .from(inductionVersions)
+      .where(eq(inductionVersions.id, completion.versionId));
+    const used = version?.content.sections.some((sec) =>
+      sec.blocks.some((b) => 'fileId' in b && b.fileId === fileId),
+    );
+    if (!used) throw new AppError('file.not_found');
+    // Last gate: the file itself must belong to this project, whatever the content says.
+    const file = await deps.files.getFile(scope, fileId, { authorised: true }).catch(() => null);
+    if (!file || file.projectId !== projectId) throw new AppError('file.not_found');
+    return deps.files.downloadUrl(scope, fileId, { authorised: true });
+  }
+
   async function inProgress(scope: TenantScope, projectId: string, completionId: string) {
     const loaded = await loadCompletion(scope, projectId, completionId);
     if (loaded.completion.status === 'completed')
@@ -1155,6 +1185,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
     versionForAi,
     start,
     getCompletion,
+    downloadFile,
     startForLink,
     latestCompletion,
     recordLanguage,

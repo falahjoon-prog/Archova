@@ -5,7 +5,7 @@
 import { companyName, personCompanyId, personName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { canTransition, submitErrors, type RfiAction } from '../lib/lifecycle';
-import type { NovaDraft, Rfi, RfiInput, RfiStatus } from '../lib/types';
+import type { NovaDraft, NovaRfiDraft, Rfi, RfiInput, RfiStatus } from '../lib/types';
 
 interface Store {
   rfis: Rfi[];
@@ -394,6 +394,30 @@ export const rfisSource = {
       400,
     );
   },
+
+  async novaDraftRfi(_projectId: string, note: string): Promise<NovaRfiDraft> {
+    const text = note.trim().replace(/\s+/g, ' ');
+    return delay(
+      {
+        suggestionId: mockId('ais'),
+        subject: text.split(/[.!?]/)[0]!.slice(0, 80) || 'Site query',
+        question: `On site we found: ${text} Please confirm how this should be built and say whether it changes scope or time.`,
+        discipline: null,
+        references: [],
+        gaps: ['location', 'proposed_solution'],
+        unsupportedNumbers: [],
+        similar: [],
+        drawing: null,
+      },
+      400,
+    );
+  },
+
+  async novaDecide(
+    _projectId: string,
+    _suggestionId: string,
+    _decision: 'accepted' | 'edited' | 'rejected',
+  ) {},
 
   async novaImproveQuestion(text: string): Promise<NovaDraft> {
     const trimmed = text.trim().replace(/\s+/g, ' ');

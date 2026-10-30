@@ -1,19 +1,28 @@
 // RFIs against the rfis module's endpoints (backend 04 §3, Ben's PR #10), with the same interface as the preview
 // source so the screens and hooks don't change. People and companies come back as ids; names are resolved from the
-// project's members. The API has one assignee list, a ball-in-court user list and a drawing pin; it has no spec
-// section, location or activity feed yet, and Nova's RFI drafts aren't served yet.
+// project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed;
+// it has no spec section or location yet, and Nova's answer drafts aren't served yet.
 
 import { ApiError, unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
+import { formatLocalDate } from '@/shared/lib/format';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
-import type { CostImpact, Rfi, RfiInput, RfiResponse } from '../lib/types';
+import type {
+  CostImpact,
+  NovaRfiDraft,
+  Rfi,
+  RfiActivity,
+  RfiInput,
+  RfiResponse,
+} from '../lib/types';
 import { rfisSource, type RfiFilters, type RfisSource } from './source';
 
 type ApiRfi = components['schemas']['Rfi'];
 type ApiResponse = components['schemas']['RfiResponse'];
 type ApiDetail = components['schemas']['RfiDetail'];
+type ApiActivity = components['schemas']['RfiActivityItem'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/rfis' as const;
 const ifMatch = (version: number | undefined) => ({ 'If-Match': `"${version ?? 0}"` });
@@ -28,8 +37,42 @@ function toResponse(r: ApiResponse, members: readonly ProjectPerson[]): RfiRespo
     authorCompanyId: author?.companyId ?? null,
     body: r.body,
     isOfficial: r.isOfficial,
-    aiSuggestionId: null,
+    aiSuggestionId: r.aiSuggestionId,
     createdAt: r.createdAt,
+  };
+}
+
+const ACTIONS: Record<ApiActivity['kind'], string> = {
+  created: 'created the RFI',
+  updated: 'updated the RFI',
+  opened: 'submitted the RFI',
+  responded: 'responded',
+  answered: 'marked the RFI answered',
+  closed: 'closed the RFI',
+  reopened: 'reopened the RFI',
+  voided: 'voided the RFI',
+  imported: 'imported the RFI',
+};
+
+export function toActivity(a: ApiActivity, members: readonly ProjectPerson[]): RfiActivity {
+  const d = a.details;
+  const person = (id: string) => members.find((m) => m.id === id)?.name ?? 'a project member';
+  const [before, after] = d.dueDate ?? [];
+  // A due date change is shown as before and after, so it isn't repeated as text.
+  const others = (d.changed ?? []).filter((f) => !(d.dueDate && f === 'dueDate'));
+  const changed = others.length ? `Changed: ${others.join(', ')}` : undefined;
+  return {
+    id: a.id,
+    actor: a.actorId ? person(a.actorId) : 'Someone on an access link or the system',
+    action: ACTIONS[a.kind] ?? a.kind,
+    ...(d.dueDate
+      ? {
+          before: before ? formatLocalDate(before) : 'No due date',
+          after: after ? formatLocalDate(after) : 'No due date',
+        }
+      : {}),
+    ...(d.reason ? { detail: d.reason } : changed ? { detail: changed } : {}),
+    at: a.at,
   };
 }
 
@@ -72,8 +115,8 @@ export function toRfi(
   };
 }
 
-/** The fields the API accepts from the form. Spec section, location and drawing aren't stored by the API yet. */
-function toRequest(input: RfiInput) {
+/** The fields the API accepts from the form. Spec section and location aren't stored by the API yet. */
+function toRequest(input: RfiInput, pin?: unknown) {
   return {
     subject: input.subject,
     question: input.question,
@@ -83,13 +126,24 @@ function toRequest(input: RfiInput) {
     ...(input.costImpact ? { costImpact: input.costImpact as CostImpact } : {}),
     ...(input.scheduleImpactDays !== null ? { scheduleImpactDays: input.scheduleImpactDays } : {}),
     isPrivate: input.isPrivate,
+    ...(pin !== undefined ? { pin: pin as never } : {}),
   };
 }
 
 export function createRfisApi(orgId: string): RfisSource {
   const members = (projectId: string) => projectMembers(orgId, projectId);
-  const detail = async (projectId: string, d: ApiDetail) =>
-    toRfi(d.rfi, d.responses, await members(projectId));
+  const detail = async (projectId: string, d: ApiDetail) => {
+    const [people, feed] = await Promise.all([
+      members(projectId),
+      api.GET(`${P}/{rfiId}/activity`, {
+        params: { path: { orgId, projectId, rfiId: d.rfi.id } },
+      }),
+    ]);
+    return {
+      ...toRfi(d.rfi, d.responses, people),
+      activity: unwrap(feed).data.map((x) => toActivity(x, people)),
+    };
+  };
 
   const get = async (projectId: string, rfiId: string) =>
     detail(
@@ -138,9 +192,63 @@ export function createRfisApi(orgId: string): RfisSource {
       unwrap(await api.POST(`${P}/{rfiId}/open`, { params: await current(projectId, rfiId) })),
     );
 
+  const decide = async (
+    projectId: string,
+    suggestionId: string,
+    decision: 'accepted' | 'edited' | 'rejected',
+  ) => {
+    await ensureCsrfToken();
+    unwrap(
+      await api.POST(
+        '/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision',
+        {
+          params: { path: { orgId, projectId, suggestionId } },
+          body: { decision },
+        },
+      ),
+    );
+  };
+
   return {
     list,
     get,
+    novaDecide: decide,
+
+    async novaDraftRfi(projectId, note): Promise<NovaRfiDraft> {
+      await ensureCsrfToken();
+      const d = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts', {
+          params: { path: { orgId, projectId } },
+          body: { note: note.trim() },
+        }),
+      );
+      return {
+        suggestionId: d.suggestionId,
+        subject: d.subject,
+        question: d.question,
+        discipline: d.discipline,
+        references: d.references.map((r, i) => ({
+          id: `${r.revisionId}:${r.page}:${i}`,
+          kind: r.sourceType,
+          sourceId: r.sourceId,
+          revisionId: r.revisionId,
+          label: `${r.reference ?? r.title}${r.sourceType === 'drawing' ? ` Rev ${r.revision}` : ''}`,
+          quote: r.quote,
+        })),
+        gaps: d.gaps,
+        unsupportedNumbers: d.unsupportedNumbers,
+        similar: d.similarRfis.map(({ id, number, subject }) => ({ id, number, subject })),
+        drawing: d.drawing
+          ? {
+              revisionId: d.drawing.drawingRevisionId,
+              label: `${d.drawing.sheetNumber} Rev ${d.drawing.rev}`,
+              x: d.drawing.pin.x,
+              y: d.drawing.pin.y,
+              scanned: d.drawing.scanned,
+            }
+          : null,
+      };
+    },
 
     async create(projectId, input, _actor, submit) {
       await ensureCsrfToken();
@@ -149,18 +257,39 @@ export function createRfisApi(orgId: string): RfisSource {
         unwrap(
           await api.POST(P, {
             params: { path: { orgId, projectId }, header: idempotencyKey() },
-            body: toRequest(input),
+            body: {
+              ...toRequest(
+                input,
+                input.drawing
+                  ? { drawingRevisionId: input.drawing.revisionId, ...input.drawing.pin }
+                  : undefined,
+              ),
+              ...(input.nova ? { aiSuggestionId: input.nova.suggestionId } : {}),
+            },
           }),
         ),
       );
+      // The draft is decided once the RFI exists: as it was, or edited. A failed record must not lose the RFI.
+      if (input.nova) {
+        const same =
+          input.subject.trim() === input.nova.subject.trim() &&
+          input.question.trim() === input.nova.question.trim();
+        await decide(projectId, input.nova.suggestionId, same ? 'accepted' : 'edited').catch(
+          () => undefined,
+        );
+      }
       return submit ? open(projectId, created.id) : created;
     },
 
     async update(projectId, id, input) {
       const params = await current(projectId, id);
+      // Leave the pin alone unless the sheet changed, so a spot marked in the viewer isn't lost on an edit.
+      const was = (await get(projectId, id)).drawing?.revisionId ?? null;
+      const now = input.drawing?.revisionId ?? null;
+      const pin = was === now ? undefined : now ? { drawingRevisionId: now } : null;
       return detail(
         projectId,
-        unwrap(await api.PATCH(`${P}/{rfiId}`, { params, body: toRequest(input) })),
+        unwrap(await api.PATCH(`${P}/{rfiId}`, { params, body: toRequest(input, pin) })),
       );
     },
 
@@ -173,7 +302,10 @@ export function createRfisApi(orgId: string): RfisSource {
         unwrap(
           await api.POST(`${P}/{rfiId}/responses`, {
             params: { path: { orgId, projectId, rfiId: id }, header: idempotencyKey() },
-            body: { body: input.body.trim() },
+            body: {
+              body: input.body.trim(),
+              ...(input.aiSuggestionId ? { aiSuggestionId: input.aiSuggestionId } : {}),
+            },
           }),
         ),
       );
