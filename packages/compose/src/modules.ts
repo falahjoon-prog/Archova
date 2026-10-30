@@ -68,6 +68,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   );
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
+    accounts: billing.api.accounts,
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.

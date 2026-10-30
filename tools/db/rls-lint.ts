@@ -18,6 +18,7 @@ export const GLOBAL_TABLES = new Set([
   'billing.plan_versions',
   'billing.price_books',
   'billing.prices',
+  'billing.org_accounts',
   'backoffice.staff_users',
   'backoffice.staff_role_assignments',
   'backoffice.staff_sessions',
@@ -28,6 +29,7 @@ export const GLOBAL_TABLES = new Set([
   'backoffice.flags',
   'backoffice.flag_targets',
   'backoffice.flag_changes',
+  'backoffice.org_actions',
 ]);
 
 /** Tenant tables keyed by something other than org_id. */

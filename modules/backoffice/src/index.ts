@@ -1,10 +1,11 @@
 // Public interface of @archova/mod-backoffice: the owner console's backend (backend 09). It changes nothing by
 // itself: catalogue changes go through `billing`, and every change that needs a second person is a request here.
 import { defineModule, type KernelServices } from '@archova/kernel';
-import type { CatalogueService } from '@archova/mod-billing';
+import type { AccountService, CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
+import { createOrgActionService } from './application/org-actions';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
 
@@ -22,7 +23,12 @@ export interface BackofficeConfig {
 
 export function createBackofficeModule(
   services: Pick<KernelServices, 'database'>,
-  deps: { catalogue: CatalogueService; config: BackofficeConfig; now?: () => Date },
+  deps: {
+    catalogue: CatalogueService;
+    accounts: AccountService;
+    config: BackofficeConfig;
+    now?: () => Date;
+  },
 ) {
   const staff = createStaffService({
     database: services.database,
@@ -37,12 +43,24 @@ export function createBackofficeModule(
     soloCoolingOffHours: deps.config.soloCoolingOffHours,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const orgActions = createOrgActionService({
+    database: services.database,
+    accounts: deps.accounts,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const flags = createFlagService({ database: services.database, staff });
   return {
     definition: defineModule({ name: 'backoffice' }),
     /** No customer routes: /internal/v1 is mounted by apps/api from `internal`. */
     routes: {},
-    internal: internalRoutes({ staff, requests, customers, catalogue: deps.catalogue, flags }),
+    internal: internalRoutes({
+      staff,
+      requests,
+      customers,
+      catalogue: deps.catalogue,
+      flags,
+      orgActions,
+    }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */
       resolveStaff: staff.resolve,

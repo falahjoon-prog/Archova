@@ -58,6 +58,11 @@ export const PROBLEM_CODES = {
   'backoffice.cohort_not_found': 404,
   'backoffice.cohort_exists': 409,
   'backoffice.owner_required': 403,
+  'backoffice.not_on_trial': 409,
+  'backoffice.trial_limit': 422,
+  'backoffice.already_suspended': 409,
+  'backoffice.not_suspended': 409,
+  'backoffice.downgrade_at_term_end': 422,
   // files
   'upload.not_found': 404,
   'upload.expired': 410,

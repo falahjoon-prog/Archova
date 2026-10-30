@@ -6,7 +6,9 @@ import {
   type FlagChangeInput,
   type FlagDto,
   type InternalOperationId,
+  type OrgDetailDto,
   type OrgListItemDto,
+  type SuspendCategory,
   type Page,
   type PlanDraftInput,
   type PlanDto,
@@ -87,8 +89,17 @@ export const api = {
   me: () => call<StaffDto>('getMe'),
   orgs: (query: { q?: string; cursor?: string; limit?: number }) =>
     call<Page<OrgListItemDto>>('listOrgs', { query }),
-  org: (orgId: string) =>
-    call<OrgListItemDto & { history: RequestDto[] }>('getOrg', { params: { orgId } }),
+  org: (orgId: string) => call<OrgDetailDto>('getOrg', { params: { orgId } }),
+  trialExtend: (orgId: string, body: { days: number; reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('trialExtendOrg', { params: { orgId }, body }),
+  changePlan: (orgId: string, body: { planCode: string; reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('changeOrgPlan', { params: { orgId }, body }),
+  suspend: (
+    orgId: string,
+    body: { category: SuspendCategory; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('suspendOrg', { params: { orgId }, body }),
+  reactivate: (orgId: string, body: { reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('reactivateOrg', { params: { orgId }, body }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),

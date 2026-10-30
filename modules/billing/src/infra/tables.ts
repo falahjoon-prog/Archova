@@ -50,3 +50,20 @@ export const prices = billingSchema.table('prices', {
   fromPrice: boolean('from_price').notNull().default(false),
   amountCents: bigint('amount_cents', { mode: 'number' }),
 });
+
+export const orgAccounts = billingSchema.table('org_accounts', {
+  id: uuid('id').primaryKey(),
+  planCode: text('plan_code').notNull().default('trial'),
+  state: text('state')
+    .$type<'trialing' | 'active' | 'past_due' | 'read_only' | 'cancelled'>()
+    .notNull()
+    .default('trialing'),
+  trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }),
+  trialExtendedDays: integer('trial_extended_days').notNull().default(0),
+  suspendedCategory: text('suspended_category').$type<SuspendCategory>(),
+  suspendedAt: timestamp('suspended_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SuspendCategory = 'abuse' | 'fraud' | 'security' | 'legal_order';
