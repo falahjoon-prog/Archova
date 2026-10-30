@@ -12,6 +12,8 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { ContractPlaybookService } from '../application/contract-playbook';
+import type { ContractReviewPayload, ContractReviewService } from '../application/contract-review';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
@@ -40,6 +42,10 @@ import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
 function payloadDto(task: string, payload: unknown): Record<string, unknown> {
+  if (task === 'contract.review') {
+    const p = payload as ContractReviewPayload;
+    return { ...p, fileId: encodeId('file', p.fileId) };
+  }
   if (task === 'induction.draft' || task === 'induction.refresh') {
     const p = payload as InductionDraftPayload;
     const cite = (c: DraftCitation) => ({ ...c, ...sourceIds(c) });
@@ -169,6 +175,7 @@ const TARGET_KINDS = {
   diary_entry: 'diary',
   tender_package: 'tenderPackage',
   rfi: 'rfi',
+  contract_file: 'file',
 } as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
@@ -231,6 +238,8 @@ export function aiRoutes(
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
+  playbooks: ContractPlaybookService,
+  contractReviews: ContractReviewService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -437,6 +446,45 @@ export function aiRoutes(
           runId: encodeId('aiRun', runId),
           suggestionId: encodeId('aiSuggestion', suggestionId),
           truncated,
+        },
+      };
+    },
+    getContractPlaybook: async (input) => {
+      const contractType = input.params.contractType;
+      const topics = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => playbooks.list(scope, contractType),
+        ro,
+      );
+      return { status: 200, body: { contractType, topics } };
+    },
+    replaceContractPlaybook: async (input) => {
+      const contractType = input.params.contractType;
+      const topics = await database.withTenantTx(requireTenant(input), (scope) =>
+        playbooks.replace(scope, contractType, input.body.topics),
+      );
+      return { status: 200, body: { contractType, topics } };
+    },
+    reviewContractWithNova: async (input) => {
+      const fileId = decodeId('file', input.body.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const { runId, suggestionId, ...payload } = await contractReviews.review(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          fileId,
+          contractType: input.body.contractType,
+          ourSide: input.body.ourSide,
+          baseForm: input.body.baseForm ?? null,
+          multiState: input.body.multiState ?? false,
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          ...payloadDto('contract.review', payload),
+          runId: encodeId('aiRun', runId),
+          suggestionId: encodeId('aiSuggestion', suggestionId),
         },
       };
     },

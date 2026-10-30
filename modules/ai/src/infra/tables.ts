@@ -196,3 +196,21 @@ export const drawingVisualCompares = ai.table('ai_drawing_visual_compares', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
+
+export const contractPlaybookTopics = ai.table('ai_contract_playbook_topics', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  contractType: text('contract_type').notNull(),
+  key: text('key').notNull(),
+  topic: text('topic').notNull(),
+  position: text('position').notNull(),
+  threshold: text('threshold'),
+  severity: text('severity').notNull(),
+  sortOrder: integer('sort_order').notNull().default(0),
+  fallbackTitle: text('fallback_title'),
+  fallbackWording: text('fallback_wording'),
+  fallbackApprovedBy: text('fallback_approved_by'),
+  fallbackApprovedOn: date('fallback_approved_on', { mode: 'string' }),
+  fallbackReviewBy: date('fallback_review_by', { mode: 'string' }),
+  ...audit,
+});

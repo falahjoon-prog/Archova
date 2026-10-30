@@ -44,6 +44,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.read': 1.5,
   // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
+  // F34: a whole contract read at the advanced tier; the design's estimate (design/09 CR1). Priya to confirm.
+  'contract.review': 40,
   'minutes.extract': 1.5,
 };
 

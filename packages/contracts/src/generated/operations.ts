@@ -412,6 +412,28 @@ export const ReadQuoteWithNovaBody = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
   "fileId": s.FileRefSchema,
 }).strict();
+export const ReviewContractWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReviewContractWithNovaBody = z.object({
+  "fileId": s.FileRefSchema,
+  "contractType": s.ContractTypeSchema,
+  "ourSide": z.enum(["we_pay", "we_get_paid"]),
+  "baseForm": z.enum(["as4000", "as2124", "as4902", "as4903", "other"]).nullable().optional(),
+  "multiState": z.boolean().optional(),
+}).strict();
+export const GetContractPlaybookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contractType": s.ContractTypeSchema,
+});
+export const ReplaceContractPlaybookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contractType": s.ContractTypeSchema,
+});
+export const ReplaceContractPlaybookBody = z.object({
+  "topics": z.array(s.ContractPlaybookTopicSchema).max(40),
+}).strict();
 export const NegotiateQuoteParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2245,6 +2267,42 @@ export const operations = {
     params: ReadQuoteWithNovaParams,
     query: null,
     body: ReadQuoteWithNovaBody,
+  },
+  reviewContractWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewContractWithNovaParams,
+    query: null,
+    body: ReviewContractWithNovaBody,
+  },
+  getContractPlaybook: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.settings.manage",
+    internal: false,
+    contentType: null,
+    params: GetContractPlaybookParams,
+    query: null,
+    body: null,
+  },
+  replaceContractPlaybook: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.settings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReplaceContractPlaybookParams,
+    query: null,
+    body: ReplaceContractPlaybookBody,
   },
   negotiateQuote: {
     method: 'POST',

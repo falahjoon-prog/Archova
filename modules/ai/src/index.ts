@@ -2,6 +2,8 @@
 // the codebase talks to an AI vendor (X26).
 import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
+import { createContractPlaybookService } from './application/contract-playbook';
+import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
 import { createAskService } from './application/ask';
 import { createSemanticSearchService } from './application/semantic-search';
@@ -396,6 +398,15 @@ export function createAiModule(
     readFile: deps.readFile,
     quotePackage: deps.quotePackage,
   });
+  const contractPlaybooks = createContractPlaybookService();
+  const contractReviews = createContractReviewService({
+    database: services.database,
+    gateway,
+    playbooks: contractPlaybooks,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    orgTimeZone: deps.orgTimeZone,
+  });
   const quoteNegotiations = createQuoteNegotiateService({
     database: services.database,
     gateway,
@@ -449,6 +460,8 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      contractPlaybooks,
+      contractReviews,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -485,6 +498,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
+      reviewContract: contractReviews.review,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */
