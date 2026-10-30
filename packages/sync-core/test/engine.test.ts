@@ -342,6 +342,43 @@ describe('lost access', () => {
     expect(server.pullLog.at(-1)!.scopes).toEqual([projectScope(PROJECT_A, 'defects')]);
   });
 
+  it('sends a project drain with the grant that came with the revocation, and keeps the first', async () => {
+    const { server, store, clock, engine } = setup();
+    await engine.sync();
+    server.failNext(1, new SyncHttpError(503));
+    await createDefect(store, clock, { title: 'Written before removal' });
+    await engine.sync();
+
+    const grant = (token: string) => ({
+      token,
+      expiresAt: '2026-11-02T00:00:00Z',
+      orgId: 'org_1',
+      projectId: PROJECT_A,
+      module: null,
+    });
+    server.revoke({ projectId: PROJECT_A, module: null, drainGrant: grant('first') });
+    await engine.sync();
+
+    const drainPush = server.pushLog.find((p) => p.drain);
+    expect(drainPush?.grant?.token).toBe('first');
+    expect(drainPush?.mutations.map((m) => m.projectId)).toEqual([PROJECT_A]);
+  });
+
+  it('keeps the first grant when a second arrives for a drain under way', async () => {
+    const { store, clock, engine } = setup();
+    await createDefect(store, clock, { title: 'One' });
+    const grant = (token: string) => ({
+      token,
+      expiresAt: '2026-11-02T00:00:00Z',
+      orgId: 'org_1',
+      projectId: null,
+      module: null,
+    });
+    await engine.beginOrgDrain(null, grant('first'));
+    await engine.beginOrgDrain(null, grant('second'));
+    expect(engine.getDrains()[0]?.grant?.token).toBe('first');
+  });
+
   it('drains unsent work in a revoked project, then purges it', async () => {
     const { server, store, clock, engine } = setup();
     await engine.sync();

@@ -53,10 +53,24 @@ export interface PullChange {
   data?: unknown;
 }
 
+/**
+ * Drain-only grant (X38): lets the device push work queued before access ended. The token is shown once and
+ * each new one replaces the last, so the device keeps the first per scope and stops pulling a lost project.
+ */
+export interface DrainGrant {
+  token: string;
+  expiresAt: string;
+  orgId: string;
+  projectId: string | null;
+  module: string | null;
+}
+
 /** Access the caller lost. `module: null` means the whole project (X14). */
 export interface RevokedScope {
   projectId: string;
   module: string | null;
+  /** Present once, when the scope was revoked after the device last pulled. */
+  drainGrant?: DrainGrant;
 }
 
 export interface PullRequest {
@@ -78,6 +92,8 @@ export interface PushMutation {
   /** A module use case, for example `defects.markReadyForReview`. */
   command: string;
   entityId: string;
+  /** Required when sending with a drain grant: the server checks it against the grant (X38). */
+  projectId?: string;
   baseVersion: number | null;
   /** When the user made the change on the device (ISO 8601 instant). Evidential records keep it (AC21). */
   clientAt: string;
@@ -91,6 +107,8 @@ export interface PushRequest {
 export interface SyncProblem {
   code: string;
   detail?: string;
+  /** On `access.revoked` when only a project or module was revoked. */
+  drainGrant?: DrainGrant;
 }
 
 export type PushResult =
