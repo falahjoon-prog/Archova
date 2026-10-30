@@ -25,6 +25,7 @@ import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { todayIn } from '@/shared/lib/format';
 import { MOCK_LEVELS, locationPath } from '@/shared/mocks/locations';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { useSheetPicker } from '@/features/drawings';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DefectDue, DefectStatusPill, StageBadge } from '../components/DefectChips';
@@ -46,6 +47,13 @@ export function DefectListScreen() {
   const project = useCurrentProject();
   const { live } = useDefectsSource();
   const dir = useProjectDirectory();
+  const sheets = useSheetPicker(project.projectId);
+  // The API stores the pinned revision only; its sheet comes from the register (a superseded revision isn't listed).
+  const pinLabel = (d: { drawing: { revisionId: string; label: string } | null }) =>
+    d.drawing
+      ? (sheets.options.find((o) => o.revisionId === d.drawing!.revisionId)?.label ??
+        'On a drawing')
+      : null;
   const subbies = dir.companies.filter((c) => c.isSubcontractor && dir.onProject(c.id));
   const trades = [...new Set(subbies.flatMap((c) => c.trades))];
   // A subcontractor can't list the org's companies, so their own company is named from the project context.
@@ -131,8 +139,8 @@ export function DefectListScreen() {
     {
       id: 'location',
       header: 'Location',
-      sortValue: (d) => locationPath(d.locationId) ?? d.drawing?.label ?? '',
-      cell: (d) => locationPath(d.locationId) ?? (live ? 'On a drawing' : d.drawing?.label) ?? '—',
+      sortValue: (d) => locationPath(d.locationId) ?? (live ? pinLabel(d) : d.drawing?.label) ?? '',
+      cell: (d) => locationPath(d.locationId) ?? (live ? pinLabel(d) : d.drawing?.label) ?? '—',
     },
     {
       id: 'company',
