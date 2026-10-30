@@ -61,6 +61,11 @@ export const ID_PREFIXES = {
   inductionQuizAttempt: 'iqa',
   workerCredential: 'wcr',
   accessLink: 'lnk',
+  meetingSeries: 'msr',
+  meeting: 'mtg',
+  meetingSection: 'msc',
+  meetingItem: 'mit',
+  meetingAttendee: 'mat',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

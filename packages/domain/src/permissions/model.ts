@@ -15,6 +15,7 @@ export const TOOLS = [
   'submittals',
   'diary',
   'defects',
+  'meetings',
   'inspections',
   'incidents',
   'budget',

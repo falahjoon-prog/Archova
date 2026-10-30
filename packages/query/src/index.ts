@@ -46,6 +46,7 @@ export type ProjectTool =
   | 'key-dates'
   | 'delays'
   | 'defects'
+  | 'meetings'
   | 'inductions'
   | 'attendance'
   | 'tender-packages'

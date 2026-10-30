@@ -1248,6 +1248,93 @@ export const AddLinkInductionCredentialBody = s.CreateWorkerCredentialRequestSch
 export const SignLinkInductionBody = s.SignInductionRequestSchema;
 export const AskLinkInductionBody = s.AskInductionRequestSchema;
 export const GetLinkInductionTranslationBody = s.TranslateInductionRequestSchema;
+export const ListMeetingSeriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingSeriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingSeriesBody = s.CreateMeetingSeriesRequestSchema;
+export const UpdateMeetingSeriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "seriesId": z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingSeriesBody = s.UpdateMeetingSeriesRequestSchema;
+export const CreateMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "seriesId": z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingBody = s.CreateMeetingRequestSchema;
+export const ListMeetingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListMeetingsQuery = z.object({
+  "seriesId": s.MeetingSeriesRefSchema.optional(),
+});
+export const GetMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingBody = s.UpdateMeetingRequestSchema;
+export const SetMeetingAttendeesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const SetMeetingAttendeesBody = s.SetMeetingAttendeesRequestSchema;
+export const AddMeetingSectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const AddMeetingSectionBody = s.AddMeetingSectionRequestSchema;
+export const CreateMeetingItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingItemBody = s.CreateMeetingItemRequestSchema;
+export const UpdateMeetingItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^mit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingItemBody = s.UpdateMeetingItemRequestSchema;
+export const DeleteMeetingItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^mit_[0-9A-Za-z]{26}$")),
+});
+export const IssueMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const IssueMeetingBody = s.IssueMeetingRequestSchema;
+export const GetMeetingMinutesPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+  "version": z.string().regex(new RegExp("^[1-9][0-9]{0,5}$")),
+});
+export const ListMeetingActionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListMeetingActionsQuery = z.object({
+  "scope": z.enum(["mine", "all"]).default("mine"),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -3974,6 +4061,186 @@ export const operations = {
     params: null,
     query: null,
     body: GetLinkInductionTranslationBody,
+  },
+  listMeetingSeries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingSeriesParams,
+    query: null,
+    body: null,
+  },
+  createMeetingSeries: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMeetingSeriesParams,
+    query: null,
+    body: CreateMeetingSeriesBody,
+  },
+  updateMeetingSeries: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMeetingSeriesParams,
+    query: null,
+    body: UpdateMeetingSeriesBody,
+  },
+  createMeeting: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}/meetings',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMeetingParams,
+    query: null,
+    body: CreateMeetingBody,
+  },
+  listMeetings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingsParams,
+    query: ListMeetingsQuery,
+    body: null,
+  },
+  getMeeting: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: GetMeetingParams,
+    query: null,
+    body: null,
+  },
+  updateMeeting: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMeetingParams,
+    query: null,
+    body: UpdateMeetingBody,
+  },
+  setMeetingAttendees: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/attendees',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: SetMeetingAttendeesParams,
+    query: null,
+    body: SetMeetingAttendeesBody,
+  },
+  addMeetingSection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/sections',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddMeetingSectionParams,
+    query: null,
+    body: AddMeetingSectionBody,
+  },
+  createMeetingItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/items',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMeetingItemParams,
+    query: null,
+    body: CreateMeetingItemBody,
+  },
+  updateMeetingItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-items/{itemId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMeetingItemParams,
+    query: null,
+    body: UpdateMeetingItemBody,
+  },
+  deleteMeetingItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-items/{itemId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: null,
+    params: DeleteMeetingItemParams,
+    query: null,
+    body: null,
+  },
+  issueMeeting: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/issue',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.issue",
+    internal: false,
+    contentType: "application/json",
+    params: IssueMeetingParams,
+    query: null,
+    body: IssueMeetingBody,
+  },
+  getMeetingMinutesPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/versions/{version}/pdf',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: GetMeetingMinutesPdfParams,
+    query: null,
+    body: null,
+  },
+  listMeetingActions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-actions',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingActionsParams,
+    query: ListMeetingActionsQuery,
+    body: null,
   },
 } as const satisfies Record<string, OperationDef>;
 

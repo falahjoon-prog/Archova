@@ -3974,6 +3974,259 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Meeting series on the project (weekly site meeting, PCG, design, safety). */
+        get: operations["listMeetingSeries"];
+        put?: never;
+        /** Create a series with default attendees and an agenda; the agenda starts from the template (MTG-AC1). */
+        post: operations["createMeetingSeries"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                seriesId: components["parameters"]["MeetingSeriesId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a series. Later meetings start from the previous meeting, so a new agenda applies to a series with no meetings yet. */
+        patch: operations["updateMeetingSeries"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                seriesId: components["parameters"]["MeetingSeriesId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the next meeting of a series. Open items from the previous meeting come with it, keeping their numbers (MTG-AC2). */
+        post: operations["createMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Meetings on the project, newest first. Outsiders see only issued meetings they attended. */
+        get: operations["listMeetings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        /** A meeting with its attendance, agenda and items. Outsiders get the latest issued version without internal-only sections (MTG-AC7). */
+        get: operations["getMeeting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change the title, time, place, chair or corrections date. Editing after issue does not change the issued version; issue again to publish a correction. */
+        patch: operations["updateMeeting"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/attendees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the attendance list (present, apologies, absent). */
+        put: operations["setMeetingAttendees"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add an agenda section to this meeting; it takes the next section number. */
+        post: operations["addMeetingSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record an item as information, decision or action. It is numbered section.item (MTG-US4). */
+        post: operations["createMeetingItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meeting-items/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["MeetingItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an item raised in this meeting. An item carried from an earlier meeting can't be removed; close it. */
+        delete: operations["deleteMeetingItem"];
+        options?: never;
+        head?: never;
+        /** Change an item: text, kind, owner, due date, link or status. Returns the meeting it is in. */
+        patch: operations["updateMeetingItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze the minutes as the next version and record who they went to. A correction after issue is the next version; every version stays (MTG-AC4). */
+        post: operations["issueMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/versions/{version}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+                version: components["parameters"]["MeetingVersion"];
+            };
+            cookie?: never;
+        };
+        /** The issued minutes as a PDF, base64 in JSON. Outsiders get it without internal-only sections. */
+        get: operations["getMeetingMinutesPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/meeting-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Open actions across the project's meetings: yours and your company's by default (MTG-US9). */
+        get: operations["listMeetingActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7442,6 +7695,260 @@ export interface components {
                 options: string[];
             }[];
         };
+        MeetingSeriesRef: string;
+        /** @enum {string} */
+        MeetingTemplate: "site_coordination" | "pcg" | "design_coordination" | "safety_committee" | "custom";
+        /** @enum {string} */
+        MeetingItemKind: "information" | "decision" | "action";
+        /** @enum {string} */
+        MeetingItemStatus: "open" | "closed";
+        /** @enum {string} */
+        MeetingAttendance: "present" | "apologies" | "absent";
+        MeetingAgendaSection: {
+            title: string;
+            /** @description Left out of what outsiders see and of the PDF they get (MTG-AC7). */
+            internalOnly: boolean;
+        };
+        MeetingPerson: {
+            name: string;
+            companyName?: string;
+            role?: string;
+            /** Format: email */
+            email?: string | null;
+            userId?: string | null;
+            companyId?: string | null;
+        };
+        MeetingPersonView: {
+            name: string;
+            companyName: string;
+            role: string;
+            email: string | null;
+            userId: string | null;
+            companyId: string | null;
+        };
+        MeetingSeries: {
+            id: string;
+            projectId: string;
+            name: string;
+            template: components["schemas"]["MeetingTemplate"];
+            cadence: string | null;
+            defaultAttendees: components["schemas"]["MeetingPersonView"][];
+            agenda: components["schemas"]["MeetingAgendaSection"][];
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        MeetingSeriesList: {
+            data: components["schemas"]["MeetingSeries"][];
+        };
+        CreateMeetingSeriesRequest: {
+            name: string;
+            template?: components["schemas"]["MeetingTemplate"];
+            cadence?: string | null;
+            defaultAttendees?: components["schemas"]["MeetingPerson"][];
+            agenda?: components["schemas"]["MeetingAgendaSection"][];
+        };
+        UpdateMeetingSeriesRequest: {
+            name?: string;
+            cadence?: string | null;
+            defaultAttendees?: components["schemas"]["MeetingPerson"][];
+            agenda?: components["schemas"]["MeetingAgendaSection"][];
+        };
+        MeetingSummary: {
+            id: string;
+            seriesId: string;
+            seriesName: string;
+            number: number;
+            title: string;
+            /** Format: date-time */
+            heldAt: string;
+            /** @enum {string} */
+            status: "draft" | "issued";
+            issuedVersion: number;
+            openActions: number;
+        };
+        MeetingList: {
+            data: components["schemas"]["MeetingSummary"][];
+        };
+        Meeting: {
+            id: string;
+            projectId: string;
+            seriesId: string;
+            seriesName: string;
+            number: number;
+            title: string;
+            /** Format: date-time */
+            heldAt: string;
+            location: string;
+            chairUserId: string | null;
+            /** @enum {string} */
+            status: "draft" | "issued";
+            /** Format: date */
+            correctionsBy: string | null;
+            issuedVersion: number;
+            version: number;
+        };
+        MeetingAttendeeView: components["schemas"]["MeetingPersonView"] & {
+            id: string;
+            attendance: components["schemas"]["MeetingAttendance"];
+        };
+        MeetingItemHistory: {
+            meetingId: string;
+            meetingNumber: number;
+            /** Format: date-time */
+            heldAt: string;
+            itemNo: string;
+            body: string;
+            status: components["schemas"]["MeetingItemStatus"];
+        };
+        MeetingLink: {
+            /** @enum {string} */
+            type: "rfi" | "variation" | "defect";
+            id: string;
+        };
+        MeetingItem: {
+            id: string;
+            sectionId: string;
+            /** @description The first appearance of the item; carried copies share it. */
+            threadId: string;
+            /** @description section.item, e.g. 3.2 */
+            itemNo: string;
+            kind: components["schemas"]["MeetingItemKind"];
+            body: string;
+            status: components["schemas"]["MeetingItemStatus"];
+            ownerCompanyId: string | null;
+            ownerUserId: string | null;
+            ownerName: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            link: components["schemas"]["MeetingLink"] | null;
+            carriedCount: number;
+            /** @description An open action carried forward three or more times. */
+            stale: boolean;
+            /** @description Earlier appearances of the item, oldest first. */
+            history: components["schemas"]["MeetingItemHistory"][];
+            version: number;
+        };
+        MeetingSectionView: {
+            id: string;
+            position: number;
+            title: string;
+            internalOnly: boolean;
+            items: components["schemas"]["MeetingItem"][];
+        };
+        MeetingVersion: {
+            version: number;
+            /** Format: date-time */
+            issuedAt: string;
+            issuedBy: string | null;
+            /** Format: date */
+            correctionsBy: string | null;
+            note: string | null;
+            recipients: {
+                name: string;
+                email: string;
+            }[];
+        };
+        MeetingViewer: {
+            /** @enum {string} */
+            audience: "internal" | "external";
+            canEdit: boolean;
+            canIssue: boolean;
+            /** @description Set when the caller sees an issued version rather than the working minutes. */
+            viewingVersion: number | null;
+        };
+        MeetingDetail: {
+            meeting: components["schemas"]["Meeting"];
+            attendees: components["schemas"]["MeetingAttendeeView"][];
+            sections: components["schemas"]["MeetingSectionView"][];
+            versions: components["schemas"]["MeetingVersion"][];
+            viewer: components["schemas"]["MeetingViewer"];
+        };
+        CreateMeetingRequest: {
+            title?: string;
+            /** Format: date-time */
+            heldAt: string;
+            location?: string;
+        };
+        UpdateMeetingRequest: {
+            title?: string;
+            /** Format: date-time */
+            heldAt?: string;
+            location?: string;
+            chairUserId?: string | null;
+            /** Format: date */
+            correctionsBy?: string | null;
+        };
+        SetMeetingAttendeesRequest: {
+            attendees: (components["schemas"]["MeetingPerson"] & {
+                attendance?: components["schemas"]["MeetingAttendance"];
+            })[];
+        };
+        AddMeetingSectionRequest: {
+            title: string;
+            internalOnly?: boolean;
+        };
+        CreateMeetingItemRequest: {
+            sectionId: string;
+            kind: components["schemas"]["MeetingItemKind"];
+            body: string;
+            status?: components["schemas"]["MeetingItemStatus"];
+            ownerCompanyId?: string | null;
+            ownerUserId?: string | null;
+            ownerName?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            link?: components["schemas"]["MeetingLink"] | null;
+        };
+        UpdateMeetingItemRequest: {
+            kind?: components["schemas"]["MeetingItemKind"];
+            body?: string;
+            status?: components["schemas"]["MeetingItemStatus"];
+            ownerCompanyId?: string | null;
+            ownerUserId?: string | null;
+            ownerName?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            link?: components["schemas"]["MeetingLink"] | null;
+        };
+        IssueMeetingRequest: {
+            recipients: {
+                name: string;
+                /** Format: email */
+                email: string;
+            }[];
+            /** Format: date */
+            correctionsBy?: string | null;
+            note?: string | null;
+        };
+        MeetingPdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        MeetingAction: {
+            id: string;
+            meetingId: string;
+            meetingNumber: number;
+            meetingTitle: string;
+            seriesName: string;
+            itemNo: string;
+            body: string;
+            ownerCompanyId: string | null;
+            ownerUserId: string | null;
+            ownerName: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            isOverdue: boolean;
+            carriedCount: number;
+            stale: boolean;
+        };
+        MeetingActionList: {
+            data: components["schemas"]["MeetingAction"][];
+        };
     };
     responses: {
         /** @description RFC 9457 problem */
@@ -7479,6 +7986,10 @@ export interface components {
         IdempotencyKey: string;
         /** @description The ETag from the last read. Missing → 428, stale → 412. */
         IfMatch: string;
+        MeetingSeriesId: string;
+        MeetingId: string;
+        MeetingItemId: string;
+        MeetingVersion: string;
     };
     requestBodies: never;
     headers: {
@@ -13951,6 +14462,438 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InductionTranslation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMeetingSeries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingSeriesList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMeetingSeries: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMeetingSeriesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingSeries"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMeetingSeries: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                seriesId: components["parameters"]["MeetingSeriesId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeetingSeriesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingSeries"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMeeting: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                seriesId: components["parameters"]["MeetingSeriesId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMeetingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMeetings: {
+        parameters: {
+            query?: {
+                seriesId?: components["schemas"]["MeetingSeriesRef"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMeeting: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeetingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setMeetingAttendees: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetMeetingAttendeesRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addMeetingSection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddMeetingSectionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createMeetingItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMeetingItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteMeetingItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["MeetingItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateMeetingItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["MeetingItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMeetingItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    issueMeeting: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssueMeetingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getMeetingMinutesPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+                version: components["parameters"]["MeetingVersion"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMeetingActions: {
+        parameters: {
+            query?: {
+                scope?: "mine" | "all";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingActionList"];
                 };
             };
             default: components["responses"]["Problem"];
