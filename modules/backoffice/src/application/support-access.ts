@@ -1,7 +1,14 @@
-import { and, desc, eq, gt, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
+import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
-import { staffUsers, supportGrants, supportSessions, tenantDirectory } from '../infra/tables';
+import {
+  staffUsers,
+  supportEvents,
+  supportGrants,
+  supportSessions,
+  tenantDirectory,
+} from '../infra/tables';
 import type { StaffContext } from './staff';
 
 const HOUR_MS = 3_600_000;
@@ -29,6 +36,8 @@ export interface SessionView {
   startedAt: string;
   expiresAt: string;
   endedAt: string | null;
+  /** How many times the session read customer records (each is logged by record id). */
+  pagesViewed: number;
   status: SessionStatus;
 }
 export interface SupportAccessView {
@@ -42,7 +51,11 @@ export interface SupportAccessView {
  * project content yet.
  */
 export function createSupportAccessService(
-  deps: Pick<KernelServices, 'database'> & { now?: () => Date },
+  deps: Pick<KernelServices, 'database'> & {
+    /** Read-only views of customer data; `platform` is built after this module, so it is resolved lazily. */
+    reads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
+    now?: () => Date;
+  },
 ) {
   const now = deps.now ?? (() => new Date());
   const tx = <T>(fn: (t: Tx) => Promise<T>) => deps.database.withGlobalTx('backoffice', fn);
@@ -75,6 +88,19 @@ export function createSupportAccessService(
         .orderBy(desc(supportSessions.startedAt))
         .limit(50),
     ]);
+    const pages = sessions.length
+      ? await t
+          .select({ id: supportEvents.sessionId, n: count() })
+          .from(supportEvents)
+          .where(
+            inArray(
+              supportEvents.sessionId,
+              sessions.map(({ s }) => s.id),
+            ),
+          )
+          .groupBy(supportEvents.sessionId)
+      : [];
+    const pagesBySession = new Map(pages.map((r) => [r.id, Number(r.n)]));
     return {
       grants: grants.map((g) => ({
         id: g.id,
@@ -94,6 +120,7 @@ export function createSupportAccessService(
         startedAt: s.startedAt.toISOString(),
         expiresAt: s.expiresAt.toISOString(),
         endedAt: s.endedAt?.toISOString() ?? null,
+        pagesViewed: pagesBySession.get(s.id) ?? 0,
         status: sessionStatus(s, at),
       })),
     };
@@ -231,7 +258,68 @@ export function createSupportAccessService(
     if (!done.length) throw new AppError('backoffice.support_session_not_found');
   }
 
-  return { list, grant, revoke, start, end };
+  /** Customer side: the banner every user of the company sees while a session is open. Read only. */
+  async function banner(orgId: string): Promise<{ active: boolean; since: string | null }> {
+    const at = now();
+    const [open] = await tx((t) =>
+      t
+        .select({ startedAt: supportSessions.startedAt })
+        .from(supportSessions)
+        .where(
+          and(
+            eq(supportSessions.targetOrgId, orgId),
+            isNull(supportSessions.endedAt),
+            gt(supportSessions.expiresAt, at),
+          ),
+        )
+        .orderBy(desc(supportSessions.startedAt))
+        .limit(1),
+    );
+    return { active: Boolean(open), since: open?.startedAt.toISOString() ?? null };
+  }
+
+  /**
+   * Staff side: project names and status for the caller's open session, logged by record id. The session must still
+   * sit inside an unrevoked, unexpired grant, so withdrawing consent stops reads at the next call.
+   */
+  async function viewProjects(staff: StaffContext, orgId: string): Promise<SupportProjectDto[]> {
+    const at = now();
+    const session = await tx(async (t) => {
+      const [s] = await t
+        .select({ id: supportSessions.id })
+        .from(supportSessions)
+        .innerJoin(supportGrants, eq(supportGrants.id, supportSessions.grantId))
+        .where(
+          and(
+            eq(supportSessions.targetOrgId, orgId),
+            eq(supportSessions.staffId, staff.staffId),
+            isNull(supportSessions.endedAt),
+            gt(supportSessions.expiresAt, at),
+            isNull(supportGrants.revokedAt),
+            gt(supportGrants.expiresAt, at),
+          ),
+        );
+      return s;
+    });
+    if (!session)
+      throw new AppError(
+        'backoffice.support_no_session',
+        'Start a support session for this company first.',
+      );
+    const projects = await deps.reads().projects(orgId, staff.staffId);
+    await tx((t) =>
+      t.insert(supportEvents).values({
+        id: uuidv7(),
+        sessionId: session.id,
+        targetOrgId: orgId,
+        what: 'projects.list',
+        recordIds: projects.map((p) => p.id),
+      }),
+    );
+    return projects;
+  }
+
+  return { list, grant, revoke, start, end, banner, viewProjects };
 }
 
 export type SupportAccessService = ReturnType<typeof createSupportAccessService>;

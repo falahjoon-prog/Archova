@@ -66,9 +66,14 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
+  // backoffice's support view reads through platform, which is built after it.
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
+    supportReads: () => ({
+      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+    }),
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
@@ -87,6 +92,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
         state: entitlements.state,
       }),
   });
+  platformApi = platform.api;
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
       platform.api.getProjectMembership(scope, projectId, userId),

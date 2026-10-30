@@ -211,6 +211,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/support-access/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether an Archova support session is open now. Every signed-in user of the company sees the banner. */
+        get: operations["getSupportBanner"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/support-access/grants": {
         parameters: {
             query?: never;
@@ -4205,6 +4224,7 @@ export interface components {
             status: "active" | "expired" | "revoked";
         };
         SupportAccessSession: {
+            pagesViewed: number;
             /** Format: uuid */
             id: string;
             /** Format: uuid */
@@ -4223,6 +4243,11 @@ export interface components {
         SupportAccess: {
             grants: components["schemas"]["SupportAccessGrant"][];
             sessions: components["schemas"]["SupportAccessSession"][];
+        };
+        SupportBanner: {
+            active: boolean;
+            /** Format: date-time */
+            since: string | null;
         };
         CreateSupportAccessGrantRequest: {
             ticketRef: string;
@@ -7931,6 +7956,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSupportBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Banner state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportBanner"];
                 };
             };
             default: components["responses"]["Problem"];

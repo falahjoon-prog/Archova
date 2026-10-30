@@ -165,3 +165,12 @@ export const supportSessions = backofficeSchema.table('support_sessions', {
   endedAt: timestamp('ended_at', { withTimezone: true }),
   endReason: text('end_reason').$type<'ended' | 'revoked'>(),
 });
+
+export const supportEvents = backofficeSchema.table('support_events', {
+  id: uuid('id').primaryKey(),
+  sessionId: uuid('session_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  what: text('what').notNull(),
+  recordIds: text('record_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
