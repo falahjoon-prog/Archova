@@ -1,8 +1,8 @@
 import { PDFDocument } from 'pdf-lib';
 import { sql } from 'drizzle-orm';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { decodeId, uuidv7 } from '@archova/domain';
-import type { TenantContext } from '@archova/kernel';
+import { createLogger, type TenantContext } from '@archova/kernel';
 import { TRIAL_ENTITLEMENTS } from '@archova/mod-billing';
 import { endOfLocalDay, localDateOf } from '@archova/time';
 import {
@@ -20,8 +20,11 @@ import {
 // re-index. One token is the smallest cap there is: the first embedding of the day runs, every later one is refused
 // until the org's local day turns over.
 let t: TestContext;
+/** The app's logger, silent but watched: the cap logs one line a day. */
+const logger = createLogger('test', 'silent');
+const warn = vi.spyOn(logger, 'warn');
 beforeAll(async () => {
-  t = await createTestContext({ env: { API_AI_EMBED_DAILY_TOKENS: '1' } });
+  t = await createTestContext({ env: { API_AI_EMBED_DAILY_TOKENS: '1' }, logger });
 });
 afterAll(() => t.close());
 
@@ -128,6 +131,26 @@ describe('the daily cap on document embeddings', () => {
       defectsIndexed: 1,
       defectsUnchanged: 1,
     });
+  });
+
+  it('logs once a day per org that the cap was reached, however many calls are refused', async () => {
+    const s = await setup('cap-log');
+    await issuedDefect(s, 'Door closer', 'The door closer on the plant room is loose.');
+    expect((await index(s.pm.browser, s)).statusCode).toBe(200);
+    await issuedDefect(s, 'Level 3 corridor', 'Paint runs along the north wall.');
+    for (let i = 0; i < 3; i++) expect((await index(s.pm.browser, s)).statusCode).toBe(429);
+
+    const orgId = decodeId('org', s.org.id)!;
+    const lines = warn.mock.calls
+      .filter(
+        ([fields, msg]) =>
+          msg === 'ai daily embedding cap reached' && (fields as { orgId: string }).orgId === orgId,
+      )
+      .map(([fields]) => fields);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]).toMatchObject({ task: 'embed.document', capTokens: 1 });
+    // Ids and numbers only: no record text.
+    expect(JSON.stringify(lines[0])).not.toContain('plant room');
   });
 
   it("counts each org's own usage", async () => {

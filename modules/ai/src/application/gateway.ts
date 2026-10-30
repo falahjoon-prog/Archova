@@ -22,6 +22,7 @@ import { ProviderError, type ModelProvider, type OcrResponse } from '../domain/p
 import { OCR_MODEL, type EmbeddingRoute, type RoutingTable } from '../domain/routing';
 import { orgSettings, requests, usageLedger } from '../infra/tables';
 import { invokePrompt, type CallRecord } from './invoke';
+import { createOnceADay } from './once-a-day';
 
 export interface GatewayDeps {
   database: Database;
@@ -112,6 +113,20 @@ export function createGateway(deps: GatewayDeps) {
   const timeouts = deps.timeouts ?? DEFAULT_TIMEOUTS;
   const now = deps.now ?? (() => new Date());
   const embedDailyTokens = deps.embedDailyTokens ?? DEFAULT_EMBED_DAILY_TOKENS;
+  const onceADay = createOnceADay(deps.redis);
+
+  /**
+   * Says in the log, once an org-day, that an org's daily embedding cap is reached (Jeff alerts on this line). Ids and
+   * numbers only. `resetsAt` changes each local day, so it stands for the day.
+   */
+  async function noteEmbeddingCap(orgId: string, err: AppError) {
+    const resetsAt = String(err.extra?.resetsAt ?? '');
+    if (!(await onceADay.first(orgId, 'embed.document', resetsAt))) return;
+    deps.logger.warn(
+      { orgId, task: 'embed.document', capTokens: embedDailyTokens, resetsAt },
+      'ai daily embedding cap reached',
+    );
+  }
 
   /** Steps 1–2: is Nova on for this org, feature and caller, and is there allowance left? */
   async function admit(
@@ -290,15 +305,21 @@ export function createGateway(deps: GatewayDeps) {
     const task = opts.purpose === 'query' ? 'embed.query' : 'embed.document';
     const prompt = { id: task, feature: opts.feature, version: 1, kind: 'background' as const };
     const ro = { readOnly: true } as const;
-    const { day } = await deps.database.withTenantTx(
-      ctx,
-      async (s) => {
-        const admitted = await admit(s, prompt, 0);
-        if (opts.purpose === 'document' && !opts.uncapped) await assertEmbeddingRoom(s, admitted);
-        return admitted;
-      },
-      ro,
-    );
+    const { day } = await deps.database
+      .withTenantTx(
+        ctx,
+        async (s) => {
+          const admitted = await admit(s, prompt, 0);
+          if (opts.purpose === 'document' && !opts.uncapped) await assertEmbeddingRoom(s, admitted);
+          return admitted;
+        },
+        ro,
+      )
+      .catch(async (err: unknown) => {
+        if (err instanceof AppError && err.code === 'ai.embedding_limit')
+          await noteEmbeddingCap(ctx.orgId, err);
+        throw err;
+      });
     if (opts.rateLimited) await checkRateLimit(ctx, 'rlq', queryRateLimit);
     const { model, pricePerMTok } = deps.embedding;
     const vectors: number[][] = [];
