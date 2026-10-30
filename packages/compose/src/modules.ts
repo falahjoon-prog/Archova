@@ -77,6 +77,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
+    supportAccess: backoffice.api.support,
     onOrgCreated: (scope, org, entitlements) =>
       backoffice.api.directory.upsert(scope.tx, {
         id: org.id,

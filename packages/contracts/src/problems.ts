@@ -62,6 +62,11 @@ export const PROBLEM_CODES = {
   'backoffice.trial_limit': 422,
   'backoffice.already_suspended': 409,
   'backoffice.not_suspended': 409,
+  'backoffice.support_grant_not_found': 404,
+  'backoffice.no_support_grant': 409,
+  'backoffice.support_ticket_mismatch': 422,
+  'backoffice.support_session_open': 409,
+  'backoffice.support_session_not_found': 404,
   'backoffice.downgrade_at_term_end': 422,
   // files
   'upload.not_found': 404,

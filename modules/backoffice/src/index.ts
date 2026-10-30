@@ -5,6 +5,7 @@ import type { AccountService, CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
+import { createSupportAccessService } from './application/support-access';
 import { createOrgActionService } from './application/org-actions';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
@@ -48,6 +49,10 @@ export function createBackofficeModule(
     accounts: deps.accounts,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const support = createSupportAccessService({
+    database: services.database,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const flags = createFlagService({ database: services.database, staff });
   return {
     definition: defineModule({ name: 'backoffice' }),
@@ -60,6 +65,7 @@ export function createBackofficeModule(
       catalogue: deps.catalogue,
       flags,
       orgActions,
+      support,
     }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */
@@ -67,6 +73,8 @@ export function createBackofficeModule(
       requireStepUp: staff.requireStepUp,
       /** Keeps the tenant directory current; `platform` calls it inside its own transaction. */
       directory: { upsert: customers.upsert },
+      /** Customer-side support access: the org's own admin grants, revokes and reads (platform calls these). */
+      support: { list: support.list, grant: support.grant, revoke: support.revoke },
       /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
       flags: { isOn: flags.isOn },
       /** Creates or updates a staff account; used by the seed command only. */

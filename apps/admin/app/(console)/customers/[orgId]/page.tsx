@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { use, useState } from 'react';
 import {
@@ -8,6 +8,7 @@ import {
   Button,
   Card,
   DescriptionList,
+  FormError,
   PageHeader,
   Select,
   SkeletonRows,
@@ -40,6 +41,117 @@ const CATEGORY_LABEL: Record<SuspendCategory, string> = {
   security: 'Security emergency',
   legal_order: 'Legal order',
 };
+
+const SUPPORT_TONE = {
+  active: 'success',
+  open: 'success',
+  expired: 'neutral',
+  ended: 'neutral',
+  revoked: 'warning',
+} as const;
+
+function SupportAccess({ orgId }: { orgId: string }) {
+  const staff = useStaff();
+  const qc = useQueryClient();
+  const withStepUp = useStepUp();
+  const [ticket, setTicket] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const access = useQuery({
+    queryKey: ['support-access', orgId],
+    queryFn: () => api.supportAccess(orgId),
+  });
+  const canStart = can(staff, 'backoffice.support.access');
+  const refresh = (fresh: Awaited<ReturnType<typeof api.supportAccess>>) => {
+    qc.setQueryData(['support-access', orgId], fresh);
+    setError(null);
+  };
+  const start = useMutation({
+    mutationFn: () => withStepUp(() => api.startSupportSession(orgId, ticket.trim())),
+    onSuccess: (fresh) => {
+      refresh(fresh);
+      setTicket('');
+    },
+    onError: (e: Error) => setError(e.message),
+  });
+  const end = useMutation({
+    mutationFn: (id: string) => api.endSupportSession(orgId, id),
+    onSuccess: refresh,
+    onError: (e: Error) => setError(e.message),
+  });
+  const activeGrant = access.data?.grants.find((g) => g.status === 'active');
+  const open = access.data?.sessions.find((s) => s.status === 'open');
+
+  return (
+    <Card title="Support access">
+      {access.isPending ? <SkeletonRows rows={2} /> : null}
+      {access.isError ? <Alert tone="danger">{access.error.message}</Alert> : null}
+      {access.data ? (
+        <div className="stack">
+          <p className="muted">
+            Off unless the company's owner or admin grants it. A grant is view-only, tied to a
+            ticket and lasts up to 72 hours; a session lasts up to an hour. Staff cannot see project
+            content from this console.
+          </p>
+          {access.data.grants.length === 0 ? (
+            <p>No grant. This company has not given Archova support access.</p>
+          ) : (
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {access.data.grants.slice(0, 5).map((g) => (
+                <li key={g.id} className="row">
+                  <StatusPill tone={SUPPORT_TONE[g.status]}>{g.status}</StatusPill>
+                  <span>
+                    Ticket {g.ticketRef}{' '}
+                    <span className="muted">
+                      · granted by {g.grantedBy} · until {formatDateTime(g.expiresAt)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {access.data.sessions.length ? (
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {access.data.sessions.slice(0, 5).map((s) => (
+                <li key={s.id} className="row">
+                  <StatusPill tone={SUPPORT_TONE[s.status]}>{`session ${s.status}`}</StatusPill>
+                  <span>
+                    {s.staffName}{' '}
+                    <span className="muted">
+                      · {s.ticketRef} · {formatDateTime(s.startedAt)}
+                    </span>
+                  </span>
+                  {s.status === 'open' && canStart ? (
+                    <Button variant="tertiary" size="sm" onClick={() => end.mutate(s.id)}>
+                      End session
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {canStart && activeGrant && !open ? (
+            <div className="row">
+              <TextField
+                label="Ticket reference"
+                value={ticket}
+                onChange={(e) => setTicket(e.target.value)}
+                hint={`Must match the grant's ticket (${activeGrant.ticketRef}).`}
+              />
+              <Button
+                onClick={() => start.mutate()}
+                loading={start.isPending}
+                disabled={ticket.trim().length < 2}
+              >
+                Start session
+              </Button>
+            </div>
+          ) : null}
+          <FormError message={error} />
+        </div>
+      ) : null}
+    </Card>
+  );
+}
 
 function AccountActions({ org }: { org: OrgDetailDto }) {
   const staff = useStaff();
@@ -218,6 +330,7 @@ export default function CustomerPage({ params }: { params: Promise<{ orgId: stri
         />
       </Card>
       <AccountActions org={o} />
+      <SupportAccess orgId={o.orgId} />
       <Card title="Staff actions on this customer">
         {o.actions.length ? (
           <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>

@@ -803,3 +803,99 @@ describe('customer account actions', () => {
     expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
   });
 });
+
+describe('support access', () => {
+  async function company(label: string) {
+    const { browser } = await signUp(t.app, label);
+    const org = await createOrg(browser, `Support ${label} Builders`);
+    const reader = await staff(['finance_read']);
+    const found = (
+      (await reader.get(`/orgs?q=${encodeURIComponent(`Support ${label}`)}`)).json() as {
+        items: Array<{ orgId: string }>;
+      }
+    ).items[0]!;
+    return {
+      browser,
+      orgId: org.id,
+      orgRef: found.orgId,
+      base: `/v1/orgs/${org.id}/support-access`,
+    };
+  }
+  const start = (c: Console, orgRef: string, ticketRef: string) =>
+    c.post(`/orgs/${orgRef}/support-access/sessions`, { ticketRef });
+
+  it('is off by default, and only an org admin can grant or see it', async () => {
+    const c = await company('off');
+    const support = await staff(['support']);
+    const none = await start(support, c.orgRef, 'SUP-1');
+    expect(none.statusCode).toBe(409);
+    expect(code(none)).toBe('backoffice.no_support_grant');
+
+    const other = await signUp(t.app, 'stranger');
+    expect((await other.browser.get(c.base)).statusCode).toBeGreaterThanOrEqual(403);
+    const tooLong = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-1', hours: 73 });
+    expect(tooLong.statusCode).toBe(422);
+    expect((await c.browser.get(c.base)).json()).toEqual({ grants: [], sessions: [] });
+  });
+
+  it('runs a grant, a session for the same ticket, and ends it on revoke', async () => {
+    const c = await company('flow');
+    const grant = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-42', hours: 24 });
+    expect(grant.statusCode, grant.body).toBe(201);
+    const g = grant.json() as { id: string; status: string; level: string };
+    expect(g).toMatchObject({ status: 'active', level: 'view' });
+
+    // Only Support and Security lead hold the permission; Owner, Sales and Finance never do.
+    for (const role of ['owner', 'sales', 'finance_read'] as const) {
+      const denied = await start(await staff([role]), c.orgRef, 'SUP-42');
+      expect(denied.statusCode).toBe(403);
+    }
+    const support = await staff(['support']);
+    expect(code(await start(support, c.orgRef, 'SUP-99'))).toBe(
+      'backoffice.support_ticket_mismatch',
+    );
+    const started = await start(support, c.orgRef, 'sup-42');
+    expect(started.statusCode, started.body).toBe(201);
+    const session = (
+      started.json() as {
+        sessions: Array<{ id: string; status: string; expiresAt: string; startedAt: string }>;
+      }
+    ).sessions[0]!;
+    expect(session.status).toBe('open');
+    expect(Date.parse(session.expiresAt) - Date.parse(session.startedAt)).toBe(3_600_000);
+    expect(code(await start(support, c.orgRef, 'SUP-42'))).toBe('backoffice.support_session_open');
+
+    // The customer sees the session.
+    const seen = (await c.browser.get(c.base)).json() as {
+      sessions: Array<{ status: string; ticketRef: string }>;
+    };
+    expect(seen.sessions[0]).toMatchObject({ status: 'open', ticketRef: 'SUP-42' });
+
+    // Revoking ends the open session at once.
+    expect((await c.browser.post(`${c.base}/grants/${g.id}/revoke`, {})).statusCode).toBe(204);
+    const after = (await support.get(`/orgs/${c.orgRef}/support-access`)).json() as {
+      grants: Array<{ status: string }>;
+      sessions: Array<{ status: string }>;
+    };
+    expect(after.grants[0]!.status).toBe('revoked');
+    expect(after.sessions[0]!.status).toBe('revoked');
+    expect(code(await start(support, c.orgRef, 'SUP-42'))).toBe('backoffice.no_support_grant');
+  });
+
+  it('lets staff end their own session, and nobody else', async () => {
+    const c = await company('end');
+    await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-7', hours: 2 });
+    const lead = await staff(['security_lead']);
+    const s = ((await start(lead, c.orgRef, 'SUP-7')).json() as { sessions: Array<{ id: string }> })
+      .sessions[0]!;
+    const other = await staff(['support']);
+    expect(
+      (await other.post(`/orgs/${c.orgRef}/support-access/sessions/${s.id}/end`)).statusCode,
+    ).toBe(404);
+    const ended = await lead.post(`/orgs/${c.orgRef}/support-access/sessions/${s.id}/end`);
+    expect(ended.statusCode).toBe(200);
+    expect((ended.json() as { sessions: Array<{ status: string }> }).sessions[0]!.status).toBe(
+      'ended',
+    );
+  });
+});
