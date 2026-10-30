@@ -276,6 +276,30 @@ describe('online inductions (product/14)', () => {
     // Another worker cannot use this worker's completion to reach the file.
     expect((await s.sub2.browser.get(`${url}/files/${videoId}/download`)).statusCode).toBe(404);
 
+    // The same worker opens the SWMS the induction names (current revision), and no other document.
+    const swmsId = c.content.sections
+      .flatMap((sec: { blocks: { type: string; documentId?: string }[] }) => sec.blocks)
+      .find((b: { type: string }) => b.type === 'swms').documentId as string;
+    const swmsDl = await s.sub.browser.get(`${url}/swms/${swmsId}/download`);
+    expect(swmsDl.statusCode).toBe(200);
+    expect(swmsDl.headers['cache-control']).toBe('no-store');
+    expect(swmsDl.json()).toMatchObject({
+      title: 'Scaffold erection SWMS',
+      docNumber: 'SWMS-004',
+      rev: 'A',
+      url: expect.any(String),
+    });
+    const folderId = (await s.pm.browser.post(`${s.base}/folders`, { name: 'Rules' })).json().id;
+    const otherDoc = (
+      await s.pm.browser.post(`${s.base}/documents`, {
+        folderId,
+        title: 'Site rules',
+        revision: { rev: 'A', fileId: unrelated },
+      })
+    ).json().document.id as string;
+    expect((await s.sub.browser.get(`${url}/swms/${otherDoc}/download`)).statusCode).toBe(404);
+    expect((await s.sub2.browser.get(`${url}/swms/${swmsId}/download`)).statusCode).toBe(404);
+
     expect(
       (
         await s.sub.browser.post(`${url}/quiz-attempts`, {
