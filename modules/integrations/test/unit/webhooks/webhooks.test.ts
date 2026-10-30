@@ -50,6 +50,13 @@ describe('endpoint safety', () => {
     'https://10.0.0.5/hook',
     'https://169.254.169.254/latest/meta-data',
     'https://[::1]/hook',
+    'https://[::ffff:7f00:1]/hook',
+    'https://[::ffff:a9fe:a9fe]/hook',
+    'https://[::ffff:127.0.0.1]/hook',
+    'https://[::7f00:1]/hook',
+    'https://[64:ff9b::7f00:1]/hook',
+    'https://[2002:7f00:1::]/hook',
+    'https://example.com./hook',
     'https://user:pass@example.com/hook',
     'ftp://example.com/hook',
     'not a url',
@@ -74,7 +81,14 @@ describe('endpoint safety', () => {
       '::ffff:10.0.0.1',
     ])
       expect(isPublicAddress(a), a).toBe(false);
-    for (const a of ['8.8.8.8', '52.63.1.1', '2606:4700::1111'])
+    for (const a of [
+      '8.8.8.8',
+      '52.63.1.1',
+      '2606:4700::1111',
+      '::ffff:8.8.8.8',
+      '::ffff:808:808',
+      '2a00:1450:4001::1',
+    ])
       expect(isPublicAddress(a), a).toBe(true);
   });
 });

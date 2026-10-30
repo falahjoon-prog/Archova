@@ -21,6 +21,11 @@ export interface WebhookTransport {
 
 const TIMEOUT_MS = 10_000;
 
+type AllCallback = (
+  err: Error | null,
+  addresses: Array<{ address: string; family: number }>,
+) => void;
+
 /**
  * HTTPS POST that refuses to connect to a non-public address. The check runs inside the socket's own lookup, on the
  * address it is about to use, so there is no gap between "resolved" and "connected" for a rebinding attack. Redirects
@@ -48,12 +53,14 @@ export function createHttpsTransport(): WebhookTransport {
               method: 'POST',
               headers: { ...req.headers, 'content-length': String(Buffer.byteLength(req.body)) },
               timeout: req.timeoutMs ?? TIMEOUT_MS,
-              lookup: (hostname, _opts, cb) =>
+              lookup: (hostname, opts, cb) =>
                 lookup(hostname, { all: true }, (err, addresses) => {
                   if (err) return cb(err, '', 4);
                   const bad = addresses.find((a) => !isPublicAddress(a.address));
                   if (bad || addresses.length === 0)
                     return cb(new Error('blocked: not a public address'), '', 4);
+                  // Node may ask for every address (autoSelectFamily); answer in the shape it asked for.
+                  if (opts.all) return (cb as unknown as AllCallback)(null, addresses);
                   const first = addresses[0]!;
                   cb(null, first.address, first.family);
                 }),
