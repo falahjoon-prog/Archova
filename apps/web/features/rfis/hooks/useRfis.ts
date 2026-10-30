@@ -8,7 +8,7 @@ import { useActor } from '@/shared/providers/useActor';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { createRfisApi } from '../data/api';
 import { rfisSource as previewSource, type RfiFilters, type RfisSource } from '../data/source';
-import type { Rfi, RfiInput } from '../lib/types';
+import type { NovaRfiSource, Rfi, RfiInput } from '../lib/types';
 
 /** The API once the rfis endpoints are reachable; the in-browser preview store in preview mode and tests. */
 export function useRfisSource(): RfisSource {
@@ -89,9 +89,9 @@ export function useRfiMutations(projectId: string) {
 export function useRfiNova(projectId: string) {
   const rfisSource = useRfisSource();
   return {
-    /** F3: a new RFI drafted from a note typed on site. */
+    /** F3: a new RFI drafted from a note typed on site, a photo, a drawing markup, or any mix. */
     draftRfi: useMutation({
-      mutationFn: (note: string) => rfisSource.novaDraftRfi(projectId, note),
+      mutationFn: (source: NovaRfiSource) => rfisSource.novaDraftRfi(projectId, source),
     }),
     decide: useMutation({
       mutationFn: (v: { id: string; decision: 'accepted' | 'edited' | 'rejected' }) =>

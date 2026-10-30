@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).createFakeApi());
 vi.mock('@/shared/lib/api', () => fake.module);
+const uploadFile = vi.hoisted(() => vi.fn());
+vi.mock('@/shared/lib/uploads', () => ({ uploadFile, fileDownloadUrl: vi.fn() }));
+vi.mock('@/shared/lib/compress-photo', () => ({ compressPhoto: async (f: Blob) => f }));
 
 const { createRfisApi } = await import('../data/api');
 const { resetProjectPeople } = await import('@/shared/lib/people');
@@ -50,6 +53,7 @@ const apiRfi = (over: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   fake.reset();
+  uploadFile.mockReset();
   resetProjectPeople();
   fake.on('GET', '/v1/orgs/{orgId}/projects/{projectId}/members', () => ({
     data: [
@@ -367,7 +371,7 @@ describe('RFIs API source', () => {
       },
     }));
     const source = createRfisApi('org_1');
-    const d = await source.novaDraftRfi('prj_1', ' slab edge looks wrong ');
+    const d = await source.novaDraftRfi('prj_1', { note: ' slab edge looks wrong ' });
     expect(fake.callsTo('POST', `${AI}/rfi-drafts`)[0]!.init.body).toEqual({
       note: 'slab edge looks wrong',
     });
@@ -414,5 +418,59 @@ describe('RFIs API source', () => {
         decision: 'edited',
       },
     );
+  });
+
+  it('drafts an RFI from a site photo and a drawing markup, with no note', async () => {
+    const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai';
+    uploadFile.mockResolvedValue({ id: 'fil_photo' });
+    fake.on('POST', `${AI}/rfi-drafts`, () => ({
+      runId: 'air_3',
+      suggestionId: 'ais_6',
+      subject: 'Cracked slab edge',
+      question: 'The slab edge shown on S-201 Rev B is cracked. How should it be repaired?',
+      discipline: 'structural',
+      references: [],
+      gaps: ['location'],
+      unsupportedNumbers: [],
+      similarRfis: [],
+      drawing: null,
+    }));
+    const photo = new File(['x'], 'edge.png', { type: 'image/png' });
+    const d = await createRfisApi('org_1').novaDraftRfi('prj_1', {
+      note: '  ',
+      photo,
+      markup: {
+        revisionId: 'drv_01M65EMFSJEDZRH3DXQVSTGVX5',
+        markupId: 'mku_01M65EMFSJEDZRH3DXQVSTGVX5',
+      },
+    });
+    expect(uploadFile).toHaveBeenCalledWith('org_1', {
+      file: photo,
+      projectId: 'prj_1',
+      module: 'rfis',
+    });
+    expect(fake.callsTo('POST', `${AI}/rfi-drafts`)[0]!.init.body).toEqual({
+      markup: {
+        drawingRevisionId: 'drv_01M65EMFSJEDZRH3DXQVSTGVX5',
+        markupId: 'mku_01M65EMFSJEDZRH3DXQVSTGVX5',
+      },
+      photo: { fileId: 'fil_photo' },
+    });
+    expect(d.suggestionId).toBe('ais_6');
+  });
+
+  it('refuses a photo Nova cannot read before uploading it', async () => {
+    const heic = new File(['x'], 'edge.heic', { type: 'image/heic' });
+    await expect(
+      createRfisApi('org_1').novaDraftRfi('prj_1', { note: 'crack', photo: heic }),
+    ).rejects.toMatchObject({ status: 422 });
+    const big = new File([new Uint8Array(3 * 1024 * 1024 + 1)], 'big.jpg', { type: 'image/jpeg' });
+    await expect(
+      createRfisApi('org_1').novaDraftRfi('prj_1', { note: 'crack', photo: big }),
+    ).rejects.toMatchObject({ status: 422 });
+    expect(uploadFile).not.toHaveBeenCalled();
+    expect(
+      fake.callsTo('POST', '/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts'),
+    ).toHaveLength(0);
   });
 });
