@@ -61,4 +61,53 @@ describe('attendance api', () => {
       companyId: 'cmp_a',
     });
   });
+
+  const gate = (over: Record<string, unknown> = {}) => ({
+    id: 'wgt_1',
+    siteId: 'wst_1',
+    name: 'Front gate',
+    qrVersion: 1,
+    active: true,
+    version: 4,
+    ...over,
+  });
+
+  it('lists sites with gates', async () => {
+    fake.on('GET', `${P}/sites`, () => ({
+      data: [
+        {
+          id: 'wst_1',
+          projectId: 'prj_1',
+          name: 'Main site',
+          boundary: null,
+          dayEndLocal: '19:00',
+          gateCheckMode: 'block',
+          active: true,
+          gates: [gate()],
+          version: 2,
+          createdAt: '2026-10-01T00:00:00Z',
+          updatedAt: '2026-10-01T00:00:00Z',
+        },
+      ],
+    }));
+    const sites = await createAttendanceApi('org_1').sites('prj_1');
+    expect(sites[0]).toMatchObject({ name: 'Main site', dayEndLocal: '19:00', version: 2 });
+    expect(sites[0]!.gates[0]).toMatchObject({ name: 'Front gate', qrVersion: 1 });
+  });
+
+  it('returns the code from a new gate and sends If-Match on reissue', async () => {
+    fake.on('POST', `${P}/sites/{siteId}/gates`, () => ({ gate: gate(), code: 'gqr_one' }));
+    fake.on('POST', `${P}/gates/{gateId}/reissue`, () => ({
+      gate: gate({ qrVersion: 2, version: 5 }),
+      code: 'gqr_two',
+    }));
+    const api = createAttendanceApi('org_1');
+    const made = await api.createGate('prj_1', 'wst_1', 'Front gate');
+    expect(made.code).toBe('gqr_one');
+    const again = await api.reissueGate('prj_1', made.gate);
+    expect(again).toMatchObject({ code: 'gqr_two', gate: { qrVersion: 2 } });
+    expect(fake.callsTo('POST', `${P}/gates/{gateId}/reissue`)[0]!.init.params?.header).toEqual({
+      'If-Match': '"4"',
+    });
+  });
 });
