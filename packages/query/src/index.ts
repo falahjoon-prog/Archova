@@ -40,6 +40,7 @@ export type ProjectTool =
   | 'drawings'
   | 'drawing-sets'
   | 'rfis'
+  | 'submittals'
   | 'diary'
   | 'defects'
   | 'inductions'

@@ -14,6 +14,7 @@ import {
   HomeIcon,
   InductionsIcon,
   RfisIcon,
+  SubmittalsIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -96,6 +97,11 @@ export function projectToolGroups(
       icon: DrawingsIcon,
     },
     canRead('rfis') && { href: webRoutes.rfis(orgSlug, projectId), label: 'RFIs', icon: RfisIcon },
+    canRead('submittals') && {
+      href: webRoutes.submittals(orgSlug, projectId),
+      label: 'Submittals',
+      icon: SubmittalsIcon,
+    },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),
       label: 'Site diary',

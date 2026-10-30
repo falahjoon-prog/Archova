@@ -11,6 +11,7 @@ describe('projectToolGroups', () => {
       'Documents',
       'Drawings',
       'RFIs',
+      'Submittals',
       'Site diary',
       'Defects',
       'Inductions',

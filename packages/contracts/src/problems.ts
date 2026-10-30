@@ -107,6 +107,14 @@ export const PROBLEM_CODES = {
   'rfi.assignee_not_on_project': 422,
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
+  // submittals
+  'submittal.not_found': 404,
+  'submittal.invalid_transition': 409,
+  'submittal.incomplete': 422,
+  'submittal.number_taken': 409,
+  'submittal.reviewer_not_on_project': 422,
+  'submittal.review_not_allowed': 403,
+  'submittal_step.not_found': 404,
   // estimating
   'tender.not_found': 404,
   'tender.invalid_state': 409,
