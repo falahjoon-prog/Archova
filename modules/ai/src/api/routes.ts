@@ -569,6 +569,7 @@ export function aiRoutes(
           revisionId,
           target: input.body.target,
           examples: input.body.examples ?? [],
+          ...(input.body.image ? { image: input.body.image } : {}),
         },
       );
       return {

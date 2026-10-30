@@ -158,3 +158,7 @@ pnpm --filter @archova/mod-ai eval --task qa.answer --provider bedrock --sample 
 ```
 
 Each suite (`src/eval/suites.ts`) is a task's prompt, its golden set (synthetic or public documents only until a pilot gives written consent), a scorer and the acceptance bars from docs/ai/01 §4. The run exits 1 when any metric is below its bar; safety metrics (tenant canaries, restricted sources) have a bar of 100%. The fake provider runs the prompt, schema, citation check and scorers on every change; real scores need `--provider bedrock` with `AI_EVAL_MODEL_*` set.
+
+### Nova Esti takeoff (task `takeoff.detect`)
+
+`POST /ai/takeoff-detections` finds the items an estimator names (count, length or area, any trade) on one sheet and returns marks as page fractions with a confidence; nothing is saved and Nova never gives a quantity (estimating saves the marks as unconfirmed `assisted` measurements and sizes them from the confirmed scale). One credit per run, feature `takeoff`. The sheet picture comes from the browser (`image`, PNG, JPEG or WebP under 8 MB, checked against its magic bytes), because the API image has no page renderer; a server given `rasterizePage` renders the page itself when no picture is sent, and otherwise answers 503 `ai.takeoff.renderer_unavailable`. Code (`domain/takeoff-detect.ts`) drops marks that are off the sheet, the wrong shape or repeated, and caps confidence at 0.84 on scans and sheets with no text.

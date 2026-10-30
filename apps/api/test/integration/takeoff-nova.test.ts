@@ -117,6 +117,32 @@ describe('Nova Esti: finding items', () => {
     });
     expect(res.statusCode).toBe(503);
     expect(res.json().code).toBe('ai.takeoff.renderer_unavailable');
+
+    // The browser draws the page, so a server with no renderer works when the picture comes with the request.
+    const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).toString('base64');
+    plain.ai.on('takeoff.detect', () => ({
+      output: {
+        items: [{ place: null, points: [{ x: 0.3, y: 0.3 }], confidence: 0.9, note: null }],
+        caveat: null,
+      },
+    }));
+    const sent = await p.pm.browser.post(`${p.base}/ai/takeoff-detections`, {
+      ...body,
+      revisionId: p.revisionId,
+      image: { mime: 'image/png', base64: png },
+    });
+    expect(sent.statusCode).toBe(200);
+    expect(sent.json().items).toHaveLength(1);
+    expect(plain.ai.calls.filter((c) => c.task === 'takeoff.detect').at(-1)!.images).toHaveLength(
+      1,
+    );
+    // A picture that is not what it says it is is refused before the model sees it.
+    const fake = await p.pm.browser.post(`${p.base}/ai/takeoff-detections`, {
+      ...body,
+      revisionId: p.revisionId,
+      image: { mime: 'image/png', base64: Buffer.from('not a picture').toString('base64') },
+    });
+    expect(fake.statusCode).toBe(422);
   });
 });
 

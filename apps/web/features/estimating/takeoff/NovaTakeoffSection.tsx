@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { formatQuantity } from '@archova/markup';
 import { Alert, Button, Select, StatusPill, TextField } from '@archova/ui';
 import { Check, X } from '@archova/ui/icons';
+import { captureSheetImage } from '../lib/sheet-image';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import type { useTakeoffMutations } from '../hooks/useTakeoff';
 import {
@@ -48,6 +49,7 @@ export function NovaTakeoffSection({
   mutations,
   selectedId,
   onSelect,
+  sheetElement,
 }: {
   rows: readonly TakeoffMeasurement[];
   canFind: boolean;
@@ -56,6 +58,8 @@ export function NovaTakeoffSection({
   mutations: Mutations;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  /** Any element in the viewer, to find the drawn sheet from. */
+  sheetElement: Element | null;
 }) {
   const [what, setWhat] = useState('');
   const [kind, setKind] = useState<NovaKind>('count');
@@ -66,11 +70,19 @@ export function NovaTakeoffSection({
     (m) => !m.confirmed && !m.rejected && (m.confidence ?? 0) >= NOVA_BULK_ACCEPT,
   ).length;
 
-  const find = () =>
-    mutations.findWithNova.mutate(
-      { ...context, kind, what: what.trim() },
-      { onSuccess: (r) => setResult(r) },
-    );
+  const [capturing, setCapturing] = useState(false);
+  const find = async () => {
+    setCapturing(true);
+    try {
+      const image = await captureSheetImage(sheetElement).catch(() => null);
+      mutations.findWithNova.mutate(
+        { ...context, kind, what: what.trim(), image },
+        { onSuccess: (r) => setResult(r) },
+      );
+    } finally {
+      setCapturing(false);
+    }
+  };
 
   return (
     <section aria-labelledby="nova-takeoff" className="stack nova-takeoff">
@@ -98,9 +110,9 @@ export function NovaTakeoffSection({
       </div>
       <div>
         <Button
-          loading={mutations.findWithNova.isPending}
+          loading={capturing || mutations.findWithNova.isPending}
           disabled={!canFind || !what.trim()}
-          onClick={find}
+          onClick={() => void find()}
         >
           Find with Nova
         </Button>

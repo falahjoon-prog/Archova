@@ -448,6 +448,10 @@ export const DetectTakeoffWithNovaBody = z.object({
   "what": z.string().min(1).max(120),
   "hint": z.string().max(400).optional(),
 }).strict(),
+  "image": z.object({
+  "mime": z.enum(["image/png", "image/jpeg", "image/webp"]),
+  "base64": z.string().min(1).max(11500000),
+}).strict().optional(),
   "examples": z.array(z.object({
   "x": z.number().min(0).max(1),
   "y": z.number().min(0).max(1),
