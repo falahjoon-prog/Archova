@@ -107,6 +107,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     files: files.api,
     identity: identity.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+    },
   });
 
   const rfis = createRfisModule(services, {

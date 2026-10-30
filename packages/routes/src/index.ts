@@ -22,6 +22,11 @@ export const webRoutes = {
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
     `${p(orgSlug, projectId)}/drawings/${enc(sheetId)}${revisionId ? `?rev=${enc(revisionId)}` : ''}`,
+  transmittals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/transmittals`,
+  newTransmittal: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/transmittals/new`,
+  transmittal: (orgSlug: string, projectId: string, transmittalId: string) =>
+    `${p(orgSlug, projectId)}/transmittals/${enc(transmittalId)}`,
   rfis: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis`,
   newRfi: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis/new`,
   rfi: (orgSlug: string, projectId: string, rfiId: string) =>

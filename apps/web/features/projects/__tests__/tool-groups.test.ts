@@ -10,6 +10,7 @@ describe('projectToolGroups', () => {
       'Project home',
       'Documents',
       'Drawings',
+      'Transmittals',
       'RFIs',
       'Site diary',
       'Defects',
@@ -28,6 +29,7 @@ describe('projectToolGroups', () => {
       'Project home',
       'Documents',
       'Drawings',
+      'Transmittals',
       'Defects',
       'Tender packages',
     ]);

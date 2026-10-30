@@ -919,6 +919,83 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/recipients/{recipientId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+                recipientId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email a recipient without an account a new link. The earlier link stops working (X45). */
+        post: operations["resendTransmittalLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/transmittal-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The transmittal behind the current link session. */
+        get: operations["getTransmittalAccess"];
+        put?: never;
+        /**
+         * Exchange a link token for a session on that link (web `/t/[token]`, X45). Records the "opened" receipt.
+         * @description Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link returns `access_link.invalid` with no detail about the record.
+         */
+        post: operations["openTransmittalAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/transmittal-access/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The recipient confirms they received it. First time wins. */
+        post: operations["acknowledgeTransmittalAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/transmittal-access/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A short-lived download URL for one item on this transmittal. Records the "downloaded" receipt. */
+        post: operations["downloadTransmittalAccessItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/ai/settings": {
         parameters: {
             query?: never;
@@ -5024,6 +5101,47 @@ export interface components {
             }[];
             currentSetDisciplines?: string[];
         };
+        TransmittalAccess: {
+            transmittal: {
+                number: number;
+                subject: string;
+                purpose: components["schemas"]["TransmittalPurpose"];
+                message: string | null;
+                /** Format: date */
+                responseDue: string | null;
+                /** Format: date-time */
+                sentAt: string;
+                fromOrg: string;
+                projectName: string;
+            };
+            items: components["schemas"]["TransmittalItem"][];
+            recipient: {
+                email: string;
+                name: string | null;
+                /** @enum {string} */
+                role: "to" | "cc";
+                /** Format: date-time */
+                openedAt: string | null;
+                /** Format: date-time */
+                downloadedAt: string | null;
+                /** Format: date-time */
+                acknowledgedAt: string | null;
+            };
+            actions: ("view" | "download" | "acknowledge")[];
+            /** Format: date-time */
+            expiresAt: string;
+        };
+        DownloadTransmittalItemRequest: {
+            /** @enum {string} */
+            revisionType: "document" | "drawing";
+            revisionId: string;
+        };
+        TransmittalDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            filename: string;
+        };
         AcknowledgeTransmittalRequest: {
             /** @enum {string} */
             event: "opened" | "downloaded" | "acknowledged";
@@ -8513,6 +8631,124 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransmittalRecipient"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    resendTransmittalLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                transmittalId: components["parameters"]["TransmittalId"];
+                recipientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The recipient; `deliveredAt` shows when the email went out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalRecipient"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTransmittalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openTransmittalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The transmittal behind the link; `__Host-lnk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acknowledgeTransmittalAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    downloadTransmittalAccessItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DownloadTransmittalItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransmittalDownload"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -66,6 +66,7 @@ export {
   MessageCircleQuestion as RfisIcon,
   ShieldCheck as InductionsIcon,
   Scale as EstimatingIcon,
+  Send as TransmittalsIcon,
   Sparkles as NovaIcon,
 } from 'lucide-react';
 

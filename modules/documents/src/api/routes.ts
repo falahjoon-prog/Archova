@@ -1,15 +1,20 @@
 import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
+  ACCESS_LINK_COOKIE,
+  ACCESS_LINK_SESSION_MS,
   AppError,
   defineRoutes,
   etag,
   parseIfMatch,
   requireTenant,
   type Database,
+  type Logger,
+  type MessageSender,
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
 import type { IdentityApi } from '@archova/mod-identity';
+import type { PlatformApi } from '@archova/mod-platform';
 import type { ProblemCode } from '@archova/contracts';
 import type { StoredShape } from '../domain/markup';
 import type { DocumentService } from '../application/documents';
@@ -18,7 +23,12 @@ import type { FolderService } from '../application/folders';
 import type { GeometryService } from '../application/geometry';
 import type { TileService } from '../application/tiles';
 import type { MarkupService } from '../application/markups';
-import type { TransmittalItemView, TransmittalService } from '../application/transmittals';
+import type {
+  IssuedLink,
+  TransmittalItemView,
+  TransmittalService,
+} from '../application/transmittals';
+import type { TransmittalLinkService } from '../application/transmittal-links';
 import {
   toDocumentDetail,
   toDocumentDto,
@@ -42,6 +52,12 @@ export interface DocumentsRouteDeps {
   geometry: GeometryService;
   tiles: TileService;
   transmittals: TransmittalService;
+  links: TransmittalLinkService;
+  platform: Pick<PlatformApi, 'getProject' | 'getOrg'>;
+  messages: MessageSender;
+  /** The public web origin transmittal links point at, e.g. `https://app.archova.com.au`. */
+  baseUrl: string;
+  logger?: Pick<Logger, 'warn'>;
 }
 
 /** Decodes a prefixed id from the path or body; a malformed id is the same 404 as a missing record. */
@@ -63,7 +79,7 @@ const project = (p: { projectId: string }) => id('project', p.projectId, 'projec
 
 const toTransmittalDetail = (x: Awaited<ReturnType<TransmittalService['detail']>>) => ({
   transmittal: toTransmittalDto(x.transmittal),
-  items: x.items.map((i: TransmittalItemView) => ({
+  items: x.items.map(({ fileId: _fileId, ...i }: TransmittalItemView) => ({
     ...i,
     revisionId: encodeId(
       i.revisionType === 'document' ? 'revision' : 'drawingRevision',
@@ -75,6 +91,62 @@ const toTransmittalDetail = (x: Awaited<ReturnType<TransmittalService['detail']>
 
 export function documentsRoutes(d: DocumentsRouteDeps) {
   const ro = { readOnly: true } as const;
+  /** Pages reached by an access link are never indexed, and the token never leaks through a referrer (Sam 11 §3). */
+  const LINK_HEADERS = {
+    'referrer-policy': 'no-referrer',
+    'x-robots-tag': 'noindex, nofollow',
+    'cache-control': 'no-store',
+  };
+  const facts = (input: { ip: string; userAgent: string | null; requestId: string }) => ({
+    ip: input.ip,
+    userAgent: input.userAgent,
+    requestId: input.requestId,
+  });
+  const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
+    input.cookies[ACCESS_LINK_COOKIE];
+
+  /**
+   * Emails each link after the transaction commits, then records when it went out. A failed email leaves the
+   * receipt at "not delivered" so the sender can resend; it never undoes the send.
+   */
+  async function deliver(
+    input: { tenant: TenantContext | null },
+    links: IssuedLink[],
+    t: {
+      orgName: string;
+      projectName: string;
+      number: number;
+      subject: string;
+      message: string | null;
+      itemCount: number | null;
+    },
+  ) {
+    const delivered: string[] = [];
+    for (const l of links) {
+      const url = `${d.baseUrl}/t/${l.token}`;
+      const lines = [
+        `${t.orgName} sent you transmittal T-${String(t.number).padStart(4, '0')} for ${t.projectName}.`,
+        t.subject,
+        ...(t.itemCount
+          ? [`${t.itemCount} document${t.itemCount === 1 ? '' : 's'} attached.`]
+          : []),
+        ...(t.message ? ['', t.message] : []),
+        '',
+        `Open it: ${url}`,
+        `This link is for ${l.email} and works until ${l.expiresAt.toISOString().slice(0, 10)}. You don't need an account.`,
+      ];
+      try {
+        await d.messages.email(l.email, {
+          subject: `${t.orgName}: transmittal T-${String(t.number).padStart(4, '0')} ${t.subject}`,
+          text: lines.join('\n'),
+        });
+        delivered.push(l.recipientId);
+      } catch (e) {
+        d.logger?.warn({ err: e, recipientId: l.recipientId }, 'transmittal email failed');
+      }
+    }
+    if (delivered.length) await tx(input, (s) => d.transmittals.markDelivered(s, delivered));
+  }
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     d.database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -485,15 +557,95 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
     sendTransmittal: async (input) => {
       const transmittalId = id('transmittal', input.params.transmittalId, 'transmittal.not_found');
       const expected = parseIfMatch(input.headers['if-match']);
-      const x = await tx(input, (s) =>
-        d.transmittals.send(s, project(input.params), transmittalId, expected),
-      );
+      const p = project(input.params);
+      const sent = await tx(input, async (s) => ({
+        x: await d.transmittals.send(s, p, transmittalId, expected),
+        org: (await d.platform.getOrg(s)).name as string,
+        projectName: (await d.platform.getProject(s, p)).name as string,
+      }));
+      await deliver(input, sent.x.links, {
+        orgName: sent.org,
+        projectName: sent.projectName,
+        number: sent.x.transmittal.number!,
+        subject: sent.x.transmittal.subject,
+        message: sent.x.transmittal.message,
+        itemCount: sent.x.items.length,
+      });
+      // Delivery times were written after the detail was read.
+      const x = await read(input, (s) => d.transmittals.detail(s, p, transmittalId));
       return {
         status: 200,
         body: toTransmittalDetail(x),
         headers: { etag: etag(x.transmittal.version) },
       };
     },
+    resendTransmittalLink: async (input) => {
+      const transmittalId = id('transmittal', input.params.transmittalId, 'transmittal.not_found');
+      const recipientId = id(
+        'transmittalRecipient',
+        input.params.recipientId,
+        'transmittal.recipient_not_found',
+      );
+      const p = project(input.params);
+      const r = await tx(input, async (s) => ({
+        ...(await d.transmittals.resend(s, p, transmittalId, recipientId)),
+        org: (await d.platform.getOrg(s)).name as string,
+        projectName: (await d.platform.getProject(s, p)).name as string,
+      }));
+      await deliver(input, [r.link], {
+        orgName: r.org,
+        projectName: r.projectName,
+        number: r.transmittal.number!,
+        subject: r.transmittal.subject,
+        message: r.transmittal.message,
+        itemCount: null,
+      });
+      const x = await read(input, (s) => d.transmittals.detail(s, p, transmittalId));
+      const row = x.recipients.find((q) => q.id === recipientId)!;
+      return { status: 200, body: toRecipientDto(row) };
+    },
+    openTransmittalAccess: async (input) => {
+      const r = await d.links.open(input.body.token, facts(input));
+      return {
+        status: 200,
+        body: r.body,
+        headers: LINK_HEADERS,
+        setCookies: [
+          {
+            name: ACCESS_LINK_COOKIE,
+            value: r.cookie,
+            httpOnly: true,
+            maxAgeSeconds: Math.floor(ACCESS_LINK_SESSION_MS / 1000),
+          },
+        ],
+      };
+    },
+    getTransmittalAccess: async (input) => ({
+      status: 200,
+      body: await d.links.view(linkCookie(input), facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    acknowledgeTransmittalAccess: async (input) => ({
+      status: 200,
+      body: await d.links.acknowledge(linkCookie(input), facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    downloadTransmittalAccessItem: async (input) => ({
+      status: 200,
+      body: await d.links.download(
+        linkCookie(input),
+        {
+          revisionType: input.body.revisionType,
+          revisionId: ref(
+            input.body.revisionType === 'document' ? 'revision' : 'drawingRevision',
+            input.body.revisionId,
+            'revisionId',
+          ),
+        },
+        facts(input),
+      ),
+      headers: LINK_HEADERS,
+    }),
     acknowledgeTransmittal: async (input) => {
       const transmittalId = id('transmittal', input.params.transmittalId, 'transmittal.not_found');
       const row = await tx(input, (s) =>

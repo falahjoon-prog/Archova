@@ -1194,6 +1194,96 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TransmittalRecipient' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/recipients/{recipientId}/resend:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TransmittalId'
+      - {
+          name: recipientId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^trr_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: resendTransmittalLink
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.transmittals.manage
+      summary: Email a recipient without an account a new link. The earlier link stops working (X45).
+      responses:
+        '200':
+          description: The recipient; `deliveredAt` shows when the email went out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalRecipient' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/transmittal-access:
+    post:
+      operationId: openTransmittalAccess
+      tags: [documents]
+      x-module: documents
+      x-auth: none
+      summary: Exchange a link token for a session on that link (web `/t/[token]`, X45). Records the "opened" receipt.
+      description: 'Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link returns `access_link.invalid` with no detail about the record.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The transmittal behind the link; `__Host-lnk` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getTransmittalAccess
+      tags: [documents]
+      x-module: documents
+      x-auth: none
+      summary: The transmittal behind the current link session.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/transmittal-access/acknowledge:
+    post:
+      operationId: acknowledgeTransmittalAccess
+      tags: [documents]
+      x-module: documents
+      x-auth: none
+      summary: The recipient confirms they received it. First time wins.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/transmittal-access/download:
+    post:
+      operationId: downloadTransmittalAccessItem
+      tags: [documents]
+      x-module: documents
+      x-auth: none
+      summary: A short-lived download URL for one item on this transmittal. Records the "downloaded" receipt.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DownloadTransmittalItemRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TransmittalDownload' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/ai/settings:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7267,6 +7357,53 @@ components:
           type: array
           maxItems: 20
           items: { type: string, minLength: 1, maxLength: 20 }
+    TransmittalAccess:
+      type: object
+      required: [transmittal, items, recipient, actions, expiresAt]
+      properties:
+        transmittal:
+          type: object
+          required: [number, subject, purpose, message, responseDue, sentAt, fromOrg, projectName]
+          properties:
+            number: { type: integer }
+            subject: { type: string }
+            purpose: { $ref: '#/components/schemas/TransmittalPurpose' }
+            message: { type: [string, 'null'] }
+            responseDue: { type: [string, 'null'], format: date }
+            sentAt: { type: string, format: date-time }
+            fromOrg: { type: string }
+            projectName: { type: string }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/TransmittalItem' }
+        recipient:
+          type: object
+          required: [email, name, role, openedAt, downloadedAt, acknowledgedAt]
+          properties:
+            email: { type: string }
+            name: { type: [string, 'null'] }
+            role: { type: string, enum: [to, cc] }
+            openedAt: { type: [string, 'null'], format: date-time }
+            downloadedAt: { type: [string, 'null'], format: date-time }
+            acknowledgedAt: { type: [string, 'null'], format: date-time }
+        actions:
+          type: array
+          items: { type: string, enum: [view, download, acknowledge] }
+        expiresAt: { type: string, format: date-time }
+    DownloadTransmittalItemRequest:
+      type: object
+      additionalProperties: false
+      required: [revisionType, revisionId]
+      properties:
+        revisionType: { type: string, enum: [document, drawing] }
+        revisionId: { type: string, pattern: '^(rev|drv)_[0-9A-Za-z]{26}$' }
+    TransmittalDownload:
+      type: object
+      required: [url, expiresAt, filename]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        filename: { type: string }
     AcknowledgeTransmittalRequest:
       type: object
       additionalProperties: false
