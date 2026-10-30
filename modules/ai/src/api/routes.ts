@@ -28,6 +28,7 @@ import type {
   InductionRefreshService,
 } from '../application/induction-refresh';
 import type { ProjectIndexService } from '../application/project-index';
+import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answer';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
 import type { ImportMappingService } from '../application/import-mapping';
@@ -91,6 +92,14 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       pin: p.pin
         ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
         : null,
+    };
+  }
+  if (task === 'rfi.answer') {
+    const p = payload as RfiAnswerPayload;
+    return {
+      ...p,
+      rfiId: encodeId('rfi', p.rfiId),
+      references: p.references.map((r) => ({ ...r, ...sourceIds(r) })),
     };
   }
   if (task === 'defect.tag') {
@@ -158,6 +167,7 @@ const TARGET_KINDS = {
   project: 'project',
   diary_entry: 'diary',
   tender_package: 'tenderPackage',
+  rfi: 'rfi',
 } as const;
 
 export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestion => ({
@@ -212,6 +222,7 @@ export function aiRoutes(
   inductionCurrency: InductionCurrencyService,
   inductionRefresh: InductionRefreshService,
   rfiDrafts: RfiDraftService,
+  rfiAnswers: RfiAnswerService,
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
   diaryWeekly: DiaryWeeklyService,
@@ -346,6 +357,36 @@ export function aiRoutes(
             pin: d.drawing.pin,
             scanned: d.drawing.scanned,
           },
+        },
+      };
+    },
+    draftRfiAnswerWithNova: async (input) => {
+      const rfiId = decodeId('rfi', input.params.rfiId);
+      if (!rfiId) throw new AppError('rfi.not_found');
+      const d = await rfiAnswers.draft(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        rfiId,
+        {
+          direction: input.body.direction ?? '',
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          suggestionId: encodeId('aiSuggestion', d.suggestionId),
+          rfiId: encodeId('rfi', d.rfiId),
+          answer: d.answer,
+          basis: d.basis,
+          needsDecision: d.needsDecision,
+          references: d.references.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
+          unsupportedNumbers: d.unsupportedNumbers,
+          attachments: d.attachments.map((a) => ({
+            fileId: encodeId('file', a.fileId),
+            name: a.name,
+            read: a.read,
+          })),
         },
       };
     },

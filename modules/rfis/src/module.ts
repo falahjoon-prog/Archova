@@ -37,6 +37,8 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
       aiAccessScopes: service.aiAccessScopes,
       /** Nova F21: open RFIs the caller can see pinned to these drawing revisions. Called by `ai` only. */
       openOnDrawing: service.openOnDrawing,
+      /** Nova F3: an RFI and its responses for drafting a response, if the caller could send one. Called by `ai` only. */
+      forAnswerDraft: service.forAnswerDraft,
     },
   };
 }

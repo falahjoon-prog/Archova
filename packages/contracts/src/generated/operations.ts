@@ -341,6 +341,14 @@ export const DraftRfiWithNovaBody = z.object({
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 }).strict().optional(),
 }).strict();
+export const DraftRfiAnswerWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const DraftRfiAnswerWithNovaBody = z.object({
+  "direction": z.string().max(2000).optional(),
+}).strict();
 export const TagDefectWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1986,6 +1994,18 @@ export const operations = {
     params: DraftRfiWithNovaParams,
     query: null,
     body: DraftRfiWithNovaBody,
+  },
+  draftRfiAnswerWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/rfis/{rfiId}/answer-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "rfis.rfis.respond",
+    internal: false,
+    contentType: "application/json",
+    params: DraftRfiAnswerWithNovaParams,
+    query: null,
+    body: DraftRfiAnswerWithNovaBody,
   },
   tagDefectWithNova: {
     method: 'POST',

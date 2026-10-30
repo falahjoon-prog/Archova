@@ -22,7 +22,14 @@ describe('suggestion audience', () => {
       'induction.refresh',
     ]);
     // Drafts built from what a person typed, photographed, uploaded or may read are theirs alone.
-    for (const task of ['diary.summary', 'defect.tag', 'rfi.draft', 'import.mapping', 'quote.read'])
+    for (const task of [
+      'diary.summary',
+      'defect.tag',
+      'rfi.draft',
+      'rfi.answer',
+      'import.mapping',
+      'quote.read',
+    ])
       expect(isCreatorOnly(task)).toBe(true);
   });
 
