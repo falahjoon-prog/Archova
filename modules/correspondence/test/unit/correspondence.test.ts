@@ -87,6 +87,11 @@ describe('visibility', () => {
     expect(canSeeItem(draft, { ...staff, isAdmin: true })).toBe(true);
     expect(canWriteDraft(draft, { ...staff, isAdmin: true })).toBe(true);
     expect(canWriteDraft(draft, { ...staff, userId: 'u-author' })).toBe(true);
+    // An outside user is never treated as an admin, even if their template grants admin on the tool.
+    const outsider = { userId: 'u-out', companyId: 'c-other', isInternal: false, isAdmin: true };
+    expect(canSeeItem(draft, outsider)).toBe(false);
+    expect(canSeeItem({ ...item, status: 'sent' }, outsider)).toBe(false);
+    expect(canWriteDraft(draft, outsider)).toBe(false);
   });
 
   it('lets only the companies on the item respond', () => {

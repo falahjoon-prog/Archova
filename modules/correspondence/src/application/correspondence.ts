@@ -204,10 +204,12 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       userId: scope.ctx.userId,
       companyId: perms.companyId,
       isInternal: scope.ctx.principalType === 'member',
+      // Outside users never get the staff-wide view, whatever level a custom template grants them.
       isAdmin:
-        perms.orgRole === 'owner' ||
-        perms.orgRole === 'admin' ||
-        atLeast(perms.toolLevels.correspondence, 'admin'),
+        scope.ctx.principalType === 'member' &&
+        (perms.orgRole === 'owner' ||
+          perms.orgRole === 'admin' ||
+          atLeast(perms.toolLevels.correspondence, 'admin')),
     };
   }
 
