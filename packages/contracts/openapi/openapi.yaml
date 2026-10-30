@@ -1733,6 +1733,35 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getInductionDraftCurrency
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.induction.draft
+      summary: Whether the documents a Nova induction draft cited still stand (F33 I2).
+      description: |
+        Compares the documents and drawing sheets the draft cited with the register now. A source with a newer
+        published revision, or one that is gone, is listed in `changed` with the revision cited and the current one,
+        the sections that rest on it and how many quiz questions cite it. Pass the draft an induction was built from
+        (`draftAiSuggestionId` on the induction, `aiSuggestionId` on a published version). Read when asked, so the
+        answer is never behind. A change in a source the caller cannot open (a private folder) is counted in
+        `hiddenChanges` and never named. RFIs, defects and diary days a draft cited are not checked: they have no
+        revisions. Free; no model is called.
+      responses:
+        '200':
+          description: Whether the draft is up to date, and what changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCurrency' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/index:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5604,6 +5633,55 @@ components:
         runId: { type: string }
         createdAt: { type: string, format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
+    InductionCurrency:
+      type: object
+      required: [suggestionId, upToDate, changed, hiddenChanges]
+      properties:
+        suggestionId: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+        upToDate:
+          type: boolean
+          description: False when any cited source has changed, including ones the caller cannot open.
+        changed:
+          type: array
+          items: { $ref: '#/components/schemas/InductionSourceChange' }
+        hiddenChanges:
+          type: integer
+          minimum: 0
+          description: Changed sources the caller cannot open; they are counted, not named.
+    InductionSourceChange:
+      type: object
+      required:
+        [
+          sourceType,
+          sourceId,
+          title,
+          citedRevision,
+          currentRevision,
+          reason,
+          sections,
+          quizQuestions,
+        ]
+      properties:
+        sourceType: { type: string, enum: [document, drawing] }
+        sourceId: { type: string, description: 'The `doc_` or `dsh_` id of the document or sheet.' }
+        title: { type: string }
+        citedRevision:
+          type: [string, 'null']
+          description: The revision label the draft cited; null when the register no longer lists it.
+        currentRevision:
+          type: [string, 'null']
+          description: The current revision label; null when the source is gone.
+        reason:
+          type: string
+          enum: [newer_revision, withdrawn]
+        sections:
+          type: array
+          description: The induction sections whose slides or quiz questions cite this source.
+          items: { $ref: '#/components/schemas/InductionSectionKey' }
+        quizQuestions:
+          type: integer
+          minimum: 0
+          description: How many quiz questions cite this source.
     AiSuggestionPage:
       type: object
       required: [data, nextCursor]

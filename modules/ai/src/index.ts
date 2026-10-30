@@ -5,6 +5,7 @@ import { defineModule, type KernelServices, type TenantScope } from '@archova/ke
 import { createAdminService } from './application/admin';
 import { createAskService } from './application/ask';
 import { createSemanticSearchService } from './application/semantic-search';
+import { createInductionCurrencyService } from './application/induction-currency';
 import { createInductionDraftService } from './application/induction-draft';
 import { createInductionQaService } from './application/induction-qa';
 import { createInductionTranslationService } from './application/induction-translation';
@@ -321,6 +322,12 @@ export function createAiModule(
     assert: deps.assert,
     accessScopes: deps.accessScopes,
   });
+  const inductionCurrency = createInductionCurrencyService({
+    database: services.database,
+    assert: deps.assert,
+    accessScopes: deps.accessScopes,
+    sources: deps.sources,
+  });
   const rfiDrafts = createRfiDraftService({
     database: services.database,
     gateway,
@@ -388,6 +395,7 @@ export function createAiModule(
       semanticSearch,
       projectIndex,
       inductionDrafts,
+      inductionCurrency,
       rfiDrafts,
       drawingCompare,
       diarySummary,
@@ -415,6 +423,8 @@ export function createAiModule(
       restampSource: projectIndex.restampSource,
       sweepOrg: projectIndex.sweepOrg,
       draftInduction: inductionDrafts.draft,
+      /** F33 I2: whether the documents a drafted induction cited still stand, and which sections rest on a changed one. */
+      inductionDraftCurrency: inductionCurrency.check,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
       draftRfi: rfiDrafts.draft,
       /** F5: a title, trade, priority and assignee companies from a defect photo and its pin; nothing is saved. */

@@ -1519,6 +1519,26 @@ export const InductionCompletionSchema = z.object({
 });
 export type InductionCompletion = z.infer<typeof InductionCompletionSchema>;
 
+export const InductionSourceChangeSchema = z.object({
+  "sourceType": z.enum(["document", "drawing"]),
+  "sourceId": z.string(),
+  "title": z.string(),
+  "citedRevision": z.string().nullable(),
+  "currentRevision": z.string().nullable(),
+  "reason": z.enum(["newer_revision", "withdrawn"]),
+  "sections": z.array(InductionSectionKeySchema),
+  "quizQuestions": z.number().int().min(0),
+});
+export type InductionSourceChange = z.infer<typeof InductionSourceChangeSchema>;
+
+export const InductionCurrencySchema = z.object({
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+  "upToDate": z.boolean(),
+  "changed": z.array(InductionSourceChangeSchema),
+  "hiddenChanges": z.number().int().min(0),
+});
+export type InductionCurrency = z.infer<typeof InductionCurrencySchema>;
+
 export const InductionLinkStateSchema = z.enum(["active", "expired", "revoked", "used_up"]);
 export type InductionLinkState = z.infer<typeof InductionLinkStateSchema>;
 

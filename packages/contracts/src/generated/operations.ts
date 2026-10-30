@@ -388,6 +388,11 @@ export const DraftInductionParams = z.object({
 export const DraftInductionBody = z.object({
   "siteName": z.string().min(1).max(200),
 }).strict();
+export const GetInductionDraftCurrencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
 export const IndexProjectForNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2036,6 +2041,18 @@ export const operations = {
     params: DraftInductionParams,
     query: null,
     body: DraftInductionBody,
+  },
+  getInductionDraftCurrency: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency',
+    module: "ai",
+    auth: "required",
+    permission: "ai.induction.draft",
+    internal: false,
+    contentType: null,
+    params: GetInductionDraftCurrencyParams,
+    query: null,
+    body: null,
   },
   indexProjectForNova: {
     method: 'POST',

@@ -1345,6 +1345,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Whether the documents a Nova induction draft cited still stand (F33 I2).
+         * @description Compares the documents and drawing sheets the draft cited with the register now. A source with a newer
+         *     published revision, or one that is gone, is listed in `changed` with the revision cited and the current one,
+         *     the sections that rest on it and how many quiz questions cite it. Pass the draft an induction was built from
+         *     (`draftAiSuggestionId` on the induction, `aiSuggestionId` on a published version). Read when asked, so the
+         *     answer is never behind. A change in a source the caller cannot open (a private folder) is counted in
+         *     `hiddenChanges` and never named. RFIs, defects and diary days a draft cited are not checked: they have no
+         *     revisions. Free; no model is called.
+         */
+        get: operations["getInductionDraftCurrency"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/index": {
         parameters: {
             query?: never;
@@ -3951,6 +3981,31 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             decidedAt: string | null;
+        };
+        InductionCurrency: {
+            suggestionId: string;
+            /** @description False when any cited source has changed, including ones the caller cannot open. */
+            upToDate: boolean;
+            changed: components["schemas"]["InductionSourceChange"][];
+            /** @description Changed sources the caller cannot open; they are counted, not named. */
+            hiddenChanges: number;
+        };
+        InductionSourceChange: {
+            /** @enum {string} */
+            sourceType: "document" | "drawing";
+            /** @description The `doc_` or `dsh_` id of the document or sheet. */
+            sourceId: string;
+            title: string;
+            /** @description The revision label the draft cited; null when the register no longer lists it. */
+            citedRevision: string | null;
+            /** @description The current revision label; null when the source is gone. */
+            currentRevision: string | null;
+            /** @enum {string} */
+            reason: "newer_revision" | "withdrawn";
+            /** @description The induction sections whose slides or quiz questions cite this source. */
+            sections: components["schemas"]["InductionSectionKey"][];
+            /** @description How many quiz questions cite this source. */
+            quizQuestions: number;
         };
         AiSuggestionPage: {
             data: components["schemas"]["AiSuggestion"][];
@@ -8739,6 +8794,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionDraftCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the draft is up to date, and what changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCurrency"];
                 };
             };
             default: components["responses"]["Problem"];

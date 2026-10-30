@@ -22,6 +22,7 @@ import type {
   InductionDraftPayload,
   InductionDraftService,
 } from '../application/induction-draft';
+import type { InductionCurrencyService } from '../application/induction-currency';
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
@@ -194,6 +195,7 @@ export function aiRoutes(
   semanticSearch: SemanticSearchService,
   projectIndex: ProjectIndexService,
   inductionDrafts: InductionDraftService,
+  inductionCurrency: InductionCurrencyService,
   rfiDrafts: RfiDraftService,
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
@@ -488,6 +490,27 @@ export function aiRoutes(
         siteName: input.body.siteName,
       });
       return { status: 201, body: toSuggestionDto(row) };
+    },
+    getInductionDraftCurrency: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const suggestionId = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!suggestionId) throw new AppError('ai.suggestion.not_found');
+      const r = await inductionCurrency.check(requireTenant(input), projectId, suggestionId);
+      return {
+        status: 200,
+        body: {
+          suggestionId: encodeId('aiSuggestion', r.suggestionId),
+          upToDate: r.upToDate,
+          hiddenChanges: r.hiddenChanges,
+          changed: r.changed.map((c) => ({
+            ...c,
+            sourceId: encodeId(
+              c.sourceType === 'document' ? 'document' : 'drawingSheet',
+              c.sourceId,
+            ),
+          })),
+        },
+      };
     },
     indexProjectForNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
