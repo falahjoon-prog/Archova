@@ -11,6 +11,7 @@ import {
 } from '@archova/markup';
 import { webRoutes } from '@archova/routes';
 import {
+  Alert,
   Button,
   Dialog,
   DrawingCanvas,
@@ -44,12 +45,13 @@ import { RevisionBadge } from '../components/RevisionBadge';
 import { SheetArtworkSvg } from '../components/SheetArtworkSvg';
 import { SidePanel } from '../components/SidePanel';
 import { SupersededBanner } from '../components/SupersededBanner';
-import type { DrawingRevision } from '../lib/types';
+import type { DrawingPin, DrawingRevision } from '../lib/types';
 import {
   useConfirmScale,
   useGeometry,
   useMarkupMutations,
   useMarkups,
+  useMovePin,
   usePins,
   useSheet,
 } from '../hooks/useDrawings';
@@ -108,6 +110,8 @@ export function DrawingViewerScreen({
   const [draftFrom, setDraftFrom] = useState<Point | null>(null);
   const [hover, setHover] = useState<Point | null>(null);
   const [textAt, setTextAt] = useState<Point | null>(null);
+  const [movingPin, setMovingPin] = useState<DrawingPin | null>(null);
+  const movePin = useMovePin(project.projectId, revisionId ?? '');
   const [text, setText] = useState('');
   const canvasRef = useRef<DrawingCanvasHandle>(null);
   const [pdfSizes, setPdfSizes] = useState<Record<string, SheetSize>>({});
@@ -171,6 +175,7 @@ export function DrawingViewerScreen({
     setDraftFrom(null);
     setActiveExtension(null);
     setBinding(null);
+    setMovingPin(null);
   };
 
   const finishShape = (shape: MarkupShape) => {
@@ -193,21 +198,36 @@ export function DrawingViewerScreen({
       ? { kind: mode, from: draftFrom, to: hover }
       : null;
 
-  const toolBinding: ViewerToolBinding | null = extension
-    ? binding
-    : mode === 'pan' || mode === 'select'
-      ? null
-      : {
-          onPointerDown: markupPointerDown,
-          onPointerMove: (e) => setHover(e.point),
-          onKeyDown: (e) => {
-            if (e.key === 'Escape') {
-              setDraftFrom(null);
-              return true;
-            }
-            return false;
-          },
-        };
+  const toolBinding: ViewerToolBinding | null = movingPin
+    ? {
+        onPointerDown: (e) => {
+          const pin = movingPin;
+          setMovingPin(null);
+          movePin.mutate({ pin, at: { x: e.point.x, y: e.point.y } });
+        },
+        onKeyDown: (e) => {
+          if (e.key === 'Escape') {
+            setMovingPin(null);
+            return true;
+          }
+          return false;
+        },
+      }
+    : extension
+      ? binding
+      : mode === 'pan' || mode === 'select'
+        ? null
+        : {
+            onPointerDown: markupPointerDown,
+            onPointerMove: (e) => setHover(e.point),
+            onKeyDown: (e) => {
+              if (e.key === 'Escape') {
+                setDraftFrom(null);
+                return true;
+              }
+              return false;
+            },
+          };
 
   /** The preview's drawn artwork, or the revision's PDF page. */
   const sheetImage = (rev: DrawingRevision, tone: 'ink' | 'old' | 'new' = 'ink') => {
@@ -318,6 +338,16 @@ export function DrawingViewerScreen({
         formatDate={(iso) => formatInstant(iso, tz)}
       />
       {previewDataOnly ? <PreviewDataNotice tool="The drawing viewer" /> : null}
+      {movingPin ? (
+        <Alert tone="info" title={`Place ${movingPin.label}`}>
+          Click the sheet where it belongs. Press Escape or{' '}
+          <button type="button" className="link-button" onClick={() => setMovingPin(null)}>
+            cancel
+          </button>{' '}
+          to leave it where it is.
+        </Alert>
+      ) : null}
+      <ErrorAlert error={movePin.error} title="We couldn't move the pin" />
       <ErrorAlert
         error={markupMutations.create.error ?? geometry.error}
         title="Something went wrong on this sheet"
@@ -447,6 +477,8 @@ export function DrawingViewerScreen({
                 markups={markups.data ?? []}
                 actorId={actor.id}
                 timezone={tz}
+                movingPinId={movingPin?.id}
+                onMovePin={revision.status === 'current' ? setMovingPin : undefined}
               />
             )}
           </aside>

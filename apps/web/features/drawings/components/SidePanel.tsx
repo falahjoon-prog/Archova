@@ -36,6 +36,8 @@ export function SidePanel({
   markups,
   actorId,
   timezone,
+  onMovePin,
+  movingPinId,
 }: {
   projectId: string;
   orgSlug: string;
@@ -44,6 +46,9 @@ export function SidePanel({
   markups: readonly DrawingMarkup[];
   actorId: string;
   timezone: string;
+  /** Set when this revision is current and the person can edit pins; starts placing the pin on the sheet. */
+  onMovePin?: ((pin: DrawingPin) => void) | undefined;
+  movingPinId?: string | null | undefined;
 }) {
   const confirmPin = useConfirmPinLocation(projectId, revisionId);
   const mutations = useMarkupMutations(projectId, revisionId);
@@ -70,6 +75,18 @@ export function SidePanel({
                   {p.label}
                 </Link>{' '}
                 {p.title}
+                {onMovePin && p.movable ? (
+                  <div>
+                    <Button
+                      size="sm"
+                      variant="tertiary"
+                      disabled={movingPinId === p.id}
+                      onClick={() => onMovePin(p)}
+                    >
+                      {movingPinId === p.id ? 'Click the sheet…' : `Move ${p.label}`}
+                    </Button>
+                  </div>
+                ) : null}
                 {p.checkLocation ? (
                   <div className="row-actions">
                     <StatusPill tone="warning">Check location</StatusPill>

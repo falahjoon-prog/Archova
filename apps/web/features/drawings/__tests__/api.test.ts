@@ -145,6 +145,26 @@ describe('drawings API source', () => {
       ],
       nextCursor: null,
     }));
+    // Defects pinned on the revision: the open one gets a spot, the closed one doesn't.
+    fake.on('GET', `${P}/defects`, () => ({
+      data: [
+        {
+          id: 'dfx_1',
+          numberLabel: 'DEF-0001',
+          title: 'Cracked tile',
+          status: 'open',
+          pin: { drawingRevisionId: 'drv_c', x: 0.2, y: 0.8 },
+        },
+        {
+          id: 'dfx_2',
+          numberLabel: 'DEF-0002',
+          title: 'Fixed already',
+          status: 'closed',
+          pin: { drawingRevisionId: 'drv_c', x: 0.3, y: 0.3 },
+        },
+      ],
+      nextCursor: null,
+    }));
     const source = createDrawingsApi('org_1');
     const markups = await source.listMarkups('prj_1', 'drv_c', me);
     expect(markups).toHaveLength(1);
@@ -161,7 +181,18 @@ describe('drawings API source', () => {
         y: 0.47,
         checkLocation: false,
       }),
+      expect.objectContaining({
+        entityType: 'defect',
+        entityId: 'dfx_1',
+        label: 'DEF-0001',
+        title: 'Cracked tile',
+        x: 0.2,
+        y: 0.8,
+      }),
     ]);
+    expect(fake.callsTo('GET', `${P}/defects`)[0]!.init.params?.query).toMatchObject({
+      drawingRevisionId: 'drv_c',
+    });
     expect(fake.callsTo('GET', `${P}/rfis`)[0]!.init.params?.query).toMatchObject({
       drawingRevisionId: 'drv_c',
     });
@@ -306,5 +337,35 @@ describe('drawings API source', () => {
 
   it('has no geometry yet, so measuring stays off', async () => {
     await expect(createDrawingsApi('org_1').getGeometry('prj_1', 'drv_c')).resolves.toBeNull();
+  });
+
+  it("moves an RFI's or a defect's own pin with the version it last read", async () => {
+    const R = `${P}/rfis/{rfiId}`;
+    const D = `${P}/defects/{defectId}`;
+    fake.on('GET', R, () => ({ rfi: { id: 'rfi_4', version: 5 }, responses: [] }));
+    fake.on('PATCH', R, () => ({ rfi: { id: 'rfi_4', version: 6 }, responses: [] }));
+    fake.on('GET', D, () => ({ defect: { id: 'dfx_1', version: 2 } }));
+    fake.on('PATCH', D, () => ({ defect: { id: 'dfx_1', version: 3 } }));
+    const source = createDrawingsApi('org_1');
+    const pin = (entityType: 'rfi' | 'defect', entityId: string) => ({
+      id: `${entityType}~${entityId}`,
+      entityType,
+      entityId,
+      label: 'X',
+      title: 'T',
+      status: 'open',
+      x: 0.1,
+      y: 0.1,
+      checkLocation: false,
+      movable: true,
+    });
+    await source.movePin('prj_1', 'drv_c', pin('rfi', 'rfi_4'), { x: 0.6, y: 0.7 });
+    const rfiPatch = fake.callsTo('PATCH', R)[0]!;
+    expect(rfiPatch.init.params?.header).toEqual({ 'If-Match': '"5"' });
+    expect(rfiPatch.init.body).toEqual({ pin: { drawingRevisionId: 'drv_c', x: 0.6, y: 0.7 } });
+    await source.movePin('prj_1', 'drv_c', pin('defect', 'dfx_1'), { x: 0.2, y: 0.3 });
+    const defectPatch = fake.callsTo('PATCH', D)[0]!;
+    expect(defectPatch.init.params?.header).toEqual({ 'If-Match': '"2"' });
+    expect(defectPatch.init.body).toEqual({ pin: { drawingRevisionId: 'drv_c', x: 0.2, y: 0.3 } });
   });
 });

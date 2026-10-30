@@ -297,6 +297,43 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
               x: r.pin.x,
               y: r.pin.y,
               checkLocation: false,
+              movable: true,
+            },
+          ]
+        : [],
+    );
+  };
+
+  /** Open defects pinned to this revision (a closed or void one no longer needs a spot on the sheet). */
+  const pinnedDefects = async (projectId: string, revisionId: string): Promise<DrawingPin[]> => {
+    const defects = await allPages(async (cursor) =>
+      unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/defects', {
+          params: {
+            path: { orgId, projectId },
+            query: { drawingRevisionId: revisionId, limit: 200, ...(cursor ? { cursor } : {}) },
+          },
+        }),
+      ),
+    ).catch((e: unknown) => {
+      // Someone who can see drawings but not defects still gets the sheet, its markups and RFI pins.
+      if (e instanceof ApiError && e.status === 403) return [];
+      throw e;
+    });
+    return defects.flatMap((d) =>
+      d.pin?.drawingRevisionId === revisionId && d.status !== 'closed' && d.status !== 'void'
+        ? [
+            {
+              id: `defect~${d.id}`,
+              entityType: 'defect' as const,
+              entityId: d.id,
+              label: d.numberLabel ?? 'Draft defect',
+              title: d.title,
+              status: d.status,
+              x: d.pin.x,
+              y: d.pin.y,
+              checkLocation: false,
+              movable: true,
             },
           ]
         : [],
@@ -387,14 +424,19 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
     },
 
     async listPins(projectId, revisionId) {
-      const [markups, rfis] = await Promise.all([
+      const [markups, rfis, defects] = await Promise.all([
         listApiMarkups(projectId, revisionId),
         pinnedRfis(projectId, revisionId),
+        pinnedDefects(projectId, revisionId),
       ]);
       const pins = markups.flatMap(toPins);
       // RFIs carry their own pin; a markup pin for the same RFI wins, since it can be location-checked.
       const shown = new Set(pins.map((p) => `${p.entityType}:${p.entityId}`));
-      return [...pins, ...rfis.filter((p) => !shown.has(`rfi:${p.entityId}`))];
+      return [
+        ...pins,
+        ...rfis.filter((p) => !shown.has(`rfi:${p.entityId}`)),
+        ...defects.filter((p) => !shown.has(`defect:${p.entityId}`)),
+      ];
     },
 
     async confirmPinLocation(projectId, revisionId, pinId) {
@@ -413,6 +455,39 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
             body: { locationConfirmed: true },
           },
         ),
+      );
+    },
+
+    /** Moves an RFI's or a defect's own pin to a new spot on the same revision. */
+    async movePin(projectId, revisionId, pin, at) {
+      await ensureCsrfToken();
+      const body = { pin: { drawingRevisionId: revisionId, x: at.x, y: at.y } };
+      if (pin.entityType === 'rfi') {
+        const rfiId = pin.entityId;
+        const { rfi } = unwrap(
+          await api.GET('/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}', {
+            params: { path: { orgId, projectId, rfiId } },
+          }),
+        );
+        unwrap(
+          await api.PATCH('/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}', {
+            params: { path: { orgId, projectId, rfiId }, header: ifMatch(rfi.version) },
+            body,
+          }),
+        );
+        return;
+      }
+      const defectId = pin.entityId;
+      const { defect } = unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}', {
+          params: { path: { orgId, projectId, defectId } },
+        }),
+      );
+      unwrap(
+        await api.PATCH('/v1/orgs/{orgId}/projects/{projectId}/defects/{defectId}', {
+          params: { path: { orgId, projectId, defectId }, header: ifMatch(defect.version) },
+          body,
+        }),
       );
     },
 
