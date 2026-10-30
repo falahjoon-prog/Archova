@@ -2003,8 +2003,8 @@ paths:
         (page fractions from the top-left corner), how sure it is and why when it is not; software drops anything off
         the sheet, the wrong shape or a repeat, and caps confidence on scanned sheets at 0.84. Nova never gives a
         quantity: save the items with `createAssistedTakeoffMeasurements` and size them from the sheet's confirmed
-        scale. Nothing is saved or counted here. Costs one Nova credit per run. Needs a deployment that can render
-        drawing pages, else 503.
+        scale. Nothing is saved or counted here. Costs one Nova credit per run. Send `image`, or the deployment must be
+        able to render drawing pages, else 503.
       requestBody:
         required: true
         content:
@@ -2023,6 +2023,16 @@ paths:
                     kind: { $ref: '#/components/schemas/TakeoffKind' }
                     what: { type: string, minLength: 1, maxLength: 120 }
                     hint: { type: string, maxLength: 400 }
+                image:
+                  type: object
+                  additionalProperties: false
+                  required: [mime, base64]
+                  description: |
+                    The sheet as the viewer drew it, downscaled (about 2,000 px on the long side). The API has no page
+                    renderer, so the browser sends the picture; without it the server renders the page where it can.
+                  properties:
+                    mime: { type: string, enum: [image/png, image/jpeg, image/webp] }
+                    base64: { type: string, minLength: 1, maxLength: 11500000 }
                 examples:
                   type: array
                   maxItems: 5

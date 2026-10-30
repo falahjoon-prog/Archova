@@ -371,6 +371,7 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
           mutations={mutations}
           selectedId={selectedMark}
           onSelect={setSelectedMark}
+          sheetElement={overlayTarget}
           context={{
             revisionId: sheet.revisionId,
             trade,

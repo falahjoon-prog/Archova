@@ -203,6 +203,7 @@ export function createTakeoffApi(orgId: string): TakeoffSource {
           body: {
             revisionId: input.revisionId,
             target: { kind: input.kind, what: input.what },
+            ...(input.image ? { image: input.image } : {}),
           },
         }),
       );

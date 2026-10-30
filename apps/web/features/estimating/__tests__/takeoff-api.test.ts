@@ -291,12 +291,17 @@ describe('takeoff measurements', () => {
       scale: '1:100',
       scaleConfirmed: true,
       size: { widthMm: 841, heightMm: 594 },
+      image: { mime: 'image/png', base64: 'iVBORw0KGgo=' },
     });
     // Nova is asked what to find, never for a quantity.
     expect(
       fake.callsTo('POST', '/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections')[0]!.init
         .body,
-    ).toEqual({ revisionId: 'drv_c', target: { kind: 'length', what: 'strip footings' } });
+    ).toEqual({
+      revisionId: 'drv_c',
+      target: { kind: 'length', what: 'strip footings' },
+      image: { mime: 'image/png', base64: 'iVBORw0KGgo=' },
+    });
     const saved = fake.callsTo('POST', `${P}/batch`)[0]!.init.body as {
       items: Array<Record<string, unknown>>;
     };

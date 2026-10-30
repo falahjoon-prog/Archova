@@ -30,6 +30,33 @@ export interface TakeoffDetectRequest {
   revisionId: string;
   target: { kind: TakeoffTargetKind; what: string; hint?: string };
   examples?: Array<{ x: number; y: number }>;
+  /**
+   * The sheet as the person's viewer drew it. The API image has no page renderer (a native canvas is approved for the
+   * ai-worker image only), so the browser, which already renders the page, sends it. Without one the server renders
+   * the page itself, where it can.
+   */
+  image?: { mime: 'image/png' | 'image/jpeg' | 'image/webp'; base64: string };
+}
+
+/** A sheet picture bigger than this is not a downscaled render. */
+export const MAX_SHEET_IMAGE_BYTES = 8 * 1024 * 1024;
+const MAGIC: Record<string, number[]> = {
+  'image/png': [0x89, 0x50, 0x4e, 0x47],
+  'image/jpeg': [0xff, 0xd8, 0xff],
+  'image/webp': [0x52, 0x49, 0x46, 0x46],
+};
+
+/** The picture must be what it says it is and a sensible size: it goes to the model as it is. */
+function checkImage(image: NonNullable<TakeoffDetectRequest['image']>) {
+  const bytes = Buffer.from(image.base64, 'base64');
+  const ok =
+    bytes.length > 0 &&
+    bytes.length <= MAX_SHEET_IMAGE_BYTES &&
+    MAGIC[image.mime]!.every((b, i) => bytes[i] === b);
+  if (!ok)
+    throw new AppError('validation_failed', "That sheet picture can't be used.", [
+      { path: 'image', message: 'Send a PNG, JPEG or WebP picture of the sheet under 8 MB' },
+    ]);
 }
 
 export interface TakeoffDetection extends ReviewedDetection {
@@ -48,12 +75,13 @@ export function createTakeoffDetectService(deps: TakeoffDetectDeps) {
     input: TakeoffDetectRequest,
     signal?: AbortSignal,
   ): Promise<TakeoffDetection> {
-    if (!deps.rasterizePage)
+    if (input.image) checkImage(input.image);
+    const rasterize = deps.rasterizePage;
+    if (!input.image && !rasterize)
       throw new AppError(
         'ai.takeoff.renderer_unavailable',
         'Nova takeoff is not available on this server yet.',
       );
-    const rasterize = deps.rasterizePage;
     const { revision, file } = await deps.database.withTenantTx(
       ctx,
       async (scope) => {
@@ -66,7 +94,6 @@ export function createTakeoffDetectService(deps: TakeoffDetectDeps) {
       { readOnly: true },
     );
 
-    const raster = await rasterize(file, revision.pageIndex);
     // The sheet's own words (legend, room names) help match symbols; a page with no text layer is a scan (ai/10 §2).
     const sheet = await readSheetLines(
       deps.gateway,
@@ -91,7 +118,7 @@ export function createTakeoffDetectService(deps: TakeoffDetectDeps) {
           .map((l) => l.text)
           .join('\n')
           .slice(0, 4000),
-        image: { mime: 'image/png', base64: Buffer.from(encodePng(raster)).toString('base64') },
+        image: input.image ?? (await renderedImage(rasterize!, file, revision.pageIndex)),
       },
       { projectId, ...(signal ? { signal } : {}) },
     );
@@ -111,6 +138,18 @@ export function createTakeoffDetectService(deps: TakeoffDetectDeps) {
   }
 
   return { detect };
+}
+
+async function renderedImage(
+  rasterize: NonNullable<TakeoffDetectDeps['rasterizePage']>,
+  file: ReadableFile,
+  pageIndex: number,
+) {
+  const raster = await rasterize(file, pageIndex);
+  return {
+    mime: 'image/png' as const,
+    base64: Buffer.from(encodePng(raster)).toString('base64'),
+  };
 }
 
 export type TakeoffDetectService = ReturnType<typeof createTakeoffDetectService>;

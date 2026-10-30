@@ -70,6 +70,8 @@ export interface NovaFindInput {
   scale: string;
   scaleConfirmed: boolean;
   size: SheetSize;
+  /** The sheet as drawn in the viewer; the server has no renderer of its own. */
+  image?: { mime: 'image/png'; base64: string } | null;
 }
 
 export interface NovaFound {
