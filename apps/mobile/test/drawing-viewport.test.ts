@@ -184,3 +184,91 @@ describe('tap detection', () => {
     expect(isTap(6, 6)).toBe(false);
   });
 });
+
+describe('markupPrimitives', async () => {
+  const { markupPrimitives, needsLocationCheck } = await import('../features/drawings');
+  const pyramid = { width: 1000, height: 500, tileSize: 256, levels: 3 };
+  const view = { x: 0, y: 0, scale: 1, screenWidth: 1000, screenHeight: 500 };
+  const markup = (shapes: unknown[], over: Record<string, unknown> = {}) =>
+    ({ id: 'm1', needsLocationCheck: false, shapes, ...over }) as never;
+
+  it('places shapes from normalised coordinates', () => {
+    const out = markupPrimitives(
+      pyramid,
+      view,
+      [
+        markup([
+          {
+            id: 'a',
+            kind: 'line',
+            from: { x: 0.1, y: 0.2 },
+            to: { x: 0.5, y: 0.4 },
+            color: 'blue',
+          },
+          { id: 'b', kind: 'text', at: { x: 0.5, y: 0.5 }, text: 'Check' },
+        ]),
+      ],
+      'red',
+    );
+    expect(out[0]).toMatchObject({
+      kind: 'line',
+      from: { x: 100, y: 100 },
+      to: { x: 500, y: 200 },
+      color: 'blue',
+    });
+    expect(out[1]).toMatchObject({
+      kind: 'text',
+      at: { x: 500, y: 250 },
+      text: 'Check',
+      color: 'red',
+    });
+  });
+
+  it('follows pan and zoom', () => {
+    const zoomed = { ...view, x: 100, scale: 2 };
+    const [rect] = markupPrimitives(
+      pyramid,
+      zoomed,
+      [markup([{ id: 'r', kind: 'rect', from: { x: 0.2, y: 0 }, to: { x: 0.4, y: 0.2 } }])],
+      'red',
+    );
+    expect(rect).toMatchObject({ kind: 'path', d: expect.stringContaining('M 200 0') });
+  });
+
+  it('skips shapes it cannot place', () => {
+    const out = markupPrimitives(
+      pyramid,
+      view,
+      [
+        markup([
+          { id: 'p', kind: 'pen', points: [{ x: 0, y: 0 }] },
+          { id: 'l', kind: 'line' },
+          { id: 'n', kind: 'pin', at: { x: 0.5, y: 0.5 } },
+        ]),
+      ],
+      'red',
+    );
+    expect(out).toEqual([]);
+  });
+
+  it('draws an ellipse inside its box and a cloud as a closed path', () => {
+    const [ellipse, cloud] = markupPrimitives(
+      pyramid,
+      view,
+      [
+        markup([
+          { id: 'e', kind: 'ellipse', from: { x: 0.2, y: 0.2 }, to: { x: 0.6, y: 0.6 } },
+          { id: 'c', kind: 'cloud', from: { x: 0.2, y: 0.2 }, to: { x: 0.6, y: 0.6 } },
+        ]),
+      ],
+      'red',
+    );
+    expect(ellipse).toMatchObject({ kind: 'ellipse', cx: 400, cy: 200, rx: 200, ry: 100 });
+    expect(cloud).toMatchObject({ kind: 'path', d: expect.stringMatching(/Q .* Z$/) });
+  });
+
+  it('flags markups carried from an older revision', () => {
+    expect(needsLocationCheck([markup([]), markup([], { needsLocationCheck: true })])).toBe(true);
+    expect(needsLocationCheck([markup([])])).toBe(false);
+  });
+});

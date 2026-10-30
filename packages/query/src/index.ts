@@ -128,6 +128,18 @@ export function createQueries(api: ApiClient) {
             ),
           ),
       }),
+    /** Markups on one revision that the caller can see (own, own company's, published). */
+    markups: (orgId: string, projectId: string, revisionId: string) =>
+      queryOptions({
+        queryKey: [...queryKeys.drawingRevision(orgId, revisionId, 'markups')],
+        queryFn: async () =>
+          unwrap(
+            await api.GET(
+              '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/markups',
+              { params: { path: { orgId, projectId, drawingRevisionId: revisionId } } },
+            ),
+          ),
+      }),
     /** Tile pyramid state for one drawing revision; the signed URLs expire, so keep it short-lived. */
     drawingTiles: (orgId: string, projectId: string, revisionId: string) =>
       queryOptions({
