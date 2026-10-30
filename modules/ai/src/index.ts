@@ -276,6 +276,7 @@ export function createAiModule(
       model: deps.config.embedding?.model ?? FAKE_EMBEDDING_MODEL,
       pricePerMTok: deps.config.embedding?.pricePerMTok ?? DEFAULT_EMBEDDING_PRICE,
     },
+    ...(deps.config.embedDailyTokens ? { embedDailyTokens: deps.config.embedDailyTokens } : {}),
     redis: services.redis,
     logger: services.logger,
     orgTimeZone: deps.orgTimeZone,

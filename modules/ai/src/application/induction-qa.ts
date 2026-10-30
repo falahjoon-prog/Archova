@@ -81,7 +81,8 @@ export function createInductionQaService(deps: InductionQaDeps) {
       ? await deps.gateway.embed(
           ctx,
           pieces.map((p) => p.text),
-          { purpose: 'document', feature: 'inductions', projectId: v.projectId },
+          // One person's publish, a few slides: it must not wait behind a bulk index that has used the day's cap.
+          { purpose: 'document', feature: 'inductions', projectId: v.projectId, uncapped: true },
         )
       : { model: '', vectors: [] };
     await database.withTenantTx(ctx, async (scope) => {
