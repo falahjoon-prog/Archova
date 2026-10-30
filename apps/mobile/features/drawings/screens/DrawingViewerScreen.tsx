@@ -10,7 +10,10 @@ import { Button, useTheme } from '@archova/ui-native';
 import { api, queries } from '../../../lib/api';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
 import { listDefects } from '../../defects';
+import type { Markup } from '@archova/contracts';
 import { supersededNotice } from '../banner';
+import { MarkupLayer } from './MarkupLayer';
+import { needsLocationCheck } from '../markup';
 import { drawingPdfUrl } from '../pdf';
 import { pinsOnRevision, type SheetPin } from '../pins';
 import {
@@ -38,6 +41,7 @@ function SheetCanvas({
   overviewUrl,
   tileUrlTemplate,
   pins,
+  markups,
   onOpenPin,
   placing,
   onPlace,
@@ -47,6 +51,7 @@ function SheetCanvas({
   overviewUrl: string | undefined;
   tileUrlTemplate: string;
   pins: SheetPin[];
+  markups: readonly Markup[];
   onOpenPin: (pin: SheetPin) => void;
   /** The next tap on the sheet drops a new defect pin there. */
   placing: boolean;
@@ -186,6 +191,7 @@ function SheetCanvas({
               );
             })}
           </View>
+          <MarkupLayer pyramid={pyramid} view={view} markups={markups} />
           {pins.map((pin) => {
             const at = pinToScreen(pyramid, view, pin);
             if (!at.onScreen) return null;
@@ -261,6 +267,11 @@ export function DrawingViewerScreen({
     enabled: orgId !== null,
   });
   const notice = revision.data ? supersededNotice(revision.data) : null;
+  const markups = useQuery({
+    ...queries.markups(orgId ?? '', projectId, revisionId),
+    enabled: orgId !== null,
+  });
+  const markupList = markups.data?.data ?? [];
   const [placing, setPlacing] = useState(false);
   const [pdfError, setPdfError] = useState(false);
   const sheetId = revision.data?.sheetId ?? null;
@@ -334,6 +345,13 @@ export function DrawingViewerScreen({
           ) : null}
         </View>
       ) : null}
+      {needsLocationCheck(markupList) ? (
+        <View style={{ padding: t.space[2], backgroundColor: t.color.statusWarning }}>
+          <Text style={{ color: t.color.surface }}>
+            Some markups came from an earlier revision. Check their location before relying on them.
+          </Text>
+        </View>
+      ) : null}
       <SheetCanvas
         pyramid={{
           width: d.width,
@@ -345,6 +363,7 @@ export function DrawingViewerScreen({
         overviewUrl={d.overviewUrl}
         tileUrlTemplate={d.tileUrlTemplate}
         pins={pins}
+        markups={markupList}
         onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
         placing={placing}
         onPlace={(pin) => {
