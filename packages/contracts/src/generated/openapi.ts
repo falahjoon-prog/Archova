@@ -5103,6 +5103,10 @@ export interface components {
             scheduleImpactDays: number | null;
             /** @description Days of delay caused by a late answer */
             delayDays: number | null;
+            /** @description As written on the form. */
+            specSection: string | null;
+            /** @description As written on the form. */
+            location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
             officialResponseId: string | null;
             createdBy: string | null;
@@ -5149,6 +5153,10 @@ export interface components {
             costImpact?: components["schemas"]["CostImpact"];
             costEstimate?: string;
             scheduleImpactDays?: number;
+            /** @description The spec section it concerns, as written (e.g. `03 30 00 Concrete`). */
+            specSection?: string;
+            /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
+            location?: string;
             pin?: components["schemas"]["RfiPinInput"];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
@@ -5168,6 +5176,8 @@ export interface components {
             costEstimate?: string | null;
             scheduleImpactDays?: number | null;
             delayDays?: number | null;
+            specSection?: string | null;
+            location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
         };
         CreateRfiResponseRequest: {

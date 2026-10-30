@@ -57,10 +57,18 @@ describe('RFI lifecycle (product/03)', () => {
       assigneeIds: [s.eng.userId],
       distributionCompanyIds: [s.subCo.companyId],
       costImpact: 'tbc',
+      specSection: '  03 30 00 Cast-in-place concrete ',
+      location: 'Level 2, gridline C',
     });
     expect(draft.statusCode).toBe(201);
     const rfi = draft.json().rfi;
-    expect(rfi).toMatchObject({ status: 'draft', number: null, managerId: s.pm.userId });
+    expect(rfi).toMatchObject({
+      status: 'draft',
+      number: null,
+      managerId: s.pm.userId,
+      specSection: '03 30 00 Cast-in-place concrete',
+      location: 'Level 2, gridline C',
+    });
 
     const opened = await s.pm.browser.post(`${s.base}/rfis/${rfi.id}/open`, undefined, {
       'if-match': etagOf(draft),
@@ -172,6 +180,32 @@ describe('RFI lifecycle (product/03)', () => {
     expect((await s.outsider.browser.get(`${s.base}/rfis/${rfi.id}/activity`)).statusCode).toBe(
       404,
     );
+  });
+
+  it('keeps the spec section and location as written, trimmed, clearable and capped', async () => {
+    const s = await setup();
+    const draft = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject: 'Spec and place',
+      specSection: '  03 30 00 Cast-in-place concrete ',
+      location: 'Level 2, gridline C',
+    });
+    expect(draft.json().rfi).toMatchObject({
+      specSection: '03 30 00 Cast-in-place concrete',
+      location: 'Level 2, gridline C',
+    });
+    const rfi = draft.json().rfi;
+    const cleared = await s.pm.browser.patch(
+      `${s.base}/rfis/${rfi.id}`,
+      { specSection: '  ', location: null },
+      { 'if-match': etagOf(draft) },
+    );
+    expect(cleared.json().rfi).toMatchObject({ specSection: null, location: null });
+    const tooLong = await s.pm.browser.patch(
+      `${s.base}/rfis/${rfi.id}`,
+      { location: 'x'.repeat(201) },
+      { 'if-match': etagOf(cleared) },
+    );
+    expect(tooLong.statusCode).toBe(422);
   });
 
   it('pins to a sheet with or without a position, and records the Nova suggestion on a response', async () => {

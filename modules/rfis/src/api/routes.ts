@@ -46,6 +46,8 @@ type FieldsBody = {
   costEstimate?: string | null;
   scheduleImpactDays?: number | null;
   delayDays?: number | null;
+  specSection?: string | null;
+  location?: string | null;
   pin?: { drawingRevisionId: string; x?: number; y?: number } | null;
 };
 
@@ -73,6 +75,8 @@ function fields(b: FieldsBody): RfiFields {
   if (b.costEstimate !== undefined) out.costEstimate = b.costEstimate;
   if (b.scheduleImpactDays !== undefined) out.scheduleImpactDays = b.scheduleImpactDays;
   if (b.delayDays !== undefined) out.delayDays = b.delayDays;
+  if (b.specSection !== undefined) out.specSection = b.specSection;
+  if (b.location !== undefined) out.location = b.location;
   if (b.pin !== undefined)
     out.pin =
       b.pin === null

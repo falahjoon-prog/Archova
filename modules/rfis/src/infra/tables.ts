@@ -58,6 +58,9 @@ export const rfis = rfisSchema.table('rfis', {
   pinX: real('pin_x'),
   pinY: real('pin_y'),
   specSectionId: uuid('spec_section_id'),
+  /** As written on the form; the spec register and location tree are not built yet. */
+  specSection: text('spec_section'),
+  location: text('location'),
   officialResponseId: uuid('official_response_id'),
   sourceRef: text('source_ref'),
   aiSuggestionId: uuid('ai_suggestion_id'),
