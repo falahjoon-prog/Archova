@@ -364,4 +364,53 @@ describe('Site diary API source', () => {
       createDiaryApi('org_1').novaSummary('prj_1', '2026-10-01', emptyContent(), null),
     ).rejects.toMatchObject({ code: 'ai.diary.nothing_to_summarise' });
   });
+
+  it('asks Nova for a week and cites each kind of line on its own day', async () => {
+    fake.on('POST', `${P}/weeks/{weekStart}/nova-summary`, () => ({
+      id: 'ais_w',
+      payload: {
+        weekStart: '2026-10-12',
+        weekEnd: '2026-10-18',
+        daysWithEntries: 2,
+        truncated: true,
+        delayHours: { total: 2, byCause: [{ cause: 'weather', hours: 2 }] },
+        sentences: [
+          { text: 'Two days recorded.', sources: [{ kind: 'totals', id: null }] },
+          {
+            text: 'Rain stopped work on Monday.',
+            sources: [
+              { kind: 'delay', id: 'ddl_1', date: '2026-10-12' },
+              { kind: 'delay', id: 'ddl_2', date: '2026-10-12' },
+              { kind: 'labour', id: 'dlb_1', date: '2026-10-14' },
+            ],
+          },
+        ],
+        unmentionedDelays: [],
+      },
+    }));
+    const out = await createDiaryApi('org_1').novaWeekSummary('prj_1', '2026-10-12');
+    expect(out).toMatchObject({
+      id: 'ais_w',
+      text: 'Two days recorded. Rain stopped work on Monday.',
+      truncated: true,
+      daysWithEntries: 2,
+      delayHours: { total: 2 },
+      citations: [
+        { label: 'Delays', date: '2026-10-12', anchor: '#diary-delays' },
+        { label: 'Labour', date: '2026-10-14', anchor: '#diary-labour' },
+      ],
+    });
+    expect(
+      fake.callsTo('POST', `${P}/weeks/{weekStart}/nova-summary`)[0]?.init.params?.path,
+    ).toMatchObject({ weekStart: '2026-10-12' });
+  });
+
+  it('surfaces an empty week as Nova having nothing to summarise', async () => {
+    fake.on('POST', `${P}/weeks/{weekStart}/nova-summary`, () =>
+      fakeProblem(422, 'ai.diary.nothing_to_summarise'),
+    );
+    await expect(
+      createDiaryApi('org_1').novaWeekSummary('prj_1', '2026-10-12'),
+    ).rejects.toMatchObject({ code: 'ai.diary.nothing_to_summarise' });
+  });
 });

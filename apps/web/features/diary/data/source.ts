@@ -2,7 +2,7 @@
 // endpoints), `POST {p}/diary/{date}/submit|sign-off|amendments` (backend 04 §3). Preview: in-memory store with
 // synthetic BOM-style weather; Nova's summary is canned but cites the lines it used.
 
-import type { LocalDate } from '@archova/time';
+import { addDays, type LocalDate } from '@archova/time';
 import type { Citation } from '@archova/ui';
 import { companyName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
@@ -14,7 +14,14 @@ import {
   submitProblems,
   type CompanyNamer,
 } from '../lib/entry';
-import type { DiaryContent, DiaryEntry, DiaryPhoto, NovaDiarySummary, Weather } from '../lib/types';
+import type {
+  DiaryContent,
+  DiaryEntry,
+  DiaryPhoto,
+  NovaDiarySummary,
+  NovaWeekSummary,
+  Weather,
+} from '../lib/types';
 
 interface Actor {
   id: string;
@@ -353,6 +360,44 @@ export const diarySource = {
       300,
     );
   },
+
+  async novaWeekSummary(projectId: string, weekStart: LocalDate): Promise<NovaWeekSummary> {
+    const entries = await this.list(projectId, weekStart, addDays(weekStart, 6));
+    const hours = entries.reduce((n, e) => n + labourTotals(e.content).hours, 0);
+    const delays = entries.flatMap((e) => e.content.delays.map((d) => ({ ...d, date: e.date })));
+    const byCause = new Map<string, number>();
+    for (const d of delays) byCause.set(d.type, (byCause.get(d.type) ?? 0) + (d.hours ?? 0));
+    const delayHours = [...byCause].map(([cause, h]) => ({ cause, hours: h }));
+    const text = entries.length
+      ? `${entries.length} ${entries.length === 1 ? 'day' : 'days'} recorded, ${hours} labour hours in total.` +
+        (delays.length ? ` ${delays.length} delay${delays.length === 1 ? '' : 's'} recorded.` : '')
+      : '';
+    return delay(
+      {
+        id: mockId('ais'),
+        weekStart,
+        weekEnd: addDays(weekStart, 6),
+        text,
+        citations: entries.map((e) => ({
+          id: `c_${e.date}_labour`,
+          label: 'Labour',
+          date: e.date,
+          anchor: '#diary-labour',
+        })),
+        daysWithEntries: entries.length,
+        delayHours: { total: delayHours.reduce((n, d) => n + d.hours, 0), byCause: delayHours },
+        truncated: false,
+        unmentionedDelays: 0,
+      },
+      300,
+    );
+  },
+
+  async novaWeekDecide(
+    _projectId: string,
+    _suggestionId: string,
+    _decision: 'accepted' | 'edited' | 'rejected',
+  ) {},
 };
 
 export type DiarySource = typeof diarySource;
