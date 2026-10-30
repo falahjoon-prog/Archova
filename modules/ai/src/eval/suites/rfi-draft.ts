@@ -32,7 +32,7 @@ export interface RfiDraftExpected {
   forbidden?: readonly string[];
 }
 
-const DOCS: Record<string, { title: string; page: number; text: string }> = {
+export const DOCS: Record<string, { title: string; page: number; text: string }> = {
   'dwg-a301': {
     title: 'A-301 Level 3 Floor Plan, rev D',
     page: 1,
@@ -236,14 +236,14 @@ function goldenSet(): GoldenCase<RfiDraftInput, RfiDraftExpected>[] {
   ];
 }
 
-const INSTRUCTION =
+export const INSTRUCTION =
   /\b(ignore|disregard) (your|all|previous) instructions\b|\bNOTE (FOR|TO) THE AI\b/i;
 const STOP = new Set(
   'the a an and or of to in on for at by with from is are be do we on our but if this that what which where any confirm need needs'.split(
     ' ',
   ),
 );
-const words = (t: string) =>
+export const words = (t: string) =>
   (normaliseForMatch(t).match(/[a-z0-9]+(?:[./][a-z0-9]+)*/g) ?? []).filter(
     (w) => w.length > 2 && !STOP.has(w),
   );

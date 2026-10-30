@@ -653,13 +653,8 @@ export function createRfiService(deps: RfisDeps) {
     return detail(scope, projectId, rfiId);
   }
 
-  async function respond(
-    scope: TenantScope,
-    projectId: string,
-    rfiId: string,
-    input: { body: string; fileIds?: string[]; aiSuggestionId?: string },
-  ) {
-    const { rfi, viewer: v } = await getVisible(scope, projectId, rfiId);
+  /** Who may respond, and to what: the builder and the assignees, to an RFI that is open or answered. */
+  function assertCanRespond(scope: TenantScope, rfi: RfiView, v: RfiViewer) {
     const assignee = rfi.assignees.find((a) => a.userId === scope.ctx.userId);
     if (!v.isInternal && !assignee)
       throw new AppError(
@@ -671,6 +666,45 @@ export function createRfiService(deps: RfisDeps) {
         'rfi.invalid_transition',
         `An RFI that is ${rfi.status} can't take responses.`,
       );
+    return assignee;
+  }
+
+  /**
+   * Nova: the RFI and what has been said on it, for drafting a response. The same visibility and response rules as
+   * `respond`, so Nova never drafts for someone who couldn't send the response. Called by `ai` only.
+   */
+  async function forAnswerDraft(scope: TenantScope, projectId: string, rfiId: string) {
+    const { rfi, viewer: v } = await getVisible(scope, projectId, rfiId);
+    assertCanRespond(scope, rfi, v);
+    const replies = await scope.tx
+      .select()
+      .from(responses)
+      .where(eq(responses.rfiId, rfiId))
+      .orderBy(asc(responses.createdAt), asc(responses.id));
+    return {
+      id: rfi.id,
+      number: rfi.number === null ? null : formatRfiNumber(rfi.number),
+      subject: rfi.subject,
+      status: rfi.status,
+      question: rfi.questionText,
+      responses: replies.map((x) => ({
+        id: x.id,
+        official: x.isOfficial,
+        text: x.bodyText,
+        fileIds: x.fileIds,
+        fromCaller: x.authorId === scope.ctx.userId,
+      })),
+    };
+  }
+
+  async function respond(
+    scope: TenantScope,
+    projectId: string,
+    rfiId: string,
+    input: { body: string; fileIds?: string[]; aiSuggestionId?: string },
+  ) {
+    const { rfi, viewer: v } = await getVisible(scope, projectId, rfiId);
+    const assignee = assertCanRespond(scope, rfi, v);
     await checkFiles(scope, projectId, input.fileIds ?? []);
     const id = uuidv7();
     await scope.tx.insert(responses).values({
@@ -939,6 +973,7 @@ export function createRfiService(deps: RfisDeps) {
     aiSources,
     aiAccessScopes,
     openOnDrawing,
+    forAnswerDraft,
     ballInCourt,
     visibleAmong,
   };

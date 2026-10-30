@@ -36,6 +36,9 @@ beforeAll(async () => {
       diarySources: async () => [],
       diaryAccessScopes: async () => [],
       similarRfis: async () => [],
+      rfiForAnswer: async () => {
+        throw new Error('not used');
+      },
       getDrawingRevision: async () => {
         throw new Error('unused');
       },

@@ -13,6 +13,7 @@ import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
 import { quoteReadSuite } from './suites/quote-read';
+import { rfiAnswerSuite } from './suites/rfi-answer';
 import { rfiDraftSuite } from './suites/rfi-draft';
 import { translationSuite } from './suites/translation';
 
@@ -31,6 +32,7 @@ export const SUITES: readonly AnySuite[] = [
   diarySummarySuite,
   diaryWeeklySuite,
   rfiDraftSuite,
+  rfiAnswerSuite,
   drawingCompareSuite,
   drawingCompareVisualSuite,
   defectTagSuite,

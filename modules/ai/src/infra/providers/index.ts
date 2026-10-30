@@ -13,6 +13,7 @@ import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
+import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
 import { createFakeProvider, type FakeResponder } from './fake';
@@ -35,6 +36,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'diary.summary': heuristicDiarySummary,
   'diary.weekly': heuristicDiaryWeekly,
   'rfi.draft': heuristicRfiDraft,
+  'rfi.answer': heuristicRfiAnswer,
   'drawing.compare': heuristicDrawingCompare,
   'drawing.compare_visual': heuristicDrawingCompareVisual,
   'defect.tag': heuristicDefectTag,

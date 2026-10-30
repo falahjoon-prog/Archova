@@ -1968,6 +1968,23 @@ export const NovaQuoteReadingSchema = z.object({
 });
 export type NovaQuoteReading = z.infer<typeof NovaQuoteReadingSchema>;
 
+export const NovaRfiAnswerDraftSchema = z.object({
+  "runId": z.string(),
+  "suggestionId": z.string(),
+  "rfiId": z.string(),
+  "answer": z.string(),
+  "basis": z.enum(["documents", "direction", "none"]),
+  "needsDecision": z.array(z.string()),
+  "references": z.array(NovaCitationSchema),
+  "unsupportedNumbers": z.array(z.string()),
+  "attachments": z.array(z.object({
+  "fileId": z.string(),
+  "name": z.string(),
+  "read": z.boolean(),
+})),
+});
+export type NovaRfiAnswerDraft = z.infer<typeof NovaRfiAnswerDraftSchema>;
+
 export const NovaRfiDraftSchema = z.object({
   "runId": z.string(),
   "suggestionId": z.string(),
