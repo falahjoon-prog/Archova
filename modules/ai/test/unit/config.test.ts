@@ -56,6 +56,30 @@ describe('loadAiConfig', () => {
     },
   );
 
+  it('reads the daily cap on OCR pages, alone or with the embedding cap', () => {
+    expect(loadAiConfig({ API_AI_OCR_DAILY_PAGES: '500' })).toEqual({
+      provider: { kind: 'fake' },
+      models: FAKE_MODELS,
+      ocrDailyPages: 500,
+    });
+    expect(
+      loadAiConfig({
+        ...bedrock,
+        API_AI_OCR_DAILY_PAGES: '500',
+        API_AI_EMBED_DAILY_TOKENS: '1000',
+      }),
+    ).toMatchObject({ ocrDailyPages: 500, embedDailyTokens: 1000 });
+  });
+
+  it.each(['0', '-5', '1.5', 'lots'])(
+    'refuses %s as the daily OCR cap rather than running with no cap',
+    (value) => {
+      expect(() => loadAiConfig({ API_AI_OCR_DAILY_PAGES: value })).toThrow(
+        /API_AI_OCR_DAILY_PAGES must be a whole number above 0/,
+      );
+    },
+  );
+
   it('refuses Bedrock without a model for every tier', () => {
     expect(() => loadAiConfig({ ...bedrock, API_AI_MODEL_ADVANCED: '' })).toThrow(
       /needs model ids for: API_AI_MODEL_ADVANCED/,
