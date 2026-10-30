@@ -208,6 +208,7 @@ export function SectionCard({
   meetingId: string;
   canEdit: boolean;
 }) {
+  const [adding, setAdding] = useState(false);
   return (
     <section className="minutes-section" aria-labelledby={`sec-${section.id}`}>
       <h2 id={`sec-${section.id}`} className="panel-heading">
@@ -223,7 +224,17 @@ export function SectionCard({
           ))}
         </ul>
       )}
-      {canEdit ? <AddItemForm section={section} meetingId={meetingId} /> : null}
+      {canEdit ? (
+        adding ? (
+          <AddItemForm section={section} meetingId={meetingId} />
+        ) : (
+          <div>
+            <Button variant="secondary" size="sm" onClick={() => setAdding(true)}>
+              Add item to {section.title}
+            </Button>
+          </div>
+        )
+      ) : null}
     </section>
   );
 }
