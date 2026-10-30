@@ -42,6 +42,30 @@ export const UpdateProjectParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const UpdateProjectBody = s.UpdateProjectRequestSchema;
+export const GetKeyDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateKeyDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateKeyDatesBody = s.UpdateKeyDatesRequestSchema;
+export const ListKeyDateChangesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetDelayRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetDelayRegisterQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+  "cause": s.DiaryDelayTypeSchema.optional(),
+  "source": z.enum(["diary", "rfi"]).optional(),
+  "eotOnly": z.enum(["true", "false"]).optional(),
+});
 export const ListProjectMembersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1442,6 +1466,54 @@ export const operations = {
     params: UpdateProjectParams,
     query: null,
     body: UpdateProjectBody,
+  },
+  getKeyDates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/key-dates',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: GetKeyDatesParams,
+    query: null,
+    body: null,
+  },
+  updateKeyDates: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/key-dates',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateKeyDatesParams,
+    query: null,
+    body: UpdateKeyDatesBody,
+  },
+  listKeyDateChanges: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/key-dates/changes',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: ListKeyDateChangesParams,
+    query: null,
+    body: null,
+  },
+  getDelayRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-register',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: GetDelayRegisterParams,
+    query: GetDelayRegisterQuery,
+    body: null,
   },
   listProjectMembers: {
     method: 'GET',

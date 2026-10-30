@@ -30,6 +30,7 @@ import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
@@ -195,6 +196,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   diaryApi = diary.api;
 
+  const scheduling = createSchedulingModule({
+    database: services.database as Database,
+    diary: diary.api,
+    rfis: rfis.api,
+  });
+
   const workforce = createWorkforceModule(services, {
     access: access.api,
     platform: platform.api,
@@ -247,6 +254,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     estimating,
     integrations,
     diary,
+    scheduling,
     workforce,
     sync,
   ];
@@ -274,6 +282,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     integrations,
     sync,
     diary,
+    scheduling,
     workforce,
     routes,
   };

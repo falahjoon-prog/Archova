@@ -266,6 +266,67 @@ export interface paths {
         patch: operations["updateProject"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/key-dates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's key dates (X46, product/08 S1); all empty with version 0 until first saved. */
+        get: operations["getKeyDates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change key dates. Send `If-Match` (`"0"` before the first save). Moving a target that was already set needs `reason`. */
+        patch: operations["updateKeyDates"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/key-dates/changes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** History of key date changes, newest first (at most 200). */
+        get: operations["listKeyDateChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/delay-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Delays in one list (SCH-AC2) - diary delays, RFIs with a schedule impact and RFIs answered late. Builder staff only; RFI rows only for people who can read RFIs. */
+        get: operations["getDelayRegister"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/members": {
         parameters: {
             query?: never;
@@ -4101,6 +4162,119 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        KeyDateSection: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: date */
+            targetDate: string | null;
+            /** Format: date */
+            actualDate: string | null;
+        };
+        KeyDates: {
+            projectId: string;
+            /** Format: date */
+            possessionDate: string | null;
+            /** Format: date */
+            pcTarget: string | null;
+            /** Format: date */
+            pcActual: string | null;
+            /** Format: date */
+            dlpEnd: string | null;
+            /** @description Liquidated damages per day, decimal string */
+            ldRatePerDay: string | null;
+            currency: string;
+            sections: components["schemas"]["KeyDateSection"][];
+            /** @description Days from today (project zone) to the PC target, negative once passed; null when PC is reached or no target. */
+            daysToPc: number | null;
+            daysToDlpEnd: number | null;
+            version: number;
+            /** Format: date-time */
+            updatedAt: string | null;
+        };
+        UpdateKeyDatesRequest: {
+            /** Format: date */
+            possessionDate?: string | null;
+            /** Format: date */
+            pcTarget?: string | null;
+            /** Format: date */
+            pcActual?: string | null;
+            /** Format: date */
+            dlpEnd?: string | null;
+            ldRatePerDay?: string | null;
+            /** @description The whole list; sections left out are removed. */
+            sections?: {
+                /** Format: uuid */
+                id?: string;
+                name: string;
+                /** Format: date */
+                targetDate?: string | null;
+                /** Format: date */
+                actualDate?: string | null;
+            }[];
+            /**
+             * @description Required when a target date that was already set moves.
+             * @enum {string}
+             */
+            reason?: "eot_granted" | "variation" | "other";
+            note?: string | null;
+        };
+        KeyDateChange: {
+            id: string;
+            /** @enum {string} */
+            field: "possessionDate" | "pcTarget" | "pcActual" | "dlpEnd" | "ldRatePerDay" | "sectionAdded" | "sectionRenamed" | "sectionTarget" | "sectionActual" | "sectionRemoved";
+            sectionId: string | null;
+            sectionName: string | null;
+            from: string | null;
+            to: string | null;
+            /** @enum {string|null} */
+            reason: "eot_granted" | "variation" | "other" | null;
+            note: string | null;
+            changedBy: {
+                id: string;
+                name: string;
+            } | null;
+            /** Format: date-time */
+            changedAt: string;
+        };
+        KeyDateChangeList: {
+            data: components["schemas"]["KeyDateChange"][];
+        };
+        DelayRegisterRow: {
+            id: string;
+            /** @enum {string} */
+            source: "diary" | "rfi";
+            /** @enum {string} */
+            kind: "diary_delay" | "rfi_schedule_impact" | "rfi_late_answer";
+            cause: components["schemas"]["DiaryDelayType"];
+            /**
+             * Format: date
+             * @description Diary day, RFI due date (late answer) or the day the RFI was sent (schedule impact)
+             */
+            date: string;
+            title: string;
+            /** @description Calendar days (RFI rows) */
+            days: number | null;
+            /** @description Hours lost (diary rows) */
+            hours: number | null;
+            possibleEot: boolean;
+            /** Format: date */
+            diaryDate: string | null;
+            /** @enum {string|null} */
+            diaryStatus: "draft" | "submitted" | "signed_off" | null;
+            rfiId: string | null;
+            rfiNumber: number | null;
+        };
+        DelayRegister: {
+            data: components["schemas"]["DelayRegisterRow"][];
+            totals: {
+                rows: number;
+                possibleEotRows: number;
+                diaryHours: number;
+                rfiDays: number;
+            };
+            truncated: boolean;
+        };
         CreateProjectRequest: {
             name: string;
             number?: string;
@@ -7723,6 +7897,117 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Project"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getKeyDates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Key dates */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyDates"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateKeyDates: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateKeyDatesRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyDates"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listKeyDateChanges: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Changes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KeyDateChangeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDelayRegister: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                cause?: components["schemas"]["DiaryDelayType"];
+                source?: "diary" | "rfi";
+                eotOnly?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The register, newest first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DelayRegister"];
                 };
             };
             default: components["responses"]["Problem"];

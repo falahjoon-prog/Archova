@@ -957,6 +957,48 @@ export function createRfiService(deps: RfisDeps) {
     return withAssignees(scope, rows, date);
   }
 
+  /**
+   * The delay register (`scheduling`): RFIs the caller can see that cost time - a schedule impact above zero, an answer
+   * that came after the due date, or an open RFI past it. `today` and `timeZone` are the project's, so the caller can
+   * turn the instants into local days. Drafts and voided RFIs are left out; empty when the caller can't read RFIs.
+   */
+  async function timeImpacts(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    const project = await deps.platform.getProject(scope, projectId);
+    const today = localDateOf(now(), project.timezone);
+    const base = { today, timeZone: project.timezone };
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { ...base, rows: [], truncated: false };
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} not in ('draft', 'void')`,
+      sql`(coalesce(${rfis.scheduleImpactDays}, 0) > 0
+          or (${rfis.dueDate} is not null
+              and ((${rfis.status} = 'open' and ${rfis.dueDate} < ${today}::date)
+                or (${rfis.answeredAt} is not null
+                    and (${rfis.answeredAt} at time zone ${project.timezone})::date > ${rfis.dueDate}))))`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: rfis.id,
+        number: rfis.number,
+        subject: rfis.subject,
+        status: rfis.status,
+        dueDate: rfis.dueDate,
+        openedAt: rfis.openedAt,
+        answeredAt: rfis.answeredAt,
+        scheduleImpactDays: rfis.scheduleImpactDays,
+      })
+      .from(rfis)
+      .where(and(...conditions))
+      .orderBy(desc(rfis.id))
+      .limit(opts.limit + 1);
+    return { ...base, rows: rows.slice(0, opts.limit), truncated: rows.length > opts.limit };
+  }
+
   return {
     list,
     detail,
@@ -972,6 +1014,7 @@ export function createRfiService(deps: RfisDeps) {
     findSimilar,
     aiSources,
     aiAccessScopes,
+    timeImpacts,
     openOnDrawing,
     forAnswerDraft,
     ballInCourt,

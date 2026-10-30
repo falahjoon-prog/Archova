@@ -38,6 +38,7 @@ export const webRoutes = {
   /** The diary for a project-local date (`YYYY-MM-DD`); without a date it opens today. */
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
+  delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>

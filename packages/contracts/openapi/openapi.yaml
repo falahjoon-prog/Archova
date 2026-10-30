@@ -36,6 +36,7 @@ tags:
   - name: sync
   - name: diary
   - name: workforce
+  - name: scheduling
 paths:
   /v1/auth/signup:
     post:
@@ -330,6 +331,98 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Project' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/key-dates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getKeyDates
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      summary: The project's key dates (X46, product/08 S1); all empty with version 0 until first saved.
+      responses:
+        '200':
+          description: Key dates
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KeyDates' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateKeyDates
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.update
+      summary: Change key dates. Send `If-Match` (`"0"` before the first save). Moving a target that was already set needs `reason`.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateKeyDatesRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KeyDates' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/key-dates/changes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listKeyDateChanges
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.projects.read
+      summary: History of key date changes, newest first (at most 200).
+      responses:
+        '200':
+          description: Changes
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/KeyDateChangeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/delay-register:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getDelayRegister
+      tags: [scheduling]
+      # Gated like the diary it mostly reads; `scheduling` is not a plan feature yet.
+      x-module: diary
+      x-permission: diary.entries.read
+      summary: Delays in one list (SCH-AC2) - diary delays, RFIs with a schedule impact and RFIs answered late. Builder staff only; RFI rows only for people who can read RFIs.
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+        - {
+            name: cause,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/DiaryDelayType' },
+          }
+        - { name: source, in: query, required: false, schema: { type: string, enum: [diary, rfi] } }
+        - {
+            name: eotOnly,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The register, newest first
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DelayRegister' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/members:
     parameters:
@@ -5749,6 +5842,172 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    KeyDateSection:
+      type: object
+      required: [id, name, targetDate, actualDate]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, minLength: 1, maxLength: 120 }
+        targetDate: { type: [string, 'null'], format: date }
+        actualDate: { type: [string, 'null'], format: date }
+    KeyDates:
+      type: object
+      required:
+        [
+          projectId,
+          possessionDate,
+          pcTarget,
+          pcActual,
+          dlpEnd,
+          ldRatePerDay,
+          currency,
+          sections,
+          daysToPc,
+          daysToDlpEnd,
+          version,
+          updatedAt,
+        ]
+      properties:
+        projectId: { type: string }
+        possessionDate: { type: [string, 'null'], format: date }
+        pcTarget: { type: [string, 'null'], format: date }
+        pcActual: { type: [string, 'null'], format: date }
+        dlpEnd: { type: [string, 'null'], format: date }
+        ldRatePerDay:
+          { type: [string, 'null'], description: 'Liquidated damages per day, decimal string' }
+        currency: { type: string }
+        sections:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/KeyDateSection' }
+        daysToPc:
+          type: [integer, 'null']
+          description: Days from today (project zone) to the PC target, negative once passed; null when PC is reached or no target.
+        daysToDlpEnd: { type: [integer, 'null'] }
+        version: { type: integer }
+        updatedAt: { type: [string, 'null'], format: date-time }
+    UpdateKeyDatesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        possessionDate: { type: [string, 'null'], format: date }
+        pcTarget: { type: [string, 'null'], format: date }
+        pcActual: { type: [string, 'null'], format: date }
+        dlpEnd: { type: [string, 'null'], format: date }
+        ldRatePerDay: { type: [string, 'null'], pattern: '^[0-9]{1,16}(\.[0-9]{1,2})?$' }
+        sections:
+          type: array
+          maxItems: 20
+          description: The whole list; sections left out are removed.
+          items:
+            type: object
+            additionalProperties: false
+            required: [name]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string, minLength: 1, maxLength: 120 }
+              targetDate: { type: [string, 'null'], format: date }
+              actualDate: { type: [string, 'null'], format: date }
+        reason:
+          type: string
+          enum: [eot_granted, variation, other]
+          description: Required when a target date that was already set moves.
+        note: { type: [string, 'null'], maxLength: 1000 }
+    KeyDateChange:
+      type: object
+      required: [id, field, sectionId, sectionName, from, to, reason, note, changedBy, changedAt]
+      properties:
+        id: { type: string }
+        field:
+          type: string
+          enum:
+            [
+              possessionDate,
+              pcTarget,
+              pcActual,
+              dlpEnd,
+              ldRatePerDay,
+              sectionAdded,
+              sectionRenamed,
+              sectionTarget,
+              sectionActual,
+              sectionRemoved,
+            ]
+        sectionId: { type: [string, 'null'] }
+        sectionName: { type: [string, 'null'] }
+        from: { type: [string, 'null'] }
+        to: { type: [string, 'null'] }
+        reason: { type: [string, 'null'], enum: [eot_granted, variation, other, null] }
+        note: { type: [string, 'null'] }
+        changedBy:
+          oneOf:
+            - type: object
+              required: [id, name]
+              properties:
+                id: { type: string }
+                name: { type: string }
+            - { type: 'null' }
+        changedAt: { type: string, format: date-time }
+    KeyDateChangeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/KeyDateChange' }
+    DelayRegisterRow:
+      type: object
+      required:
+        [
+          id,
+          source,
+          kind,
+          cause,
+          date,
+          title,
+          days,
+          hours,
+          possibleEot,
+          diaryDate,
+          diaryStatus,
+          rfiId,
+          rfiNumber,
+        ]
+      properties:
+        id: { type: string }
+        source: { type: string, enum: [diary, rfi] }
+        kind: { type: string, enum: [diary_delay, rfi_schedule_impact, rfi_late_answer] }
+        cause: { $ref: '#/components/schemas/DiaryDelayType' }
+        date:
+          {
+            type: string,
+            format: date,
+            description: 'Diary day, RFI due date (late answer) or the day the RFI was sent (schedule impact)',
+          }
+        title: { type: string }
+        days: { type: [integer, 'null'], description: 'Calendar days (RFI rows)' }
+        hours: { type: [number, 'null'], description: 'Hours lost (diary rows)' }
+        possibleEot: { type: boolean }
+        diaryDate: { type: [string, 'null'], format: date }
+        diaryStatus: { type: [string, 'null'], enum: [draft, submitted, signed_off, null] }
+        rfiId: { type: [string, 'null'] }
+        rfiNumber: { type: [integer, 'null'] }
+    DelayRegister:
+      type: object
+      required: [data, totals, truncated]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DelayRegisterRow' }
+        totals:
+          type: object
+          required: [rows, possibleEotRows, diaryHours, rfiDays]
+          properties:
+            rows: { type: integer }
+            possibleEotRows: { type: integer }
+            diaryHours: { type: number }
+            rfiDays: { type: integer }
+        truncated: { type: boolean }
     CreateProjectRequest:
       type: object
       additionalProperties: false

@@ -10,11 +10,14 @@ import {
 } from '@archova/kernel';
 import type { IdentityApi } from '@archova/mod-identity';
 import type { CompanyService } from '../application/companies';
+import type { KeyDateService } from '../application/key-dates';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
 import {
   toCompanyDto,
+  toKeyDateChangeDto,
+  toKeyDatesDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
@@ -23,9 +26,10 @@ import {
 
 export interface PlatformRouteDeps {
   database: Database;
-  identity: Pick<IdentityApi, 'getUser'>;
+  identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   orgs: OrgService;
   projects: ProjectService;
+  keyDates: KeyDateService;
   companies: CompanyService;
   members: MemberService;
 }
@@ -107,6 +111,37 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.projects.update(s, id, expected, input.body),
       );
       return { status: 200, body: toProjectDto(row), headers: { etag: etag(row.version) } };
+    },
+    getKeyDates: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const k = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.keyDates.get(s, id),
+        ro,
+      );
+      return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
+    },
+    updateKeyDates: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const expected = parseIfMatch(input.headers['if-match']);
+      const { sections, ...rest } = input.body;
+      const k = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.keyDates.update(s, id, expected, { ...rest, ...(sections ? { sections } : {}) }),
+      );
+      return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
+    },
+    listKeyDateChanges: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.keyDates.changes(s, id),
+        ro,
+      );
+      const users = await d.identity.getUsers(
+        rows.map((r) => r.changedBy).filter((u): u is string => !!u),
+      );
+      const names = new Map([...users].map(([uid, u]) => [uid, u.name]));
+      return { status: 200, body: { data: rows.map((r) => toKeyDateChangeDto(r, names)) } };
     },
     listProjectMembers: async (input) => {
       const id = projectUuid(input.params.projectId);

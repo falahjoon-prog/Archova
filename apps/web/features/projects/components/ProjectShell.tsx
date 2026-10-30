@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   DefectsIcon,
+  DelaysIcon,
   DiaryIcon,
   DocumentsIcon,
   TransmittalsIcon,
@@ -112,6 +113,11 @@ export function projectToolGroups(
       href: webRoutes.diary(orgSlug, projectId),
       label: 'Site diary',
       icon: DiaryIcon,
+    },
+    canRead('diary') && {
+      href: webRoutes.delays(orgSlug, projectId),
+      label: 'Delay register',
+      icon: DelaysIcon,
     },
     canRead('defects') && {
       href: webRoutes.defects(orgSlug, projectId),
