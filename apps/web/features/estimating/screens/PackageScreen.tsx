@@ -307,7 +307,7 @@ function Quotes({
   onSource: (t: SourceTarget) => void;
 }) {
   const project = useCurrentProject();
-  const { companies, companyName } = useProjectDirectory();
+  const { companies, companyName, onProject } = useProjectDirectory();
   const { live } = useQuotesSource();
   const m = usePackageMutations(pkg.id);
   const [companyId, setCompanyId] = useState('');
@@ -316,7 +316,13 @@ function Quotes({
   const current = quotes.filter((q) => q.status !== 'superseded');
   const earlier = quotes.filter((q) => q.status === 'superseded');
   const tradeFirst = companies
-    .filter((c) => c.isSubcontractor)
+    .filter(
+      (c) =>
+        c.isSubcontractor &&
+        onProject(c.id) &&
+        // The API takes quotes only from invited companies; the preview adds the invite itself.
+        (!live || pkg.invites.some((i) => i.companyId === c.id)),
+    )
     .sort(
       (a, b) =>
         Number(b.trades.includes(pkg.trade)) - Number(a.trades.includes(pkg.trade)) ||
@@ -335,6 +341,11 @@ function Quotes({
           check them before they count. A new quote from the same company replaces its earlier one,
           and both are kept.
         </p>
+        {live && tradeFirst.length === 0 ? (
+          <Alert tone="info">
+            Invite a subcontractor on the Scope and invites tab before uploading their quote.
+          </Alert>
+        ) : null}
         <div className="form-row">
           <Select
             label="Subcontractor"
@@ -447,7 +458,7 @@ function Quotes({
 }
 
 function Scope({ pkg }: { pkg: TenderPackage }) {
-  const { companies, companyName } = useProjectDirectory();
+  const { companies, companyName, onProject } = useProjectDirectory();
   const m = usePackageMutations(pkg.id);
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
@@ -455,7 +466,7 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
   const locked = pkg.status === 'awarded';
   const invited = new Set(pkg.invites.map((i) => i.companyId));
   const candidates = companies
-    .filter((c) => c.isSubcontractor && !invited.has(c.id))
+    .filter((c) => c.isSubcontractor && onProject(c.id) && !invited.has(c.id))
     .sort(
       (a, b) =>
         Number(b.trades.includes(pkg.trade)) - Number(a.trades.includes(pkg.trade)) ||
@@ -600,6 +611,12 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
         ) : (
           <p className="u-muted u-m-0">No one invited yet.</p>
         )}
+        {!locked && candidates.length === 0 && pkg.invites.length === 0 ? (
+          <p className="u-caption u-m-0">
+            No subcontractors are on this project yet. Add them to the project first, then invite
+            them here.
+          </p>
+        ) : null}
         {!locked && candidates.length ? (
           <fieldset className="fieldset">
             <legend>Invite (they get one link by email and can quote without an account)</legend>
