@@ -42,6 +42,8 @@ export type ProjectTool =
   | 'transmittals'
   | 'rfis'
   | 'diary'
+  | 'key-dates'
+  | 'delays'
   | 'defects'
   | 'inductions'
   | 'attendance'

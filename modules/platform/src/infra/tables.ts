@@ -113,3 +113,41 @@ export const projectMembers = platform.table('project_members', {
   accessEpisode: integer('access_episode').notNull().default(1),
   ...audit,
 });
+
+export type KeyDateReason = 'eot_granted' | 'variation' | 'other';
+
+export interface KeyDateSection {
+  id: string;
+  name: string;
+  targetDate: string | null;
+  actualDate: string | null;
+}
+
+/** Project key dates (X46): one row per project, created on its first save. */
+export const projectKeyDates = platform.table('project_key_dates', {
+  projectId: uuid('project_id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  possessionDate: date('possession_date'),
+  pcTarget: date('pc_target'),
+  pcActual: date('pc_actual'),
+  dlpEnd: date('dlp_end'),
+  ldRatePerDay: numeric('ld_rate_per_day', { precision: 18, scale: 2 }),
+  currency: text('currency').notNull().default('AUD'),
+  sections: jsonb('sections').$type<KeyDateSection[]>().notNull().default([]),
+  ...audit,
+});
+
+export const keyDateChanges = platform.table('key_date_changes', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  field: text('field').notNull(),
+  sectionId: uuid('section_id'),
+  sectionName: text('section_name'),
+  oldValue: text('old_value'),
+  newValue: text('new_value'),
+  reason: text('reason').$type<KeyDateReason>(),
+  note: text('note'),
+  changedBy: uuid('changed_by'),
+  changedAt: timestamp('changed_at', { withTimezone: true }).notNull().defaultNow(),
+});

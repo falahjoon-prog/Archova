@@ -784,6 +784,35 @@ export const DefectTransitionRequestSchema = z.object({
 }).strict();
 export type DefectTransitionRequest = z.infer<typeof DefectTransitionRequestSchema>;
 
+export const DelayRegisterRowSchema = z.object({
+  "id": z.string(),
+  "source": z.enum(["diary", "rfi"]),
+  "kind": z.enum(["diary_delay", "rfi_schedule_impact", "rfi_late_answer"]),
+  "cause": DiaryDelayTypeSchema,
+  "date": z.string().date(),
+  "title": z.string(),
+  "days": z.number().int().nullable(),
+  "hours": z.number().nullable(),
+  "possibleEot": z.boolean(),
+  "diaryDate": z.string().date().nullable(),
+  "diaryStatus": z.enum(["draft", "submitted", "signed_off"]).nullable(),
+  "rfiId": z.string().nullable(),
+  "rfiNumber": z.number().int().nullable(),
+});
+export type DelayRegisterRow = z.infer<typeof DelayRegisterRowSchema>;
+
+export const DelayRegisterSchema = z.object({
+  "data": z.array(DelayRegisterRowSchema),
+  "totals": z.object({
+  "rows": z.number().int(),
+  "possibleEotRows": z.number().int(),
+  "diaryHours": z.number(),
+  "rfiDays": z.number().int(),
+}),
+  "truncated": z.boolean(),
+});
+export type DelayRegister = z.infer<typeof DelayRegisterSchema>;
+
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
   "targetType": z.enum(["entry", "labour", "plant", "delivery", "delay", "visitor", "event", "stand_down"]),
@@ -1679,6 +1708,52 @@ export const JwksSchema = z.object({
   "keys": z.array(z.record(z.string(), z.unknown())),
 });
 export type Jwks = z.infer<typeof JwksSchema>;
+
+export const KeyDateChangeSchema = z.object({
+  "id": z.string(),
+  "field": z.enum(["possessionDate", "pcTarget", "pcActual", "dlpEnd", "ldRatePerDay", "sectionAdded", "sectionRenamed", "sectionTarget", "sectionActual", "sectionRemoved"]),
+  "sectionId": z.string().nullable(),
+  "sectionName": z.string().nullable(),
+  "from": z.string().nullable(),
+  "to": z.string().nullable(),
+  "reason": z.enum(["eot_granted", "variation", "other"]).nullable(),
+  "note": z.string().nullable(),
+  "changedBy": z.union([z.object({
+  "id": z.string(),
+  "name": z.string(),
+}), z.null()]),
+  "changedAt": z.string().datetime({ offset: true }),
+});
+export type KeyDateChange = z.infer<typeof KeyDateChangeSchema>;
+
+export const KeyDateChangeListSchema = z.object({
+  "data": z.array(KeyDateChangeSchema),
+});
+export type KeyDateChangeList = z.infer<typeof KeyDateChangeListSchema>;
+
+export const KeyDateSectionSchema = z.object({
+  "id": z.string(),
+  "name": z.string().min(1).max(120),
+  "targetDate": z.string().date().nullable(),
+  "actualDate": z.string().date().nullable(),
+});
+export type KeyDateSection = z.infer<typeof KeyDateSectionSchema>;
+
+export const KeyDatesSchema = z.object({
+  "projectId": z.string(),
+  "possessionDate": z.string().date().nullable(),
+  "pcTarget": z.string().date().nullable(),
+  "pcActual": z.string().date().nullable(),
+  "dlpEnd": z.string().date().nullable(),
+  "ldRatePerDay": z.string().nullable(),
+  "currency": z.string(),
+  "sections": z.array(KeyDateSectionSchema).max(20),
+  "daysToPc": z.number().int().nullable(),
+  "daysToDlpEnd": z.number().int().nullable(),
+  "version": z.number().int(),
+  "updatedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type KeyDates = z.infer<typeof KeyDatesSchema>;
 
 export const LateSubmissionSchema = z.object({
   "id": z.string().regex(new RegExp("^lsb_[0-9A-Za-z]{26}$")),
@@ -2966,6 +3041,23 @@ export const UpdateInductionRequestSchema = z.object({
   "status": z.enum(["archived"]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateInductionRequest = z.infer<typeof UpdateInductionRequestSchema>;
+
+export const UpdateKeyDatesRequestSchema = z.object({
+  "possessionDate": z.string().date().nullable().optional(),
+  "pcTarget": z.string().date().nullable().optional(),
+  "pcActual": z.string().date().nullable().optional(),
+  "dlpEnd": z.string().date().nullable().optional(),
+  "ldRatePerDay": z.string().regex(new RegExp("^[0-9]{1,16}(\\.[0-9]{1,2})?$")).nullable().optional(),
+  "sections": z.array(z.object({
+  "id": z.string().optional(),
+  "name": z.string().min(1).max(120),
+  "targetDate": z.string().date().nullable().optional(),
+  "actualDate": z.string().date().nullable().optional(),
+}).strict()).max(20).optional(),
+  "reason": z.enum(["eot_granted", "variation", "other"]).optional(),
+  "note": z.string().max(1000).nullable().optional(),
+}).strict();
+export type UpdateKeyDatesRequest = z.infer<typeof UpdateKeyDatesRequestSchema>;
 
 export const UpdateMarkupRequestSchema = z.object({
   "visibility": MarkupVisibilitySchema.optional(),

@@ -2,6 +2,7 @@ import { defineModule, type Entitlements, type KernelServices } from '@archova/k
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
 import { createCompanyService } from './application/companies';
+import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
@@ -27,6 +28,7 @@ export function createPlatformModule(
     ...(deps.onOrgCreated ? { onOrgCreated: deps.onOrgCreated } : {}),
   });
   const projects = createProjectService(access);
+  const keyDates = createKeyDateService({ projects });
   const companies = createCompanyService();
   const members = createMemberService({ identity: deps.identity, access, companies, projects });
   return {
@@ -36,6 +38,7 @@ export function createPlatformModule(
       identity: deps.identity,
       orgs,
       projects,
+      keyDates,
       companies,
       members,
     }),

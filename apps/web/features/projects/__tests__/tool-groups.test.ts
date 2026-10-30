@@ -13,6 +13,7 @@ describe('projectToolGroups', () => {
       'Transmittals',
       'RFIs',
       'Site diary',
+      'Delay register',
       'Defects',
       'Inductions',
       'Attendance',

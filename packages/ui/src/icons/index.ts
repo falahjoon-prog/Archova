@@ -62,6 +62,7 @@ export {
   ClipboardCheck as DefectsIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
+  Hourglass as DelaysIcon,
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,
   ShieldCheck as InductionsIcon,

@@ -45,6 +45,8 @@ export function createDiaryModule(services: KernelServices, deps: DiaryDeps) {
       aiSources: service.aiSources,
       /** Nova Ask: the scopes the caller holds for the diary (builder staff who read the whole diary). */
       aiAccessScopes: service.aiAccessScopes,
+      /** The delay register (`scheduling`): delay lines with their days; null for readers limited to their own company. */
+      delayLines: service.delayLines,
     },
   };
 }
