@@ -13,8 +13,10 @@ import { supersededNotice } from '../banner';
 import { pinsOnRevision, type SheetPin } from '../pins';
 import {
   fitViewport,
+  isTap,
   panViewport,
   pinToScreen,
+  screenToPin,
   tileCacheKey,
   tileUrl,
   visibleTiles,
@@ -35,6 +37,8 @@ function SheetCanvas({
   tileUrlTemplate,
   pins,
   onOpenPin,
+  placing,
+  onPlace,
 }: {
   pyramid: Pyramid;
   revisionId: string;
@@ -42,6 +46,9 @@ function SheetCanvas({
   tileUrlTemplate: string;
   pins: SheetPin[];
   onOpenPin: (pin: SheetPin) => void;
+  /** The next tap on the sheet drops a new defect pin there. */
+  placing: boolean;
+  onPlace: (pin: { pinX: number; pinY: number }) => void;
 }) {
   const t = useTheme();
   const [selected, setSelected] = useState<SheetPin | null>(null);
@@ -57,6 +64,11 @@ function SheetCanvas({
   const [view, setView] = useState<Viewport | null>(null);
   const viewRef = useRef<Viewport | null>(null);
   viewRef.current = view;
+  const placingRef = useRef(placing);
+  placingRef.current = placing;
+  const onPlaceRef = useRef(onPlace);
+  onPlaceRef.current = onPlace;
+  const moved = useRef({ dx: 0, dy: 0, multi: false });
   const gesture = useRef<{ last: { x: number; y: number }; dist: number | null }>({
     last: { x: 0, y: 0 },
     dist: null,
@@ -77,6 +89,7 @@ function SheetCanvas({
         onStartShouldSetPanResponder: () => true,
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: (e) => {
+          moved.current = { dx: 0, dy: 0, multi: false };
           gesture.current = {
             last: { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY },
             dist: null,
@@ -88,6 +101,7 @@ function SheetCanvas({
           if (!v) return;
           const [a, b] = touches;
           if (a && b) {
+            moved.current.multi = true;
             const d = distance(a, b);
             const prev = gesture.current.dist;
             gesture.current.dist = d;
@@ -104,7 +118,17 @@ function SheetCanvas({
           const now = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
           const { last } = gesture.current;
           gesture.current.last = now;
+          moved.current.dx += now.x - last.x;
+          moved.current.dy += now.y - last.y;
           setView(panViewport(pyramid, v, now.x - last.x, now.y - last.y, MAX_SCALE));
+        },
+        onPanResponderRelease: (e) => {
+          const v = viewRef.current;
+          const m = moved.current;
+          if (!placingRef.current || !v || m.multi || !isTap(m.dx, m.dy)) return;
+          onPlaceRef.current(
+            screenToPin(pyramid, v, { x: e.nativeEvent.locationX, y: e.nativeEvent.locationY }),
+          );
         },
       }),
     [pyramid],
@@ -129,32 +153,37 @@ function SheetCanvas({
     >
       {size && view && drawn ? (
         <>
-          {overviewUrl ? (
-            <Image
-              source={{ uri: overviewUrl }}
-              style={{ position: 'absolute', ...drawn }}
-              resizeMode="stretch"
-            />
-          ) : null}
-          {tiles.map((k) => {
-            const f = 2 ** (pyramid.levels - 1 - k.z);
-            // One tile covers tileSize * f full-resolution pixels (the last row and column may be partial).
-            const span = pyramid.tileSize * f * view.scale;
-            return (
+          <View
+            pointerEvents="none"
+            style={{ position: 'absolute', left: 0, top: 0, right: 0, bottom: 0 }}
+          >
+            {overviewUrl ? (
               <Image
-                key={tileCacheKey(revisionId, k)}
-                source={{ uri: tileUrl(tileUrlTemplate, k), cache: 'force-cache' }}
-                style={{
-                  position: 'absolute',
-                  left: drawn.left + k.x * span,
-                  top: drawn.top + k.y * span,
-                  width: span,
-                  height: span,
-                }}
+                source={{ uri: overviewUrl }}
+                style={{ position: 'absolute', ...drawn }}
                 resizeMode="stretch"
               />
-            );
-          })}
+            ) : null}
+            {tiles.map((k) => {
+              const f = 2 ** (pyramid.levels - 1 - k.z);
+              // One tile covers tileSize * f full-resolution pixels (the last row and column may be partial).
+              const span = pyramid.tileSize * f * view.scale;
+              return (
+                <Image
+                  key={tileCacheKey(revisionId, k)}
+                  source={{ uri: tileUrl(tileUrlTemplate, k), cache: 'force-cache' }}
+                  style={{
+                    position: 'absolute',
+                    left: drawn.left + k.x * span,
+                    top: drawn.top + k.y * span,
+                    width: span,
+                    height: span,
+                  }}
+                  resizeMode="stretch"
+                />
+              );
+            })}
+          </View>
           {pins.map((pin) => {
             const at = pinToScreen(pyramid, view, pin);
             if (!at.onScreen) return null;
@@ -230,6 +259,10 @@ export function DrawingViewerScreen({
     enabled: orgId !== null,
   });
   const notice = revision.data ? supersededNotice(revision.data) : null;
+  const [placing, setPlacing] = useState(false);
+  const sheetId = revision.data?.sheetId ?? null;
+  // Defects are raised on the current sheet only, never on one that has been replaced.
+  const canPin = sheetId !== null && notice === null;
   const tiles = useQuery({
     ...queries.drawingTiles(orgId ?? '', projectId, revisionId),
     enabled: orgId !== null,
@@ -288,7 +321,27 @@ export function DrawingViewerScreen({
         tileUrlTemplate={d.tileUrlTemplate}
         pins={pins}
         onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
+        placing={placing}
+        onPlace={(pin) => {
+          setPlacing(false);
+          if (sheetId) {
+            router.push(
+              mobileRoutes.newDefect(projectId, { sheetId, drawingRevisionId: revisionId, ...pin }),
+            );
+          }
+        }}
       />
+      {canPin ? (
+        <View style={{ padding: t.space[3] }}>
+          <Button
+            label={
+              placing ? 'Tap the sheet where the defect is (cancel)' : 'Raise defect on this sheet'
+            }
+            variant={placing ? 'secondary' : 'primary'}
+            onPress={() => setPlacing((p) => !p)}
+          />
+        </View>
+      ) : null}
     </View>
   );
 }

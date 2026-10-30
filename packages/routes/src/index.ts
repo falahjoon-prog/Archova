@@ -62,7 +62,15 @@ export const mobileRoutes = {
   siteSignIn: (projectId: string) => `/project/${enc(projectId)}/sign-in`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
-  newDefect: (projectId: string) => `/project/${enc(projectId)}/defects/new`,
+  newDefect: (
+    projectId: string,
+    onSheet?: { sheetId: string; drawingRevisionId: string; pinX: number; pinY: number },
+  ) =>
+    `/project/${enc(projectId)}/defects/new${
+      onSheet
+        ? `?sheetId=${enc(onSheet.sheetId)}&drawingRevisionId=${enc(onSheet.drawingRevisionId)}&pinX=${onSheet.pinX}&pinY=${onSheet.pinY}`
+        : ''
+    }`,
   defect: (projectId: string, defectId: string) =>
     `/project/${enc(projectId)}/defects/${enc(defectId)}`,
   defectPhoto: (projectId: string, defectId: string, purpose: 'before' | 'after') =>

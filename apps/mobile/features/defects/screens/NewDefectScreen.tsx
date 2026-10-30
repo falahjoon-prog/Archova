@@ -8,6 +8,7 @@ import { mobileRoutes } from '@archova/routes';
 import { isLocalDate } from '@archova/time';
 import { Button, ListItem, Screen, TextField, useTheme } from '@archova/ui-native';
 import { StateMessage, useDeviceData, useLocalQuery } from '../../../shared';
+import type { SheetPlacement } from '../placement';
 import { createDefect, type CommandError } from '../commands';
 import { stageLabel } from './labels';
 
@@ -21,7 +22,14 @@ const errorText: Partial<Record<CommandError, string>> = {
   'defect.location_required': 'Pick a location, or drop a pin on a drawing.',
 };
 
-export function NewDefectScreen({ projectId }: { projectId: string }) {
+export function NewDefectScreen({
+  projectId,
+  placement = null,
+}: {
+  projectId: string;
+  /** Set when raised from the drawing viewer: the defect is pinned there. */
+  placement?: SheetPlacement | null;
+}) {
   const t = useTheme();
   const router = useRouter();
   const device = useDeviceData();
@@ -80,6 +88,10 @@ export function NewDefectScreen({ projectId }: { projectId: string }) {
       assigneeCompanyId: companyId,
       dueDate: dueDate || null,
       locationId,
+      sheetId: placement?.sheetId ?? null,
+      drawingRevisionId: placement?.drawingRevisionId ?? null,
+      pinX: placement?.pinX ?? null,
+      pinY: placement?.pinY ?? null,
       clientAt,
     });
     setSaving(false);
@@ -93,6 +105,11 @@ export function NewDefectScreen({ projectId }: { projectId: string }) {
 
   return (
     <Screen title="Raise defect">
+      {placement ? (
+        <Text style={{ color: t.color.textSecondary }}>
+          Pinned on the drawing you were viewing.
+        </Text>
+      ) : null}
       <TextField label="Title" value={title} onChangeText={setTitle} autoFocus />
       <TextField label="Description" value={description} onChangeText={setDescription} multiline />
       <TextField label="Trade" value={trade} onChangeText={setTrade} />
