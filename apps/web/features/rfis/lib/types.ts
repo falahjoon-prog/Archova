@@ -1,8 +1,6 @@
 // `rfis.rfis`, `rfis.assignees` and `rfis.responses` (backend schema/rfis-submittals-correspondence.md) as the web
 // app uses them. `data/api.ts` maps the API's shapes onto these, so the screens serve both sources.
 
-import type { Citation } from '@archova/ui';
-
 export const RFI_STATUSES = ['draft', 'open', 'answered', 'closed', 'void'] as const;
 export type RfiStatus = (typeof RFI_STATUSES)[number];
 export type CostImpact = 'yes' | 'no' | 'tbc';
@@ -81,11 +79,34 @@ export interface RfiInput {
   nova?: { suggestionId: string; subject: string; question: string };
 }
 
-/** Nova output, always a suggestion with sources (P6). */
+/** Nova's rewording of a question, a suggestion until the person accepts it (P6). */
+export interface NovaWording {
+  id: string;
+  text: string;
+}
+
+/** A drawing, spec clause or earlier RFI Nova relied on, with the words that make it relevant. */
+export interface NovaReference {
+  id: string;
+  kind: 'document' | 'drawing' | 'rfi' | 'defect' | 'diary';
+  sourceId: string;
+  revisionId: string;
+  label: string;
+  quote: string;
+}
+
+/** Nova's draft of a response to an RFI that exists: it fills the response box, the person edits and sends (P6). */
 export interface NovaDraft {
   id: string;
   text: string;
-  citations: Citation[];
+  /** What the draft rests on; `none` means no document or direction supports it, and the person should know. */
+  basis: 'documents' | 'direction' | 'none';
+  /** Points the thread and documents leave open, for the person to settle before sending. */
+  needsDecision: string[];
+  references: NovaReference[];
+  unsupportedNumbers: string[];
+  /** Files attached to the responses that Nova couldn't use (a scan, a large photo). */
+  unreadFiles: string[];
 }
 
 /** Nova's draft of a new RFI from a site note (F3): it fills the form, and the person edits and sends it. */
@@ -95,14 +116,7 @@ export interface NovaRfiDraft {
   question: string;
   discipline: string | null;
   /** Drawings and spec clauses the question refers to, with the words that make them relevant. */
-  references: Array<{
-    id: string;
-    kind: 'document' | 'drawing' | 'rfi' | 'defect' | 'diary';
-    sourceId: string;
-    revisionId: string;
-    label: string;
-    quote: string;
-  }>;
+  references: NovaReference[];
   /** What a complete RFI states that the note didn't: location, drawing_reference, proposed_solution, impact. */
   gaps: string[];
   unsupportedNumbers: string[];

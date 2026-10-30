@@ -5,7 +5,15 @@
 import { companyName, personCompanyId, personName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { canTransition, submitErrors, type RfiAction } from '../lib/lifecycle';
-import type { NovaDraft, NovaRfiDraft, Rfi, RfiInput, RfiStatus } from '../lib/types';
+import type {
+  NovaDraft,
+  NovaReference,
+  NovaWording,
+  NovaRfiDraft,
+  Rfi,
+  RfiInput,
+  RfiStatus,
+} from '../lib/types';
 
 interface Store {
   rfis: Rfi[];
@@ -367,29 +375,48 @@ export const rfisSource = {
 
   // ---- Nova (preview): canned suggestions. Production: POST {p}/rfis/{id}/ai-draft and the ai module. ----
 
-  async novaDraftResponse(projectId: string, id: string): Promise<NovaDraft> {
+  async novaDraftResponse(projectId: string, id: string, direction?: string): Promise<NovaDraft> {
     const rfi = find(projectId, id);
-    const citations = [
+    const references: NovaReference[] = [
       ...(rfi.drawing
         ? [
             {
               id: 'c_dwg',
+              kind: 'drawing' as const,
+              sourceId: rfi.drawing.sheetId,
+              revisionId: rfi.drawing.revisionId,
               label: rfi.drawing.label,
-              href: `drawing:${rfi.drawing.sheetId}:${rfi.drawing.revisionId}`,
+              quote: 'Sheet membrane to detail 7.',
             },
           ]
         : []),
       ...(rfi.specSection
-        ? [{ id: 'c_spec', label: `Spec ${rfi.specSection}`, href: 'documents:doc_spec' }]
+        ? [
+            {
+              id: 'c_spec',
+              kind: 'document' as const,
+              sourceId: 'doc_spec',
+              revisionId: 'docrev_spec',
+              label: `Spec ${rfi.specSection}`,
+              quote: 'Install to manufacturer’s written instructions.',
+            },
+          ]
         : []),
     ];
+    const told = direction?.trim();
     return delay(
       {
         id: mockId('ais'),
-        text: rfi.drawing
-          ? `Based on ${rfi.drawing.label}, the arrangement shown on the current revision governs. Please proceed as drawn and confirm on site before installation.`
-          : 'I couldn’t find a drawing or specification clause that answers this. Please answer from your own records.',
-        citations,
+        text: told
+          ? `${told.charAt(0).toUpperCase()}${told.slice(1)}${/[.!?]$/.test(told) ? '' : '.'} Please confirm on site before installation.`
+          : rfi.drawing
+            ? `Based on ${rfi.drawing.label}, the arrangement shown on the current revision governs. Please proceed as drawn and confirm on site before installation.`
+            : 'I couldn’t find a drawing or specification clause that answers this. Please answer from your own records.',
+        basis: references.length ? 'documents' : told ? 'direction' : 'none',
+        needsDecision: references.length ? [] : ['Whether the work changes scope or time.'],
+        references,
+        unsupportedNumbers: [],
+        unreadFiles: [],
       },
       400,
     );
@@ -419,14 +446,13 @@ export const rfisSource = {
     _decision: 'accepted' | 'edited' | 'rejected',
   ) {},
 
-  async novaImproveQuestion(text: string): Promise<NovaDraft> {
+  async novaImproveQuestion(text: string): Promise<NovaWording> {
     const trimmed = text.trim().replace(/\s+/g, ' ');
     const sentence = trimmed.endsWith('?') ? trimmed : `${trimmed.replace(/[.]$/, '')}?`;
     return delay(
       {
         id: mockId('ais'),
         text: `Please confirm: ${sentence.charAt(0).toLowerCase()}${sentence.slice(1)} If this changes scope or time, please say so in your answer.`,
-        citations: [],
       },
       400,
     );

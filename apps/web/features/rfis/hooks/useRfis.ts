@@ -97,8 +97,10 @@ export function useRfiNova(projectId: string) {
       mutationFn: (v: { id: string; decision: 'accepted' | 'edited' | 'rejected' }) =>
         rfisSource.novaDecide(projectId, v.id, v.decision),
     }),
+    /** The person who will answer, with what they want the answer to say (may be empty). */
     draftResponse: useMutation({
-      mutationFn: (rfiId: string) => rfisSource.novaDraftResponse(projectId, rfiId),
+      mutationFn: (v: { rfiId: string; direction?: string }) =>
+        rfisSource.novaDraftResponse(projectId, v.rfiId, v.direction),
     }),
     improveQuestion: useMutation({
       mutationFn: (text: string) => rfisSource.novaImproveQuestion(text),

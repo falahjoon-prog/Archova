@@ -3,7 +3,7 @@ import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nav, renderInProject, enterText } from '@/test/render';
-import { resetRfisPreview } from '../data/source';
+import { resetRfisPreview, rfisSource } from '../data/source';
 import { RfiDetailScreen } from '../screens/RfiDetailScreen';
 import { RfiListScreen } from '../screens/RfiListScreen';
 import { RfiNewScreen } from '../screens/RfiNewScreen';
@@ -157,6 +157,42 @@ describe('RfiDetailScreen', () => {
     expect(await screen.findByText('Started from a Nova draft')).toBeTruthy();
     expect(screen.getAllByText('Answered').length).toBeGreaterThan(0);
     expect(screen.getByText('Waiting on: Harbour Line Constructions · Dana Okafor')).toBeTruthy();
+  });
+
+  it('records the Nova draft as accepted, edited or rejected once the response is decided', async () => {
+    const user = userEvent.setup();
+    const decide = vi.spyOn(rfisSource, 'novaDecide');
+    nav.search = 'tab=responses';
+    renderInProject(<RfiDetailScreen rfiId="rfi_003" />);
+    await enterText(
+      user,
+      await screen.findByLabelText(/What should the answer say/),
+      'use the detail on the drawing',
+    );
+    await user.click(screen.getByRole('button', { name: 'Draft response with Nova' }));
+    const suggestion = await screen.findByRole('region', { name: 'Drafted by Nova' });
+    expect(within(suggestion).getByText(/Use the detail on the drawing\./)).toBeTruthy();
+    await user.click(within(suggestion).getByRole('button', { name: 'Discard' }));
+    await waitFor(() =>
+      expect(decide).toHaveBeenCalledWith('prj_test', expect.any(String), 'rejected'),
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Draft response with Nova' }));
+    await user.click(
+      within(await screen.findByRole('region', { name: 'Drafted by Nova' })).getByRole('button', {
+        name: 'Use draft',
+      }),
+    );
+    await enterText(
+      user,
+      screen.getByRole('textbox', { name: /^Response/ }),
+      ' Proceed as drawn, no change.',
+    );
+    await user.click(screen.getByRole('button', { name: 'Send response' }));
+    await waitFor(() =>
+      expect(decide).toHaveBeenLastCalledWith('prj_test', expect.any(String), 'edited'),
+    );
+    decide.mockRestore();
   });
 
   it('closes an answered RFI with the chosen official response (RFI-AC7)', async () => {
