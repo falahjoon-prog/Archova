@@ -10,6 +10,7 @@ import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectMembers } from '@/shared/lib/people';
 import { uploadFile } from '@/shared/lib/uploads';
+import type { NegotiateAnswer, NegotiateTopic } from '../lib/negotiate';
 import type { Quote, QuoteLine, QuoteNote, ScopeLine, TenderPackage } from '../lib/quote-types';
 import type { QuotesSource } from './quotes-source';
 
@@ -23,6 +24,12 @@ const P = '/v1/orgs/{orgId}/projects/{projectId}/tender-packages' as const;
 const PKG = `${P}/{packageId}` as const;
 const QUOTES = `${PKG}/quotes` as const;
 const QUOTE = `${QUOTES}/{quoteId}` as const;
+const NEGOTIATE_QUESTION: Record<NegotiateTopic, string> = {
+  overview: 'How does this quote compare, and what should I raise with the subcontractor?',
+  counter: 'What counter-offer should I consider?',
+  scope: 'Which scope lines, exclusions or qualifications should I query?',
+  message: 'Draft a short message to the subcontractor asking for a better price.',
+};
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
 
@@ -30,6 +37,11 @@ const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
 export function toCents(amount: string): number {
   const [whole = '0', frac = ''] = amount.trim().split('.');
   return Number(whole) * 100 + Number(frac.padEnd(2, '0').slice(0, 2));
+}
+
+/** Like `toCents`, for a signed amount such as "-1234.50". */
+function toSignedCents(amount: string): number {
+  return amount.trim().startsWith('-') ? -toCents(amount.trim().slice(1)) : toCents(amount);
 }
 
 /** 123450 to "1234.50". */
@@ -386,6 +398,40 @@ export function createQuotesApi(orgId: string): QuotesSource {
         }),
       );
       return toPackage(awarded, await names(projectId));
+    },
+
+    async askNova(projectId, packageId, { quoteId, targetCents, topic }) {
+      await ensureCsrfToken();
+      const advice = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations', {
+          params: { path: { orgId, projectId } },
+          body: {
+            packageId,
+            quoteId,
+            targetExGst: targetCents === null ? null : fromCents(targetCents),
+            question: NEGOTIATE_QUESTION[topic],
+          },
+        }),
+      );
+      const cents = (s: string | null) => (s === null ? null : toCents(s));
+      const answer: NegotiateAnswer = {
+        stance: advice.stance,
+        gap: {
+          against: advice.gap.against,
+          referenceCents: cents(advice.gap.referenceExGst),
+          differenceCents:
+            advice.gap.differenceExGst === null ? null : toSignedCents(advice.gap.differenceExGst),
+          percent: advice.gap.percent,
+          stance: advice.gap.stance,
+        },
+        reply: advice.reply,
+        points: advice.points.map((p) => ({ scopeKey: p.scopeKey, text: p.text })),
+        levers: advice.levers,
+        counterCents: cents(advice.counterExGst),
+        counterReason: advice.counterReason,
+        draftMessage: advice.draftMessage,
+      };
+      return answer;
     },
   };
 }

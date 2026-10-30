@@ -12,6 +12,7 @@ import { inductionDraftSuite } from './suites/induction-draft';
 import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
+import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { quoteReadSuite } from './suites/quote-read';
 import { rfiAnswerSuite } from './suites/rfi-answer';
 import { rfiDraftSuite } from './suites/rfi-draft';
@@ -38,4 +39,5 @@ export const SUITES: readonly AnySuite[] = [
   defectTagSuite,
   importMappingSuite,
   quoteReadSuite,
+  quoteNegotiateSuite,
 ];

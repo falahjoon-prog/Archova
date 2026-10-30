@@ -1865,6 +1865,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaQuoteReading' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: negotiateQuote
+      tags: [ai]
+      x-module: ai
+      x-permission: estimating.quotes.review
+      summary: Nova helps negotiate a confirmed subcontractor quote (EST-AC6).
+      description: |
+        Nova sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
+        levelled totals when three or more quotes compete, and answers the estimator's question with the gap, points
+        to raise (unpriced scope lines, provisional sums, exclusions, qualifications, expired validity), levers that
+        could close the gap, a counter-offer to consider and, when asked, a draft message to the subcontractor. Code
+        works out the gap and the stance, and removes a counter-offer that doesn't fit the quote and any figure the quote
+        doesn't hold (`notes` says what it removed). She is shown prices and terms only: never the company, contacts,
+        internal notes or the estimator's allowances. The server keeps no conversation; pass `history` from the last
+        answer with the next question. Nothing is saved, sent, accepted or awarded. She is an AI assistant, not a
+        licensed agent (`disclaimer`). Costs half a Nova credit. Builder staff with `estimating.quotes.review` only,
+        and only for a confirmed quote of the package.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [packageId, quoteId]
+              properties:
+                packageId: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+                quoteId: { type: string }
+                targetExGst:
+                  description: The estimator's target price, ex GST.
+                  type: [string, 'null']
+                  pattern: '^\d{1,12}(\.\d{1,2})?$'
+                question: { type: string, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/NegotiationTurn' }
+      responses:
+        '200':
+          description: Nova's answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6719,6 +6767,59 @@ components:
           description: Required fields that no column fills.
           type: array
           items: { type: string }
+    NegotiationTurn:
+      type: object
+      additionalProperties: false
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [estimator, nova] }
+        text: { type: string, minLength: 1, maxLength: 1500 }
+    QuoteNegotiationAdvice:
+      type: object
+      required:
+        [
+          runId,
+          stance,
+          gap,
+          reply,
+          points,
+          levers,
+          counterExGst,
+          counterReason,
+          draftMessage,
+          notes,
+          history,
+          disclaimer,
+        ]
+      properties:
+        runId: { type: string }
+        stance: { type: string, enum: [above, within, below, no_reference] }
+        gap:
+          type: object
+          required: [against, referenceExGst, differenceExGst, percent, stance]
+          properties:
+            against: { type: [string, 'null'], enum: [target, median, null] }
+            referenceExGst: { type: [string, 'null'] }
+            differenceExGst:
+              { type: [string, 'null'], description: Quote minus reference; negative when under. }
+            percent: { type: [number, 'null'] }
+            stance: { type: string, enum: [above, within, below, no_reference] }
+        reply: { type: string }
+        points:
+          type: array
+          items:
+            type: object
+            required: [scopeKey, text]
+            properties:
+              scopeKey: { type: [string, 'null'] }
+              text: { type: string }
+        levers: { type: array, items: { type: string } }
+        counterExGst: { type: [string, 'null'] }
+        counterReason: { type: string }
+        draftMessage: { type: [string, 'null'] }
+        notes: { type: array, items: { type: string } }
+        history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
+        disclaimer: { type: string }
     NovaQuoteReading:
       type: object
       required:

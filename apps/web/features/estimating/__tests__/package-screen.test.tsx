@@ -103,3 +103,41 @@ describe('PackageScreen', () => {
     expect(await screen.findByRole('button', { name: 'Close tender' })).toBeTruthy();
   });
 });
+
+describe('Nova on the comparison', () => {
+  it('reads a quote against the field, drafts a message and never sends anything', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PackageScreen packageId="pkg_1" />);
+    const panel = await screen.findByRole('region', { name: /Nova: negotiation help/ });
+    expect(within(panel).getByText('AI assistant')).toBeTruthy();
+    expect(within(panel).getByText(/not a licensed agent/)).toBeTruthy();
+
+    await user.type(within(panel).getByLabelText(/Target price/), '10000');
+    await user.click(within(panel).getByRole('button', { name: 'Read this quote' }));
+    expect(await within(panel).findByText('Above the reference')).toBeTruthy();
+    expect(within(panel).getByText(/Counter-offer to consider/)).toBeTruthy();
+
+    await user.click(within(panel).getByRole('button', { name: 'Draft a message' }));
+    const draft = (await within(panel).findByLabelText(/Draft message/)) as HTMLTextAreaElement;
+    expect(draft.value).toMatch(/not an acceptance/);
+  });
+
+  it('asks for a sensible target and says so when there is nothing to compare with', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PackageScreen packageId="pkg_1" />);
+    const panel = await screen.findByRole('region', { name: /Nova: negotiation help/ });
+    await user.type(within(panel).getByLabelText(/Target price/), '0');
+    expect(within(panel).getByText(/above zero/)).toBeTruthy();
+    expect(
+      (within(panel).getByRole('button', { name: 'Read this quote' }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    await user.clear(within(panel).getByLabelText(/Target price/));
+    await user.click(within(panel).getByRole('button', { name: 'Read this quote' }));
+    expect(
+      await within(panel).findByText(
+        /No reference yet|Above the reference|Below the reference|Close to the reference/,
+      ),
+    ).toBeTruthy();
+  });
+});

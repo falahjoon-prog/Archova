@@ -1414,6 +1414,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova helps negotiate a confirmed subcontractor quote (EST-AC6).
+         * @description Nova sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
+         *     levelled totals when three or more quotes compete, and answers the estimator's question with the gap, points
+         *     to raise (unpriced scope lines, provisional sums, exclusions, qualifications, expired validity), levers that
+         *     could close the gap, a counter-offer to consider and, when asked, a draft message to the subcontractor. Code
+         *     works out the gap and the stance, and removes a counter-offer that doesn't fit the quote and any figure the quote
+         *     doesn't hold (`notes` says what it removed). She is shown prices and terms only: never the company, contacts,
+         *     internal notes or the estimator's allowances. The server keeps no conversation; pass `history` from the last
+         *     answer with the next question. Nothing is saved, sent, accepted or awarded. She is an AI assistant, not a
+         *     licensed agent (`disclaimer`). Costs half a Nova credit. Builder staff with `estimating.quotes.review` only,
+         *     and only for a confirmed quote of the package.
+         */
+        post: operations["negotiateQuote"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
         parameters: {
             query?: never;
@@ -4705,6 +4737,38 @@ export interface components {
             }[];
             /** @description Required fields that no column fills. */
             missingRequired: string[];
+        };
+        NegotiationTurn: {
+            /** @enum {string} */
+            role: "estimator" | "nova";
+            text: string;
+        };
+        QuoteNegotiationAdvice: {
+            runId: string;
+            /** @enum {string} */
+            stance: "above" | "within" | "below" | "no_reference";
+            gap: {
+                /** @enum {string|null} */
+                against: "target" | "median" | null;
+                referenceExGst: string | null;
+                /** @description Quote minus reference; negative when under. */
+                differenceExGst: string | null;
+                percent: number | null;
+                /** @enum {string} */
+                stance: "above" | "within" | "below" | "no_reference";
+            };
+            reply: string;
+            points: {
+                scopeKey: string | null;
+                text: string;
+            }[];
+            levers: string[];
+            counterExGst: string | null;
+            counterReason: string;
+            draftMessage: string | null;
+            notes: string[];
+            history: components["schemas"]["NegotiationTurn"][];
+            disclaimer: string;
         };
         NovaQuoteReading: {
             /** @description For feedback (`air_`) */
@@ -9723,6 +9787,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaQuoteReading"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    negotiateQuote: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    packageId: string;
+                    quoteId: string;
+                    /** @description The estimator's target price, ex GST. */
+                    targetExGst?: string | null;
+                    question?: string;
+                    history?: components["schemas"]["NegotiationTurn"][];
+                };
+            };
+        };
+        responses: {
+            /** @description Nova's answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuoteNegotiationAdvice"];
                 };
             };
             default: components["responses"]["Problem"];

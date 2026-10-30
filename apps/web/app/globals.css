@@ -1479,3 +1479,49 @@ fieldset.worker-card > legend {
 .key-history > li:last-child {
   border-bottom: 0;
 }
+
+/* Nova on the quote comparison: clip beside the controls from 768px, stacked below it. */
+.negotiate__layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.negotiate__clip {
+  max-width: calc(var(--space-16) * 3);
+  justify-self: center;
+  width: 100%;
+}
+.negotiate__media {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  background: var(--c-bg);
+}
+.negotiate__body {
+  min-width: 0;
+}
+.negotiate__controls {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.negotiate__answer {
+  border-top: 1px solid var(--c-border-divider);
+  padding-top: var(--space-4);
+}
+.negotiate__counter {
+  border-left: var(--space-1) solid var(--c-ai);
+  padding-left: var(--space-3);
+}
+@media (min-width: 768px) {
+  .negotiate__layout {
+    grid-template-columns: calc(var(--space-16) * 3) minmax(0, 1fr);
+  }
+  .negotiate__clip {
+    justify-self: start;
+  }
+  .negotiate__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
