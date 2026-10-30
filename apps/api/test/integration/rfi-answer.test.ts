@@ -38,6 +38,7 @@ async function setup() {
   const pm = await signUp(t.app, 'rfia-pm');
   const eng = await signUp(t.app, 'rfia-eng');
   const sub = await signUp(t.app, 'rfia-sub');
+  const sup = await signUp(t.app, 'rfia-sup');
   const org = await createOrg(pm.browser, 'Answer Builders');
   const project = await createProject(pm.browser, org.id, { name: 'Harbourside', state: 'NSW' });
   const base = `/v1/orgs/${org.id}/projects/${project.id}`;
@@ -50,6 +51,8 @@ async function setup() {
     'Subcontractor',
     'Plumbco',
   );
+  // The superintendent reads RFIs but may not respond to them.
+  await addMember(pm.browser, org.id, project.id, sup.email, 'Superintendent', 'Cert Co');
 
   const folder = (await pm.browser.post(`${base}/folders`, { name: 'Specifications' })).json();
   const fileId = await uploadBytes(
@@ -73,7 +76,17 @@ async function setup() {
   });
   expect(doc.statusCode).toBe(201);
   expect((await pm.browser.post(`${base}/ai/index`)).statusCode).toBe(200);
-  return { pm, eng, sub, subCo, org, project, base, documentId: doc.json().document.id as string };
+  return {
+    pm,
+    eng,
+    sub,
+    sup,
+    subCo,
+    org,
+    project,
+    base,
+    documentId: doc.json().document.id as string,
+  };
 }
 type Setup = Awaited<ReturnType<typeof setup>>;
 
@@ -95,8 +108,12 @@ async function raiseRfi(s: Setup, subject: string, question: string, open: boole
 }
 
 const QUESTION = 'Which FRL governs the riser walls at the Level 3 corridor?';
-const answer = (s: Setup, rfiId: string, body: object = {}, who: 'pm' | 'eng' | 'sub' = 'pm') =>
-  s[who].browser.post(`${s.base}/ai/rfis/${rfiId}/answer-drafts`, body);
+const answer = (
+  s: Setup,
+  rfiId: string,
+  body: object = {},
+  who: 'pm' | 'eng' | 'sub' | 'sup' = 'pm',
+) => s[who].browser.post(`${s.base}/ai/rfis/${rfiId}/answer-drafts`, body);
 const usage = async (s: Setup) =>
   (await s.pm.browser.get(`/v1/orgs/${s.org.id}/ai/usage`)).json() as {
     byFeature: Array<{ feature: string; credits: number }>;
@@ -267,6 +284,14 @@ describe('Nova drafts a response to an RFI (F3)', () => {
     const sent = await raiseRfi(s, 'Riser wall fire rating at Level 3', QUESTION, true);
     const unsent = await raiseRfi(s, 'Corridor wall rating', 'Draft only', false);
 
+    // Everything refused below is refused before Nova is asked anything: no model call, no embedding, no credit.
+    const callsBefore = t.ai.calls.length;
+    const usageBefore = await usage(s);
+
+    // Someone who may read RFIs but not respond to them.
+    const readOnly = await answer(s, sent, {}, 'sup');
+    expect(readOnly.statusCode).toBe(403);
+    expect(readOnly.json().code).toBe('access.denied');
     // A subcontractor the RFI was never sent to can't see it.
     const hidden = await answer(s, sent, {}, 'sub');
     expect(hidden.statusCode).toBe(404);
@@ -294,6 +319,9 @@ describe('Nova drafts a response to an RFI (F3)', () => {
     // Not an RFI of this project.
     expect((await answer(s, `rfi_${'0'.repeat(26)}`)).statusCode).toBe(404);
     expect((await answer(s, 'rfi_nope')).statusCode).toBe(404);
+
+    expect(t.ai.calls.length).toBe(callsBefore);
+    expect(await usage(s)).toEqual(usageBefore);
 
     // The assignee can, and the builder's RFIs are not among what they search.
     const asked = await answer(s, sent, {}, 'eng');
