@@ -5,6 +5,7 @@ import {
   levelForScale,
   levelSize,
   panViewport,
+  supersededNotice,
   pinsOnRevision,
   pinToScreen,
   screenToPin,
@@ -148,5 +149,28 @@ describe('defect pins', () => {
       ['b', '#12', true],
       ['a', 'New', false],
     ]);
+  });
+});
+
+describe('superseded banner', () => {
+  it('says nothing for a current or draft revision', () => {
+    expect(supersededNotice({ status: 'current', rev: 'C', supersededBy: null })).toBeNull();
+    expect(supersededNotice({ status: 'draft', rev: 'D', supersededBy: null })).toBeNull();
+  });
+
+  it('names the revision that replaced a superseded one', () => {
+    const n = supersededNotice({
+      status: 'superseded',
+      rev: 'B',
+      supersededBy: { revisionId: 'rev_c', rev: 'C', at: '2026-10-29T00:00:00.000Z' },
+    });
+    expect(n?.latestRevisionId).toBe('rev_c');
+    expect(n?.message).toMatch(/Rev B is out of date.*Rev C replaced it/);
+  });
+
+  it('still warns when the successor is unknown', () => {
+    const n = supersededNotice({ status: 'superseded', rev: 'B', supersededBy: null });
+    expect(n?.message).toMatch(/out of date/);
+    expect(n?.latestRevisionId).toBe('');
   });
 });
