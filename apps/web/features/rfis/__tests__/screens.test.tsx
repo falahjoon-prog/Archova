@@ -50,7 +50,7 @@ describe('RfiListScreen', () => {
  */
 async function renderNewRfi() {
   renderInProject(<RfiNewScreen />);
-  await screen.findByRole('option', { name: /A-101/ });
+  await within(await screen.findByLabelText('Drawing')).findByRole('option', { name: /A-101/ });
 }
 
 describe('RfiNewScreen', () => {

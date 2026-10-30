@@ -2,12 +2,14 @@
 // source so the screens and hooks don't change. People and companies come back as ids; names are resolved from the
 // project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed.
 
-import { unwrap } from '@archova/api-client';
+import { ApiError, unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
+import { compressPhoto } from '@/shared/lib/compress-photo';
 import { allPages } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
+import { uploadFile } from '@/shared/lib/uploads';
 import type {
   CostImpact,
   NovaDraft,
@@ -131,6 +133,18 @@ function toRequest(input: RfiInput, pin?: unknown) {
   };
 }
 
+const NOVA_PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
+const NOVA_PHOTO_MAX_BYTES = 3 * 1024 * 1024;
+
+const unavailable = (detail: string) =>
+  new ApiError(422, {
+    type: 'about:blank',
+    title: detail,
+    status: 422,
+    detail,
+    code: 'validation_failed',
+  } as never);
+
 type ApiCitation = components['schemas']['NovaCitation'];
 
 const toReference = (r: ApiCitation, i: number): NovaReference => ({
@@ -238,12 +252,38 @@ export function createRfisApi(orgId: string): RfisSource {
     get,
     novaDecide: decide,
 
-    async novaDraftRfi(projectId, note): Promise<NovaRfiDraft> {
+    async novaDraftRfi(projectId, source): Promise<NovaRfiDraft> {
+      // A phone photo is shrunk first (and loses its EXIF); Nova reads PNG, JPEG or WebP up to 3 MB.
+      let stored: { id: string } | null = null;
+      if (source.photo) {
+        const small = await compressPhoto(source.photo);
+        const photo =
+          small === source.photo
+            ? source.photo
+            : new File([small], `${source.photo.name.replace(/\.\w+$/, '')}.jpg`, {
+                type: small.type,
+              });
+        if (!NOVA_PHOTO_TYPES.includes(photo.type) || photo.size > NOVA_PHOTO_MAX_BYTES)
+          throw unavailable('Add a PNG, JPEG or WebP photo under 3 MB and Nova can draft from it.');
+        stored = await uploadFile(orgId, { file: photo, projectId, module: 'rfis' });
+      }
       await ensureCsrfToken();
+      const note = source.note.trim();
       const d = unwrap(
         await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts', {
           params: { path: { orgId, projectId } },
-          body: { note: note.trim() },
+          body: {
+            ...(note ? { note } : {}),
+            ...(source.markup
+              ? {
+                  markup: {
+                    drawingRevisionId: source.markup.revisionId,
+                    markupId: source.markup.markupId,
+                  },
+                }
+              : {}),
+            ...(stored ? { photo: { fileId: stored.id } } : {}),
+          },
         }),
       );
       return {
