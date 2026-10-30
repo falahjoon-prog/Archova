@@ -91,4 +91,22 @@ describe('rfisSource', () => {
     ]);
     expect((await rfisSource.list(P, { impact: 'yes' })).map((r) => r.id)).toEqual(['rfi_002']);
   });
+
+  it('says what a Nova answer draft rests on: documents, the direction alone, or nothing', async () => {
+    const bare = await rfisSource.create(P, input(), pm, true);
+    expect(await rfisSource.novaDraftResponse(P, bare.id)).toMatchObject({
+      basis: 'none',
+      references: [],
+      needsDecision: ['Whether the work changes scope or time.'],
+    });
+    expect(await rfisSource.novaDraftResponse(P, bare.id, 'use 600 deep footings')).toMatchObject({
+      basis: 'direction',
+      text: expect.stringMatching(/^Use 600 deep footings\./),
+    });
+    const cited = await rfisSource.create(P, input({ specSection: '0331 Concrete' }), pm, true);
+    expect(await rfisSource.novaDraftResponse(P, cited.id)).toMatchObject({
+      basis: 'documents',
+      references: [expect.objectContaining({ label: 'Spec 0331 Concrete' })],
+    });
+  });
 });

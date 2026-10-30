@@ -14,10 +14,11 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { RfiStatusPill } from '../components/RfiChips';
 import { useRfiNova } from '../hooks/useRfis';
 import { submitErrors } from '../lib/lifecycle';
+import { referenceCitations } from '../lib/references';
 import {
   formatRfiNumber,
   type CostImpact,
-  type NovaDraft,
+  type NovaWording,
   type NovaRfiDraft,
   type RfiInput,
 } from '../lib/types';
@@ -70,7 +71,7 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
   const nova = useRfiNova(project.projectId);
   const [v, setV] = useState<RfiInput>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [improved, setImproved] = useState<NovaDraft | null>(null);
+  const [improved, setImproved] = useState<NovaWording | null>(null);
   const [questionFromNova, setQuestionFromNova] = useState(false);
   const [note, setNote] = useState('');
   const [draft, setDraft] = useState<NovaRfiDraft | null>(null);
@@ -134,16 +135,7 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
         {draft ? (
           <NovaSuggestion
             title="Drafted RFI"
-            citations={draft.references.map((r) => ({
-              id: r.id,
-              label: r.label,
-              href:
-                r.kind === 'drawing'
-                  ? `${webRoutes.drawing(org.orgSlug, project.projectId, r.sourceId, r.revisionId)}`
-                  : r.kind === 'rfi'
-                    ? webRoutes.rfi(org.orgSlug, project.projectId, r.sourceId)
-                    : webRoutes.documents(org.orgSlug, project.projectId),
-            }))}
+            citations={referenceCitations(draft.references, org.orgSlug, project.projectId)}
             actions={
               <>
                 <Button
