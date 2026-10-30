@@ -14,6 +14,7 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.accounts.trial',
   'backoffice.accounts.plan',
   'backoffice.accounts.suspend',
+  'backoffice.support.access',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
 
@@ -25,7 +26,8 @@ const READ: BackofficePermission[] = [
 ];
 
 export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]> = {
-  owner: BACKOFFICE_PERMISSIONS,
+  // Support access is for Support and Security lead only; Owner, Sales and Finance never hold it (Sam 12 §4a).
+  owner: BACKOFFICE_PERMISSIONS.filter((p) => p !== 'backoffice.support.access'),
   pricing_approver: [
     ...READ,
     'backoffice.pricing.edit',
@@ -47,8 +49,14 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.flags.read',
     'backoffice.flags.edit',
     'backoffice.accounts.trial',
+    'backoffice.support.access',
   ],
-  security_lead: [...READ, 'backoffice.staff.read', 'backoffice.accounts.suspend'],
+  security_lead: [
+    ...READ,
+    'backoffice.staff.read',
+    'backoffice.accounts.suspend',
+    'backoffice.support.access',
+  ],
   finance_read: READ,
 };
 

@@ -209,6 +209,28 @@ export type OrgDetailDto = OrgListItemDto & {
   actions: OrgActionDto[];
 };
 
+export type SupportGrantDto = {
+  id: string;
+  ticketRef: string;
+  level: 'view';
+  grantedBy: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  status: 'active' | 'expired' | 'revoked';
+};
+export type SupportSessionDto = {
+  id: string;
+  grantId: string;
+  staffName: string;
+  ticketRef: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  status: 'open' | 'ended' | 'expired' | 'revoked';
+};
+export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
+
 export type FlagOrgRef = { orgId: string; name: string };
 export type FlagDto = {
   key: string;
@@ -341,6 +363,34 @@ export const internalOperations = {
     params: orgOnly,
     query: noParams,
     body: z.object(withTicket),
+  }),
+  getOrgSupportAccess: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access',
+    auth: 'staff',
+    permission: 'backoffice.customers.read',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  startSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ ticketRef }),
+  }),
+  endSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions/{sessionId}/end',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: z.object({ orgId: orgRef, sessionId: uuid }),
+    query: noParams,
+    body: null,
   }),
   listPlans: op({
     method: 'GET',

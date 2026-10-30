@@ -622,6 +622,12 @@ export const CreateSubmittalRequestSchema = z.object({
 }).strict();
 export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema>;
 
+export const CreateSupportAccessGrantRequestSchema = z.object({
+  "ticketRef": z.string().min(2).max(60),
+  "hours": z.number().int().min(1).max(72),
+}).strict();
+export type CreateSupportAccessGrantRequest = z.infer<typeof CreateSupportAccessGrantRequestSchema>;
+
 export const TakeoffKindSchema = z.enum(["length", "area", "count"]);
 export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
 
@@ -2830,6 +2836,36 @@ export const SubmittalPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type SubmittalPage = z.infer<typeof SubmittalPageSchema>;
+
+export const SupportAccessGrantSchema = z.object({
+  "id": z.string(),
+  "ticketRef": z.string(),
+  "level": z.enum(["view"]),
+  "grantedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["active", "expired", "revoked"]),
+});
+export type SupportAccessGrant = z.infer<typeof SupportAccessGrantSchema>;
+
+export const SupportAccessSessionSchema = z.object({
+  "id": z.string(),
+  "grantId": z.string(),
+  "staffName": z.string(),
+  "ticketRef": z.string(),
+  "startedAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "endedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "status": z.enum(["open", "ended", "expired", "revoked"]),
+});
+export type SupportAccessSession = z.infer<typeof SupportAccessSessionSchema>;
+
+export const SupportAccessSchema = z.object({
+  "grants": z.array(SupportAccessGrantSchema),
+  "sessions": z.array(SupportAccessSessionSchema),
+});
+export type SupportAccess = z.infer<typeof SupportAccessSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),
