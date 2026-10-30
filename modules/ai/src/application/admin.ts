@@ -4,6 +4,7 @@ import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
 import { effectiveAllowance } from '../domain/credits';
+import { monthStartOf, type CreditGrantService } from './credit-grants';
 import { feedback, orgSettings, requests, usageLedger, type FeedbackReason } from '../infra/tables';
 
 export interface AiSettings {
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: AiSettings = {
 export type AiSettingsPatch = Partial<Omit<AiSettings, 'version'>>;
 
 export function createAdminService(deps: {
+  grants: Pick<CreditGrantService, 'grantedFor'>;
   orgTimeZone: (scope: TenantScope) => Promise<string>;
   now?: () => Date;
 }) {
@@ -90,7 +92,7 @@ export function createAdminService(deps: {
   async function getUsage(scope: TenantScope) {
     const tz = await deps.orgTimeZone(scope);
     const today = localDateOf(now(), tz);
-    const monthStart = `${today.slice(0, 7)}-01`;
+    const monthStart = monthStartOf(today);
     const rows = await scope.tx
       .select({
         feature: usageLedger.feature,
@@ -108,14 +110,17 @@ export function createAdminService(deps: {
     }));
     const settings = await getSettings(scope);
     const used = byFeature.reduce((s, f) => s + f.credits, 0);
+    const granted = await deps.grants.grantedFor(scope, monthStart);
     const allowance = effectiveAllowance({
       planAllowance: scope.ctx.entitlements.limits['limit.ai_credits'] ?? null,
       orgCap: settings.monthlyCreditCap,
+      granted,
     });
     return {
       periodStart: monthStart,
       timezone: tz,
       allowance,
+      granted,
       used: Math.round(used * 100) / 100,
       remaining: allowance === null ? null : Math.max(0, allowance - used),
       byFeature,

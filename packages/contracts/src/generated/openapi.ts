@@ -4486,6 +4486,8 @@ export interface components {
             timezone: string;
             /** @description null means unlimited */
             allowance: number | null;
+            /** @description Credits staff added to this month; already part of the allowance */
+            granted: number;
             used: number;
             remaining: number | null;
             byFeature: {

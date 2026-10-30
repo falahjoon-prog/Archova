@@ -106,6 +106,7 @@ export const PROBLEM_CODES = {
   'ai.disabled': 403,
   'ai.feature_disabled': 403,
   'ai.allowance_used': 403,
+  'ai.credit_grant.invalid': 422,
   'ai.embedding_limit': 429,
   'ai.ocr_limit': 429,
   'ai.unavailable': 503,

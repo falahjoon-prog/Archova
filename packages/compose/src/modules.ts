@@ -3,6 +3,7 @@ import type { Database, KernelServices, MessageSender, RouteTable } from '@archo
 import {
   AI_PERMISSIONS,
   createAiModule,
+  type AiApi,
   type AiConfig,
   type ModelProvider,
   type RasterizePage,
@@ -66,9 +67,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
+  // backoffice grants Nova credits through `ai`, which is built later; resolve lazily.
+  let aiApi: AiApi | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
+    credits: () => ({ grantCredits: aiApi!.grantCredits }),
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
@@ -190,6 +194,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
+  aiApi = ai.api;
 
   const diary = createDiaryModule(services, {
     access: access.api,

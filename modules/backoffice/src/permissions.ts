@@ -14,6 +14,7 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.accounts.trial',
   'backoffice.accounts.plan',
   'backoffice.accounts.suspend',
+  'backoffice.accounts.credits',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
 
@@ -32,7 +33,12 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.pricing.approve',
     'backoffice.requests.decide',
   ],
-  billing_ops: [...READ, 'backoffice.pricing.edit', 'backoffice.accounts.plan'],
+  billing_ops: [
+    ...READ,
+    'backoffice.pricing.edit',
+    'backoffice.accounts.plan',
+    'backoffice.accounts.credits',
+  ],
   sales: [
     'backoffice.customers.read',
     'backoffice.pricing.read',

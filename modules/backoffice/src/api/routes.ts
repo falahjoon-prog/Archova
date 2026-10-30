@@ -114,6 +114,11 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       await d.orgActions.reactivate(me(i), id, i.body);
       return ok(await orgDetail(id));
     },
+    grantOrgCredits: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.grantCredits(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
     listPlans: async () => ok({ items: await d.catalogue.listPlans() }),
     createPlan: async (i) => {
       await d.catalogue.createPlan(i.body.code, i.body.draft, me(i).staffId);

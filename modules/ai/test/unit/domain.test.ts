@@ -74,6 +74,16 @@ describe('credits (ai/05 §4–5)', () => {
     expect(effectiveAllowance({ planAllowance: 500, orgCap: 40 })).toBe(40);
   });
 
+  it('adds staff grants on top of the plan allowance and the org cap', () => {
+    expect(effectiveAllowance({ planAllowance: 500, orgCap: 40, granted: 25 })).toBe(65);
+    expect(effectiveAllowance({ planAllowance: 100, orgCap: null, granted: 10 })).toBe(110);
+    // Unlimited with no cap stays unlimited however much was granted.
+    expect(effectiveAllowance({ planAllowance: null, orgCap: null, granted: 10 })).toBeNull();
+    expect(
+      decideBudget('interactive', 1, { planAllowance: 100, orgCap: null, used: 100, granted: 5 }),
+    ).toMatchObject({ allow: true, remaining: 4 });
+  });
+
   it('stops interactive work at the allowance, warns from 80%, and never stops background work', () => {
     const a = { planAllowance: 100, orgCap: null };
     expect(decideBudget('interactive', 1, { ...a, used: 50 })).toEqual({

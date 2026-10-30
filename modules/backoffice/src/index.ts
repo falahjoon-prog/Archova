@@ -5,7 +5,7 @@ import type { AccountService, CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
-import { createOrgActionService } from './application/org-actions';
+import { createOrgActionService, type OrgActionDeps } from './application/org-actions';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
 
@@ -26,6 +26,7 @@ export function createBackofficeModule(
   deps: {
     catalogue: CatalogueService;
     accounts: AccountService;
+    credits: OrgActionDeps['credits'];
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -46,6 +47,7 @@ export function createBackofficeModule(
   const orgActions = createOrgActionService({
     database: services.database,
     accounts: deps.accounts,
+    credits: deps.credits,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const flags = createFlagService({ database: services.database, staff });
