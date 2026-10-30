@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, StatusPill } from '@archova/ui';
-import { companyName } from '@/shared/mocks/directory';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import type { LevelCell, LevelRow, QuoteTotals } from '../lib/levelling';
 import type { Quote } from '../lib/quote-types';
 import { money, parseDollars } from './money';
@@ -45,6 +45,7 @@ export function ComparisonTable({
   onAllowance,
   onSource,
 }: ComparisonTableProps) {
+  const { companyName } = useProjectDirectory();
   return (
     <div className="table-wrap comparison-wrap">
       <table className="table comparison">
@@ -179,6 +180,7 @@ function Cell({
   const [text, setText] = useState(
     cell.allowanceCents === null ? '' : String(cell.allowanceCents / 100),
   );
+  const { companyName } = useProjectDirectory();
   const company = companyName(quote.companyId);
   return (
     <div className="comparison__cell">

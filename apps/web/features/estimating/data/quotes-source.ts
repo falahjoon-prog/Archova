@@ -6,7 +6,7 @@ import type { TakeoffUnit } from '@archova/markup';
 import { companyName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import { allowanceKey, comparableQuotes, levelQuotes, lowestQuoteId } from '../lib/levelling';
-import type { Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
+import type { PackageAction, Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
 
 interface Store {
   packages: TenderPackage[];
@@ -246,7 +246,65 @@ function settleReading(s: Store) {
   }
 }
 
-export const quotesSource = {
+export interface QuotesSource {
+  /** The API (true) or the in-browser preview store (false): the preview reads an uploaded file by name only. */
+  live: boolean;
+  listPackages(projectId: string): Promise<TenderPackage[]>;
+  getPackage(projectId: string, id: string): Promise<TenderPackage>;
+  createPackage(
+    projectId: string,
+    input: { name: string; trade: string; dueAt: string },
+  ): Promise<TenderPackage>;
+  addScopeLines(projectId: string, packageId: string, lines: ScopeLine[]): Promise<TenderPackage>;
+  invite(projectId: string, packageId: string, companyIds: string[]): Promise<TenderPackage>;
+  /** Send a draft out to tender, or close, reopen or cancel it. */
+  transition(projectId: string, packageId: string, action: PackageAction): Promise<TenderPackage>;
+  listQuotes(projectId: string, packageId: string): Promise<Quote[]>;
+  uploadQuote(
+    projectId: string,
+    packageId: string,
+    input: { companyId: string; file: File },
+  ): Promise<Quote>;
+  correctLine(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    lineId: string,
+    amountCents: number,
+  ): Promise<Quote>;
+  confirmQuote(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    actor: { name: string },
+  ): Promise<Quote>;
+  declineQuote(projectId: string, packageId: string, quoteId: string): Promise<Quote>;
+  setAllowance(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    scopeKey: string,
+    cents: number | null,
+  ): Promise<TenderPackage>;
+  award(
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+    reason: string,
+    actor: { name: string },
+    today: string,
+  ): Promise<TenderPackage>;
+}
+
+export const quotesSource: QuotesSource & {
+  addTakeoffLines(
+    projectId: string,
+    packageId: string,
+    totals: Array<{ tag: string; quantity: number; unit: TakeoffUnit }>,
+  ): Promise<TenderPackage>;
+} = {
+  live: false,
+
   async listPackages(projectId: string): Promise<TenderPackage[]> {
     return delay(stores.get(projectId).packages);
   },
@@ -322,6 +380,32 @@ export const quotesSource = {
     return delay(pkg);
   },
 
+  async transition(
+    projectId: string,
+    packageId: string,
+    action: PackageAction,
+  ): Promise<TenderPackage> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status === 'awarded') problem(409, 'package.awarded', 'This package is awarded.');
+    if (action === 'send') {
+      if (pkg.status !== 'draft') problem(409, 'package.not_draft', 'Only a draft can be sent.');
+      if (!pkg.scope.length) problem(422, 'package.no_scope', 'Add scope lines first.');
+      if (!pkg.invites.length) problem(422, 'package.no_invites', 'Invite a subcontractor first.');
+      pkg.status = 'out_to_tender';
+    } else if (action === 'close') pkg.status = 'closed';
+    else if (action === 'reopen') pkg.status = 'out_to_tender';
+    else pkg.status = 'cancelled';
+    return delay(pkg);
+  },
+
+  async declineQuote(projectId: string, _packageId: string, quoteId: string): Promise<Quote> {
+    const q = findQuote(projectId, quoteId);
+    if (q.status === 'superseded' || q.status === 'declined')
+      problem(409, 'quote.not_open', 'That quote is already out of the comparison.');
+    q.status = 'declined';
+    return delay(q);
+  },
+
   async listQuotes(projectId: string, packageId: string): Promise<Quote[]> {
     const s = stores.get(projectId);
     settleReading(s);
@@ -332,7 +416,7 @@ export const quotesSource = {
   async uploadQuote(
     projectId: string,
     packageId: string,
-    input: { companyId: string; fileName: string },
+    input: { companyId: string; file: File },
   ): Promise<Quote> {
     const s = stores.get(projectId);
     const pkg = findPackage(projectId, packageId);
@@ -346,11 +430,11 @@ export const quotesSource = {
       companyId: input.companyId,
       version: earlier.length + 1,
       status: 'reading',
-      fileName: input.fileName,
+      fileName: input.file.name,
       reference: '',
       receivedAt: nowIso(),
       validUntil: null,
-      ...extract(pkg, `${input.companyId}${input.fileName}`),
+      ...extract(pkg, `${input.companyId}${input.file.name}`),
       source: 'ai_extracted',
       confirmedBy: null,
     };
@@ -365,6 +449,7 @@ export const quotesSource = {
   /** A corrected value keeps Nova's original so it goes back as feedback. */
   async correctLine(
     projectId: string,
+    _packageId: string,
     quoteId: string,
     lineId: string,
     amountCents: number,
@@ -381,7 +466,12 @@ export const quotesSource = {
   },
 
   /** Extracted values are suggestions until the estimator confirms the quote (EST-AC5). */
-  async confirmQuote(projectId: string, quoteId: string, actor: { name: string }): Promise<Quote> {
+  async confirmQuote(
+    projectId: string,
+    _packageId: string,
+    quoteId: string,
+    actor: { name: string },
+  ): Promise<Quote> {
     const q = findQuote(projectId, quoteId);
     if (q.status !== 'ready_to_review')
       problem(409, 'quote.not_ready', 'Only a quote that is ready to review can be confirmed.');
