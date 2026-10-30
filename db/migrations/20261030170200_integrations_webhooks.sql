@@ -1,4 +1,4 @@
--- Composed from modules/integrations/db/migrations/20261030170000_integrations_webhooks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/integrations/db/migrations/20261030170200_integrations_webhooks.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- integrations: outbound webhooks (integrations/06 §5). An org owner or admin subscribes an HTTPS endpoint to public
 -- event types; each matching event becomes a delivery row that the worker sends, signed, and retries for up to 72 hours.
 -- The signing secret is sealed (AES-256-GCM, org id as additional data) because it must be read back to sign.
