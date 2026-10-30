@@ -8,7 +8,7 @@ import {
   TOKEN_PREFIX,
   unknownScopes,
 } from '../domain/api-scopes';
-import { apiTokens, users } from '../infra/tables';
+import { apiTokenEvents, apiTokens, users } from '../infra/tables';
 import { sha256 } from './crypto';
 
 export type ApiTokenRow = typeof apiTokens.$inferSelect;
@@ -38,7 +38,7 @@ const lookupContext = (orgId: string): TenantContext => ({
 });
 
 export function createApiTokenService(database: Database, now: () => Date = () => new Date()) {
-  async function create(tenant: TenantContext, input: CreateApiTokenInput) {
+  async function create(tenant: TenantContext, input: CreateApiTokenInput, ip: string | null) {
     const { orgId, userId } = tenant;
     const name = input.name.trim();
     if (!name) throw new AppError('validation_failed', 'A token needs a name.');
@@ -88,6 +88,15 @@ export function createApiTokenService(database: Database, now: () => Date = () =
           createdAt: at,
         })
         .returning();
+      await tx.insert(apiTokenEvents).values({
+        id: uuidv7(),
+        orgId,
+        tokenId: r!.id,
+        event: 'created',
+        userId,
+        ip,
+        createdAt: at,
+      });
       return r!;
     });
     return { row, secret };
@@ -107,10 +116,10 @@ export function createApiTokenService(database: Database, now: () => Date = () =
   }
 
   /** Revokes a token. Without `any` only the caller's own token can be revoked; an owner or admin passes `any`. */
-  async function revoke(tenant: TenantContext, tokenId: string, any: boolean) {
+  async function revoke(tenant: TenantContext, tokenId: string, any: boolean, ip: string | null) {
     const { orgId, userId } = tenant;
-    const rows = await database.withTenantTx(tenant, ({ tx }) =>
-      tx
+    const rows = await database.withTenantTx(tenant, async ({ tx }) => {
+      const done = await tx
         .update(apiTokens)
         .set({ revokedAt: now() })
         .where(
@@ -121,8 +130,19 @@ export function createApiTokenService(database: Database, now: () => Date = () =
             isNull(apiTokens.revokedAt),
           ),
         )
-        .returning({ id: apiTokens.id }),
-    );
+        .returning({ id: apiTokens.id });
+      if (done.length)
+        await tx.insert(apiTokenEvents).values({
+          id: uuidv7(),
+          orgId,
+          tokenId,
+          event: 'revoked',
+          userId,
+          ip,
+          createdAt: now(),
+        });
+      return done;
+    });
     if (!rows.length) throw new AppError('api_token.not_found');
   }
 
@@ -130,7 +150,11 @@ export function createApiTokenService(database: Database, now: () => Date = () =
    * Bearer authentication for `pk_live_…` tokens, in the org named by the URL (tokens work in one org). Null for
    * anything unknown, revoked, expired or disabled, and for a request with no org.
    */
-  async function authenticate(secret: string, orgId: string | null): Promise<Principal | null> {
+  async function authenticate(
+    secret: string,
+    orgId: string | null,
+    ip: string | null,
+  ): Promise<Principal | null> {
     if (!orgId) return null;
     const at = now();
     const hash = sha256(secret);
@@ -144,6 +168,16 @@ export function createApiTokenService(database: Database, now: () => Date = () =
       if (!r) return null;
       const t = r.token;
       if (t.revokedAt || t.expiresAt <= at) return null;
+      if (!t.lastUsedAt)
+        await tx.insert(apiTokenEvents).values({
+          id: uuidv7(),
+          orgId: t.orgId,
+          tokenId: t.id,
+          event: 'first_used',
+          userId: t.userId,
+          ip,
+          createdAt: at,
+        });
       if (!t.lastUsedAt || at.getTime() - t.lastUsedAt.getTime() > TOUCH_INTERVAL_MS)
         await tx
           .update(apiTokens)

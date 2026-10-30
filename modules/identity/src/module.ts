@@ -32,9 +32,9 @@ export async function createIdentityModule(services: KernelServices, config: Ide
     api: {
       resolveSessionToken: sessions.resolve,
       /** Access JWTs (mobile) and personal access tokens (`pk_live_…`, public API). */
-      authenticateBearer: (value: string, orgId: string | null = null) =>
+      authenticateBearer: (value: string, orgId: string | null = null, ip: string | null = null) =>
         value.startsWith(TOKEN_PREFIX)
-          ? apiTokens.authenticate(value, orgId)
+          ? apiTokens.authenticate(value, orgId, ip)
           : oauth.authenticateBearer(value),
       revokeSession: sessions.revoke,
       getUser: accounts.getUser,

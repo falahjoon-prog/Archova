@@ -92,3 +92,13 @@ export const apiTokens = identity.table('api_tokens', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const apiTokenEvents = identity.table('api_token_events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  tokenId: uuid('token_id').notNull(),
+  event: text('event').$type<'created' | 'revoked' | 'first_used'>().notNull(),
+  userId: uuid('user_id').notNull(),
+  ip: text('ip'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

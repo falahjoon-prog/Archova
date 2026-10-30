@@ -8,4 +8,4 @@ export {
 export { CSRF_COOKIE, SESSION_COOKIE } from './domain/policy';
 export { REVOCATION_CHANNEL } from './application/sessions';
 export type { UserRecord } from './application/accounts';
-export { requiredScope, scopeAllows, TOKEN_SCOPES } from './domain/api-scopes';
+export { requiredScope, scopeAllows, TOKEN_OPERATIONS, TOKEN_SCOPES } from './domain/api-scopes';

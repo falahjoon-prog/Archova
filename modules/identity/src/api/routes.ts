@@ -28,6 +28,9 @@ const sessionCookies = (token: string, csrf: string): CookieSpec[] => [
   { name: CSRF_COOKIE, value: csrf, httpOnly: true, maxAgeSeconds: SESSION_ABSOLUTE_MS / 1000 },
 ];
 
+/** How recently the person must have signed in to create a token. */
+const STEP_UP_MS = 15 * 60_000;
+
 export function identityRoutes({
   accounts,
   sessions,
@@ -47,6 +50,9 @@ export function identityRoutes({
       // Tokens are made by a person signed in to the app, never by another token.
       if (requirePrincipal(input).apiToken || tenant.principalType !== 'member')
         throw new AppError('api_token.not_allowed', 'Sign in as a member to create a token.');
+      // Minting a credential needs a recent sign-in, not just a long-lived session.
+      if (Date.now() - requirePrincipal(input).authTime.getTime() > STEP_UP_MS)
+        throw new AppError('auth.step_up_required', 'Sign in again to create an API token.');
       if (!tenant.entitlements.modules.includes('api'))
         throw new AppError(
           'entitlement-required',
@@ -56,7 +62,7 @@ export function identityRoutes({
             module: 'api',
           },
         );
-      const { row, secret } = await apiTokens.create(tenant, input.body);
+      const { row, secret } = await apiTokens.create(tenant, input.body, input.ip);
       return {
         status: 201,
         body: { ...toApiTokenDto(row), token: secret },
@@ -70,7 +76,7 @@ export function identityRoutes({
       const tokenId = decodeId('apiToken', input.params.apiTokenId);
       if (!tokenId) throw new AppError('api_token.not_found');
       const admin = tenant.orgRole === 'owner' || tenant.orgRole === 'admin';
-      await apiTokens.revoke(tenant, tokenId, admin);
+      await apiTokens.revoke(tenant, tokenId, admin, input.ip);
       return { status: 204 };
     },
     signup: async ({ body, ip, userAgent }) => {

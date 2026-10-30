@@ -1,3 +1,4 @@
+import { decodeId } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   API_HOST,
@@ -14,7 +15,12 @@ beforeAll(async () => {
 });
 afterAll(() => t.close());
 
-const call = (token: string, method: 'GET' | 'POST' | 'DELETE', url: string, payload?: object) =>
+const call = (
+  token: string,
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  url: string,
+  payload?: object,
+) =>
   t.app.inject({
     method,
     url,
@@ -69,11 +75,26 @@ describe('personal access tokens (integrations/06)', () => {
     expect(defects.statusCode).toBe(403);
     expect(defects.json()).toMatchObject({ code: 'api_token.scope_missing' });
 
-    const write = await call(token, 'POST', `/v1/orgs/${s.org.id}/projects`, { name: 'x' });
+    const write = await call(token, 'PATCH', `/v1/orgs/${s.org.id}/projects/${s.project.id}`, {
+      name: 'x',
+    });
     expect(write.json().code).toBe('api_token.scope_missing');
 
     const wrongOrg = await call(token, 'GET', `/v1/orgs/${other.org.id}/projects`);
     expect(wrongOrg.statusCode).toBe(401);
+
+    // Platform admin operations are not on the allowlist, whatever the scope.
+    const wide = (await s.create(['projects:write', 'directory:write'])).json();
+    const addMember = await call(
+      wide.token,
+      'POST',
+      `/v1/orgs/${s.org.id}/projects/${s.project.id}/members`,
+      { email: 'x@example.com' },
+    );
+    expect(addMember.json().code).toBe('api_token.not_allowed');
+    expect((await call(wide.token, 'GET', `/v1/orgs/${s.org.id}/support-access`)).json().code).toBe(
+      'api_token.not_allowed',
+    );
 
     // Token management is for signed-in people only.
     const manage = await call(token, 'GET', `/v1/orgs/${s.org.id}/api-tokens`);
@@ -148,4 +169,42 @@ describe('personal access tokens (integrations/06)', () => {
     expect(res.statusCode).toBe(401);
     expect(res.json().code).toBe('auth.wrong_origin_credential');
   });
+
+  it('needs a recent sign-in to create a token, and records create, first use and revoke', async () => {
+    const s = await setup('pat-audit');
+    const created = (await s.create(['projects:read'])).json();
+    const id = decodeId('apiToken', created.id)!;
+    await call(created.token, 'GET', `/v1/orgs/${s.org.id}/projects`);
+    await call(created.token, 'GET', `/v1/orgs/${s.org.id}/projects`);
+    await s.owner.browser.del(`/v1/orgs/${s.org.id}/api-tokens/${created.id}`);
+
+    const events = await orgQuery(
+      s.org.id,
+      `select event from identity.api_token_events where token_id = $1 order by created_at, event`,
+      [id],
+    );
+    expect(events.map((r) => r.event).sort()).toEqual(['created', 'first_used', 'revoked']);
+
+    await t.adminDb.pool.query(
+      `update identity.sessions set auth_time = now() - interval '2 hours' where user_id = $1`,
+      [decodeId('user', s.owner.userId)],
+    );
+    await t.redis?.flushdb();
+    const stale = await s.create(['projects:read']);
+    expect(stale.statusCode).toBe(403);
+    expect(stale.json().code).toBe('auth.step_up_required');
+  });
 });
+
+async function orgQuery(orgId: string, sql: string, params: unknown[]) {
+  const client = await t.adminDb.pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(`select set_config('app.org_id', $1, true)`, [decodeId('org', orgId)]);
+    const res = await client.query(sql, params);
+    await client.query('commit');
+    return res.rows as Array<Record<string, string>>;
+  } finally {
+    client.release();
+  }
+}

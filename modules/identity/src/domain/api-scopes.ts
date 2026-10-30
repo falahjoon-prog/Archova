@@ -24,21 +24,148 @@ export const TOKEN_SCOPES: readonly string[] = AREAS.flatMap((a) =>
   a === 'financials' ? [`${a}:read`] : [`${a}:read`, `${a}:write`],
 );
 
-/** Which scope area guards each module's operations. Modules not listed are not offered to tokens. */
-const AREA_BY_MODULE: Readonly<Record<string, (typeof AREAS)[number]>> = {
-  platform: 'projects',
-  documents: 'documents',
-  files: 'documents',
-  rfis: 'rfis',
-  submittals: 'submittals',
-  diary: 'diary',
-  defects: 'defects',
-  estimating: 'estimating',
+/**
+ * The operations a personal token may call, by id, each guarded by one scope area. Default deny: an operation not
+ * listed here is refused, so a new endpoint is never public by accident. Admin and account operations (members,
+ * org settings, support access, billing, identity) are deliberately absent.
+ */
+const ALLOWED_BY_AREA: Readonly<Record<(typeof AREAS)[number], readonly string[]>> = {
+  projects: [
+    'getOrg',
+    'listProjects',
+    'getProject',
+    'updateProject',
+    'getKeyDates',
+    'updateKeyDates',
+    'listKeyDateChanges',
+  ],
+  directory: ['listCompanies', 'createCompany', 'listProjectMembers'],
+  documents: [
+    'createUpload',
+    'completeUpload',
+    'getFile',
+    'getFileDownload',
+    'listFolders',
+    'createFolder',
+    'updateFolder',
+    'listDocuments',
+    'createDocument',
+    'getDocument',
+    'updateDocument',
+    'addDocumentRevision',
+    'listDrawingSets',
+    'createDrawingSet',
+    'getDrawingSetReview',
+    'addDrawingSetRevision',
+    'updateDraftDrawingRevision',
+    'removeDraftDrawingRevision',
+    'publishDrawingSet',
+    'listDrawings',
+    'listDrawingSheetRevisions',
+    'getDrawingRevision',
+    'getDrawingTiles',
+    'getSheetGeometry',
+    'confirmSheetScale',
+    'listMarkups',
+    'createMarkup',
+    'updateMarkup',
+    'deleteMarkup',
+    'listTransmittals',
+    'createTransmittal',
+    'getTransmittal',
+    'sendTransmittal',
+    'acknowledgeTransmittal',
+  ],
+  rfis: [
+    'listRfis',
+    'createRfi',
+    'getRfi',
+    'updateRfi',
+    'openRfi',
+    'addRfiResponse',
+    'getRfiActivity',
+    'closeRfi',
+    'reopenRfi',
+    'voidRfi',
+  ],
+  submittals: [
+    'listSubmittals',
+    'createSubmittal',
+    'getSubmittal',
+    'updateSubmittal',
+    'submitSubmittal',
+    'respondToSubmittalStep',
+    'closeSubmittal',
+  ],
+  diary: [
+    'getDelayRegister',
+    'listDiaryEntries',
+    'getDiaryEntry',
+    'saveDiaryEntry',
+    'submitDiaryEntry',
+    'signOffDiaryEntry',
+    'copyDiaryLabour',
+    'createDiaryLabour',
+    'updateDiaryLabour',
+    'deleteDiaryLabour',
+    'createDiaryPlant',
+    'updateDiaryPlant',
+    'deleteDiaryPlant',
+    'createDiaryDelivery',
+    'updateDiaryDelivery',
+    'deleteDiaryDelivery',
+    'createDiaryDelay',
+    'updateDiaryDelay',
+    'deleteDiaryDelay',
+    'createDiaryVisitor',
+    'updateDiaryVisitor',
+    'deleteDiaryVisitor',
+    'createDiaryEvent',
+    'updateDiaryEvent',
+    'deleteDiaryEvent',
+    'createDiaryStandDown',
+    'updateDiaryStandDown',
+    'deleteDiaryStandDown',
+  ],
+  defects: ['listDefects', 'createDefect', 'getDefect', 'updateDefect', 'transitionDefect'],
+  estimating: [
+    'listTenderPackages',
+    'createTenderPackage',
+    'getTenderPackage',
+    'updateTenderPackage',
+    'transitionTenderPackage',
+    'inviteToTenderPackage',
+    'setTenderPackageAllowances',
+    'awardTenderPackage',
+    'getQuoteComparison',
+    'listQuotes',
+    'createQuote',
+    'getQuote',
+    'updateQuote',
+    'confirmQuote',
+    'declineQuote',
+    'listTakeoffMeasurements',
+    'createTakeoffMeasurement',
+    'getTakeoffMeasurement',
+    'updateTakeoffMeasurement',
+    'deleteTakeoffMeasurement',
+    'confirmTakeoffMeasurement',
+  ],
+  correspondence: [],
+  meetings: [],
+  financials: [],
 };
 
+const AREA_BY_OPERATION: ReadonlyMap<string, (typeof AREAS)[number]> = new Map(
+  AREAS.flatMap((a) => ALLOWED_BY_AREA[a].map((id) => [id, a] as const)),
+);
+
+/** Every operation id a token may call. */
+export const TOKEN_OPERATIONS: readonly string[] = [...AREA_BY_OPERATION.keys()];
+
 /** The scope an operation needs, or null when tokens may not call it at all. */
-export function requiredScope(module: string | null, method: string): string | null {
-  const area = module ? AREA_BY_MODULE[module] : undefined;
+export function requiredScope(operationId: string, method: string): string | null {
+  const area = AREA_BY_OPERATION.get(operationId);
   if (!area) return null;
   return `${area}:${method === 'GET' || method === 'HEAD' ? 'read' : 'write'}`;
 }

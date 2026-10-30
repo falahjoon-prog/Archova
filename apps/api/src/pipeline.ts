@@ -77,6 +77,7 @@ export function registerOperations(
     const principal = await modules.identity.api.authenticateBearer(
       m[1]!,
       urlOrg ? decodeId('org', urlOrg) : null,
+      clientIp(req, config.clientIpHops),
     );
     if (!principal)
       throw new AppError(
@@ -147,13 +148,14 @@ export function registerOperations(
    * The owner's own permissions are still checked afterwards, so a token never does more than its owner.
    */
   function checkApiToken(
+    operationId: string,
     def: OperationDef,
     token: NonNullable<Principal['apiToken']>,
     params: Record<string, string>,
   ) {
     if (def.internal)
       throw new AppError('api_token.not_allowed', 'Tokens cannot call this endpoint.');
-    const needed = requiredScope(def.module, def.method);
+    const needed = requiredScope(operationId, def.method);
     if (!needed) throw new AppError('api_token.not_allowed', 'Tokens cannot call this endpoint.');
     if (decodeId('org', params.orgId ?? '') !== token.orgId) throw new AppError('org.not_found');
     if (!scopeAllows(token.scopes, needed))
@@ -264,10 +266,10 @@ export function registerOperations(
           ctx.principal = principal;
 
           const params = parse(def.params, req.params, true) as Record<string, string>;
+          if (principal?.apiToken) checkApiToken(operationId, def, principal.apiToken, params);
+
           const query = parse(def.query, req.query, false);
           const body = parse(def.body, req.body, false);
-
-          if (principal?.apiToken) checkApiToken(def, principal.apiToken, params);
 
           let tenant: TenantContext | null = null;
           if (params.orgId && principal) {

@@ -20,4 +20,18 @@ create table identity.api_tokens (
 create index api_tokens_org on identity.api_tokens (org_id, created_at desc);
 create index api_tokens_user on identity.api_tokens (user_id);
 select kernel.enable_tenant_rls('identity.api_tokens');
+
+-- Who created, revoked and first used a token, and from where. Append-only; tokens are never deleted, so the trail
+-- outlives them.
+create table identity.api_token_events (
+  id         uuid primary key,
+  org_id     uuid not null,
+  token_id   uuid not null references identity.api_tokens (id),
+  event      text not null check (event in ('created', 'revoked', 'first_used')),
+  user_id    uuid not null,
+  ip         text,
+  created_at timestamptz not null default now()
+);
+create index api_token_events_token on identity.api_token_events (org_id, token_id, created_at);
+select kernel.enable_tenant_rls('identity.api_token_events');
 select kernel.grant_module_schema('identity');
