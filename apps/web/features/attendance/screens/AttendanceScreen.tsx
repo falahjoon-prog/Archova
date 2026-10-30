@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+import { webRoutes } from '@archova/routes';
 import {
   Badge,
   Card,
@@ -11,6 +13,7 @@ import {
   SkeletonRows,
   StatusPill,
   TextField,
+  buttonClassName,
   type DataTableColumn,
   type StatusTone,
 } from '@archova/ui';
@@ -21,6 +24,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatLocalDate, todayIn } from '@/shared/lib/format';
+import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useAttendanceDay, useOnSite } from '../hooks/useAttendance';
@@ -48,6 +52,7 @@ function clock(iso: string, timeZone: string): string {
 
 /** Who is on site now and a day's sign-in records (ATT-US2, ATT-AC8). Read-only; sites and gates come later. */
 export function AttendanceScreen() {
+  const org = useCurrentOrg();
   const project = useCurrentProject();
   const dir = useProjectDirectory();
   const today = todayIn(project.timezone);
@@ -124,6 +129,14 @@ export function AttendanceScreen() {
         eyebrow="Workforce"
         title="Attendance"
         description="Who is on site now, and each day’s sign-in records."
+        actions={
+          <Link
+            className={buttonClassName('secondary')}
+            href={webRoutes.attendanceSites(org.orgSlug, project.projectId)}
+          >
+            Sites and gates
+          </Link>
+        }
       />
       {previewDataOnly ? <PreviewDataNotice tool="Attendance" /> : null}
       <ErrorAlert error={onSite.error ?? day.error} title="Couldn’t load attendance" />

@@ -48,3 +48,44 @@ export function formatMinutes(minutes: number): string {
   const m = minutes % 60;
   return h === 0 ? `${m} min` : `${h} h ${String(m).padStart(2, '0')} min`;
 }
+
+export type GateCheckMode = 'block' | 'warn';
+
+export interface Gate {
+  id: string;
+  siteId: string;
+  name: string;
+  active: boolean;
+  /** Goes up each time the code is reissued; printed posters with an older code stop working (ATT-AC1). */
+  qrVersion: number;
+  version: number;
+}
+
+/** A sign-in site with its gates. */
+export interface AttendanceSite {
+  id: string;
+  name: string;
+  /** `HH:MM` site time; open sign-ins close at this time (ATT-AC4). */
+  dayEndLocal: string;
+  gateCheckMode: GateCheckMode;
+  active: boolean;
+  gates: Gate[];
+  version: number;
+}
+
+export interface SiteInput {
+  name: string;
+  dayEndLocal: string;
+  gateCheckMode: GateCheckMode;
+}
+
+/** A gate with its QR code. The server shows the code only once, when the gate is added or the code reissued. */
+export interface GateWithCode {
+  gate: Gate;
+  code: string;
+}
+
+export const CHECK_MODE_LABELS: Record<GateCheckMode, string> = {
+  block: 'Block workers who fail the induction check',
+  warn: 'Warn the site manager, let them in',
+};
