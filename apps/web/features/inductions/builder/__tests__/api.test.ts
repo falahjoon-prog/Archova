@@ -115,4 +115,26 @@ describe('Induction builder API source', () => {
       linkId: LNK,
     });
   });
+
+  it('checks currency, redrafts, decides, and saves the draft against the refresh', async () => {
+    const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai';
+    const SID = 'ais_00000000000000000000000001';
+    fake.on('GET', `${AI}/induction-drafts/{suggestionId}/currency`, () => ({ upToDate: true }));
+    fake.on('POST', `${AI}/induction-drafts/{suggestionId}/refresh`, () => ({ id: SID }));
+    fake.on('POST', `${AI}/suggestions/{suggestionId}/decision`, () => ({ id: SID }));
+    fake.on('PUT', `${I}/draft`, () => induction(5));
+    const api = createInductionBuilderApi('org_1');
+    expect(await api.currency('prj_1', SID)).toMatchObject({ upToDate: true });
+    expect(await api.refreshDraft('prj_1', SID)).toMatchObject({ id: SID });
+    await api.decideSuggestion('prj_1', SID, 'accepted');
+    await api.saveDraft('prj_1', induction(4) as never, content, SID);
+    expect(
+      fake.callsTo('POST', `${AI}/suggestions/{suggestionId}/decision`)[0]?.init,
+    ).toMatchObject({
+      body: { decision: 'accepted' },
+    });
+    expect(fake.callsTo('PUT', `${I}/draft`)[0]?.init).toMatchObject({
+      body: { content, aiSuggestionId: SID },
+    });
+  });
 });

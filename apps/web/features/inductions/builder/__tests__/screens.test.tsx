@@ -150,3 +150,32 @@ describe('Induction builder screens (preview data)', () => {
     if (!bad.ok) expect(Object.keys(bad.errors)).toEqual(['expiresInDays', 'maxUses']);
   });
 });
+
+describe('Induction currency check (preview data)', () => {
+  it('shows what changed, redrafts only that section and keeps other edits (F33 I2)', async () => {
+    const user = userEvent.setup();
+    renderInProject(<InductionEditorScreen inductionId={await sampleId()} />);
+    expect(await screen.findByText('Out of date')).toBeTruthy();
+    expect(screen.getByText('Site safety plan')).toBeTruthy();
+    expect(screen.getByText('Cited revision B, now C.')).toBeTruthy();
+
+    await user.click(screen.getByRole('button', { name: 'Redraft with Nova' }));
+    await user.click(await screen.findByRole('button', { name: /Take redrafted sections/ }));
+    // The redrafted section is in the draft, unsaved; PPE is untouched.
+    expect(await screen.findByText('Unsaved changes')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Save draft' }));
+    await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull());
+    await waitFor(() => expect(screen.getByText('Up to date')).toBeTruthy());
+    const ppe = screen.getByRole('region', { name: 'PPE' });
+    expect(within(ppe).getByDisplayValue(/Hard hat/)).toBeTruthy();
+  });
+
+  it('dismissing a redraft leaves the draft as it was', async () => {
+    const user = userEvent.setup();
+    renderInProject(<InductionEditorScreen inductionId={await sampleId()} />);
+    await user.click(await screen.findByRole('button', { name: 'Redraft with Nova' }));
+    await user.click(await screen.findByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByText('Unsaved changes')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Redraft with Nova' })).toBeTruthy();
+  });
+});

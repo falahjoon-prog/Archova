@@ -15,6 +15,7 @@ import type {
   InductionLink,
   InductionLinkCreated,
 } from '../lib/types';
+import type { AiSuggestion, InductionCurrency } from '../lib/refresh';
 
 export interface InductionBuilderSource {
   list(projectId: string): Promise<Induction[]>;
@@ -25,7 +26,22 @@ export interface InductionBuilderSource {
     induction: Induction,
     patch: { title?: string; validityMonths?: number; status?: 'archived' },
   ): Promise<Induction>;
-  saveDraft(projectId: string, induction: Induction, content: InductionContent): Promise<Induction>;
+  /** `aiSuggestionId` records the Nova draft or refresh the content now rests on, so the currency check follows it. */
+  saveDraft(
+    projectId: string,
+    induction: Induction,
+    content: InductionContent,
+    aiSuggestionId?: string,
+  ): Promise<Induction>;
+  /** Whether the documents a Nova draft cited still stand. Free; no model is called. */
+  currency(projectId: string, suggestionId: string): Promise<InductionCurrency>;
+  /** Nova redrafts the sections a changed document touches (1 credit). A pending suggestion comes back. */
+  refreshDraft(projectId: string, suggestionId: string): Promise<AiSuggestion>;
+  decideSuggestion(
+    projectId: string,
+    suggestionId: string,
+    decision: 'accepted' | 'edited' | 'rejected',
+  ): Promise<void>;
   approve(projectId: string, induction: Induction, section: number): Promise<Induction>;
   publish(projectId: string, induction: Induction, input: PublishInput): Promise<Induction>;
   register(projectId: string): Promise<InductionRegister>;
@@ -76,6 +92,10 @@ const SAMPLE: InductionContent = {
   ],
 };
 
+/** The Nova draft the preview induction was built from; its cited plan has since moved from revision B to C. */
+const PREVIEW_DRAFT_ID = 'ais_PREVIEWDRAFT0000000000001';
+const staleDrafts = new Set([PREVIEW_DRAFT_ID]);
+
 const stores = projectStores<Map<string, Row>>(() => {
   const rows = new Map<string, Row>();
   const row = seedRow('Paddington Terraces site induction', SAMPLE);
@@ -95,7 +115,7 @@ function seedRow(title: string, content: InductionContent): Row {
       status: 'draft',
       validityMonths: 12,
       draft: content,
-      draftAiSuggestionId: null,
+      draftAiSuggestionId: PREVIEW_DRAFT_ID,
       approvals: [],
       problems: [],
       currentVersion: null,
@@ -168,11 +188,96 @@ export const inductionBuilderSource: InductionBuilderSource = {
     if (patch.status) row.induction.status = patch.status;
     return delay(refresh(row));
   },
-  saveDraft(projectId, induction, content) {
+  saveDraft(projectId, induction, content, aiSuggestionId) {
     const row = find(projectId, induction.id);
     touch(row, induction.version);
     row.induction.draft = structuredClone(content);
+    if (aiSuggestionId) row.induction.draftAiSuggestionId = aiSuggestionId;
     return delay(refresh(row));
+  },
+  currency: (_projectId, suggestionId) =>
+    delay(
+      staleDrafts.has(suggestionId)
+        ? {
+            suggestionId,
+            upToDate: false,
+            hiddenChanges: 0,
+            changed: [
+              {
+                sourceType: 'document' as const,
+                sourceId: 'doc_PREVIEWSAFETYPLAN000000001',
+                title: 'Site safety plan',
+                citedRevision: 'B',
+                currentRevision: 'C',
+                reason: 'newer_revision' as const,
+                sections: ['emergencies_and_first_aid' as const],
+                quizQuestions: 1,
+              },
+            ],
+          }
+        : { suggestionId, upToDate: true, hiddenChanges: 0, changed: [] },
+    ),
+  refreshDraft(_projectId, suggestionId) {
+    if (!staleDrafts.has(suggestionId))
+      return problem(
+        409,
+        'ai.induction.up_to_date',
+        'The documents this induction cites have not changed.',
+      );
+    return delay({
+      id: 'ais_PREVIEWREFRESH00000000001',
+      projectId: 'preview',
+      task: 'induction.refresh',
+      targetType: 'induction',
+      targetId: null,
+      status: 'pending',
+      confidence: null,
+      runId: 'run_preview',
+      createdAt: nowIso(),
+      decidedAt: null,
+      payload: {
+        refresh: {
+          baseSuggestionId: suggestionId,
+          sections: ['emergencies_and_first_aid'],
+          skipped: [],
+        },
+        sections: [
+          {
+            section: 'emergencies_and_first_aid',
+            status: 'covered',
+            gap: null,
+            slides: [
+              {
+                title: 'Assembly point',
+                points: [
+                  {
+                    text: 'Assemble at the car park beside the site office (safety plan rev C).',
+                    citations: [],
+                  },
+                ],
+                script: [],
+              },
+            ],
+          },
+        ],
+        quiz: [
+          {
+            section: 'emergencies_and_first_aid',
+            question: 'Where is the assembly point?',
+            options: ['Front gate', 'Car park beside the site office', 'Street'],
+            answerIndex: 1,
+            critical: true,
+            citations: [],
+          },
+        ],
+      },
+    });
+  },
+  decideSuggestion(_projectId, suggestionId, decision) {
+    // A refresh the builder took in clears the stale mark from the draft it replaced.
+    if (decision !== 'rejected') staleDrafts.clear();
+    void suggestionId;
+    return delay(undefined);
   },
   approve(projectId, induction, section) {
     const row = find(projectId, induction.id);
@@ -271,6 +376,8 @@ export const inductionBuilderSource: InductionBuilderSource = {
 /** Back to the seeded sample, or to a project with no induction yet when `emptyProjectId` is given. */
 export function resetInductionBuilderPreview(emptyProjectId?: string): void {
   previewLinks.clear();
+  staleDrafts.clear();
+  staleDrafts.add(PREVIEW_DRAFT_ID);
   stores.reset();
   if (emptyProjectId) stores.get(emptyProjectId).clear();
 }
