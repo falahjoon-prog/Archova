@@ -98,6 +98,59 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SessionInfo' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/api-tokens:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listApiTokens
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Personal access tokens in the organisation. A member sees their own; an owner or admin sees everyone's. The
+        secret is never returned again after creation.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiTokenList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createApiToken
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Create a personal access token for the public API (integrations/06). Needs a signed-in session, not another
+        token. The secret is in the response once. A token works in this organisation only and never does more than
+        its owner may.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateApiTokenRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiTokenCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/api-tokens/{apiTokenId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ApiTokenId'
+    delete:
+      operationId: revokeApiToken
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: Revoke a token at once. A member can revoke their own; an owner or admin can revoke any.
+      responses:
+        '204':
+          description: Revoked
+        default: { $ref: '#/components/responses/Problem' }
   /v1/oauth/authorize:
     get:
       operationId: oauthAuthorize
@@ -5712,6 +5765,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    ApiTokenId:
+      name: apiTokenId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tok_[0-9A-Za-z]{26}$' }
     ImportJobId:
       name: importJobId
       in: path
@@ -9429,6 +9487,47 @@ components:
         updatedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
+    ApiToken:
+      type: object
+      required: [id, userId, name, prefix, scopes, expiresAt, lastUsedAt, revokedAt, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        prefix:
+          { type: string, description: The first characters of the token, to tell tokens apart. }
+        scopes: { type: array, items: { type: string } }
+        expiresAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    ApiTokenList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ApiToken' }
+    ApiTokenCreated:
+      allOf:
+        - $ref: '#/components/schemas/ApiToken'
+        - type: object
+          required: [token]
+          properties:
+            token:
+              { type: string, description: The secret (`pk_live_…`). Shown once; store it safely. }
+    CreateApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [name, scopes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        scopes:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string, maxLength: 40 }
+        expiresInDays: { type: integer, minimum: 1, maximum: 365, description: Defaults to 90. }
     ImportJobPage:
       type: object
       required: [data, nextCursor]

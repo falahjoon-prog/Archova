@@ -12,7 +12,7 @@ import {
   type RouteTable,
   type TenantContext,
 } from '@archova/kernel';
-import { CSRF_COOKIE, SESSION_COOKIE } from '@archova/mod-identity';
+import { CSRF_COOKIE, SESSION_COOKIE, requiredScope, scopeAllows } from '@archova/mod-identity';
 import { isDrainToken } from '@archova/mod-sync';
 import type { ApiConfig } from './config';
 import type { Modules } from '@archova/compose';
@@ -72,7 +72,13 @@ export function registerOperations(
     if (!authz) return { principal: null, viaCookie: false };
     const m = /^Bearer\s+(\S+)$/i.exec(authz);
     if (!m) throw new AppError('auth.unauthenticated', 'Malformed Authorization header.');
-    const principal = await modules.identity.api.authenticateBearer(m[1]!);
+    // Personal access tokens work in one org, so the URL's org is needed to find them.
+    const urlOrg = (req.params as { orgId?: string } | undefined)?.orgId;
+    const principal = await modules.identity.api.authenticateBearer(
+      m[1]!,
+      urlOrg ? decodeId('org', urlOrg) : null,
+      clientIp(req, config.clientIpHops),
+    );
     if (!principal)
       throw new AppError(
         'auth.session_revoked',
@@ -135,6 +141,32 @@ export function registerOperations(
       entitlements,
       requestId,
     };
+  }
+
+  /**
+   * Personal access tokens (integrations/06 §2): one org, public operations only, and only within the token's scopes.
+   * The owner's own permissions are still checked afterwards, so a token never does more than its owner.
+   */
+  function checkApiToken(
+    operationId: string,
+    def: OperationDef,
+    token: NonNullable<Principal['apiToken']>,
+    params: Record<string, string>,
+  ) {
+    if (def.internal)
+      throw new AppError('api_token.not_allowed', 'Tokens cannot call this endpoint.');
+    const needed = requiredScope(operationId, def.method);
+    if (!needed) throw new AppError('api_token.not_allowed', 'Tokens cannot call this endpoint.');
+    if (decodeId('org', params.orgId ?? '') !== token.orgId) throw new AppError('org.not_found');
+    if (!scopeAllows(token.scopes, needed))
+      throw new AppError(
+        'api_token.scope_missing',
+        `This token needs the ${needed} scope.`,
+        undefined,
+        {
+          scope: needed,
+        },
+      );
   }
 
   function checkEntitlement(
@@ -241,6 +273,8 @@ export function registerOperations(
           ctx.principal = principal;
 
           const params = parse(def.params, req.params, true) as Record<string, string>;
+          if (principal?.apiToken) checkApiToken(operationId, def, principal.apiToken, params);
+
           const query = parse(def.query, req.query, false);
           const body = parse(def.body, req.body, false);
 
@@ -248,6 +282,15 @@ export function registerOperations(
           if (params.orgId && principal) {
             tenant = await resolveTenant(params.orgId, principal, requestId);
             ctx.tenant = tenant;
+            if (principal.apiToken && !tenant.entitlements.modules.includes('api'))
+              throw new AppError(
+                'entitlement-required',
+                'Your plan does not include API access.',
+                undefined,
+                {
+                  module: 'api',
+                },
+              );
             checkEntitlement(def, tenant, req.method, operationId);
             if (def.permission) {
               const projectId = params.projectId ? decodeId('project', params.projectId) : null;

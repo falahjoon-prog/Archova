@@ -68,6 +68,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/api-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Personal access tokens in the organisation. A member sees their own; an owner or admin sees everyone's. The secret is never returned again after creation. */
+        get: operations["listApiTokens"];
+        put?: never;
+        /** Create a personal access token for the public API (integrations/06). Needs a signed-in session, not another token. The secret is in the response once. A token works in this organisation only and never does more than its owner may. */
+        post: operations["createApiToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/api-tokens/{apiTokenId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                apiTokenId: components["parameters"]["ApiTokenId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a token at once. A member can revoke their own; an owner or admin can revoke any. */
+        delete: operations["revokeApiToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/authorize": {
         parameters: {
             query?: never;
@@ -6445,6 +6485,35 @@ export interface components {
             finishedAt: string | null;
             version: number;
         };
+        ApiToken: {
+            id: string;
+            userId: string;
+            name: string;
+            /** @description The first characters of the token */
+            prefix: string;
+            scopes: string[];
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ApiTokenList: {
+            data: components["schemas"]["ApiToken"][];
+        };
+        ApiTokenCreated: components["schemas"]["ApiToken"] & {
+            /** @description The secret (`pk_live_…`). Shown once; store it safely. */
+            token: string;
+        };
+        CreateApiTokenRequest: {
+            name: string;
+            scopes: string[];
+            /** @description Defaults to 90. */
+            expiresInDays?: number;
+        };
         ImportJobPage: {
             data: components["schemas"]["ImportJob"][];
             nextCursor: string | null;
@@ -7691,6 +7760,7 @@ export interface components {
         TenderPackageId: string;
         QuoteId: string;
         TakeoffMeasurementId: string;
+        ApiTokenId: string;
         ImportJobId: string;
         LateSubmissionId: string;
         Limit: number;
@@ -7794,6 +7864,78 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["SessionInfo"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listApiTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateApiTokenRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiTokenCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeApiToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                apiTokenId: components["parameters"]["ApiTokenId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
