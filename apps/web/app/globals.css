@@ -1506,6 +1506,10 @@ fieldset.worker-card > legend {
   gap: var(--space-4);
   grid-template-columns: minmax(0, 1fr);
 }
+.negotiate__ask {
+  display: grid;
+  gap: var(--space-3);
+}
 .negotiate__answer {
   border-top: 1px solid var(--c-border-divider);
   padding-top: var(--space-4);

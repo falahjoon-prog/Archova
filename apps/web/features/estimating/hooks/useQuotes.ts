@@ -123,7 +123,18 @@ export function useNegotiate(packageId: string) {
   const quotesSource = useQuotesSource();
   const { projectId, timezone } = useCurrentProject();
   return useMutation({
-    mutationFn: (v: { quoteId: string; targetCents: number | null; topic: NegotiateTopic }) =>
-      quotesSource.askNova(projectId, packageId, { ...v, today: todayIn(timezone) }),
+    mutationFn: (v: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      question?: string;
+    }) => quotesSource.askNova(projectId, packageId, { ...v, today: todayIn(timezone) }),
   });
+}
+
+/** Nova listening: a short recording in, the words out for the person to read and edit. Nothing is kept. */
+export function useListen() {
+  const quotesSource = useQuotesSource();
+  const { projectId } = useCurrentProject();
+  return useMutation({ mutationFn: (clip: Blob) => quotesSource.listen(projectId, clip) });
 }

@@ -1548,6 +1548,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova listens to a short spoken question and returns it as text.
+         * @description The browser records one short clip (about a minute at most) and sends it here as base64. It is turned into
+         *     text by the speech service in Australia (X25) and is not kept; only the text comes back, for the person to
+         *     read and edit before asking. Costs a tenth of a Nova credit. When nothing can be heard the answer is
+         *     `ai.nothing_heard`; the person types instead.
+         */
+        post: operations["transcribeSpeech"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary": {
         parameters: {
             query?: never;
@@ -10138,6 +10164,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QuoteNegotiationAdvice"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transcribeSpeech: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: byte */
+                    audio: string;
+                    /** @enum {string} */
+                    mimeType: "audio/webm" | "audio/ogg" | "audio/mp4" | "audio/wav";
+                };
+            };
+        };
+        responses: {
+            /** @description What was said */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        runId: string;
+                        text: string;
+                    };
                 };
             };
             default: components["responses"]["Problem"];
