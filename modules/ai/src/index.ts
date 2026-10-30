@@ -76,7 +76,7 @@ export type { TaskRun, RunOptions, Gateway } from './application/gateway';
 export type { ReadableFile, SheetSuggestionPayload } from './application/drawing-register';
 export type { AskAnswer, AnswerSource } from './application/ask';
 export type { SearchResult } from './application/semantic-search';
-export type { IndexReport, SourceRevision } from './application/project-index';
+export type { IndexReport, SourceRevision, SweepReport } from './application/project-index';
 export type { DefectSource } from './domain/defect-source';
 export { RECORD_EVENT_TYPES, recordKindOf, type RecordKind } from './domain/record-events';
 export { AI_INDEX_ACTOR } from './domain/index-actor';

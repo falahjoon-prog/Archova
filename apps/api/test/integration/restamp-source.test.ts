@@ -373,7 +373,11 @@ describe('The nightly sweep', () => {
     const embed = embedSpy();
     const calls = embed.mock.calls.length;
     const requests = await requestCount(s);
-    expect(await sweep(s)).toEqual({ projects: 1 });
+    const caught = await sweep(s);
+    // The moved document's chunks took the private folder's scope; the voided RFI's chunks were deleted.
+    expect(caught).toMatchObject({ projects: 1 });
+    expect(caught.restamped).toBeGreaterThan(0);
+    expect(caught.removed).toBeGreaterThan(0);
     expect(embed.mock.calls.length).toBe(calls);
     expect(await requestCount(s)).toBe(requests);
     embed.mockRestore();
@@ -384,7 +388,7 @@ describe('The nightly sweep', () => {
       rfi.id,
     );
     // Nothing to do the second time.
-    expect(await sweep(s)).toEqual({ projects: 1 });
+    expect(await sweep(s)).toEqual({ projects: 1, removed: 0, restamped: 0 });
     expect(await index(s)).toMatchObject({ indexed: 0, unchanged: 1, rfisIndexed: 0 });
   });
 
@@ -402,7 +406,8 @@ describe('The nightly sweep', () => {
     });
     await move(s, doc, s.legal);
 
-    await sweep(s);
+    // Old-version chunks are neither deleted (removed 0) nor left with the old scope (restamped).
+    expect(await sweep(s)).toMatchObject({ removed: 0, restamped: 1 });
     expect(await found(s.sub.browser, s, QUERY)).not.toContain(doc.id);
     expect(await found(s.pm.browser, s, QUERY)).toContain(doc.id);
     expect(await chunkRows(s, source)).toMatchObject([
@@ -464,7 +469,7 @@ describe('The nightly sweep', () => {
     expect(await found(first.sub.browser, first, QUERY)).toContain(doc(first).id);
 
     broken.mockRestore();
-    expect(await sweep(one)).toEqual({ projects: 2 });
+    expect(await sweep(one)).toMatchObject({ projects: 2 });
     expect(await found(first.sub.browser, first, QUERY)).not.toContain(doc(first).id);
   });
 
@@ -475,9 +480,9 @@ describe('The nightly sweep', () => {
     await index(b);
     await move(b, doc, b.legal);
 
-    expect(await sweep(a)).toEqual({ projects: 0 });
+    expect(await sweep(a)).toEqual({ projects: 0, removed: 0, restamped: 0 });
     expect(await found(b.sub.browser, b, QUERY)).toContain(doc.id);
-    expect(await sweep(b)).toEqual({ projects: 1 });
+    expect(await sweep(b)).toMatchObject({ projects: 1, restamped: 1 });
     expect(await found(b.sub.browser, b, QUERY)).not.toContain(doc.id);
   });
 });

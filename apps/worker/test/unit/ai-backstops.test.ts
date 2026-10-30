@@ -1,8 +1,10 @@
+import { UnrecoverableError } from 'bullmq';
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '@archova/kernel';
 import { AI_INDEX_ACTOR } from '@archova/mod-ai';
 import { AI_JOBS, AI_SWEEP_ROUTE } from '../../src/ai/declaration';
 import { LAG_ALERT_MS, measureQueue, watchQueueAge, type AgeQueue } from '../../src/ai/queue-age';
+import { sanitizeFailure } from '../../src/ai/reindex';
 import { createSweep, type OrgSweeper } from '../../src/ai/sweep';
 import {
   BACKOFF_CAP_MS,
@@ -72,7 +74,9 @@ describe('the nightly sweep', () => {
   });
 
   const setup = (sweepOrg?: OrgSweeper['sweepOrg']) => {
-    const sweepFn = vi.fn<OrgSweeper['sweepOrg']>(sweepOrg ?? (async () => ({ projects: 3 })));
+    const sweepFn = vi.fn<OrgSweeper['sweepOrg']>(
+      sweepOrg ?? (async () => ({ projects: 3, removed: 0, restamped: 0 })),
+    );
     const log = vi.fn<(msg: string, o: object) => void>();
     return { sweep: createSweep({ ai: { sweepOrg: sweepFn }, log }), sweepFn, log };
   };
@@ -87,7 +91,23 @@ describe('the nightly sweep', () => {
       orgRole: null,
       entitlements: { modules: [] },
     });
-    expect(s.log).toHaveBeenCalledWith('ai sweep done', { orgId: ORG, projects: 3 });
+    expect(s.log).toHaveBeenCalledWith('ai sweep done', {
+      orgId: ORG,
+      projects: 3,
+      removed: 0,
+      restamped: 0,
+    });
+  });
+
+  it('logs what it corrected, which is what the event path missed', async () => {
+    const s = setup(async () => ({ projects: 2, removed: 7, restamped: 4 }));
+    await s.sweep({ job: 'ai.sweep', orgId: ORG });
+    expect(s.log).toHaveBeenCalledWith('ai sweep done', {
+      orgId: ORG,
+      projects: 2,
+      removed: 7,
+      restamped: 4,
+    });
   });
 
   it('fails with the error code only', async () => {
@@ -105,6 +125,36 @@ describe('the nightly sweep', () => {
     await expect(coded.sweep({ job: 'ai.sweep', orgId: ORG })).rejects.toThrow(
       'ai job failed: ai.unavailable',
     );
+  });
+});
+
+describe('failing at once when trying again cannot help', () => {
+  it('stops retrying a request that is wrong, and still names only the code', () => {
+    for (const code of [
+      'document.not_found',
+      'project.not_found',
+      'validation_failed',
+      'access.denied',
+    ] as const) {
+      const err = sanitizeFailure(new AppError(code, 'text of the record CANARY-5521'));
+      expect(err, code).toBeInstanceOf(UnrecoverableError);
+      expect(err.message).toBe(`ai job failed: ${code}`);
+      expect(`${err.message}\n${err.stack}`).not.toContain('CANARY');
+    }
+  });
+
+  it('keeps retrying what can change: provider and limit codes, "not now" statuses, server errors, anything else', () => {
+    const retried = [
+      new AppError('ai.unavailable'),
+      new AppError('ai.allowance_used'),
+      new AppError('rate_limited'),
+      new AppError('conflict'),
+      new AppError('version_conflict'),
+      new AppError('internal'),
+      new Error('connection reset'),
+      'CANARY-5521',
+    ];
+    for (const err of retried) expect(sanitizeFailure(err)).not.toBeInstanceOf(UnrecoverableError);
   });
 });
 
