@@ -780,6 +780,57 @@ main:focus {
 .takeoff-quantities__head {
   justify-content: space-between;
 }
+.nova-takeoff {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--c-border-divider);
+}
+.nova-tally {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.nova-tally > div {
+  padding: var(--space-2) var(--space-3);
+  background: var(--c-bg);
+  border-radius: var(--radius-md);
+}
+.nova-tally dt {
+  font-size: var(--font-xs);
+  color: var(--c-text-secondary);
+}
+.nova-tally dd {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+}
+.nova-mark__name {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.nova-mark__name:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.nova-mark--selected {
+  outline: 2px solid var(--c-action-primary);
+  outline-offset: -2px;
+}
+.nova-mark--low {
+  border-left: 3px solid var(--c-status-warning);
+}
+.nova-mark__struck {
+  color: var(--c-text-muted);
+  text-decoration: line-through;
+}
 .scale-picker {
   display: flex;
   flex-wrap: wrap;

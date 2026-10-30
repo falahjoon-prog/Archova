@@ -248,4 +248,99 @@ describe('takeoff measurements', () => {
       { packageId: 'tpk_1', scopeKey: 'tk_door_d1_ea' },
     ]);
   });
+
+  it('has Nova find items and saves them as marks waiting for a person, sized from the scale', async () => {
+    fake.on('POST', '/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections', () => ({
+      runId: 'air_1',
+      revisionId: 'drv_c',
+      kind: 'length',
+      what: 'strip footings',
+      scanned: false,
+      caveat: null,
+      dropped: 0,
+      items: [
+        {
+          place: 'Grid A',
+          confidence: 0.92,
+          note: null,
+          points: [
+            { x: 0, y: 0 },
+            { x: 0.5, y: 0 },
+          ],
+        },
+      ],
+    }));
+    fake.on('POST', `${P}/batch`, (init) => ({
+      data: (init.body as { items: Array<Record<string, unknown>> }).items.map((i, n) =>
+        apiMeasurement({
+          ...i,
+          id: `tkm_n${n}`,
+          source: 'assisted',
+          confirmedBy: null,
+          confirmedAt: null,
+          rejectedBy: null,
+          rejectedAt: null,
+        }),
+      ),
+    }));
+    const found = await source.findWithNova('prj_1', {
+      revisionId: 'drv_c',
+      kind: 'length',
+      what: 'strip footings',
+      trade: 'Concrete',
+      scale: '1:100',
+      scaleConfirmed: true,
+      size: { widthMm: 841, heightMm: 594 },
+    });
+    // Nova is asked what to find, never for a quantity.
+    expect(
+      fake.callsTo('POST', '/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections')[0]!.init
+        .body,
+    ).toEqual({ revisionId: 'drv_c', target: { kind: 'length', what: 'strip footings' } });
+    const saved = fake.callsTo('POST', `${P}/batch`)[0]!.init.body as {
+      items: Array<Record<string, unknown>>;
+    };
+    expect(saved.items[0]).toMatchObject({
+      label: 'Concrete: strip footings · Grid A',
+      kind: 'length',
+      unit: 'm',
+      quantity: '42.050',
+      confidence: 0.92,
+    });
+    expect(found.marks[0]).toMatchObject({
+      source: 'assisted',
+      confirmed: false,
+      rejected: false,
+      createdBy: 'Nova',
+    });
+  });
+
+  it('accepts and rejects marks one at a time and by confidence', async () => {
+    fake.on('GET', ONE, () => apiMeasurement({ source: 'assisted', version: 3 }));
+    fake.on('POST', `${ONE}/confirm`, () => apiMeasurement({ source: 'assisted', version: 4 }));
+    fake.on('POST', `${ONE}/reject`, () =>
+      apiMeasurement({
+        source: 'assisted',
+        confirmedBy: null,
+        confirmedAt: null,
+        rejectedBy: 'usr_dana',
+        rejectedAt: '2026-10-30T00:00:00Z',
+      }),
+    );
+    fake.on('POST', `${P}/confirm-batch`, () => ({ data: [apiMeasurement(), apiMeasurement()] }));
+
+    expect((await source.accept('prj_1', 'tkm_1')).confirmed).toBe(true);
+    expect(fake.callsTo('POST', `${ONE}/confirm`)[0]!.init.params!.header).toEqual({
+      'If-Match': '"3"',
+    });
+    expect(await source.reject('prj_1', 'tkm_1')).toMatchObject({
+      rejected: true,
+      confirmed: false,
+    });
+    expect(await source.acceptAbove('prj_1', 'drv_c', 0.9)).toBe(2);
+    expect(fake.callsTo('POST', `${P}/confirm-batch`)[0]!.init.body).toEqual({
+      revisionId: 'drv_c',
+      minConfidence: 0.9,
+    });
+  });
 });
