@@ -51,19 +51,21 @@ export function quizOutcome(result: {
   };
 }
 
-/** Block kinds the phone shows in full: text and slides inline, images and documents from a download link. */
-const READABLE_BLOCKS = new Set(['text', 'slides', 'image', 'document']);
+/** Block kinds the phone shows in full: text and slides inline; images, documents and videos from a download link. */
+const READABLE_BLOCKS = new Set(['text', 'slides', 'image', 'document', 'video']);
 
 /** A document must stay open this long before it counts as read; opening it and closing it at once is not reading. */
 export const MIN_DOCUMENT_MS = 5000;
 
 /**
- * Images and documents in a section the worker has not yet viewed. "Seen to the end" is the record, so the
+ * Images, documents and videos in a section the worker has not yet viewed. "Seen to the end" is the record, so the
  * section cannot be ticked until each one has been.
  */
 export function unviewedFiles(section: Section, viewed: ReadonlySet<string>): string[] {
   return section.blocks.flatMap((b) =>
-    (b.type === 'image' || b.type === 'document') && !viewed.has(b.fileId) ? [b.fileId] : [],
+    (b.type === 'image' || b.type === 'document' || b.type === 'video') && !viewed.has(b.fileId)
+      ? [b.fileId]
+      : [],
   );
 }
 
@@ -77,7 +79,6 @@ export function unsupportedBlockKinds(section: Section): string[] {
 }
 
 const kindLabel: Record<string, string> = {
-  video: 'a video',
   document: 'a document',
   image: 'an image',
   swms: 'a SWMS',

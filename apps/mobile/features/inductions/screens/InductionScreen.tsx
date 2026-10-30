@@ -1,5 +1,5 @@
 // The online site induction (IND-US1): read each section, pass the quiz, sign the declaration. Needs a connection.
-// Video and SWMS blocks come later; a section with those cannot be ticked as seen. Images and documents must be viewed first.
+// SWMS blocks come later; a section with one cannot be ticked as seen. Images, documents and videos must be viewed first.
 import { useEffect, useRef, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { ApiError } from '@archova/api-client';
@@ -25,6 +25,7 @@ import {
   unsupportedBlocksMessage,
 } from '../flow';
 import { FileBlockView } from './FileBlockView';
+import { VideoBlockView } from './VideoBlockView';
 import { SignaturePad } from './SignaturePad';
 import { WhiteCardStep } from './WhiteCardStep';
 
@@ -135,6 +136,14 @@ export function InductionScreen({ projectId }: { projectId: string }) {
                   </View>
                 ))}
               </View>
+            ) : b.type === 'video' ? (
+              <VideoBlockView
+                key={b.fileId}
+                title={b.title}
+                viewed={viewed.has(b.fileId)}
+                load={() => getInductionFile(api, target, completion.id, b.fileId)}
+                onViewed={() => setViewed((v) => new Set(v).add(b.fileId))}
+              />
             ) : b.type === 'image' || b.type === 'document' ? (
               <FileBlockView
                 key={b.fileId}
