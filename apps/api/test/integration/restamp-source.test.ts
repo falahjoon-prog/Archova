@@ -2,7 +2,7 @@ import { PDFDocument, StandardFonts } from 'pdf-lib';
 import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { decodeId } from '@archova/domain';
-import { AI_INDEX_ACTOR } from '@archova/mod-ai';
+import { AI_INDEX_ACTOR, PIPELINE_VERSION } from '@archova/mod-ai';
 import {
   addMember,
   createOrg,
@@ -327,5 +327,157 @@ describe('Re-stamping a document or sheet after it changes', () => {
     embed.mockRestore();
     const rows = await chunkRows(s, decodeId('document', doc.id)!);
     expect(rows.filter((r) => r.revision_label === 'A')).toMatchObject([{ status: 'superseded' }]);
+  });
+});
+
+describe('The nightly sweep', () => {
+  const sweep = (s: Setup) => t.modules.ai.api.sweepOrg(systemCtx(s));
+
+  async function openRfi(s: Setup, subject: string, question: string) {
+    const draft = await s.pm.browser.post(`${s.base}/rfis`, {
+      subject,
+      question,
+      assigneeIds: [s.sub.userId],
+    });
+    expect(draft.statusCode, draft.body).toBe(201);
+    const opened = await s.pm.browser.post(
+      `${s.base}/rfis/${draft.json().rfi.id}/open`,
+      undefined,
+      {
+        'if-match': draft.headers.etag as string,
+      },
+    );
+    expect(opened.statusCode, opened.body).toBe(200);
+    return { id: draft.json().rfi.id as string, etag: opened.headers.etag as string };
+  }
+
+  it('catches a move and a void that no event handled, with no model call', async () => {
+    const s = await setup('sw-drift');
+    const doc = await addDocument(s, s.open, 'Head Contract', 'HC-01', CLAUSE);
+    const rfi = await openRfi(s, 'Louvre size', 'What size are the louvres on the plant room?');
+    await index(s);
+    expect(await found(s.sub.browser, s, QUERY)).toContain(doc.id);
+    expect(await found(s.pm.browser, s, 'size of the louvres on the plant room')).toContain(rfi.id);
+
+    // The ai-worker was down: the document moved into a private folder and the RFI was voided, and nothing ran.
+    await move(s, doc, s.legal);
+    const voided = await s.pm.browser.post(
+      `${s.base}/rfis/${rfi.id}/void`,
+      { reason: 'Duplicate' },
+      { 'if-match': rfi.etag },
+    );
+    expect(voided.statusCode, voided.body).toBe(200);
+    expect(await found(s.sub.browser, s, QUERY)).toContain(doc.id);
+    expect(await found(s.pm.browser, s, 'size of the louvres on the plant room')).toContain(rfi.id);
+
+    const embed = embedSpy();
+    const calls = embed.mock.calls.length;
+    const requests = await requestCount(s);
+    expect(await sweep(s)).toEqual({ projects: 1 });
+    expect(embed.mock.calls.length).toBe(calls);
+    expect(await requestCount(s)).toBe(requests);
+    embed.mockRestore();
+
+    expect(await found(s.sub.browser, s, QUERY)).not.toContain(doc.id);
+    expect(await found(s.pm.browser, s, QUERY)).toContain(doc.id);
+    expect(await found(s.pm.browser, s, 'size of the louvres on the plant room')).not.toContain(
+      rfi.id,
+    );
+    // Nothing to do the second time.
+    expect(await sweep(s)).toEqual({ projects: 1 });
+    expect(await index(s)).toMatchObject({ indexed: 0, unchanged: 1, rfisIndexed: 0 });
+  });
+
+  it('leaves chunks of an older pipeline version for the run that re-embeds them', async () => {
+    const s = await setup('sw-version');
+    const doc = await addDocument(s, s.open, 'Head Contract', 'HC-01', CLAUSE);
+    await index(s);
+    const source = decodeId('document', doc.id)!;
+    // As after a pipeline version bump, before anyone has re-run the index.
+    await t.adminDb.withTenantTx(systemCtx(s), async ({ tx }) => {
+      await tx.execute(sql`update ai.ai_chunks set pipeline_version = ${PIPELINE_VERSION - 1}
+        where source_id = ${source}`);
+      await tx.execute(sql`update ai.ai_index_entries set pipeline_version = ${PIPELINE_VERSION - 1}
+        where source_id = ${source}`);
+    });
+    await move(s, doc, s.legal);
+
+    await sweep(s);
+    expect(await found(s.sub.browser, s, QUERY)).not.toContain(doc.id);
+    expect(await found(s.pm.browser, s, QUERY)).toContain(doc.id);
+    expect(await chunkRows(s, source)).toMatchObject([
+      { access_scope: `folder:${decodeId('folder', s.legal)!}` },
+    ]);
+
+    // The full index re-embeds at the current version and then the old chunks go.
+    expect(await index(s)).toMatchObject({ indexed: 1, unchanged: 0 });
+    const rows = await t.adminDb.withTenantTx(systemCtx(s), async ({ tx }) => {
+      const res = await tx.execute<{ v: number }>(
+        sql`select pipeline_version as v from ai.ai_chunks where source_id = ${source}`,
+      );
+      return res.rows.map((r) => r.v);
+    });
+    expect(rows).toEqual([PIPELINE_VERSION]);
+  });
+
+  it('finishes the other projects of an org when one cannot be reconciled, then fails so it is retried', async () => {
+    const one = await setup('sw-poison');
+    // A second project in the same org, with the same kinds of folder.
+    const p2 = await createProject(one.pm.browser, one.org.id, { name: 'Second', state: 'NSW' });
+    const base2 = `/v1/orgs/${one.org.id}/projects/${p2.id}`;
+    await addMember(one.pm.browser, one.org.id, p2.id, one.sub.email, 'Subcontractor');
+    const open2 = (await one.pm.browser.post(`${base2}/folders`, { name: 'Site' })).json().id;
+    const legal2 = (
+      await one.pm.browser.post(`${base2}/folders`, { name: 'Contracts', isPrivate: true })
+    ).json().id;
+    const two = {
+      ...one,
+      project: p2,
+      base: base2,
+      open: open2 as string,
+      legal: legal2 as string,
+    };
+
+    const docs = [one, two].map(async (s) => {
+      const doc = await addDocument(s, s.open, 'Head Contract', 'HC-01', CLAUSE);
+      await index(s);
+      await move(s, doc, s.legal);
+      return doc;
+    });
+    const [doc1, doc2] = await Promise.all(docs);
+    // The sweep goes through projects in id order: the first is the one that fails.
+    const [first, second] = [one, two].sort((a, b) =>
+      decodeId('project', a.project.id)! < decodeId('project', b.project.id)! ? -1 : 1,
+    ) as [Setup, Setup];
+    const doc = (s: Setup) => (s === one ? doc1! : doc2!);
+    const poisoned = decodeId('project', first.project.id)!;
+    const real = t.modules.documents.api.aiSources.bind(t.modules.documents.api);
+    const broken = vi
+      .spyOn(t.modules.documents.api, 'aiSources')
+      .mockImplementation(async (scope, projectId, only) => {
+        if (projectId === poisoned) throw new Error('boom');
+        return real(scope, projectId, only);
+      });
+
+    await expect(sweep(one)).rejects.toThrow('boom');
+    expect(await found(second.sub.browser, second, QUERY)).not.toContain(doc(second).id);
+    expect(await found(first.sub.browser, first, QUERY)).toContain(doc(first).id);
+
+    broken.mockRestore();
+    expect(await sweep(one)).toEqual({ projects: 2 });
+    expect(await found(first.sub.browser, first, QUERY)).not.toContain(doc(first).id);
+  });
+
+  it("only sweeps its own org's projects, and a project nothing was stored for costs nothing", async () => {
+    const a = await setup('sw-own-a');
+    const b = await setup('sw-own-b');
+    const doc = await addDocument(b, b.open, 'Head Contract', 'HC-01', CLAUSE);
+    await index(b);
+    await move(b, doc, b.legal);
+
+    expect(await sweep(a)).toEqual({ projects: 0 });
+    expect(await found(b.sub.browser, b, QUERY)).toContain(doc.id);
+    expect(await sweep(b)).toEqual({ projects: 1 });
+    expect(await found(b.sub.browser, b, QUERY)).not.toContain(doc.id);
   });
 });

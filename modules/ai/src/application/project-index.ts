@@ -232,11 +232,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
 
     // Read the register again: the run took a while, and reconciling against its starting snapshot would put back
     // the access scope, status or text of a record that has changed since.
-    await database.withTenantTx(ctx, async (scope) => {
-      await reconcile(scope, projectId, await deps.sources(scope, projectId));
-      for (const kind of ['rfi', 'defect', 'diary'] as const)
-        await reconcileRecords(scope, projectId, kind, await recordPages(scope, projectId, kind));
-    });
+    await database.withTenantTx(ctx, (scope) => reconcileProject(scope, projectId, false));
     return report;
   }
 
@@ -310,7 +306,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
         const live = await deps.sources(scope, projectId, rev.sourceId);
         const now = live.find((l) => l.revisionId === rev.revisionId);
         if (!now) {
-          await reconcile(scope, projectId, live, rev.sourceId);
+          await reconcile(scope, projectId, live, rev.sourceId, true);
           return false;
         }
         await scope.tx
@@ -455,6 +451,8 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     pages: RecordPage[],
     /** Reconcile one record (its page, if it is still a source) instead of the whole project. */
     onlySource?: string,
+    /** Leave chunks of an older pipeline version alone: they go when a run that embeds replaces them. */
+    keepOldVersions = false,
   ) {
     const live = pages.map((p) => p.revisionId);
     const inProject = and(
@@ -470,7 +468,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
           inProject,
           or(
             live.length ? notInArray(chunks.revisionId, live) : sql`true`,
-            sql`${chunks.pipelineVersion} <> ${PIPELINE_VERSION}`,
+            keepOldVersions ? undefined : sql`${chunks.pipelineVersion} <> ${PIPELINE_VERSION}`,
           ),
         ),
       );
@@ -498,6 +496,8 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     sources: SourceRevision[],
     /** Reconcile one document or sheet instead of the whole project. */
     onlySource?: string,
+    /** Leave chunks of an older pipeline version alone: they go when a run that embeds replaces them. */
+    keepOldVersions = false,
   ) {
     const live = sources.map((s) => s.revisionId);
     // Only what `documents` supplies: induction chunks (induction-qa.ts) are kept in step by their own versions.
@@ -510,9 +510,10 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     await scope.tx
       .delete(chunks)
       .where(and(inProject, live.length ? notInArray(chunks.revisionId, live) : sql`true`));
-    await scope.tx
-      .delete(chunks)
-      .where(and(inProject, sql`${chunks.pipelineVersion} <> ${PIPELINE_VERSION}`));
+    if (!keepOldVersions)
+      await scope.tx
+        .delete(chunks)
+        .where(and(inProject, sql`${chunks.pipelineVersion} <> ${PIPELINE_VERSION}`));
     await scope.tx
       .delete(indexEntries)
       .where(
@@ -631,11 +632,65 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     sourceId: string,
   ): Promise<void> {
     await database.withTenantTx(ctx, async (scope) => {
-      await reconcile(scope, projectId, await deps.sources(scope, projectId, sourceId), sourceId);
+      const live = await deps.sources(scope, projectId, sourceId);
+      await reconcile(scope, projectId, live, sourceId, true);
     });
   }
 
-  return { indexProject, reindexRecord, dropStaleRecord, restampSource };
+  /**
+   * Brings everything stored for a project in line with the register, as it is now: every document, sheet, RFI,
+   * defect and diary day. Reads each source from its module again, so it never puts back what a snapshot said.
+   * With `keepOldVersions` it leaves chunks of an older pipeline version for the run that re-embeds them.
+   */
+  async function reconcileProject(scope: TenantScope, projectId: string, keepOldVersions: boolean) {
+    await reconcile(
+      scope,
+      projectId,
+      await deps.sources(scope, projectId),
+      undefined,
+      keepOldVersions,
+    );
+    for (const kind of ['rfi', 'defect', 'diary'] as const) {
+      const pages = await recordPages(scope, projectId, kind);
+      await reconcileRecords(scope, projectId, kind, pages, undefined, keepOldVersions);
+    }
+  }
+
+  /**
+   * The nightly backstop for a re-stamp or a drop that never ran (the ai-worker down, a job that used up its
+   * retries): reconciles every project of the org that has anything stored, with no model call and for any plan.
+   * Only projects with chunks or index entries need it, so a project never indexed costs nothing. Same caller
+   * rules as `reindexRecord`.
+   */
+  async function sweepOrg(ctx: TenantContext): Promise<{ projects: number }> {
+    const projectIds = await database.withTenantTx(ctx, async (scope) => {
+      const withChunks = await scope.tx
+        .selectDistinct({ projectId: chunks.projectId })
+        .from(chunks)
+        .where(eq(chunks.orgId, scope.ctx.orgId));
+      const withEntries = await scope.tx
+        .selectDistinct({ projectId: indexEntries.projectId })
+        .from(indexEntries)
+        .where(eq(indexEntries.orgId, scope.ctx.orgId));
+      return [...new Set([...withChunks, ...withEntries].map((r) => r.projectId))].sort();
+    });
+    // One project that cannot be reconciled must not keep the rest of the org from it, night after night: finish
+    // the others, then fail so the job is retried.
+    let failure: unknown;
+    for (const projectId of projectIds) {
+      try {
+        await database.withTenantTx(ctx, (scope) => reconcileProject(scope, projectId, true), {
+          statementTimeout: '60s',
+        });
+      } catch (err) {
+        failure ??= err;
+      }
+    }
+    if (failure !== undefined) throw failure;
+    return { projects: projectIds.length };
+  }
+
+  return { indexProject, reindexRecord, dropStaleRecord, restampSource, sweepOrg };
 }
 
 export type ProjectIndexService = ReturnType<typeof createProjectIndexService>;
