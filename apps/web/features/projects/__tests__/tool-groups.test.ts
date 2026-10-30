@@ -14,6 +14,7 @@ describe('projectToolGroups', () => {
       'Site diary',
       'Defects',
       'Inductions',
+      'Attendance',
       'Tender packages',
     ]);
   });

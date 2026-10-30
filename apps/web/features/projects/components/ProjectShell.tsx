@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import {
+  AttendanceIcon,
   DefectsIcon,
   DiaryIcon,
   DocumentsIcon,
@@ -109,6 +110,11 @@ export function projectToolGroups(
       href: webRoutes.inductions(orgSlug, projectId),
       label: 'Inductions',
       icon: InductionsIcon,
+    },
+    canRead('workforce') && {
+      href: webRoutes.attendance(orgSlug, projectId),
+      label: 'Attendance',
+      icon: AttendanceIcon,
     },
   ];
   return [

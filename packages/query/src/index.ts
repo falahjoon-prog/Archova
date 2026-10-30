@@ -43,6 +43,7 @@ export type ProjectTool =
   | 'diary'
   | 'defects'
   | 'inductions'
+  | 'attendance'
   | 'tender-packages'
   | 'takeoff-measurements';
 

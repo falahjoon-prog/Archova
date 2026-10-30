@@ -58,6 +58,7 @@ export {
 
 export {
   BookOpen as DiaryIcon,
+  HardHat as AttendanceIcon,
   ClipboardCheck as DefectsIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
