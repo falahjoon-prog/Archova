@@ -28,6 +28,20 @@ export async function startInduction(
   );
 }
 
+/** A short-lived link to a file this induction uses; fetch a fresh one each time it is shown. */
+export async function getInductionFile(
+  api: ApiClient,
+  t: InductionTarget,
+  completionId: string,
+  fileId: string,
+) {
+  return unwrap(
+    await api.GET(`${base}/{completionId}/files/{fileId}/download`, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId, completionId, fileId } },
+    }),
+  );
+}
+
 export async function recordSectionSeen(
   api: ApiClient,
   t: InductionTarget,

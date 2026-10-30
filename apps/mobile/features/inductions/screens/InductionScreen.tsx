@@ -1,5 +1,5 @@
 // The online site induction (IND-US1): read each section, pass the quiz, sign the declaration. Needs a connection.
-// Video, document and SWMS blocks come later; a section with those cannot be ticked as seen.
+// Video and SWMS blocks come later; a section with those cannot be ticked as seen. Images and documents must be viewed first.
 import { useEffect, useRef, useState } from 'react';
 import { Switch, Text, View } from 'react-native';
 import { ApiError } from '@archova/api-client';
@@ -10,6 +10,7 @@ import { api } from '../../../lib/api';
 import { StateMessage, useCurrentOrg } from '../../../shared';
 import {
   getInductionCompletion,
+  getInductionFile,
   recordSectionSeen,
   signInduction,
   startInduction,
@@ -19,9 +20,11 @@ import {
   nextStep,
   quizOutcome,
   sectionProgress,
+  unviewedFiles,
   unsupportedBlockKinds,
   unsupportedBlocksMessage,
 } from '../flow';
+import { FileBlockView } from './FileBlockView';
 import { SignaturePad } from './SignaturePad';
 import { WhiteCardStep } from './WhiteCardStep';
 
@@ -41,6 +44,7 @@ export function InductionScreen({ projectId }: { projectId: string }) {
   const [agreed, setAgreed] = useState(false);
   const [signature, setSignature] = useState('');
   const [padKey, setPadKey] = useState(0);
+  const [viewed, setViewed] = useState<ReadonlySet<string>>(new Set());
   const openedAt = useRef(Date.now());
   const startKey = useRef(uuidv7());
 
@@ -131,6 +135,15 @@ export function InductionScreen({ projectId }: { projectId: string }) {
                   </View>
                 ))}
               </View>
+            ) : b.type === 'image' || b.type === 'document' ? (
+              <FileBlockView
+                key={b.fileId}
+                kind={b.type}
+                title={b.title}
+                viewed={viewed.has(b.fileId)}
+                load={() => getInductionFile(api, target, completion.id, b.fileId)}
+                onViewed={() => setViewed((v) => new Set(v).add(b.fileId))}
+              />
             ) : null,
           )}
           {unsupported.length > 0 ? (
@@ -138,7 +151,7 @@ export function InductionScreen({ projectId }: { projectId: string }) {
           ) : (
             <Button
               label="I have read this section"
-              disabled={busy}
+              disabled={busy || unviewedFiles(section, viewed).length > 0}
               onPress={() =>
                 void run(
                   () =>
