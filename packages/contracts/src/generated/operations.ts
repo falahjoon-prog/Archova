@@ -437,6 +437,22 @@ export const ReadQuoteWithNovaBody = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
   "fileId": s.FileRefSchema,
 }).strict();
+export const DetectTakeoffWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DetectTakeoffWithNovaBody = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "target": z.object({
+  "kind": s.TakeoffKindSchema,
+  "what": z.string().min(1).max(120),
+  "hint": z.string().max(400).optional(),
+}).strict(),
+  "examples": z.array(z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict()).max(5).optional(),
+}).strict();
 export const NegotiateQuoteParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -648,6 +664,35 @@ export const DeleteTakeoffMeasurementParams = z.object({
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
 });
 export const ConfirmTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const CreateAssistedTakeoffMeasurementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateAssistedTakeoffMeasurementsBody = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "items": z.array(z.object({
+  "label": z.string().min(1).max(200),
+  "kind": s.TakeoffKindSchema,
+  "geometry": s.TakeoffGeometrySchema,
+  "quantity": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,3})?$")),
+  "unit": z.string().min(1).max(20),
+  "confidence": z.number().min(0).max(1),
+}).strict()).min(1).max(200),
+}).strict();
+export const ConfirmTakeoffMeasurementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmTakeoffMeasurementsBody = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "ids": z.array(z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$"))).min(1).max(200).optional(),
+  "minConfidence": z.number().min(0).max(1).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 2, { message: 'At least 2 field(s) required' });
+export const RejectTakeoffMeasurementParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
@@ -2528,6 +2573,18 @@ export const operations = {
     query: null,
     body: ReadQuoteWithNovaBody,
   },
+  detectTakeoffWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: "application/json",
+    params: DetectTakeoffWithNovaParams,
+    query: null,
+    body: DetectTakeoffWithNovaBody,
+  },
   negotiateQuote: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations',
@@ -2945,6 +3002,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ConfirmTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  createAssistedTakeoffMeasurements: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateAssistedTakeoffMeasurementsParams,
+    query: null,
+    body: CreateAssistedTakeoffMeasurementsBody,
+  },
+  confirmTakeoffMeasurements: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/confirm-batch',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.confirm",
+    internal: false,
+    contentType: "application/json",
+    params: ConfirmTakeoffMeasurementsParams,
+    query: null,
+    body: ConfirmTakeoffMeasurementsBody,
+  },
+  rejectTakeoffMeasurement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/reject',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.confirm",
+    internal: false,
+    contentType: null,
+    params: RejectTakeoffMeasurementParams,
     query: null,
     body: null,
   },

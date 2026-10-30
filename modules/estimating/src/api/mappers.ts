@@ -124,6 +124,8 @@ export const toMeasurementDto = (m: MeasurementRow): TakeoffMeasurement => ({
   scopeKey: m.scopeKey,
   confirmedBy: userOrNull(m.confirmedBy),
   confirmedAt: iso(m.confirmedAt),
+  rejectedBy: userOrNull(m.rejectedBy),
+  rejectedAt: iso(m.rejectedAt),
   createdAt: m.createdAt.toISOString(),
   updatedAt: m.updatedAt.toISOString(),
   version: m.version,
