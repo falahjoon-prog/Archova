@@ -12,12 +12,26 @@ describe('api scopes', () => {
   it('maps allowed operations to read and write scopes', () => {
     expect(requiredScope('listRfis', 'GET')).toBe('rfis:read');
     expect(requiredScope('createRfi', 'POST')).toBe('rfis:write');
-    expect(requiredScope('getFile', 'GET')).toBe('documents:read');
-    expect(requiredScope('completeUpload', 'POST')).toBe('documents:write');
+    expect(requiredScope('getDocument', 'GET')).toBe('documents:read');
   });
 
   it('refuses everything not on the allowlist, including platform admin operations', () => {
     for (const id of [
+      // org-wide file store: a documents scope must not reach worker or finance files
+      'getFile',
+      'getFileDownload',
+      'createUpload',
+      'completeUpload',
+      // records of a person's decision
+      'signOffDiaryEntry',
+      'awardTenderPackage',
+      'respondToSubmittalStep',
+      'acknowledgeTransmittal',
+      'closeSubmittal',
+      'confirmQuote',
+      'declineQuote',
+      'confirmSheetScale',
+      'confirmTakeoffMeasurement',
       'addProjectMember',
       'removeProjectMember',
       'createSupportAccessGrant',

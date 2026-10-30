@@ -96,6 +96,15 @@ describe('personal access tokens (integrations/06)', () => {
       'api_token.not_allowed',
     );
 
+    // The org-wide file store is not reachable through a documents scope.
+    const docs = (await s.create(['documents:write'])).json();
+    const file = await call(
+      docs.token,
+      'GET',
+      `/v1/orgs/${s.org.id}/files/fil_00000000000000000000000000`,
+    );
+    expect(file.json().code).toBe('api_token.not_allowed');
+
     // Token management is for signed-in people only.
     const manage = await call(token, 'GET', `/v1/orgs/${s.org.id}/api-tokens`);
     expect(manage.json().code).toBe('api_token.not_allowed');
