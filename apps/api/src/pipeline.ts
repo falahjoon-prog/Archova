@@ -169,7 +169,12 @@ export function registerOperations(
       );
   }
 
-  function checkEntitlement(def: OperationDef, tenant: TenantContext, method: string) {
+  function checkEntitlement(
+    def: OperationDef,
+    tenant: TenantContext,
+    method: string,
+    operationId: OperationId,
+  ) {
     const module = def.module!;
     if (
       !(CORE_MODULES as readonly string[]).includes(module) &&
@@ -187,7 +192,9 @@ export function registerOperations(
     if (
       (state === 'read_only' || state === 'cancelled') &&
       UNSAFE.has(method) &&
-      module !== 'billing'
+      module !== 'billing' &&
+      // Withdrawing consent for support access must work however the account stands.
+      operationId !== 'revokeSupportAccessGrant'
     ) {
       throw new AppError(
         'org.read_only',
@@ -284,7 +291,7 @@ export function registerOperations(
                   module: 'api',
                 },
               );
-            checkEntitlement(def, tenant, req.method);
+            checkEntitlement(def, tenant, req.method, operationId);
             if (def.permission) {
               const projectId = params.projectId ? decodeId('project', params.projectId) : null;
               if (params.projectId && !projectId) throw new AppError('project.not_found');

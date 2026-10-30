@@ -6,6 +6,7 @@
 //  - no source file reaches outside its own package with a relative import (use the package's public index);
 //  - AI vendor SDKs are imported only by the provider adapter in the `ai` module, and no self-hosted model
 //    runtime is used anywhere (X25, X26; ai/02 §5);
+//  - the support-access read (listProjectsForSupport) is named only by platform, backoffice and compose;
 //  - the ai module's background re-index entry points check no permission, so only the ai module itself and the
 //    worker may name them (tests aside).
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
@@ -113,6 +114,14 @@ const BACKGROUND_CALLERS = [
   join(ROOT, 'modules/ai/src') + '/',
   join(ROOT, 'apps/worker/src') + '/',
 ];
+// The support view reads one customer's data for staff: only platform (which checks the open session itself),
+// backoffice (the caller) and the compose wiring may name it (Sam, 30 Oct 2026).
+const SUPPORT_READ = /\blistProjectsForSupport\b/;
+const SUPPORT_READ_CALLERS = [
+  'modules/platform/src',
+  'modules/backoffice/src',
+  'packages/compose/src',
+].map((d) => join(ROOT, d) + '/');
 
 const problems: string[] = [];
 const pkgs = workspaces();
@@ -156,6 +165,15 @@ for (const p of pkgs) {
     ) {
       problems.push(
         `${relative(ROOT, file)} names a background re-index entry point of the ai module (reindexRecord, dropStaleRecord, restampSource, sweepOrg); only modules/ai and apps/worker may call them`,
+      );
+    }
+    if (
+      SUPPORT_READ.test(text) &&
+      !SUPPORT_READ_CALLERS.some((dir) => file.startsWith(dir)) &&
+      !/[\\/]test[\\/]/.test(relative(ROOT, file))
+    ) {
+      problems.push(
+        `${relative(ROOT, file)} names listProjectsForSupport; only modules/platform, modules/backoffice and packages/compose may`,
       );
     }
     for (const m of text.matchAll(IMPORT_RE)) {

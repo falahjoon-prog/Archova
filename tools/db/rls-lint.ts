@@ -32,6 +32,7 @@ export const GLOBAL_TABLES = new Set([
   'backoffice.org_actions',
   'backoffice.support_grants',
   'backoffice.support_sessions',
+  'backoffice.support_events',
 ]);
 
 /** Tenant tables keyed by something other than org_id. */

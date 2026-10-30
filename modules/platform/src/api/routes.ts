@@ -33,6 +33,7 @@ export interface SupportAccessPort {
     input: { ticketRef: string; hours: number },
   ): Promise<unknown>;
   revoke(orgId: string, grantId: string): Promise<void>;
+  banner(orgId: string): Promise<{ active: boolean; since: string | null }>;
 }
 
 export interface PlatformRouteDeps {
@@ -114,6 +115,11 @@ export function platformRoutes(d: PlatformRouteDeps) {
         input.body,
       );
       return { status: 201, body: grant };
+    },
+    getSupportBanner: async (input) => {
+      // Any signed-in user of the company, not only admins: the banner tells everyone who is looking.
+      const t = requireTenant(input);
+      return { status: 200, body: await supportPort().banner(t.orgId) };
     },
     revokeSupportAccessGrant: async (input) => {
       const t = requireOrgAdmin(input);
