@@ -44,7 +44,7 @@ import {
 
 export interface DocumentsRouteDeps {
   database: Database;
-  identity: Pick<IdentityApi, 'findUserByEmail'>;
+  identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser'>;
   folders: FolderService;
   documents: DocumentService;
   drawings: DrawingService;
@@ -105,6 +105,12 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
   const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
     input.cookies[ACCESS_LINK_COOKIE];
 
+  /** Who is sending, for the "Sent by" line (Sam 11 §7: the email says what the record is and who it is from). */
+  async function senderName(input: { tenant: TenantContext | null }) {
+    const u = await d.identity.getUser(requireTenant(input).userId);
+    return u ? `${u.name} (${u.email})` : 'a member of the team';
+  }
+
   /**
    * Emails each link after the transaction commits, then records when it went out. A failed email leaves the
    * receipt at "not delivered" so the sender can resend; it never undoes the send.
@@ -115,6 +121,7 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
     t: {
       orgName: string;
       projectName: string;
+      sentBy: string;
       number: number;
       subject: string;
       message: string | null;
@@ -126,6 +133,7 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
       const url = `${d.baseUrl}/t/${l.token}`;
       const lines = [
         `${t.orgName} sent you transmittal T-${String(t.number).padStart(4, '0')} for ${t.projectName}.`,
+        `Sent by ${t.sentBy}.`,
         t.subject,
         ...(t.itemCount
           ? [`${t.itemCount} document${t.itemCount === 1 ? '' : 's'} attached.`]
@@ -566,6 +574,7 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
       await deliver(input, sent.x.links, {
         orgName: sent.org,
         projectName: sent.projectName,
+        sentBy: await senderName(input),
         number: sent.x.transmittal.number!,
         subject: sent.x.transmittal.subject,
         message: sent.x.transmittal.message,
@@ -595,6 +604,7 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
       await deliver(input, [r.link], {
         orgName: r.org,
         projectName: r.projectName,
+        sentBy: await senderName(input),
         number: r.transmittal.number!,
         subject: r.transmittal.subject,
         message: r.transmittal.message,

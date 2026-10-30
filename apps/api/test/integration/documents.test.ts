@@ -4,6 +4,7 @@ import { decodeId } from '@archova/domain';
 import {
   addMember,
   Browser,
+  removeMember,
   createOrg,
   createProject,
   createTestContext,
@@ -561,6 +562,78 @@ describe('transmittals to people without an account (X45)', () => {
       (await again.post('/v1/transmittal-access', { token: tokenIn('engineer@example.com') }))
         .statusCode,
     ).toBe(200);
+  });
+
+  async function sendTo(
+    s: Awaited<ReturnType<typeof setup>>,
+    to: string,
+    browser = s.owner.browser,
+  ) {
+    const draft = await browser.post(`${s.base}/transmittals`, {
+      subject: 'IFC',
+      purpose: 'for_information',
+      recipients: [{ email: to }],
+      currentSetDisciplines: ['A'],
+    });
+    const sent = await browser.post(
+      `${s.base}/transmittals/${draft.json().transmittal.id}/send`,
+      undefined,
+      { 'if-match': draft.headers.etag as string },
+    );
+    expect(sent.statusCode).toBe(200);
+    return sent.json();
+  }
+
+  it('keeps one link to its own transmittal, names the sender, and caps resends', async () => {
+    const s = await setup();
+    await publishSet(s, 'IFC', [{ sheetNumber: 'A-001', rev: '0', discipline: 'A' }]);
+    const a = await sendTo(s, 'a@example.com');
+    await sendTo(s, 'b@example.com');
+    expect(t.messages.sent.filter((m) => m.to === 'a@example.com').at(-1)!.text).toMatch(
+      /Sent by .*\(.*@.*\)/,
+    );
+    // A's link cannot fetch an item that is only on B's transmittal, or any made-up one.
+    const guest = new Browser(t.app);
+    const opened = (
+      await guest.post('/v1/transmittal-access', { token: tokenIn('a@example.com') })
+    ).json();
+    expect(opened.items).toHaveLength(1);
+    const bOnly = new Browser(t.app);
+    const bView = (
+      await bOnly.post('/v1/transmittal-access', { token: tokenIn('b@example.com') })
+    ).json();
+    expect(bView.transmittal.number).toBe(2);
+    expect(opened.transmittal.number).toBe(1);
+
+    const rid = a.recipients[0].id;
+    const url = `${s.base}/transmittals/${a.transmittal.id}/recipients/${rid}/resend`;
+    for (let i = 0; i < 3; i++) expect((await s.owner.browser.post(url)).statusCode).toBe(200);
+    const capped = await s.owner.browser.post(url);
+    expect(capped.statusCode).toBe(429);
+    expect(capped.json().code).toBe('access_link.rate_limited');
+  });
+
+  it('stops a link when the person who issued it can no longer issue transmittals', async () => {
+    const s = await setup();
+    await publishSet(s, 'IFC', [{ sheetNumber: 'A-001', rev: '0', discipline: 'A' }]);
+    const pm = await signUp(t.app, 'tx-pm');
+    await addMember(s.owner.browser, s.org.id, s.project.id, pm.email, 'Project Manager');
+    await sendTo(s, 'late@example.com', pm.browser);
+    const guest = new Browser(t.app);
+    expect(
+      (await guest.post('/v1/transmittal-access', { token: tokenIn('late@example.com') }))
+        .statusCode,
+    ).toBe(200);
+    await removeMember(s.owner.browser, s.org.id, s.project.id, pm.email);
+    // Both the open session and the emailed link stop at once.
+    expect((await guest.get('/v1/transmittal-access')).json().code).toBe('access_link.invalid');
+    expect(
+      (
+        await new Browser(t.app).post('/v1/transmittal-access', {
+          token: tokenIn('late@example.com'),
+        })
+      ).json().code,
+    ).toBe('access_link.invalid');
   });
 
   it('refuses people who are not the issuer, and an induction link or no cookie', async () => {
