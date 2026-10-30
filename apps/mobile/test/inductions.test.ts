@@ -9,6 +9,7 @@ import {
   unsupportedBlocksMessage,
   unviewedFiles,
   getInductionFile,
+  getInductionSwms,
   createWatchTracker,
   signaturePath,
   thinStroke,
@@ -142,9 +143,9 @@ describe('unsupported blocks', () => {
   });
 
   it('names the content the phone cannot show yet, once each', () => {
-    const kinds = unsupportedBlockKinds(section('text', 'swms', 'swms'));
-    expect(kinds).toEqual(['swms']);
-    expect(unsupportedBlocksMessage(kinds)).toContain('a SWMS');
+    const kinds = unsupportedBlockKinds(section('text', 'hologram', 'hologram', 'image'));
+    expect(kinds).toEqual(['hologram']);
+    expect(unsupportedBlocksMessage(kinds)).toContain('content');
   });
 });
 
@@ -157,6 +158,7 @@ describe('image and document blocks', () => {
       { type: 'image', fileId: 'fil_a' },
       { type: 'document', fileId: 'fil_b' },
       { type: 'video', fileId: 'fil_c' },
+      { type: 'swms', documentId: 'doc_d' },
     ],
   } as never;
 
@@ -165,9 +167,37 @@ describe('image and document blocks', () => {
   });
 
   it('keeps the section from being ticked until each file was viewed', () => {
-    expect(unviewedFiles(withFiles, new Set())).toEqual(['fil_a', 'fil_b', 'fil_c']);
-    expect(unviewedFiles(withFiles, new Set(['fil_a']))).toEqual(['fil_b', 'fil_c']);
-    expect(unviewedFiles(withFiles, new Set(['fil_a', 'fil_b', 'fil_c']))).toEqual([]);
+    expect(unviewedFiles(withFiles, new Set())).toEqual(['fil_a', 'fil_b', 'fil_c', 'doc_d']);
+    expect(unviewedFiles(withFiles, new Set(['fil_a']))).toEqual(['fil_b', 'fil_c', 'doc_d']);
+    expect(unviewedFiles(withFiles, new Set(['fil_a', 'fil_b', 'fil_c', 'doc_d']))).toEqual([]);
+  });
+
+  it('fetches a download link for a SWMS by document id', async () => {
+    const GET = vi.fn(async () => ({
+      data: {
+        url: 'https://files.test/s',
+        expiresAt: '2026-10-30T06:00:00Z',
+        title: 'Working at heights',
+        docNumber: 'SWMS-004',
+        rev: 'B',
+      },
+      response: new Response(null, { status: 200 }),
+    }));
+    const link = await getInductionSwms(
+      { GET } as never,
+      { orgId: 'o', projectId: 'p' },
+      'inc_1',
+      'doc_d',
+    );
+    expect(link.title).toBe('Working at heights');
+    expect(GET).toHaveBeenCalledWith(
+      expect.stringContaining('/swms/{documentId}/download'),
+      expect.objectContaining({
+        params: {
+          path: { orgId: 'o', projectId: 'p', completionId: 'inc_1', documentId: 'doc_d' },
+        },
+      }),
+    );
   });
 
   it('fetches a download link for the induction file', async () => {
