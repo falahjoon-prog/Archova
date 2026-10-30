@@ -122,3 +122,95 @@ describe('Nova induction drafts (F33)', () => {
     expect((await sub.browser.post(url, { decision: 'rejected' })).statusCode).toBe(404);
   });
 });
+
+describe('Nova induction drafts: out-of-date check (F33 I2)', () => {
+  it('flags the sections that rest on a document once it has a newer revision, and not before', async () => {
+    const owner = await signUp(t.app, 'ind-cur');
+    const org = await createOrg(owner.browser, 'Currency Builders');
+    const project = await createProject(owner.browser, org.id, { name: 'Rosebery', state: 'NSW' });
+    const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+    const folder = (await owner.browser.post(`${base}/folders`, { name: 'Safety' })).json();
+    const upload = async (lines: string[]) =>
+      uploadBytes(t, owner.browser, org.id, project.id, await pdf(lines));
+
+    const planFile = await upload([
+      'EMERGENCY PLAN',
+      'On the continuous siren, stop work and go to the assembly point: the oval near the cricket nets.',
+      'In an emergency call 000 and give the site address: 9 Rosebery Street, Sydney NSW.',
+    ]);
+    const plan = (
+      await owner.browser.post(`${base}/documents`, {
+        folderId: folder.id,
+        title: 'Emergency Plan',
+        revision: { rev: 'A', fileId: planFile },
+      })
+    ).json().document;
+    await owner.browser.post(`${base}/ai/index`);
+    const drafted = await owner.browser.post(`${base}/ai/induction-drafts`, {
+      siteName: 'Rosebery',
+    });
+    expect(drafted.statusCode, drafted.body).toBe(201);
+    const draftId = drafted.json().id as string;
+    const currency = (id = draftId, b = owner.browser) =>
+      b.get(`${base}/ai/induction-drafts/${id}/currency`);
+
+    // Nothing has changed since: up to date, and no model was called to find out.
+    const before = (await owner.browser.get(`/v1/orgs/${org.id}/ai/usage`)).json();
+    const fresh = await currency();
+    expect(fresh.statusCode, fresh.body).toBe(200);
+    expect(fresh.json()).toEqual({
+      suggestionId: draftId,
+      upToDate: true,
+      changed: [],
+      hiddenChanges: 0,
+    });
+
+    // A new emergency plan is published.
+    const planB = await upload([
+      'EMERGENCY PLAN',
+      'On the continuous siren, stop work and go to the assembly point: the car park behind the site office.',
+      'In an emergency call 000 and give the site address: 9 Rosebery Street, Sydney NSW.',
+    ]);
+    const added = await owner.browser.post(`${base}/documents/${plan.id}/revisions`, {
+      rev: 'B',
+      fileId: planB,
+    });
+    expect(added.statusCode, added.body).toBe(201);
+
+    const stale = (await currency()).json();
+    expect(stale).toMatchObject({ suggestionId: draftId, upToDate: false, hiddenChanges: 0 });
+    expect(stale.changed).toHaveLength(1);
+    expect(stale.changed[0]).toMatchObject({
+      sourceType: 'document',
+      sourceId: plan.id,
+      title: 'Emergency Plan',
+      citedRevision: 'A',
+      currentRevision: 'B',
+      reason: 'newer_revision',
+    });
+    expect(stale.changed[0].sections).toContain('emergencies_and_first_aid');
+    expect(stale.changed[0].quizQuestions).toBeGreaterThan(0);
+    const after = (await owner.browser.get(`/v1/orgs/${org.id}/ai/usage`)).json();
+    expect(after).toEqual(before);
+
+    // Index the new revision and draft again: the new draft cites revision B, so it is current. The first one still is not.
+    await owner.browser.post(`${base}/ai/index`);
+    const second = (
+      await owner.browser.post(`${base}/ai/induction-drafts`, { siteName: 'Rosebery' })
+    ).json();
+    expect((await currency(second.id)).json()).toMatchObject({ upToDate: true, changed: [] });
+    expect((await currency()).json().upToDate).toBe(false);
+
+    // A subcontractor holds no induction permission; an unknown or wrong-kind suggestion is a 404.
+    const sub = await signUp(t.app, 'ind-cur-sub');
+    await addMember(owner.browser, org.id, project.id, sub.email, 'Subcontractor');
+    expect((await currency(draftId, sub.browser)).statusCode).toBe(403);
+    const unknown = `ais_${'0'.repeat(26)}`;
+    expect((await currency(unknown)).statusCode).toBe(404);
+    const other = await createProject(owner.browser, org.id, { name: 'Elsewhere', state: 'NSW' });
+    const elsewhere = await owner.browser.get(
+      `/v1/orgs/${org.id}/projects/${other.id}/ai/induction-drafts/${draftId}/currency`,
+    );
+    expect(elsewhere.statusCode).toBe(404);
+  });
+});
