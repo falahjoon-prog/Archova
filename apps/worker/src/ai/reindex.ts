@@ -8,6 +8,7 @@
 import { isAppError, type Entitlements, type TenantContext } from '@archova/kernel';
 import { AI_INDEX_ACTOR, recordKindOf, type RecordKind } from '@archova/mod-ai';
 import type { StoredEvent, Subscriber } from '../subscribers';
+import { ROUTED_RETRY } from '../queues';
 import { AI_REINDEX_ROUTE } from './declaration';
 
 export const REINDEX_QUEUE = 'ai-reindex';
@@ -54,7 +55,7 @@ export interface ReindexDeps {
         jobId: string;
         delay: number;
         attempts: number;
-        backoff: { type: 'exponential'; delay: number };
+        backoff: { type: string; delay: number };
         removeOnComplete: { age: number; count: number };
         removeOnFail: { age: number };
       },
@@ -122,8 +123,8 @@ export function createReindex(deps: ReindexDeps) {
       // Same record, same window: one job. The next window gets its own, so a change made while one runs is not lost.
       jobId: `${event.orgId}.${kind}.${event.entityId}.${bucket}`,
       delay: window + SLACK_MS,
-      attempts: 5,
-      backoff: { type: 'exponential', delay: 5_000 },
+      // A job that fails leaves a record unsearchable until its next change or a full index run: retry for about an hour.
+      ...ROUTED_RETRY,
       removeOnComplete: { age: 3600, count: 10_000 },
       removeOnFail: { age: 14 * 86_400 },
     });

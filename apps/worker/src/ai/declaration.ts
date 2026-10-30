@@ -1,6 +1,7 @@
 // What the default worker needs to know about Nova's re-index: that it exists and which events it wants. The handler
 // lives in `./reindex.ts`, which only the ai-worker bundle loads (mod-ai needs pdfjs-dist and, through identity,
 // argon2, which the default worker image does not carry). This file must not import `@archova/mod-ai`.
+import type { ScheduledRoute } from '../scheduler';
 import type { SubscriberRoute } from '../subscribers';
 
 export const AI_REINDEX_SUBSCRIBER = 'ai.reindex-records';
@@ -30,3 +31,15 @@ export const AI_RESTAMP_ROUTE: SubscriberRoute = {
 
 /** Everything the dispatcher routes to the ai-worker. */
 export const AI_ROUTES: readonly SubscriberRoute[] = [AI_REINDEX_ROUTE, AI_RESTAMP_ROUTE];
+
+export const AI_SWEEP_JOB = 'ai.sweep';
+
+/** Nightly, after the busiest hours in every Australian time zone: reconciles each org's stored text with the register. */
+export const AI_SWEEP_ROUTE: ScheduledRoute = {
+  name: AI_SWEEP_JOB,
+  cron: '20 17 * * *',
+  queue: 'ai',
+};
+
+/** Everything scheduled per org that runs in the ai-worker. */
+export const AI_JOBS: readonly ScheduledRoute[] = [AI_SWEEP_ROUTE];
