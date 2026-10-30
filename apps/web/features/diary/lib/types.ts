@@ -159,3 +159,19 @@ export interface NovaDiarySummary {
   /** Delay and stand-down lines the summary doesn't mention (so none is lost). */
   unmentionedDelays: number;
 }
+
+/** What Nova's week summary gives the screen: text for the client or head office, with its sources by day. */
+export interface NovaWeekSummary {
+  id: string;
+  weekStart: LocalDate;
+  weekEnd: LocalDate;
+  text: string;
+  /** One for each kind of line on each day the sentences came from. */
+  citations: Array<{ id: string; label: string; date: LocalDate; anchor: string }>;
+  daysWithEntries: number;
+  /** Added up in code, never by the model. */
+  delayHours: { total: number; byCause: Array<{ cause: string; hours: number }> };
+  /** A busy day's routine lines were left out of what Nova read (delays never are). */
+  truncated: boolean;
+  unmentionedDelays: number;
+}

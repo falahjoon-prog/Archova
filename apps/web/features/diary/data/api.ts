@@ -15,6 +15,7 @@ import type {
   DiaryContent,
   DiaryEntry,
   NovaDiarySummary,
+  NovaWeekSummary,
   StandDown,
   Weather,
 } from '../lib/types';
@@ -546,6 +547,28 @@ export function createDiaryApi(orgId: string): DiarySource {
         ),
       );
     },
+
+    // The week is written from what the server holds, Monday to Sunday, for the client or head office (F4).
+    async novaWeekSummary(projectId, weekStart): Promise<NovaWeekSummary> {
+      await ensureCsrfToken();
+      return weekSummaryFromSuggestion(
+        unwrap(
+          await api.POST(`${P}/weeks/{weekStart}/nova-summary`, {
+            params: { path: { orgId, projectId, weekStart } },
+          }),
+        ),
+      );
+    },
+
+    async novaWeekDecide(projectId, suggestionId, decision) {
+      await ensureCsrfToken();
+      unwrap(
+        await api.POST(
+          '/v1/orgs/{orgId}/projects/{projectId}/ai/suggestions/{suggestionId}/decision',
+          { params: { path: { orgId, projectId, suggestionId } }, body: { decision } },
+        ),
+      );
+    },
   };
 }
 
@@ -584,6 +607,52 @@ export function summaryFromSuggestion(s: S['AiSuggestion']): NovaDiarySummary {
     id: s.id,
     text: sentences.map((x) => x.text).join(' '),
     citations,
+    unmentionedDelays: p.unmentionedDelays?.length ?? 0,
+  };
+}
+
+interface WeekPayload {
+  weekStart: LocalDate;
+  weekEnd: LocalDate;
+  daysWithEntries?: number;
+  truncated?: boolean;
+  delayHours?: { total: number; byCause: Array<{ cause: string; hours: number }> };
+  sentences?: Array<{
+    text: string;
+    sources: Array<{ kind: string; id: string | null; date?: string }>;
+  }>;
+  unmentionedDelays?: unknown[];
+}
+
+/** The week's sentences as one text, with one citation for each kind of line on each day they came from. */
+export function weekSummaryFromSuggestion(s: S['AiSuggestion']): NovaWeekSummary {
+  const p = s.payload as unknown as WeekPayload;
+  const sentences = p.sentences ?? [];
+  const seen = new Set<string>();
+  const citations: NovaWeekSummary['citations'] = [];
+  for (const src of sentences.flatMap((x) => x.sources)) {
+    const known = SOURCE_LABELS[src.kind];
+    // A week total has no day of its own, so there is no page to open for it.
+    if (!known || !src.date) continue;
+    const key = `${src.date}:${known.label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    citations.push({
+      id: `c_${src.date}_${src.kind}`,
+      label: known.label,
+      date: src.date,
+      anchor: known.href,
+    });
+  }
+  return {
+    id: s.id,
+    weekStart: p.weekStart,
+    weekEnd: p.weekEnd,
+    text: sentences.map((x) => x.text).join(' '),
+    citations,
+    daysWithEntries: p.daysWithEntries ?? 0,
+    delayHours: p.delayHours ?? { total: 0, byCause: [] },
+    truncated: p.truncated ?? false,
     unmentionedDelays: p.unmentionedDelays?.length ?? 0,
   };
 }
