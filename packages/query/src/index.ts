@@ -41,6 +41,7 @@ export type ProjectTool =
   | 'drawing-sets'
   | 'transmittals'
   | 'rfis'
+  | 'submittals'
   | 'diary'
   | 'key-dates'
   | 'delays'

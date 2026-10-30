@@ -65,6 +65,7 @@ export {
   Hourglass as DelaysIcon,
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,
+  PackageCheck as SubmittalsIcon,
   ShieldCheck as InductionsIcon,
   Scale as EstimatingIcon,
   Send as TransmittalsIcon,

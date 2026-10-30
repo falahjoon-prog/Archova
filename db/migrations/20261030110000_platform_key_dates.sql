@@ -1,4 +1,4 @@
--- Composed from modules/platform/db/migrations/20261030100000_platform_key_dates.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/platform/db/migrations/20261030110000_platform_key_dates.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- platform (phase 1b): project key dates (X46, product/08 S1). One row per project, created on first save; every change to a
 -- date or the LD rate is kept in key_date_changes, with a reason where a date that was already set moves (SCH-AC1).
 

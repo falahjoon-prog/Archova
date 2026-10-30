@@ -690,6 +690,52 @@ export const TransitionDefectParams = z.object({
   "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
 });
 export const TransitionDefectBody = s.DefectTransitionRequestSchema;
+export const ListSubmittalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListSubmittalsQuery = z.object({
+  "status": s.SubmittalStatusSchema.optional(),
+  "type": s.SubmittalTypeSchema.optional(),
+  "ballInCourt": s.UserRefSchema.optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSubmittalBody = s.CreateSubmittalRequestSchema;
+export const GetSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSubmittalBody = s.UpdateSubmittalRequestSchema;
+export const SubmitSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const SubmitSubmittalBody = s.SubmitSubmittalRequestSchema;
+export const RespondToSubmittalStepParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+  "stepId": z.string().regex(new RegExp("^sbs_[0-9A-Za-z]{26}$")),
+});
+export const RespondToSubmittalStepBody = s.RespondSubmittalStepRequestSchema;
+export const CloseSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
 export const ListRfisParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2728,6 +2774,90 @@ export const operations = {
     params: TransitionDefectParams,
     query: null,
     body: TransitionDefectBody,
+  },
+  listSubmittals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.read",
+    internal: false,
+    contentType: null,
+    params: ListSubmittalsParams,
+    query: ListSubmittalsQuery,
+    body: null,
+  },
+  createSubmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSubmittalParams,
+    query: null,
+    body: CreateSubmittalBody,
+  },
+  getSubmittal: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.read",
+    internal: false,
+    contentType: null,
+    params: GetSubmittalParams,
+    query: null,
+    body: null,
+  },
+  updateSubmittal: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateSubmittalParams,
+    query: null,
+    body: UpdateSubmittalBody,
+  },
+  submitSubmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/submit',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.submit",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitSubmittalParams,
+    query: null,
+    body: SubmitSubmittalBody,
+  },
+  respondToSubmittalStep: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/steps/{stepId}/respond',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.review",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToSubmittalStepParams,
+    query: null,
+    body: RespondToSubmittalStepBody,
+  },
+  closeSubmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/close',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.close",
+    internal: false,
+    contentType: null,
+    params: CloseSubmittalParams,
+    query: null,
+    body: null,
   },
   listRfis: {
     method: 'GET',
