@@ -15,6 +15,7 @@ import {
   MAX_PUSH_BATCH,
   scopeKey,
   type PushMutation,
+  type DrainGrant,
   type RevokedScope,
   type SyncScope,
 } from './wire';
@@ -42,6 +43,8 @@ export interface Drain {
   revokedAt: string | null;
   /** Epoch ms after which the remaining work is discarded and the data wiped. */
   until: number;
+  /** The server's drain-only grant. The first one is kept: a later one would replace it server-side (X38). */
+  grant?: DrainGrant;
 }
 
 export type SyncPhase =
@@ -181,9 +184,17 @@ export class SyncEngine {
    * Access to the organisation ended (admin sign-out or removal) and the API issued a drain-only grant.
    * New edits stop; only work queued before `revokedAt` is sent, for up to 72 hours (X38).
    */
-  async beginOrgDrain(revokedAt: string | null): Promise<void> {
+  async beginOrgDrain(revokedAt: string | null, grant?: DrainGrant): Promise<void> {
+    const kept = this.drains.find((d) => d.projectId === null)?.grant;
+    const first = kept ?? grant;
     this.drains = [
-      { projectId: null, module: null, revokedAt, until: this.clock.now() + DRAIN_WINDOW_MS },
+      {
+        projectId: null,
+        module: null,
+        revokedAt,
+        until: this.clock.now() + DRAIN_WINDOW_MS,
+        ...(first ? { grant: first } : {}),
+      },
     ];
     await this.emitStatus();
   }
@@ -251,9 +262,10 @@ export class SyncEngine {
         await this.runDrain(orgDrain);
       } else {
         await this.pushNormal();
-        await this.runProjectDrains();
+        // A drain that has no grant yet waits for the pull, which carries it (X38).
+        await this.runProjectDrains(options.pull !== false);
         if (options.pull !== false) await this.pull();
-        await this.runProjectDrains();
+        await this.runProjectDrains(false);
       }
       this.failures = 0;
       this.nextRetryAt = null;
@@ -297,7 +309,11 @@ export class SyncEngine {
    * whose parent is still unsent ends the batch, so it goes once the parent is applied (02 §2.4 step 7);
    * an entry whose parent failed goes to "Needs attention" without being sent.
    */
-  private async pushWhere(eligible: (e: OutboxEntry) => boolean, drain: boolean): Promise<void> {
+  private async pushWhere(
+    eligible: (e: OutboxEntry) => boolean,
+    drain: boolean,
+    grant?: DrainGrant,
+  ): Promise<void> {
     for (;;) {
       const all = await this.store.listOutbox();
       const byId = new Map(all.map((e) => [e.mutationId, e]));
@@ -345,13 +361,14 @@ export class SyncEngine {
         mutationId: e.mutationId,
         command: e.command,
         entityId: e.entityId,
+        ...(drain && e.projectId !== null ? { projectId: e.projectId } : {}),
         baseVersion: e.baseVersion,
         clientAt: e.clientAt,
         payload: e.payload,
       }));
       let response;
       try {
-        response = await this.transport.push({ mutations }, { drain });
+        response = await this.transport.push({ mutations }, grant ? { drain, grant } : { drain });
       } catch (error) {
         await this.store.recordAttempt(batch.map((e) => e.mutationId));
         throw error;
@@ -368,7 +385,13 @@ export class SyncEngine {
               sent.get(r.mutationId)!.projectId !== null,
           );
       for (const r of lostAccess) {
-        this.startProjectDrain({ projectId: sent.get(r.mutationId)!.projectId!, module: null });
+        this.startProjectDrain({
+          projectId: sent.get(r.mutationId)!.projectId!,
+          module: null,
+          ...(r.status === 'rejected' && r.problem.drainGrant
+            ? { drainGrant: r.problem.drainGrant }
+            : {}),
+        });
       }
       // A file still being scanned (409 `file.not_ready`) is not a failure: the command stays queued and the run
       // backs off. A blocked file (`file.blocked`, 422) is final and falls through to needs attention.
@@ -441,7 +464,10 @@ export class SyncEngine {
       (e) => e.status === 'pending' || e.status === 'held',
     );
     for (const revoked of revokedScopes) {
-      if (this.revoked.some((r) => sameRevokedScope(r, revoked))) continue;
+      if (this.revoked.some((r) => sameRevokedScope(r, revoked))) {
+        this.keepGrant(revoked);
+        continue;
+      }
       this.revoked.push(revoked);
       if (outbox.some((e) => matchesScope(e, revoked))) {
         this.startProjectDrain(revoked);
@@ -457,13 +483,31 @@ export class SyncEngine {
 
   private startProjectDrain(scope: RevokedScope) {
     if (!this.revoked.some((r) => sameRevokedScope(r, scope))) this.revoked.push(scope);
-    if (this.drains.some((d) => d.projectId === scope.projectId && d.module === scope.module))
+    if (this.drains.some((d) => d.projectId === scope.projectId && d.module === scope.module)) {
+      this.keepGrant(scope);
       return;
-    this.drains.push({ ...scope, revokedAt: null, until: this.clock.now() + DRAIN_WINDOW_MS });
+    }
+    this.drains.push({
+      projectId: scope.projectId,
+      module: scope.module,
+      revokedAt: null,
+      until: this.clock.now() + DRAIN_WINDOW_MS,
+      ...(scope.drainGrant ? { grant: scope.drainGrant } : {}),
+    });
   }
 
-  private async runProjectDrains(): Promise<void> {
-    for (const drain of this.drains.filter((d) => d.projectId !== null)) {
+  /** A grant that arrives for a drain already under way is ignored when one is held: only the first stays valid. */
+  private keepGrant(scope: RevokedScope) {
+    const drain = this.drains.find(
+      (d) => d.projectId === scope.projectId && d.module === scope.module,
+    );
+    if (drain && !drain.grant && scope.drainGrant) drain.grant = scope.drainGrant;
+  }
+
+  private async runProjectDrains(onlyWithGrant: boolean): Promise<void> {
+    for (const drain of this.drains.filter(
+      (d) => d.projectId !== null && (!onlyWithGrant || d.grant),
+    )) {
       await this.runDrain(drain);
     }
   }
@@ -478,7 +522,7 @@ export class SyncEngine {
       matchesScope(e, drain) && (cutoff === null || Date.parse(e.clientAt) < cutoff);
 
     if (this.clock.now() < drain.until) {
-      await this.pushWhere(sendable, true);
+      await this.pushWhere(sendable, true, drain.grant);
       const left = (await this.store.listOutbox({ status: 'pending' })).filter(sendable);
       if (left.length > 0) return;
     }

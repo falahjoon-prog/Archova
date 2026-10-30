@@ -1,12 +1,15 @@
 // How the engine reaches the API. The app implements it with @archova/api-client (bearer auth, token
 // refresh); tests use FakeSyncServer.
 
-import type { PullRequest, PullResponse, PushRequest, PushResponse } from './wire';
+import type { DrainGrant, PullRequest, PullResponse, PushRequest, PushResponse } from './wire';
 
 export interface SyncTransport {
   pull(request: PullRequest): Promise<PullResponse>;
-  /** `drain` sends with the drain-only grant (`sync:push-pending`, X38). */
-  push(request: PushRequest, options: { drain: boolean }): Promise<PushResponse>;
+  /** `drain` sends with the drain-only grant (X38); `grant` is its token's source, absent if the device never got one. */
+  push(
+    request: PushRequest,
+    options: { drain: boolean; grant?: DrainGrant },
+  ): Promise<PushResponse>;
 }
 
 /**

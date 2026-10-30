@@ -56,18 +56,20 @@ export function createSyncTransport(
     },
 
     async push(request, options) {
-      // The drain grant (X38) has no field in the contract yet, so a drain push is refused rather than sent
-      // as an ordinary one that would be rejected again.
-      if (options.drain) {
-        throw new SyncHttpError(501, {
-          code: 'not_implemented',
-          message: 'The drain grant is not in the sync contract yet',
+      // A drain push is only accepted with the grant's token; without one it would be rejected again.
+      if (options.drain && !options.grant) {
+        throw new SyncHttpError(403, {
+          code: 'access.revoked',
+          message: 'No drain grant was issued for this work',
         });
       }
       try {
         const response = unwrap(
           await api.POST('/v1/orgs/{orgId}/sync/push', {
             params: { path: { orgId } },
+            ...(options.grant
+              ? { headers: { Authorization: `Bearer ${options.grant.token}` } }
+              : {}),
             body: {
               mutations: request.mutations.map((m) => ({
                 ...m,
