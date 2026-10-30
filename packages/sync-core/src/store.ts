@@ -1,7 +1,7 @@
 // The engine's view of the device database. The app implements it over encrypted SQLite
 // (apps/mobile/lib/db); MemorySyncStore is the reference implementation the tests run against.
 
-import type { PullChange, PushResult, RevokedScope, SyncProblem } from './wire';
+import type { DrainGrant, PullChange, PushResult, RevokedScope, SyncProblem } from './wire';
 
 export type OutboxStatus =
   /** Waiting to be sent. */
@@ -22,6 +22,21 @@ export type AttentionReason =
   | { kind: 'dependency_failed'; parentMutationId: string }
   /** The project or module was removed from the user while this was still unsent (02 §2.5). */
   | { kind: 'access_revoked' };
+
+/**
+ * Access that has ended while the device still holds unsent work (X38). `projectId: null` is the whole
+ * organisation; otherwise one project, or one module of it.
+ */
+export interface Drain {
+  projectId: string | null;
+  module: string | null;
+  /** When access ended, if the server said; queued work created after it is not sent. */
+  revokedAt: string | null;
+  /** Epoch ms after which the remaining work is discarded and the data wiped. */
+  until: number;
+  /** The server's drain-only grant. The first one is kept: a later one would replace it server-side. */
+  grant?: DrainGrant;
+}
 
 export interface OutboxEntry {
   mutationId: string;
@@ -96,6 +111,13 @@ export interface SyncStore {
    * Records with unsent local changes keep their local copy (the pending entry wins until answered).
    */
   applyPull(page: { changes: PullChange[]; scopeKeys: string[]; nextSince: string }): Promise<void>;
+
+  /**
+   * The drains in progress, so an app restart during the 72-hour window does not forget them (and with them the
+   * right to send the queued work). `saveDrains` replaces the whole list.
+   */
+  loadDrains(): Promise<Drain[]>;
+  saveDrains(drains: readonly Drain[]): Promise<void>;
 
   /** Delete the local data and files of a revoked scope, and its checkpoints. Returns what was dropped. */
   purgeScope(scope: RevokedScope): Promise<WipeCounts>;

@@ -286,5 +286,36 @@ export function syncStoreConformance(
       expect(await t.keys()).toEqual([]);
       expect(await t.store.getCheckpoints(['project:prj_a:diary'])).toEqual({});
     });
+
+    it('keeps the drains in progress, replaces them as a list, and drops them on wipe', async () => {
+      const t = await create();
+      expect(await t.store.loadDrains()).toEqual([]);
+      const grant = {
+        token: 'dg_1',
+        expiresAt: '2026-11-02T00:00:00Z',
+        orgId: 'org_1',
+        projectId: 'prj_a',
+        module: null,
+      };
+      const project = { projectId: 'prj_a', module: null, revokedAt: null, until: 1000, grant };
+      const module = {
+        projectId: 'prj_b',
+        module: 'diary',
+        revokedAt: '2026-10-30T01:00:00Z',
+        until: 2000,
+      };
+      await t.store.saveDrains([project, module]);
+      const loaded = await t.store.loadDrains();
+      expect(loaded.length).toEqual(2);
+      expect(loaded.find((d) => d.projectId === 'prj_a')).toEqual(project);
+      expect(loaded.find((d) => d.projectId === 'prj_b')).toEqual(module);
+
+      const org = { projectId: null, module: null, revokedAt: null, until: 3000 };
+      await t.store.saveDrains([org]);
+      expect(await t.store.loadDrains()).toEqual([org]);
+
+      await t.store.wipe();
+      expect(await t.store.loadDrains()).toEqual([]);
+    });
   });
 }
