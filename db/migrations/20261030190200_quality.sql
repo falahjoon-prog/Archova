@@ -1,4 +1,4 @@
--- Composed from modules/quality/db/migrations/20261030190000_quality.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/quality/db/migrations/20261030190200_quality.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- quality: inspection checklists, inspections and observations (backend schema/quality-safety.md, product roadmap phase 2).
 
 create schema if not exists quality;
