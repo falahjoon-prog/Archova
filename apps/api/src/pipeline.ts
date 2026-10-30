@@ -17,6 +17,7 @@ import { isDrainToken } from '@archova/mod-sync';
 import type { ApiConfig } from './config';
 import type { Modules } from '@archova/compose';
 import type { IdempotencyStore } from './plugins/idempotency';
+import { tighter, type ApiRateLimiter } from './plugins/rate-limit';
 import { clientIp, safeEqualStrings } from './util';
 
 type Surface = 'app' | 'api';
@@ -34,9 +35,10 @@ export function registerOperations(
     modules: Modules;
     routes: RouteTable;
     idempotency: IdempotencyStore | null;
+    rateLimiter: ApiRateLimiter | null;
   },
 ) {
-  const { config, modules, routes, idempotency } = deps;
+  const { config, modules, routes, idempotency, rateLimiter } = deps;
 
   const missing = (Object.keys(operations) as OperationId[]).filter((id) => !routes[id]);
   if (missing.length) throw new Error(`Operations without a handler: ${missing.join(', ')}`);
@@ -169,6 +171,34 @@ export function registerOperations(
       );
   }
 
+  /**
+   * Token traffic counts against the plan's limits: the org's `limit.api_rpm` (default from config) shared by all its
+   * tokens, and half of that for any one token. First-party web and mobile traffic is not counted.
+   */
+  async function limitRate(
+    reply: FastifyReply,
+    token: NonNullable<Principal['apiToken']>,
+    tenant: TenantContext,
+  ) {
+    if (!rateLimiter) return;
+    const orgLimit = tenant.entitlements.limits['limit.api_rpm'] ?? config.apiRateLimitOrgRpm;
+    const byToken = await rateLimiter.hit(
+      tenant.orgId,
+      `token:${token.id}`,
+      Math.max(1, Math.ceil(orgLimit / 2)),
+    );
+    const byOrg = await rateLimiter.hit(tenant.orgId, 'org', orgLimit);
+    const shown = tighter(byToken, byOrg);
+    void reply.header('ratelimit-limit', String(shown.limit));
+    void reply.header('ratelimit-remaining', String(shown.remaining));
+    void reply.header('ratelimit-reset', String(shown.resetS));
+    const over = [byToken, byOrg].find((d) => !d.allowed);
+    if (over) {
+      void reply.header('retry-after', String(over.resetS));
+      throw new AppError('rate_limited', 'Too many requests. Slow down and retry after a moment.');
+    }
+  }
+
   function checkEntitlement(
     def: OperationDef,
     tenant: TenantContext,
@@ -291,6 +321,7 @@ export function registerOperations(
                   module: 'api',
                 },
               );
+            if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
             checkEntitlement(def, tenant, req.method, operationId);
             if (def.permission) {
               const projectId = params.projectId ? decodeId('project', params.projectId) : null;
