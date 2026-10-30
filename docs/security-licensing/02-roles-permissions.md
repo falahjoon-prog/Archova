@@ -108,6 +108,8 @@ Every change to memberships, templates, granular overrides, distribution lists a
 
 The AI assistant acts **as the user**. Every retrieval and tool call it makes passes through `can()` with the user's principal. It can never read a document the user couldn't open themselves, and it never sends or submits anything. Following Ari's rules (`docs/ai/04` §7), it does not write payment claim or payment schedule wording at all. See doc 09 §6.
 
+**Permissions that open stored AI output.** A Nova draft is built from what its author could open, then shown whole to everyone who holds the permission for it, citation titles included. `ai.induction.draft` is that kind of permission: a custom template must not grant it without document admin (`documents.folders.restrict`), or its holder could read the title of a document in a private folder the drafter could open and they could not. The default Project Admin template has both. The out-of-date check and the refresh filter by the caller's own access scopes, so they never name a source the caller cannot open.
+
 ## 10. Open items
 
 - Confirm template defaults with a pilot builder.

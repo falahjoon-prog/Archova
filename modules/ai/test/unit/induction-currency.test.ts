@@ -120,7 +120,11 @@ describe('what has changed since', () => {
       ['plan', [live('plan-a', 'current', 'A')]],
       ['rules', [live('rules-a', 'current', 'A')]],
     ]);
-    expect(compareSources(cited, now, readable)).toEqual({ changed: [], hidden: 0 });
+    expect(compareSources(cited, now, readable)).toEqual({
+      changed: [],
+      hidden: 0,
+      hiddenSections: [],
+    });
   });
 
   it('flags a document with a newer revision, naming both revisions and what rests on it', () => {
@@ -171,6 +175,8 @@ describe('what has changed since', () => {
     const out = compareSources(cited, now, readable);
     expect(out.changed).toEqual([]);
     expect(out.hidden).toBe(1);
+    // Which sections rest on it (a quiz question counts), in the induction's order, so a refresh can leave them alone.
+    expect(out.hiddenSections).toEqual(['emergencies_and_first_aid', 'site_rules']);
     expect(JSON.stringify(out)).not.toContain('Secret');
   });
 

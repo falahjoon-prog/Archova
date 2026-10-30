@@ -23,6 +23,10 @@ import type {
   InductionDraftService,
 } from '../application/induction-draft';
 import type { InductionCurrencyService } from '../application/induction-currency';
+import type {
+  InductionRefreshPayload,
+  InductionRefreshService,
+} from '../application/induction-refresh';
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
@@ -34,11 +38,21 @@ import type { suggestions } from '../infra/tables';
 
 /** Internal UUIDs in payloads become public ids. */
 function payloadDto(task: string, payload: unknown): Record<string, unknown> {
-  if (task === 'induction.draft') {
+  if (task === 'induction.draft' || task === 'induction.refresh') {
     const p = payload as InductionDraftPayload;
     const cite = (c: DraftCitation) => ({ ...c, ...sourceIds(c) });
+    // A refresh says which draft it redrafts.
+    const refresh = (payload as Partial<InductionRefreshPayload>).refresh;
     return {
       ...p,
+      ...(refresh
+        ? {
+            refresh: {
+              ...refresh,
+              baseSuggestionId: encodeId('aiSuggestion', refresh.baseSuggestionId),
+            },
+          }
+        : {}),
       sections: p.sections.map((s) => ({
         ...s,
         slides: s.slides.map((sl) => ({
@@ -196,6 +210,7 @@ export function aiRoutes(
   projectIndex: ProjectIndexService,
   inductionDrafts: InductionDraftService,
   inductionCurrency: InductionCurrencyService,
+  inductionRefresh: InductionRefreshService,
   rfiDrafts: RfiDraftService,
   drawingCompare: DrawingCompareService,
   diarySummary: DiarySummaryService,
@@ -511,6 +526,13 @@ export function aiRoutes(
           })),
         },
       };
+    },
+    refreshInductionDraft: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const suggestionId = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!suggestionId) throw new AppError('ai.suggestion.not_found');
+      const row = await inductionRefresh.refresh(requireTenant(input), projectId, suggestionId);
+      return { status: 201, body: toSuggestionDto(row) };
     },
     indexProjectForNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);

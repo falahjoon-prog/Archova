@@ -23,6 +23,8 @@ export const SUGGESTION_TASKS: Readonly<Record<string, SuggestionTask>> = {
   [drawingTitleBlockPrompt.id]: { permission: 'ai.drawing_register.extract', audience: 'deciders' },
   // F33: the builder approves or rejects the draft here; edits happen in the induction editor (ai/12 §2 I1).
   'induction.draft': { permission: 'ai.induction.draft', audience: 'deciders' },
+  // F33 I2: the redraft of the sections a changed document touched; decided like the draft it refreshes.
+  'induction.refresh': { permission: 'ai.induction.draft', audience: 'deciders' },
   // F4: whoever can write the diary takes or discards the summary draft it asked for.
   'diary.summary': { permission: 'diary.entries.write', audience: 'creator' },
   // F4: the weekly report; whoever can write the diary takes or discards it, and it is the asker's alone for the same reason.

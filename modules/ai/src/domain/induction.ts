@@ -115,6 +115,24 @@ function supported(
 }
 
 /**
+ * Quiz composition (compliance/04 §3): every covered section that must be tested has a question, and the quiz has 8 to
+ * 12 questions. Checked over the whole quiz, so a refresh checks it after the redrafted questions are merged in.
+ */
+export function quizWarnings(
+  sections: ReadonlyArray<{ section: InductionSection; status: 'covered' | 'missing' }>,
+  quiz: ReadonlyArray<{ section: InductionSection }>,
+): DraftWarning[] {
+  const covered = new Set(sections.filter((s) => s.status === 'covered').map((s) => s.section));
+  const warnings: DraftWarning[] = [];
+  for (const s of QUIZ_REQUIRED)
+    if (covered.has(s) && !quiz.some((q) => q.section === s))
+      warnings.push({ code: 'quiz_section_missing', section: s });
+  if (quiz.length < 8 || quiz.length > 12)
+    warnings.push({ code: 'quiz_count', count: quiz.length });
+  return warnings;
+}
+
+/**
  * The checks between the model and the builder (ai/12 §2 I1 step 4): items keep only citations that quote a
  * supplied passage, and are dropped when none is left, when a number in them isn't in their sources, or when they
  * use a banned word. A section left with nothing becomes "missing". Quiz composition is checked and critical flags
@@ -123,6 +141,31 @@ function supported(
 export function reviewInductionDraft(
   out: InductionDraftOutput,
   passages: readonly PromptPassage[],
+): ReviewedDraft {
+  const reviewed = reviewSections(out, passages, INDUCTION_SECTIONS);
+  return {
+    ...reviewed,
+    warnings: [...reviewed.warnings, ...quizWarnings(reviewed.sections, reviewed.quiz)],
+  };
+}
+
+/**
+ * The same checks over some sections only (a refresh, ai/12 §1 I2): anything the model returned for another section is
+ * dropped. The quiz composition is left to the caller, who checks it over the quiz once the redrafted questions are
+ * merged in with the ones kept.
+ */
+export function reviewInductionRefresh(
+  out: InductionDraftOutput,
+  passages: readonly PromptPassage[],
+  only: readonly InductionSection[],
+): ReviewedDraft {
+  return reviewSections(out, passages, only);
+}
+
+function reviewSections(
+  out: InductionDraftOutput,
+  passages: readonly PromptPassage[],
+  only: readonly InductionSection[],
 ): ReviewedDraft {
   const text = new Map(passages.map((p) => [p.id, p.text]));
   const warnings: DraftWarning[] = [];
@@ -145,7 +188,7 @@ export function reviewInductionDraft(
   };
 
   const bySection = new Map(out.sections.map((s) => [s.section, s]));
-  const sections: ReviewedSection[] = INDUCTION_SECTIONS.map((key) => {
+  const sections: ReviewedSection[] = only.map((key) => {
     const s = bySection.get(key);
     if (!s || s.status === 'missing')
       return { section: key, status: 'missing', gap: s?.gap ?? MISSING_GAP, slides: [] };
@@ -177,11 +220,6 @@ export function reviewInductionDraft(
       citations: kept.citations,
     });
   }
-  for (const s of QUIZ_REQUIRED)
-    if (covered.has(s) && !quiz.some((q) => q.section === s))
-      warnings.push({ code: 'quiz_section_missing', section: s });
-  if (quiz.length < 8 || quiz.length > 12)
-    warnings.push({ code: 'quiz_count', count: quiz.length });
 
   return { sections, quiz, warnings };
 }
