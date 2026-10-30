@@ -78,3 +78,17 @@ export const oauthCodes = identity.table('oauth_codes', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
 });
+
+export const apiTokens = identity.table('api_tokens', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  name: text('name').notNull(),
+  prefix: text('prefix').notNull(),
+  tokenHash: bytea('token_hash').notNull(),
+  scopes: text('scopes').array().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});

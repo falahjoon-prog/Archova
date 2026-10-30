@@ -22,6 +22,12 @@ export const PROBLEM_CODES = {
   'auth.step_up_required': 403,
   'auth.email_taken': 409,
   'auth.weak_password': 422,
+  // personal access tokens (public API)
+  'api_token.not_found': 404,
+  'api_token.invalid_scope': 422,
+  'api_token.limit_reached': 409,
+  'api_token.scope_missing': 403,
+  'api_token.not_allowed': 403,
   'oauth.invalid_request': 400,
   'oauth.invalid_client': 401,
   'oauth.invalid_grant': 400,

@@ -5,8 +5,10 @@ export interface Principal {
   userId: string;
   sessionId: string;
   client: 'web' | 'ios' | 'android' | 'api';
-  authMethod: 'password' | 'passkey' | 'sso' | 'oauth';
+  authMethod: 'password' | 'passkey' | 'sso' | 'oauth' | 'api_token';
   authTime: Date;
+  /** Set when the caller used a personal access token: it works in one org and only within these scopes. */
+  apiToken?: { id: string; orgId: string; scopes: readonly string[] };
 }
 
 export type PrincipalType = 'member' | 'external';

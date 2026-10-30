@@ -5,6 +5,17 @@ import * as s from './schemas';
 
 export const SignupBody = s.SignupRequestSchema;
 export const LoginBody = s.LoginRequestSchema;
+export const ListApiTokensParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateApiTokenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateApiTokenBody = s.CreateApiTokenRequestSchema;
+export const RevokeApiTokenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "apiTokenId": z.string().regex(new RegExp("^tok_[0-9A-Za-z]{26}$")),
+});
 export const OauthAuthorizeQuery = z.object({
   "response_type": z.enum(["code"]),
   "client_id": z.string(),
@@ -1319,6 +1330,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: null,
+    query: null,
+    body: null,
+  },
+  listApiTokens: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/api-tokens',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListApiTokensParams,
+    query: null,
+    body: null,
+  },
+  createApiToken: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/api-tokens',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: CreateApiTokenParams,
+    query: null,
+    body: CreateApiTokenBody,
+  },
+  revokeApiToken: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/api-tokens/{apiTokenId}',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RevokeApiTokenParams,
     query: null,
     body: null,
   },
