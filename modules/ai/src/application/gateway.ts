@@ -19,7 +19,7 @@ import { endOfLocalDay, localDateOf, startOfLocalDay } from '@archova/time';
 import type { CheckedCitation } from '../domain/citations';
 import { TASK_CREDITS, creditsFor, decideBudget } from '../domain/credits';
 import { ProviderError, type ModelProvider, type OcrResponse } from '../domain/provider';
-import { OCR_MODEL, type EmbeddingRoute, type RoutingTable } from '../domain/routing';
+import { OCR_MODEL, SPEECH_MODEL, type EmbeddingRoute, type RoutingTable } from '../domain/routing';
 import { orgSettings, requests, usageLedger } from '../infra/tables';
 import { invokePrompt, type CallRecord } from './invoke';
 import { createOnceADay } from './once-a-day';
@@ -32,6 +32,8 @@ export interface GatewayDeps {
   embedding: EmbeddingRoute;
   /** OCR price in US micro-dollars a page (ai/05 §1). */
   ocrPriceMicros?: number;
+  /** Speech-to-text price in US micro-dollars a clip. */
+  speechPriceMicros?: number;
   /** Tokens of documents and records an org may have embedded in a local day; defaults to `DEFAULT_EMBED_DAILY_TOKENS`. */
   embedDailyTokens?: number;
   /** Scanned pages an org may have read with OCR in a local day; defaults to `DEFAULT_OCR_DAILY_PAGES`. */
@@ -573,11 +575,83 @@ export function createGateway(deps: GatewayDeps) {
       });
   }
 
-  return { runTask, embed, ocr, creditsUsedSince };
+  /**
+   * Turns one short spoken clip into text (Nova listening). An interactive call like any other: behind the org and
+   * feature switches and the monthly allowance, logged and costed, and charged `speech.transcribe` credits when the
+   * speech service answers. A failed call costs nothing.
+   */
+  async function transcribe(
+    ctx: TenantContext,
+    clip: { audio: Uint8Array; mimeType: string; projectId?: string | null; language?: string },
+  ): Promise<{ runId: string; text: string }> {
+    const prompt = {
+      id: 'speech.transcribe',
+      feature: 'voice_input',
+      version: 1,
+      kind: 'interactive' as const,
+    };
+    const credits = creditsFor('speech.transcribe', prices);
+    const { day } = await deps.database.withTenantTx(ctx, (s) => admit(s, prompt, credits), {
+      readOnly: true,
+    });
+    const started = Date.now();
+    let text = '';
+    let failure: ProviderError | null = null;
+    try {
+      text = (
+        await deps.provider.transcribe({
+          audio: clip.audio,
+          mimeType: clip.mimeType,
+          language: clip.language ?? 'en-AU',
+          timeoutMs: timeouts.interactiveMs,
+        })
+      ).text.trim();
+    } catch (e) {
+      failure = e instanceof ProviderError ? e : new ProviderError('unavailable', String(e));
+    }
+    const runId = uuidv7();
+    const costMicros = failure ? 0 : (deps.speechPriceMicros ?? DEFAULT_SPEECH_PRICE_MICROS);
+    await deps.database.withTenantTx(ctx, (scope) =>
+      record(scope, {
+        prompt,
+        runId,
+        projectId: clip.projectId ?? null,
+        day,
+        calls: [speechCall(costMicros, started, failure?.kind ?? null)],
+        credits: failure ? 0 : credits,
+        totalCost: costMicros,
+      }),
+    );
+    if (failure)
+      throw new AppError(
+        'ai.unavailable',
+        'Nova cannot listen right now. Type your question instead.',
+      );
+    return { runId, text };
+  }
+
+  return { runTask, embed, ocr, transcribe, creditsUsedSince };
 }
 
 /** Textract DetectDocumentText list price, US$1.50 per 1,000 pages; confirm the Sydney price (ai/05 §1). */
 export const DEFAULT_OCR_PRICE_MICROS = 1500;
+
+/** Amazon Transcribe list price, about US$0.024 a minute, billed at least 15 seconds a clip; confirm the Sydney price (ai/05 §1). */
+export const DEFAULT_SPEECH_PRICE_MICROS = 6000;
+
+function speechCall(costMicros: number, started: number, errorKind: string | null): CallRecord {
+  return {
+    id: uuidv7(),
+    tier: 'speech',
+    model: SPEECH_MODEL,
+    attempt: 1,
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+    costMicros,
+    latencyMs: Date.now() - started,
+    outcome: errorKind ? 'error' : 'ok',
+    errorKind,
+  };
+}
 
 function ocrCall(costMicros: number, started: number, errorKind: string | null): CallRecord {
   return {

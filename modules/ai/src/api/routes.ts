@@ -12,6 +12,7 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
@@ -231,6 +232,7 @@ export function aiRoutes(
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
+  speech: SpeechService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -439,6 +441,13 @@ export function aiRoutes(
           truncated,
         },
       };
+    },
+    transcribeSpeech: async (input) => {
+      const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
+        audio: Buffer.from(input.body.audio, 'base64'),
+        mimeType: input.body.mimeType,
+      });
+      return { status: 200, body: { runId: encodeId('aiRun', r.runId), text: r.text } };
     },
     negotiateQuote: async (input) => {
       const packageId = decodeId('tenderPackage', input.body.packageId);
