@@ -32,6 +32,8 @@ describe('api scopes', () => {
       'declineQuote',
       'confirmSheetScale',
       'confirmTakeoffMeasurement',
+      // sends email to outside parties
+      'sendTransmittal',
       'addProjectMember',
       'removeProjectMember',
       'createSupportAccessGrant',
@@ -71,7 +73,10 @@ describe('api scopes', () => {
   });
 
   it('never offers financials:write to a personal token', () => {
-    expect(TOKEN_SCOPES).toContain('financials:read');
+    // areas with no operations yet are not offered
+    expect(TOKEN_SCOPES).not.toContain('financials:read');
+    expect(TOKEN_SCOPES).not.toContain('meetings:read');
+    expect(TOKEN_SCOPES).toContain('rfis:write');
     expect(TOKEN_SCOPES).not.toContain('financials:write');
     expect(unknownScopes(['rfis:read', 'financials:write', 'x'])).toEqual([
       'financials:write',

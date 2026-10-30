@@ -130,7 +130,8 @@ describe('personal access tokens (integrations/06)', () => {
     expect((await s.create(['financials:write'])).json().code).toBe('api_token.invalid_scope');
     expect((await s.create(['nonsense:read'])).json().code).toBe('api_token.invalid_scope');
     expect((await s.create(['projects:read'], { expiresInDays: 400 })).statusCode).toBe(422);
-    expect((await s.create(['financials:read'])).statusCode).toBe(201);
+    expect((await s.create(['financials:read'])).json().code).toBe('api_token.invalid_scope');
+    expect((await s.create(['rfis:write', 'projects:read'])).statusCode).toBe(201);
   });
 
   it('revokes a token at once, and a bad or expired secret is refused', async () => {

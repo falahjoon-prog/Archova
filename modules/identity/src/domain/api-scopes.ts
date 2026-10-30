@@ -19,11 +19,6 @@ const AREAS = [
   'financials',
 ] as const;
 
-/** Every scope a token may be created with. Personal tokens never hold `financials:write` (integrations/06 §2). */
-export const TOKEN_SCOPES: readonly string[] = AREAS.flatMap((a) =>
-  a === 'financials' ? [`${a}:read`] : [`${a}:read`, `${a}:write`],
-);
-
 /**
  * The operations a personal token may call, by id, each guarded by one scope area. Default deny: an operation not
  * listed here is refused, so a new endpoint is never public by accident. Admin and account operations (members,
@@ -68,7 +63,6 @@ const ALLOWED_BY_AREA: Readonly<Record<(typeof AREAS)[number], readonly string[]
     'listTransmittals',
     'createTransmittal',
     'getTransmittal',
-    'sendTransmittal',
   ],
   rfis: [
     'listRfis',
@@ -142,6 +136,14 @@ const ALLOWED_BY_AREA: Readonly<Record<(typeof AREAS)[number], readonly string[]
   meetings: [],
   financials: [],
 };
+
+/**
+ * Every scope a token may be created with: read and write for each area that has operations a token can call, so a
+ * scope that would grant nothing is not offered. Personal tokens never hold `financials:write` (integrations/06 §2).
+ */
+export const TOKEN_SCOPES: readonly string[] = AREAS.filter(
+  (a) => ALLOWED_BY_AREA[a].length > 0,
+).flatMap((a) => (a === 'financials' ? [`${a}:read`] : [`${a}:read`, `${a}:write`]));
 
 const AREA_BY_OPERATION: ReadonlyMap<string, (typeof AREAS)[number]> = new Map(
   AREAS.flatMap((a) => ALLOWED_BY_AREA[a].map((id) => [id, a] as const)),
