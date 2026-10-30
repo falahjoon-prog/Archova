@@ -21,6 +21,8 @@ const Env = z.object({
   API_PUBLIC_HOSTS: list.prefault('localhost:4000'),
   API_TRUST_PROXY: bool.prefault('false'),
   // Proxies in front of the API that append to X-Forwarded-For (CloudFront + ALB = 2); 0 = use the socket address.
+  // Public API requests per minute for one org when its plan sets no `limit.api_rpm` (integrations/06 §3: Business 600).
+  API_RATE_LIMIT_ORG_RPM: z.coerce.number().int().min(1).default(600),
   API_CLIENT_IP_HOPS: z.coerce.number().int().min(0).max(5).default(0),
   API_JWT_PRIVATE_JWK: z.string().optional(),
   API_JWT_ISSUER: z.string().optional(),
@@ -107,6 +109,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
         timeoutMs: e.API_CLAMAV_TIMEOUT_MS,
       },
     },
+    apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
     ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,
