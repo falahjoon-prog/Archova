@@ -1429,7 +1429,9 @@ export interface paths {
          *     an RFI with a new response or an edit is indexed again and its old text dropped; drafts and voided RFIs are
          *     not indexed. Safe to repeat: finished revisions and unchanged RFIs are skipped. Runs in the
          *     request for now; the AI worker will run it on each document event once it lands. Embedding is background
-         *     work and costs no credits.
+         *     work and costs no credits, but an organisation can have only so much embedded in a day: past that the
+         *     request fails with 429 `ai.embedding_limit` and `resetsAt`, the start of the organisation's next day, and
+         *     running it again then carries on where it stopped.
          */
         post: operations["indexProjectForNova"];
         delete?: never;

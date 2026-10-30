@@ -41,7 +41,13 @@ function setup(
   } = {},
 ) {
   let clock = new Date(opts.at ?? '2026-10-28T10:00:10.000Z');
-  const added: Array<{ name: string; data: ReindexJob; jobId: string; delay: number }> = [];
+  const added: Array<{
+    name: string;
+    data: ReindexJob;
+    jobId: string;
+    delay: number;
+    attempts: number;
+  }> = [];
   const drop = vi.fn<RecordIndexer['dropStaleRecord']>(async () => ({
     isSource: opts.isSource ?? true,
   }));
@@ -56,7 +62,7 @@ function setup(
     orgExists: async () => opts.orgExists ?? true,
     queue: {
       add: async (name, data, o) => {
-        added.push({ name, data, jobId: o.jobId, delay: o.delay });
+        added.push({ name, data, jobId: o.jobId, delay: o.delay, attempts: o.attempts });
       },
     },
     log,
@@ -213,6 +219,78 @@ describe('stage 2: the embedding job', () => {
       );
     },
   );
+
+  describe('when the org has used its daily embedding cap', () => {
+    // Midnight in Sydney (+11 in October), as the gateway reports it.
+    const RESETS_AT = '2026-10-28T13:00:00.000Z';
+    const limited = (extra: Record<string, unknown> = { resetsAt: RESETS_AT }) =>
+      new AppError('ai.embedding_limit', 'Used up for today.', undefined, extra);
+    const resetMs = new Date(RESETS_AT).getTime();
+    const nowMs = new Date('2026-10-28T10:00:10.000Z').getTime();
+
+    it('ends the job and embeds the record after the reset, not an hour of retries against the cap', async () => {
+      const r = setup({
+        embed: async () => {
+          throw limited();
+        },
+      });
+      await expect(r.reindex(job)).resolves.toBeUndefined();
+      expect(r.added).toHaveLength(1);
+      const [next] = r.added;
+      expect(next).toMatchObject({ name: 'reindex-record', data: job, attempts: 20 });
+      expect(next!.jobId).toBe(`${ORG}.defect.${RECORD}.after.${resetMs}`);
+      // Never before the reset, and within the spread after it.
+      expect(nowMs + next!.delay).toBeGreaterThanOrEqual(resetMs + 2_000);
+      expect(nowMs + next!.delay).toBeLessThan(resetMs + 2_000 + 15 * 60_000);
+      expect(r.log).toHaveBeenCalledWith(
+        'ai re-index deferred',
+        expect.objectContaining({ recordId: RECORD, resetsAt: RESETS_AT }),
+      );
+    });
+
+    it('defers a record once per reset however many jobs meet the cap, and spreads different records', async () => {
+      const r = setup({
+        embed: async () => {
+          throw limited();
+        },
+      });
+      await r.reindex(job);
+      await r.reindex(job);
+      expect(r.added[0]!.jobId).toBe(r.added[1]!.jobId);
+      expect(r.added[0]!.delay).toBe(r.added[1]!.delay);
+
+      const others = [
+        '0192f0a0-0000-7000-8000-00000000000a',
+        '0192f0a0-0000-7000-8000-00000000000b',
+      ];
+      for (const recordId of others) await r.reindex({ ...job, recordId });
+      expect(new Set(r.added.map((a) => a.jobId)).size).toBe(3);
+      expect(new Set(r.added.map((a) => a.delay)).size).toBeGreaterThan(1);
+    });
+
+    it('a reset in the past still waits a moment before the job starts', async () => {
+      const r = setup({
+        embed: async () => {
+          throw limited({ resetsAt: '2026-10-28T09:00:00.000Z' });
+        },
+      });
+      await r.reindex(job);
+      expect(r.added[0]!.delay).toBeGreaterThanOrEqual(2_000);
+    });
+
+    it.each([{}, { resetsAt: 'tomorrow' }, { resetsAt: 42 }])(
+      'retries as usual when the reset time is unusable (%j), since there is nowhere to defer to',
+      async (extra) => {
+        const r = setup({
+          embed: async () => {
+            throw limited(extra);
+          },
+        });
+        await expect(r.reindex(job)).rejects.toThrow('ai job failed: ai.embedding_limit');
+        expect(r.added).toEqual([]);
+      },
+    );
+  });
 
   it('rethrows anything else so BullMQ retries it, naming the error code and nothing more', async () => {
     const r = setup({

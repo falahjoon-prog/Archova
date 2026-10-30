@@ -36,6 +36,26 @@ describe('loadAiConfig', () => {
     });
   });
 
+  it('reads the daily cap on document embeddings, with either provider', () => {
+    expect(loadAiConfig({ API_AI_EMBED_DAILY_TOKENS: '5000000' })).toEqual({
+      provider: { kind: 'fake' },
+      models: FAKE_MODELS,
+      embedDailyTokens: 5_000_000,
+    });
+    expect(loadAiConfig({ ...bedrock, API_AI_EMBED_DAILY_TOKENS: '100' }).embedDailyTokens).toBe(
+      100,
+    );
+  });
+
+  it.each(['0', '-5', '1.5', 'lots', '1e400'])(
+    'refuses %s as the daily embedding cap rather than running with no cap',
+    (value) => {
+      expect(() => loadAiConfig({ API_AI_EMBED_DAILY_TOKENS: value })).toThrow(
+        /API_AI_EMBED_DAILY_TOKENS must be a whole number above 0/,
+      );
+    },
+  );
+
   it('refuses Bedrock without a model for every tier', () => {
     expect(() => loadAiConfig({ ...bedrock, API_AI_MODEL_ADVANCED: '' })).toThrow(
       /needs model ids for: API_AI_MODEL_ADVANCED/,

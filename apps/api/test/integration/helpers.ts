@@ -55,9 +55,16 @@ export interface TestContext {
 }
 
 export async function createTestContext(
-  opts: { redis?: boolean; scanner?: MalwareScanner; rasterizePage?: RasterizePage } = {},
+  opts: {
+    redis?: boolean;
+    scanner?: MalwareScanner;
+    rasterizePage?: RasterizePage;
+    /** Settings the app reads from the environment, such as Nova's `API_AI_*` limits. */
+    env?: Record<string, string>;
+  } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
+    ...opts.env,
     NODE_ENV: 'test',
     API_DATABASE_URL: testAppUrl(),
     API_APP_ORIGINS: APP_ORIGIN,

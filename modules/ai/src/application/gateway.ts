@@ -15,7 +15,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
-import { localDateOf } from '@archova/time';
+import { endOfLocalDay, localDateOf, startOfLocalDay } from '@archova/time';
 import type { CheckedCitation } from '../domain/citations';
 import { TASK_CREDITS, creditsFor, decideBudget } from '../domain/credits';
 import { ProviderError, type ModelProvider, type OcrResponse } from '../domain/provider';
@@ -31,6 +31,8 @@ export interface GatewayDeps {
   embedding: EmbeddingRoute;
   /** OCR price in US micro-dollars a page (ai/05 §1). */
   ocrPriceMicros?: number;
+  /** Tokens of documents and records an org may have embedded in a local day; defaults to `DEFAULT_EMBED_DAILY_TOKENS`. */
+  embedDailyTokens?: number;
   redis: RedisClient | null;
   logger: Logger;
   /** The org's IANA zone, for the ledger day (X34). Supplied by `platform`. */
@@ -81,7 +83,19 @@ export interface EmbedOptions {
   projectId?: string | null;
   /** Counts against the caller's per-user search limit; for embeddings a person triggers by typing a query. */
   rateLimited?: boolean;
+  /**
+   * Skips the org's daily cap on document embeddings. For the few texts one person's own action produces (an
+   * induction published), which must not wait behind a bulk index; everything else is held to the cap.
+   */
+  uncapped?: boolean;
 }
+
+/**
+ * Tokens of documents and records one org may have embedded in a local day (ai/05 §4). A backstop against a runaway
+ * loop or a bulk re-index, not a budget: at list price (US$0.02 a million) it is about 50 cents an org a day, and a
+ * normal day is a small fraction of it.
+ */
+export const DEFAULT_EMBED_DAILY_TOKENS = 25_000_000;
 
 /** Texts per provider call; Titan takes one at a time anyway, Cohere up to 96. */
 const EMBED_BATCH = 64;
@@ -97,6 +111,7 @@ export function createGateway(deps: GatewayDeps) {
   const queryRateLimit = deps.queryRateLimit ?? DEFAULT_QUERY_RATE_LIMIT;
   const timeouts = deps.timeouts ?? DEFAULT_TIMEOUTS;
   const now = deps.now ?? (() => new Date());
+  const embedDailyTokens = deps.embedDailyTokens ?? DEFAULT_EMBED_DAILY_TOKENS;
 
   /** Steps 1–2: is Nova on for this org, feature and caller, and is there allowance left? */
   async function admit(
@@ -136,7 +151,32 @@ export function createGateway(deps: GatewayDeps) {
         'ai.allowance_used',
         "This month's Nova allowance is used up. An admin can add a top-up.",
       );
-    return { day };
+    return { day, tz };
+  }
+
+  /**
+   * Refuses document embeddings once the org has had `embedDailyTokens` embedded since its local day began. The cap is
+   * read before the call, so a day can pass it by what the calls already running use, and it counts what was sent, so
+   * a failed call that produced nothing does not.
+   */
+  async function assertEmbeddingRoom(scope: TenantScope, a: { day: string; tz: string }) {
+    const [row] = await scope.tx
+      .select({ total: sql<string>`coalesce(sum(${requests.tokensIn}), 0)` })
+      .from(requests)
+      .where(
+        and(
+          eq(requests.orgId, scope.ctx.orgId),
+          eq(requests.task, 'embed.document'),
+          gte(requests.createdAt, startOfLocalDay(a.day, a.tz)),
+        ),
+      );
+    if (Number(row?.total ?? 0) < embedDailyTokens) return;
+    throw new AppError(
+      'ai.embedding_limit',
+      'Nova has read as much as it can for your organisation today. It picks up again tomorrow, so try this again then.',
+      undefined,
+      { resetsAt: endOfLocalDay(a.day, a.tz).toISOString() },
+    );
   }
 
   async function creditsUsedSince(scope: TenantScope, fromDay: string): Promise<number> {
@@ -239,7 +279,8 @@ export function createGateway(deps: GatewayDeps) {
 
   /**
    * Embeds texts for retrieval. Background work at 0 credits (ai/05 §4) but still behind the org and feature
-   * switches, and logged and costed like any model call.
+   * switches, and logged and costed like any model call. Documents are also held to the org's daily token cap
+   * (`ai.embedding_limit`); questions are not, since a person is waiting and the per-user search limit covers them.
    */
   async function embed(
     ctx: TenantContext,
@@ -249,7 +290,15 @@ export function createGateway(deps: GatewayDeps) {
     const task = opts.purpose === 'query' ? 'embed.query' : 'embed.document';
     const prompt = { id: task, feature: opts.feature, version: 1, kind: 'background' as const };
     const ro = { readOnly: true } as const;
-    const { day } = await deps.database.withTenantTx(ctx, (s) => admit(s, prompt, 0), ro);
+    const { day } = await deps.database.withTenantTx(
+      ctx,
+      async (s) => {
+        const admitted = await admit(s, prompt, 0);
+        if (opts.purpose === 'document' && !opts.uncapped) await assertEmbeddingRoom(s, admitted);
+        return admitted;
+      },
+      ro,
+    );
     if (opts.rateLimited) await checkRateLimit(ctx, 'rlq', queryRateLimit);
     const { model, pricePerMTok } = deps.embedding;
     const vectors: number[][] = [];
