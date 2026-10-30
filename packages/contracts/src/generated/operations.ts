@@ -934,6 +934,78 @@ export const CloseSubmittalParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
 });
+export const ListCorrespondenceTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceTypesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceTypesQuery = z.object({
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateCorrespondenceTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateCorrespondenceTypeBody = s.CreateCorrespondenceTypeRequestSchema;
+export const UpdateCorrespondenceTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "typeId": z.string().regex(new RegExp("^cty_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCorrespondenceTypeBody = s.UpdateCorrespondenceTypeRequestSchema;
+export const ListProjectCorrespondenceTypesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceQuery = z.object({
+  "status": s.CorrespondenceStatusSchema.optional(),
+  "typeId": s.CorrespondenceTypeRefSchema.optional(),
+  "awaitingResponse": z.enum(["true", "false"]).optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCorrespondenceBody = s.CreateCorrespondenceRequestSchema;
+export const GetCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCorrespondenceBody = s.UpdateCorrespondenceRequestSchema;
+export const SendCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const RespondToCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const RespondToCorrespondenceBody = s.RespondCorrespondenceRequestSchema;
+export const CloseCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const VoidCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const VoidCorrespondenceBody = s.VoidCorrespondenceRequestSchema;
 export const ListRfisParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3602,6 +3674,162 @@ export const operations = {
     params: CloseSubmittalParams,
     query: null,
     body: null,
+  },
+  listCorrespondenceTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/correspondence-templates',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.manage",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceTemplatesParams,
+    query: null,
+    body: null,
+  },
+  listCorrespondenceTypes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/correspondence-types',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceTypesParams,
+    query: ListCorrespondenceTypesQuery,
+    body: null,
+  },
+  createCorrespondenceType: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/correspondence-types',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCorrespondenceTypeParams,
+    query: null,
+    body: CreateCorrespondenceTypeBody,
+  },
+  updateCorrespondenceType: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/correspondence-types/{typeId}',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCorrespondenceTypeParams,
+    query: null,
+    body: UpdateCorrespondenceTypeBody,
+  },
+  listProjectCorrespondenceTypes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence-types',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: null,
+    params: ListProjectCorrespondenceTypesParams,
+    query: null,
+    body: null,
+  },
+  listCorrespondence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceParams,
+    query: ListCorrespondenceQuery,
+    body: null,
+  },
+  createCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCorrespondenceParams,
+    query: null,
+    body: CreateCorrespondenceBody,
+  },
+  getCorrespondence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: GetCorrespondenceParams,
+    query: null,
+    body: null,
+  },
+  updateCorrespondence: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCorrespondenceParams,
+    query: null,
+    body: UpdateCorrespondenceBody,
+  },
+  sendCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.send",
+    internal: false,
+    contentType: null,
+    params: SendCorrespondenceParams,
+    query: null,
+    body: null,
+  },
+  respondToCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/responses',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.respond",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToCorrespondenceParams,
+    query: null,
+    body: RespondToCorrespondenceBody,
+  },
+  closeCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.close",
+    internal: false,
+    contentType: null,
+    params: CloseCorrespondenceParams,
+    query: null,
+    body: null,
+  },
+  voidCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/void',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.close",
+    internal: false,
+    contentType: "application/json",
+    params: VoidCorrespondenceParams,
+    query: null,
+    body: VoidCorrespondenceBody,
   },
   listRfis: {
     method: 'GET',

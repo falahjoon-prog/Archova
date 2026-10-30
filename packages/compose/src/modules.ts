@@ -39,6 +39,10 @@ import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workf
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
+import {
+  CORRESPONDENCE_PERMISSIONS,
+  createCorrespondenceModule,
+} from '@archova/mod-correspondence';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -47,6 +51,7 @@ export const MODULE_PERMISSIONS = [
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
+  CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   SAFETY_PERMISSIONS,
@@ -129,6 +134,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       estimating: 'estimating.quotes.submit',
       // A subcontractor attaches the shop drawing package to the item they are responsible for.
       submittals: 'submittals.submittals.submit',
+      // A subcontractor attaches supporting records to a notice or reply.
+      correspondence: 'correspondence.items.respond',
     },
   });
 
@@ -152,6 +159,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const submittals = createSubmittalsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+  });
+
+  const correspondence = createCorrespondenceModule(services, {
     access: access.api,
     platform: platform.api,
     files: files.api,
@@ -292,6 +305,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     submittals,
+    correspondence,
     defects,
     quality,
     safety,
@@ -321,6 +335,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     submittals,
+    correspondence,
     defects,
     quality,
     safety,

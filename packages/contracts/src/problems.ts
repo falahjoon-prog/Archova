@@ -148,6 +148,15 @@ export const PROBLEM_CODES = {
   'submittal.reviewer_not_on_project': 422,
   'submittal.review_not_allowed': 403,
   'submittal_step.not_found': 404,
+  // correspondence
+  'correspondence.not_found': 404,
+  'correspondence.invalid_transition': 409,
+  'correspondence.incomplete': 422,
+  'correspondence.recipient_not_on_project': 422,
+  'correspondence.response_not_allowed': 403,
+  'correspondence_type.not_found': 404,
+  'correspondence_type.prefix_taken': 409,
+  'correspondence_type.archived': 409,
   // estimating
   'tender.not_found': 404,
   'tender.invalid_state': 409,

@@ -18,6 +18,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'admin',
       rfis: 'admin',
+      correspondence: 'admin',
       submittals: 'admin',
       diary: 'admin',
       defects: 'admin',
@@ -41,6 +42,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'admin',
       rfis: 'admin',
+      correspondence: 'admin',
       submittals: 'admin',
       diary: 'admin',
       defects: 'admin',
@@ -64,6 +66,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'standard',
       rfis: 'standard',
+      correspondence: 'standard',
       submittals: 'standard',
       diary: 'admin',
       defects: 'admin',
@@ -87,6 +90,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'read',
       rfis: 'standard',
+      correspondence: 'standard',
       submittals: 'standard',
       diary: 'read',
       defects: 'standard',
@@ -104,6 +108,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     companyScopedTools: [
       'rfis',
       'submittals',
+      'correspondence',
       'diary',
       'defects',
       'inspections',
@@ -119,6 +124,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'standard',
       rfis: 'standard',
+      correspondence: 'standard',
       submittals: 'standard',
       diary: 'none',
       defects: 'read',
@@ -142,6 +148,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'read',
       rfis: 'read',
+      correspondence: 'read',
       submittals: 'read',
       diary: 'read',
       defects: 'read',
@@ -165,6 +172,7 @@ export const DEFAULT_PERMISSION_TEMPLATES: readonly PermissionTemplateSeed[] = [
     toolLevels: {
       documents: 'read',
       rfis: 'none',
+      correspondence: 'none',
       submittals: 'none',
       diary: 'none',
       defects: 'read',
