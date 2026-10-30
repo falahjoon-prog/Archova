@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Card, Checkbox, Select, StatusPill, Textarea, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { companyName } from '@/shared/mocks/directory';
-import { useNegotiate } from '../hooks/useQuotes';
+import { useListen, useNegotiate } from '../hooks/useQuotes';
 import {
   NEGOTIATE_DISCLAIMER,
   type NegotiateAnswer,
@@ -12,7 +12,13 @@ import {
   type NegotiateTopic,
 } from '../lib/negotiate';
 import type { Quote } from '../lib/quote-types';
-import { speak, speechSupported, stopSpeaking } from '../lib/speech';
+import {
+  recordingSupported,
+  speak,
+  speechSupported,
+  startRecording,
+  stopSpeaking,
+} from '../lib/speech';
 import { money, parseDollars } from './money';
 
 const TOPICS: ReadonlyArray<{ id: NegotiateTopic; label: string }> = [
@@ -84,6 +90,11 @@ export function NegotiatePanel({
   const [topic, setTopic] = useState<NegotiateTopic>('overview');
   const [answer, setAnswer] = useState<NegotiateAnswer | null>(null);
   const [draft, setDraft] = useState('');
+  const listen = useListen();
+  const recorder = useRef<{ stop(): Promise<Blob> } | null>(null);
+  const [recording, setRecording] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
+  const [question, setQuestion] = useState('');
   const [readAloud, setReadAloud] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const canSpeak = speechSupported();
@@ -91,7 +102,35 @@ export function NegotiatePanel({
   const targetError = target.trim() !== '' && (targetCents === null || targetCents === 0);
   const selected = quotes.some((q) => q.id === quoteId) ? quoteId : (quotes[0]?.id ?? '');
 
-  useEffect(() => stopSpeaking, []);
+  useEffect(
+    () => () => {
+      stopSpeaking();
+      void recorder.current?.stop();
+    },
+    [],
+  );
+
+  const toggleMic = async () => {
+    setMicError(null);
+    if (recording) {
+      const active = recorder.current;
+      recorder.current = null;
+      setRecording(false);
+      if (!active) return;
+      listen.mutate(await active.stop(), { onSuccess: (text) => setQuestion(text) });
+      return;
+    }
+    try {
+      stopSpeaking();
+      setSpeaking(false);
+      recorder.current = await startRecording();
+      setRecording(true);
+    } catch {
+      setMicError(
+        'Nova could not use the microphone. Allow it in your browser, or type your question.',
+      );
+    }
+  };
 
   const say = (text: string) => {
     setSpeaking(true);
@@ -105,10 +144,15 @@ export function NegotiatePanel({
     ask.reset();
   }, [selected]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const run = (next: NegotiateTopic) => {
+  const run = (next: NegotiateTopic, said?: string) => {
     setTopic(next);
     ask.mutate(
-      { quoteId: selected, targetCents: target.trim() === '' ? null : targetCents, topic: next },
+      {
+        quoteId: selected,
+        targetCents: target.trim() === '' ? null : targetCents,
+        topic: next,
+        ...(said?.trim() ? { question: said.trim() } : {}),
+      },
       {
         onSuccess: (a) => {
           setAnswer(a);
@@ -167,6 +211,41 @@ export function NegotiatePanel({
                 {t.label}
               </Button>
             ))}
+          </div>
+          <div className="negotiate__ask">
+            <TextField
+              label="Or ask Nova your own question"
+              value={question}
+              onChange={(e) => setQuestion(e.target.value)}
+              maxLength={1000}
+              hint={
+                recordingSupported()
+                  ? 'Type it, or tap Speak. Your recording goes to Nova in Australia, is turned into words for you to check, and is not kept.'
+                  : 'Type it here.'
+              }
+            />
+            <div className="row-actions">
+              {recordingSupported() ? (
+                <Button
+                  variant="secondary"
+                  disabled={listen.isPending || ask.isPending}
+                  aria-pressed={recording}
+                  onClick={() => void toggleMic()}
+                >
+                  {recording ? 'Stop and use' : listen.isPending ? 'Listening…' : 'Speak'}
+                </Button>
+              ) : null}
+              <Button
+                disabled={
+                  ask.isPending || targetError || !selected || !question.trim() || recording
+                }
+                onClick={() => run(topic, question)}
+              >
+                Ask
+              </Button>
+            </div>
+            {micError ? <p className="u-caption u-m-0">{micError}</p> : null}
+            <ErrorAlert error={listen.error} title="Nova couldn't hear that" />
           </div>
           {canSpeak ? (
             <div className="row-actions">

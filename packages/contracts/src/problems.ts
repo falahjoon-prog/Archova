@@ -108,6 +108,7 @@ export const PROBLEM_CODES = {
   'ai.allowance_used': 403,
   'ai.embedding_limit': 429,
   'ai.ocr_limit': 429,
+  'ai.nothing_heard': 422,
   'ai.unavailable': 503,
   'ai.invalid_output': 502,
   'ai.cancelled': 408,

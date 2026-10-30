@@ -151,6 +151,49 @@ describe('Nova on the comparison', () => {
     }
   });
 
+  it('listens to a spoken question, shows the words to check, then asks Nova', async () => {
+    const user = userEvent.setup();
+    class Recorder {
+      state = 'inactive';
+      mimeType = 'audio/webm';
+      ondataavailable: ((e: { data: Blob }) => void) | null = null;
+      onstop: (() => void) | null = null;
+      start() {
+        this.state = 'recording';
+      }
+      stop() {
+        this.state = 'inactive';
+        this.ondataavailable?.({ data: new Blob(['x'], { type: 'audio/webm' }) });
+        this.onstop?.();
+      }
+    }
+    vi.stubGlobal('MediaRecorder', Recorder);
+    const released = vi.fn();
+    vi.stubGlobal('navigator', {
+      ...navigator,
+      mediaDevices: { getUserMedia: async () => ({ getTracks: () => [{ stop: released }] }) },
+    });
+    try {
+      renderInProject(<PackageScreen packageId="pkg_1" />);
+      const panel = await screen.findByRole('region', { name: /Nova: negotiation help/ });
+      await user.click(within(panel).getByRole('button', { name: 'Speak' }));
+      await user.click(await within(panel).findByRole('button', { name: 'Stop and use' }));
+      const field = (await waitFor(() =>
+        within(panel).getByLabelText(/ask Nova your own question/i),
+      )) as HTMLInputElement;
+      await waitFor(() => expect(field.value).toMatch(/compare/));
+      expect(released).toHaveBeenCalled();
+      await user.click(within(panel).getByRole('button', { name: 'Ask' }));
+      expect(
+        await within(panel).findByText(
+          /No reference yet|Above the reference|Below the reference|Close to the reference/,
+        ),
+      ).toBeTruthy();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('asks for a sensible target and says so when there is nothing to compare with', async () => {
     const user = userEvent.setup();
     renderInProject(<PackageScreen packageId="pkg_1" />);

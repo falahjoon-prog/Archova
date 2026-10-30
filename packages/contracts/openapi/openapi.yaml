@@ -1913,6 +1913,44 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: transcribeSpeech
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Nova listens to a short spoken question and returns it as text.
+      description: |
+        The browser records one short clip (about a minute at most) and sends it here as base64. It is turned into
+        text by the speech service in Australia (X25) and is not kept; only the text comes back, for the person to
+        read and edit before asking. Costs a tenth of a Nova credit. When nothing can be heard the answer is
+        `ai.nothing_heard`; the person types instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [audio, mimeType]
+              properties:
+                audio: { type: string, format: byte, minLength: 1, maxLength: 900000 }
+                mimeType: { type: string, enum: [audio/webm, audio/ogg, audio/mp4, audio/wav] }
+      responses:
+        '200':
+          description: What was said
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runId, text]
+                properties:
+                  runId: { type: string }
+                  text: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
       - $ref: '#/components/parameters/OrgId'

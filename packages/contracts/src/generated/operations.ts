@@ -423,6 +423,14 @@ export const NegotiateQuoteBody = z.object({
   "question": z.string().max(1000).optional(),
   "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
 }).strict();
+export const TranscribeSpeechParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const TranscribeSpeechBody = z.object({
+  "audio": z.string().min(1).max(900000),
+  "mimeType": z.enum(["audio/webm", "audio/ogg", "audio/mp4", "audio/wav"]),
+}).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2257,6 +2265,18 @@ export const operations = {
     params: NegotiateQuoteParams,
     query: null,
     body: NegotiateQuoteBody,
+  },
+  transcribeSpeech: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: TranscribeSpeechParams,
+    query: null,
+    body: TranscribeSpeechBody,
   },
   summariseDiaryDayWithNova: {
     method: 'POST',

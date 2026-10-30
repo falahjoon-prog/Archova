@@ -44,6 +44,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.read': 1.5,
   // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
   'quote.negotiate': 0.5,
+  // Nova listening: one short spoken question turned into text. Priya to confirm.
+  'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
 };
 

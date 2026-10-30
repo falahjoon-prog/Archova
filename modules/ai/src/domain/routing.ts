@@ -27,6 +27,9 @@ export interface EmbeddingRoute {
 /** Recorded as the model on OCR calls: Textract's text detection, in the provider's (Australian) region. */
 export const OCR_MODEL = 'textract-detect-text';
 
+/** Recorded as the model on speech-to-text calls: Amazon Transcribe in the provider's (Australian) region. */
+export const SPEECH_MODEL = 'transcribe-batch';
+
 /** Titan Text Embeddings V2 list price (ai/02 §6); confirm the Sydney price with the model id. */
 export const DEFAULT_EMBEDDING_PRICE = 0.02;
 
