@@ -282,7 +282,8 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       const read = await deps.gateway.ocr(
         ctx,
         scans.map((s) => s.png),
-        { feature: 'ask', projectId },
+        // A bulk job: it stops at its share of the daily cap, so a person reading a quote or a sheet still has room.
+        { feature: 'ask', projectId, bulk: true },
       );
       scans.forEach((s, i) => pageText.set(s.page, ocrPageText(read[i]!.lines)));
       report.ocrPages += scans.length;
