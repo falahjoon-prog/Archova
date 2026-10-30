@@ -1283,6 +1283,13 @@ export const GateWithCodeSchema = z.object({
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
 
+export const GrantSupportAccessRequestSchema = z.object({
+  "ticketRef": z.string().min(1).max(60),
+  "hours": z.number().int().min(1).max(72),
+  "note": z.string().max(500).optional(),
+}).strict();
+export type GrantSupportAccessRequest = z.infer<typeof GrantSupportAccessRequestSchema>;
+
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
 
@@ -2830,6 +2837,36 @@ export const SubmittalPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type SubmittalPage = z.infer<typeof SubmittalPageSchema>;
+
+export const SupportSessionSummarySchema = z.object({
+  "staffName": z.string(),
+  "ticketRef": z.string(),
+  "startedAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "endedAt": z.string().datetime({ offset: true }).nullable(),
+  "endedReason": z.enum(["staff", "customer_revoked", "expired"]).nullable(),
+  "pagesViewed": z.number().int(),
+});
+export type SupportSessionSummary = z.infer<typeof SupportSessionSummarySchema>;
+
+export const SupportAccessSchema = z.object({
+  "grant": z.object({
+  "ticketRef": z.string(),
+  "note": z.string().nullable(),
+  "grantedBy": z.string(),
+  "grantedAt": z.string().datetime({ offset: true }),
+  "expiresAt": z.string().datetime({ offset: true }),
+}).nullable(),
+  "session": z.union([SupportSessionSummarySchema, z.null()]),
+  "history": z.array(SupportSessionSummarySchema),
+});
+export type SupportAccess = z.infer<typeof SupportAccessSchema>;
+
+export const SupportBannerSchema = z.object({
+  "active": z.boolean(),
+  "since": z.string().datetime({ offset: true }).nullable(),
+});
+export type SupportBanner = z.infer<typeof SupportBannerSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),

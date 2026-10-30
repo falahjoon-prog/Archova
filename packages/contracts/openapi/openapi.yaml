@@ -570,6 +570,64 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Company' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportAccess
+      tags: [orgs]
+      x-module: platform
+      x-permission: platform.support_access.manage
+      summary: Whether Archova support may view this company's data (off by default), the open session if any, and recent sessions.
+      responses:
+        '200':
+          description: Support access
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: grantSupportAccess
+      tags: [orgs]
+      x-module: platform
+      x-permission: platform.support_access.manage
+      summary: Allow Archova support to view (read only) for one support ticket, for up to 72 hours. Replaces nothing; revoke first to change.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GrantSupportAccessRequest' }
+      responses:
+        '200':
+          description: Granted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: revokeSupportAccess
+      tags: [orgs]
+      x-module: platform
+      x-permission: platform.support_access.manage
+      summary: Withdraw consent. Takes effect at once and ends any open support session. Works while the company is read-only.
+      responses:
+        '204': { description: Revoked }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/banner:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportBanner
+      tags: [orgs]
+      x-module: platform
+      summary: Whether an Archova support session is open now; every signed-in user of the company sees the banner.
+      responses:
+        '200':
+          description: Banner state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportBanner' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/uploads:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6097,6 +6155,54 @@ components:
     CompanyType:
       type: string
       enum: [builder, subcontractor, consultant, client, supplier]
+    SupportSessionSummary:
+      type: object
+      required: [staffName, ticketRef, startedAt, expiresAt, endedAt, endedReason, pagesViewed]
+      properties:
+        staffName: { type: string }
+        ticketRef: { type: string }
+        startedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        endedReason:
+          type: [string, 'null']
+          enum: [staff, customer_revoked, expired, null]
+        pagesViewed: { type: integer }
+    SupportAccess:
+      type: object
+      required: [grant, session, history]
+      properties:
+        grant:
+          type: [object, 'null']
+          required: [ticketRef, note, grantedBy, grantedAt, expiresAt]
+          properties:
+            ticketRef: { type: string }
+            note: { type: [string, 'null'] }
+            grantedBy: { type: string }
+            grantedAt: { type: string, format: date-time }
+            expiresAt: { type: string, format: date-time }
+        session:
+          description: The open session, or null.
+          oneOf:
+            - $ref: '#/components/schemas/SupportSessionSummary'
+            - type: 'null'
+        history:
+          type: array
+          items: { $ref: '#/components/schemas/SupportSessionSummary' }
+    GrantSupportAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [ticketRef, hours]
+      properties:
+        ticketRef: { type: string, minLength: 1, maxLength: 60 }
+        hours: { type: integer, minimum: 1, maximum: 72 }
+        note: { type: string, maxLength: 500 }
+    SupportBanner:
+      type: object
+      required: [active, since]
+      properties:
+        active: { type: boolean }
+        since: { type: [string, 'null'], format: date-time }
     Company:
       type: object
       required:

@@ -9,6 +9,7 @@ import {
   type OrgDetailDto,
   type OrgListItemDto,
   type SuspendCategory,
+  type SupportProjectDto,
   type Page,
   type PlanDraftInput,
   type PlanDto,
@@ -100,6 +101,11 @@ export const api = {
   ) => call<OrgDetailDto>('suspendOrg', { params: { orgId }, body }),
   reactivate: (orgId: string, body: { reason: string; ticketRef: string }) =>
     call<OrgDetailDto>('reactivateOrg', { params: { orgId }, body }),
+  startSupport: (orgId: string, body: { reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('startSupportSession', { params: { orgId }, body }),
+  endSupport: (orgId: string) => call<OrgDetailDto>('endSupportSession', { params: { orgId } }),
+  supportProjects: (orgId: string) =>
+    call<{ items: SupportProjectDto[] }>('listSupportProjects', { params: { orgId } }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),

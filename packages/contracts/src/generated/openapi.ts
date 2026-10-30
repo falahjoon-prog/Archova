@@ -428,6 +428,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/support-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether Archova support may view this company's data (off by default), the open session if any, and recent sessions. */
+        get: operations["getSupportAccess"];
+        /** Allow Archova support to view (read only) for one support ticket, for up to 72 hours. Replaces nothing; revoke first to change. */
+        put: operations["grantSupportAccess"];
+        post?: never;
+        /** Withdraw consent. Takes effect at once and ends any open support session. Works while the company is read-only. */
+        delete: operations["revokeSupportAccess"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/support-access/banner": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether an Archova support session is open now; every signed-in user of the company sees the banner. */
+        get: operations["getSupportBanner"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/uploads": {
         parameters: {
             query?: never;
@@ -4341,6 +4381,43 @@ export interface components {
         };
         /** @enum {string} */
         CompanyType: "builder" | "subcontractor" | "consultant" | "client" | "supplier";
+        SupportSessionSummary: {
+            staffName: string;
+            ticketRef: string;
+            /** Format: date-time */
+            startedAt: string;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            endedAt: string | null;
+            /** @enum {string|null} */
+            endedReason: "staff" | "customer_revoked" | "expired" | null;
+            pagesViewed: number;
+        };
+        SupportAccess: {
+            grant: {
+                ticketRef: string;
+                note: string | null;
+                grantedBy: string;
+                /** Format: date-time */
+                grantedAt: string;
+                /** Format: date-time */
+                expiresAt: string;
+            } | null;
+            /** @description The open session, or null. */
+            session: components["schemas"]["SupportSessionSummary"] | null;
+            history: components["schemas"]["SupportSessionSummary"][];
+        };
+        GrantSupportAccessRequest: {
+            ticketRef: string;
+            hours: number;
+            note?: string;
+        };
+        SupportBanner: {
+            active: boolean;
+            /** Format: date-time */
+            since: string | null;
+        };
         Company: {
             id: string;
             name: string;
@@ -8266,6 +8343,100 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Company"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSupportAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Support access */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    grantSupportAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GrantSupportAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description Granted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeSupportAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSupportBanner: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Banner state */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SupportBanner"];
                 };
             };
             default: components["responses"]["Problem"];

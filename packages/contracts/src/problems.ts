@@ -63,6 +63,11 @@ export const PROBLEM_CODES = {
   'backoffice.already_suspended': 409,
   'backoffice.not_suspended': 409,
   'backoffice.downgrade_at_term_end': 422,
+  'backoffice.support_not_granted': 403,
+  'backoffice.support_ticket_mismatch': 403,
+  'backoffice.support_session_open': 409,
+  'backoffice.support_no_session': 403,
+  'backoffice.support_grant_exists': 409,
   // files
   'upload.not_found': 404,
   'upload.expired': 410,

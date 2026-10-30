@@ -1,5 +1,6 @@
 // Public interface of @archova/mod-backoffice: the owner console's backend (backend 09). It changes nothing by
 // itself: catalogue changes go through `billing`, and every change that needs a second person is a request here.
+import type { SupportProjectDto } from '@archova/contracts';
 import { defineModule, type KernelServices } from '@archova/kernel';
 import type { AccountService, CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
@@ -8,11 +9,13 @@ import { createFlagService } from './application/flags';
 import { createOrgActionService } from './application/org-actions';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
+import { createSupportAccessService } from './application/support-access';
 
 export { BACKOFFICE_PERMISSIONS, ROLE_PERMISSIONS, permissionsFor } from './permissions';
 export type { InternalHandlers, InternalInput, InternalResult } from './api/routes';
 export type { StaffContext } from './application/staff';
 export type { DirectoryEntry } from './application/customers';
+export type { CustomerSupportStatus } from './application/support-access';
 
 export interface BackofficeConfig {
   /** Password sign-in for staff: local runs and the demo cell only. */
@@ -26,6 +29,8 @@ export function createBackofficeModule(
   deps: {
     catalogue: CatalogueService;
     accounts: AccountService;
+    /** Read-only views of customer data for open support sessions; `platform` is built after this module. */
+    supportReads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -49,6 +54,11 @@ export function createBackofficeModule(
     ...(deps.now ? { now: deps.now } : {}),
   });
   const flags = createFlagService({ database: services.database, staff });
+  const support = createSupportAccessService({
+    database: services.database,
+    reads: deps.supportReads,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   return {
     definition: defineModule({ name: 'backoffice' }),
     /** No customer routes: /internal/v1 is mounted by apps/api from `internal`. */
@@ -60,6 +70,7 @@ export function createBackofficeModule(
       catalogue: deps.catalogue,
       flags,
       orgActions,
+      support,
     }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */
@@ -69,6 +80,13 @@ export function createBackofficeModule(
       directory: { upsert: customers.upsert },
       /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
       flags: { isOn: flags.isOn },
+      /** Customer consent for support access; `platform` calls these inside the admin's own transaction. */
+      support: {
+        status: support.status,
+        banner: support.banner,
+        grant: support.grant,
+        revoke: support.revoke,
+      },
       /** Creates or updates a staff account; used by the seed command only. */
       upsertLocalStaff: staff.upsertLocal,
     },

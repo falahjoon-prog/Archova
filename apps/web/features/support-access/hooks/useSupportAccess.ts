@@ -1,0 +1,54 @@
+'use client';
+
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
+import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { createSupportAccessApi, type GrantSupportAccess } from '../data/api';
+
+const keys = (orgId: string) => ({
+  all: ['orgs', orgId, 'support-access'] as const,
+  banner: ['orgs', orgId, 'support-access', 'banner'] as const,
+});
+
+function useApi() {
+  const { orgId } = useCurrentOrg();
+  return useMemo(() => createSupportAccessApi(orgId), [orgId]);
+}
+
+export function useSupportAccess() {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  return useQuery({ queryKey: keys(orgId).all, queryFn: () => source.get() });
+}
+
+/** Polled so everyone sees the banner within a minute of a session opening, and it clears soon after it ends. */
+export function useSupportBanner() {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  return useQuery({
+    queryKey: keys(orgId).banner,
+    queryFn: () => source.banner(),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+}
+
+export function useGrantSupportAccess() {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: GrantSupportAccess) => source.grant(body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys(orgId).all }),
+  });
+}
+
+export function useRevokeSupportAccess() {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => source.revoke(),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys(orgId).all }),
+  });
+}

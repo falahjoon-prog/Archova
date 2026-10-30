@@ -41,6 +41,98 @@ const CATEGORY_LABEL: Record<SuspendCategory, string> = {
   legal_order: 'Legal order',
 };
 
+/**
+ * Support access (Sam 12 §4a): staff see only the customer's consent here. A session needs the ticket the customer
+ * named, a fresh password check and a reason; it is read only and lasts at most an hour.
+ */
+function SupportAccess({ org }: { org: OrgDetailDto }) {
+  const staff = useStaff();
+  const qc = useQueryClient();
+  const withStepUp = useStepUp();
+  const [open, setOpen] = useState(false);
+  const allowed = can(staff, 'backoffice.support.access');
+  const { grant, session } = org.support;
+  const projects = useQuery({
+    queryKey: ['support-projects', org.orgId, session?.startedAt],
+    queryFn: () => api.supportProjects(org.orgId),
+    enabled: allowed && Boolean(session),
+    retry: false,
+  });
+  if (!allowed) return null;
+  const done = (fresh: OrgDetailDto) => {
+    qc.setQueryData(['org', org.orgId], fresh);
+  };
+
+  return (
+    <Card title="Support access">
+      {!grant ? (
+        <p className="muted">
+          The customer has not allowed support access. An owner or admin turns it on from Settings
+          in their app, for one ticket.
+        </p>
+      ) : (
+        <DescriptionList
+          items={[
+            {
+              label: 'Customer allowed',
+              value: `Ticket ${grant.ticketRef}, by ${grant.grantedBy}`,
+            },
+            { label: 'Allowed until', value: formatDateTime(grant.expiresAt) },
+            ...(session
+              ? [{ label: 'Your session ends', value: formatDateTime(session.expiresAt) }]
+              : []),
+          ]}
+        />
+      )}
+      {grant && !session ? (
+        <div className="row">
+          <Button onClick={() => setOpen(true)}>Start read-only session</Button>
+        </div>
+      ) : null}
+      {session ? (
+        <>
+          <div className="row">
+            <Button variant="secondary" onClick={async () => done(await api.endSupport(org.orgId))}>
+              End session
+            </Button>
+          </div>
+          <h3>Projects (read only)</h3>
+          {projects.isPending ? <SkeletonRows rows={2} /> : null}
+          {projects.isError ? (
+            <Alert tone="danger" title="Could not load projects">
+              {projects.error.message}
+            </Alert>
+          ) : null}
+          {projects.data ? (
+            projects.data.items.length ? (
+              <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {projects.data.items.map((p) => (
+                  <li key={p.id}>
+                    {p.name}{' '}
+                    <span className="muted">
+                      · {p.number ?? 'no number'} · {p.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="muted">This customer has no projects.</p>
+            )
+          ) : null}
+        </>
+      ) : null}
+      <OrgActionDialog
+        open={open}
+        title="Start a support session"
+        description="Read only, at most one hour. The customer's users will see a banner, and the customer is shown your name and how many pages you view. Use the ticket they named."
+        confirmLabel="Start session"
+        onClose={() => setOpen(false)}
+        onConfirm={async (i) => done(await withStepUp(() => api.startSupport(org.orgId, i)))}
+      />
+    </Card>
+  );
+}
+
 function AccountActions({ org }: { org: OrgDetailDto }) {
   const staff = useStaff();
   const qc = useQueryClient();
@@ -218,6 +310,7 @@ export default function CustomerPage({ params }: { params: Promise<{ orgId: stri
         />
       </Card>
       <AccountActions org={o} />
+      <SupportAccess org={o} />
       <Card title="Staff actions on this customer">
         {o.actions.length ? (
           <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>

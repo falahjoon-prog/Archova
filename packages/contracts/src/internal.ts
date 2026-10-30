@@ -203,10 +203,17 @@ export type OrgActionDto = {
   by: string;
   at: string;
 };
+/** What staff see of the customer's support consent (Sam 12 §4a). Never any project content. */
+export type SupportStaffDto = {
+  grant: { ticketRef: string; grantedBy: string; expiresAt: string } | null;
+  session: { startedAt: string; expiresAt: string; ticketRef: string } | null;
+};
+export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
 export type OrgDetailDto = OrgListItemDto & {
   history: RequestDto[];
   account: OrgAccountDto | null;
   actions: OrgActionDto[];
+  support: SupportStaffDto;
 };
 
 export type FlagOrgRef = { orgId: string; name: string };
@@ -341,6 +348,34 @@ export const internalOperations = {
     params: orgOnly,
     query: noParams,
     body: z.object(withTicket),
+  }),
+  startSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-session',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  endSupportSession: op({
+    method: 'DELETE',
+    path: '/internal/v1/orgs/{orgId}/support-session',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  listSupportProjects: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support/projects',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: orgOnly,
+    query: noParams,
+    body: null,
   }),
   listPlans: op({
     method: 'GET',

@@ -1,6 +1,7 @@
 import { defineModule, type Entitlements, type KernelServices } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
+import type { SupportAccessPort } from './application/support-access';
 import { createCompanyService } from './application/companies';
 import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
@@ -16,6 +17,7 @@ export function createPlatformModule(
     access: () => AccessService;
     defaultEntitlements: Entitlements;
     onOrgCreated?: OrgDeps['onOrgCreated'];
+    support: SupportAccessPort;
   },
 ) {
   const access = new Proxy({} as AccessService, {
@@ -41,6 +43,7 @@ export function createPlatformModule(
       keyDates,
       companies,
       members,
+      support: deps.support,
     }),
     api: {
       resolveTenantAccess: orgs.resolveTenantAccess,
@@ -48,6 +51,20 @@ export function createPlatformModule(
       getProjectAccessState: members.getProjectAccessState,
       getProject: projects.get,
       getOrg: orgs.getOrg,
+      /** Project names for an open support session; read-only, org-wide, never a member's view (Sam 12 §4a). */
+      listProjectsForSupport: (orgId: string, staffId: string) =>
+        services.database.withTenantTx(
+          {
+            orgId,
+            userId: staffId,
+            principalType: 'external',
+            orgRole: null,
+            entitlements: { plan: 'support', state: 'read_only', modules: [], limits: {} },
+            requestId: 'support',
+          },
+          (scope) => projects.listForSupport(scope),
+          { readOnly: true },
+        ),
       companyExists: companies.exists,
       projectCompanies: companies.onProject,
       projectCompaniesWithTrades: companies.onProjectWithTrades,

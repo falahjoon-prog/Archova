@@ -41,6 +41,7 @@ class Console {
   get = (u: string) => this.call('GET', u);
   post = (u: string, b?: unknown) => this.call('POST', u, b ?? {});
   put = (u: string, b: unknown) => this.call('PUT', u, b);
+  del = (u: string) => this.call('DELETE', u);
 
   async signIn() {
     const res = await this.post('/auth/login', { email: this.email, password: PASSWORD });
@@ -801,5 +802,136 @@ describe('customer account actions', () => {
       sql`update billing.org_accounts set plan_code = 'legacy_plan' where id = ${orgUuid}`,
     );
     expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+  });
+});
+
+describe('support access', () => {
+  async function company(label: string) {
+    const { browser } = await signUp(t.app, label);
+    const org = await createOrg(browser, `Support ${label} Builders`);
+    await createProject(browser, org.id, { name: 'Harbour Rd', state: 'NSW' });
+    const owner = await staff(['owner']);
+    const found = (
+      (await owner.get(`/orgs?q=${encodeURIComponent(`Support ${label}`)}`)).json() as {
+        items: Array<{ orgId: string }>;
+      }
+    ).items[0]!;
+    return {
+      browser,
+      orgRef: found.orgId,
+      access: `/v1/orgs/${org.id}/support-access`,
+      banner: `/v1/orgs/${org.id}/support-access/banner`,
+    };
+  }
+  const start = (c: Console, orgRef: string, ticketRef = 'SUP-77') =>
+    c.post(`/orgs/${orgRef}/support-session`, {
+      reason: 'Customer cannot find a drawing',
+      ticketRef,
+    });
+
+  it('is off by default: staff cannot open a session or see projects without a grant', async () => {
+    const c = await company('off');
+    const support = await staff(['support']);
+    const res = await start(support, c.orgRef);
+    expect(res.statusCode).toBe(403);
+    expect(code(res)).toBe('backoffice.support_not_granted');
+    const view = await support.get(`/orgs/${c.orgRef}/support/projects`);
+    expect(view.statusCode).toBe(403);
+    expect(code(view)).toBe('backoffice.support_no_session');
+    expect((await c.browser.get(c.access)).json()).toMatchObject({ grant: null, session: null });
+  });
+
+  it('runs the whole consent flow: grant, session, banner, audit, revoke', async () => {
+    const c = await company('flow');
+    const grant = await c.browser.put(c.access, {
+      ticketRef: 'SUP-77',
+      hours: 24,
+      note: 'Drawing issue',
+    });
+    expect(grant.statusCode, grant.body).toBe(200);
+    expect(grant.json()).toMatchObject({ grant: { ticketRef: 'SUP-77', note: 'Drawing issue' } });
+    // A second grant must wait until the first is withdrawn.
+    const again = await c.browser.put(c.access, { ticketRef: 'SUP-78', hours: 1 });
+    expect(again.statusCode).toBe(409);
+    expect(code(again)).toBe('backoffice.support_grant_exists');
+    expect((await c.browser.get(c.banner)).json()).toEqual({ active: false, since: null });
+
+    // Only Support and Security lead; Sales never; the ticket must be the one the customer named.
+    const sales = await staff(['sales']);
+    expect((await start(sales, c.orgRef)).statusCode).toBe(403);
+    const support = await staff(['support']);
+    const wrong = await start(support, c.orgRef, 'SUP-99');
+    expect(wrong.statusCode).toBe(403);
+    expect(code(wrong)).toBe('backoffice.support_ticket_mismatch');
+    const opened = await start(support, c.orgRef, ' sup-77 ');
+    expect(opened.statusCode, opened.body).toBe(201);
+    const session = (
+      opened.json() as { support: { session: { startedAt: string; expiresAt: string } } }
+    ).support.session;
+    expect(Date.parse(session.expiresAt) - Date.parse(session.startedAt)).toBeLessThanOrEqual(
+      3_600_000,
+    );
+    expect(code(await start(support, c.orgRef))).toBe('backoffice.support_session_open');
+
+    const projects = await support.get(`/orgs/${c.orgRef}/support/projects`);
+    expect(projects.statusCode, projects.body).toBe(200);
+    expect(
+      (projects.json() as { items: Array<{ name: string }> }).items.map((p) => p.name),
+    ).toEqual(['Harbour Rd']);
+    // Another staff member has no session of their own.
+    const lead = await staff(['security_lead']);
+    expect((await lead.get(`/orgs/${c.orgRef}/support/projects`)).statusCode).toBe(403);
+
+    // The customer sees the banner, who is looking, and how many pages.
+    expect((await c.browser.get(c.banner)).json()).toMatchObject({ active: true });
+    const status = (await c.browser.get(c.access)).json() as {
+      session: { staffName: string; pagesViewed: number; ticketRef: string };
+    };
+    expect(status.session).toMatchObject({ ticketRef: 'SUP-77', pagesViewed: 1 });
+    expect(status.session.staffName).toMatch(/^staff \d+$/);
+
+    // Withdrawing consent ends the session at once.
+    expect((await c.browser.del(c.access)).statusCode).toBe(204);
+    expect((await c.browser.get(c.banner)).json()).toMatchObject({ active: false });
+    const after = await support.get(`/orgs/${c.orgRef}/support/projects`);
+    expect(after.statusCode).toBe(403);
+    const hist = (await c.browser.get(c.access)).json() as {
+      grant: unknown;
+      session: unknown;
+      history: Array<{ endedReason: string }>;
+    };
+    expect(hist).toMatchObject({ grant: null, session: null });
+    expect(hist.history[0]!.endedReason).toBe('customer_revoked');
+  });
+
+  it('lets a staff member end their own session, and refuses a grant over 72 hours', async () => {
+    const c = await company('end');
+    expect((await c.browser.put(c.access, { ticketRef: 'SUP-1', hours: 73 })).statusCode).toBe(422);
+    expect((await c.browser.put(c.access, { ticketRef: 'SUP-1', hours: 2 })).statusCode).toBe(200);
+    const lead = await staff(['security_lead']);
+    expect((await start(lead, c.orgRef, 'SUP-1')).statusCode).toBe(201);
+    const ended = await lead.del(`/orgs/${c.orgRef}/support-session`);
+    expect(ended.statusCode).toBe(200);
+    expect(ended.json()).toMatchObject({ support: { session: null } });
+    const hist = (await c.browser.get(c.access)).json() as {
+      history: Array<{ endedReason: string }>;
+    };
+    expect(hist.history[0]!.endedReason).toBe('staff');
+  });
+
+  it('keeps the customer in control: only an admin can grant, and revoking works while suspended', async () => {
+    const c = await company('ctl');
+    const { browser: other } = await signUp(t.app, 'ctlother');
+    // Someone outside the company cannot even see it.
+    expect((await other.get(c.access)).statusCode).toBe(404);
+    expect((await c.browser.put(c.access, { ticketRef: 'SUP-5', hours: 1 })).statusCode).toBe(200);
+    const owner = await staff(['owner']);
+    const susp = await owner.post(`/orgs/${c.orgRef}/actions/suspend`, {
+      category: 'security',
+      reason: 'Security test',
+      ticketRef: 'SUP-5',
+    });
+    expect(susp.statusCode, susp.body).toBe(200);
+    expect((await c.browser.del(c.access)).statusCode).toBe(204);
   });
 });

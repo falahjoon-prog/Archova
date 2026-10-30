@@ -9,6 +9,7 @@ import {
   useAssistantPanelState,
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
+import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -54,7 +55,13 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
       <AssistantScopeProvider>
         <OrgAppShell
           orgName={membership.orgName}
-          nav={[{ href: webRoutes.projects(orgSlug), label: 'Projects' }]}
+          nav={[
+            { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
+            ...(membership.role === 'owner' || membership.role === 'admin'
+              ? [{ href: webRoutes.supportAccess(orgSlug), label: 'Support access' }]
+              : []),
+          ]}
           actions={
             <>
               <span className="app-shell__user">{me.data.user.name}</span>
@@ -62,6 +69,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             </>
           }
         >
+          <SupportBanner />
           {children}
         </OrgAppShell>
       </AssistantScopeProvider>

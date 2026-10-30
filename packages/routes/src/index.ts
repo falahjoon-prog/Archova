@@ -12,6 +12,7 @@ export const webRoutes = {
   newOrg: () => '/orgs/new',
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
+  supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,

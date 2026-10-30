@@ -9,6 +9,7 @@ import {
   type Database,
 } from '@archova/kernel';
 import type { IdentityApi } from '@archova/mod-identity';
+import type { SupportAccessPort } from '../application/support-access';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
 import type { MemberService } from '../application/members';
@@ -32,6 +33,7 @@ export interface PlatformRouteDeps {
   keyDates: KeyDateService;
   companies: CompanyService;
   members: MemberService;
+  support: SupportAccessPort;
 }
 
 const projectUuid = (id: string) => {
@@ -175,6 +177,43 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.members.remove(s, id, memberId, input.body),
       );
       return { status: 200, body: toProjectMemberDto(row) };
+    },
+    getSupportAccess: async (input) => {
+      const tenant = requireTenant(input);
+      const status = await d.database.withTenantTx(
+        tenant,
+        (s) => d.support.status(s.tx, s.ctx.orgId),
+        ro,
+      );
+      return { status: 200, body: status };
+    },
+    grantSupportAccess: async (input) => {
+      const tenant = requireTenant(input);
+      const user = await d.identity.getUser(tenant.userId);
+      const status = await d.database.withTenantTx(tenant, async (s) => {
+        await d.support.grant(
+          s.tx,
+          s.ctx.orgId,
+          { userId: tenant.userId, name: user?.name ?? 'An admin' },
+          input.body,
+        );
+        return d.support.status(s.tx, s.ctx.orgId);
+      });
+      return { status: 200, body: status };
+    },
+    revokeSupportAccess: async (input) => {
+      await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.support.revoke(s.tx, s.ctx.orgId),
+      );
+      return { status: 204 };
+    },
+    getSupportBanner: async (input) => {
+      const banner = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.support.banner(s.tx, s.ctx.orgId),
+        ro,
+      );
+      return { status: 200, body: banner };
     },
     listCompanies: async (input) => {
       const page = await d.database.withTenantTx(

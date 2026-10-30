@@ -14,6 +14,7 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.accounts.trial',
   'backoffice.accounts.plan',
   'backoffice.accounts.suspend',
+  'backoffice.support.access',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
 
@@ -47,8 +48,14 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.flags.read',
     'backoffice.flags.edit',
     'backoffice.accounts.trial',
+    'backoffice.support.access',
   ],
-  security_lead: [...READ, 'backoffice.staff.read', 'backoffice.accounts.suspend'],
+  security_lead: [
+    ...READ,
+    'backoffice.staff.read',
+    'backoffice.accounts.suspend',
+    'backoffice.support.access',
+  ],
   finance_read: READ,
 };
 

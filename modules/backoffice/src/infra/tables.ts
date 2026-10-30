@@ -141,3 +141,37 @@ export const orgActions = backofficeSchema.table('org_actions', {
   staffId: uuid('staff_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const supportGrants = backofficeSchema.table('support_grants', {
+  id: uuid('id').primaryKey(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  note: text('note'),
+  grantedBy: uuid('granted_by').notNull(),
+  grantedByName: text('granted_by_name').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+});
+
+export const supportSessions = backofficeSchema.table('support_sessions', {
+  id: uuid('id').primaryKey(),
+  grantId: uuid('grant_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  staffId: uuid('staff_id').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  reason: text('reason').notNull(),
+  startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+  endedReason: text('ended_reason').$type<'staff' | 'customer_revoked' | 'expired'>(),
+});
+
+export const supportEvents = backofficeSchema.table('support_events', {
+  id: uuid('id').primaryKey(),
+  sessionId: uuid('session_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  what: text('what').notNull(),
+  recordIds: text('record_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
