@@ -69,6 +69,7 @@ test('the primary gets every file, with the app wired to Linode storage, ClamAV 
   const f = renderHostFiles({ ...base, server: 0, backupAlertUrl: 'https://uptime.example/hb' });
   assert.deepEqual(Object.keys(f).sort(), [
     'etc/Corefile',
+    'etc/ai-worker.env',
     'etc/api.env',
     'etc/backup.env',
     'etc/db-ca.pem',
@@ -77,6 +78,7 @@ test('the primary gets every file, with the app wired to Linode storage, ClamAV 
     'etc/roles-anywhere.env',
     'etc/valkey.env',
     'etc/web.env',
+    'etc/worker.env',
     'opt/.env',
   ]);
   assert.match(f['opt/.env']!, /^IMAGE_TAG='3f2c1ab'$/m);
@@ -95,6 +97,15 @@ test('the primary gets every file, with the app wired to Linode storage, ClamAV 
     f['etc/db-roles.env']!,
     /^DB_ROLE_APP_RW='\{"username":"app_rw","password":"rw-pass"\}'$/m,
   );
+  // Only the relay's worker gets the cross-tenant role; the ai-worker never does.
+  assert.match(
+    f['etc/worker.env']!,
+    /^DATABASE_PLATFORM_URL='postgres:\/\/app_platform:platform-pass@/m,
+  );
+  assert.match(f['etc/worker.env']!, /^REDIS_URL='redis:\/\/:valkey-pass@10\.60\.1\.10:6379'$/m);
+  assert.doesNotMatch(f['etc/ai-worker.env']!, /DATABASE_PLATFORM_URL|platform-pass/);
+  assert.match(f['etc/ai-worker.env']!, /^WORKER_ROLE='ai'$/m);
+  assert.match(f['etc/ai-worker.env']!, /^API_AI_REGION='ap-southeast-2'$/m);
   assert.match(f['etc/backup.env']!, /^FILES_KEY_ID='BACKUPKEY'$/m);
   assert.match(f['etc/backup.env']!, /^BACKUP_ALERT_URL='https:\/\/uptime\.example\/hb'$/m);
   assert.match(f['etc/Corefile']!, /^private-a1b2\.db\.example\.net:53 \{/m);
@@ -103,10 +114,16 @@ test('the primary gets every file, with the app wired to Linode storage, ClamAV 
 
 test('other servers get no admin, Valkey or backup credentials', () => {
   const f = renderHostFiles({ ...base, server: 1 });
-  for (const k of ['etc/db-roles.env', 'etc/backup.env', 'etc/valkey.env'])
+  for (const k of [
+    'etc/db-roles.env',
+    'etc/backup.env',
+    'etc/valkey.env',
+    'etc/worker.env',
+    'etc/ai-worker.env',
+  ])
     assert.equal(f[k], undefined, k);
   assert.match(f['opt/.env']!, /^VPC_IP='10.60.1.11'$/m);
-  assert.doesNotMatch(Object.values(f).join(''), /admin-pass|backup-secret/);
+  assert.doesNotMatch(Object.values(f).join(''), /admin-pass|backup-secret|platform-pass/);
 });
 
 test('refuses a bad tag, server, key or value', () => {

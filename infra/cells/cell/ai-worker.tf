@@ -109,6 +109,7 @@ resource "aws_cloudwatch_log_metric_filter" "ai_worker_queue" {
     AiQueueBehind     = "{ $.msg = \"ai queue is behind\" }"
     AiQueueReport     = "{ $.msg = \"ai queue age\" || $.msg = \"ai queue is behind\" }"
     AiQueueUnreadable = "{ $.msg = \"ai queue age unreadable\" }"
+    AiSweepCorrected  = "{ $.msg = \"ai sweep done\" && ($.removed > 0 || $.restamped > 0) }"
   }
   name           = "${local.name}-${each.key}"
   log_group_name = module.ai_worker.log_group_name
@@ -167,6 +168,25 @@ resource "aws_cloudwatch_metric_alarm" "ai_queue_unreadable" {
   period              = 300
   evaluation_periods  = 3
   datapoints_to_alarm = 3
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.observability.ticket_topic_arn]
+  tags                = local.tags
+  depends_on          = [aws_cloudwatch_log_metric_filter.ai_worker_queue]
+}
+
+# The nightly sweep (17:20 UTC) reconciles every indexed project with the registers. Its counts are normally zero
+# because the event handlers already did the work; anything above zero means the event path missed something. Nova's
+# answers are already corrected by then, so this is a ticket to find out why, not a page.
+resource "aws_cloudwatch_metric_alarm" "ai_sweep_corrected" {
+  alarm_name          = "${local.name}-ai-sweep-corrected"
+  alarm_description   = "The nightly Nova sweep removed or re-stamped indexed text that the event handlers should have handled. Find the missed event (check ai-worker retries and dropped jobs in the last day)."
+  namespace           = "Archova/AiWorker"
+  metric_name         = "AiSweepCorrected"
+  statistic           = "Sum"
+  period              = 86400
+  evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
