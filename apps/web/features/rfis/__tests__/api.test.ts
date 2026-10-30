@@ -288,6 +288,51 @@ describe('RFIs API source', () => {
     });
   });
 
+  it("drafts a response to an RFI with the person's direction, and lists the files Nova could not read", async () => {
+    const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai';
+    fake.on('POST', `${AI}/rfis/{rfiId}/answer-drafts`, () => ({
+      runId: 'air_2',
+      suggestionId: 'ais_8',
+      rfiId: 'rfi_1',
+      answer: 'Use the 90 minute rating per spec 07 84 00.',
+      basis: 'documents',
+      needsDecision: ['Whether the rating changes the program.'],
+      references: [
+        {
+          sourceType: 'document',
+          sourceId: 'doc_1',
+          revisionId: 'rev_1',
+          page: 12,
+          title: 'Specification',
+          reference: '07 84 00',
+          revision: null,
+          quote: 'Fire stopping to achieve 90 minutes.',
+        },
+      ],
+      unsupportedNumbers: ['14'],
+      attachments: [
+        { fileId: 'fil_1', name: 'photo.jpg', read: true },
+        { fileId: 'fil_2', name: 'scan.pdf', read: false },
+      ],
+    }));
+    const source = createRfisApi('org_1');
+    const draft = await source.novaDraftResponse('prj_1', 'rfi_1', ' use the 90 minute rating ');
+    expect(fake.callsTo('POST', `${AI}/rfis/{rfiId}/answer-drafts`)[0]!.init.body).toEqual({
+      direction: 'use the 90 minute rating',
+    });
+    expect(draft).toMatchObject({
+      id: 'ais_8',
+      text: 'Use the 90 minute rating per spec 07 84 00.',
+      basis: 'documents',
+      needsDecision: ['Whether the rating changes the program.'],
+      unsupportedNumbers: ['14'],
+      unreadFiles: ['scan.pdf'],
+      references: [{ kind: 'document', sourceId: 'doc_1', label: '07 84 00' }],
+    });
+    await source.novaDraftResponse('prj_1', 'rfi_1');
+    expect(fake.callsTo('POST', `${AI}/rfis/{rfiId}/answer-drafts`)[1]!.init.body).toEqual({});
+  });
+
   it('drafts an RFI from a note, and records the draft as edited when the person changed it', async () => {
     const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai';
     fake.on('POST', `${AI}/rfi-drafts`, () => ({

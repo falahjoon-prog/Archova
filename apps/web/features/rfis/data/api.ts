@@ -1,9 +1,8 @@
 // RFIs against the rfis module's endpoints (backend 04 §3, Ben's PR #10), with the same interface as the preview
 // source so the screens and hooks don't change. People and companies come back as ids; names are resolved from the
-// project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed;
-// Nova's answer drafts aren't served yet.
+// project's members. The API has one assignee list, a ball-in-court user list, a drawing pin and an activity feed.
 
-import { ApiError, unwrap } from '@archova/api-client';
+import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
@@ -11,6 +10,8 @@ import { formatLocalDate } from '@/shared/lib/format';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
 import type {
   CostImpact,
+  NovaDraft,
+  NovaReference,
   NovaRfiDraft,
   Rfi,
   RfiActivity,
@@ -130,6 +131,17 @@ function toRequest(input: RfiInput, pin?: unknown) {
   };
 }
 
+type ApiCitation = components['schemas']['NovaCitation'];
+
+const toReference = (r: ApiCitation, i: number): NovaReference => ({
+  id: `${r.revisionId}:${r.page}:${i}`,
+  kind: r.sourceType,
+  sourceId: r.sourceId,
+  revisionId: r.revisionId,
+  label: `${r.reference ?? r.title}${r.sourceType === 'drawing' ? ` Rev ${r.revision}` : ''}`,
+  quote: r.quote,
+});
+
 /** Creating leaves an empty spec section or location out. */
 const createRefs = (input: RfiInput) => ({
   ...(input.specSection ? { specSection: input.specSection } : {}),
@@ -239,14 +251,7 @@ export function createRfisApi(orgId: string): RfisSource {
         subject: d.subject,
         question: d.question,
         discipline: d.discipline,
-        references: d.references.map((r, i) => ({
-          id: `${r.revisionId}:${r.page}:${i}`,
-          kind: r.sourceType,
-          sourceId: r.sourceId,
-          revisionId: r.revisionId,
-          label: `${r.reference ?? r.title}${r.sourceType === 'drawing' ? ` Rev ${r.revision}` : ''}`,
-          quote: r.quote,
-        })),
+        references: d.references.map(toReference),
         gaps: d.gaps,
         unsupportedNumbers: d.unsupportedNumbers,
         similar: d.similarRfis.map(({ id, number, subject }) => ({ id, number, subject })),
@@ -353,14 +358,23 @@ export function createRfisApi(orgId: string): RfisSource {
       );
     },
 
-    async novaDraftResponse() {
-      throw new ApiError(501, {
-        type: 'about:blank',
-        title: 'Not available yet',
-        status: 501,
-        detail: "Nova can't draft RFI answers on this project yet.",
-        code: 'ai.not_available',
-      } as never);
+    async novaDraftResponse(projectId, rfiId, direction): Promise<NovaDraft> {
+      await ensureCsrfToken();
+      const d = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/rfis/{rfiId}/answer-drafts', {
+          params: { path: { orgId, projectId, rfiId } },
+          body: direction?.trim() ? { direction: direction.trim() } : {},
+        }),
+      );
+      return {
+        id: d.suggestionId,
+        text: d.answer,
+        basis: d.basis,
+        needsDecision: d.needsDecision,
+        references: d.references.map(toReference),
+        unsupportedNumbers: d.unsupportedNumbers,
+        unreadFiles: d.attachments.filter((a) => !a.read).map((a) => a.name),
+      };
     },
 
     // Rewording runs on the text alone, so the preview's version serves until Nova's endpoint lands.
