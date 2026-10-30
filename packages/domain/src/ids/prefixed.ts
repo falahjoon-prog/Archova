@@ -24,6 +24,8 @@ export const ID_PREFIXES = {
   quoteLine: 'qln',
   takeoffMeasurement: 'tkm',
   importJob: 'imp',
+  webhook: 'whk',
+  webhookDelivery: 'whd',
   importRow: 'imr',
   lateSubmission: 'lsb',
   diary: 'dia',

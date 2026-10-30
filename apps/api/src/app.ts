@@ -13,7 +13,12 @@ import {
 import type { ModelProvider, RasterizePage } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
-import type { ApiConfig } from './config';
+import {
+  createHttpsTransport,
+  vaultFromKey,
+  type WebhookTransport,
+} from '@archova/mod-integrations';
+import { DEV_WEBHOOK_KEY, type ApiConfig } from './config';
 import { loadModules, type Modules } from '@archova/compose';
 import { apiRateLimiter } from './plugins/rate-limit';
 import { registerInternalOperations } from './internal';
@@ -40,6 +45,8 @@ export interface AppDeps {
    * tests and a developer's machine pass one.
    */
   aiRasterizePage?: RasterizePage;
+  /** Sends webhook test events; tests pass a fake, the default is the SSRF-checked HTTPS sender. */
+  webhookTransport?: WebhookTransport;
   /** Hands the loaded modules to the caller, e.g. tests that drive import commands (X49) directly. */
   onModules?: (modules: Modules) => void;
 }
@@ -91,6 +98,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       backoffice: {
         localLogin: config.internal.localLogin,
         soloCoolingOffHours: config.internal.soloCoolingOffHours,
+      },
+      webhooks: {
+        vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
+        transport: deps.webhookTransport ?? createHttpsTransport(),
       },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
