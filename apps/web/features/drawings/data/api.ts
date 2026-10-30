@@ -571,11 +571,13 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
           }),
         );
         const sheets = read.suggestions
-          .map((s) => s.payload as unknown as TitleBlockPayload)
-          .filter((p) => p.isDrawing)
-          .map((p) => ({ page: p.page, fields: p.fields }));
+          .map((s) => ({ id: s.id, p: s.payload as unknown as TitleBlockPayload }))
+          .filter(({ p }) => p.isDrawing)
+          .map(({ id, p }) => ({ page: p.page, fields: p.fields, suggestionId: id }));
         // Scanned pages Nova couldn't read still go in the set, for a person to fill in.
-        for (const page of read.skippedPages) sheets.push({ page, fields: undefined as never });
+        for (const page of read.skippedPages) {
+          sheets.push({ page, fields: undefined as never, suggestionId: undefined as never });
+        }
         for (const sheet of sheets.sort((a, b) => a.page - b.page)) {
           const f = sheet.fields;
           const discipline = f?.discipline.value ? DISCIPLINE_CODES[f.discipline.value] : undefined;
@@ -595,6 +597,7 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
                   fileId: stored.id,
                   pageIndex: sheet.page - 1,
                   ...(date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? { drawingDate: date } : {}),
+                  ...(sheet.suggestionId ? { aiSuggestionId: sheet.suggestionId } : {}),
                 },
               },
             ),
