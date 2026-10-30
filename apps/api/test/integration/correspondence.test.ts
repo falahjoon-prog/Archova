@@ -227,6 +227,15 @@ describe('correspondence types and notices (product/08 SCH-AC5)', () => {
       toCompanyIds: [s.steelCo.companyId],
     });
     expect(created.json().item.body).toBe('Dear Tower N');
+    expect(
+      (
+        await s.pm.browser.patch(
+          `${s.base}/correspondence/${created.json().item.id}`,
+          { fromCompanyId: 'cmp_00000000000000000000000000' },
+          { 'if-match': etagOf(created) },
+        )
+      ).statusCode,
+    ).toBe(422);
     const sent = await s.pm.browser.post(
       `${s.base}/correspondence/${created.json().item.id}/send`,
       undefined,

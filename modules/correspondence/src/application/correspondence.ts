@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { and, asc, desc, eq, gt, isNull, sql, type SQL } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
+import { atLeast } from '@archova/domain/permissions';
 import { localDateOf } from '@archova/time';
 import {
   AppError,
@@ -21,6 +22,7 @@ import {
   canRespondAs,
   canSeeItem,
   canSend,
+  canWriteDraft,
   canVoid,
   dueDateFor,
   renderTemplate,
@@ -202,6 +204,10 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
       userId: scope.ctx.userId,
       companyId: perms.companyId,
       isInternal: scope.ctx.principalType === 'member',
+      isAdmin:
+        perms.orgRole === 'owner' ||
+        perms.orgRole === 'admin' ||
+        atLeast(perms.toolLevels.correspondence, 'admin'),
     };
   }
 
@@ -216,8 +222,9 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
 
   /** SQL form of `canSeeItem` for the register. */
   function visibleTo(v: CorrespondenceViewer): SQL | null {
-    if (v.isInternal) return null;
+    if (v.isAdmin) return null;
     const own = sql`${items.createdBy} = ${v.userId}`;
+    if (v.isInternal) return sql`(${own} or ${items.status} <> 'draft')`;
     if (!v.companyId) return own;
     return sql`(${own} or (${items.status} <> 'draft' and (${items.fromCompanyId} = ${v.companyId}
       or ${v.companyId} = any(${items.toCompanyIds}))))`;
@@ -302,6 +309,21 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     }
   }
 
+  async function checkSender(
+    scope: TenantScope,
+    projectId: string,
+    companyId: string | null | undefined,
+  ) {
+    if (!companyId) return;
+    const onProject = await deps.platform.projectCompanies(scope, projectId);
+    if (!onProject.some((c) => c.id === companyId))
+      throw new AppError(
+        'correspondence.recipient_not_on_project',
+        'The sending company must be on this project.',
+        [{ path: 'fromCompanyId', message: 'Not a company on this project' }],
+      );
+  }
+
   async function checkRecipients(scope: TenantScope, projectId: string, companyIds: string[]) {
     if (!companyIds.length) return;
     const onProject = new Set(
@@ -322,6 +344,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
         JSON.stringify({
           id: r.id,
           number: r.numberLabel,
+          typeId: r.typeId,
           type: r.typeName,
           subject: r.subject,
           body: r.body,
@@ -329,6 +352,10 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
           to: [...r.toCompanyIds].sort(),
           files: r.fileIds,
           eventDate: r.eventDate,
+          timeBarDays: r.timeBarDays,
+          timeBarDate: r.timeBarDate,
+          dueDate: r.dueDate,
+          responseRequired: r.responseRequired,
           related: r.related,
           sentAt: sentAt.toISOString(),
         }),
@@ -346,6 +373,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
     if (type.archivedAt)
       throw new AppError('correspondence_type.archived', 'That type is no longer in use.');
     await checkRecipients(scope, projectId, input.toCompanyIds ?? []);
+    if (v.isInternal) await checkSender(scope, projectId, input.fromCompanyId);
     if (input.fileIds?.length) await checkFiles(scope, projectId, input.fileIds);
     const number = await nextNumber(scope, projectId, `correspondence:${type.id}`);
     const label = `${type.prefix}-${String(number).padStart(3, '0')}`;
@@ -412,10 +440,10 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
         undefined,
         { status: item.status },
       );
-    if (!v.isInternal && item.createdBy !== v.userId)
-      throw new AppError('access.denied', "You can't change this item.");
+    if (!canWriteDraft(item, v)) throw new AppError('access.denied', "You can't change this item.");
     if (item.version !== expectedVersion) throw versionConflict();
     if (patch.toCompanyIds) await checkRecipients(scope, projectId, patch.toCompanyIds);
+    await checkSender(scope, projectId, patch.fromCompanyId);
     if (patch.fileIds?.length) await checkFiles(scope, projectId, patch.fileIds);
     if (!v.isInternal && patch.fromCompanyId !== undefined && patch.fromCompanyId !== v.companyId)
       throw new AppError('access.denied', 'Only the builder can change the sending company.');
@@ -465,8 +493,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
         undefined,
         { status: item.status },
       );
-    if (!v.isInternal && item.createdBy !== v.userId)
-      throw new AppError('access.denied', "You can't send this item.");
+    if (!canWriteDraft(item, v)) throw new AppError('access.denied', "You can't send this item.");
     if (item.version !== expectedVersion) throw versionConflict();
     const missing: Array<{ path: string; message: string }> = [];
     if (!item.subject.trim()) missing.push({ path: 'subject', message: 'Required to send' });
@@ -494,7 +521,7 @@ export function createCorrespondenceService(deps: CorrespondenceDeps) {
         sentAt,
         sentBy: scope.ctx.userId,
         dueDate,
-        contentHash: item.isEvidential ? hashOf(item, sentAt) : null,
+        contentHash: item.isEvidential ? hashOf({ ...item, dueDate }, sentAt) : null,
         version: item.version + 1,
         updatedAt: sentAt,
         updatedBy: scope.ctx.userId,

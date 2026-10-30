@@ -75,17 +75,26 @@ export interface CorrespondenceAudience {
 export interface CorrespondenceViewer {
   userId: string;
   companyId: string | null;
-  /** Builder staff (org members) see every item on the project. */
+  /** Builder staff (org members) see every sent item on the project. */
   isInternal: boolean;
+  /** Org owner/admin, or admin level on the correspondence tool. */
+  isAdmin: boolean;
 }
 
-/** A draft stays with its author; once sent, the sending and receiving companies can both read it. */
+/**
+ * A draft stays with its author (and admins); once sent, staff and the sending and receiving companies can read
+ * it. Other staff do not see or send someone else's draft, since an evidential notice binds the company.
+ */
 export function canSeeItem(a: CorrespondenceAudience, v: CorrespondenceViewer): boolean {
-  if (v.isInternal) return true;
-  if (a.createdBy === v.userId) return true;
+  if (a.createdBy === v.userId || v.isAdmin) return true;
+  if (v.isInternal) return a.status !== 'draft';
   if (a.status === 'draft' || !v.companyId) return false;
   return a.fromCompanyId === v.companyId || a.toCompanyIds.includes(v.companyId);
 }
+
+/** Only the author or an admin edits or sends a draft. */
+export const canWriteDraft = (a: { createdBy: string | null }, v: CorrespondenceViewer) =>
+  a.createdBy === v.userId || v.isAdmin;
 
 /** Staff can answer anything; an outside user answers items their company sent or was sent. */
 export function canRespondAs(a: CorrespondenceAudience, v: CorrespondenceViewer): boolean {

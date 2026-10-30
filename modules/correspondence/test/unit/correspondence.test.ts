@@ -6,6 +6,7 @@ import {
   canRespondAs,
   canSeeItem,
   canVoid,
+  canWriteDraft,
   renderTemplate,
   sentInTime,
   timeBarDate,
@@ -62,6 +63,7 @@ describe('visibility', () => {
     userId,
     companyId,
     isInternal: false,
+    isAdmin: false,
   });
 
   it('shows a sent item to the sending and receiving companies only', () => {
@@ -69,13 +71,22 @@ describe('visibility', () => {
     expect(canSeeItem(item, sub('c-builder'))).toBe(true);
     expect(canSeeItem(item, sub('c-other'))).toBe(false);
     expect(canSeeItem(item, sub(null))).toBe(false);
-    expect(canSeeItem(item, { userId: 'u-y', companyId: null, isInternal: true })).toBe(true);
+    expect(
+      canSeeItem(item, { userId: 'u-y', companyId: null, isInternal: true, isAdmin: false }),
+    ).toBe(true);
   });
 
   it('keeps a draft with its author', () => {
     const draft = { ...item, status: 'draft' as const };
     expect(canSeeItem(draft, sub('c-steel'))).toBe(false);
     expect(canSeeItem(draft, sub(null, 'u-author'))).toBe(true);
+    // Other staff don't see or write it; an admin does.
+    const staff = { userId: 'u-staff', companyId: 'c-builder', isInternal: true, isAdmin: false };
+    expect(canSeeItem(draft, staff)).toBe(false);
+    expect(canWriteDraft(draft, staff)).toBe(false);
+    expect(canSeeItem(draft, { ...staff, isAdmin: true })).toBe(true);
+    expect(canWriteDraft(draft, { ...staff, isAdmin: true })).toBe(true);
+    expect(canWriteDraft(draft, { ...staff, userId: 'u-author' })).toBe(true);
   });
 
   it('lets only the companies on the item respond', () => {
