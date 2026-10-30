@@ -3135,6 +3135,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/files/{fileId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        /** A short-lived download link for a video, PDF or image this induction uses (and no other file). */
+        get: operations["getInductionFileDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress": {
         parameters: {
             query?: never;
@@ -11918,6 +11940,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionFileDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadLink"];
                 };
             };
             default: components["responses"]["Problem"];
