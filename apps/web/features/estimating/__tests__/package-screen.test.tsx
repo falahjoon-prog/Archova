@@ -76,6 +76,32 @@ describe('PackageScreen', () => {
     await user.click(screen.getByRole('button', { name: 'Confirm quote' }));
     await waitFor(() => expect(screen.getAllByText('Confirmed').length).toBe(3));
   });
+
+  it('declines a quote that is ready to review, taking it out of the queue', async () => {
+    const user = userEvent.setup();
+    nav.search = 'tab=quotes';
+    renderInProject(<PackageScreen packageId="pkg_1" />);
+    await user.click(await screen.findByRole('button', { name: 'Decline quote' }));
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Confirm quote' })).toBeNull());
+    expect(screen.getAllByText('Declined').length).toBeGreaterThan(0);
+  });
+
+  it('holds a draft back from tender until it has scope and an invite', async () => {
+    renderInProject(<PackageScreen packageId="pkg_2" />);
+    const send = (await screen.findByRole('button', {
+      name: 'Send out to tender',
+    })) as HTMLButtonElement;
+    expect(send.disabled).toBe(true);
+    expect(screen.getByText(/Add scope lines and invite at least one subcontractor/)).toBeTruthy();
+  });
+
+  it('closes and reopens a tender that is out', async () => {
+    const user = userEvent.setup();
+    renderInProject(<PackageScreen packageId="pkg_1" />);
+    await user.click(await screen.findByRole('button', { name: 'Close tender' }));
+    await user.click(await screen.findByRole('button', { name: 'Reopen tender' }));
+    expect(await screen.findByRole('button', { name: 'Close tender' })).toBeTruthy();
+  });
 });
 
 describe('Elena on the comparison', () => {

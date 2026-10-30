@@ -628,6 +628,7 @@ export type TakeoffKind = z.infer<typeof TakeoffKindSchema>;
 export const TakeoffGeometrySchema = z.object({
   "type": z.enum(["polyline", "polygon", "points"]),
   "points": z.array(z.array(z.number()).min(2).max(2)).min(1).max(5000),
+  "holes": z.array(z.array(z.array(z.number()).min(2).max(2)).min(3).max(5000)).max(100).optional(),
 }).strict();
 export type TakeoffGeometry = z.infer<typeof TakeoffGeometrySchema>;
 

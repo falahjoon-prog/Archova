@@ -2,6 +2,9 @@
 // the API cannot drift apart; every call is same-origin (the dev server or load balancer forwards /internal).
 import {
   internalOperations,
+  type CohortDto,
+  type FlagChangeInput,
+  type FlagDto,
   type InternalOperationId,
   type OrgListItemDto,
   type Page,
@@ -108,6 +111,18 @@ export const api = {
   reject: (id: string, reason: string) =>
     call<RequestDto>('rejectRequest', { params: { id }, body: { reason } }),
   cancel: (id: string) => call<RequestDto>('cancelRequest', { params: { id } }),
+  flags: () => call<{ items: FlagDto[] }>('listFlags'),
+  updateFlag: (key: string, body: FlagChangeInput) =>
+    call<{ items: FlagDto[] }>('updateFlag', { params: { key }, body }),
+  killFlag: (key: string, reason: string) =>
+    call<{ items: FlagDto[] }>('killFlag', { params: { key }, body: { reason } }),
+  cohorts: () => call<{ items: CohortDto[] }>('listCohorts'),
+  createCohort: (body: { name: string; description: string }) =>
+    call<CohortDto>('createCohort', { body }),
+  addCohortMember: (id: string, orgId: string) =>
+    call<{ items: CohortDto[] }>('addCohortMember', { params: { id }, body: { orgId } }),
+  removeCohortMember: (id: string, orgId: string) =>
+    call<void>('removeCohortMember', { params: { id, orgId } }),
   staff: () =>
     call<{
       items: Array<{

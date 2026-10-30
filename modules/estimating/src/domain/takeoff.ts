@@ -7,6 +7,8 @@ export type GeometryType = 'polyline' | 'polygon' | 'points';
 export interface Geometry {
   type: GeometryType;
   points: number[][];
+  /** Cut-outs deducted from a polygon's area. */
+  holes?: number[][][];
 }
 
 const SHAPE: Record<MeasurementKind, { type: GeometryType; min: number }> = {
@@ -30,6 +32,14 @@ export function measurementProblem(
     return { path: 'geometry/points', message: 'Points must be finite numbers' };
   if (!Number.isFinite(quantity) || quantity < 0)
     return { path: 'quantity', message: 'Quantity cannot be negative' };
+  if (geometry.holes !== undefined) {
+    if (geometry.type !== 'polygon')
+      return { path: 'geometry/holes', message: 'Only an area has cut-outs' };
+    const finite = (ring: number[][]) =>
+      ring.every(([x, y]) => Number.isFinite(x) && Number.isFinite(y));
+    if (!geometry.holes.every((ring) => ring.length >= 3 && finite(ring)))
+      return { path: 'geometry/holes', message: 'A cut-out needs at least 3 finite points' };
+  }
   if (kind === 'count' && quantity !== geometry.points.length)
     return { path: 'quantity', message: 'A count is the number of points placed' };
   return null;

@@ -6197,6 +6197,8 @@ export interface components {
             /** @enum {string} */
             type: "polyline" | "polygon" | "points";
             points: number[][];
+            /** @description Cut-outs deducted from a polygon's area (EST-AC9). Polygons only. */
+            holes?: number[][][];
         };
         TakeoffMeasurement: {
             id: string;

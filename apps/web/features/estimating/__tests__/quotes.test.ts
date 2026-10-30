@@ -40,7 +40,7 @@ describe('quote levelling (EST-AC6)', () => {
   });
 
   it('flags prices far from the row median once there are three', async () => {
-    await quotesSource.confirmQuote(P, 'quo_gg1', est);
+    await quotesSource.confirmQuote(P, 'pkg_1', 'quo_gg1', est);
     const { rows } = await level();
     const lobby = rows.find((r) => r.scope.key === 'lobby_floor')!;
     expect(lobby.cells.map((c) => c.flags.includes('outlier'))).toEqual([false, true, false]);
@@ -65,7 +65,7 @@ describe('quotes and award', () => {
   it('supersedes a company’s earlier quote and keeps both (EST-AC4)', async () => {
     const q = await quotesSource.uploadQuote(P, 'pkg_1', {
       companyId: 'cmp_tile2',
-      fileName: 'harbour-rev2.pdf',
+      file: new File(['x'], 'harbour-rev2.pdf', { type: 'application/pdf' }),
     });
     expect(q).toMatchObject({ version: 2, status: 'reading' });
     const all = await quotesSource.listQuotes(P, 'pkg_1');
@@ -77,7 +77,7 @@ describe('quotes and award', () => {
   it('keeps Nova’s value when an amount is corrected', async () => {
     const before = (await quotesSource.listQuotes(P, 'pkg_1')).find((q) => q.id === 'quo_gg1')!;
     const lineId = before.lines[0]!.id;
-    const after = await quotesSource.correctLine(P, 'quo_gg1', lineId, 400000);
+    const after = await quotesSource.correctLine(P, 'pkg_1', 'quo_gg1', lineId, 400000);
     expect(after.lines[0]).toMatchObject({ amountCents: 400000, originalAmountCents: 395000 });
   });
 

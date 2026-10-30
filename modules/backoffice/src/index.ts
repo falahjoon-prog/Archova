@@ -4,6 +4,7 @@ import { defineModule, type KernelServices } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
+import { createFlagService } from './application/flags';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
 
@@ -36,17 +37,20 @@ export function createBackofficeModule(
     soloCoolingOffHours: deps.config.soloCoolingOffHours,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const flags = createFlagService({ database: services.database, staff });
   return {
     definition: defineModule({ name: 'backoffice' }),
     /** No customer routes: /internal/v1 is mounted by apps/api from `internal`. */
     routes: {},
-    internal: internalRoutes({ staff, requests, customers, catalogue: deps.catalogue }),
+    internal: internalRoutes({ staff, requests, customers, catalogue: deps.catalogue, flags }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */
       resolveStaff: staff.resolve,
       requireStepUp: staff.requireStepUp,
       /** Keeps the tenant directory current; `platform` calls it inside its own transaction. */
       directory: { upsert: customers.upsert },
+      /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
+      flags: { isOn: flags.isOn },
       /** Creates or updates a staff account; used by the seed command only. */
       upsertLocalStaff: staff.upsertLocal,
     },
