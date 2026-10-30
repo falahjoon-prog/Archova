@@ -1307,6 +1307,156 @@ export const AddLinkInductionCredentialBody = s.CreateWorkerCredentialRequestSch
 export const SignLinkInductionBody = s.SignInductionRequestSchema;
 export const AskLinkInductionBody = s.AskInductionRequestSchema;
 export const GetLinkInductionTranslationBody = s.TranslateInductionRequestSchema;
+export const ListInspectionTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListInspectionTemplatesQuery = z.object({
+  "published": z.enum(["true", "false"]).optional(),
+});
+export const CreateInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateInspectionTemplateBody = s.CreateInspectionTemplateRequestSchema;
+export const GetInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInspectionTemplateBody = s.UpdateInspectionTemplateRequestSchema;
+export const PublishInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const NewInspectionTemplateVersionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const ListInspectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListInspectionsQuery = z.object({
+  "status": s.InspectionStatusSchema.optional(),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateInspectionBody = s.CreateInspectionRequestSchema;
+export const GetInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const RecordInspectionResponsesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const RecordInspectionResponsesBody = s.RecordInspectionResponsesRequestSchema;
+export const SubmitInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const SubmitInspectionBody = s.SubmitInspectionRequestSchema;
+export const CloseInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationsQuery = z.object({
+  "status": s.ObservationStatusSchema.optional(),
+  "type": s.ObservationTypeSchema.optional(),
+  "assigneeCompanyId": s.CompanyRefSchema.optional(),
+  "priority": s.DefectPrioritySchema.optional(),
+  "overdue": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateObservationBody = s.CreateObservationRequestSchema;
+export const GetObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
+});
+export const UpdateObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
+});
+export const UpdateObservationBody = s.UpdateObservationRequestSchema;
+export const TransitionObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
+});
+export const TransitionObservationBody = s.ObservationTransitionRequestSchema;
+export const ListSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListSwmsQuery = z.object({
+  "status": s.SwmsStatusSchema.optional(),
+  "companyId": s.CompanyRefSchema.optional(),
+  "category": s.HighRiskWorkCategorySchema.optional(),
+  "expired": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSwmsBody = s.CreateSwmsRequestSchema;
+export const GetSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSwmsBody = s.UpdateSwmsRequestSchema;
+export const CheckSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const TransitionSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const TransitionSwmsBody = s.SwmsTransitionRequestSchema;
+export const AcknowledgeSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -4189,6 +4339,294 @@ export const operations = {
     params: null,
     query: null,
     body: GetLinkInductionTranslationBody,
+  },
+  listInspectionTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.read",
+    internal: false,
+    contentType: null,
+    params: ListInspectionTemplatesParams,
+    query: ListInspectionTemplatesQuery,
+    body: null,
+  },
+  createInspectionTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateInspectionTemplateParams,
+    query: null,
+    body: CreateInspectionTemplateBody,
+  },
+  getInspectionTemplate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.read",
+    internal: false,
+    contentType: null,
+    params: GetInspectionTemplateParams,
+    query: null,
+    body: null,
+  },
+  updateInspectionTemplate: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateInspectionTemplateParams,
+    query: null,
+    body: UpdateInspectionTemplateBody,
+  },
+  publishInspectionTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/publish',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: null,
+    params: PublishInspectionTemplateParams,
+    query: null,
+    body: null,
+  },
+  newInspectionTemplateVersion: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/versions',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: null,
+    params: NewInspectionTemplateVersionParams,
+    query: null,
+    body: null,
+  },
+  listInspections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.read",
+    internal: false,
+    contentType: null,
+    params: ListInspectionsParams,
+    query: ListInspectionsQuery,
+    body: null,
+  },
+  createInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: CreateInspectionParams,
+    query: null,
+    body: CreateInspectionBody,
+  },
+  getInspection: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.read",
+    internal: false,
+    contentType: null,
+    params: GetInspectionParams,
+    query: null,
+    body: null,
+  },
+  recordInspectionResponses: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: RecordInspectionResponsesParams,
+    query: null,
+    body: RecordInspectionResponsesBody,
+  },
+  submitInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/submit',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitInspectionParams,
+    query: null,
+    body: SubmitInspectionBody,
+  },
+  closeInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/close',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.close",
+    internal: false,
+    contentType: null,
+    params: CloseInspectionParams,
+    query: null,
+    body: null,
+  },
+  listObservations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: null,
+    params: ListObservationsParams,
+    query: ListObservationsQuery,
+    body: null,
+  },
+  createObservation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateObservationParams,
+    query: null,
+    body: CreateObservationBody,
+  },
+  getObservation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: null,
+    params: GetObservationParams,
+    query: null,
+    body: null,
+  },
+  updateObservation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateObservationParams,
+    query: null,
+    body: UpdateObservationBody,
+  },
+  transitionObservation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}/transition',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionObservationParams,
+    query: null,
+    body: TransitionObservationBody,
+  },
+  listSwms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.read",
+    internal: false,
+    contentType: null,
+    params: ListSwmsParams,
+    query: ListSwmsQuery,
+    body: null,
+  },
+  createSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSwmsParams,
+    query: null,
+    body: CreateSwmsBody,
+  },
+  getSwms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.read",
+    internal: false,
+    contentType: null,
+    params: GetSwmsParams,
+    query: null,
+    body: null,
+  },
+  updateSwms: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateSwmsParams,
+    query: null,
+    body: UpdateSwmsBody,
+  },
+  checkSwms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/check',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.read",
+    internal: false,
+    contentType: null,
+    params: CheckSwmsParams,
+    query: null,
+    body: null,
+  },
+  transitionSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/transition',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.review",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionSwmsParams,
+    query: null,
+    body: TransitionSwmsBody,
+  },
+  acknowledgeSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/acknowledge',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.acknowledge",
+    internal: false,
+    contentType: "application/json",
+    params: AcknowledgeSwmsParams,
+    query: null,
+    body: AcknowledgeSwmsBody,
   },
 } as const satisfies Record<string, OperationDef>;
 

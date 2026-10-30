@@ -21,6 +21,8 @@ export const PLAN_MODULE_KEYS = [
   'submittals',
   'diary',
   'defects',
+  'quality',
+  'safety',
   'photos',
   'meetings',
   'correspondence',
