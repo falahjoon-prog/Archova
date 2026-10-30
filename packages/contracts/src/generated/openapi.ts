@@ -286,6 +286,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a person's access to the project, saying how (X38).
+         * @description `ordinary` lets their phone send the work it had queued before access ended (held for an admin to accept or
+         *     reject); `for_cause` and `wipe_now` do not. Adding the person again starts a new access episode.
+         */
+        post: operations["removeProjectMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/permissions": {
         parameters: {
             query?: never;
@@ -3925,6 +3950,11 @@ export interface components {
             companyId: string;
             permissionTemplateId: string;
         };
+        RemoveProjectMemberRequest: {
+            /** @enum {string} */
+            kind: "ordinary" | "for_cause" | "wipe_now";
+            reason?: string;
+        };
         ProjectMemberPage: {
             data: components["schemas"]["ProjectMember"][];
             nextCursor: string | null;
@@ -7270,6 +7300,37 @@ export interface operations {
         responses: {
             /** @description Added */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeProjectMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveProjectMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Removed */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

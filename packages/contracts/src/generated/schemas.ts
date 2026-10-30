@@ -2303,6 +2303,12 @@ export const RecordAttendanceRequestSchema = z.object({
 }).strict();
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
 
+export const RemoveProjectMemberRequestSchema = z.object({
+  "kind": z.enum(["ordinary", "for_cause", "wipe_now"]),
+  "reason": z.string().max(500).optional(),
+}).strict();
+export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
