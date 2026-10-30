@@ -39,7 +39,7 @@ Use sample data only. Don't put real project data into it.
 
 ## What is in it today
 
-The builder app (sign-in, organisations, projects, drawings, documents, RFIs, transmittals, site diary and sign-ins) and Nova with sample answers. The owner console (`apps/admin`) and the marketing website with its CMS (`apps/site`) don't exist in the code yet, so they aren't in this compose file and there is nothing to open for them. When they land, Jeff adds each one here with its own port, a sample staff sign-in and a section in this guide.
+The builder app (sign-in, organisations, projects, drawings, documents, RFIs, transmittals, site diary, sign-ins and attendance) and Nova with sample answers, plus the background workers: the `worker` (event relay and subscribers) and the `ai-worker` (Nova indexing and the nightly sweep). Without them nothing that reacts to an event would run. The owner console and the marketing website with its CMS are separate apps with their own local guides ([admin-local.md](admin-local.md), [site-local.md](site-local.md)); they aren't in this compose file.
 
 ## Codes and invite links
 

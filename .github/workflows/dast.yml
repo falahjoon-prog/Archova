@@ -13,6 +13,7 @@ on:
         'apps/web/**',
         'packages/contracts/**',
         '.zap/**',
+        'docker-compose.demo.yml',
         '.github/workflows/dast.yml',
       ]
   schedule:
