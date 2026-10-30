@@ -176,7 +176,7 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       return ok({ items: await d.flags.listCohorts() });
     },
     removeCohortMember: async (i) => {
-      await d.flags.removeMember(i.params.id, i.params.orgId);
+      await d.flags.removeMember(me(i), i.params.id, i.params.orgId);
       return { status: 204 };
     },
     listStaff: async () => ok({ items: await d.staff.list() }),

@@ -122,9 +122,10 @@ export const flagTargets = backofficeSchema.table(
 
 export const flagChanges = backofficeSchema.table('flag_changes', {
   id: uuid('id').primaryKey(),
-  flagKey: text('flag_key').notNull(),
+  flagKey: text('flag_key'),
+  cohortId: uuid('cohort_id'),
   summary: text('summary').notNull(),
-  reason: text('reason').notNull(),
+  reason: text('reason'),
   ticketRef: text('ticket_ref'),
   staffId: uuid('staff_id').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

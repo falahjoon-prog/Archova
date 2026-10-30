@@ -87,7 +87,7 @@ export function createFlagService(
           lastChange: last
             ? {
                 summary: last.summary,
-                reason: last.reason,
+                reason: last.reason ?? '',
                 by: last.by,
                 at: last.at.toISOString(),
               }
@@ -211,10 +211,17 @@ export function createFlagService(
     });
   }
 
+  async function logCohort(t: Tx, cohortId: string, summary: string, by: string) {
+    await t.insert(flagChanges).values({ id: uuidv7(), cohortId, summary, staffId: by });
+  }
+
   async function createCohort(staff: StaffContext, input: { name: string; description: string }) {
     const id = uuidv7();
     try {
-      await tx((t) => t.insert(cohorts).values({ id, ...input, createdBy: staff.staffId }));
+      await tx(async (t) => {
+        await t.insert(cohorts).values({ id, ...input, createdBy: staff.staffId });
+        await logCohort(t, id, `Created cohort ${input.name}`, staff.staffId);
+      });
     } catch (e) {
       if (String((e as { cause?: { code?: string } }).cause?.code ?? '') === '23505')
         throw new AppError('backoffice.cohort_exists', 'A cohort with that name exists.');
@@ -227,28 +234,50 @@ export function createFlagService(
     const orgId = decodeId('org', orgRef);
     if (!orgId) throw new AppError('org.not_found');
     await tx(async (t) => {
-      const [c] = await t.select({ id: cohorts.id }).from(cohorts).where(eq(cohorts.id, cohortId));
+      const [c] = await t
+        .select({ name: cohorts.name })
+        .from(cohorts)
+        .where(eq(cohorts.id, cohortId));
       if (!c) throw new AppError('backoffice.cohort_not_found');
       const [org] = await t
-        .select({ id: tenantDirectory.id })
+        .select({ id: tenantDirectory.id, name: tenantDirectory.name })
         .from(tenantDirectory)
         .where(eq(tenantDirectory.id, orgId));
       if (!org) throw new AppError('org.not_found');
-      await t
+      const added = await t
         .insert(cohortMembers)
         .values({ cohortId, orgId, addedBy: staff.staffId })
-        .onConflictDoNothing();
+        .onConflictDoNothing()
+        .returning({ orgId: cohortMembers.orgId });
+      if (added.length)
+        await logCohort(t, cohortId, `Added ${org.name} to cohort ${c.name}`, staff.staffId);
     });
   }
 
-  async function removeMember(cohortId: string, orgRef: string) {
+  async function removeMember(staff: StaffContext, cohortId: string, orgRef: string) {
     const orgId = decodeId('org', orgRef);
     if (!orgId) throw new AppError('org.not_found');
-    await tx((t) =>
-      t
+    await tx(async (t) => {
+      const removed = await t
         .delete(cohortMembers)
-        .where(and(eq(cohortMembers.cohortId, cohortId), eq(cohortMembers.orgId, orgId))),
-    );
+        .where(and(eq(cohortMembers.cohortId, cohortId), eq(cohortMembers.orgId, orgId)))
+        .returning({ orgId: cohortMembers.orgId });
+      if (!removed.length) return;
+      const [c] = await t
+        .select({ name: cohorts.name })
+        .from(cohorts)
+        .where(eq(cohorts.id, cohortId));
+      const [org] = await t
+        .select({ name: tenantDirectory.name })
+        .from(tenantDirectory)
+        .where(eq(tenantDirectory.id, orgId));
+      await logCohort(
+        t,
+        cohortId,
+        `Removed ${org?.name ?? 'a company'} from cohort ${c?.name ?? 'unknown'}`,
+        staff.staffId,
+      );
+    });
   }
 
   /** Server-side evaluation for one org: used by the kernel's `ctx.flags.isOn`. Unknown keys are off. */

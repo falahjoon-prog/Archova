@@ -600,6 +600,16 @@ describe('feature flags and pilot cohorts', () => {
 
     expect(await isOn(key, decodeId('org', pilot.orgId)!)).toBe(true);
 
+    // Cohort changes are audited too: they change which orgs a flag reaches.
+    const audit = await t.adminDb.db.execute(
+      sql`select summary from backoffice.flag_changes where cohort_id = ${cohort.id} order by created_at, id`,
+    );
+    expect((audit.rows as Array<{ summary: string }>).map((r) => r.summary)).toEqual([
+      'Created cohort Flag Pilot Builders Group',
+      'Added Flag Other Builders to cohort Flag Pilot Builders Group',
+      'Removed Flag Other Builders from cohort Flag Pilot Builders Group',
+    ]);
+
     // Kill switch: no approval, everything off, and it is logged.
     const kill = await support.post(`/flags/${key}/kill`, { reason: 'Pilot paused after a bug' });
     expect(kill.statusCode).toBe(200);

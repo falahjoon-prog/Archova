@@ -40,9 +40,11 @@ create table backoffice.flag_targets (
 
 create table backoffice.flag_changes (
   id          uuid primary key,
-  flag_key    text not null,
+  -- Null for cohort changes, which change who a flag reaches without touching one flag.
+  flag_key    text,
+  cohort_id   uuid,
   summary     text not null,
-  reason      text not null,
+  reason      text,
   ticket_ref  text,
   staff_id    uuid not null references backoffice.staff_users (id),
   created_at  timestamptz not null default now()
