@@ -1,4 +1,4 @@
--- Composed from modules/identity/db/migrations/20261030150000_identity_api_tokens.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/identity/db/migrations/20261030153000_identity_api_tokens.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- identity: personal access tokens for the public API (integrations/06 §1-2). A token belongs to one user and one
 -- organisation and carries a set of scopes that can only narrow what that user may do. A tenant table (RLS on org_id):
 -- the API takes the org from the URL and looks the token up inside it, so a token never resolves in another org.
