@@ -3,7 +3,7 @@ import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { StaffRole } from '@archova/contracts';
 import { decodeId } from '@archova/domain';
-import { createOrg, createTestContext, signUp, type TestContext } from './helpers';
+import { createOrg, createProject, createTestContext, signUp, type TestContext } from './helpers';
 
 let t: TestContext;
 const HOST = 'localhost:4000';
@@ -655,5 +655,123 @@ describe('feature flags and pilot cohorts', () => {
     expect((await reader.get('/flags')).statusCode).toBe(200);
     const res = await reader.post('/cohorts', { name: 'Not allowed' });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('customer account actions', () => {
+  async function company(label: string) {
+    const { browser } = await signUp(t.app, label);
+    const org = await createOrg(browser, `Account ${label} Builders`);
+    const project = await createProject(browser, org.id, { name: 'Wharf St', state: 'QLD' });
+    const owner = await staff(['owner']);
+    const found = (
+      (await owner.get(`/orgs?q=${encodeURIComponent(`Account ${label}`)}`)).json() as {
+        items: Array<{ orgId: string }>;
+      }
+    ).items[0]!;
+    return {
+      browser,
+      owner,
+      orgRef: found.orgId,
+      attendance: `/v1/orgs/${org.id}/projects/${project.id}/attendance/sites`,
+      projects: `/v1/orgs/${org.id}/projects`,
+    };
+  }
+  const act = (c: Console, orgRef: string, action: string, body: Record<string, unknown>) =>
+    c.post(`/orgs/${orgRef}/actions/${action}`, {
+      reason: 'Customer asked in the ticket',
+      ticketRef: 'SUP-101',
+      ...body,
+    });
+
+  it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
+    const c = await company('trial');
+    const support = await staff(['support']);
+    expect(
+      (await support.post(`/orgs/${c.orgRef}/actions/trial-extend`, { days: 10 })).statusCode,
+    ).toBe(422);
+    expect((await act(support, c.orgRef, 'trial-extend', { days: 31 })).statusCode).toBe(422);
+    const res = await act(support, c.orgRef, 'trial-extend', { days: 30 });
+    expect(res.statusCode, res.body).toBe(200);
+    const detail = res.json() as {
+      account: { plan: string; trialExtendedDays: number };
+      actions: Array<{ kind: string; ticketRef: string; summary: string }>;
+    };
+    expect(detail.account).toMatchObject({ plan: 'trial', trialExtendedDays: 30 });
+    expect(detail.actions[0]).toMatchObject({ kind: 'trial.extend', ticketRef: 'SUP-101' });
+    // 30 + 30 + 30 + 30 = 120 is allowed; the fifth extension needs an Owner.
+    for (let n = 0; n < 3; n++)
+      expect((await act(support, c.orgRef, 'trial-extend', { days: 30 })).statusCode).toBe(200);
+    const over = await act(support, c.orgRef, 'trial-extend', { days: 1 });
+    expect(over.statusCode).toBe(422);
+    expect(code(over)).toBe('backoffice.trial_limit');
+    expect((await act(c.owner, c.orgRef, 'trial-extend', { days: 1 })).statusCode).toBe(200);
+  });
+
+  it('moves a company to a plan, which changes its entitlements, and refuses a downgrade', async () => {
+    const c = await company('plan');
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+
+    const sales = await staff(['sales']);
+    // Plan changes need a fresh password check, and support cannot make them.
+    expect(
+      (await act(await staff(['support']), c.orgRef, 'change-plan', { planCode: 'team' }))
+        .statusCode,
+    ).toBe(403);
+    expect((await act(sales, c.orgRef, 'change-plan', { planCode: 'nope' })).statusCode).toBe(404);
+    const team = await act(sales, c.orgRef, 'change-plan', { planCode: 'team' });
+    expect(team.statusCode, team.body).toBe(200);
+    expect(team.json()).toMatchObject({ plan: 'team', state: 'active' });
+    // The Team plan has no workforce module.
+    const denied = await c.browser.get(c.attendance);
+    expect(denied.statusCode).toBe(403);
+    expect(code(denied)).toBe('entitlement-required');
+
+    const business = await act(sales, c.orgRef, 'change-plan', { planCode: 'business' });
+    expect(business.statusCode, business.body).toBe(200);
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+
+    const down = await act(sales, c.orgRef, 'change-plan', { planCode: 'team' });
+    expect(down.statusCode).toBe(422);
+    expect(code(down)).toBe('backoffice.downgrade_at_term_end');
+  });
+
+  it('suspends and reactivates: only an Owner or Security lead, read-only while suspended', async () => {
+    const c = await company('susp');
+    expect((await c.browser.post(c.projects, { name: 'Before', state: 'QLD' })).statusCode).toBe(
+      201,
+    );
+
+    const support = await staff(['support']);
+    expect((await act(support, c.orgRef, 'suspend', { category: 'abuse' })).statusCode).toBe(403);
+    // Non-payment is not a suspension reason.
+    expect((await act(c.owner, c.orgRef, 'suspend', { category: 'non_payment' })).statusCode).toBe(
+      422,
+    );
+
+    const lead = await staff(['security_lead']);
+    const done = await act(lead, c.orgRef, 'suspend', { category: 'security' });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(done.json()).toMatchObject({
+      account: { state: 'suspended', suspended: { category: 'security' } },
+    });
+    expect(code(await act(lead, c.orgRef, 'suspend', { category: 'security' }))).toBe(
+      'backoffice.already_suspended',
+    );
+    // Reads still work; writes stop.
+    expect((await c.browser.get(c.projects)).statusCode).toBe(200);
+    const blocked = await c.browser.post(c.projects, { name: 'During', state: 'QLD' });
+    expect(blocked.statusCode).toBe(403);
+    expect(code(blocked)).toBe('org.read_only');
+    expect(
+      ((await c.owner.get('/orgs?q=Account%20susp')).json() as { items: Array<{ state: string }> })
+        .items[0]!.state,
+    ).toBe('suspended');
+
+    expect((await act(lead, c.orgRef, 'reactivate', {})).statusCode).toBe(200);
+    expect((await c.browser.post(c.projects, { name: 'After', state: 'QLD' })).statusCode).toBe(
+      201,
+    );
+    expect(code(await act(lead, c.orgRef, 'reactivate', {}))).toBe('backoffice.not_suspended');
   });
 });
