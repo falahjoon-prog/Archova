@@ -37,6 +37,8 @@ const apiRfi = (over: Record<string, unknown> = {}) => ({
   costEstimate: null,
   scheduleImpactDays: null,
   delayDays: null,
+  specSection: '03 30 00 Concrete',
+  location: 'Level 2, gridline C',
   pin: { drawingRevisionId: 'drv_e301a', x: 0.4, y: 0.6 },
   officialResponseId: null,
   createdBy: 'usr_pm',
@@ -77,6 +79,8 @@ describe('RFIs API source', () => {
         ballInCourtId: 'usr_elec',
         ballInCourtCompanyId: 'cmp_elec',
         drawing: { sheetId: '', revisionId: 'drv_e301a', label: 'Drawing' },
+        specSection: '03 30 00 Concrete',
+        location: 'Level 2, gridline C',
         version: 3,
       }),
     ]);
@@ -156,12 +160,43 @@ describe('RFIs API source', () => {
       distributionCompanyIds: [],
       costImpact: 'tbc',
       isPrivate: false,
+      specSection: '0331',
+      location: 'Retail 2',
     });
     expect(fake.callsTo('POST', P)[0]!.init.params?.header).toHaveProperty('Idempotency-Key');
     expect(fake.callsTo('POST', `${P}/{rfiId}/open`)[0]!.init.params?.header).toEqual({
       'If-Match': '"1"',
     });
     expect(opened).toMatchObject({ status: 'open', number: 4 });
+  });
+
+  it('clears the spec section and location on edit, and leaves them out on create when empty', async () => {
+    fake.on('POST', P, () => ({ rfi: apiRfi({ status: 'draft', version: 1 }), responses: [] }));
+    fake.on('GET', `${P}/{rfiId}`, () => ({ rfi: apiRfi(), responses: [] }));
+    fake.on('PATCH', `${P}/{rfiId}`, () => ({ rfi: apiRfi({ specSection: null }), responses: [] }));
+    const input = {
+      subject: 'S',
+      question: 'Q',
+      assigneeId: null,
+      dueDate: null,
+      distributionCompanyIds: [],
+      costImpact: null,
+      scheduleImpactDays: null,
+      drawing: null,
+      specSection: null,
+      location: null,
+      isPrivate: false,
+    };
+    const source = createRfisApi('org_1');
+    await source.create('prj_1', input, actor, false);
+    const created = fake.callsTo('POST', P)[0]!.init.body as Record<string, unknown>;
+    expect(created).not.toHaveProperty('specSection');
+    expect(created).not.toHaveProperty('location');
+    await source.update('prj_1', 'rfi_1', input, actor);
+    expect(fake.callsTo('PATCH', `${P}/{rfiId}`)[0]!.init.body).toMatchObject({
+      specSection: null,
+      location: null,
+    });
   });
 
   it('shows the activity feed with who did what, and a due date change as before and after', async () => {
