@@ -41,6 +41,8 @@ const nextConfig: NextConfig = {
   async headers() {
     const scriptSrc = isDev ? "'self' 'unsafe-inline' 'unsafe-eval'" : "'self' 'unsafe-inline'";
     const headers = [
+      // The link token must not leak through a referrer to anything the page links to (Sam 11 §3).
+      { key: 'Referrer-Policy', value: 'no-referrer' },
       {
         key: 'Content-Security-Policy',
         value: `script-src ${scriptSrc}; object-src 'none'; base-uri 'self'; frame-ancestors 'none'`,

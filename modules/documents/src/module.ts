@@ -25,7 +25,7 @@ export function createDocumentsModule(
     access: AccessService;
     platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
     files: Pick<FilesModule['api'], 'getFile' | 'signTiles' | 'downloadUrl'>;
-    identity: Pick<IdentityApi, 'findUserByEmail'>;
+    identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser'>;
     /** Transmittal emails for recipients without an account (X45). */
     links: {
       messages: MessageSender;

@@ -48,6 +48,10 @@ export const TRANSMITTAL_LINK_ENTITY = 'transmittal';
 export const TRANSMITTAL_LINK_ACTIONS = ['view', 'download', 'acknowledge'] as const;
 /** Sam 11 §2: a link allows 50 views by default. */
 const TRANSMITTAL_LINK_MAX_USES = 50;
+/** Sam 11 §6: links created per org per day, recipients per send, and replacement links per recipient per day. */
+export const LINKS_PER_ORG_DAY = 2000;
+export const LINK_RECIPIENTS_PER_SEND = 100;
+export const RESENDS_PER_RECIPIENT_DAY = 3;
 
 /** A new link for a recipient with no account; the token is shown once, in their email. */
 export interface IssuedLink {
@@ -72,9 +76,25 @@ export function createTransmittalService(
   c: DocumentsContext,
   documents: DocumentService,
   drawings: DrawingService,
+  clock: () => Date = () => new Date(),
 ) {
   const issuer = (scope: TenantScope, projectId: string) =>
     c.access.can(scope, 'documents.transmittals.manage', { projectId });
+
+  /** Links created in the last day: for the org (RLS limits the count to it), or for one recipient on one transmittal. */
+  async function linksInLastDay(
+    scope: TenantScope,
+    filter?: { transmittalId: string; email: string },
+  ): Promise<number> {
+    const since = new Date(clock().getTime() - 86_400_000).toISOString();
+    const res = await scope.tx.execute<{ n: string }>(sql`
+      select count(*) as n from shared.access_links
+      where entity_type = ${TRANSMITTAL_LINK_ENTITY} and created_at > ${since}
+      ${filter ? sql`and entity_id = ${filter.transmittalId} and recipient_email = ${filter.email}` : sql``}`);
+    return Number(res.rows[0]!.n);
+  }
+
+  const tooMany = (message: string) => new AppError('access_link.rate_limited', message);
 
   async function list(
     scope: TenantScope,
@@ -269,8 +289,24 @@ export function createTransmittalService(
     const items = await itemsOf(scope, projectId, id);
     if (!items.length)
       throw new AppError('transmittal.empty', 'Add at least one document or drawing.');
+    const pending = await scope.tx
+      .select({ userId: transmittalRecipients.userId })
+      .from(transmittalRecipients)
+      .where(eq(transmittalRecipients.transmittalId, id));
+    const linkCount = pending.filter((r) => !r.userId).length;
+    if (linkCount > LINK_RECIPIENTS_PER_SEND)
+      throw new AppError('validation_failed', 'Too many recipients without an account.', [
+        {
+          path: 'recipients',
+          message: `At most ${LINK_RECIPIENTS_PER_SEND} people without an account per transmittal`,
+        },
+      ]);
+    if (linkCount && (await linksInLastDay(scope)) + linkCount > LINKS_PER_ORG_DAY)
+      throw tooMany(
+        'Your organisation has sent as many links as it can today. Try again tomorrow.',
+      );
     const number = await nextNumber(scope, projectId, 'transmittal');
-    const now = new Date();
+    const now = clock();
     const [row] = await scope.tx
       .update(transmittals)
       .set({
@@ -341,7 +377,7 @@ export function createTransmittalService(
     if (!recipientIds.length) return;
     await scope.tx
       .update(transmittalRecipients)
-      .set({ deliveredAt: new Date() })
+      .set({ deliveredAt: clock() })
       .where(
         and(
           inArray(transmittalRecipients.id, recipientIds),
@@ -371,8 +407,17 @@ export function createTransmittalService(
         'transmittal.has_account',
         'This person opens it from their Archova account.',
       );
+    if (
+      (await linksInLastDay(scope, { transmittalId: id, email: r.email })) >
+      RESENDS_PER_RECIPIENT_DAY
+    )
+      throw tooMany('That link has been resent enough times today. Try again tomorrow.');
+    if ((await linksInLastDay(scope)) >= LINKS_PER_ORG_DAY)
+      throw tooMany(
+        'Your organisation has sent as many links as it can today. Try again tomorrow.',
+      );
     if (r.accessLinkId) await revokeAccessLink(scope, r.accessLinkId);
-    const expiresAt = new Date(Date.now() + ACCESS_LINK_DEFAULT_DAYS * 86_400_000);
+    const expiresAt = new Date(clock().getTime() + ACCESS_LINK_DEFAULT_DAYS * 86_400_000);
     const { link, token } = await createAccessLink(scope, {
       projectId,
       entityType: TRANSMITTAL_LINK_ENTITY,
