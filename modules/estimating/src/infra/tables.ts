@@ -137,7 +137,11 @@ export const takeoffMeasurements = estimatingSchema.table('takeoff_measurements'
   label: text('label').notNull(),
   kind: text('kind').$type<MeasurementKind>().notNull(),
   geometry: jsonb('geometry')
-    .$type<{ type: 'polyline' | 'polygon' | 'points'; points: number[][] }>()
+    .$type<{
+      type: 'polyline' | 'polygon' | 'points';
+      points: number[][];
+      holes?: number[][][];
+    }>()
     .notNull(),
   quantity: numeric('quantity', { precision: 18, scale: 3 }).notNull(),
   unit: text('unit').notNull(),

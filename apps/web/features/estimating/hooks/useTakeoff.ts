@@ -5,10 +5,20 @@ import type { SheetSize } from '@archova/markup';
 import { queryKeys } from '@archova/query';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useActor } from '@/shared/providers/useActor';
-import { takeoffSource } from '../data/takeoff-source';
+import { useMemo } from 'react';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { createTakeoffApi } from '../data/takeoff-api';
+import { takeoffSource as previewSource, type TakeoffSource } from '../data/takeoff-source';
 import type { NewMeasurement, TakeoffMeasurement } from '../lib/takeoff-types';
 
+/** The API once the estimating endpoints are reachable; the in-browser preview store in preview mode and tests. */
+export function useTakeoffSource(): TakeoffSource {
+  const { orgId } = useCurrentOrg();
+  return useMemo(() => (previewDataOnly ? previewSource : createTakeoffApi(orgId)), [orgId]);
+}
+
 export function useMeasurements(projectId: string, revisionIds: readonly string[]) {
+  const takeoffSource = useTakeoffSource();
   const { orgId } = useCurrentOrg();
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'takeoff-measurements', { revisionIds }),
@@ -18,6 +28,7 @@ export function useMeasurements(projectId: string, revisionIds: readonly string[
 }
 
 export function useTakeoffMutations(projectId: string) {
+  const takeoffSource = useTakeoffSource();
   const { orgId } = useCurrentOrg();
   const actor = useActor();
   const qc = useQueryClient();

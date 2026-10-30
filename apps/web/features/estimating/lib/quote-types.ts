@@ -3,6 +3,7 @@
 // the estimating endpoints land.
 
 export type PackageStatus = 'draft' | 'out_to_tender' | 'closed' | 'awarded' | 'cancelled';
+export type PackageAction = 'send' | 'close' | 'reopen' | 'cancel';
 export type InviteStatus = 'invited' | 'viewed' | 'declined' | 'intends_to_quote' | 'submitted';
 export type QuoteStatus = 'reading' | 'ready_to_review' | 'confirmed' | 'superseded' | 'declined';
 
@@ -36,7 +37,7 @@ export interface TenderPackage {
   name: string;
   trade: string;
   status: PackageStatus;
-  dueAt: string;
+  dueAt: string | null;
   scope: ScopeLine[];
   documents: Array<{ id: string; label: string }>;
   invites: PackageInvite[];
