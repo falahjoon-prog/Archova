@@ -54,6 +54,10 @@ export const PROBLEM_CODES = {
   'backoffice.plan_draft_pending': 409,
   'backoffice.notice_too_short': 422,
   'backoffice.local_login_disabled': 403,
+  'backoffice.flag_not_found': 404,
+  'backoffice.cohort_not_found': 404,
+  'backoffice.cohort_exists': 409,
+  'backoffice.owner_required': 403,
   // files
   'upload.not_found': 404,
   'upload.expired': 410,

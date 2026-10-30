@@ -4,6 +4,7 @@ import { decodeId } from '@archova/domain';
 import { AppError } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
+import type { FlagService } from '../application/flags';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
 
@@ -36,6 +37,7 @@ export interface InternalDeps {
   requests: RequestService;
   customers: CustomerService;
   catalogue: CatalogueService;
+  flags: FlagService;
 }
 
 const me = (input: { staff: StaffContext | null }) => {
@@ -158,6 +160,25 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     approveRequest: async (i) => ok(await d.requests.approve(me(i), i.params.id)),
     rejectRequest: async (i) => ok(await d.requests.reject(me(i), i.params.id, i.body.reason)),
     cancelRequest: async (i) => ok(await d.requests.cancel(me(i), i.params.id)),
+    listFlags: async () => ok({ items: await d.flags.list() }),
+    updateFlag: async (i) => {
+      await d.flags.update(me(i), i.params.key, i.body);
+      return ok({ items: await d.flags.list() });
+    },
+    killFlag: async (i) => {
+      await d.flags.kill(me(i), i.params.key, i.body.reason);
+      return ok({ items: await d.flags.list() });
+    },
+    listCohorts: async () => ok({ items: await d.flags.listCohorts() }),
+    createCohort: async (i) => ok(await d.flags.createCohort(me(i), i.body), 201),
+    addCohortMember: async (i) => {
+      await d.flags.addMember(me(i), i.params.id, i.body.orgId);
+      return ok({ items: await d.flags.listCohorts() });
+    },
+    removeCohortMember: async (i) => {
+      await d.flags.removeMember(me(i), i.params.id, i.params.orgId);
+      return { status: 204 };
+    },
     listStaff: async () => ok({ items: await d.staff.list() }),
   };
 }

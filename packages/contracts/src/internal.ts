@@ -86,6 +86,15 @@ export type PlanDraftInput = z.infer<typeof PlanDraftInput>;
 
 const orgRef = z.string().min(1).max(40);
 
+/** A change to one flag. Orgs and cohorts take effect at once; all-orgs and percentage rollouts are Owner-only. */
+export const FlagChangeInput = z.discriminatedUnion('scope', [
+  z.object({ scope: z.literal('org'), orgId: orgRef, on: z.boolean(), reason }),
+  z.object({ scope: z.literal('cohort'), cohortId: uuid, on: z.boolean(), reason }),
+  z.object({ scope: z.literal('all'), on: z.boolean(), reason }),
+  z.object({ scope: z.literal('percent'), percent: z.number().int().min(0).max(100), reason }),
+]);
+export type FlagChangeInput = z.infer<typeof FlagChangeInput>;
+
 export type StaffDto = {
   id: string;
   email: string;
@@ -170,6 +179,25 @@ export type OrgListItemDto = {
   seats: number | null;
   trialEndsAt: string | null;
   createdAt: string;
+};
+
+export type FlagOrgRef = { orgId: string; name: string };
+export type FlagDto = {
+  key: string;
+  description: string;
+  owner: string;
+  removeBy: string;
+  enabledForAll: boolean;
+  percent: number;
+  orgs: FlagOrgRef[];
+  cohorts: Array<{ id: string; name: string }>;
+  lastChange: { summary: string; reason: string; by: string; at: string } | null;
+};
+export type CohortDto = {
+  id: string;
+  name: string;
+  description: string;
+  members: FlagOrgRef[];
 };
 
 export type Page<T> = { items: T[]; nextCursor: string | null };
@@ -396,6 +424,72 @@ export const internalOperations = {
     auth: 'staff',
     permission: 'backoffice.requests.read',
     params: id,
+    query: noParams,
+    body: null,
+  }),
+  listFlags: op({
+    method: 'GET',
+    path: '/internal/v1/flags',
+    auth: 'staff',
+    permission: 'backoffice.flags.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  updateFlag: op({
+    method: 'PUT',
+    path: '/internal/v1/flags/{key}',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: z.object({ key: slug }),
+    query: noParams,
+    body: FlagChangeInput,
+  }),
+  killFlag: op({
+    method: 'POST',
+    path: '/internal/v1/flags/{key}/kill',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: z.object({ key: slug }),
+    query: noParams,
+    body: z.object({ reason }),
+  }),
+  listCohorts: op({
+    method: 'GET',
+    path: '/internal/v1/cohorts',
+    auth: 'staff',
+    permission: 'backoffice.flags.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  createCohort: op({
+    method: 'POST',
+    path: '/internal/v1/cohorts',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: noParams,
+    query: noParams,
+    body: z.object({
+      name: z.string().trim().min(2).max(60),
+      description: z.string().trim().max(200).default(''),
+    }),
+  }),
+  addCohortMember: op({
+    method: 'POST',
+    path: '/internal/v1/cohorts/{id}/members',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: id,
+    query: noParams,
+    body: z.object({ orgId: orgRef }),
+  }),
+  removeCohortMember: op({
+    method: 'DELETE',
+    path: '/internal/v1/cohorts/{id}/members/{orgId}',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: z.object({ id: uuid, orgId: orgRef }),
     query: noParams,
     body: null,
   }),
