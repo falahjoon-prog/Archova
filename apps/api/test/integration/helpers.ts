@@ -301,6 +301,25 @@ export async function addMember(
   return { companyId: company.id };
 }
 
+/** Takes `email` off the project (a no-op if they are not on it), the way an admin offboards someone (X38). */
+export async function removeMember(
+  owner: Browser,
+  orgId: string,
+  projectId: string,
+  email: string,
+  kind: 'ordinary' | 'for_cause' | 'wipe_now' = 'ordinary',
+) {
+  const base = `/v1/orgs/${orgId}/projects/${projectId}`;
+  const members = (await owner.get(`${base}/members`)).json().data as Array<{
+    id: string;
+    email: string;
+  }>;
+  const member = members.find((m) => m.email === email);
+  if (!member) return;
+  const res = await owner.post(`${base}/members/${member.id}/remove`, { kind });
+  if (res.statusCode !== 200) throw new Error(`removeMember failed: ${res.statusCode} ${res.body}`);
+}
+
 /** The `data` of every outbox event of a type in an org, oldest first (public org and user ids). */
 export async function outboxData<T>(
   t: TestContext,
