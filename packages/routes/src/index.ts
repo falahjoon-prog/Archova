@@ -13,6 +13,7 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
+  apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,
