@@ -252,4 +252,87 @@ describe('RFIs API source', () => {
       aiSuggestionId: 'ais_9',
     });
   });
+
+  it('drafts an RFI from a note, and records the draft as edited when the person changed it', async () => {
+    const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai';
+    fake.on('POST', `${AI}/rfi-drafts`, () => ({
+      runId: 'air_1',
+      suggestionId: 'ais_7',
+      subject: 'Slab edge at grid C',
+      question: 'Is the edge detail on S-201 Rev B correct?',
+      discipline: 'structural',
+      references: [
+        {
+          sourceType: 'drawing',
+          sourceId: 'dsh_1',
+          revisionId: 'drv_1',
+          revision: 'B',
+          title: 'Slab plan',
+          reference: 'S-201',
+          page: 1,
+          quote: 'edge detail',
+        },
+      ],
+      gaps: ['location'],
+      unsupportedNumbers: ['150'],
+      similarRfis: [{ id: 'rfi_9', number: 'RFI-009', subject: 'Slab edge', status: 'open' }],
+      suggestedAssigneeIds: [],
+      drawing: {
+        drawingRevisionId: 'drv_1',
+        sheetNumber: 'S-201',
+        title: 'Slab plan',
+        rev: 'B',
+        pin: { x: 0.2, y: 0.7 },
+        scanned: false,
+      },
+    }));
+    const source = createRfisApi('org_1');
+    const d = await source.novaDraftRfi('prj_1', ' slab edge looks wrong ');
+    expect(fake.callsTo('POST', `${AI}/rfi-drafts`)[0]!.init.body).toEqual({
+      note: 'slab edge looks wrong',
+    });
+    expect(d).toMatchObject({
+      suggestionId: 'ais_7',
+      gaps: ['location'],
+      unsupportedNumbers: ['150'],
+      references: [{ kind: 'drawing', label: 'S-201 Rev B', quote: 'edge detail' }],
+      drawing: { revisionId: 'drv_1', label: 'S-201 Rev B', x: 0.2, y: 0.7 },
+    });
+
+    fake.on('POST', P, () => ({ rfi: apiRfi({ status: 'draft', number: null }), responses: [] }));
+    fake.on('POST', `${AI}/suggestions/{suggestionId}/decision`, () => ({ id: 'ais_7' }));
+    await source.create(
+      'prj_1',
+      {
+        subject: 'Slab edge at grid C',
+        question: 'Changed wording.',
+        assigneeId: null,
+        dueDate: null,
+        distributionCompanyIds: [],
+        costImpact: null,
+        scheduleImpactDays: null,
+        drawing: {
+          sheetId: '',
+          revisionId: 'drv_1',
+          label: 'S-201 Rev B',
+          pin: { x: 0.2, y: 0.7 },
+        },
+        specSection: null,
+        location: null,
+        isPrivate: false,
+        nova: { suggestionId: 'ais_7', subject: 'Slab edge at grid C', question: 'Original.' },
+      },
+      actor,
+      false,
+    );
+    expect(fake.callsTo('POST', P)[0]!.init.body).toMatchObject({
+      aiSuggestionId: 'ais_7',
+      pin: { drawingRevisionId: 'drv_1', x: 0.2, y: 0.7 },
+    });
+    expect(fake.callsTo('POST', `${AI}/suggestions/{suggestionId}/decision`)[0]!.init.body).toEqual(
+      {
+        decision: 'edited',
+      },
+    );
+  });
 });

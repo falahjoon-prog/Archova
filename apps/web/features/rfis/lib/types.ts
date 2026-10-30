@@ -47,7 +47,12 @@ export interface Rfi {
   dueDate: string | null;
   costImpact: CostImpact | null;
   scheduleImpactDays: number | null;
-  drawing: { sheetId: string; revisionId: string; label: string } | null;
+  drawing: {
+    sheetId: string;
+    revisionId: string;
+    label: string;
+    pin?: { x: number; y: number };
+  } | null;
   specSection: string | null;
   location: string | null;
   responses: RfiResponse[];
@@ -72,6 +77,8 @@ export interface RfiInput {
   specSection: string | null;
   location: string | null;
   isPrivate: boolean;
+  /** Set when the form was filled from a Nova draft, so the RFI records where it started. */
+  nova?: { suggestionId: string; subject: string; question: string };
 }
 
 /** Nova output, always a suggestion with sources (P6). */
@@ -79,6 +86,28 @@ export interface NovaDraft {
   id: string;
   text: string;
   citations: Citation[];
+}
+
+/** Nova's draft of a new RFI from a site note (F3): it fills the form, and the person edits and sends it. */
+export interface NovaRfiDraft {
+  suggestionId: string;
+  subject: string;
+  question: string;
+  discipline: string | null;
+  /** Drawings and spec clauses the question refers to, with the words that make them relevant. */
+  references: Array<{
+    id: string;
+    kind: 'document' | 'drawing' | 'rfi' | 'defect' | 'diary';
+    sourceId: string;
+    revisionId: string;
+    label: string;
+    quote: string;
+  }>;
+  /** What a complete RFI states that the note didn't: location, drawing_reference, proposed_solution, impact. */
+  gaps: string[];
+  unsupportedNumbers: string[];
+  similar: Array<{ id: string; number: string | null; subject: string }>;
+  drawing: { revisionId: string; label: string; x: number; y: number; scanned: boolean } | null;
 }
 
 export const STATUS_LABELS: Record<RfiStatus, string> = {
