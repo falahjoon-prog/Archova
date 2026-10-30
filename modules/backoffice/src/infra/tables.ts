@@ -134,7 +134,9 @@ export const flagChanges = backofficeSchema.table('flag_changes', {
 export const orgActions = backofficeSchema.table('org_actions', {
   id: uuid('id').primaryKey(),
   targetOrgId: uuid('target_org_id').notNull(),
-  kind: text('kind').$type<'trial.extend' | 'plan.change' | 'suspend' | 'reactivate'>().notNull(),
+  kind: text('kind')
+    .$type<'trial.extend' | 'plan.change' | 'suspend' | 'reactivate' | 'credits.grant'>()
+    .notNull(),
   summary: text('summary').notNull(),
   reason: text('reason').notNull(),
   ticketRef: text('ticket_ref').notNull(),

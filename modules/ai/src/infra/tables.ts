@@ -75,6 +75,18 @@ export const usageLedger = ai.table('ai_usage_ledger', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const creditGrants = ai.table('ai_credit_grants', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  periodStart: date('period_start', { mode: 'string' }).notNull(),
+  credits: numeric('credits', { precision: 12, scale: 2, mode: 'number' }).notNull(),
+  kind: text('kind').$type<'top_up' | 'goodwill' | 'promo'>().notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  grantedBy: uuid('granted_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type SuggestionStatus = 'pending' | 'accepted' | 'edited' | 'rejected';
 
 export const suggestions = ai.table('ai_suggestions', {

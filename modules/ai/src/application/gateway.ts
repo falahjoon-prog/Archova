@@ -21,6 +21,7 @@ import { TASK_CREDITS, creditsFor, decideBudget } from '../domain/credits';
 import { ProviderError, type ModelProvider, type OcrResponse } from '../domain/provider';
 import { OCR_MODEL, SPEECH_MODEL, type EmbeddingRoute, type RoutingTable } from '../domain/routing';
 import { orgSettings, requests, usageLedger } from '../infra/tables';
+import { monthStartOf, type CreditGrantService } from './credit-grants';
 import { invokePrompt, type CallRecord } from './invoke';
 import { createOnceADay } from './once-a-day';
 
@@ -43,6 +44,8 @@ export interface GatewayDeps {
   /** The org's IANA zone, for the ledger day (X34). Supplied by `platform`. */
   orgTimeZone: (scope: TenantScope) => Promise<string>;
   credits?: Readonly<Record<string, number>>;
+  /** Credits staff granted on top of the plan allowance for the month. */
+  grants: Pick<CreditGrantService, 'grantedFor'>;
   /** Per-user limit on interactive runs (ai/05 §4): stops scripts and loops, not normal use. */
   rateLimit?: { runs: number; windowS: number };
   /** Per-user limit on query embeddings a person triggers by searching (F6): each pays for an embedding. */
@@ -179,11 +182,13 @@ export function createGateway(deps: GatewayDeps) {
 
     const tz = await deps.orgTimeZone(scope);
     const day = localDateOf(now(), tz);
-    const used = await creditsUsedSince(scope, `${day.slice(0, 7)}-01`);
+    const used = await creditsUsedSince(scope, monthStartOf(day));
+    const granted = await deps.grants.grantedFor(scope, monthStartOf(day));
     const decision = decideBudget(prompt.kind, credits, {
       planAllowance: ctx.entitlements.limits['limit.ai_credits'] ?? null,
       orgCap: settings?.monthlyCreditCap ?? null,
       used,
+      granted,
     });
     if (!decision.allow)
       throw new AppError(

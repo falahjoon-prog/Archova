@@ -97,6 +97,7 @@ export const AiUsageSchema = z.object({
   "periodStart": z.string().date(),
   "timezone": z.string(),
   "allowance": z.number().nullable(),
+  "granted": z.number(),
   "used": z.number(),
   "remaining": z.number().nullable(),
   "byFeature": z.array(z.object({

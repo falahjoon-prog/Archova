@@ -1,5 +1,10 @@
 import { desc, eq } from 'drizzle-orm';
-import type { OrgAccountDto, OrgActionDto, SuspendCategory } from '@archova/contracts';
+import type {
+  CreditGrantKind,
+  OrgAccountDto,
+  OrgActionDto,
+  SuspendCategory,
+} from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
 import type { AccountService, AccountSeed, OrgAccount } from '@archova/mod-billing';
@@ -8,6 +13,14 @@ import type { StaffContext } from './staff';
 
 export interface OrgActionDeps extends Pick<KernelServices, 'database'> {
   accounts: AccountService;
+  /** Nova credit grants live in the `ai` ledger; supplied lazily because `ai` is built after this module. */
+  credits: () => {
+    grantCredits: (
+      orgId: string,
+      staffId: string,
+      input: { credits: number; kind: CreditGrantKind; reason: string; ticketRef: string },
+    ) => Promise<{ id: string; periodStart: string }>;
+  };
   now?: () => Date;
 }
 
@@ -180,7 +193,30 @@ export function createOrgActionService(deps: OrgActionDeps) {
     });
   }
 
-  return { account, list, extendTrial, changePlan, suspend, reactivate };
+  /**
+   * Adds Nova credits to the org's current month. The grant carries its own reason and ticket in the ai ledger, so it is
+   * written first; the action log row follows. A suspended or cancelled org may still be granted credits.
+   */
+  async function grantCredits(
+    staff: StaffContext,
+    orgId: string,
+    input: Common & { credits: number; kind: CreditGrantKind },
+  ) {
+    await tx((t) => seed(t, orgId));
+    const { periodStart } = await deps.credits().grantCredits(orgId, staff.staffId, input);
+    await tx((t) =>
+      log(
+        t,
+        orgId,
+        staff,
+        'credits.grant',
+        `Granted ${input.credits} Nova credits (${input.kind.replace('_', '-')}) for ${periodStart.slice(0, 7)}`,
+        input,
+      ),
+    );
+  }
+
+  return { account, list, grantCredits, extendTrial, changePlan, suspend, reactivate };
 }
 
 export type OrgActionService = ReturnType<typeof createOrgActionService>;

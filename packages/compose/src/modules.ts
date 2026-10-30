@@ -3,6 +3,7 @@ import type { Database, KernelServices, MessageSender, RouteTable } from '@archo
 import {
   AI_PERMISSIONS,
   createAiModule,
+  type AiApi,
   type AiConfig,
   type ModelProvider,
   type RasterizePage,
@@ -66,11 +67,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
-  // backoffice's support view reads through platform, which is built after it.
+  // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
+  let aiApi: AiApi | null = null;
   let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
+    credits: () => ({ grantCredits: aiApi!.grantCredits }),
     supportReads: () => ({
       projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
     }),
@@ -198,6 +201,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
+  aiApi = ai.api;
 
   const diary = createDiaryModule(services, {
     access: access.api,

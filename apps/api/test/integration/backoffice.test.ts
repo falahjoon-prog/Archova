@@ -684,6 +684,26 @@ describe('customer account actions', () => {
       ...body,
     });
 
+  it('grants Nova credits for the month, needs the credits permission and step-up, and logs it', async () => {
+    const c = await company('credits');
+    const sales = await staff(['sales']);
+    expect(
+      (await act(sales, c.orgRef, 'grant-credits', { credits: 20, kind: 'goodwill' })).statusCode,
+    ).toBe(403);
+    const ops = await staff(['billing_ops']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    expect(
+      (await act(ops, c.orgRef, 'grant-credits', { credits: 5000, kind: 'top_up' })).statusCode,
+    ).toBe(422);
+    const res = await act(ops, c.orgRef, 'grant-credits', { credits: 20, kind: 'goodwill' });
+    expect(res.statusCode, res.body).toBe(200);
+    const detail = res.json() as { actions: Array<{ kind: string; summary: string }> };
+    expect(detail.actions[0]).toMatchObject({ kind: 'credits.grant' });
+    expect(detail.actions[0]!.summary).toMatch(/20 Nova credits/);
+    const usage = await c.browser.get(`${c.projects.replace('/projects', '')}/ai/usage`);
+    expect(usage.json()).toMatchObject({ granted: 20 });
+  });
+
   it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
     const c = await company('trial');
     const support = await staff(['support']);

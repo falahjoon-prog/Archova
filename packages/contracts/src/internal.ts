@@ -187,6 +187,9 @@ export type OrgListItemDto = {
 export const SUSPEND_CATEGORIES = ['abuse', 'fraud', 'security', 'legal_order'] as const;
 export type SuspendCategory = (typeof SUSPEND_CATEGORIES)[number];
 
+export const CREDIT_GRANT_KINDS = ['top_up', 'goodwill', 'promo'] as const;
+export type CreditGrantKind = (typeof CREDIT_GRANT_KINDS)[number];
+
 export type OrgAccountDto = {
   plan: string;
   state: string;
@@ -196,7 +199,7 @@ export type OrgAccountDto = {
 };
 export type OrgActionDto = {
   id: string;
-  kind: 'trial.extend' | 'plan.change' | 'suspend' | 'reactivate';
+  kind: 'trial.extend' | 'plan.change' | 'suspend' | 'reactivate' | 'credits.grant';
   summary: string;
   reason: string;
   ticketRef: string;
@@ -365,6 +368,20 @@ export const internalOperations = {
     params: orgOnly,
     query: noParams,
     body: z.object(withTicket),
+  }),
+  grantOrgCredits: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/grant-credits',
+    auth: 'staff',
+    permission: 'backoffice.accounts.credits',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      credits: z.number().positive().max(1000),
+      kind: z.enum(CREDIT_GRANT_KINDS),
+      ...withTicket,
+    }),
   }),
   getOrgSupportAccess: op({
     method: 'GET',

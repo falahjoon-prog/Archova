@@ -6533,11 +6533,16 @@ components:
         ]
     AiUsage:
       type: object
-      required: [periodStart, timezone, allowance, used, remaining, byFeature]
+      required: [periodStart, timezone, allowance, granted, used, remaining, byFeature]
       properties:
         periodStart: { type: string, format: date }
         timezone: { type: string }
         allowance: { type: [number, 'null'], description: null means unlimited }
+        granted:
+          {
+            type: number,
+            description: Credits staff added to this month; already part of the allowance,
+          }
         used: { type: number }
         remaining: { type: [number, 'null'] }
         byFeature:

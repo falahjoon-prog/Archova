@@ -8,6 +8,7 @@ import {
   type InternalOperationId,
   type OrgDetailDto,
   type OrgListItemDto,
+  type CreditGrantKind,
   type SuspendCategory,
   type SupportAccessDto,
   type SupportProjectDto,
@@ -110,6 +111,10 @@ export const api = {
   ) => call<OrgDetailDto>('suspendOrg', { params: { orgId }, body }),
   reactivate: (orgId: string, body: { reason: string; ticketRef: string }) =>
     call<OrgDetailDto>('reactivateOrg', { params: { orgId }, body }),
+  grantCredits: (
+    orgId: string,
+    body: { credits: number; kind: CreditGrantKind; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('grantOrgCredits', { params: { orgId }, body }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),
