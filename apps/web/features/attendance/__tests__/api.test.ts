@@ -110,4 +110,48 @@ describe('attendance api', () => {
       'If-Match': '"4"',
     });
   });
+
+  it('maps a roll call and posts a mark', async () => {
+    const rollCall = (status: string) => ({
+      id: 'rlc_1',
+      projectId: 'prj_1',
+      siteId: null,
+      reason: 'Fire alarm',
+      startedAt: '2026-10-01T00:00:00Z',
+      startedBy: null,
+      endedAt: null,
+      counts: {
+        total: 1,
+        accountedFor: status === 'accounted_for' ? 1 : 0,
+        missing: 0,
+        unmarked: 0,
+      },
+      people: [
+        {
+          workerId: 'wkr_1',
+          fullName: 'Jo Tran',
+          phone: '0400 000 000',
+          companyId: null,
+          companyNameOther: 'Hunter Concrete',
+          siteId: null,
+          signedInAt: '2026-09-30T22:00:00Z',
+          status,
+          markedAt: null,
+          markedBy: null,
+        },
+      ],
+    });
+    fake.on('GET', `${P}/roll-calls`, () => ({ data: [rollCall('unmarked')] }));
+    fake.on('POST', `${P}/roll-calls/{rollCallId}/marks`, () => rollCall('accounted_for'));
+    const api = createAttendanceApi('org_1');
+    const list = await api.rollCalls('prj_1');
+    expect(list[0]).toMatchObject({ reason: 'Fire alarm', endedAt: null });
+    expect(list[0]!.people[0]).toMatchObject({ fullName: 'Jo Tran', status: 'unmarked' });
+    const marked = await api.markRollCall('prj_1', 'rlc_1', 'wkr_1', 'accounted_for');
+    expect(marked.counts.accountedFor).toBe(1);
+    expect(fake.callsTo('POST', `${P}/roll-calls/{rollCallId}/marks`)[0]!.init.body).toEqual({
+      workerId: 'wkr_1',
+      status: 'accounted_for',
+    });
+  });
 });
