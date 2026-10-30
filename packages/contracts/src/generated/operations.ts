@@ -652,6 +652,21 @@ export const ConfirmTakeoffMeasurementParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
 });
+export const ListWebhooksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWebhookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWebhookBody = s.CreateWebhookRequestSchema;
+export const DeleteWebhookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
+});
+export const ListWebhookDeliveriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
+});
 export const ListImportJobsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2780,6 +2795,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ConfirmTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  listWebhooks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/webhooks',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: ListWebhooksParams,
+    query: null,
+    body: null,
+  },
+  createWebhook: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/webhooks',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: "application/json",
+    params: CreateWebhookParams,
+    query: null,
+    body: CreateWebhookBody,
+  },
+  deleteWebhook: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/webhooks/{webhookId}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: DeleteWebhookParams,
+    query: null,
+    body: null,
+  },
+  listWebhookDeliveries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: ListWebhookDeliveriesParams,
     query: null,
     body: null,
   },

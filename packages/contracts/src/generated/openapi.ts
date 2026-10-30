@@ -2253,6 +2253,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Webhook endpoints in the organisation, and the event types they can subscribe to. */
+        get: operations["listWebhooks"];
+        put?: never;
+        /** Subscribe an HTTPS endpoint to public events (integrations/06 §5). The endpoint must answer a signed test event with a 2xx before it is saved. The signing secret is in the response once. Needs a signed-in session, not a token. */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/webhooks/{webhookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete an endpoint and its delivery history. Deliveries not yet sent are dropped. */
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        /** The latest 50 deliveries to an endpoint, newest first, with the last response status. */
+        get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/import-jobs": {
         parameters: {
             query?: never;
@@ -6514,6 +6574,52 @@ export interface components {
             /** @description Defaults to 90. */
             expiresInDays?: number;
         };
+        Webhook: {
+            id: string;
+            url: string;
+            description: string | null;
+            eventTypes: string[];
+            /** @description Null means every project in the organisation. */
+            projectIds: string[] | null;
+            /** @enum {string} */
+            status: "active" | "disabled";
+            disabledReason: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        WebhookList: {
+            data: components["schemas"]["Webhook"][];
+            availableEventTypes: string[];
+        };
+        WebhookCreated: components["schemas"]["Webhook"] & {
+            /** @description The signing secret (`whsec_…`). Shown once; store it safely. */
+            secret: string;
+        };
+        CreateWebhookRequest: {
+            /** @description An https URL on the public internet. */
+            url: string;
+            description?: string;
+            eventTypes: string[];
+            /** @description Only events on these projects. Omit for every project. */
+            projectIds?: string[];
+        };
+        WebhookDelivery: {
+            id: string;
+            eventId: string;
+            eventType: string;
+            /** @enum {string} */
+            status: "pending" | "succeeded" | "abandoned";
+            attempts: number;
+            lastStatus: number | null;
+            lastError: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            deliveredAt: string | null;
+        };
+        WebhookDeliveryList: {
+            data: components["schemas"]["WebhookDelivery"][];
+        };
         ImportJobPage: {
             data: components["schemas"]["ImportJob"][];
             nextCursor: string | null;
@@ -7761,6 +7867,7 @@ export interface components {
         QuoteId: string;
         TakeoffMeasurementId: string;
         ApiTokenId: string;
+        WebhookId: string;
         ImportJobId: string;
         LateSubmissionId: string;
         Limit: number;
@@ -11194,6 +11301,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateWebhookRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listWebhookDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDeliveryList"];
                 };
             };
             default: components["responses"]["Problem"];

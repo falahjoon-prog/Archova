@@ -2921,6 +2921,78 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listWebhooks
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: Webhook endpoints in the organisation, and the event types they can subscribe to.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWebhook
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: >-
+        Subscribe an HTTPS endpoint to public events (integrations/06 §5). The endpoint must answer a signed test
+        event with a 2xx before it is saved. The signing secret is in the response once. Needs a signed-in session,
+        not a token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWebhookRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+    delete:
+      operationId: deleteWebhook
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: Delete an endpoint and its delivery history. Deliveries not yet sent are dropped.
+      responses:
+        '204':
+          description: Deleted
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+    get:
+      operationId: listWebhookDeliveries
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: The latest 50 deliveries to an endpoint, newest first, with the last response status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5770,6 +5842,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tok_[0-9A-Za-z]{26}$' }
+    WebhookId:
+      name: webhookId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^whk_[0-9A-Za-z]{26}$' }
     ImportJobId:
       name: importJobId
       in: path
@@ -9528,6 +9605,78 @@ components:
           maxItems: 30
           items: { type: string, maxLength: 40 }
         expiresInDays: { type: integer, minimum: 1, maximum: 365, description: Defaults to 90. }
+    Webhook:
+      type: object
+      required: [id, url, description, eventTypes, projectIds, status, disabledReason, createdAt]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        description: { type: [string, 'null'] }
+        eventTypes: { type: array, items: { type: string } }
+        projectIds:
+          type: [array, 'null']
+          items: { type: string }
+          description: Null means every project in the organisation.
+        status: { type: string, enum: [active, disabled] }
+        disabledReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    WebhookList:
+      type: object
+      required: [data, availableEventTypes]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Webhook' }
+        availableEventTypes: { type: array, items: { type: string } }
+    WebhookCreated:
+      allOf:
+        - $ref: '#/components/schemas/Webhook'
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              {
+                type: string,
+                description: The signing secret (`whsec_…`). Shown once; store it safely.,
+              }
+    CreateWebhookRequest:
+      type: object
+      additionalProperties: false
+      required: [url, eventTypes]
+      properties:
+        url: { type: string, maxLength: 2000, description: An https URL on the public internet. }
+        description: { type: string, maxLength: 200 }
+        eventTypes:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { type: string, maxLength: 80 }
+        projectIds:
+          type: array
+          maxItems: 100
+          items: { type: string }
+          description: Only events on these projects. Omit for every project.
+    WebhookDelivery:
+      type: object
+      required:
+        [id, eventId, eventType, status, attempts, lastStatus, lastError, createdAt, deliveredAt]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        eventType: { type: string }
+        status: { type: string, enum: [pending, succeeded, abandoned] }
+        attempts: { type: integer }
+        lastStatus: { type: [integer, 'null'] }
+        lastError: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+    WebhookDeliveryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WebhookDelivery' }
     ImportJobPage:
       type: object
       required: [data, nextCursor]

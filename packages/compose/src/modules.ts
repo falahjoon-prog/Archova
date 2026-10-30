@@ -16,7 +16,11 @@ import {
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
-import { INTEGRATIONS_PERMISSIONS, createIntegrationsModule } from '@archova/mod-integrations';
+import {
+  INTEGRATIONS_PERMISSIONS,
+  createIntegrationsModule,
+  type WebhooksDeps,
+} from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import {
@@ -58,6 +62,8 @@ export interface ModuleOptions {
   /** The web origin access links point at. */
   linkBaseUrl: string;
   backoffice: BackofficeConfig;
+  /** Outbound webhooks: the vault that seals signing secrets and the sender used for the test event. */
+  webhooks: WebhooksDeps;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -160,6 +166,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const integrations = createIntegrationsModule(services, {
     platform: platform.api,
     files: files.api,
+    webhooks: opts.webhooks,
   });
 
   const ai = createAiModule(services, {

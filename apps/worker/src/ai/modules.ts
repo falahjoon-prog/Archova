@@ -5,8 +5,10 @@ import {
   type Logger,
   type TenantContext,
 } from '@archova/kernel';
+import { randomBytes } from 'node:crypto';
 import type { ModelProvider } from '@archova/mod-ai';
 import { createMemoryObjectStore, noScanner } from '@archova/mod-files';
+import { vaultFromKey } from '@archova/mod-integrations';
 import type { AiWorkerConfig } from './config';
 import { indexContext, isOrgGone, type ReindexDeps } from './reindex';
 
@@ -35,6 +37,13 @@ export function loadAiWorkerModules(
       linkBaseUrl: 'http://ai-worker.invalid',
       backoffice: { localLogin: false, soloCoolingOffHours: 24 },
       ai: { config: config.ai, ...(provider ? { provider } : {}) },
+      // Webhooks are delivered by the default worker; here they can neither seal a secret nor send.
+      webhooks: {
+        vault: vaultFromKey(randomBytes(32).toString('base64')),
+        transport: {
+          send: async () => ({ status: null, error: 'webhooks are off in the ai-worker' }),
+        },
+      },
     },
   );
 }

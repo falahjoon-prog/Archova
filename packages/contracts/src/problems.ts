@@ -28,6 +28,11 @@ export const PROBLEM_CODES = {
   'api_token.limit_reached': 409,
   'api_token.scope_missing': 403,
   'api_token.not_allowed': 403,
+  // webhooks (public API)
+  'webhook.not_found': 404,
+  'webhook.invalid_event_type': 422,
+  'webhook.verification_failed': 422,
+  'webhook.limit_reached': 409,
   'oauth.invalid_request': 400,
   'oauth.invalid_client': 401,
   'oauth.invalid_grant': 400,

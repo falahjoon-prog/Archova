@@ -740,6 +740,14 @@ export const CreateUploadRequestSchema = z.object({
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
 
+export const CreateWebhookRequestSchema = z.object({
+  "url": z.string().max(2000),
+  "description": z.string().max(200).optional(),
+  "eventTypes": z.array(z.string().max(80)).min(1).max(40),
+  "projectIds": z.array(z.string()).max(100).optional(),
+}).strict();
+export type CreateWebhookRequest = z.infer<typeof CreateWebhookRequestSchema>;
+
 export const WorkerCredentialKindSchema = z.enum(["white_card", "high_risk_licence", "trade_licence", "other"]);
 export type WorkerCredentialKind = z.infer<typeof WorkerCredentialKindSchema>;
 
@@ -3388,6 +3396,47 @@ export const VerifyInductionAccessRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type VerifyInductionAccessRequest = z.infer<typeof VerifyInductionAccessRequestSchema>;
+
+export const WebhookSchema = z.object({
+  "id": z.string(),
+  "url": z.string(),
+  "description": z.string().nullable(),
+  "eventTypes": z.array(z.string()),
+  "projectIds": z.array(z.string()).nullable(),
+  "status": z.enum(["active", "disabled"]),
+  "disabledReason": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Webhook = z.infer<typeof WebhookSchema>;
+
+export const WebhookCreatedSchema = z.intersection(WebhookSchema, z.object({
+  "secret": z.string(),
+}));
+export type WebhookCreated = z.infer<typeof WebhookCreatedSchema>;
+
+export const WebhookDeliverySchema = z.object({
+  "id": z.string(),
+  "eventId": z.string(),
+  "eventType": z.string(),
+  "status": z.enum(["pending", "succeeded", "abandoned"]),
+  "attempts": z.number().int(),
+  "lastStatus": z.number().int().nullable(),
+  "lastError": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type WebhookDelivery = z.infer<typeof WebhookDeliverySchema>;
+
+export const WebhookDeliveryListSchema = z.object({
+  "data": z.array(WebhookDeliverySchema),
+});
+export type WebhookDeliveryList = z.infer<typeof WebhookDeliveryListSchema>;
+
+export const WebhookListSchema = z.object({
+  "data": z.array(WebhookSchema),
+  "availableEventTypes": z.array(z.string()),
+});
+export type WebhookList = z.infer<typeof WebhookListSchema>;
 
 export const WorkerCredentialListSchema = z.object({
   "data": z.array(WorkerCredentialSchema),
