@@ -11,6 +11,8 @@ import {
   createTestContext,
   signUp,
   type TestContext,
+  addMember,
+  removeMember,
 } from './helpers';
 
 let t: TestContext;
@@ -32,6 +34,18 @@ async function world(label: string) {
   const org = await createOrg(pm.browser, `${label} Builders`);
   const a = await createProject(pm.browser, org.id, { name: 'Tower A', state: 'NSW' });
   const b = await createProject(pm.browser, org.id, { name: 'Tower B', state: 'NSW' });
+  // Both projects had them on, and an admin took them off in the ordinary way.
+  for (const p of [a, b]) {
+    await addMember(
+      pm.browser,
+      org.id,
+      p.id,
+      ex.email,
+      'Subcontractor',
+      `${label} Formco ${p.id.slice(-4)}`,
+    );
+    await removeMember(pm.browser, org.id, p.id, ex.email);
+  }
   const ctx: TenantContext = {
     orgId: decodeId('org', org.id)!,
     userId: decodeId('user', pm.userId)!,
@@ -146,13 +160,11 @@ describe('drain grant (X38), queueing', () => {
       expect(r.json().results[0].problem.code).toBe('validation_failed');
     }
 
+    // Organisation-wide revocation is not built: a grant with no project has nothing to check, so it is refused.
     const org = (await w.grant(null))!;
-    const both = await send(w.org.id, org.token, [mutation(w.a.id), mutation(w.b.id)]);
-    expect(both.json().results.map((r: { status: string }) => r.status)).toEqual([
-      'pending_review',
-      'pending_review',
-    ]);
-    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(2);
+    const wide = await send(w.org.id, org.token, [mutation(w.a.id), mutation(w.b.id)]);
+    expect(wide.statusCode).toBe(401);
+    expect(await w.rows(sql`select 1 from sync.late_submissions`)).toHaveLength(0);
   });
 
   it('caps payloads and the queue', async () => {

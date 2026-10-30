@@ -42,6 +42,7 @@ export function createPlatformModule(
     api: {
       resolveTenantAccess: orgs.resolveTenantAccess,
       getProjectMembership: members.getProjectMembership,
+      getProjectAccessState: members.getProjectAccessState,
       getProject: projects.get,
       getOrg: orgs.getOrg,
       companyExists: companies.exists,

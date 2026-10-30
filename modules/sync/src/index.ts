@@ -8,7 +8,7 @@ import {
 import type { AccessService } from '@archova/mod-access';
 import { SYNC_PERMISSIONS } from './permissions';
 import { syncRoutes } from './api/routes';
-import { createDrainService } from './application/drain';
+import { createDrainService, type AccessStateLookup } from './application/drain';
 import { createPullService } from './application/pull';
 import { createReviewService } from './application/review';
 import { createPushService } from './application/push';
@@ -19,13 +19,22 @@ export interface SyncDeps {
   sources: readonly SyncSource[];
   /** The use cases a device may queue offline; a command absent here is rejected. */
   commands: readonly SyncCommand[];
+  /** How someone's access to a project stands (platform); lets the pull hand out drain grants (X38). */
+  accessState: AccessStateLookup;
 }
 
 export function createSyncModule(services: KernelServices, deps: SyncDeps) {
-  const pull = createPullService(deps);
+  const drain = createDrainService({
+    database: services.database,
+    commands: deps.commands,
+    accessState: deps.accessState,
+  });
+  const pull = createPullService({
+    ...deps,
+    drain: { service: drain, accessState: deps.accessState },
+  });
   const push = createPushService({ database: services.database, commands: deps.commands });
   const review = createReviewService({ commands: deps.commands });
-  const drain = createDrainService({ database: services.database, commands: deps.commands });
   return {
     definition: defineModule({ name: 'sync', permissions: SYNC_PERMISSIONS }),
     routes: syncRoutes(services.database, pull, push, review),
