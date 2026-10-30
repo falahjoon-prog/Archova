@@ -4,7 +4,8 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { uuidv7 } from '@archova/domain';
 import { mobileRoutes } from '@archova/routes';
 import { Button, useTheme } from '@archova/ui-native';
 import { api, queries } from '../../../lib/api';
@@ -13,6 +14,8 @@ import { listDefects } from '../../defects';
 import type { Markup } from '@archova/contracts';
 import { supersededNotice } from '../banner';
 import { MarkupLayer } from './MarkupLayer';
+import { createPenMarkup } from '../commands';
+import { createInk, type Ink } from '../ink';
 import { needsLocationCheck } from '../markup';
 import { drawingPdfUrl } from '../pdf';
 import { pinsOnRevision, type SheetPin } from '../pins';
@@ -45,6 +48,9 @@ function SheetCanvas({
   onOpenPin,
   placing,
   onPlace,
+  inking,
+  ink,
+  onInkChange,
 }: {
   pyramid: Pyramid;
   revisionId: string;
@@ -56,6 +62,11 @@ function SheetCanvas({
   /** The next tap on the sheet drops a new defect pin there. */
   placing: boolean;
   onPlace: (pin: { pinX: number; pinY: number }) => void;
+  /** One finger draws instead of panning; two fingers still pan and zoom. */
+  inking: boolean;
+  ink: Ink;
+  /** Called as the drawing changes, so the screen can redraw and enable Save and Undo. */
+  onInkChange: () => void;
 }) {
   const t = useTheme();
   const [selected, setSelected] = useState<SheetPin | null>(null);
@@ -75,6 +86,10 @@ function SheetCanvas({
   placingRef.current = placing;
   const onPlaceRef = useRef(onPlace);
   onPlaceRef.current = onPlace;
+  const inkingRef = useRef(inking);
+  inkingRef.current = inking;
+  const onInkChangeRef = useRef(onInkChange);
+  onInkChangeRef.current = onInkChange;
   const moved = useRef({ dx: 0, dy: 0, multi: false });
   const gesture = useRef<{ last: { x: number; y: number }; dist: number | null }>({
     last: { x: 0, y: 0 },
@@ -97,6 +112,14 @@ function SheetCanvas({
         onMoveShouldSetPanResponder: () => true,
         onPanResponderGrant: (e) => {
           moved.current = { dx: 0, dy: 0, multi: false };
+          const start = viewRef.current;
+          if (inkingRef.current && start) {
+            const { pinX, pinY } = screenToPin(pyramid, start, {
+              x: e.nativeEvent.locationX,
+              y: e.nativeEvent.locationY,
+            });
+            ink.begin({ x: pinX, y: pinY });
+          }
           gesture.current = {
             last: { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY },
             dist: null,
@@ -109,6 +132,7 @@ function SheetCanvas({
           const [a, b] = touches;
           if (a && b) {
             moved.current.multi = true;
+            if (inkingRef.current) ink.cancel();
             const d = distance(a, b);
             const prev = gesture.current.dist;
             gesture.current.dist = d;
@@ -122,6 +146,15 @@ function SheetCanvas({
             return;
           }
           gesture.current.dist = null;
+          if (inkingRef.current) {
+            const { pinX, pinY } = screenToPin(pyramid, v, {
+              x: e.nativeEvent.locationX,
+              y: e.nativeEvent.locationY,
+            });
+            ink.move({ x: pinX, y: pinY });
+            onInkChangeRef.current();
+            return;
+          }
           const now = { x: e.nativeEvent.pageX, y: e.nativeEvent.pageY };
           const { last } = gesture.current;
           gesture.current.last = now;
@@ -130,6 +163,12 @@ function SheetCanvas({
           setView(panViewport(pyramid, v, now.x - last.x, now.y - last.y, MAX_SCALE));
         },
         onPanResponderRelease: (e) => {
+          if (inkingRef.current) {
+            if (moved.current.multi) ink.cancel();
+            else ink.end();
+            onInkChangeRef.current();
+            return;
+          }
           const v = viewRef.current;
           const m = moved.current;
           if (!placingRef.current || !v || m.multi || !isTap(m.dx, m.dy)) return;
@@ -138,7 +177,7 @@ function SheetCanvas({
           );
         },
       }),
-    [pyramid],
+    [pyramid, ink],
   );
 
   // The whole sheet is on screen from the overview; tiles at the sharp level sit over it.
@@ -191,7 +230,21 @@ function SheetCanvas({
               );
             })}
           </View>
-          <MarkupLayer pyramid={pyramid} view={view} markups={markups} />
+          <MarkupLayer
+            pyramid={pyramid}
+            view={view}
+            markups={[
+              ...markups,
+              {
+                shapes: [
+                  ...ink.strokes,
+                  ...(ink.live.length > 1
+                    ? [{ id: 'live', kind: 'pen' as const, points: [...ink.live], strokeWidth: 3 }]
+                    : []),
+                ],
+              },
+            ]}
+          />
           {pins.map((pin) => {
             const at = pinToScreen(pyramid, view, pin);
             if (!at.onScreen) return null;
@@ -272,6 +325,13 @@ export function DrawingViewerScreen({
     enabled: orgId !== null,
   });
   const markupList = markups.data?.data ?? [];
+  const queryClient = useQueryClient();
+  const [ink] = useState(() => createInk(uuidv7));
+  const [, setInkVersion] = useState(0);
+  const [inking, setInking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const saveKey = useRef(uuidv7());
   const [placing, setPlacing] = useState(false);
   const [pdfError, setPdfError] = useState(false);
   const sheetId = revision.data?.sheetId ?? null;
@@ -365,6 +425,9 @@ export function DrawingViewerScreen({
         pins={pins}
         markups={markupList}
         onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
+        inking={inking}
+        ink={ink}
+        onInkChange={() => setInkVersion((n) => n + 1)}
         placing={placing}
         onPlace={(pin) => {
           setPlacing(false);
@@ -376,13 +439,77 @@ export function DrawingViewerScreen({
         }}
       />
       {canPin ? (
-        <View style={{ padding: t.space[3] }}>
+        <View style={{ padding: t.space[3], gap: t.space[2] }}>
+          <Button
+            label={inking ? 'Stop drawing' : 'Draw a markup'}
+            variant={inking ? 'secondary' : 'primary'}
+            onPress={() => {
+              setPlacing(false);
+              setInking((on) => !on);
+            }}
+          />
+          {ink.strokes.length > 0 ? (
+            <View style={{ gap: t.space[2] }}>
+              <Button
+                label="Save markup"
+                disabled={saving}
+                onPress={() => {
+                  if (!orgId) return;
+                  setSaving(true);
+                  setSaveError(false);
+                  createPenMarkup(
+                    api,
+                    { orgId, projectId, revisionId },
+                    ink.strokes,
+                    saveKey.current,
+                  )
+                    .then(() => {
+                      ink.clear();
+                      saveKey.current = uuidv7();
+                      setInking(false);
+                      setInkVersion((n) => n + 1);
+                      return queryClient.invalidateQueries({
+                        queryKey: queries.markups(orgId, projectId, revisionId).queryKey,
+                      });
+                    })
+                    .catch(() => setSaveError(true))
+                    .finally(() => setSaving(false));
+                }}
+              />
+              <Button
+                label="Undo last stroke"
+                variant="secondary"
+                disabled={saving}
+                onPress={() => {
+                  ink.undo();
+                  setInkVersion((n) => n + 1);
+                }}
+              />
+              <Button
+                label="Discard drawing"
+                variant="secondary"
+                disabled={saving}
+                onPress={() => {
+                  ink.clear();
+                  setInkVersion((n) => n + 1);
+                }}
+              />
+              {saveError ? (
+                <Text style={{ color: t.color.statusDanger }}>
+                  Could not save the markup. Check your connection and try again.
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
           <Button
             label={
               placing ? 'Tap the sheet where the defect is (cancel)' : 'Raise defect on this sheet'
             }
             variant={placing ? 'secondary' : 'primary'}
-            onPress={() => setPlacing((p) => !p)}
+            onPress={() => {
+              setInking(false);
+              setPlacing((p) => !p);
+            }}
           />
         </View>
       ) : null}

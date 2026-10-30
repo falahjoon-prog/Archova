@@ -4,6 +4,8 @@ import type { Markup } from '@archova/contracts';
 import { pinToScreen, type Pyramid, type Viewport } from './viewport';
 
 type Shape = Markup['shapes'][number];
+/** What the overlay needs of a markup, so an unsaved drawing can be shown too. */
+export type DrawnMarkup = Pick<Markup, 'shapes'>;
 type Point = { x: number; y: number };
 
 export type Primitive =
@@ -136,7 +138,7 @@ function shapeToPrimitive(
 export function markupPrimitives(
   p: Pyramid,
   v: Viewport,
-  markups: readonly Markup[],
+  markups: readonly DrawnMarkup[],
   defaultColor: string,
 ): Primitive[] {
   return markups.flatMap((m) =>
