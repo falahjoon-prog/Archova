@@ -115,12 +115,12 @@ jobs:
       - name: Compose file and Caddyfile
         run: |
           sudo mkdir -p /etc/archova
-          for f in api web backup valkey migrate db-roles roles-anywhere; do sudo touch "/etc/archova/$f.env"; done
+          for f in api web worker ai-worker backup valkey migrate db-roles roles-anywhere; do sudo touch "/etc/archova/$f.env"; done
           export VPC_IP=10.60.1.10 APP_HOST=app.example API_HOST=api.example IMAGE_TAG=ci \
             RA_TRUST_ANCHOR_ARN=t RA_PROFILE_ARN=p RA_ROLE_ARN=r
           docker compose --profile primary --profile tools config -q
           # A second server gets no Valkey, backup or database admin files.
-          sudo rm /etc/archova/{backup,valkey,db-roles}.env
+          sudo rm /etc/archova/{backup,valkey,db-roles,worker,ai-worker}.env
           docker compose --profile secondary config -q
           docker run --rm -e APP_HOST=app.example -e API_HOST=api.example -v "$PWD/Caddyfile:/etc/caddy/Caddyfile:ro" \
             caddy:2.10 caddy validate --config /etc/caddy/Caddyfile
