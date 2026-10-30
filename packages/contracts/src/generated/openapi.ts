@@ -2714,6 +2714,212 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/correspondence-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The built-in AU notice templates an org can copy into its own types. Notice periods are defaults to confirm against the contract. */
+        get: operations["listCorrespondenceTemplates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/correspondence-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The org's correspondence types by name. */
+        get: operations["listCorrespondenceTypes"];
+        put?: never;
+        /** Add a type, from scratch or by copying a built-in template with `templateKey`. */
+        post: operations["createCorrespondenceType"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/correspondence-types/{typeId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                typeId: components["parameters"]["CorrespondenceTypeId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit or archive a type. Items already written keep the name and evidential setting they were created with. */
+        patch: operations["updateCorrespondenceType"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The types a user can write on this project (active ones), for the "new" picker. */
+        get: operations["listProjectCorrespondenceTypes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's correspondence register, oldest first, with time-bar chips on drafts. */
+        get: operations["listCorrespondence"];
+        put?: never;
+        /** Start a draft from a type. Subject and body are filled from the type's template unless given. */
+        post: operations["createCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        /** One item with its responses. */
+        get: operations["getCorrespondence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft. A sent item is frozen. */
+        patch: operations["updateCorrespondence"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the draft to its recipients. An evidential type is stamped with a content hash and can't be edited or voided afterwards. */
+        post: operations["sendCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/responses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reply to a sent item. A reply from a receiving company marks it responded. */
+        post: operations["respondToCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Close a sent or responded item. */
+        post: operations["closeCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a draft, or a sent item whose type is not evidential. A reason is required. */
+        post: operations["voidCorrespondence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/rfis": {
         parameters: {
             query?: never;
@@ -6475,6 +6681,183 @@ export interface components {
             /** @description Marked-up PDFs (SUB-AC4) */
             fileIds?: components["schemas"]["FileRef"][];
         };
+        CorrespondenceTypeRef: string;
+        /** @enum {string} */
+        CorrespondenceStatus: "draft" | "sent" | "responded" | "closed" | "void";
+        CorrespondenceTemplate: {
+            key: string;
+            name: string;
+            prefix: string;
+            description: string;
+            isEvidential: boolean;
+            responseRequired: boolean;
+            responseDays: number;
+            /** @description Default notice period in calendar days; confirm against the contract */
+            timeBarDays: number | null;
+            subjectTemplate: string;
+            bodyTemplate: string;
+        };
+        CorrespondenceType: {
+            id: string;
+            name: string;
+            /** @description Upper-case letters; items are numbered NOD-001 */
+            prefix: string;
+            description: string;
+            /** @description The built-in template it was copied from */
+            templateKey: string | null;
+            /** @description Frozen and hashed when sent */
+            isEvidential: boolean;
+            responseRequired: boolean;
+            /** @description Business days allowed to respond */
+            responseDays: number;
+            timeBarDays: number | null;
+            subjectTemplate: string;
+            /** @description Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}} */
+            bodyTemplate: string;
+            archived: boolean;
+            version: number;
+        };
+        CorrespondenceTypeList: {
+            data: components["schemas"]["CorrespondenceType"][];
+        };
+        CreateCorrespondenceTypeRequest: {
+            templateKey?: string;
+            name?: string;
+            prefix?: string;
+            description?: string;
+            isEvidential?: boolean;
+            responseRequired?: boolean;
+            responseDays?: number;
+            timeBarDays?: number | null;
+            subjectTemplate?: string;
+            bodyTemplate?: string;
+        };
+        UpdateCorrespondenceTypeRequest: {
+            name?: string;
+            prefix?: string;
+            description?: string;
+            isEvidential?: boolean;
+            responseRequired?: boolean;
+            responseDays?: number;
+            timeBarDays?: number | null;
+            subjectTemplate?: string;
+            bodyTemplate?: string;
+            archived?: boolean;
+        };
+        CorrespondenceRelated: {
+            /** @enum {string} */
+            kind: "rfi" | "submittal" | "correspondence" | "variation" | "diary" | "other";
+            id: string;
+            label?: string;
+        };
+        CorrespondenceItem: {
+            id: string;
+            projectId: string;
+            typeId: string;
+            typeName: string;
+            isEvidential: boolean;
+            number: number;
+            /** @description NOD-001 */
+            numberLabel: string;
+            subject: string;
+            body: string;
+            status: components["schemas"]["CorrespondenceStatus"];
+            fromCompanyId: string | null;
+            toCompanyIds: string[];
+            responseRequired: boolean;
+            /**
+             * Format: date
+             * @description When a response is due
+             */
+            dueDate: string | null;
+            /**
+             * Format: date
+             * @description The event the notice is about; starts the time bar
+             */
+            eventDate: string | null;
+            timeBarDays: number | null;
+            /**
+             * Format: date
+             * @description Last day to give the notice
+             */
+            timeBarDate: string | null;
+            /**
+             * @description Draft only: amber within 3 business days of the bar, red within 1, overdue after it
+             * @enum {string}
+             */
+            timeBarState: "none" | "ok" | "amber" | "red" | "overdue";
+            /** @description Whether it was sent by the time bar */
+            sentInTime: boolean | null;
+            fileIds: string[];
+            related: components["schemas"]["CorrespondenceRelated"][];
+            /** Format: date-time */
+            sentAt: string | null;
+            sentBy: string | null;
+            /** @description SHA-256 of what was sent; evidential items only */
+            contentHash: string | null;
+            /** Format: date-time */
+            closedAt: string | null;
+            voidReason: string | null;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CorrespondenceResponse: {
+            id: string;
+            authorId: string;
+            authorCompanyId: string | null;
+            body: string;
+            fileIds: string[];
+            /** Format: date-time */
+            sentAt: string;
+        };
+        CorrespondenceDetail: {
+            item: components["schemas"]["CorrespondenceItem"];
+            responses: components["schemas"]["CorrespondenceResponse"][];
+        };
+        CorrespondencePage: {
+            data: components["schemas"]["CorrespondenceItem"][];
+            nextCursor: string | null;
+        };
+        CreateCorrespondenceRequest: {
+            typeId: components["schemas"]["CorrespondenceTypeRef"];
+            subject?: string;
+            body?: string;
+            fromCompanyId?: components["schemas"]["CompanyRef"];
+            toCompanyIds?: components["schemas"]["CompanyRef"][];
+            responseRequired?: boolean;
+            /** Format: date */
+            dueDate?: string;
+            /** Format: date */
+            eventDate?: string;
+            timeBarDays?: number | null;
+            fileIds?: components["schemas"]["FileRef"][];
+            related?: components["schemas"]["CorrespondenceRelated"][];
+        };
+        UpdateCorrespondenceRequest: {
+            subject?: string;
+            body?: string;
+            fromCompanyId?: components["schemas"]["CompanyRef"] | null;
+            toCompanyIds?: components["schemas"]["CompanyRef"][];
+            responseRequired?: boolean;
+            /** Format: date */
+            dueDate?: string | null;
+            /** Format: date */
+            eventDate?: string | null;
+            timeBarDays?: number | null;
+            fileIds?: components["schemas"]["FileRef"][];
+            related?: components["schemas"]["CorrespondenceRelated"][];
+        };
+        RespondCorrespondenceRequest: {
+            body: string;
+            fileIds?: components["schemas"]["FileRef"][];
+        };
+        VoidCorrespondenceRequest: {
+            reason: string;
+        };
         /** @enum {string} */
         RfiStatus: "draft" | "open" | "answered" | "closed" | "void";
         /** @enum {string} */
@@ -8708,6 +9091,8 @@ export interface components {
         TransmittalId: string;
         SubmittalId: string;
         SubmittalStepId: string;
+        CorrespondenceTypeId: string;
+        CorrespondenceId: string;
         RfiId: string;
         DefectId: string;
         TenderPackageId: string;
@@ -12972,6 +13357,385 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SubmittalDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondenceTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CorrespondenceTemplate"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondenceTypes: {
+        parameters: {
+            query?: {
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceTypeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCorrespondenceType: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCorrespondenceTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceType"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCorrespondenceType: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                typeId: components["parameters"]["CorrespondenceTypeId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCorrespondenceTypeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceType"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listProjectCorrespondenceTypes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceTypeList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCorrespondence: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CorrespondenceStatus"];
+                typeId?: components["schemas"]["CorrespondenceTypeRef"];
+                /** @description Only sent items that need a response and have none yet */
+                awaitingResponse?: "true" | "false";
+                q?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondencePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCorrespondenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCorrespondence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCorrespondenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sendCorrespondence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondToCorrespondence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondCorrespondenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    closeCorrespondence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidCorrespondence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                correspondenceId: components["parameters"]["CorrespondenceId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidCorrespondenceRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CorrespondenceDetail"];
                 };
             };
             default: components["responses"]["Problem"];

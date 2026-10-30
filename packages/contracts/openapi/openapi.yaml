@@ -30,6 +30,7 @@ tags:
   - name: documents
   - name: ai
   - name: rfis
+  - name: correspondence
   - name: defects
   - name: quality
   - name: safety
@@ -3638,6 +3639,304 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SubmittalDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/correspondence-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCorrespondenceTemplates
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.manage
+      summary: The built-in AU notice templates an org can copy into its own types. Notice periods are defaults to confirm against the contract.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CorrespondenceTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/correspondence-types:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCorrespondenceTypes
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.read
+      summary: The org's correspondence types by name.
+      parameters:
+        - { name: includeArchived, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCorrespondenceType
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.manage
+      summary: Add a type, from scratch or by copying a built-in template with `templateKey`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCorrespondenceTypeRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceType' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/correspondence-types/{typeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/CorrespondenceTypeId'
+    patch:
+      operationId: updateCorrespondenceType
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.manage
+      summary: Edit or archive a type. Items already written keep the name and evidential setting they were created with.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCorrespondenceTypeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceType' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence-types:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectCorrespondenceTypes
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.create
+      summary: The types a user can write on this project (active ones), for the "new" picker.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: The project's correspondence register, oldest first, with time-bar chips on drafts.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/CorrespondenceStatus' } }
+        - {
+            name: typeId,
+            in: query,
+            schema: { $ref: '#/components/schemas/CorrespondenceTypeRef' },
+          }
+        - {
+            name: awaitingResponse,
+            in: query,
+            description: 'Only sent items that need a response and have none yet',
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondencePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.create
+      summary: Start a draft from a type. Subject and body are filled from the type's template unless given.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCorrespondenceRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: getCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: One item with its responses.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.create
+      summary: Edit a draft. A sent item is frozen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCorrespondenceRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: sendCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.send
+      summary: Send the draft to its recipients. An evidential type is stamped with a content hash and can't be edited or voided afterwards.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: respondToCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.respond
+      summary: Reply to a sent item. A reply from a receiving company marks it responded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondCorrespondenceRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: closeCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.close
+      summary: Close a sent or responded item.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: voidCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.close
+      summary: Void a draft, or a sent item whose type is not evidential. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidCorrespondenceRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6551,6 +6850,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^sbs_[0-9A-Za-z]{26}$' }
+    CorrespondenceTypeId:
+      name: typeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    CorrespondenceId:
+      name: correspondenceId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cor_[0-9A-Za-z]{26}$' }
     RfiId:
       name: rfiId
       in: path
@@ -9383,6 +9692,298 @@ components:
           maxItems: 20
           description: 'Marked-up PDFs (SUB-AC4)'
           items: { $ref: '#/components/schemas/FileRef' }
+    CorrespondenceTypeRef:
+      type: string
+      pattern: '^cty_[0-9A-Za-z]{26}$'
+    CorrespondenceStatus:
+      type: string
+      enum: [draft, sent, responded, closed, void]
+    CorrespondenceTemplate:
+      type: object
+      required:
+        [
+          key,
+          name,
+          prefix,
+          description,
+          isEvidential,
+          responseRequired,
+          responseDays,
+          timeBarDays,
+          subjectTemplate,
+          bodyTemplate,
+        ]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        description: { type: string }
+        isEvidential: { type: boolean }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer }
+        timeBarDays:
+          {
+            type: [integer, 'null'],
+            description: 'Default notice period in calendar days; confirm against the contract',
+          }
+        subjectTemplate: { type: string }
+        bodyTemplate: { type: string }
+    CorrespondenceType:
+      type: object
+      required:
+        [
+          id,
+          name,
+          prefix,
+          description,
+          templateKey,
+          isEvidential,
+          responseRequired,
+          responseDays,
+          timeBarDays,
+          subjectTemplate,
+          bodyTemplate,
+          archived,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string, description: 'Upper-case letters; items are numbered NOD-001' }
+        description: { type: string }
+        templateKey:
+          { type: [string, 'null'], description: 'The built-in template it was copied from' }
+        isEvidential: { type: boolean, description: 'Frozen and hashed when sent' }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer, description: 'Business days allowed to respond' }
+        timeBarDays: { type: [integer, 'null'] }
+        subjectTemplate: { type: string }
+        bodyTemplate:
+          {
+            type: string,
+            description: 'Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}}',
+          }
+        archived: { type: boolean }
+        version: { type: integer }
+    CorrespondenceTypeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceType' }
+    CreateCorrespondenceTypeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        templateKey: { type: string, maxLength: 60 }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        prefix: { type: string, pattern: '^[A-Za-z]{1,6}$' }
+        description: { type: string, maxLength: 500 }
+        isEvidential: { type: boolean }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer, minimum: 0, maximum: 250 }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        subjectTemplate: { type: string, maxLength: 300 }
+        bodyTemplate: { type: string, maxLength: 20000 }
+    UpdateCorrespondenceTypeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        prefix: { type: string, pattern: '^[A-Za-z]{1,6}$' }
+        description: { type: string, maxLength: 500 }
+        isEvidential: { type: boolean }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer, minimum: 0, maximum: 250 }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        subjectTemplate: { type: string, maxLength: 300 }
+        bodyTemplate: { type: string, maxLength: 20000 }
+        archived: { type: boolean }
+    CorrespondenceRelated:
+      type: object
+      additionalProperties: false
+      required: [kind, id]
+      properties:
+        kind: { type: string, enum: [rfi, submittal, correspondence, variation, diary, other] }
+        id: { type: string, pattern: '^[a-z]{2,4}_[0-9A-Za-z]{26}$' }
+        label: { type: string, maxLength: 120 }
+    CorrespondenceItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          typeId,
+          typeName,
+          isEvidential,
+          number,
+          numberLabel,
+          subject,
+          body,
+          status,
+          fromCompanyId,
+          toCompanyIds,
+          responseRequired,
+          dueDate,
+          eventDate,
+          timeBarDays,
+          timeBarDate,
+          timeBarState,
+          sentInTime,
+          fileIds,
+          related,
+          sentAt,
+          sentBy,
+          contentHash,
+          closedAt,
+          voidReason,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        typeId: { type: string }
+        typeName: { type: string }
+        isEvidential: { type: boolean }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'NOD-001' }
+        subject: { type: string }
+        body: { type: string }
+        status: { $ref: '#/components/schemas/CorrespondenceStatus' }
+        fromCompanyId: { type: [string, 'null'] }
+        toCompanyIds:
+          type: array
+          items: { type: string }
+        responseRequired: { type: boolean }
+        dueDate: { type: [string, 'null'], format: date, description: 'When a response is due' }
+        eventDate:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'The event the notice is about; starts the time bar',
+          }
+        timeBarDays: { type: [integer, 'null'] }
+        timeBarDate:
+          { type: [string, 'null'], format: date, description: 'Last day to give the notice' }
+        timeBarState:
+          type: string
+          enum: [none, ok, amber, red, overdue]
+          description: 'Draft only: amber within 3 business days of the bar, red within 1, overdue after it'
+        sentInTime: { type: [boolean, 'null'], description: 'Whether it was sent by the time bar' }
+        fileIds:
+          type: array
+          items: { type: string }
+        related:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        sentAt: { type: [string, 'null'], format: date-time }
+        sentBy: { type: [string, 'null'] }
+        contentHash:
+          { type: [string, 'null'], description: 'SHA-256 of what was sent; evidential items only' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        voidReason: { type: [string, 'null'] }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CorrespondenceResponse:
+      type: object
+      required: [id, authorId, authorCompanyId, body, fileIds, sentAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        authorCompanyId: { type: [string, 'null'] }
+        body: { type: string }
+        fileIds:
+          type: array
+          items: { type: string }
+        sentAt: { type: string, format: date-time }
+    CorrespondenceDetail:
+      type: object
+      required: [item, responses]
+      properties:
+        item: { $ref: '#/components/schemas/CorrespondenceItem' }
+        responses:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    CorrespondencePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceItem' }
+        nextCursor: { type: [string, 'null'] }
+    CreateCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [typeId]
+      properties:
+        typeId: { $ref: '#/components/schemas/CorrespondenceTypeRef' }
+        subject: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 50000 }
+        fromCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        toCompanyIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        responseRequired: { type: boolean }
+        dueDate: { type: string, format: date }
+        eventDate: { type: string, format: date }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        fileIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FileRef' }
+        related:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+    UpdateCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        subject: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 50000 }
+        fromCompanyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        toCompanyIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        responseRequired: { type: boolean }
+        dueDate: { type: [string, 'null'], format: date }
+        eventDate: { type: [string, 'null'], format: date }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        fileIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FileRef' }
+        related:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+    RespondCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 50000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    VoidCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
     RfiStatus:
       type: string
       enum: [draft, open, answered, closed, void]
