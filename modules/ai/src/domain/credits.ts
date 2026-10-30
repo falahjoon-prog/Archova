@@ -34,6 +34,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // F21 vision pass: up to 12 small pictures of the places the linework changed; with the text compare, a revision
   // pair costs one credit. Cached with it. Priya to confirm.
   'drawing.compare_visual': 0.5,
+  // Nova Esti (ai/10 E1): one sheet image in, the found items out; one run per target on a sheet. Priya to confirm.
+  'takeoff.detect': 1,
   'diary.summary': 0.5,
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,

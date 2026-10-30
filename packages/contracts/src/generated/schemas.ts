@@ -2178,6 +2178,26 @@ export const NovaSearchResultSchema = z.intersection(NovaSourceSchema, z.object(
 }));
 export type NovaSearchResult = z.infer<typeof NovaSearchResultSchema>;
 
+export const NovaTakeoffDetectionSchema = z.object({
+  "runId": z.string(),
+  "revisionId": z.string(),
+  "kind": TakeoffKindSchema,
+  "what": z.string(),
+  "scanned": z.boolean(),
+  "caveat": z.string().nullable(),
+  "dropped": z.number().int(),
+  "items": z.array(z.object({
+  "place": z.string().nullable(),
+  "points": z.array(z.object({
+  "x": z.number(),
+  "y": z.number(),
+})),
+  "confidence": z.number().min(0).max(1),
+  "note": z.string().nullable(),
+})),
+});
+export type NovaTakeoffDetection = z.infer<typeof NovaTakeoffDetectionSchema>;
+
 export const OnSiteSchema = z.object({
   "total": z.number().int(),
   "companies": z.array(z.object({
@@ -2981,6 +3001,8 @@ export const TakeoffMeasurementSchema = z.object({
   "scopeKey": z.string().nullable(),
   "confirmedBy": z.string().nullable(),
   "confirmedAt": z.string().datetime({ offset: true }).nullable(),
+  "rejectedBy": z.string().nullable(),
+  "rejectedAt": z.string().datetime({ offset: true }).nullable(),
   "createdAt": z.string().datetime({ offset: true }),
   "updatedAt": z.string().datetime({ offset: true }),
   "version": z.number().int(),

@@ -28,6 +28,7 @@ import {
 } from './application/quote-negotiate';
 import { createSpeechService } from './application/speech';
 import { createQuoteReadService } from './application/quote-read';
+import { createTakeoffDetectService } from './application/takeoff-detect';
 import {
   createDrawingCompareService,
   type DrawingRevisionRef,
@@ -112,6 +113,7 @@ export type { RfiAnswerDraft, RfiForAnswer } from './application/rfi-answer';
 export type { DefectTagSuggestion } from './application/defect-tag';
 export type { ImportMappingSuggestion } from './application/import-mapping';
 export type { QuoteReading } from './application/quote-read';
+export type { TakeoffDetection } from './application/takeoff-detect';
 export type { NearbyDefect, ProjectCompany } from './domain/defect-tag';
 export type {
   DrawingCompare,
@@ -425,6 +427,14 @@ export function createAiModule(
     openRfisOnDrawing: deps.openRfisOnDrawing,
     ...(deps.rasterizePage ? { rasterizePage: deps.rasterizePage } : {}),
   });
+  const takeoffDetect = createTakeoffDetectService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    getRevision: deps.getDrawingRevision,
+    ...(deps.rasterizePage ? { rasterizePage: deps.rasterizePage } : {}),
+  });
   const diarySummary = createDiarySummaryService({
     database: services.database,
     gateway,
@@ -463,6 +473,7 @@ export function createAiModule(
       quoteReads,
       quoteNegotiations,
       speech,
+      takeoffDetect,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -502,6 +513,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** Nova Esti: items of one kind found on a drawing sheet, as marks to accept or reject; nothing is saved. */
+      detectTakeoff: takeoffDetect.detect,
       /** Nova listening: a short spoken question turned into text, in Australia; the clip is not kept. */
       transcribeSpeech: speech.transcribe,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
