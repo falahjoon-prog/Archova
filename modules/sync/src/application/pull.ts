@@ -1,13 +1,19 @@
 import { sql, type SQL } from 'drizzle-orm';
-import type { SyncPullResponse } from '@archova/contracts';
+import type { DrainGrant, SyncPullResponse } from '@archova/contracts';
 import { encodeId } from '@archova/domain';
 import type { SyncSource, TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { ParsedScopes } from '../domain/scopes';
+import { DRAIN_WINDOW_MS, type AccessStateLookup, type DrainService } from './drain';
 
 export interface PullDeps {
   access: Pick<AccessService, 'can'>;
   sources: readonly SyncSource[];
+  /** Hands a device the grant for work it queued before it lost a project (X38); absent where drain is off. */
+  drain?: {
+    service: Pick<DrainService, 'issue'>;
+    accessState: AccessStateLookup;
+  };
 }
 
 type FeedRow = {
@@ -28,6 +34,38 @@ const LOAD_CHUNK = 500;
  */
 export function createPullService(deps: PullDeps) {
   const sources = new Map(deps.sources.map((s) => [s.module, s]));
+
+  /**
+   * The drain grant for a project this caller was taken off, only when it was an ordinary removal and the 72 hours
+   * are not over. For cause and wipe-now removals get none, so the phone has nothing to send (Sam, X38).
+   */
+  async function grantFor(scope: TenantScope, projectId: string) {
+    if (!deps.drain) return null;
+    const state = await deps.drain.accessState(scope, projectId, scope.ctx.userId);
+    if (!state || state.status !== 'removed' || state.kind !== 'ordinary' || !state.removedAt)
+      return null;
+    if (Date.now() - state.removedAt.getTime() >= DRAIN_WINDOW_MS) return null;
+    return deps.drain.service.issue(scope, {
+      userId: scope.ctx.userId,
+      projectId,
+      module: null,
+      accessEndedAt: state.removedAt,
+      episode: state.episode,
+    });
+  }
+
+  /**
+   * Grants for the projects a device was just told it lost. A write, so it runs in its own transaction after the
+   * read-only pull. Each project gets at most one (the scope's rotations decide), keyed by its public id.
+   */
+  async function grantsFor(scope: TenantScope, projectIds: readonly string[]) {
+    const out = new Map<string, DrainGrant>();
+    for (const projectId of projectIds) {
+      const grant = await grantFor(scope, projectId);
+      if (grant) out.set(encodeId('project', projectId), grant);
+    }
+    return out;
+  }
 
   async function pull(
     scope: TenantScope,
@@ -148,7 +186,7 @@ export function createPullService(deps: PullDeps) {
     return { changes, revokedScopes, nextSince: String(nextSince), hasMore };
   }
 
-  return { pull };
+  return { pull, grantsFor };
 }
 
 export type PullService = ReturnType<typeof createPullService>;

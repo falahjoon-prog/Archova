@@ -11,6 +11,8 @@ import {
   createTestContext,
   signUp,
   type TestContext,
+  addMember,
+  removeMember,
 } from './helpers';
 
 let t: TestContext;
@@ -32,6 +34,18 @@ async function world(label: string) {
   const org = await createOrg(pm.browser, `${label} Builders`);
   const a = await createProject(pm.browser, org.id, { name: 'Tower A', state: 'NSW' });
   const b = await createProject(pm.browser, org.id, { name: 'Tower B', state: 'NSW' });
+  // Both projects had them on, and an admin took them off in the ordinary way.
+  for (const p of [a, b]) {
+    await addMember(
+      pm.browser,
+      org.id,
+      p.id,
+      ex.email,
+      'Subcontractor',
+      `${label} Formco ${p.id.slice(-4)}`,
+    );
+    await removeMember(pm.browser, org.id, p.id, ex.email);
+  }
   const ctx: TenantContext = {
     orgId: decodeId('org', org.id)!,
     userId: decodeId('user', pm.userId)!,

@@ -74,6 +74,21 @@ export function syncRoutes(
         (scope) => pull.pull(scope, { scopes, since, limit: q.limit }),
         { readOnly: true },
       );
+      // A device told it lost a whole project gets the grant for work it queued (X38). That writes, so it is its
+      // own transaction; nothing here changes what the pull itself returned.
+      const lost = body.revokedScopes.filter((r) => r.module === null);
+      if (lost.length > 0) {
+        const grants = await database.withTenantTx(tenant, (scope) =>
+          pull.grantsFor(
+            scope,
+            lost.map((r) => decodeId('project', r.projectId)!),
+          ),
+        );
+        body.revokedScopes = body.revokedScopes.map((r) => {
+          const drainGrant = r.module === null ? grants.get(r.projectId) : undefined;
+          return drainGrant ? { ...r, drainGrant } : r;
+        });
+      }
       return { status: 200, body };
     },
     syncPush: async (input) => {

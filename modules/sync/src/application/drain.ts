@@ -61,7 +61,7 @@ export function createLimiter(limit: number) {
   };
 }
 
-const HOURS_72 = 72 * 60 * 60 * 1000;
+export const DRAIN_WINDOW_MS = 72 * 60 * 60 * 1000;
 
 export const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
@@ -73,9 +73,23 @@ const rejected = (mutationId: string, code: string, detail: string): Result => (
   problem: { code, detail },
 });
 
+/** How someone's access to a project stands; the platform module answers (X38). */
+export interface AccessState {
+  status: 'active' | 'removed';
+  kind: 'ordinary' | 'for_cause' | 'wipe_now' | null;
+  removedAt: Date | null;
+  episode: number;
+}
+export type AccessStateLookup = (
+  scope: TenantScope,
+  projectId: string,
+  userId: string,
+) => Promise<AccessState | null>;
+
 export interface DrainDeps {
   database: Database;
   commands: readonly SyncCommand[];
+  accessState?: AccessStateLookup;
 }
 
 /**
@@ -102,13 +116,17 @@ export function createDrainService(deps: DrainDeps) {
       projectId: string | null;
       module: string | null;
       accessEndedAt: Date;
+      /** Which time round someone was given access; rotations count within it. */
+      episode?: number;
     },
   ): Promise<DrainGrant | null> {
+    const episode = input.episode ?? 1;
     const same = and(
       eq(drainGrants.orgId, scope.ctx.orgId),
       eq(drainGrants.userId, input.userId),
       input.projectId ? eq(drainGrants.projectId, input.projectId) : isNull(drainGrants.projectId),
       input.module ? eq(drainGrants.module, input.module) : isNull(drainGrants.module),
+      eq(drainGrants.accessEpisode, episode),
     );
     const [{ n } = { n: 0 }] = await scope.tx.select({ n: count() }).from(drainGrants).where(same);
     if (Number(n) >= DRAIN_LIMITS.rotations) return null;
@@ -117,7 +135,7 @@ export function createDrainService(deps: DrainDeps) {
       .set({ revokedAt: new Date() })
       .where(and(same, isNull(drainGrants.revokedAt)));
     const token = DRAIN_TOKEN_PREFIX + randomBytes(32).toString('base64url');
-    const expiresAt = new Date(input.accessEndedAt.getTime() + HOURS_72);
+    const expiresAt = new Date(input.accessEndedAt.getTime() + DRAIN_WINDOW_MS);
     await scope.tx.insert(drainGrants).values({
       orgId: scope.ctx.orgId,
       userId: input.userId,
@@ -125,6 +143,7 @@ export function createDrainService(deps: DrainDeps) {
       module: input.module,
       tokenHash: hashToken(token),
       expiresAt,
+      accessEpisode: episode,
     });
     return {
       token,
@@ -289,6 +308,12 @@ export function createDrainService(deps: DrainDeps) {
         )
         .limit(1);
       if (!grant) throw invalid();
+      // Added back since (or removed again in a later episode): the normal sync is the way in, not this grant.
+      if (grant.projectId && deps.accessState) {
+        const state = await deps.accessState(scope, grant.projectId, grant.userId);
+        if (!state || state.status !== 'removed' || state.episode !== grant.accessEpisode)
+          throw invalid();
+      }
       // Two requests for the same person and scope take turns, so the queue cap cannot be passed together.
       await scope.tx.execute(
         sql`select pg_advisory_xact_lock(hashtextextended(${`${grant.userId}:${grant.projectId ?? ''}:${grant.module ?? ''}`}, 0))`,

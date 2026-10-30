@@ -267,7 +267,22 @@ export function createMemberService(deps: {
       : null;
   }
 
-  return { list, add, remove, getProjectMembership };
+  /** How someone's access to a project stands, active or ended (the drain grant reads this, X38). */
+  async function getProjectAccessState(scope: TenantScope, projectId: string, userId: string) {
+    const [row] = await scope.tx
+      .select({
+        status: projectMembers.status,
+        kind: projectMembers.removalKind,
+        removedAt: projectMembers.removedAt,
+        episode: projectMembers.accessEpisode,
+      })
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, userId)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  return { list, add, remove, getProjectMembership, getProjectAccessState };
 }
 
 export type MemberService = ReturnType<typeof createMemberService>;
