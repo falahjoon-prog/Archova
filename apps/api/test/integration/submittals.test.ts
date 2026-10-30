@@ -301,7 +301,7 @@ describe('submittal register and review (product/04)', () => {
     // A subcontractor can't raise an item for another company, nor move their own onto one.
     const other = await s.steel.browser.post(`${s.base}/submittals`, {
       title: 'Not mine',
-      responsibleCompanyId: s.pm.companyId ?? s.steelCo.companyId,
+      responsibleCompanyId: s.outsiderCo.companyId,
     });
     expect(other.statusCode).toBe(201);
     expect(other.json().submittal.responsibleCompanyId).toBe(s.steelCo.companyId);
