@@ -46,7 +46,7 @@ Runs on every PR. Required to pass before merge.
 | Preview | Deploy web + api to a preview environment, post URL on the PR | < 5 min |
 | E2E smoke | Playwright smoke suite against the preview | < 5 min |
 | Accessibility (`a11y`) | axe-core on every Storybook story and component test for changed UI, plus on each Playwright smoke journey page; blocks merge; **fails on serious or critical issues** (Uma's design/05 §4, Quinn's qa/08) | < 3 min (parallel with E2E) |
-| DAST baseline | OWASP ZAP baseline scan against the preview, for PRs touching `apps/api` or `apps/web`; fails on high-risk alerts, with a reviewed suppression file for false positives. This is the named **a11y/DAST gate**: both block merge (Sam, qa/03 §4) | < 5 min (parallel) |
+| DAST baseline | OWASP ZAP baseline scan against the preview, for PRs touching `apps/api` or `apps/web`; fails on high-risk alerts, with a reviewed suppression file for false positives. This is the named **a11y/DAST gate**: both block merge (Sam, qa/03 §4). Until previews exist the scan targets the stack in `docker-compose.demo.yml` on the CI runner (`.github/workflows/dast.yml`, suppressions in `.zap/rules.tsv`), so it needs no cloud account; pointing it at a preview URL later changes one step | < 10 min (parallel) |
 
 Target: **under 15 minutes wall clock** for a typical PR.
 
