@@ -22,6 +22,9 @@ export const GetOrgParams = z.object({
 export const GetSupportAccessParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetSupportBannerParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const CreateSupportAccessGrantParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1434,6 +1437,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetSupportAccessParams,
+    query: null,
+    body: null,
+  },
+  getSupportBanner: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/banner',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportBannerParams,
     query: null,
     body: null,
   },

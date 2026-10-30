@@ -102,6 +102,8 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       await d.support.start(me(i), id, i.body.ticketRef);
       return ok(await d.support.list(id), 201);
     },
+    listSupportProjects: async (i) =>
+      ok({ items: await d.support.viewProjects(me(i), orgId(i.params.orgId)) }),
     endSupportSession: async (i) => {
       const id = orgId(i.params.orgId);
       await d.support.end(me(i), id, i.params.sessionId);

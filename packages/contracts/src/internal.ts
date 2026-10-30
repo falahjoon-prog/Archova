@@ -229,6 +229,8 @@ export type SupportSessionDto = {
   endedAt: string | null;
   status: 'open' | 'ended' | 'expired' | 'revoked';
 };
+/** Names and status only; a support session never sees documents, files or claims. */
+export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
 export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
 
 export type FlagOrgRef = { orgId: string; name: string };
@@ -389,6 +391,15 @@ export const internalOperations = {
     auth: 'staff',
     permission: 'backoffice.support.access',
     params: z.object({ orgId: orgRef, sessionId: uuid }),
+    query: noParams,
+    body: null,
+  }),
+  listSupportProjects: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access/projects',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: orgOnly,
     query: noParams,
     body: null,
   }),

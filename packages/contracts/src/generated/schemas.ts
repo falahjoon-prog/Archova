@@ -2850,6 +2850,7 @@ export const SupportAccessGrantSchema = z.object({
 export type SupportAccessGrant = z.infer<typeof SupportAccessGrantSchema>;
 
 export const SupportAccessSessionSchema = z.object({
+  "pagesViewed": z.number().int(),
   "id": z.string(),
   "grantId": z.string(),
   "staffName": z.string(),
@@ -2866,6 +2867,12 @@ export const SupportAccessSchema = z.object({
   "sessions": z.array(SupportAccessSessionSchema),
 });
 export type SupportAccess = z.infer<typeof SupportAccessSchema>;
+
+export const SupportBannerSchema = z.object({
+  "active": z.boolean(),
+  "since": z.string().datetime({ offset: true }).nullable(),
+});
+export type SupportBanner = z.infer<typeof SupportBannerSchema>;
 
 export const SyncChangeSchema = z.object({
   "entityType": z.string().min(1).max(64),

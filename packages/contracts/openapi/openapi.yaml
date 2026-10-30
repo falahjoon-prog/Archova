@@ -240,6 +240,21 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SupportAccess' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/banner:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportBanner
+      tags: [orgs]
+      x-module: platform
+      summary: Whether an Archova support session is open now. Every signed-in user of the company sees the banner.
+      responses:
+        '200':
+          description: Banner state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportBanner' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/support-access/grants:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5899,8 +5914,9 @@ components:
         status: { type: string, enum: [active, expired, revoked] }
     SupportAccessSession:
       type: object
-      required: [id, grantId, staffName, ticketRef, startedAt, expiresAt, status]
+      required: [id, grantId, staffName, ticketRef, startedAt, expiresAt, pagesViewed, status]
       properties:
+        pagesViewed: { type: integer }
         id: { type: string, format: uuid }
         grantId: { type: string, format: uuid }
         staffName: { type: string }
@@ -5919,6 +5935,12 @@ components:
         sessions:
           type: array
           items: { $ref: '#/components/schemas/SupportAccessSession' }
+    SupportBanner:
+      type: object
+      required: [active, since]
+      properties:
+        active: { type: boolean }
+        since: { type: [string, 'null'], format: date-time }
     CreateSupportAccessGrantRequest:
       type: object
       additionalProperties: false

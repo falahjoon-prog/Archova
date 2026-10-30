@@ -898,4 +898,63 @@ describe('support access', () => {
       'ended',
     );
   });
+  it('shows the project list only inside an open session, logs it, and shows a banner to the company', async () => {
+    const c = await company('view');
+    await createProject(c.browser, c.orgId, { name: 'Harbour Rd', state: 'NSW' });
+    const support = await staff(['support']);
+    const list = `/orgs/${c.orgRef}/support-access/projects`;
+
+    // No grant, then a grant but no session: nothing is readable and the banner stays off.
+    expect(code(await support.get(list))).toBe('backoffice.support_no_session');
+    const grant = (
+      await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-9', hours: 4 })
+    ).json() as { id: string };
+    expect(code(await support.get(list))).toBe('backoffice.support_no_session');
+    expect((await c.browser.get(`${c.base}/banner`)).json()).toEqual({
+      active: false,
+      since: null,
+    });
+
+    const second = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-10', hours: 1 });
+    expect(second.statusCode).toBe(409);
+    expect(code(second)).toBe('backoffice.support_grant_exists');
+    await start(support, c.orgRef, 'SUP-9');
+    expect((await c.browser.get(`${c.base}/banner`)).json()).toMatchObject({ active: true });
+    // Another staff member has no session of their own.
+    expect(code(await (await staff(['security_lead'])).get(list))).toBe(
+      'backoffice.support_no_session',
+    );
+    const view = await support.get(list);
+    expect(view.statusCode, view.body).toBe(200);
+    expect((view.json() as { items: Array<{ name: string }> }).items.map((p) => p.name)).toEqual([
+      'Harbour Rd',
+    ]);
+    const seen = (await c.browser.get(c.base)).json() as {
+      sessions: Array<{ pagesViewed: number }>;
+    };
+    expect(seen.sessions[0]!.pagesViewed).toBe(1);
+
+    // Withdrawing consent stops reads and clears the banner.
+    expect((await c.browser.post(`${c.base}/grants/${grant.id}/revoke`, {})).statusCode).toBe(204);
+    expect(code(await support.get(list))).toBe('backoffice.support_no_session');
+    expect((await c.browser.get(`${c.base}/banner`)).json()).toMatchObject({ active: false });
+  });
+
+  it('lets a suspended company withdraw consent', async () => {
+    const c = await company('susp');
+    const grant = (
+      await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-3', hours: 2 })
+    ).json() as { id: string };
+    const owner = await staff(['owner']);
+    const susp = await owner.post(`/orgs/${c.orgRef}/actions/suspend`, {
+      category: 'security',
+      reason: 'Security test',
+      ticketRef: 'SUP-3',
+    });
+    expect(susp.statusCode, susp.body).toBe(200);
+    expect(
+      (await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-4', hours: 1 })).statusCode,
+    ).toBe(403);
+    expect((await c.browser.post(`${c.base}/grants/${grant.id}/revoke`, {})).statusCode).toBe(204);
+  });
 });

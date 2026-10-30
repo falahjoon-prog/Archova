@@ -80,6 +80,12 @@ function SupportAccess({ orgId }: { orgId: string }) {
   });
   const activeGrant = access.data?.grants.find((g) => g.status === 'active');
   const open = access.data?.sessions.find((s) => s.status === 'open');
+  const projects = useQuery({
+    queryKey: ['support-projects', orgId, open?.id],
+    queryFn: () => api.supportProjects(orgId),
+    enabled: canStart && Boolean(open),
+    retry: false,
+  });
 
   return (
     <Card title="Support access">
@@ -89,8 +95,8 @@ function SupportAccess({ orgId }: { orgId: string }) {
         <div className="stack">
           <p className="muted">
             Off unless the company's owner or admin grants it. A grant is view-only, tied to a
-            ticket and lasts up to 72 hours; a session lasts up to an hour. Staff cannot see project
-            content from this console.
+            ticket and lasts up to 72 hours; a session lasts up to an hour. In a session staff see
+            project names only, and each view is logged for the customer.
           </p>
           {access.data.grants.length === 0 ? (
             <p>No grant. This company has not given Archova support access.</p>
@@ -144,6 +150,26 @@ function SupportAccess({ orgId }: { orgId: string }) {
               >
                 Start session
               </Button>
+            </div>
+          ) : null}
+          {open && canStart ? (
+            <div className="stack">
+              <h3>Projects (read only)</h3>
+              {projects.isPending ? <SkeletonRows rows={2} /> : null}
+              {projects.isError ? <Alert tone="danger">{projects.error.message}</Alert> : null}
+              {projects.data?.items.length === 0 ? (
+                <p className="muted">This company has no projects.</p>
+              ) : null}
+              <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                {projects.data?.items.map((p) => (
+                  <li key={p.id}>
+                    {p.name}{' '}
+                    <span className="muted">
+                      · {p.number ?? 'no number'} · {p.status}
+                    </span>
+                  </li>
+                ))}
+              </ul>
             </div>
           ) : null}
           <FormError message={error} />
