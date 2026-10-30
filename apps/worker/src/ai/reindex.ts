@@ -5,6 +5,7 @@
 //  2. after a short window (`ai-reindex`): embed the current text. One job per record per window, so a burst of
 //     edits to one record is a single embedding run that reads the latest text.
 // The worker acts as `AI_INDEX_ACTOR` in the event's own org: no person, no org role, no project membership.
+import { UnrecoverableError } from 'bullmq';
 import { isAppError, type Entitlements, type TenantContext } from '@archova/kernel';
 import { AI_INDEX_ACTOR, recordKindOf, type RecordKind } from '@archova/mod-ai';
 import type { StoredEvent, Subscriber } from '../subscribers';
@@ -86,14 +87,35 @@ export function indexContext(
   };
 }
 
+/** Statuses that mean "not now" rather than "never": the same job can succeed when tried again. */
+const TRY_LATER = new Set([408, 409, 412, 423, 425, 429]);
+
+/**
+ * Whether trying again cannot change the outcome: the request itself is wrong (a record, project or folder that is gone,
+ * a permission the actor lacks, input that does not validate). The `ai.*` codes are left out because they describe the
+ * provider and the org's own limits, which change.
+ */
+export function isDeterministic(err: unknown): boolean {
+  return (
+    isAppError(err) &&
+    err.status >= 400 &&
+    err.status < 500 &&
+    !TRY_LATER.has(err.status) &&
+    !err.code.startsWith('ai.')
+  );
+}
+
 /**
  * What a failed job leaves behind: its kind, never its message or stack. BullMQ keeps a failed job's reason and stack
  * trace in Redis for 14 days, and a message from a provider or the database could carry some of the text being embedded.
+ * A deterministic failure is unrecoverable, so BullMQ fails the job at once instead of retrying it for an hour; the
+ * nightly sweep covers the record.
  */
 export function sanitizeFailure(err: unknown): Error {
   const kind = isAppError(err) ? err.code : err instanceof Error ? err.name : 'unknown';
-  const out = new Error(`ai job failed: ${kind}`);
-  out.stack = `Error: ${out.message}`;
+  const message = `ai job failed: ${kind}`;
+  const out = isDeterministic(err) ? new UnrecoverableError(message) : new Error(message);
+  out.stack = `${out.name}: ${message}`;
   return out;
 }
 

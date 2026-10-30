@@ -111,6 +111,17 @@ const diaryPage = (d: DiarySource): RecordPage => ({
   text: diaryText(d),
 });
 
+/** What a reconcile changed: chunks deleted, and chunks whose status or access scope was corrected. */
+interface Reconciled {
+  removed: number;
+  restamped: number;
+}
+
+/** What the nightly sweep of one org changed. Both counts are normally zero: the event handlers already did the work. */
+export interface SweepReport extends Reconciled {
+  projects: number;
+}
+
 export interface IndexReport {
   /** Revisions indexed in this run. */
   indexed: number;
@@ -453,7 +464,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     onlySource?: string,
     /** Leave chunks of an older pipeline version alone: they go when a run that embeds replaces them. */
     keepOldVersions = false,
-  ) {
+  ): Promise<Reconciled> {
     const live = pages.map((p) => p.revisionId);
     const inProject = and(
       eq(chunks.orgId, scope.ctx.orgId),
@@ -461,7 +472,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       eq(chunks.sourceType, sourceType),
       onlySource ? eq(chunks.sourceId, onlySource) : undefined,
     );
-    await scope.tx
+    const dropped = await scope.tx
       .delete(chunks)
       .where(
         and(
@@ -483,6 +494,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
           live.length ? notInArray(indexEntries.revisionId, live) : sql`true`,
         ),
       );
+    return { removed: dropped.rowCount ?? 0, restamped: 0 };
   }
 
   /**
@@ -498,7 +510,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     onlySource?: string,
     /** Leave chunks of an older pipeline version alone: they go when a run that embeds replaces them. */
     keepOldVersions = false,
-  ) {
+  ): Promise<Reconciled> {
     const live = sources.map((s) => s.revisionId);
     // Only what `documents` supplies: induction chunks (induction-qa.ts) are kept in step by their own versions.
     const inProject = and(
@@ -507,13 +519,19 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       inArray(chunks.sourceType, DOCUMENT_SOURCES),
       onlySource ? eq(chunks.sourceId, onlySource) : undefined,
     );
-    await scope.tx
-      .delete(chunks)
-      .where(and(inProject, live.length ? notInArray(chunks.revisionId, live) : sql`true`));
-    if (!keepOldVersions)
+    let removed = (
       await scope.tx
         .delete(chunks)
-        .where(and(inProject, sql`${chunks.pipelineVersion} <> ${PIPELINE_VERSION}`));
+        .where(and(inProject, live.length ? notInArray(chunks.revisionId, live) : sql`true`))
+    ).rowCount;
+    if (!keepOldVersions)
+      removed =
+        (removed ?? 0) +
+        ((
+          await scope.tx
+            .delete(chunks)
+            .where(and(inProject, sql`${chunks.pipelineVersion} <> ${PIPELINE_VERSION}`))
+        ).rowCount ?? 0);
     await scope.tx
       .delete(indexEntries)
       .where(
@@ -531,9 +549,10 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
       const key = `${s.status}|${s.accessScope}`;
       groups.set(key, [...(groups.get(key) ?? []), s.revisionId]);
     }
+    let restamped = 0;
     for (const [key, ids] of groups) {
       const [status, accessScope] = key.split('|') as ['current' | 'superseded', string];
-      await scope.tx
+      const fixed = await scope.tx
         .update(chunks)
         .set({ status, accessScope, updatedAt: sql`now()` })
         .where(
@@ -543,7 +562,9 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
             sql`(${chunks.status} <> ${status} or ${chunks.accessScope} <> ${accessScope})`,
           ),
         );
+      restamped += fixed.rowCount ?? 0;
     }
+    return { removed: removed ?? 0, restamped };
   }
 
   /** The page of one record (or of every record of the kind), none for one that is not a source (a draft, voided, deleted). */
@@ -642,8 +663,12 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
    * defect and diary day. Reads each source from its module again, so it never puts back what a snapshot said.
    * With `keepOldVersions` it leaves chunks of an older pipeline version for the run that re-embeds them.
    */
-  async function reconcileProject(scope: TenantScope, projectId: string, keepOldVersions: boolean) {
-    await reconcile(
+  async function reconcileProject(
+    scope: TenantScope,
+    projectId: string,
+    keepOldVersions: boolean,
+  ): Promise<Reconciled> {
+    const total = await reconcile(
       scope,
       projectId,
       await deps.sources(scope, projectId),
@@ -652,8 +677,18 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     );
     for (const kind of ['rfi', 'defect', 'diary'] as const) {
       const pages = await recordPages(scope, projectId, kind);
-      await reconcileRecords(scope, projectId, kind, pages, undefined, keepOldVersions);
+      const done = await reconcileRecords(
+        scope,
+        projectId,
+        kind,
+        pages,
+        undefined,
+        keepOldVersions,
+      );
+      total.removed += done.removed;
+      total.restamped += done.restamped;
     }
+    return total;
   }
 
   /**
@@ -662,7 +697,7 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
    * Only projects with chunks or index entries need it, so a project never indexed costs nothing. Same caller
    * rules as `reindexRecord`.
    */
-  async function sweepOrg(ctx: TenantContext): Promise<{ projects: number }> {
+  async function sweepOrg(ctx: TenantContext): Promise<SweepReport> {
     const projectIds = await database.withTenantTx(ctx, async (scope) => {
       const withChunks = await scope.tx
         .selectDistinct({ projectId: chunks.projectId })
@@ -677,17 +712,22 @@ export function createProjectIndexService(deps: ProjectIndexDeps) {
     // One project that cannot be reconciled must not keep the rest of the org from it, night after night: finish
     // the others, then fail so the job is retried.
     let failure: unknown;
+    const report: SweepReport = { projects: projectIds.length, removed: 0, restamped: 0 };
     for (const projectId of projectIds) {
       try {
-        await database.withTenantTx(ctx, (scope) => reconcileProject(scope, projectId, true), {
-          statementTimeout: '60s',
-        });
+        const done = await database.withTenantTx(
+          ctx,
+          (scope) => reconcileProject(scope, projectId, true),
+          { statementTimeout: '60s' },
+        );
+        report.removed += done.removed;
+        report.restamped += done.restamped;
       } catch (err) {
         failure ??= err;
       }
     }
     if (failure !== undefined) throw failure;
-    return { projects: projectIds.length };
+    return report;
   }
 
   return { indexProject, reindexRecord, dropStaleRecord, restampSource, sweepOrg };

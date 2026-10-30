@@ -1,6 +1,8 @@
 import { Queue, Worker } from 'bullmq';
 import { afterAll, describe, expect, it } from 'vitest';
+import { AppError } from '@archova/kernel';
 import { testRedisUrl } from '@archova/testing';
+import { sanitizeFailure } from '../../src/ai/reindex';
 import {
   ROUTED_RETRY,
   connectionFor,
@@ -89,6 +91,40 @@ describe.runIf(redisUrl)('queues', () => {
       await worker.close();
       await aiSubs.obliterate({ force: true });
       await aiSubs.close();
+    }
+  });
+
+  it('fails a routed job with an unrecoverable error after one attempt, and retries any other', async () => {
+    const q = new Queue('subscribers-ai-fail', { connection: connectionFor(redisUrl!), prefix });
+    const tries = { gone: 0, flaky: 0 };
+    const worker = new Worker(
+      'subscribers-ai-fail',
+      async (job) => {
+        if (job.name === 'gone') {
+          tries.gone++;
+          throw sanitizeFailure(new AppError('project.not_found'));
+        }
+        tries.flaky++;
+        if (tries.flaky < 2) throw sanitizeFailure(new AppError('ai.unavailable'));
+      },
+      {
+        connection: connectionFor(redisUrl!),
+        prefix,
+        settings: { backoffStrategy: () => 20 },
+      },
+    );
+    try {
+      await q.add('gone', {}, { jobId: 'g', ...ROUTED_RETRY });
+      await q.add('flaky', {}, { jobId: 'f', ...ROUTED_RETRY });
+      for (let i = 0; i < 100 && (await q.getJobCountByTypes('failed', 'completed')) < 2; i++)
+        await new Promise((r) => setTimeout(r, 50));
+      expect(await q.getJobCountByTypes('failed')).toBe(1);
+      expect((await q.getJob('g'))?.failedReason).toBe('ai job failed: project.not_found');
+      expect(tries).toEqual({ gone: 1, flaky: 2 });
+    } finally {
+      await worker.close();
+      await q.obliterate({ force: true });
+      await q.close();
     }
   });
 
