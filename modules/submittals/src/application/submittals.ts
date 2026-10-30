@@ -294,6 +294,10 @@ export function createSubmittalService(deps: SubmittalsDeps) {
       ]);
   }
 
+  /** The caller's company is the one responsible. A caller with no company never matches an item with none. */
+  const ownsItem = (s: SubmittalRow, v: SubmittalViewer) =>
+    v.companyId !== null && s.responsibleCompanyId === v.companyId;
+
   async function create(
     scope: TenantScope,
     projectId: string,
@@ -318,12 +322,8 @@ export function createSubmittalService(deps: SubmittalsDeps) {
         title: input.title.trim(),
         status: 'draft',
         // A subcontractor's own item is theirs; builder staff review what they set up.
-        responsibleCompanyId:
-          input.responsibleCompanyId !== undefined
-            ? input.responsibleCompanyId
-            : v.isInternal
-              ? null
-              : v.companyId,
+        // Outside users can only raise items for their own company; builder staff name the company.
+        responsibleCompanyId: v.isInternal ? (input.responsibleCompanyId ?? null) : v.companyId,
         managerId: input.managerId ?? (v.isInternal ? scope.ctx.userId : null),
         submitBy: computeSubmitBy(
           input.requiredOnSite ?? null,
@@ -364,12 +364,14 @@ export function createSubmittalService(deps: SubmittalsDeps) {
         undefined,
         { status: submittal.status },
       );
+    if (!v.isInternal && !ownsItem(submittal, v))
+      throw new AppError('access.denied', "You can't change this submittal.");
     if (
       !v.isInternal &&
-      (submittal.responsibleCompanyId ?? null) !== v.companyId &&
-      submittal.createdBy !== v.userId
+      patch.responsibleCompanyId !== undefined &&
+      patch.responsibleCompanyId !== v.companyId
     )
-      throw new AppError('access.denied', "You can't change this submittal.");
+      throw new AppError('access.denied', 'Only the builder can change the responsible company.');
     if (submittal.version !== expectedVersion) throw versionConflict();
     if (patch.managerId) await memberOf(scope, projectId, patch.managerId, 'managerId');
     if (patch.numberLabel) await checkLabel(scope, projectId, patch.numberLabel, id);
@@ -420,7 +422,7 @@ export function createSubmittalService(deps: SubmittalsDeps) {
         undefined,
         { status: submittal.status },
       );
-    if (!v.isInternal && (submittal.responsibleCompanyId ?? null) !== v.companyId)
+    if (!v.isInternal && !ownsItem(submittal, v))
       throw new AppError(
         'access.denied',
         'Only the responsible company or the builder can submit.',
@@ -544,7 +546,8 @@ export function createSubmittalService(deps: SubmittalsDeps) {
       });
     const fileIds = input.fileIds ?? [];
     await checkFiles(scope, projectId, fileIds);
-    await scope.tx
+    // Only a step that is still waiting can be answered, so two answers at once can't both land.
+    const answered = await scope.tx
       .update(steps)
       .set({
         response: input.response,
@@ -553,7 +556,9 @@ export function createSubmittalService(deps: SubmittalsDeps) {
         respondedAt: now(),
         respondedBy: scope.ctx.userId,
       })
-      .where(eq(steps.id, stepId));
+      .where(and(eq(steps.id, stepId), eq(steps.response, 'pending')))
+      .returning({ id: steps.id });
+    if (!answered.length) throw versionConflict();
     let status: SubmittalStatus;
     if (outcome.kind === 'advance') {
       status = 'in_review';
@@ -578,8 +583,9 @@ export function createSubmittalService(deps: SubmittalsDeps) {
         updatedAt: now(),
         updatedBy: scope.ctx.userId,
       })
-      .where(eq(submittals.id, id))
+      .where(and(eq(submittals.id, id), eq(submittals.version, submittal.version)))
       .returning();
+    if (!row) throw versionConflict();
     scope.events.add({
       type:
         outcome.kind === 'return'
@@ -588,15 +594,15 @@ export function createSubmittalService(deps: SubmittalsDeps) {
       projectId,
       entityType: 'submittal',
       entityId: id,
-      entityVersion: row!.version,
+      entityVersion: row.version,
       data: {
         submittalId: id,
-        number: row!.numberLabel,
+        number: row.numberLabel,
         revision: revision.revision,
         step: step.step,
         response: input.response,
         status,
-        responsibleCompanyId: row!.responsibleCompanyId,
+        responsibleCompanyId: row.responsibleCompanyId,
         // SUB-AC5: a status that puts the ball back with the subcontractor carries the comments to their email.
         ...(outcome.kind === 'return' ? { comments: input.comments?.trim() ?? '', fileIds } : {}),
       },

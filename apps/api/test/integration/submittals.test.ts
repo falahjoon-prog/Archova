@@ -35,8 +35,15 @@ async function setup() {
     'Subcontractor',
     'Steelco',
   );
-  await addMember(pm.browser, org.id, project.id, outsider.email, 'Subcontractor', 'Plumbco');
-  return { pm, arch, eng, steel, outsider, org, project, base, steelCo };
+  const outsiderCo = await addMember(
+    pm.browser,
+    org.id,
+    project.id,
+    outsider.email,
+    'Subcontractor',
+    'Plumbco',
+  );
+  return { pm, arch, eng, steel, outsider, org, project, base, steelCo, outsiderCo };
 }
 
 const etagOf = (res: { headers: Record<string, unknown> }) => res.headers.etag as string;
@@ -287,5 +294,33 @@ describe('submittal register and review (product/04)', () => {
       },
     );
     expect(done.json().submittal.status).toBe('approved');
+  });
+
+  it('keeps outside users to their own company', async () => {
+    const s = await setup();
+    // A subcontractor can't raise an item for another company, nor move their own onto one.
+    const other = await s.steel.browser.post(`${s.base}/submittals`, {
+      title: 'Not mine',
+      responsibleCompanyId: s.pm.companyId ?? s.steelCo.companyId,
+    });
+    expect(other.statusCode).toBe(201);
+    expect(other.json().submittal.responsibleCompanyId).toBe(s.steelCo.companyId);
+    const moved = await s.steel.browser.patch(
+      `${s.base}/submittals/${other.json().submittal.id}`,
+      { responsibleCompanyId: s.outsiderCo.companyId },
+      { 'if-match': etagOf(other) },
+    );
+    expect(moved.statusCode).toBe(403);
+    // A company's item can't be edited or submitted by another company.
+    const mine = await s.pm.browser.post(`${s.base}/submittals`, {
+      title: 'Steel',
+      responsibleCompanyId: s.steelCo.companyId,
+    });
+    const hijack = await s.outsider.browser.patch(
+      `${s.base}/submittals/${mine.json().submittal.id}`,
+      { title: 'x' },
+      { 'if-match': etagOf(mine) },
+    );
+    expect(hijack.statusCode).toBe(404);
   });
 });
