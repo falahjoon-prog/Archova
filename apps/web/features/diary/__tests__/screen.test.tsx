@@ -71,6 +71,19 @@ describe('DiaryDayScreen', () => {
     expect(screen.getByText('Reason: Recounted at knock-off')).toBeTruthy();
   });
 
+  it("summarises the week the day sits in with Nova, from that week's Monday", async () => {
+    const user = userEvent.setup();
+    const week = vi.spyOn(diarySource, 'novaWeekSummary');
+    renderInProject(<DiaryDayScreen />);
+    await user.click(
+      await screen.findByRole('button', { name: /Summarise the week, 28 Sept to 4 Oct/ }),
+    );
+    expect(await screen.findByText(/Week of 28 Sept/)).toBeTruthy();
+    expect(week).toHaveBeenCalledWith(expect.any(String), '2026-09-28');
+    await user.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(screen.queryByText(/Week of 28 Sept/)).toBeNull();
+  });
+
   it('flags a possible weather delay when the site was stood down (F1.7 step 3)', async () => {
     const user = userEvent.setup();
     renderInProject(<DiaryDayScreen />);

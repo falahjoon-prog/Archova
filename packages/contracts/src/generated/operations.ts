@@ -55,6 +55,12 @@ export const AddProjectMemberParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddProjectMemberBody = s.AddProjectMemberRequestSchema;
+export const RemoveProjectMemberParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "memberId": z.string().regex(new RegExp("^pmb_[0-9A-Za-z]{26}$")),
+});
+export const RemoveProjectMemberBody = s.RemoveProjectMemberRequestSchema;
 export const GetProjectPermissionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -388,6 +394,16 @@ export const DraftInductionParams = z.object({
 export const DraftInductionBody = z.object({
   "siteName": z.string().min(1).max(200),
 }).strict();
+export const GetInductionDraftCurrencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const RefreshInductionDraftParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
 export const IndexProjectForNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1060,6 +1076,12 @@ export const GetInductionCompletionParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
 });
+export const GetInductionFileDownloadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
 export const RecordInductionProgressParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1376,6 +1398,18 @@ export const operations = {
     params: AddProjectMemberParams,
     query: null,
     body: AddProjectMemberBody,
+  },
+  removeProjectMember: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove',
+    module: "platform",
+    auth: "required",
+    permission: "platform.project_members.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RemoveProjectMemberParams,
+    query: null,
+    body: RemoveProjectMemberBody,
   },
   getProjectPermissions: {
     method: 'GET',
@@ -2036,6 +2070,30 @@ export const operations = {
     params: DraftInductionParams,
     query: null,
     body: DraftInductionBody,
+  },
+  getInductionDraftCurrency: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency',
+    module: "ai",
+    auth: "required",
+    permission: "ai.induction.draft",
+    internal: false,
+    contentType: null,
+    params: GetInductionDraftCurrencyParams,
+    query: null,
+    body: null,
+  },
+  refreshInductionDraft: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/refresh',
+    module: "ai",
+    auth: "required",
+    permission: "ai.induction.draft",
+    internal: false,
+    contentType: null,
+    params: RefreshInductionDraftParams,
+    query: null,
+    body: null,
   },
   indexProjectForNova: {
     method: 'POST',
@@ -3306,6 +3364,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetInductionCompletionParams,
+    query: null,
+    body: null,
+  },
+  getInductionFileDownload: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/files/{fileId}/download',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: null,
+    params: GetInductionFileDownloadParams,
     query: null,
     body: null,
   },

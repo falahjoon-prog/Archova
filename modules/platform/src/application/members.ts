@@ -71,8 +71,62 @@ export function createMemberService(deps: {
       .from(memberships)
       .where(and(eq(memberships.userId, user.id), eq(memberships.status, 'active')))
       .limit(1);
-    const id = uuidv7();
     const isExternal = !membership;
+    const [previous] = await scope.tx
+      .select()
+      .from(projectMembers)
+      .where(and(eq(projectMembers.projectId, projectId), eq(projectMembers.userId, user.id)))
+      .limit(1);
+    if (previous?.status === 'active') {
+      throw new AppError(
+        'project_member.already_exists',
+        'That person is already on this project.',
+      );
+    }
+    if (previous) {
+      // Someone removed earlier is given access again: a new episode, so grants from the last one stop counting.
+      const [row] = await scope.tx
+        .update(projectMembers)
+        .set({
+          status: 'active',
+          removedAt: null,
+          removalKind: null,
+          removalReason: null,
+          accessEpisode: previous.accessEpisode + 1,
+          companyId: input.companyId,
+          permissionTemplateId: input.permissionTemplateId,
+          isExternal,
+          version: previous.version + 1,
+          updatedAt: new Date(),
+          updatedBy: scope.ctx.userId,
+        })
+        .where(eq(projectMembers.id, previous.id))
+        .returning();
+      await scope.recordChange({
+        module: 'platform',
+        entityType: 'project_member',
+        entityId: previous.id,
+        op: 'upsert',
+        version: row!.version,
+        projectId,
+      });
+      scope.events.add({
+        type: 'platform.project_member.added.v1',
+        projectId,
+        entityType: 'project_member',
+        entityId: previous.id,
+        entityVersion: row!.version,
+        data: {
+          projectId,
+          userId: user.id,
+          companyId: input.companyId,
+          permissionTemplateId: input.permissionTemplateId,
+          isExternal,
+        },
+      });
+      return { ...row!, name: user.name, email: user.email };
+    }
+    const id = uuidv7();
     try {
       const [row] = await scope.tx
         .insert(projectMembers)
@@ -123,6 +177,69 @@ export function createMemberService(deps: {
     }
   }
 
+  /**
+   * Ends someone's access to the project. The kind is recorded for the drain rules (X38): `ordinary` lets their
+   * phone send the work it already queued, `for_cause` and `wipe_now` do not. Nobody removes themselves.
+   */
+  async function remove(
+    scope: TenantScope,
+    projectId: string,
+    memberId: string,
+    input: { kind: 'ordinary' | 'for_cause' | 'wipe_now'; reason?: string | undefined },
+  ) {
+    await deps.projects.get(scope, projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(projectMembers)
+      .where(
+        and(
+          eq(projectMembers.id, memberId),
+          eq(projectMembers.projectId, projectId),
+          eq(projectMembers.status, 'active'),
+        ),
+      )
+      .for('update')
+      .limit(1);
+    if (!row) throw new AppError('project_member.not_found', 'That person is not on this project.');
+    if (row.userId === scope.ctx.userId)
+      throw new AppError('project_member.cannot_remove_self', 'You cannot remove yourself.');
+    const [done] = await scope.tx
+      .update(projectMembers)
+      .set({
+        status: 'removed',
+        removedAt: new Date(),
+        removalKind: input.kind,
+        removalReason: input.reason?.trim() || null,
+        version: row.version + 1,
+        updatedAt: new Date(),
+        updatedBy: scope.ctx.userId,
+      })
+      .where(eq(projectMembers.id, row.id))
+      .returning();
+    await scope.recordChange({
+      module: 'platform',
+      entityType: 'project_member',
+      entityId: row.id,
+      op: 'upsert',
+      version: done!.version,
+      projectId,
+    });
+    scope.events.add({
+      type: 'platform.project_member.removed.v1',
+      projectId,
+      entityType: 'project_member',
+      entityId: row.id,
+      entityVersion: done!.version,
+      data: { projectId, userId: row.userId, kind: input.kind },
+    });
+    const users = await deps.identity.getUsers([row.userId]);
+    return {
+      ...done!,
+      name: users.get(row.userId)?.name ?? '',
+      email: users.get(row.userId)?.email ?? '',
+    };
+  }
+
   /** Public query used by `access` to build effective permissions. */
   async function getProjectMembership(
     scope: TenantScope,
@@ -150,7 +267,7 @@ export function createMemberService(deps: {
       : null;
   }
 
-  return { list, add, getProjectMembership };
+  return { list, add, remove, getProjectMembership };
 }
 
 export type MemberService = ReturnType<typeof createMemberService>;

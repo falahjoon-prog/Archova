@@ -8,6 +8,7 @@ import {
   createMemoryMessageSender,
   createRedis,
   type Database,
+  type Logger,
   type RedisClient,
 } from '@archova/kernel';
 import {
@@ -55,9 +56,18 @@ export interface TestContext {
 }
 
 export async function createTestContext(
-  opts: { redis?: boolean; scanner?: MalwareScanner; rasterizePage?: RasterizePage } = {},
+  opts: {
+    redis?: boolean;
+    scanner?: MalwareScanner;
+    rasterizePage?: RasterizePage;
+    /** Settings the app reads from the environment, such as Nova's `API_AI_*` limits. */
+    env?: Record<string, string>;
+    /** Where the app logs; silent by default. */
+    logger?: Logger;
+  } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
+    ...opts.env,
     NODE_ENV: 'test',
     API_DATABASE_URL: testAppUrl(),
     API_APP_ORIGINS: APP_ORIGIN,
@@ -80,7 +90,7 @@ export async function createTestContext(
     config,
     database,
     redis,
-    logger: createLogger('test', 'silent'),
+    logger: opts.logger ?? createLogger('test', 'silent'),
     store,
     scanner: opts.scanner ?? noScanner,
     aiProvider: ai,

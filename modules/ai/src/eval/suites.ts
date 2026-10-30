@@ -9,6 +9,7 @@ import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
 import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
+import { inductionRefreshSuite } from './suites/induction-refresh';
 import { qaAnswerSuite } from './suites/qa-answer';
 import { qaRerankSuite, qaRewriteSuite } from './suites/qa-retrieval';
 import { quoteReadSuite } from './suites/quote-read';
@@ -24,6 +25,7 @@ export const SUITES: readonly AnySuite[] = [
   qaRerankSuite,
   qaAnswerSuite,
   inductionDraftSuite,
+  inductionRefreshSuite,
   inductionAskSuite,
   translationSuite,
   diarySummarySuite,

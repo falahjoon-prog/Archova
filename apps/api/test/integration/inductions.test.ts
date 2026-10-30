@@ -265,6 +265,17 @@ describe('online inductions (product/14)', () => {
     // Starting again picks up the same one.
     expect((await s.sub.browser.post(`${s.base}/induction-completions`, {})).json().id).toBe(c.id);
 
+    // A worker holding only the sign-in permission downloads the induction's own video, and no other file.
+    const videoId = c.content.sections[0].blocks.find((b: { type: string }) => b.type === 'video')
+      .fileId as string;
+    const dl = await s.sub.browser.get(`${url}/files/${videoId}/download`);
+    expect(dl.statusCode).toBe(200);
+    expect(dl.json().url).toEqual(expect.any(String));
+    const unrelated = await uploadFile(t, s.pm.browser, s.org.id, s.project.id, 'plans.pdf');
+    expect((await s.sub.browser.get(`${url}/files/${unrelated}/download`)).statusCode).toBe(404);
+    // Another worker cannot use this worker's completion to reach the file.
+    expect((await s.sub2.browser.get(`${url}/files/${videoId}/download`)).statusCode).toBe(404);
+
     expect(
       (
         await s.sub.browser.post(`${url}/quiz-attempts`, {
@@ -773,7 +784,7 @@ describe('online inductions (product/14)', () => {
           requestId: 't',
         },
         ({ tx }) =>
-          tx.execute(sql`update platform.project_members set status = 'removed', removed_at = now()
+          tx.execute(sql`update platform.project_members set status = 'removed', removed_at = now(), removal_kind = 'ordinary'
                          where user_id = ${decodeId('user', s.sm.userId)!}`),
       );
       expect((await guest.get('/v1/induction-access')).json().code).toBe('access_link.invalid');

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { addDays, type LocalDate } from '@archova/time';
+import { addDays, isoWeekday, type LocalDate } from '@archova/time';
 import {
   ActivityTimeline,
   Alert,
@@ -32,13 +32,14 @@ import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DiaryEditor } from '../components/DiaryEditor';
 import { DiaryReadView } from '../components/DiaryReadView';
 import { possibleDelay } from '../data/source';
-import { useDiaryDay, useDiaryMutations, useDiaryRange } from '../hooks/useDiary';
+import { useDiaryDay, useDiaryMutations, useDiaryRange, useWeekSummary } from '../hooks/useDiary';
 import { dayStrip, diffContent, eotByDefault, labourTotals, submitProblems } from '../lib/entry';
 import {
   DIARY_STATUS_LABELS,
   type DiaryContent,
   type DiaryEntry,
   type NovaDiarySummary,
+  type NovaWeekSummary,
 } from '../lib/types';
 
 const AUTOSAVE_MS = 1500;
@@ -64,6 +65,7 @@ export function DiaryDayScreen({ date }: { date?: string }) {
     <div className="stack-lg">
       <DayHeader day={day} today={today} entry={entry.data} />
       {previewDataOnly ? <PreviewDataNotice tool="The site diary" /> : null}
+      <WeekSummary key={mondayOf(day)} weekStart={mondayOf(day)} />
       <div className="diary-layout">
         <DayStrip day={day} today={today} />
         <div className="stack-lg">
@@ -77,6 +79,126 @@ export function DiaryDayScreen({ date }: { date?: string }) {
         </div>
       </div>
     </div>
+  );
+}
+
+const mondayOf = (d: LocalDate) => addDays(d, -(isoWeekday(d) - 1));
+
+const shortDate = (d: LocalDate) =>
+  new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', timeZone: 'UTC' }).format(
+    new Date(`${d}T12:00:00Z`),
+  );
+
+/** Nova's summary of the week the day sits in, for the client or head office. It is copied out, never saved into a day. */
+function WeekSummary({ weekStart }: { weekStart: LocalDate }) {
+  const org = useCurrentOrg();
+  const project = useCurrentProject();
+  const w = useWeekSummary();
+  const [summary, setSummary] = useState<NovaWeekSummary | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [feedback, setFeedback] = useState<'up' | 'down' | null>(null);
+  const weekEnd = addDays(weekStart, 6);
+
+  const finish = (decision: 'accepted' | 'rejected') => {
+    if (summary) w.decide.mutate({ id: summary.id, decision });
+  };
+
+  return (
+    <section className="stack" aria-label="Week summary">
+      <div>
+        <Button
+          type="button"
+          variant="nova"
+          size="sm"
+          disabled={w.summarise.isPending}
+          onClick={() =>
+            w.summarise.mutate(weekStart, {
+              onSuccess: (s) => {
+                setSummary(s);
+                setCopied(false);
+                setFeedback(null);
+              },
+            })
+          }
+        >
+          <NovaIcon size={16} aria-hidden="true" />
+          {w.summarise.isPending
+            ? 'Writing…'
+            : `Summarise the week, ${shortDate(weekStart)} to ${shortDate(weekEnd)}`}
+        </Button>
+      </div>
+      <ErrorAlert error={w.summarise.error} title="Nova couldn't write a week summary" />
+      {summary ? (
+        <NovaSuggestion
+          title={`Week of ${shortDate(summary.weekStart)}`}
+          citations={summary.citations.map((c) => ({
+            id: c.id,
+            label: `${shortDate(c.date)} · ${c.label}`,
+            href: `${webRoutes.diary(org.orgSlug, project.projectId, c.date)}${c.anchor}`,
+          }))}
+          actions={
+            <>
+              {summary.text ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await navigator.clipboard.writeText(summary.text);
+                      setCopied(true);
+                      finish('accepted');
+                    } catch {
+                      setCopied(false);
+                    }
+                  }}
+                >
+                  {copied ? 'Copied' : 'Copy summary'}
+                </Button>
+              ) : null}
+              <Button
+                type="button"
+                size="sm"
+                variant="tertiary"
+                onClick={() => {
+                  if (!copied) finish('rejected');
+                  setSummary(null);
+                }}
+              >
+                Discard
+              </Button>
+              <NovaFeedback value={feedback} onChange={setFeedback} />
+            </>
+          }
+        >
+          <p className="u-m-0">
+            {summary.text || 'There isn’t enough recorded this week to summarise.'}
+          </p>
+          {summary.delayHours.total ? (
+            <p className="u-caption u-m-0">
+              Delay hours, added up from the diary: {summary.delayHours.total} h (
+              {summary.delayHours.byCause
+                .map((c) => `${c.cause.replace('_', ' ')} ${c.hours} h`)
+                .join(', ')}
+              ).
+            </p>
+          ) : null}
+          {summary.truncated ? (
+            <p className="u-caption u-m-0">
+              A busy day had more lines than Nova read, so some routine lines are left out. Delays
+              are always included.
+            </p>
+          ) : null}
+          {summary.unmentionedDelays ? (
+            <p className="u-caption u-m-0">
+              {summary.unmentionedDelays === 1
+                ? '1 delay or stand-down isn’t in this summary.'
+                : `${summary.unmentionedDelays} delays or stand-downs aren’t in this summary.`}{' '}
+              Check them in the daily entries.
+            </p>
+          ) : null}
+        </NovaSuggestion>
+      ) : null}
+    </section>
   );
 }
 

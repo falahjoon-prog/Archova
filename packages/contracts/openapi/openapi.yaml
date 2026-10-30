@@ -370,6 +370,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ProjectMember' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: memberId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pmb_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: removeProjectMember
+      tags: [projects]
+      x-module: platform
+      x-permission: platform.project_members.manage
+      summary: End a person's access to the project, saying how (X38).
+      description: |
+        `ordinary` lets their phone send the work it had queued before access ended (held for an admin to accept or
+        reject); `for_cause` and `wipe_now` do not. Adding the person again starts a new access episode.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RemoveProjectMemberRequest' }
+      responses:
+        '200':
+          description: Removed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ProjectMember' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/permissions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1733,6 +1766,69 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getInductionDraftCurrency
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.induction.draft
+      summary: Whether the documents a Nova induction draft cited still stand (F33 I2).
+      description: |
+        Compares the documents and drawing sheets the draft cited with the register now. A source with a newer
+        published revision, or one that is gone, is listed in `changed` with the revision cited and the current one,
+        the sections that rest on it and how many quiz questions cite it. Pass the draft an induction was built from
+        (`draftAiSuggestionId` on the induction, `aiSuggestionId` on a published version), or a refresh of one.
+        Read when asked, so the answer is never behind. A change in a source the caller cannot open (a private folder) is counted in
+        `hiddenChanges` and never named. RFIs, defects and diary days a draft cited are not checked: they have no
+        revisions. Free; no model is called.
+      responses:
+        '200':
+          description: Whether the draft is up to date, and what changed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InductionCurrency' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/refresh:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: refreshInductionDraft
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.induction.draft
+      summary: Nova redrafts the sections of an induction draft whose cited documents have changed (F33 I2).
+      description: |
+        For a draft (or an earlier refresh) whose cited documents have a newer revision, Nova searches the current
+        documents the caller can open for just the sections that rest on the change, and redrafts those with the same
+        checks as a full draft (citations, numbers, banned words). The result is a whole induction as the draft had
+        it with the redrafted sections swapped in: `payload.refresh.sections` lists what Nova redrafted, and every
+        other section and quiz question is copied unchanged from the draft. The induction editor takes the redrafted
+        sections into the induction being edited, so the builder's own edits to other sections stand. A section that
+        also rests on a changed document the caller cannot open is left as it was and listed in
+        `payload.refresh.skipped`. A section whose document was withdrawn, with nothing current to replace it, comes
+        back `missing` with what to add. The result is a pending suggestion (task `induction.refresh`), decided with
+        the suggestion decision endpoint like a draft. Nothing is drafted, and nothing charged, when the draft is up
+        to date (409), when the changes are all in documents the caller cannot open (422), or when Nova has not yet
+        read the newest revision (409: try again shortly). Costs 1 Nova credit.
+      responses:
+        '201':
+          description: The refresh, as a pending suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/index:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -1749,7 +1845,10 @@ paths:
         an RFI with a new response or an edit is indexed again and its old text dropped; drafts and voided RFIs are
         not indexed. Safe to repeat: finished revisions and unchanged RFIs are skipped. Runs in the
         request for now; the AI worker will run it on each document event once it lands. Embedding is background
-        work and costs no credits.
+        work and costs no credits, but an organisation can have only so much embedded in a day: past that the
+        request fails with 429 `ai.embedding_limit` and `resetsAt`, the start of the organisation's next day, and
+        running it again then carries on where it stopped. Reading scanned pages (OCR) has a daily cap of its own
+        and fails the same way with 429 `ai.ocr_limit`.
       responses:
         '200':
           description: What this run did
@@ -4398,6 +4497,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InductionCompletion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/files/{fileId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: completionId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^inc_[0-9A-Za-z]{26}$' },
+        }
+      - $ref: '#/components/parameters/FileId'
+    get:
+      operationId: getInductionFileDownload
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.attendance.sign_in_self
+      summary: A short-lived download link for a video, PDF or image this induction uses (and no other file).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DownloadLink' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -5411,6 +5534,13 @@ components:
         email: { $ref: '#/components/schemas/Email' }
         companyId: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' }
         permissionTemplateId: { type: string, pattern: '^ptp_[0-9A-Za-z]{26}$' }
+    RemoveProjectMemberRequest:
+      type: object
+      additionalProperties: false
+      required: [kind]
+      properties:
+        kind: { type: string, enum: [ordinary, for_cause, wipe_now] }
+        reason: { type: string, maxLength: 500 }
     ProjectMemberPage:
       type: object
       required: [data, nextCursor]
@@ -5604,6 +5734,55 @@ components:
         runId: { type: string }
         createdAt: { type: string, format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
+    InductionCurrency:
+      type: object
+      required: [suggestionId, upToDate, changed, hiddenChanges]
+      properties:
+        suggestionId: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+        upToDate:
+          type: boolean
+          description: False when any cited source has changed, including ones the caller cannot open.
+        changed:
+          type: array
+          items: { $ref: '#/components/schemas/InductionSourceChange' }
+        hiddenChanges:
+          type: integer
+          minimum: 0
+          description: Changed sources the caller cannot open; they are counted, not named.
+    InductionSourceChange:
+      type: object
+      required:
+        [
+          sourceType,
+          sourceId,
+          title,
+          citedRevision,
+          currentRevision,
+          reason,
+          sections,
+          quizQuestions,
+        ]
+      properties:
+        sourceType: { type: string, enum: [document, drawing] }
+        sourceId: { type: string, description: 'The `doc_` or `dsh_` id of the document or sheet.' }
+        title: { type: string }
+        citedRevision:
+          type: [string, 'null']
+          description: The revision label the draft cited; null when the register no longer lists it.
+        currentRevision:
+          type: [string, 'null']
+          description: The current revision label; null when the source is gone.
+        reason:
+          type: string
+          enum: [newer_revision, withdrawn]
+        sections:
+          type: array
+          description: The induction sections whose slides or quiz questions cite this source.
+          items: { $ref: '#/components/schemas/InductionSectionKey' }
+        quizQuestions:
+          type: integer
+          minimum: 0
+          description: How many quiz questions cite this source.
     AiSuggestionPage:
       type: object
       required: [data, nextCursor]
@@ -7194,6 +7373,8 @@ components:
           costEstimate,
           scheduleImpactDays,
           delayDays,
+          specSection,
+          location,
           pin,
           officialResponseId,
           createdBy,
@@ -7235,6 +7416,8 @@ components:
           { type: [string, 'null'], description: 'Decimal string in the project currency (AUD)' }
         scheduleImpactDays: { type: [integer, 'null'] }
         delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
+        specSection: { type: [string, 'null'], description: 'As written on the form.' }
+        location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
@@ -7306,6 +7489,18 @@ components:
         costImpact: { $ref: '#/components/schemas/CostImpact' }
         costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        specSection:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'The spec section it concerns, as written (e.g. `03 30 00 Concrete`).',
+          }
+        location:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'Where on the project, as written (e.g. `Level 2, gridline C`).',
+          }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
         aiSuggestionId:
           type: string
@@ -7337,6 +7532,8 @@ components:
         costEstimate: { type: [string, 'null'], pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        specSection: { type: [string, 'null'], maxLength: 200 }
+        location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
     CreateRfiResponseRequest:
       type: object

@@ -16,7 +16,11 @@ const holds =
 
 describe('suggestion audience', () => {
   it('opens a task to its deciders only where the team works the draft together', () => {
-    expect([...DECIDER_TASKS].sort()).toEqual(['drawing.titleblock', 'induction.draft']);
+    expect([...DECIDER_TASKS].sort()).toEqual([
+      'drawing.titleblock',
+      'induction.draft',
+      'induction.refresh',
+    ]);
     // Drafts built from what a person typed, photographed, uploaded or may read are theirs alone.
     for (const task of ['diary.summary', 'defect.tag', 'rfi.draft', 'import.mapping', 'quote.read'])
       expect(isCreatorOnly(task)).toBe(true);

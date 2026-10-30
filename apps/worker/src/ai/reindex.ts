@@ -5,6 +5,7 @@
 //  2. after a short window (`ai-reindex`): embed the current text. One job per record per window, so a burst of
 //     edits to one record is a single embedding run that reads the latest text.
 // The worker acts as `AI_INDEX_ACTOR` in the event's own org: no person, no org role, no project membership.
+import { UnrecoverableError } from 'bullmq';
 import { isAppError, type Entitlements, type TenantContext } from '@archova/kernel';
 import { AI_INDEX_ACTOR, recordKindOf, type RecordKind } from '@archova/mod-ai';
 import type { StoredEvent, Subscriber } from '../subscribers';
@@ -17,6 +18,8 @@ export const REINDEX_JOB = 'reindex-record';
 export const DEBOUNCE_MS = 60_000;
 /** Added to the delay so a job never starts inside the window whose events it stands for, whatever the clock skew. */
 const SLACK_MS = 2_000;
+/** Records held back by the org's daily embedding cap start over this long after it resets, not all at the same moment. */
+const SPREAD_MS = 15 * 60_000;
 
 export interface ReindexJob {
   orgId: string;
@@ -86,14 +89,35 @@ export function indexContext(
   };
 }
 
+/** Statuses that mean "not now" rather than "never": the same job can succeed when tried again. */
+const TRY_LATER = new Set([408, 409, 412, 423, 425, 429]);
+
+/**
+ * Whether trying again cannot change the outcome: the request itself is wrong (a record, project or folder that is gone,
+ * a permission the actor lacks, input that does not validate). The `ai.*` codes are left out because they describe the
+ * provider and the org's own limits, which change.
+ */
+export function isDeterministic(err: unknown): boolean {
+  return (
+    isAppError(err) &&
+    err.status >= 400 &&
+    err.status < 500 &&
+    !TRY_LATER.has(err.status) &&
+    !err.code.startsWith('ai.')
+  );
+}
+
 /**
  * What a failed job leaves behind: its kind, never its message or stack. BullMQ keeps a failed job's reason and stack
  * trace in Redis for 14 days, and a message from a provider or the database could carry some of the text being embedded.
+ * A deterministic failure is unrecoverable, so BullMQ fails the job at once instead of retrying it for an hour; the
+ * nightly sweep covers the record.
  */
 export function sanitizeFailure(err: unknown): Error {
   const kind = isAppError(err) ? err.code : err instanceof Error ? err.name : 'unknown';
-  const out = new Error(`ai job failed: ${kind}`);
-  out.stack = `Error: ${out.message}`;
+  const message = `ai job failed: ${kind}`;
+  const out = isDeterministic(err) ? new UnrecoverableError(message) : new Error(message);
+  out.stack = `${out.name}: ${message}`;
   return out;
 }
 
@@ -103,6 +127,26 @@ export const NO_PLAN: Entitlements = { plan: 'system', state: 'active', modules:
 export function createReindex(deps: ReindexDeps) {
   const now = deps.now ?? (() => new Date());
   const window = deps.debounceMs ?? DEBOUNCE_MS;
+
+  /**
+   * The org's daily embedding cap is used up: embed the record after the cap resets instead of retrying against it
+   * for an hour. One deferred job per record per reset, however many jobs hit the cap, and spread across the first
+   * minutes of the new day by record so a day of backlog does not start at once. False if the reset time is unusable.
+   */
+  async function deferToReset(job: ReindexJob, resetsAt: unknown): Promise<boolean> {
+    const reset = typeof resetsAt === 'string' ? Date.parse(resetsAt) : Number.NaN;
+    if (!Number.isFinite(reset)) return false;
+    let spread = 0;
+    for (const c of job.recordId) spread = (spread * 31 + c.charCodeAt(0)) >>> 0;
+    await deps.queue.add(REINDEX_JOB, job, {
+      jobId: `${job.orgId}.${job.kind}.${job.recordId}.after.${reset}`,
+      delay: Math.max(0, reset - now().getTime()) + SLACK_MS + (spread % SPREAD_MS),
+      ...ROUTED_RETRY,
+      removeOnComplete: { age: 3600, count: 10_000 },
+      removeOnFail: { age: 14 * 86_400 },
+    });
+    return true;
+  }
 
   /** Stage 1: runs for every change event of an RFI, defect or diary day. */
   async function dropAndSchedule(event: StoredEvent) {
@@ -166,6 +210,14 @@ export function createReindex(deps: ReindexDeps) {
       // No Nova on the plan, or switched off for the org or the feature: the stale text is already gone (stage 1).
       if (isAppError(err) && NOVA_UNAVAILABLE.has(err.code)) {
         deps.log('ai re-index skipped', { ...where, reason: err.code });
+        return;
+      }
+      if (
+        isAppError(err) &&
+        err.code === 'ai.embedding_limit' &&
+        (await deferToReset(job, err.extra?.resetsAt))
+      ) {
+        deps.log('ai re-index deferred', { ...where, resetsAt: err.extra?.resetsAt });
         return;
       }
       throw err;

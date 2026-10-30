@@ -25,6 +25,11 @@ export interface FoundationEvents {
     permissionTemplateId: string;
     isExternal: boolean;
   };
+  'platform.project_member.removed.v1': {
+    projectId: string;
+    userId: string;
+    kind: 'ordinary' | 'for_cause' | 'wipe_now';
+  };
   'platform.company.created.v1': { companyId: string };
   'files.object.ready.v1': {
     fileId: string;

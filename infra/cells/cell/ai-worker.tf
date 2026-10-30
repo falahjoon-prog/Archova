@@ -109,6 +109,8 @@ resource "aws_cloudwatch_log_metric_filter" "ai_worker_queue" {
     AiQueueBehind     = "{ $.msg = \"ai queue is behind\" }"
     AiQueueReport     = "{ $.msg = \"ai queue age\" || $.msg = \"ai queue is behind\" }"
     AiQueueUnreadable = "{ $.msg = \"ai queue age unreadable\" }"
+    AiSweepCorrected  = "{ $.msg = \"ai sweep done\" && ($.removed > 0 || $.restamped > 0) }"
+    AiEmbedCapReached = "{ $.msg = \"ai daily embedding cap reached\" }"
   }
   name           = "${local.name}-${each.key}"
   log_group_name = module.ai_worker.log_group_name
@@ -167,6 +169,44 @@ resource "aws_cloudwatch_metric_alarm" "ai_queue_unreadable" {
   period              = 300
   evaluation_periods  = 3
   datapoints_to_alarm = 3
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.observability.ticket_topic_arn]
+  tags                = local.tags
+  depends_on          = [aws_cloudwatch_log_metric_filter.ai_worker_queue]
+}
+
+# The nightly sweep (17:20 UTC) reconciles every indexed project with the registers. Its counts are normally zero
+# because the event handlers already did the work; anything above zero means the event path missed something. Nova's
+# answers are already corrected by then, so this is a ticket to find out why, not a page.
+resource "aws_cloudwatch_metric_alarm" "ai_sweep_corrected" {
+  alarm_name          = "${local.name}-ai-sweep-corrected"
+  alarm_description   = "The nightly Nova sweep removed or re-stamped indexed text that the event handlers should have handled. Find the missed event (check ai-worker retries and dropped jobs in the last day)."
+  namespace           = "Archova/AiWorker"
+  metric_name         = "AiSweepCorrected"
+  statistic           = "Sum"
+  period              = 86400
+  evaluation_periods  = 1
+  threshold           = 0
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [module.observability.ticket_topic_arn]
+  tags                = local.tags
+  depends_on          = [aws_cloudwatch_log_metric_filter.ai_worker_queue]
+}
+
+# An org used up its daily document-embedding cap. The app logs this once per org per day and holds the rest of that
+# org's records until the cap resets, so Nova's index for that org lags until then. Nothing is broken: this is a ticket
+# to decide whether the cap is too low for a real customer or an import is looping.
+resource "aws_cloudwatch_metric_alarm" "ai_embed_cap_reached" {
+  alarm_name          = "${local.name}-ai-embed-cap-reached"
+  alarm_description   = "An org reached its daily Nova embedding cap, so its new documents wait until the cap resets. Check the orgId and capTokens in the ai-worker log line: raise the cap for a real customer, or stop a looping import."
+  namespace           = "Archova/AiWorker"
+  metric_name         = "AiEmbedCapReached"
+  statistic           = "Sum"
+  period              = 86400
+  evaluation_periods  = 1
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"

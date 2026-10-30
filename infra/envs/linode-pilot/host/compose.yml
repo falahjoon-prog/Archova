@@ -81,6 +81,52 @@ services:
       - --region=ap-southeast-2
       - --port=9911
 
+  # Background jobs (apps/worker, dist/main.js): the outbox relay, the dispatcher that runs every module's subscribers,
+  # and the scheduled jobs. One copy, on the primary, next to Valkey. File jobs (the GuardDuty threat move) stay off
+  # here (WORKER_FILES_STORE is not set): ClamAV scans uploads in the api instead.
+  worker:
+    <<: [*restart, *allowlist-dns]
+    profiles: [primary]
+    image: archova/worker:${IMAGE_TAG:?}
+    env_file: [/etc/archova/worker.env]
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/db-ca.pem
+    volumes: ['/etc/archova/db-ca.pem:/etc/ssl/db-ca.pem:ro']
+    depends_on: [coredns, valkey]
+    networks: [app]
+
+  # Nova's background work (apps/worker, dist/ai.js): keeps the index in step with RFIs, defects and diary days. It calls
+  # Bedrock in Sydney, so it gets its own signing helper like the api.
+  ai-worker:
+    <<: [*restart, *allowlist-dns]
+    profiles: [primary]
+    image: archova/ai-worker:${IMAGE_TAG:?}
+    env_file: [/etc/archova/ai-worker.env]
+    environment:
+      AWS_EC2_METADATA_SERVICE_ENDPOINT: http://127.0.0.1:9911
+      AWS_REGION: ap-southeast-2
+      NODE_EXTRA_CA_CERTS: /etc/ssl/db-ca.pem
+    volumes: ['/etc/archova/db-ca.pem:/etc/ssl/db-ca.pem:ro']
+    depends_on: [coredns, valkey]
+    networks: [app]
+
+  ai-worker-signing-helper:
+    <<: *restart
+    profiles: [primary]
+    image: archova/aws-signing-helper:local
+    network_mode: 'service:ai-worker'
+    env_file: [/etc/archova/roles-anywhere.env]
+    volumes: ['/etc/archova/pki:/pki:ro']
+    command:
+      - serve
+      - --certificate=/pki/app.crt
+      - --private-key=/pki/app.key
+      - --trust-anchor-arn=${RA_TRUST_ANCHOR_ARN:?}
+      - --profile-arn=${RA_PROFILE_ARN:?}
+      - --role-arn=${RA_ROLE_ARN:?}
+      - --region=ap-southeast-2
+      - --port=9911
+
   web:
     <<: [*restart, *allowlist-dns]
     image: archova/web:${IMAGE_TAG:?}

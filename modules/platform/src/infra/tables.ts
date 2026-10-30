@@ -106,5 +106,10 @@ export const projectMembers = platform.table('project_members', {
   isExternal: boolean('is_external').notNull().default(false),
   status: text('status').$type<'active' | 'removed'>().notNull(),
   removedAt: timestamp('removed_at', { withTimezone: true }),
+  /** How access ended (X38): only an ordinary removal lets the person's phone send its queued work. */
+  removalKind: text('removal_kind').$type<'ordinary' | 'for_cause' | 'wipe_now'>(),
+  removalReason: text('removal_reason'),
+  /** Counts how many times this person has been given access to the project; a re-add starts a new one. */
+  accessEpisode: integer('access_episode').notNull().default(1),
   ...audit,
 });

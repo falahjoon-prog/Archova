@@ -17,6 +17,7 @@ import {
   SECTION_QUERIES,
   reviewInductionDraft,
   type DraftWarning,
+  type ReviewedDraft,
 } from '../domain/induction';
 import { suggestions } from '../infra/tables';
 import type { Gateway } from './gateway';
@@ -67,6 +68,8 @@ export interface InductionDraftPayload {
 }
 
 export const INDUCTION_TASK = 'induction.draft';
+/** A refresh of a draft: the sections Nova redrafted after a document they cited changed (ai/12 §1 I2). */
+export const INDUCTION_REFRESH_TASK = 'induction.refresh';
 /** Passages per section; ~30 in total after de-duplication keeps the run near one Ask Nova question per section. */
 const PER_SECTION = 4;
 
@@ -78,6 +81,79 @@ const toCitation = (c: CheckedCitation): DraftCitation => ({
   page: c.source.page ?? null,
   title: c.source.title,
 });
+
+/** Reviewed sections and quiz as stored: citations carry internal ids, mapped to public ids by the API. */
+export function toStored(
+  reviewed: Pick<ReviewedDraft, 'sections' | 'quiz'>,
+): Pick<InductionDraftPayload, 'sections' | 'quiz'> {
+  return {
+    sections: reviewed.sections.map((s) => ({
+      ...s,
+      slides: s.slides.map((sl) => ({
+        title: sl.title,
+        points: sl.points.map((p) => ({ text: p.text, citations: p.citations.map(toCitation) })),
+        script: sl.script.map((p) => ({ text: p.text, citations: p.citations.map(toCitation) })),
+      })),
+    })),
+    quiz: reviewed.quiz.map((q) => ({ ...q, citations: q.citations.map(toCitation) })),
+  };
+}
+
+/**
+ * Retrieval for each of the given sections, inside the access scopes the caller holds (same search as Ask Nova, so
+ * permissions apply): one passage per chunk, shared between the sections that found it. Shared by a full draft and a
+ * refresh.
+ */
+export async function gatherPassages(
+  deps: Pick<InductionDraftDeps, 'database' | 'gateway'>,
+  ctx: TenantContext,
+  projectId: string,
+  scopes: string[],
+  wanted: readonly InductionSection[],
+): Promise<{
+  sections: Array<{ section: InductionSection; passageIds: string[] }>;
+  passages: PromptPassage[];
+}> {
+  const queries = wanted.map((s) => SECTION_QUERIES[s]);
+  const { vectors } = await deps.gateway.embed(ctx, queries, {
+    purpose: 'query',
+    feature: 'inductions',
+    projectId,
+  });
+  const hits = await deps.database.withTenantTx(
+    ctx,
+    // One connection per transaction, so the searches run one after another.
+    async (scope) => {
+      const out: ChunkHit[][] = [];
+      for (const [i, query] of queries.entries())
+        out.push(
+          await searchChunks(scope, {
+            projectId,
+            scopes,
+            query,
+            vector: vectors[i]!,
+            limit: PER_SECTION,
+          }),
+        );
+      return out;
+    },
+    { readOnly: true },
+  );
+
+  const passageOf = new Map<string, PromptPassage>();
+  const sections = wanted.map((section, i) => ({
+    section,
+    passageIds: hits[i]!.map((h) => {
+      let p = passageOf.get(h.id);
+      if (!p) {
+        p = toPassage(h, `p${passageOf.size + 1}`);
+        passageOf.set(h.id, p);
+      }
+      return p.id;
+    }),
+  }));
+  return { sections, passages: [...passageOf.values()] };
+}
 
 export function createInductionDraftService(deps: InductionDraftDeps) {
   const { database } = deps;
@@ -98,46 +174,13 @@ export function createInductionDraftService(deps: InductionDraftDeps) {
       );
     if (scopes.length === 0) throw noDocuments();
 
-    const queries = INDUCTION_SECTIONS.map((s) => SECTION_QUERIES[s]);
-    const { vectors } = await deps.gateway.embed(ctx, queries, {
-      purpose: 'query',
-      feature: 'inductions',
-      projectId,
-    });
-    const hits = await database.withTenantTx(
+    const { sections, passages } = await gatherPassages(
+      deps,
       ctx,
-      // One connection per transaction, so the searches run one after another.
-      async (scope) => {
-        const out: ChunkHit[][] = [];
-        for (const [i, query] of queries.entries())
-          out.push(
-            await searchChunks(scope, {
-              projectId,
-              scopes,
-              query,
-              vector: vectors[i]!,
-              limit: PER_SECTION,
-            }),
-          );
-        return out;
-      },
-      { readOnly: true },
+      projectId,
+      scopes,
+      INDUCTION_SECTIONS,
     );
-
-    // One passage per chunk, shared between the sections that found it.
-    const passageOf = new Map<string, PromptPassage>();
-    const sections = INDUCTION_SECTIONS.map((section, i) => ({
-      section,
-      passageIds: hits[i]!.map((h) => {
-        let p = passageOf.get(h.id);
-        if (!p) {
-          p = toPassage(h, `p${passageOf.size + 1}`);
-          passageOf.set(h.id, p);
-        }
-        return p.id;
-      }),
-    }));
-    const passages = [...passageOf.values()];
     if (passages.length === 0) throw noDocuments();
 
     const run = await deps.gateway.runTask(
@@ -152,15 +195,7 @@ export function createInductionDraftService(deps: InductionDraftDeps) {
     const reviewed = reviewInductionDraft(run.output, passages);
     const payload: InductionDraftPayload = {
       siteName: input.siteName,
-      sections: reviewed.sections.map((s) => ({
-        ...s,
-        slides: s.slides.map((sl) => ({
-          title: sl.title,
-          points: sl.points.map((p) => ({ text: p.text, citations: p.citations.map(toCitation) })),
-          script: sl.script.map((p) => ({ text: p.text, citations: p.citations.map(toCitation) })),
-        })),
-      })),
-      quiz: reviewed.quiz.map((q) => ({ ...q, citations: q.citations.map(toCitation) })),
+      ...toStored(reviewed),
       fixedText: INDUCTION_FIXED_TEXT,
       warnings: reviewed.warnings,
     };

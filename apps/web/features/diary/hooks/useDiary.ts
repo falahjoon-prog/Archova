@@ -28,6 +28,21 @@ export function useDiaryDay(date: LocalDate, today: LocalDate) {
   });
 }
 
+/** Nova's summary of one week; a mutation because the first ask does the work and spends the credit. */
+export function useWeekSummary() {
+  const { projectId } = useCurrentProject();
+  const diarySource = useDiarySource();
+  return {
+    summarise: useMutation({
+      mutationFn: (weekStart: LocalDate) => diarySource.novaWeekSummary(projectId, weekStart),
+    }),
+    decide: useMutation({
+      mutationFn: (v: { id: string; decision: 'accepted' | 'rejected' }) =>
+        diarySource.novaWeekDecide(projectId, v.id, v.decision),
+    }),
+  };
+}
+
 export function useDiaryRange(from: LocalDate, to: LocalDate) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();

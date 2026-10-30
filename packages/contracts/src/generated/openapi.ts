@@ -286,6 +286,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * End a person's access to the project, saying how (X38).
+         * @description `ordinary` lets their phone send the work it had queued before access ended (held for an admin to accept or
+         *     reject); `for_cause` and `wipe_now` do not. Adding the person again starts a new access episode.
+         */
+        post: operations["removeProjectMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/permissions": {
         parameters: {
             query?: never;
@@ -1345,6 +1370,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Whether the documents a Nova induction draft cited still stand (F33 I2).
+         * @description Compares the documents and drawing sheets the draft cited with the register now. A source with a newer
+         *     published revision, or one that is gone, is listed in `changed` with the revision cited and the current one,
+         *     the sections that rest on it and how many quiz questions cite it. Pass the draft an induction was built from
+         *     (`draftAiSuggestionId` on the induction, `aiSuggestionId` on a published version), or a refresh of one.
+         *     Read when asked, so the answer is never behind. A change in a source the caller cannot open (a private folder) is counted in
+         *     `hiddenChanges` and never named. RFIs, defects and diary days a draft cited are not checked: they have no
+         *     revisions. Free; no model is called.
+         */
+        get: operations["getInductionDraftCurrency"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova redrafts the sections of an induction draft whose cited documents have changed (F33 I2).
+         * @description For a draft (or an earlier refresh) whose cited documents have a newer revision, Nova searches the current
+         *     documents the caller can open for just the sections that rest on the change, and redrafts those with the same
+         *     checks as a full draft (citations, numbers, banned words). The result is a whole induction as the draft had
+         *     it with the redrafted sections swapped in: `payload.refresh.sections` lists what Nova redrafted, and every
+         *     other section and quiz question is copied unchanged from the draft. The induction editor takes the redrafted
+         *     sections into the induction being edited, so the builder's own edits to other sections stand. A section that
+         *     also rests on a changed document the caller cannot open is left as it was and listed in
+         *     `payload.refresh.skipped`. A section whose document was withdrawn, with nothing current to replace it, comes
+         *     back `missing` with what to add. The result is a pending suggestion (task `induction.refresh`), decided with
+         *     the suggestion decision endpoint like a draft. Nothing is drafted, and nothing charged, when the draft is up
+         *     to date (409), when the changes are all in documents the caller cannot open (422), or when Nova has not yet
+         *     read the newest revision (409: try again shortly). Costs 1 Nova credit.
+         */
+        post: operations["refreshInductionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/index": {
         parameters: {
             query?: never;
@@ -1364,7 +1454,10 @@ export interface paths {
          *     an RFI with a new response or an edit is indexed again and its old text dropped; drafts and voided RFIs are
          *     not indexed. Safe to repeat: finished revisions and unchanged RFIs are skipped. Runs in the
          *     request for now; the AI worker will run it on each document event once it lands. Embedding is background
-         *     work and costs no credits.
+         *     work and costs no credits, but an organisation can have only so much embedded in a day: past that the
+         *     request fails with 429 `ai.embedding_limit` and `resetsAt`, the start of the organisation's next day, and
+         *     running it again then carries on where it stopped. Reading scanned pages (OCR) has a daily cap of its own
+         *     and fails the same way with 429 `ai.ocr_limit`.
          */
         post: operations["indexProjectForNova"];
         delete?: never;
@@ -3135,6 +3228,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/files/{fileId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        /** A short-lived download link for a video, PDF or image this induction uses (and no other file). */
+        get: operations["getInductionFileDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress": {
         parameters: {
             query?: never;
@@ -3835,6 +3950,11 @@ export interface components {
             companyId: string;
             permissionTemplateId: string;
         };
+        RemoveProjectMemberRequest: {
+            /** @enum {string} */
+            kind: "ordinary" | "for_cause" | "wipe_now";
+            reason?: string;
+        };
         ProjectMemberPage: {
             data: components["schemas"]["ProjectMember"][];
             nextCursor: string | null;
@@ -3951,6 +4071,31 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             decidedAt: string | null;
+        };
+        InductionCurrency: {
+            suggestionId: string;
+            /** @description False when any cited source has changed, including ones the caller cannot open. */
+            upToDate: boolean;
+            changed: components["schemas"]["InductionSourceChange"][];
+            /** @description Changed sources the caller cannot open; they are counted, not named. */
+            hiddenChanges: number;
+        };
+        InductionSourceChange: {
+            /** @enum {string} */
+            sourceType: "document" | "drawing";
+            /** @description The `doc_` or `dsh_` id of the document or sheet. */
+            sourceId: string;
+            title: string;
+            /** @description The revision label the draft cited; null when the register no longer lists it. */
+            citedRevision: string | null;
+            /** @description The current revision label; null when the source is gone. */
+            currentRevision: string | null;
+            /** @enum {string} */
+            reason: "newer_revision" | "withdrawn";
+            /** @description The induction sections whose slides or quiz questions cite this source. */
+            sections: components["schemas"]["InductionSectionKey"][];
+            /** @description How many quiz questions cite this source. */
+            quizQuestions: number;
         };
         AiSuggestionPage: {
             data: components["schemas"]["AiSuggestion"][];
@@ -4958,6 +5103,10 @@ export interface components {
             scheduleImpactDays: number | null;
             /** @description Days of delay caused by a late answer */
             delayDays: number | null;
+            /** @description As written on the form. */
+            specSection: string | null;
+            /** @description As written on the form. */
+            location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
             officialResponseId: string | null;
             createdBy: string | null;
@@ -5004,6 +5153,10 @@ export interface components {
             costImpact?: components["schemas"]["CostImpact"];
             costEstimate?: string;
             scheduleImpactDays?: number;
+            /** @description The spec section it concerns, as written (e.g. `03 30 00 Concrete`). */
+            specSection?: string;
+            /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
+            location?: string;
             pin?: components["schemas"]["RfiPinInput"];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
@@ -5023,6 +5176,8 @@ export interface components {
             costEstimate?: string | null;
             scheduleImpactDays?: number | null;
             delayDays?: number | null;
+            specSection?: string | null;
+            location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
         };
         CreateRfiResponseRequest: {
@@ -7165,6 +7320,37 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    removeProjectMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                memberId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RemoveProjectMemberRequest"];
+            };
+        };
+        responses: {
+            /** @description Removed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectMember"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getProjectPermissions: {
         parameters: {
             query?: never;
@@ -8733,6 +8919,56 @@ export interface operations {
         };
         responses: {
             /** @description The draft, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionDraftCurrency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Whether the draft is up to date, and what changed */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionCurrency"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    refreshInductionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The refresh, as a pending suggestion */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -11918,6 +12154,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["InductionCompletion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionFileDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DownloadLink"];
                 };
             };
             default: components["responses"]["Problem"];

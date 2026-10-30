@@ -7,6 +7,7 @@ import { api, ensureCsrfToken } from '@/shared/lib/api';
 import type { InductionBuilderSource } from './source';
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/inductions' as const;
+const AI = '/v1/orgs/{orgId}/projects/{projectId}/ai' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
 
@@ -43,12 +44,45 @@ export function createInductionBuilderApi(orgId: string): InductionBuilderSource
         }),
       );
     },
-    async saveDraft(projectId, induction, content) {
+    async saveDraft(projectId, induction, content, aiSuggestionId) {
       await ensureCsrfToken();
       return unwrap(
         await api.PUT(`${P}/{inductionId}/draft`, {
           params: { path: at(projectId, induction.id), header: ifMatch(induction.version) },
-          body: { content },
+          body: { content, ...(aiSuggestionId ? { aiSuggestionId } : {}) },
+        }),
+      );
+    },
+    async currency(projectId, suggestionId) {
+      return unwrap(
+        await api.GET(`${AI}/induction-drafts/{suggestionId}/currency`, {
+          params: { path: { orgId, projectId, suggestionId } },
+        }),
+      );
+    },
+    async draftInduction(projectId, siteName) {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${AI}/induction-drafts`, {
+          params: { path: { orgId, projectId } },
+          body: { siteName: siteName.trim() },
+        }),
+      );
+    },
+    async refreshDraft(projectId, suggestionId) {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${AI}/induction-drafts/{suggestionId}/refresh`, {
+          params: { path: { orgId, projectId, suggestionId } },
+        }),
+      );
+    },
+    async decideSuggestion(projectId, suggestionId, decision) {
+      await ensureCsrfToken();
+      unwrap(
+        await api.POST(`${AI}/suggestions/{suggestionId}/decision`, {
+          params: { path: { orgId, projectId, suggestionId } },
+          body: { decision },
         }),
       );
     },

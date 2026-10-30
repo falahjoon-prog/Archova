@@ -501,6 +501,18 @@ export function workforceRoutes(
       );
       return { status: 200, body: toCompletionDto(v) };
     },
+    getInductionFileDownload: async (input) => {
+      const fileId = decodeId('file', input.params.fileId);
+      if (!fileId) throw new AppError('file.not_found');
+      const l = await read(input, (s) =>
+        ind.downloadFile(s, project(input.params), completion(input.params), fileId),
+      );
+      return {
+        status: 200,
+        body: { url: l.url, expiresAt: l.expiresAt.toISOString() },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
     recordInductionProgress: async (input) => {
       const v = await tx(input, (s) =>
         ind.recordProgress(s, project(input.params), completion(input.params), input.body),
