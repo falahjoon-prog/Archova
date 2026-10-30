@@ -1620,6 +1620,15 @@ export const InductionRegisterSchema = z.object({
 });
 export type InductionRegister = z.infer<typeof InductionRegisterSchema>;
 
+export const InductionSwmsDownloadSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "title": z.string(),
+  "docNumber": z.string().nullable(),
+  "rev": z.string(),
+});
+export type InductionSwmsDownload = z.infer<typeof InductionSwmsDownloadSchema>;
+
 export const InductionTranslationSchema = z.object({
   "language": z.string(),
   "nativeName": z.string(),

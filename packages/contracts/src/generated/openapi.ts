@@ -3288,6 +3288,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/swms/{documentId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        /** A short-lived download link for the current revision of a SWMS this induction names (and no other document). */
+        get: operations["getInductionSwmsDownload"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/progress": {
         parameters: {
             query?: never;
@@ -4605,6 +4627,14 @@ export interface components {
             url: string;
             /** Format: date-time */
             expiresAt: string;
+        };
+        InductionSwmsDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            title: string;
+            docNumber: string | null;
+            rev: string;
         };
         FileRef: string;
         UserRef: string;
@@ -12286,6 +12316,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DownloadLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getInductionSwmsDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                completionId: string;
+                documentId: components["parameters"]["DocumentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InductionSwmsDownload"];
                 };
             };
             default: components["responses"]["Problem"];

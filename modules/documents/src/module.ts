@@ -78,6 +78,8 @@ export function createDocumentsModule(
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */
       getDocumentRef: documents.ref,
+      /** For inductions: a SWMS document's current file, for a worker the induction itself authorises. */
+      getDocumentFileAuthorised: documents.currentFileAuthorised,
       /** For Nova revision compare (F21): the revision this one superseded on its sheet, or null. */
       getPreviousDrawingRevision: drawings.getPreviousRevision,
       /** For Nova RFI drafts (F3): a markup the caller may see on a revision, or markup.not_found. */

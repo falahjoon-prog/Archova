@@ -1090,6 +1090,12 @@ export const GetInductionFileDownloadParams = z.object({
   "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
   "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
 });
+export const GetInductionSwmsDownloadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "completionId": z.string().regex(new RegExp("^inc_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^doc_[0-9A-Za-z]{26}$")),
+});
 export const RecordInductionProgressParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3396,6 +3402,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetInductionFileDownloadParams,
+    query: null,
+    body: null,
+  },
+  getInductionSwmsDownload: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/induction-completions/{completionId}/swms/{documentId}/download',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.attendance.sign_in_self",
+    internal: false,
+    contentType: null,
+    params: GetInductionSwmsDownloadParams,
     query: null,
     body: null,
   },
