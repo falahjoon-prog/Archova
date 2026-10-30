@@ -31,3 +31,16 @@ create table ai.ai_contract_playbook_topics (
 );
 select kernel.enable_tenant_rls('ai.ai_contract_playbook_topics');
 grant select, insert, update, delete on ai.ai_contract_playbook_topics to app_rw;
+
+-- Every replace of a contract type's playbook keeps a snapshot of what was saved and who saved it, so a change to
+-- the lawyer-approved wording can be traced. Rows are never updated or deleted.
+create table ai.ai_contract_playbook_history (
+  id             uuid primary key,
+  org_id         uuid not null,
+  contract_type  text not null check (contract_type in ('head_contract', 'subcontract', 'consultant_agreement')),
+  topics         jsonb not null,
+  saved_by       uuid,
+  saved_at       timestamptz not null default now()
+);
+select kernel.enable_tenant_rls('ai.ai_contract_playbook_history');
+grant select, insert on ai.ai_contract_playbook_history to app_rw;

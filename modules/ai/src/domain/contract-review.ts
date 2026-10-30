@@ -20,6 +20,7 @@ export const CONTRACT_DISCLAIMER =
 /** The label on wording offered from the builder's own library. */
 export const APPROVED_WORDING_LABEL =
   'Draft wording, not legal advice. Have it reviewed before use.';
+export const APPROVAL_NOTE = 'Approval as recorded by an org admin. Archova has not checked it.';
 export const NO_APPROVED_WORDING = 'No approved wording for this. Refer to your lawyer.';
 
 /** A playbook topic as the builder keeps it (design/09 CR4). */
@@ -78,6 +79,8 @@ export interface ReviewedFlag {
     approvedBy: string;
     approvedOn: string;
     label: string;
+    /** The approver is the name an org admin typed; Archova has not checked it. */
+    approvalNote: string;
   } | null;
   wordingStatus: WordingStatus;
 }
@@ -139,6 +142,11 @@ function locate(quote: string, named: number, pages: Map<number, string>): numbe
   return null;
 }
 
+export const MIN_QUOTE_CHARS = 15;
+export const MIN_QUOTE_WORDS = 3;
+export const MAX_QUOTE_CHARS = 400;
+export const MAX_CLAUSE_CHARS = 40;
+
 /** Fallback wording is offered only while it is within its review date. */
 export function wordingFor(
   topic: PlaybookTopic,
@@ -155,6 +163,7 @@ export function wordingFor(
       approvedBy: f.approvedBy,
       approvedOn: f.approvedOn,
       label: APPROVED_WORDING_LABEL,
+      approvalNote: APPROVAL_NOTE,
     },
     wordingStatus: 'offered',
   };
@@ -182,6 +191,21 @@ export function reviewContract(
     clause: string | null;
     quote: string;
   }): ContractSource | null => {
+    // A quote too short to identify a clause (or a bare number) proves nothing about the page.
+    const q = s.quote.trim();
+    if (
+      q.length < MIN_QUOTE_CHARS ||
+      q.length > MAX_QUOTE_CHARS ||
+      q.split(/\s+/).length < MIN_QUOTE_WORDS
+    ) {
+      dropped.notOnPage++;
+      return null;
+    }
+    // The clause number is model-written too: short, and free of banned words.
+    if (s.clause && (s.clause.length > MAX_CLAUSE_CHARS || hasBannedWord(s.clause))) {
+      dropped.bannedWords++;
+      return null;
+    }
     const page = locate(s.quote, s.page, normalised);
     if (page === null) {
       dropped.notOnPage++;

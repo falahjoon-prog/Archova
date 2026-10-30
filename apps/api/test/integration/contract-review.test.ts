@@ -189,6 +189,7 @@ describe('Nova contract review (F34)', () => {
         wording: 'Total liquidated damages are capped at 10% of the contract sum.',
         approvedBy: 'Jo Lawyer',
         label: 'Draft wording, not legal advice. Have it reviewed before use.',
+        approvalNote: expect.stringContaining('recorded by an org admin'),
       },
     });
     // No approved wording for retention: Nova offers none, and writes none.

@@ -67,6 +67,18 @@ describe('contract review rules', () => {
     expect(r.flags).toHaveLength(1);
   });
 
+  it('refuses quotes too short to show anything, and clause text that is long or uses a banned word', () => {
+    for (const quote of ['12.2', 'Retention of', 'a'.repeat(401)]) {
+      const r = run(out([dep({ quote })]));
+      expect(r.flags, quote).toHaveLength(0);
+    }
+    expect(
+      run(out([dep({ clause: '12.2 and this clause is fair to the builder overall' })])).flags,
+    ).toHaveLength(0);
+    expect(run(out([dep({ clause: 'safe 12.2' })])).dropped.bannedWords).toBe(1);
+    expect(run(out([dep()])).flags[0]!.source.clause).toBe('12.2');
+  });
+
   it('drops a flag for a topic that is not in the playbook', () => {
     const r = run(out([dep({ topicKey: 'made_up' })]));
     expect(r.flags).toHaveLength(0);
@@ -94,6 +106,7 @@ describe('contract review rules', () => {
     expect(r.flags[0]!.approvedWording).toMatchObject({
       wording: FALLBACK.wording,
       label: APPROVED_WORDING_LABEL,
+      approvalNote: expect.stringContaining('recorded by an org admin'),
       approvedBy: 'Jo',
     });
   });

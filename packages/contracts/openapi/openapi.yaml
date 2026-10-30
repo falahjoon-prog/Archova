@@ -7089,13 +7089,18 @@ components:
                 description: From the playbook fallback only, never written by Nova.
                 oneOf:
                   - type: object
-                    required: [title, wording, approvedBy, approvedOn, label]
+                    required: [title, wording, approvedBy, approvedOn, label, approvalNote]
                     properties:
                       title: { type: string }
                       wording: { type: string }
                       approvedBy: { type: string }
                       approvedOn: { type: string, format: date }
                       label: { type: string, description: Shown with the wording. }
+                      approvalNote:
+                        {
+                          type: string,
+                          description: Says the approver is as recorded by an org admin and not checked by Archova. Shown with the approver's name.,
+                        }
                   - type: 'null'
               wordingStatus:
                 description: none means refer to your lawyer; review_due means the approved wording is past its review date.

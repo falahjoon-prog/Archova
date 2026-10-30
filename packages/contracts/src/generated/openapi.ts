@@ -4923,6 +4923,8 @@ export interface components {
                     approvedOn: string;
                     /** @description Shown with the wording. */
                     label: string;
+                    /** @description Says the approver is as recorded by an org admin and not checked by Archova. Shown with the approver's name. */
+                    approvalNote: string;
                 } | null;
                 /**
                  * @description none means refer to your lawyer; review_due means the approved wording is past its review date.

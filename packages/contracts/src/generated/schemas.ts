@@ -1960,6 +1960,7 @@ export const NovaContractReviewSchema = z.object({
   "approvedBy": z.string(),
   "approvedOn": z.string().date(),
   "label": z.string(),
+  "approvalNote": z.string(),
 }), z.null()]),
   "wordingStatus": z.enum(["offered", "review_due", "none"]),
 })),

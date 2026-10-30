@@ -6,7 +6,7 @@ import { PlaybookTopicInput, SEVERITIES, z, type ContractType } from '@archova/a
 import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { PlaybookTopic } from '../domain/contract-review';
-import { contractPlaybookTopics } from '../infra/tables';
+import { contractPlaybookHistory, contractPlaybookTopics } from '../infra/tables';
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -112,7 +112,15 @@ export function createContractPlaybookService() {
           updatedBy: scope.ctx.userId,
         })),
       );
-    return list(scope, contractType);
+    const saved = await list(scope, contractType);
+    await scope.tx.insert(contractPlaybookHistory).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      contractType,
+      topics: saved,
+      savedBy: scope.ctx.userId,
+    });
+    return saved;
   }
 
   return { list, replace };

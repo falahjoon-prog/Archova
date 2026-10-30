@@ -214,3 +214,12 @@ export const contractPlaybookTopics = ai.table('ai_contract_playbook_topics', {
   fallbackReviewBy: date('fallback_review_by', { mode: 'string' }),
   ...audit,
 });
+
+export const contractPlaybookHistory = ai.table('ai_contract_playbook_history', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  contractType: text('contract_type').notNull(),
+  topics: jsonb('topics').$type<unknown>().notNull(),
+  savedBy: uuid('saved_by'),
+  savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
+});
