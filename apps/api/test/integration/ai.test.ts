@@ -45,6 +45,9 @@ beforeAll(async () => {
       quotePackage: async () => {
         throw new Error('not used');
       },
+      quoteForNegotiation: async () => {
+        throw new Error('not used');
+      },
       openRfisOnDrawing: async () => [],
       provider: t.ai,
     },

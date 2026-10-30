@@ -7,6 +7,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
 import { quotesSource } from '../data/quotes-source';
+import type { ElenaTopic } from '../lib/elena';
 import type { ScopeLine } from '../lib/quote-types';
 
 export function usePackages() {
@@ -91,5 +92,14 @@ export function useCreatePackage() {
       quotesSource.createPackage(projectId, v),
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'tender-packages') }),
+  });
+}
+
+/** Elena's help on one confirmed quote. Nothing is saved, so no cache is touched. */
+export function useElena(packageId: string) {
+  const { projectId, timezone } = useCurrentProject();
+  return useMutation({
+    mutationFn: (v: { quoteId: string; targetCents: number | null; topic: ElenaTopic }) =>
+      quotesSource.askElena(projectId, packageId, { ...v, today: todayIn(timezone) }),
   });
 }

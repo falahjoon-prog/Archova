@@ -12,6 +12,7 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
@@ -229,6 +230,7 @@ export function aiRoutes(
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
+  quoteNegotiations: QuoteNegotiateService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -435,6 +437,40 @@ export function aiRoutes(
           runId: encodeId('aiRun', runId),
           suggestionId: encodeId('aiSuggestion', suggestionId),
           truncated,
+        },
+      };
+    },
+    negotiateQuoteWithElena: async (input) => {
+      const packageId = decodeId('tenderPackage', input.body.packageId);
+      if (!packageId) throw new AppError('tender.not_found');
+      const quoteId = decodeId('quote', input.body.quoteId);
+      if (!quoteId) throw new AppError('quote.not_found');
+      const r = await quoteNegotiations.negotiate(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          packageId,
+          quoteId,
+          targetExGst: input.body.targetExGst ?? null,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          stance: r.stance,
+          gap: r.gap,
+          reply: r.reply,
+          points: r.points,
+          levers: r.levers,
+          counterExGst: r.counterExGst,
+          counterReason: r.counterReason,
+          draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
         },
       };
     },

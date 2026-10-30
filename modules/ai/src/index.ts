@@ -21,6 +21,10 @@ import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-ans
 import { createRfiDraftService } from './application/rfi-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createImportMappingService } from './application/import-mapping';
+import {
+  createQuoteNegotiateService,
+  type QuoteForNegotiation,
+} from './application/quote-negotiate';
 import { createQuoteReadService } from './application/quote-read';
 import {
   createDrawingCompareService,
@@ -248,6 +252,13 @@ export function createAiModule(
       projectId: string,
       packageId: string,
     ) => Promise<{ id: string; trade: string; scope: QuoteScopeLine[] }>;
+    /** estimating.api.quoteForNegotiation: one confirmed quote's prices and terms against the field, no company (Elena). */
+    quoteForNegotiation: (
+      scope: TenantScope,
+      projectId: string,
+      packageId: string,
+      quoteId: string,
+    ) => Promise<QuoteForNegotiation>;
     /** documents.api.getMarkup: a markup the caller may see (F3 from a markup). */
     getMarkup: (
       scope: TenantScope,
@@ -385,6 +396,12 @@ export function createAiModule(
     readFile: deps.readFile,
     quotePackage: deps.quotePackage,
   });
+  const quoteNegotiations = createQuoteNegotiateService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    quote: deps.quoteForNegotiation,
+  });
   const drawingCompare = createDrawingCompareService({
     database: services.database,
     gateway,
@@ -431,6 +448,7 @@ export function createAiModule(
       defectTags,
       importMappings,
       quoteReads,
+      quoteNegotiations,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -465,6 +483,8 @@ export function createAiModule(
       suggestImportMapping: importMappings.suggest,
       /** F22: a subcontractor's PDF quote read into lines, exclusions and qualifications; no quote is saved. */
       readQuote: quoteReads.read,
+      /** Elena: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
+      negotiateQuote: quoteNegotiations.negotiate,
       /** F21: what changed on a drawing revision since the one it superseded, with the open RFIs it affects. */
       compareDrawingRevision: drawingCompare.compare,
       /** F4: a draft summary of one diary day, from `diary.api.dayForSummary` (cached per entry version). */

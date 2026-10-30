@@ -40,6 +40,7 @@ import {
 } from '../lib/quote-types';
 import { ComparisonTable } from '../quotes/ComparisonTable';
 import { money } from '../quotes/money';
+import { ElenaPanel } from '../quotes/ElenaPanel';
 import { QuoteReview } from '../quotes/QuoteReview';
 import { SourceDialog, type SourceTarget } from '../quotes/SourceDialog';
 
@@ -194,6 +195,7 @@ function Comparison({
             onSource={onSource}
           />
           <p className="u-caption u-m-0">Amounts are ex GST. GST is shown separately.</p>
+          <ElenaPanel packageId={pkg.id} quotes={comparable} />
         </>
       )}
       <ErrorAlert error={m.allowance.error} title="We couldn't save the allowance" />
