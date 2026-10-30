@@ -1535,6 +1535,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova finds the items to count or outline on a drawing sheet (Nova Esti assisted takeoff).
+         * @description The estimator names what to find in their own words (`what`: "power points (GPOs)", "strip footings") and its
+         *     `kind`: a count of symbols, the length of runs, or the area of regions. Any trade. They may point at up to five
+         *     `examples` ("this one, find the rest"). Nova looks at the sheet and returns each item's place on the sheet
+         *     (page fractions from the top-left corner), how sure it is and why when it is not; software drops anything off
+         *     the sheet, the wrong shape or a repeat, and caps confidence on scanned sheets at 0.84. Nova never gives a
+         *     quantity: save the items with `createAssistedTakeoffMeasurements` and size them from the sheet's confirmed
+         *     scale. Nothing is saved or counted here. Costs one Nova credit per run. Needs a deployment that can render
+         *     drawing pages, else 503.
+         */
+        post: operations["detectTakeoffWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations": {
         parameters: {
             query?: never;
@@ -2247,6 +2277,81 @@ export interface paths {
         put?: never;
         /** A person accepts a measurement so its quantity can feed a scope line or estimate. */
         post: operations["confirmTakeoffMeasurement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Save what Nova found on a sheet as unconfirmed marks (Nova Esti assisted takeoff).
+         * @description Saves up to 200 marks together, all or none, as `assisted` measurements that wait for a person. None counts
+         *     toward a quantity, scope line or estimate until it is confirmed. Each item is checked like a single measurement:
+         *     its shape must fit its kind and a count's quantity is the number of points. The quantity is worked out by
+         *     the client from the sheet's confirmed scale, never by the model.
+         */
+        post: operations["createAssistedTakeoffMeasurements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/confirm-batch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A person accepts many of Nova's marks on a sheet at once.
+         * @description Accepts Nova's pending marks on one drawing revision, either the `ids` given, or every pending mark at least
+         *     `minConfidence` sure ("Accept 90% and over"), or both. Hand-drawn marks and rejected marks are never touched.
+         *     Returns the marks it accepted.
+         */
+        post: operations["confirmTakeoffMeasurements"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A person turns down a mark Nova drew; it stays struck through and never counts.
+         * @description Only marks Nova drew can be rejected; a hand-drawn measurement is deleted instead. Confirming it later undoes the rejection.
+         */
+        post: operations["rejectTakeoffMeasurement"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5025,6 +5130,27 @@ export interface components {
             history: components["schemas"]["NegotiationTurn"][];
             disclaimer: string;
         };
+        NovaTakeoffDetection: {
+            runId: string;
+            revisionId: string;
+            kind: components["schemas"]["TakeoffKind"];
+            what: string;
+            /** @description The sheet is a scan; confidence is capped and every mark needs a look. */
+            scanned: boolean;
+            /** @description Anything that stopped a full answer. */
+            caveat: string | null;
+            /** @description Items software removed (off the sheet */
+            dropped: number;
+            items: {
+                place: string | null;
+                points: {
+                    x: number;
+                    y: number;
+                }[];
+                confidence: number;
+                note: string | null;
+            }[];
+        };
         NovaQuoteReading: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -6472,6 +6598,12 @@ export interface components {
             confirmedBy: string | null;
             /** Format: date-time */
             confirmedAt: string | null;
+            rejectedBy: string | null;
+            /**
+             * Format: date-time
+             * @description A person turned this mark down. It stays on the sheet, struck through, and never counts.
+             */
+            rejectedAt: string | null;
             /** Format: date-time */
             createdAt: string;
             /** Format: date-time */
@@ -10293,6 +10425,45 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    detectTakeoffWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    revisionId: string;
+                    target: {
+                        kind: components["schemas"]["TakeoffKind"];
+                        what: string;
+                        hint?: string;
+                    };
+                    examples?: {
+                        x: number;
+                        y: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description What Nova found */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaTakeoffDetection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     negotiateQuote: {
         parameters: {
             query?: never;
@@ -11282,6 +11453,109 @@ export interface operations {
         };
     };
     confirmTakeoffMeasurement: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                measurementId: components["parameters"]["TakeoffMeasurementId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createAssistedTakeoffMeasurements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    revisionId: string;
+                    items: {
+                        label: string;
+                        kind: components["schemas"]["TakeoffKind"];
+                        geometry: components["schemas"]["TakeoffGeometry"];
+                        quantity: string;
+                        unit: string;
+                        confidence: number;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Saved, unconfirmed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TakeoffMeasurement"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    confirmTakeoffMeasurements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    revisionId: string;
+                    ids?: string[];
+                    minConfidence?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description The marks accepted */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TakeoffMeasurement"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectTakeoffMeasurement: {
         parameters: {
             query?: never;
             header: {

@@ -221,6 +221,50 @@ export function estimatingRoutes(database: Database, svc: TenderService, takeoff
           ),
         ),
       ),
+    createAssistedTakeoffMeasurements: async (input) => {
+      const rows = await tx(input, (s) =>
+        takeoff.createAssisted(
+          s,
+          project(input.params),
+          ref('drawingRevision', input.body.revisionId, 'revisionId'),
+          input.body.items.map((i) => ({
+            kind: i.kind,
+            label: i.label,
+            geometry: i.geometry,
+            quantity: i.quantity,
+            unit: i.unit,
+            confidence: i.confidence,
+          })),
+        ),
+      );
+      return { status: 201, body: { data: rows.map(toMeasurementDto) } };
+    },
+    confirmTakeoffMeasurements: async (input) => {
+      const rows = await tx(input, (s) =>
+        takeoff.confirmMany(s, project(input.params), {
+          revisionId: ref('drawingRevision', input.body.revisionId, 'revisionId'),
+          ...(input.body.ids
+            ? { ids: input.body.ids.map((id) => ref('takeoffMeasurement', id, 'ids')) }
+            : {}),
+          ...(input.body.minConfidence !== undefined
+            ? { minConfidence: input.body.minConfidence }
+            : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toMeasurementDto) } };
+    },
+    rejectTakeoffMeasurement: async (input) =>
+      measurement(
+        200,
+        await tx(input, (s) =>
+          takeoff.reject(
+            s,
+            project(input.params),
+            measurementIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+          ),
+        ),
+      ),
     listTenderPackages: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>

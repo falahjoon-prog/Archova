@@ -12,6 +12,7 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
@@ -233,6 +234,7 @@ export function aiRoutes(
   quoteReads: QuoteReadService,
   quoteNegotiations: QuoteNegotiateService,
   speech: SpeechService,
+  takeoffDetect: TakeoffDetectService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -553,6 +555,35 @@ export function aiRoutes(
         input.params.weekStart,
       );
       return { status: 200, body: toSuggestionDto(row) };
+    },
+    detectTakeoffWithNova: async (input) => {
+      const revisionId = decodeId('drawingRevision', input.body.revisionId);
+      if (!revisionId)
+        throw new AppError('takeoff.revision_not_found', undefined, [
+          { path: 'revisionId', message: 'Not a drawing revision on this project' },
+        ]);
+      const d = await takeoffDetect.detect(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          revisionId,
+          target: input.body.target,
+          examples: input.body.examples ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          revisionId: encodeId('drawingRevision', d.revisionId),
+          kind: d.kind,
+          what: d.what,
+          scanned: d.scanned,
+          caveat: d.caveat,
+          dropped: d.dropped,
+          items: d.items,
+        },
+      };
     },
     compareDrawingRevision: async (input) => {
       const projectId = projectUuid(input.params.projectId);
