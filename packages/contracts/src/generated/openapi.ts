@@ -2283,6 +2283,178 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/cost-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The company cost library, in code order. Each item carries the rate in force today (for the region asked about, falling back to a rate with no region), or none when it has no price yet. */
+        get: operations["listCostItems"];
+        put?: never;
+        /** Add an item to the cost library, optionally with its first rate. */
+        post: operations["createCostItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/cost-items/{costItemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        /** One cost library item. */
+        get: operations["getCostItem"];
+        put?: never;
+        post?: never;
+        /** Remove an item from the library. Estimate lines already priced from it keep their rate. */
+        delete: operations["deleteCostItem"];
+        options?: never;
+        head?: never;
+        /** Change an item's code, description, unit, trade or category. Prices change through rates. */
+        patch: operations["updateCostItem"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/cost-items/{costItemId}/rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        /** An item's rate history, newest first. */
+        get: operations["listCostRates"];
+        put?: never;
+        /** Record a new rate from a date. Earlier rates are kept: an estimate uses the latest rate effective on or before its base date. */
+        post: operations["addCostRate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/estimates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Estimates on the project, newest first. The lines come with a single estimate. */
+        get: operations["listEstimates"];
+        put?: never;
+        /** Start an empty estimate sheet. */
+        post: operations["createEstimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        /** The estimate sheet with its lines and totals. Totals are worked out from the lines and the percentages on the sheet. A draft follows the takeoff; an issued estimate is frozen. */
+        get: operations["getEstimate"];
+        put?: never;
+        post?: never;
+        /** Remove a draft estimate. */
+        delete: operations["deleteEstimate"];
+        options?: never;
+        head?: never;
+        /** Change the name, base date, region, contingency, margin or GST of a draft estimate. */
+        patch: operations["updateEstimate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a section or a priced item. Linking confirmed takeoff measurements sets the quantity and unit from them (unconfirmed ones add nothing). Choosing a library item brings its current rate; a rate typed here wins. Returns the whole sheet. */
+        post: operations["addEstimateLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+                lineId: components["parameters"]["EstimateLineId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a line. Removing a section removes its items. */
+        delete: operations["deleteEstimateLine"];
+        options?: never;
+        head?: never;
+        /** Change a line. Send an empty `measurementIds` to detach it from takeoff and keep typing its quantity. */
+        patch: operations["updateEstimateLine"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/issue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue the estimate: freeze its quantities, rates and total. Refused (422 `estimate.rates_missing`) while any item has no quantity or rate. */
+        post: operations["issueEstimate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch": {
         parameters: {
             query?: never;
@@ -6970,6 +7142,199 @@ export interface components {
             updatedAt: string;
             version: number;
         };
+        /** @enum {string} */
+        CostCategory: "labour" | "material" | "plant" | "subcontract" | "other";
+        CostRatePoint: {
+            /** @description Dollars ex GST, 2 places */
+            rate: string;
+            region: string | null;
+            /** Format: date */
+            effectiveFrom: string;
+        };
+        CostRate: components["schemas"]["CostRatePoint"] & components["schemas"]["CostRateDetail"];
+        CostRateDetail: {
+            /** @enum {string} */
+            source: "manual" | "quote" | "import";
+            note: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CostRateInput: {
+            rate: string;
+            region?: string;
+            /**
+             * Format: date
+             * @description Defaults to today
+             */
+            effectiveFrom?: string;
+            note?: string;
+        };
+        CostRateList: {
+            data: components["schemas"]["CostRate"][];
+        };
+        CostItem: {
+            id: string;
+            code: string;
+            description: string;
+            unit: string;
+            trade: string;
+            category: components["schemas"]["CostCategory"];
+            /** @description The rate in force today, or null while the item has none. */
+            currentRate: null | components["schemas"]["CostRatePoint"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        CostItemPage: {
+            data: components["schemas"]["CostItem"][];
+            nextCursor: string | null;
+        };
+        CreateCostItemRequest: {
+            code: string;
+            description: string;
+            unit: string;
+            trade?: string;
+            category?: components["schemas"]["CostCategory"];
+            rate?: components["schemas"]["CostRateInput"];
+        };
+        UpdateCostItemRequest: {
+            code?: string;
+            description?: string;
+            unit?: string;
+            trade?: string;
+            category?: components["schemas"]["CostCategory"];
+        };
+        EstimateSettings: {
+            /**
+             * Format: date
+             * @description Library rates are taken as at this date
+             */
+            baseDate: string;
+            region: string | null;
+            /** @description Percent of the line total */
+            contingencyPct: string;
+            /** @description Percent */
+            marginPct: string;
+            /**
+             * @description `markup` adds the percentage on cost; `margin` makes it that share of the selling price.
+             * @enum {string}
+             */
+            marginBasis: "markup" | "margin";
+            gstPct: string;
+        };
+        EstimateTotals: {
+            subtotal: string;
+            contingency: string;
+            margin: string;
+            totalExGst: string;
+            gst: string;
+            totalIncGst: string;
+            /** @description Items with no quantity or rate. They add nothing to the totals until filled in. */
+            missingRates: number;
+            /** @description Cost of the items under each section id. */
+            sections: {
+                [key: string]: string;
+            };
+        };
+        EstimateLine: {
+            id: string;
+            parentId: string | null;
+            /** @enum {string} */
+            kind: "section" | "item";
+            sort: number;
+            costItemId: string | null;
+            description: string;
+            /** @description 3 places */
+            quantity: string | null;
+            unit: string | null;
+            /** @description Dollars ex GST per unit; null is unpriced and flagged */
+            rate: string | null;
+            /** @description Quantity × rate; null while either is missing */
+            amount: string | null;
+            measurementIds: string[];
+            /** @description Linked measurements still waiting for a person to accept them. They do not count. */
+            pendingMeasurements: number;
+            /** @description The library item prices in a different unit from this line. */
+            unitMismatch: boolean;
+        };
+        Estimate: components["schemas"]["EstimateSettings"] & {
+            id: string;
+            projectId: string;
+            number: number;
+            numberLabel: string;
+            name: string;
+            /** @enum {string} */
+            status: "draft" | "issued";
+            /** Format: date-time */
+            issuedAt: string | null;
+            issuedBy: string | null;
+            lines: components["schemas"]["EstimateLine"][];
+            totals: components["schemas"]["EstimateTotals"];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EstimateSummary: {
+            id: string;
+            number: number;
+            numberLabel: string;
+            name: string;
+            /** @enum {string} */
+            status: "draft" | "issued";
+            /** Format: date */
+            baseDate: string;
+            /** @description Set when the estimate is issued */
+            totalExGst: string | null;
+            /** Format: date-time */
+            issuedAt: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        EstimatePage: {
+            data: components["schemas"]["EstimateSummary"][];
+            nextCursor: string | null;
+        };
+        CreateEstimateRequest: {
+            name: string;
+            /** Format: date */
+            baseDate?: string;
+            region?: string;
+            contingencyPct?: string;
+            marginPct?: string;
+            /** @enum {string} */
+            marginBasis?: "markup" | "margin";
+            gstPct?: string;
+        };
+        UpdateEstimateRequest: {
+            name?: string;
+            /** Format: date */
+            baseDate?: string;
+            region?: string | null;
+            contingencyPct?: string;
+            marginPct?: string;
+            /** @enum {string} */
+            marginBasis?: "markup" | "margin";
+            gstPct?: string;
+        };
+        EstimateLineInput: {
+            /**
+             * @description Defaults to item on add; ignored on change
+             * @enum {string}
+             */
+            kind?: "section" | "item";
+            parentId?: string | null;
+            description?: string;
+            costItemId?: string | null;
+            quantity?: string | null;
+            unit?: string | null;
+            rate?: string | null;
+            measurementIds?: string[];
+        };
         TakeoffMeasurementPage: {
             data: components["schemas"]["TakeoffMeasurement"][];
             nextCursor: string | null;
@@ -8713,6 +9078,9 @@ export interface components {
         TenderPackageId: string;
         QuoteId: string;
         TakeoffMeasurementId: string;
+        CostItemId: string;
+        EstimateId: string;
+        EstimateLineId: string;
         ApiTokenId: string;
         WebhookId: string;
         ImportJobId: string;
@@ -12196,6 +12564,454 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCostItems: {
+        parameters: {
+            query?: {
+                q?: string;
+                trade?: string;
+                category?: components["schemas"]["CostCategory"];
+                region?: string;
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostItemPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCostItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCostItemRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCostItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteCostItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCostItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCostItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCostRates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostRateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addCostRate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                costItemId: components["parameters"]["CostItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CostRateInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostRateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEstimates: {
+        parameters: {
+            query?: {
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstimatePage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEstimate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEstimate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteEstimate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEstimate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEstimateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addEstimateLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateLineInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteEstimateLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+                lineId: components["parameters"]["EstimateLineId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEstimateLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+                lineId: components["parameters"]["EstimateLineId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EstimateLineInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    issueEstimate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                estimateId: components["parameters"]["EstimateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Estimate"];
                 };
             };
             default: components["responses"]["Problem"];

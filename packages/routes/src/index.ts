@@ -60,6 +60,12 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/estimating/packages`,
   tenderPackage: (orgSlug: string, projectId: string, packageId: string) =>
     `${p(orgSlug, projectId)}/estimating/packages/${enc(packageId)}`,
+  estimates: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/estimates`,
+  estimate: (orgSlug: string, projectId: string, estimateId: string) =>
+    `${p(orgSlug, projectId)}/estimating/estimates/${enc(estimateId)}`,
+  costLibrary: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/cost-library`,
 
   // Guest flows outside any org (X58): no app sign-in, the link itself is the access (X45).
   /** A worker's site induction, opened from an SMS or email access link. */
