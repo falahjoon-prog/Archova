@@ -132,6 +132,15 @@ export function platformRoutes(d: PlatformRouteDeps) {
       );
       return { status: 201, body: toProjectMemberDto(row) };
     },
+    removeProjectMember: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const memberId = decodeId('projectMember', input.params.memberId);
+      if (!memberId) throw new AppError('project_member.not_found');
+      const row = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.members.remove(s, id, memberId, input.body),
+      );
+      return { status: 200, body: toProjectMemberDto(row) };
+    },
     listCompanies: async (input) => {
       const page = await d.database.withTenantTx(
         requireTenant(input),

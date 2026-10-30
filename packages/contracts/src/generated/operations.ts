@@ -55,6 +55,12 @@ export const AddProjectMemberParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const AddProjectMemberBody = s.AddProjectMemberRequestSchema;
+export const RemoveProjectMemberParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "memberId": z.string().regex(new RegExp("^pmb_[0-9A-Za-z]{26}$")),
+});
+export const RemoveProjectMemberBody = s.RemoveProjectMemberRequestSchema;
 export const GetProjectPermissionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1392,6 +1398,18 @@ export const operations = {
     params: AddProjectMemberParams,
     query: null,
     body: AddProjectMemberBody,
+  },
+  removeProjectMember: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/members/{memberId}/remove',
+    module: "platform",
+    auth: "required",
+    permission: "platform.project_members.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RemoveProjectMemberParams,
+    query: null,
+    body: RemoveProjectMemberBody,
   },
   getProjectPermissions: {
     method: 'GET',

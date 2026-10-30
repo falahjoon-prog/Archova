@@ -35,6 +35,8 @@ export const PROBLEM_CODES = {
   'project.number_taken': 409,
   'project_member.already_exists': 409,
   'project_member.user_not_found': 422,
+  'project_member.not_found': 404,
+  'project_member.cannot_remove_self': 422,
   'company.not_found': 422,
   'permission_template.not_found': 422,
   // backoffice (owner console, backend 09)
