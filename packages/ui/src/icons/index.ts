@@ -66,6 +66,7 @@ export {
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,
   PackageCheck as SubmittalsIcon,
+  Mail as CorrespondenceIcon,
   ShieldCheck as InductionsIcon,
   Scale as EstimatingIcon,
   Send as TransmittalsIcon,

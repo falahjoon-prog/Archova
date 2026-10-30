@@ -286,6 +286,111 @@ export const ConfirmSheetScaleRequestSchema = z.object({
 }).strict();
 export type ConfirmSheetScaleRequest = z.infer<typeof ConfirmSheetScaleRequestSchema>;
 
+export const CorrespondenceStatusSchema = z.enum(["draft", "sent", "responded", "closed", "void"]);
+export type CorrespondenceStatus = z.infer<typeof CorrespondenceStatusSchema>;
+
+export const CorrespondenceRelatedSchema = z.object({
+  "kind": z.enum(["rfi", "submittal", "correspondence", "variation", "diary", "other"]),
+  "id": z.string().regex(new RegExp("^[a-z]{2,4}_[0-9A-Za-z]{26}$")),
+  "label": z.string().max(120).optional(),
+}).strict();
+export type CorrespondenceRelated = z.infer<typeof CorrespondenceRelatedSchema>;
+
+export const CorrespondenceItemSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "typeId": z.string(),
+  "typeName": z.string(),
+  "isEvidential": z.boolean(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "subject": z.string(),
+  "body": z.string(),
+  "status": CorrespondenceStatusSchema,
+  "fromCompanyId": z.string().nullable(),
+  "toCompanyIds": z.array(z.string()),
+  "responseRequired": z.boolean(),
+  "dueDate": z.string().date().nullable(),
+  "eventDate": z.string().date().nullable(),
+  "timeBarDays": z.number().int().nullable(),
+  "timeBarDate": z.string().date().nullable(),
+  "timeBarState": z.enum(["none", "ok", "amber", "red", "overdue"]),
+  "sentInTime": z.boolean().nullable(),
+  "fileIds": z.array(z.string()),
+  "related": z.array(CorrespondenceRelatedSchema),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "sentBy": z.string().nullable(),
+  "contentHash": z.string().nullable(),
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "voidReason": z.string().nullable(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type CorrespondenceItem = z.infer<typeof CorrespondenceItemSchema>;
+
+export const CorrespondenceResponseSchema = z.object({
+  "id": z.string(),
+  "authorId": z.string(),
+  "authorCompanyId": z.string().nullable(),
+  "body": z.string(),
+  "fileIds": z.array(z.string()),
+  "sentAt": z.string().datetime({ offset: true }),
+});
+export type CorrespondenceResponse = z.infer<typeof CorrespondenceResponseSchema>;
+
+export const CorrespondenceDetailSchema = z.object({
+  "item": CorrespondenceItemSchema,
+  "responses": z.array(CorrespondenceResponseSchema),
+});
+export type CorrespondenceDetail = z.infer<typeof CorrespondenceDetailSchema>;
+
+export const CorrespondencePageSchema = z.object({
+  "data": z.array(CorrespondenceItemSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type CorrespondencePage = z.infer<typeof CorrespondencePageSchema>;
+
+export const CorrespondenceTemplateSchema = z.object({
+  "key": z.string(),
+  "name": z.string(),
+  "prefix": z.string(),
+  "description": z.string(),
+  "isEvidential": z.boolean(),
+  "responseRequired": z.boolean(),
+  "responseDays": z.number().int(),
+  "timeBarDays": z.number().int().nullable(),
+  "subjectTemplate": z.string(),
+  "bodyTemplate": z.string(),
+});
+export type CorrespondenceTemplate = z.infer<typeof CorrespondenceTemplateSchema>;
+
+export const CorrespondenceTypeSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "prefix": z.string(),
+  "description": z.string(),
+  "templateKey": z.string().nullable(),
+  "isEvidential": z.boolean(),
+  "responseRequired": z.boolean(),
+  "responseDays": z.number().int(),
+  "timeBarDays": z.number().int().nullable(),
+  "subjectTemplate": z.string(),
+  "bodyTemplate": z.string(),
+  "archived": z.boolean(),
+  "version": z.number().int(),
+});
+export type CorrespondenceType = z.infer<typeof CorrespondenceTypeSchema>;
+
+export const CorrespondenceTypeListSchema = z.object({
+  "data": z.array(CorrespondenceTypeSchema),
+});
+export type CorrespondenceTypeList = z.infer<typeof CorrespondenceTypeListSchema>;
+
+export const CorrespondenceTypeRefSchema = z.string().regex(new RegExp("^cty_[0-9A-Za-z]{26}$"));
+export type CorrespondenceTypeRef = z.infer<typeof CorrespondenceTypeRefSchema>;
+
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
 
@@ -313,6 +418,38 @@ export const CreateCompanyRequestSchema = z.object({
   "phone": z.string().max(50).optional(),
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
+
+export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
+export type FileRef = z.infer<typeof FileRefSchema>;
+
+export const CreateCorrespondenceRequestSchema = z.object({
+  "typeId": CorrespondenceTypeRefSchema,
+  "subject": z.string().max(300).optional(),
+  "body": z.string().max(50000).optional(),
+  "fromCompanyId": CompanyRefSchema.optional(),
+  "toCompanyIds": z.array(CompanyRefSchema).max(50).optional(),
+  "responseRequired": z.boolean().optional(),
+  "dueDate": z.string().date().optional(),
+  "eventDate": z.string().date().optional(),
+  "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
+  "fileIds": z.array(FileRefSchema).max(50).optional(),
+  "related": z.array(CorrespondenceRelatedSchema).max(50).optional(),
+}).strict();
+export type CreateCorrespondenceRequest = z.infer<typeof CreateCorrespondenceRequestSchema>;
+
+export const CreateCorrespondenceTypeRequestSchema = z.object({
+  "templateKey": z.string().max(60).optional(),
+  "name": z.string().min(1).max(80).optional(),
+  "prefix": z.string().regex(new RegExp("^[A-Za-z]{1,6}$")).optional(),
+  "description": z.string().max(500).optional(),
+  "isEvidential": z.boolean().optional(),
+  "responseRequired": z.boolean().optional(),
+  "responseDays": z.number().int().min(0).max(250).optional(),
+  "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
+  "subjectTemplate": z.string().max(300).optional(),
+  "bodyTemplate": z.string().max(20000).optional(),
+}).strict();
+export type CreateCorrespondenceTypeRequest = z.infer<typeof CreateCorrespondenceTypeRequestSchema>;
 
 export const DefectPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
@@ -415,9 +552,6 @@ export type CreateDiaryVisitorRequest = z.infer<typeof CreateDiaryVisitorRequest
 
 export const DocumentStatusSchema = z.enum(["draft", "for_review", "approved", "for_construction", "superseded", "void"]);
 export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
-
-export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
-export type FileRef = z.infer<typeof FileRefSchema>;
 
 export const DocumentRevisionInputSchema = z.object({
   "rev": z.string().min(1).max(20),
@@ -2511,6 +2645,12 @@ export const RemoveProjectMemberRequestSchema = z.object({
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
 
+export const RespondCorrespondenceRequestSchema = z.object({
+  "body": z.string().min(1).max(50000),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
+}).strict();
+export type RespondCorrespondenceRequest = z.infer<typeof RespondCorrespondenceRequestSchema>;
+
 export const SubmittalReviewAnswerSchema = z.enum(["forwarded", "approved", "approved_as_noted", "revise_resubmit", "rejected"]);
 export type SubmittalReviewAnswer = z.infer<typeof SubmittalReviewAnswerSchema>;
 
@@ -3145,6 +3285,34 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
 
+export const UpdateCorrespondenceRequestSchema = z.object({
+  "subject": z.string().max(300).optional(),
+  "body": z.string().max(50000).optional(),
+  "fromCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "toCompanyIds": z.array(CompanyRefSchema).max(50).optional(),
+  "responseRequired": z.boolean().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "eventDate": z.string().date().nullable().optional(),
+  "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
+  "fileIds": z.array(FileRefSchema).max(50).optional(),
+  "related": z.array(CorrespondenceRelatedSchema).max(50).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateCorrespondenceRequest = z.infer<typeof UpdateCorrespondenceRequestSchema>;
+
+export const UpdateCorrespondenceTypeRequestSchema = z.object({
+  "name": z.string().min(1).max(80).optional(),
+  "prefix": z.string().regex(new RegExp("^[A-Za-z]{1,6}$")).optional(),
+  "description": z.string().max(500).optional(),
+  "isEvidential": z.boolean().optional(),
+  "responseRequired": z.boolean().optional(),
+  "responseDays": z.number().int().min(0).max(250).optional(),
+  "timeBarDays": z.number().int().min(1).max(365).nullable().optional(),
+  "subjectTemplate": z.string().max(300).optional(),
+  "bodyTemplate": z.string().max(20000).optional(),
+  "archived": z.boolean().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateCorrespondenceTypeRequest = z.infer<typeof UpdateCorrespondenceTypeRequestSchema>;
+
 export const UpdateDefectRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),
   "description": z.string().max(20000).optional(),
@@ -3397,6 +3565,11 @@ export const VerifyInductionAccessRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type VerifyInductionAccessRequest = z.infer<typeof VerifyInductionAccessRequestSchema>;
+
+export const VoidCorrespondenceRequestSchema = z.object({
+  "reason": z.string().min(1).max(1000),
+}).strict();
+export type VoidCorrespondenceRequest = z.infer<typeof VoidCorrespondenceRequestSchema>;
 
 export const WebhookSchema = z.object({
   "id": z.string(),

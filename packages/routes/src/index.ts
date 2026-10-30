@@ -36,6 +36,11 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
+  newCorrespondence: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/correspondence/new`,
+  correspondenceItem: (orgSlug: string, projectId: string, itemId: string) =>
+    `${p(orgSlug, projectId)}/correspondence/${enc(itemId)}`,
   /** The diary for a project-local date (`YYYY-MM-DD`); without a date it opens today. */
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
