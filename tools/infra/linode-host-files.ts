@@ -157,6 +157,28 @@ export function renderHostFiles(input: HostFilesInput): HostFiles {
   };
   if (primary) {
     out['etc/valkey.env'] = envFile({ VALKEY_PASSWORD: s.valkey_password });
+    // Same database and queue settings as the AWS tasks (infra/cells/cell/worker.tf, ai-worker.tf): the relay alone gets
+    // the cross-tenant app_platform role; the ai-worker never does.
+    const redisUrl = `redis://:${encodeURIComponent(s.valkey_password)}@${s.valkey_host}:6379`;
+    out['etc/worker.env'] = envFile({
+      NODE_ENV: 'production',
+      LOG_LEVEL: 'info',
+      DATABASE_URL: db('app_rw', role('app_rw')),
+      DATABASE_PLATFORM_URL: db('app_platform', role('app_platform')),
+      REDIS_URL: redisUrl,
+    });
+    out['etc/ai-worker.env'] = envFile({
+      NODE_ENV: 'production',
+      LOG_LEVEL: 'info',
+      WORKER_ROLE: 'ai',
+      DATABASE_URL: db('app_rw', role('app_rw')),
+      REDIS_URL: redisUrl,
+      API_AI_PROVIDER: 'bedrock',
+      API_AI_REGION: 'ap-southeast-2',
+      API_AI_MODEL_FAST: models.fast,
+      API_AI_MODEL_STANDARD: models.standard,
+      API_AI_MODEL_ADVANCED: models.advanced,
+    });
     // tools/db/roles.ts, as on AWS's db-roles task: the admin user creates or updates the app's roles.
     out['etc/db-roles.env'] = envFile({
       DB_HOST: s.database_host,

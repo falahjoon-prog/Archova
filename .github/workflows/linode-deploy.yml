@@ -42,7 +42,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Build
         run: |
-          for target in api web migrate; do
+          for target in api web worker ai-worker migrate; do
             docker buildx build --platform linux/amd64 --target "$target" --load \
               --cache-from "type=gha,scope=linode-$target" --cache-to "type=gha,mode=max,scope=linode-$target" \
               -t "archova/$target:$TAG" .
@@ -72,7 +72,7 @@ jobs:
           exit-code: '1'
       - name: Save
         run: |
-          docker save "archova/api:$TAG" "archova/web:$TAG" "archova/migrate:$TAG" \
+          docker save "archova/api:$TAG" "archova/web:$TAG" "archova/worker:$TAG" "archova/ai-worker:$TAG" "archova/migrate:$TAG" \
             archova/backup:local archova/aws-signing-helper:local | gzip -1 > images.tar.gz
       - uses: actions/upload-artifact@v4
         with:
