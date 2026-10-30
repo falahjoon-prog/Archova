@@ -7373,6 +7373,8 @@ components:
           costEstimate,
           scheduleImpactDays,
           delayDays,
+          specSection,
+          location,
           pin,
           officialResponseId,
           createdBy,
@@ -7414,6 +7416,8 @@ components:
           { type: [string, 'null'], description: 'Decimal string in the project currency (AUD)' }
         scheduleImpactDays: { type: [integer, 'null'] }
         delayDays: { type: [integer, 'null'], description: 'Days of delay caused by a late answer' }
+        specSection: { type: [string, 'null'], description: 'As written on the form.' }
+        location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
@@ -7485,6 +7489,18 @@ components:
         costImpact: { $ref: '#/components/schemas/CostImpact' }
         costEstimate: { type: string, pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        specSection:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'The spec section it concerns, as written (e.g. `03 30 00 Concrete`).',
+          }
+        location:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'Where on the project, as written (e.g. `Level 2, gridline C`).',
+          }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
         aiSuggestionId:
           type: string
@@ -7516,6 +7532,8 @@ components:
         costEstimate: { type: [string, 'null'], pattern: '^-?\d{1,16}(\.\d{1,2})?$' }
         scheduleImpactDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
         delayDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        specSection: { type: [string, 'null'], maxLength: 200 }
+        location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
     CreateRfiResponseRequest:
       type: object

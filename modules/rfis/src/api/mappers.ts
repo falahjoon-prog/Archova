@@ -44,6 +44,8 @@ export const toRfiDto = (r: RfiView): Rfi => {
     costEstimate: r.costEstimate,
     scheduleImpactDays: r.scheduleImpactDays,
     delayDays: r.delayDays,
+    specSection: r.specSection,
+    location: r.location,
     pin: r.drawingRevisionId
       ? {
           drawingRevisionId: encodeId('drawingRevision', r.drawingRevisionId),
