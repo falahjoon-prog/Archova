@@ -13,6 +13,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
+  "dependencies": {
+    "@archova/time": "workspace:*"
+  },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
