@@ -82,6 +82,7 @@ export function createBackofficeModule(
         grant: support.grant,
         revoke: support.revoke,
         banner: support.banner,
+        hasOpenSession: support.hasOpenSession,
       },
       /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
       flags: { isOn: flags.isOn },

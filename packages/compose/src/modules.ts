@@ -83,6 +83,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
     supportAccess: backoffice.api.support,
+    hasOpenSupportSession: backoffice.api.support.hasOpenSession,
     onOrgCreated: (scope, org, entitlements) =>
       backoffice.api.directory.upsert(scope.tx, {
         id: org.id,

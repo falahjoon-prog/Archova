@@ -915,6 +915,9 @@ describe('support access', () => {
       since: null,
     });
 
+    const second = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-10', hours: 1 });
+    expect(second.statusCode).toBe(409);
+    expect(code(second)).toBe('backoffice.support_grant_exists');
     await start(support, c.orgRef, 'SUP-9');
     expect((await c.browser.get(`${c.base}/banner`)).json()).toMatchObject({ active: true });
     // Another staff member has no session of their own.

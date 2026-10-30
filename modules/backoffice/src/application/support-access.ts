@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
@@ -144,6 +144,25 @@ export function createSupportAccessService(
         .from(tenantDirectory)
         .where(eq(tenantDirectory.id, orgId));
       if (!org) throw new AppError('org.not_found');
+      // Serialise grants per company, then allow only one live grant at a time.
+      await t.execute(
+        sql`select 1 from backoffice.tenant_directory where id = ${orgId} for update`,
+      );
+      const [live] = await t
+        .select({ id: supportGrants.id })
+        .from(supportGrants)
+        .where(
+          and(
+            eq(supportGrants.targetOrgId, orgId),
+            isNull(supportGrants.revokedAt),
+            gt(supportGrants.expiresAt, at),
+          ),
+        );
+      if (live)
+        throw new AppError(
+          'backoffice.support_grant_exists',
+          'Support access is already on. Withdraw it first to change it.',
+        );
       await t.insert(supportGrants).values({
         id,
         targetOrgId: orgId,
@@ -211,6 +230,18 @@ export function createSupportAccessService(
         throw new AppError(
           'backoffice.support_ticket_mismatch',
           `The grant is for ticket ${g.ticketRef}.`,
+        );
+      // A session past its time is closed first, so the one-open-session index only ever sees live ones.
+      await t
+        .update(supportSessions)
+        .set({ endedAt: at, endReason: 'ended' })
+        .where(
+          and(
+            eq(supportSessions.targetOrgId, orgId),
+            eq(supportSessions.staffId, staff.staffId),
+            isNull(supportSessions.endedAt),
+            lte(supportSessions.expiresAt, at),
+          ),
         );
       const [open] = await t
         .select({ id: supportSessions.id })
@@ -285,20 +316,7 @@ export function createSupportAccessService(
   async function viewProjects(staff: StaffContext, orgId: string): Promise<SupportProjectDto[]> {
     const at = now();
     const session = await tx(async (t) => {
-      const [s] = await t
-        .select({ id: supportSessions.id })
-        .from(supportSessions)
-        .innerJoin(supportGrants, eq(supportGrants.id, supportSessions.grantId))
-        .where(
-          and(
-            eq(supportSessions.targetOrgId, orgId),
-            eq(supportSessions.staffId, staff.staffId),
-            isNull(supportSessions.endedAt),
-            gt(supportSessions.expiresAt, at),
-            isNull(supportGrants.revokedAt),
-            gt(supportGrants.expiresAt, at),
-          ),
-        );
+      const [s] = await openSessionQuery(t, orgId, staff.staffId, at);
       return s;
     });
     if (!session)
@@ -319,7 +337,29 @@ export function createSupportAccessService(
     return projects;
   }
 
-  return { list, grant, revoke, start, end, banner, viewProjects };
+  /** The caller's own open session inside an unrevoked, unexpired grant. */
+  function openSessionQuery(t: Tx, orgId: string, staffId: string, at: Date) {
+    return t
+      .select({ id: supportSessions.id })
+      .from(supportSessions)
+      .innerJoin(supportGrants, eq(supportGrants.id, supportSessions.grantId))
+      .where(
+        and(
+          eq(supportSessions.targetOrgId, orgId),
+          eq(supportSessions.staffId, staffId),
+          isNull(supportSessions.endedAt),
+          gt(supportSessions.expiresAt, at),
+          isNull(supportGrants.revokedAt),
+          gt(supportGrants.expiresAt, at),
+        ),
+      );
+  }
+
+  /** True while the staff member holds a live session under a live grant (platform re-checks this itself). */
+  const hasOpenSession = async (orgId: string, staffId: string) =>
+    (await tx((t) => openSessionQuery(t, orgId, staffId, now()))).length > 0;
+
+  return { list, grant, revoke, start, end, banner, viewProjects, hasOpenSession };
 }
 
 export type SupportAccessService = ReturnType<typeof createSupportAccessService>;
