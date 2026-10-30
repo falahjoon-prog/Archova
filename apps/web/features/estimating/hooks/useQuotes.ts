@@ -6,10 +6,20 @@ import { todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
-import { quotesSource } from '../data/quotes-source';
-import type { ScopeLine } from '../lib/quote-types';
+import { useMemo } from 'react';
+import { previewDataOnly } from '@/shared/lib/data-mode';
+import { createQuotesApi } from '../data/quotes-api';
+import { quotesSource as previewSource, type QuotesSource } from '../data/quotes-source';
+import type { PackageAction, ScopeLine } from '../lib/quote-types';
+
+/** The API once the estimating endpoints are reachable; the in-browser preview store in preview mode and tests. */
+export function useQuotesSource(): QuotesSource {
+  const { orgId } = useCurrentOrg();
+  return useMemo(() => (previewDataOnly ? previewSource : createQuotesApi(orgId)), [orgId]);
+}
 
 export function usePackages() {
+  const quotesSource = useQuotesSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   return useQuery({
@@ -19,6 +29,7 @@ export function usePackages() {
 }
 
 export function usePackage(packageId: string) {
+  const quotesSource = useQuotesSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   return useQuery({
@@ -29,6 +40,7 @@ export function usePackage(packageId: string) {
 
 /** Polls while Nova is still reading a quote, so "reading" turns into "ready to review" on its own. */
 export function useQuotes(packageId: string) {
+  const quotesSource = useQuotesSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   return useQuery({
@@ -40,6 +52,7 @@ export function useQuotes(packageId: string) {
 
 /** Award and confirm wait for the server; allowances and corrections are small, but still server-first. */
 export function usePackageMutations(packageId: string) {
+  const quotesSource = useQuotesSource();
   const { orgId } = useCurrentOrg();
   const { projectId, timezone } = useCurrentProject();
   const actor = useActor();
@@ -56,17 +69,26 @@ export function usePackageMutations(packageId: string) {
       onSuccess: invalidate,
     }),
     upload: useMutation({
-      mutationFn: (v: { companyId: string; fileName: string }) =>
+      mutationFn: (v: { companyId: string; file: File }) =>
         quotesSource.uploadQuote(projectId, packageId, v),
       onSuccess: invalidate,
     }),
     correct: useMutation({
       mutationFn: (v: { quoteId: string; lineId: string; amountCents: number }) =>
-        quotesSource.correctLine(projectId, v.quoteId, v.lineId, v.amountCents),
+        quotesSource.correctLine(projectId, packageId, v.quoteId, v.lineId, v.amountCents),
       onSuccess: invalidate,
     }),
     confirm: useMutation({
-      mutationFn: (quoteId: string) => quotesSource.confirmQuote(projectId, quoteId, actor),
+      mutationFn: (quoteId: string) =>
+        quotesSource.confirmQuote(projectId, packageId, quoteId, actor),
+      onSuccess: invalidate,
+    }),
+    decline: useMutation({
+      mutationFn: (quoteId: string) => quotesSource.declineQuote(projectId, packageId, quoteId),
+      onSuccess: invalidate,
+    }),
+    transition: useMutation({
+      mutationFn: (action: PackageAction) => quotesSource.transition(projectId, packageId, action),
       onSuccess: invalidate,
     }),
     allowance: useMutation({
@@ -83,6 +105,7 @@ export function usePackageMutations(packageId: string) {
 }
 
 export function useCreatePackage() {
+  const quotesSource = useQuotesSource();
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
   const qc = useQueryClient();

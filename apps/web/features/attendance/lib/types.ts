@@ -89,3 +89,59 @@ export const CHECK_MODE_LABELS: Record<GateCheckMode, string> = {
   block: 'Block workers who fail the induction check',
   warn: 'Warn the site manager, let them in',
 };
+
+export type RollMark = 'unmarked' | 'accounted_for' | 'missing' | 'not_on_site';
+
+export interface RollCallPerson {
+  workerId: string;
+  fullName: string;
+  phone: string | null;
+  companyId: string | null;
+  companyNameOther: string | null;
+  signedInAt: string | null;
+  status: RollMark;
+  markedAt: string | null;
+}
+
+/** An evacuation roll call (ATT-AC5): everyone on site when it started, ticked off until all are accounted for. */
+export interface RollCall {
+  id: string;
+  siteId: string | null;
+  reason: string;
+  startedAt: string;
+  endedAt: string | null;
+  counts: { total: number; accountedFor: number; missing: number; unmarked: number };
+  people: RollCallPerson[];
+}
+
+export const MARK_LABELS: Record<RollMark, string> = {
+  unmarked: 'Not checked yet',
+  accounted_for: 'Accounted for',
+  missing: 'Missing',
+  not_on_site: 'Not on site',
+};
+
+/** "30 of 42 accounted for · 2 missing · 10 to check" */
+export function progressLabel(counts: RollCall['counts']): string {
+  const parts = [`${counts.accountedFor} of ${counts.total} accounted for`];
+  if (counts.missing > 0) parts.push(`${counts.missing} missing`);
+  if (counts.unmarked > 0) parts.push(`${counts.unmarked} to check`);
+  return parts.join(' · ');
+}
+
+/** People grouped by company in the order sent (the server sorts by company, then name). */
+export function groupByCompany<
+  T extends { companyId: string | null; companyNameOther: string | null },
+>(
+  people: readonly T[],
+  companyName: (id: string) => string,
+): Array<{ company: string; people: T[] }> {
+  const groups: Array<{ company: string; people: T[] }> = [];
+  for (const p of people) {
+    const company = p.companyId ? companyName(p.companyId) : (p.companyNameOther ?? 'No company');
+    const last = groups[groups.length - 1];
+    if (last && last.company === company) last.people.push(p);
+    else groups.push({ company, people: [p] });
+  }
+  return groups;
+}

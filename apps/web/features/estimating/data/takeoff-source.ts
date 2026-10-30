@@ -95,7 +95,33 @@ function seed(): TakeoffMeasurement[] {
 
 const stores = projectStores<{ rows: TakeoffMeasurement[] }>(() => ({ rows: seed() }));
 
-export const takeoffSource = {
+export interface TakeoffSource {
+  list(
+    projectId: string,
+    filter: { revisionIds: readonly string[] },
+  ): Promise<TakeoffMeasurement[]>;
+  createMany(
+    projectId: string,
+    input: {
+      items: readonly NewMeasurement[];
+      scale: string;
+      scaleConfirmed: boolean;
+      size: SheetSize;
+    },
+    actor: { name: string },
+  ): Promise<TakeoffMeasurement[]>;
+  update(
+    projectId: string,
+    id: string,
+    patch: Partial<Pick<TakeoffMeasurement, 'label' | 'trade' | 'packageId'>>,
+  ): Promise<TakeoffMeasurement>;
+  remove(projectId: string, id: string): Promise<void>;
+  sendToPackage(projectId: string, ids: readonly string[], packageId: string): Promise<number>;
+}
+
+export const takeoffSource: TakeoffSource & {
+  listByPackage(projectId: string, packageId: string): Promise<TakeoffMeasurement[]>;
+} = {
   async list(
     projectId: string,
     filter: { revisionIds: readonly string[] },

@@ -9368,6 +9368,19 @@ components:
             minItems: 2
             maxItems: 2
             items: { type: number }
+        holes:
+          description: Cut-outs deducted from a polygon's area (EST-AC9). Polygons only.
+          type: array
+          maxItems: 100
+          items:
+            type: array
+            minItems: 3
+            maxItems: 5000
+            items:
+              type: array
+              minItems: 2
+              maxItems: 2
+              items: { type: number }
     TakeoffMeasurement:
       type: object
       required:

@@ -13,3 +13,4 @@ export * from './access-links';
 export * from './access-link-retention';
 export * from './messages';
 export * from './sync';
+export * from './flags';

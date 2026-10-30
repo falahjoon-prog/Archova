@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { webRoutes } from '@archova/routes';
 import {
+  Alert,
   Badge,
   Card,
   DataTable,
@@ -27,11 +28,12 @@ import { formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
-import { useAttendanceDay, useOnSite } from '../hooks/useAttendance';
+import { useAttendanceDay, useOnSite, useRollCalls } from '../hooks/useAttendance';
 import {
   KIND_LABELS,
   STATUS_LABELS,
   formatMinutes,
+  progressLabel,
   type AttendanceEntry,
   type SessionStatus,
 } from '../lib/types';
@@ -60,6 +62,7 @@ export function AttendanceScreen() {
   const date =
     /^\d{4}-\d{2}-\d{2}$/.test(params.date) && params.date <= today ? params.date : today;
   const onSite = useOnSite();
+  const openRoll = useRollCalls().data?.find((r) => !r.endedAt) ?? null;
   const day = useAttendanceDay(date, params.company || undefined);
   usePublishAssistantScope({
     projectId: project.projectId,
@@ -130,14 +133,33 @@ export function AttendanceScreen() {
         title="Attendance"
         description="Who is on site now, and each day’s sign-in records."
         actions={
-          <Link
-            className={buttonClassName('secondary')}
-            href={webRoutes.attendanceSites(org.orgSlug, project.projectId)}
-          >
-            Sites and gates
-          </Link>
+          <>
+            <Link
+              className={buttonClassName('secondary')}
+              href={webRoutes.attendanceRollCall(org.orgSlug, project.projectId)}
+            >
+              Roll call
+            </Link>
+            <Link
+              className={buttonClassName('secondary')}
+              href={webRoutes.attendanceSites(org.orgSlug, project.projectId)}
+            >
+              Sites and gates
+            </Link>
+          </>
         }
       />
+      {openRoll ? (
+        <Alert tone="danger" title="Roll call in progress">
+          {progressLabel(openRoll.counts)}.{' '}
+          <Link
+            className="link"
+            href={webRoutes.attendanceRollCall(org.orgSlug, project.projectId, openRoll.id)}
+          >
+            Open the roll call
+          </Link>
+        </Alert>
+      ) : null}
       {previewDataOnly ? <PreviewDataNotice tool="Attendance" /> : null}
       <ErrorAlert error={onSite.error ?? day.error} title="Couldn’t load attendance" />
       <Card title={`On site now${onSite.data ? ` (${onSite.data.total})` : ''}`}>
