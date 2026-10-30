@@ -273,6 +273,8 @@ describe('online inductions (product/14)', () => {
     expect(dl.json().url).toEqual(expect.any(String));
     const unrelated = await uploadFile(t, s.pm.browser, s.org.id, s.project.id, 'plans.pdf');
     expect((await s.sub.browser.get(`${url}/files/${unrelated}/download`)).statusCode).toBe(404);
+    // Another worker cannot use this worker's completion to reach the file.
+    expect((await s.sub2.browser.get(`${url}/files/${videoId}/download`)).statusCode).toBe(404);
 
     expect(
       (

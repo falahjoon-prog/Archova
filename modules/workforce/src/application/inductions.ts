@@ -714,6 +714,9 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
       sec.blocks.some((b) => 'fileId' in b && b.fileId === fileId),
     );
     if (!used) throw new AppError('file.not_found');
+    // Last gate: the file itself must belong to this project, whatever the content says.
+    const file = await deps.files.getFile(scope, fileId, { authorised: true }).catch(() => null);
+    if (!file || file.projectId !== projectId) throw new AppError('file.not_found');
     return deps.files.downloadUrl(scope, fileId, { authorised: true });
   }
 
