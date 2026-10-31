@@ -1,5 +1,5 @@
 import { businessDaysBetween } from '@/shared/lib/format';
-import type { PaymentClaim } from '../data/api';
+import type { PaymentClaim, VariationStatus } from '../data/api';
 
 export type DeadlineState = 'none' | 'done' | 'ok' | 'warning' | 'danger' | 'passed';
 
@@ -29,3 +29,11 @@ export const STATUS_LABELS: Record<PaymentClaim['status'], string> = {
 };
 
 export const KIND_LABELS = { head: 'Head contract', subcontract: 'Subcontract' } as const;
+
+export const VARIATION_LABELS: Record<VariationStatus, string> = {
+  draft: 'Draft',
+  submitted: 'Awaiting decision',
+  approved: 'Approved',
+  rejected: 'Rejected',
+  withdrawn: 'Withdrawn',
+};

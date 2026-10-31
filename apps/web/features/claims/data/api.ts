@@ -11,6 +11,11 @@ export type SovItem = S['SovItem'];
 export type PaymentClaim = S['PaymentClaim'];
 export type PaymentClaimDetail = S['PaymentClaimDetail'];
 export type PaymentClaimStatus = S['PaymentClaimStatus'];
+export type Variation = S['Variation'];
+export type VariationList = S['VariationList'];
+export type VariationStatus = S['VariationStatus'];
+export type CreateVariation = S['CreateVariationRequest'];
+export type VariationAction = 'submit' | 'approve' | 'reject' | 'withdraw';
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
@@ -38,6 +43,44 @@ export function createClaimsApi(orgId: string) {
           body,
         }),
       );
+    },
+    async variations(projectId: string, contractId: string): Promise<VariationList> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/variations`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      );
+    },
+    async createVariation(
+      projectId: string,
+      contractId: string,
+      body: CreateVariation,
+    ): Promise<Variation> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/variations`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async moveVariation(
+      projectId: string,
+      variationId: string,
+      action: VariationAction,
+      note?: string,
+    ): Promise<Variation> {
+      const params = { path: { orgId, projectId, variationId }, header: idempotencyKey() };
+      const body = note ? { note } : {};
+      switch (action) {
+        case 'submit':
+          return unwrap(await api.POST(`${P}/variations/{variationId}/submit`, { params }));
+        case 'withdraw':
+          return unwrap(await api.POST(`${P}/variations/{variationId}/withdraw`, { params }));
+        case 'approve':
+          return unwrap(await api.POST(`${P}/variations/{variationId}/approve`, { params, body }));
+        case 'reject':
+          return unwrap(await api.POST(`${P}/variations/{variationId}/reject`, { params, body }));
+      }
     },
     async claims(projectId: string, status?: PaymentClaimStatus): Promise<PaymentClaim[]> {
       return unwrap(

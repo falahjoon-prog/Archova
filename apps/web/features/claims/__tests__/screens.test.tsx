@@ -16,8 +16,24 @@ vi.mock('next/navigation', async () => (await import('@/test/render')).navigatio
 
 const { ClaimDetailScreen } = await import('../screens/ClaimDetailScreen');
 const { ClaimsRegisterScreen } = await import('../screens/ClaimsRegisterScreen');
+const { ContractDetailScreen } = await import('../screens/ContractDetailScreen');
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}';
+const variation = (over: Record<string, unknown> = {}) => ({
+  id: 'var_1',
+  contractId: 'cnt_1',
+  number: 1,
+  title: 'Extra circuits',
+  description: null,
+  amount: '5000.00',
+  timeImpactDays: 3,
+  status: 'submitted',
+  claimedToDate: '0.00',
+  submittedAt: '2026-10-20T00:00:00Z',
+  decidedAt: null,
+  decisionNote: null,
+  ...over,
+});
 const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({
   id: 'pcl_1',
   contractId: 'cnt_1',
@@ -75,8 +91,24 @@ beforeEach(() => {
     denied: [],
     companyScopedTools: [],
   }));
+  fake.on('GET', `${P}/contracts/{contractId}/variations`, () => ({
+    data: [variation()],
+    approvedTotal: '0.00',
+  }));
+  fake.on('GET', `${P}/payment-claims`, () => ({ data: [] }));
   fake.on('GET', `${P}/contracts/{contractId}`, () => ({
-    contract: { id: 'cnt_1', title: 'Electrical' },
+    contract: {
+      id: 'cnt_1',
+      title: 'Electrical',
+      kind: 'subcontract',
+      payeeCompanyId: null,
+      originalValue: '100000.00',
+      retentionPct: '5.00',
+      retentionCapPct: null,
+      sopaState: 'NSW',
+      scheduleDays: null,
+      paymentDays: null,
+    },
     sov: [{ id: 'sov_1', code: 'E1', description: 'Rough-in', value: '60000.00' }],
   }));
 });
@@ -144,5 +176,47 @@ describe('ClaimDetailScreen', () => {
     renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
     expect(await screen.findByText('Not a valid payment claim')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Issue payment schedule' })).toBeNull();
+  });
+});
+
+describe('ContractDetailScreen variations', () => {
+  it('approves a submitted variation and needs a reason to reject one', async () => {
+    fake.on('POST', `${P}/variations/{variationId}/approve`, () =>
+      variation({ status: 'approved' }),
+    );
+    fake.on('POST', `${P}/variations/{variationId}/reject`, () =>
+      variation({ status: 'rejected', decisionNote: 'Out of scope' }),
+    );
+    const user = userEvent.setup();
+    renderInProject(<ContractDetailScreen contractId="cnt_1" />);
+    await user.click(await screen.findByRole('button', { name: 'Reject variation 1' }));
+    await user.click(screen.getByRole('button', { name: 'Confirm rejection' }));
+    expect(await screen.findByText('Give the reason for rejecting this variation.')).toBeTruthy();
+    expect(fake.callsTo('POST', `${P}/variations/{variationId}/reject`)).toHaveLength(0);
+    await enterText(user, screen.getByLabelText(/Reason for rejecting/), 'Out of scope');
+    await user.click(screen.getByRole('button', { name: 'Confirm rejection' }));
+    await waitFor(() =>
+      expect(fake.callsTo('POST', `${P}/variations/{variationId}/reject`)).toHaveLength(1),
+    );
+    expect(fake.callsTo('POST', `${P}/variations/{variationId}/reject`)[0]!.init.body).toEqual({
+      note: 'Out of scope',
+    });
+    await user.click(screen.getByRole('button', { name: 'Approve variation 1' }));
+    await waitFor(() =>
+      expect(fake.callsTo('POST', `${P}/variations/{variationId}/approve`)).toHaveLength(1),
+    );
+  });
+
+  it('offers only approved variations as claimable lines', async () => {
+    fake.on('GET', `${P}/contracts/{contractId}/variations`, () => ({
+      data: [
+        variation({ status: 'approved' }),
+        variation({ id: 'var_2', number: 2, title: 'Draft one', status: 'draft' }),
+      ],
+      approvedTotal: '5000.00',
+    }));
+    renderInProject(<ContractDetailScreen contractId="cnt_1" />);
+    expect(await screen.findByLabelText('Variation 1 Extra circuits')).toBeTruthy();
+    expect(screen.queryByLabelText('Variation 2 Draft one')).toBeNull();
   });
 });

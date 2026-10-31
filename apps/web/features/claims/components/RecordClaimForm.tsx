@@ -10,7 +10,7 @@ import { todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { ContractDetail } from '../data/api';
-import { useClaimsMutations } from '../hooks/useClaims';
+import { useClaimsMutations, useVariations } from '../hooks/useClaims';
 import { cents } from '../lib/money';
 
 /**
@@ -22,6 +22,8 @@ export function RecordClaimForm({ detail }: { detail: ContractDetail }) {
   const project = useCurrentProject();
   const router = useRouter();
   const { submitClaim } = useClaimsMutations(project.projectId);
+  const variationsQ = useVariations(project.projectId, detail.contract.id);
+  const approved = (variationsQ.data?.data ?? []).filter((v) => v.status === 'approved');
   const today = todayIn(project.timezone);
   const [periodEnd, setPeriodEnd] = useState('');
   const [receivedDate, setReceivedDate] = useState(today);
@@ -33,9 +35,10 @@ export function RecordClaimForm({ detail }: { detail: ContractDetail }) {
   function save(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    const lines = detail.sov
-      .map((s) => ({ sovItemId: s.id, thisClaim: (amounts[s.id] ?? '').trim() }))
-      .filter((l) => l.thisClaim !== '' && l.thisClaim !== '0' && l.thisClaim !== '0.00');
+    const lines = [
+      ...detail.sov.map((s) => ({ sovItemId: s.id, thisClaim: (amounts[s.id] ?? '').trim() })),
+      ...approved.map((v) => ({ variationId: v.id, thisClaim: (amounts[v.id] ?? '').trim() })),
+    ].filter((l) => l.thisClaim !== '' && l.thisClaim !== '0' && l.thisClaim !== '0.00');
     if (!periodEnd) return setError('Enter the date the claim period ends.');
     if (!receivedDate || !receivedTime) return setError('Enter when the claim was received.');
     if (lines.length === 0) return setError('Claim an amount against at least one line.');
@@ -99,6 +102,16 @@ export function RecordClaimForm({ detail }: { detail: ContractDetail }) {
             inputMode="decimal"
             value={amounts[s.id] ?? ''}
             onChange={(e) => setAmounts((a) => ({ ...a, [s.id]: e.target.value }))}
+          />
+        ))}
+        {approved.map((v) => (
+          <TextField
+            key={v.id}
+            label={`Variation ${v.number} ${v.title}`}
+            hint={`Approved ${v.amount}, claimed so far ${v.claimedToDate}`}
+            inputMode="decimal"
+            value={amounts[v.id] ?? ''}
+            onChange={(e) => setAmounts((a) => ({ ...a, [v.id]: e.target.value }))}
           />
         ))}
       </fieldset>

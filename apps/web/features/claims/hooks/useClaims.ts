@@ -7,9 +7,11 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import {
   createClaimsApi,
   type CreateContract,
+  type CreateVariation,
   type IssuePaymentSchedule,
   type PaymentClaimStatus,
   type SubmitPaymentClaim,
+  type VariationAction,
 } from '../data/api';
 
 function useClaimsApi() {
@@ -32,6 +34,15 @@ export function useContract(projectId: string, contractId: string) {
   return useQuery({
     queryKey: queryKeys.toolItem(orgId, projectId, 'contracts', contractId),
     queryFn: () => source.contract(projectId, contractId),
+  });
+}
+
+export function useVariations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'contracts', { variations: contractId }),
+    queryFn: () => source.variations(projectId, contractId),
   });
 }
 
@@ -66,6 +77,16 @@ export function useClaimsMutations(projectId: string) {
   return {
     createContract: useMutation({
       mutationFn: (body: CreateContract) => source.createContract(projectId, body),
+      onSuccess: refresh,
+    }),
+    createVariation: useMutation({
+      mutationFn: (v: { contractId: string; body: CreateVariation }) =>
+        source.createVariation(projectId, v.contractId, v.body),
+      onSuccess: refresh,
+    }),
+    moveVariation: useMutation({
+      mutationFn: (v: { variationId: string; action: VariationAction; note?: string }) =>
+        source.moveVariation(projectId, v.variationId, v.action, v.note),
       onSuccess: refresh,
     }),
     submitClaim: useMutation({

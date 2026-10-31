@@ -21,6 +21,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DeadlineChip } from '../components/DeadlineChip';
 import { RecordClaimForm } from '../components/RecordClaimForm';
+import { VariationsPanel } from '../components/VariationsPanel';
 import type { ContractDetail, PaymentClaim, SovItem } from '../data/api';
 import { useClaimsRegister, useContract } from '../hooks/useClaims';
 import { KIND_LABELS, STATUS_LABELS } from '../lib/deadline';
@@ -50,6 +51,10 @@ function Detail({ d }: { d: ContractDetail }) {
     perms.data?.orgRole === 'owner' ||
     perms.data?.orgRole === 'admin' ||
     atLeast(perms.data?.toolLevels.payment_claims, 'standard');
+  const canDecide =
+    perms.data?.orgRole === 'owner' ||
+    perms.data?.orgRole === 'admin' ||
+    atLeast(perms.data?.toolLevels.payment_claims, 'admin');
   const today = todayIn(project.timezone);
   const claims = (register.data ?? []).filter((x) => x.contractId === c.id);
   const payee = dir.companies.find((x) => x.id === c.payeeCompanyId)?.name ?? '—';
@@ -139,6 +144,7 @@ function Detail({ d }: { d: ContractDetail }) {
         rows={d.sov}
         getRowId={(s) => s.id}
       />
+      <VariationsPanel contractId={c.id} canManage={canRecord} canDecide={canDecide} />
       <ErrorAlert error={register.error} title="We couldn't load the claims" />
       <DataTable
         caption="Payment claims on this contract"
