@@ -21,7 +21,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { DeadlineChip } from '../components/DeadlineChip';
 import { IssueScheduleForm } from '../components/IssueScheduleForm';
 import type { PaymentClaimDetail } from '../data/api';
-import { useContract, usePaymentClaim } from '../hooks/useClaims';
+import { useContract, useVariations, usePaymentClaim } from '../hooks/useClaims';
 import { STATUS_LABELS } from '../lib/deadline';
 import { aud } from '../lib/money';
 
@@ -45,6 +45,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
   const project = useCurrentProject();
   const perms = useProjectPermissions(org.orgId, project.projectId);
   const contract = useContract(project.projectId, d.claim.contractId);
+  const variations = useVariations(project.projectId, d.claim.contractId);
   const c = d.claim;
   const today = todayIn(project.timezone);
   const canAssess =
@@ -59,7 +60,10 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
       header: 'Item',
       rowHeader: true,
       cell: (l) => {
-        if (l.variationId) return 'Variation';
+        if (l.variationId) {
+          const v = variations.data?.data.find((x) => x.id === l.variationId);
+          return v ? `Variation ${v.number} ${v.title}` : 'Variation';
+        }
         const it = l.sovItemId ? item(l.sovItemId) : undefined;
         return `${it?.code ?? ''} ${it?.description ?? ''}`.trim() || 'Line';
       },
