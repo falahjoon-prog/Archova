@@ -11,6 +11,7 @@ import { localDateOf } from '@archova/time';
 import { AppError, nextNumber, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
+import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { fromCents, toCents } from '../domain/money';
@@ -30,7 +31,7 @@ export type ScheduleRow = typeof paymentSchedules.$inferSelect;
 
 export interface FinancialsDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject'>;
+  platform: Pick<PlatformApi, 'getProject' | 'companyIdentity'>;
   now?: () => Date;
 }
 
@@ -46,6 +47,21 @@ export interface CreateContractInput {
   scheduleDays?: number | null;
   paymentDays?: number | null;
   sov: { code: string; description: string; value: string }[];
+}
+
+/** What an accounting system needs to record a claim, in cents and neutral of any provider (integrations/02 §2). */
+export interface LedgerSource {
+  kind: 'bill' | 'invoice';
+  localType: 'payment_schedule' | 'claim';
+  localId: string;
+  contractNumber: number;
+  claimNumber: number;
+  /** The subcontractor for a bill, the client for an invoice. */
+  counterparty: { companyId: string; name: string; abn: string | null } | null;
+  date: string;
+  dueDate: string;
+  lines: { code: string; description: string; amountCents: number; gstCents: number }[];
+  retentionCents: number;
 }
 
 export interface SubmitClaimInput {
@@ -473,7 +489,76 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return claimDetail(scope, projectId, claimId, false);
   }
 
+  /**
+   * The claim as a bill (subcontract, once its payment schedule is issued, for the scheduled amount) or an invoice
+   * (head contract, once submitted, for the claim). Null when there is nothing to record: an invalid claim, or a
+   * subcontract claim not yet scheduled. Internal: no permission check, called from jobs.
+   */
+  async function ledgerSource(scope: TenantScope, claimId: string): Promise<LedgerSource | null> {
+    const [claim] = await scope.tx
+      .select()
+      .from(paymentClaims)
+      .where(eq(paymentClaims.id, claimId))
+      .limit(1);
+    if (!claim || !claim.isValid) return null;
+    const [contract] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(eq(contracts.id, claim.contractId))
+      .limit(1);
+    if (!contract) return null;
+    const isBill = contract.kind === 'subcontract';
+    const [schedule] = await scope.tx
+      .select()
+      .from(paymentSchedules)
+      .where(eq(paymentSchedules.claimId, claimId))
+      .limit(1);
+    if (isBill && !schedule) return null;
+    const rows = await scope.tx
+      .select({
+        code: sovItems.code,
+        description: sovItems.description,
+        thisClaim: paymentClaimLines.thisClaim,
+        sort: sovItems.sort,
+      })
+      .from(paymentClaimLines)
+      .innerJoin(sovItems, eq(sovItems.id, paymentClaimLines.sovItemId))
+      .where(eq(paymentClaimLines.claimId, claimId))
+      .orderBy(asc(sovItems.sort));
+    const retention = toCents(claim.retention);
+    const payable = isBill ? toCents(schedule!.scheduledAmount) : toCents(claim.claimedNet);
+    const lines = ledgerLines(
+      rows.map((r) => ({
+        code: r.code,
+        description: r.description,
+        thisClaim: toCents(r.thisClaim),
+      })),
+      retention,
+      payable,
+    );
+    const companyId = isBill ? contract.payeeCompanyId : contract.payerCompanyId;
+    const identity = companyId ? await deps.platform.companyIdentity(scope, companyId) : null;
+    const timezone = (await deps.platform.getProject(scope, claim.projectId)).timezone;
+    const date = isBill
+      ? localDateOf(schedule!.issuedAt, timezone)
+      : (claim.servedOn ?? claim.periodEnd);
+    return {
+      kind: isBill ? 'bill' : 'invoice',
+      localType: isBill ? 'payment_schedule' : 'claim',
+      localId: isBill ? schedule!.id : claim.id,
+      contractNumber: contract.number,
+      claimNumber: claim.number,
+      counterparty:
+        companyId && identity ? { companyId, name: identity.name, abn: identity.abn } : null,
+      date,
+      dueDate: claim.paymentDueOn ?? date,
+      lines,
+      retentionCents: retention,
+    };
+  }
+
   return {
+    ledgerSource,
     createContract,
     listContracts,
     getContract,

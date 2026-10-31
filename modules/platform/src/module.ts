@@ -71,6 +71,7 @@ export function createPlatformModule(
         );
       },
       companyExists: companies.exists,
+      companyIdentity: companies.identity,
       projectCompanies: companies.onProject,
       projectCompaniesWithTrades: companies.onProjectWithTrades,
     },

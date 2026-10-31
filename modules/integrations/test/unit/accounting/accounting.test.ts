@@ -238,6 +238,41 @@ describe('myob', () => {
   });
 });
 
+describe('contact matching', () => {
+  const session = { accessToken: async () => 'at', tenantId: 'ten-1' };
+  it('xero: ABN first, then exact name, never a guess', async () => {
+    const urls: string[] = [];
+    const answers = [{ Contacts: [] }, { Contacts: [{ ContactID: 'c-9' }] }];
+    const fetchFn: FetchLike = async (url) => {
+      urls.push(decodeURIComponent(url));
+      return json(answers.shift() ?? { Contacts: [] });
+    };
+    const p = createXeroProvider(session, fetchFn, noWait);
+    const hit = await p.findContact({ abn: '51 824 753 556', name: 'Acme "Pty"' }, 'supplier');
+    expect(hit).toEqual({ remoteId: 'c-9', matchedBy: 'name' });
+    expect(urls[0]).toContain('TaxNumber=="51824753556"');
+    expect(urls[1]).toContain('Name=="Acme Pty"');
+    expect(await p.findContact({ abn: null, name: 'Nobody' }, 'customer')).toBeNull();
+  });
+  it('myob: searches suppliers or customers by tax id then company name', async () => {
+    const urls: string[] = [];
+    const fetchFn: FetchLike = async (url) => {
+      urls.push(decodeURIComponent(url));
+      return json(url.includes('TaxIdNumber') ? { Items: [{ UID: 'u-1' }] } : { Items: [] });
+    };
+    const p = createMyobProvider(
+      { accessToken: async () => 'at', apiKey: 'k', companyFileUrl: 'https://x/cf' },
+      fetchFn,
+      noWait,
+    );
+    expect(await p.findContact({ abn: '51824753556', name: 'A' }, 'customer')).toEqual({
+      remoteId: 'u-1',
+      matchedBy: 'abn',
+    });
+    expect(urls[0]).toContain('/Contact/Customer?$filter=TaxIdNumber eq');
+  });
+});
+
 describe('rate limiter', () => {
   it('waits for the window when the per-minute budget is spent', async () => {
     let t = 0;

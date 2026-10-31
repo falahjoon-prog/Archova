@@ -19,5 +19,6 @@ export * as accounting from './domain/accounting';
 export {
   createAccountingService,
   type AccountingDeps,
+  type LedgerSourceInput,
   type AccountingService,
 } from './application/accounting';

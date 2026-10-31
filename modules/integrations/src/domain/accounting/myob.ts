@@ -102,6 +102,21 @@ export function createMyobProvider(
       const uid = created.location.split('/').pop() ?? '';
       return { outcome: 'created', remoteId: uid, remoteVersion: '', remoteStatus: 'open' };
     },
+    async findContact(q, role) {
+      const path = role === 'supplier' ? '/Contact/Supplier' : '/Contact/Customer';
+      const lookup = async (filter: string) =>
+        (
+          (await call(`${path}?$filter=${encodeURIComponent(filter)}`)) as {
+            Items?: { UID: string }[];
+          }
+        ).Items?.[0]?.UID;
+      const quote = (v: string) => v.replace(/'/g, "''");
+      const abn = q.abn?.replace(/\s/g, '');
+      const byAbn = abn ? await lookup(`TaxIdNumber eq '${quote(abn)}'`) : undefined;
+      if (byAbn) return { remoteId: byAbn, matchedBy: 'abn' };
+      const byName = await lookup(`CompanyName eq '${quote(q.name)}'`);
+      return byName ? { remoteId: byName, matchedBy: 'name' } : null;
+    },
     async paymentsSince(since) {
       const out: RemotePayment[] = [];
       type Item = {

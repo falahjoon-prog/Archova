@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { and, desc, eq } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type TenantScope } from '@archova/kernel';
+import { AppError, type Database, type TenantScope } from '@archova/kernel';
 import {
   RateLimiter,
   UnmappedCostCodeError,
@@ -24,6 +24,7 @@ import {
 } from '../domain/accounting';
 import {
   accountingConnections,
+  accountingContacts,
   accountingDocuments,
   accountingPayments,
   accountingSyncIssues,
@@ -36,6 +37,20 @@ import {
 export type ConnectionRow = typeof accountingConnections.$inferSelect;
 export type SyncIssueRow = typeof accountingSyncIssues.$inferSelect;
 
+/** A claim or schedule from the financials module, in cents. The same shape as financials' `LedgerSource`. */
+export interface LedgerSourceInput {
+  kind: 'bill' | 'invoice';
+  localType: 'payment_schedule' | 'claim';
+  localId: string;
+  contractNumber: number;
+  claimNumber: number;
+  counterparty: { companyId: string; name: string; abn: string | null } | null;
+  date: string;
+  dueDate: string;
+  lines: { code: string; description: string; amountCents: number; gstCents: number }[];
+  retentionCents: number;
+}
+
 export interface ProviderCredentials {
   clientId: string;
   clientSecret: string;
@@ -47,6 +62,12 @@ export interface AccountingDeps {
   // exact address with each provider. The page posts the code and state to the callback route.
   redirectBase: string;
   credentials: Record<AccountingProviderKey, ProviderCredentials | null>;
+  /**
+   * When given, a token refresh runs in its own transaction under a row lock and commits at once. Refresh tokens
+   * rotate on use, so a caller that later rolls back must not lose the new one, and two callers must not both spend
+   * the old one. Without it the refresh joins the caller's transaction (tests only).
+   */
+  database?: Database;
   now?: () => Date;
 }
 
@@ -336,19 +357,34 @@ export function createAccountingService(deps: AccountingDeps) {
   function providerFor(scope: TenantScope, row: ConnectionRow): AccountingProvider {
     const provider = row.provider;
     const c = creds(provider);
+    const refreshOnce = async (s: TenantScope, stale: string): Promise<TokenSet> => {
+      const [cur] = await s.tx
+        .select()
+        .from(accountingConnections)
+        .where(eq(accountingConnections.id, row.id))
+        .for('update');
+      if (!cur?.tokensSealed) throw new AppError('accounting.not_ready', 'Sign in first.');
+      const stored = openTokens(s.ctx.orgId, cur);
+      // Someone else refreshed while we waited for the lock: use theirs, since the old token is spent.
+      if (stored.refreshToken !== stale) return stored;
+      const fresh = await refreshTokens(provider, deps.fetch, c, stale, () => now().getTime());
+      await s.tx
+        .update(accountingConnections)
+        .set({
+          tokensSealed: sealTokens(s.ctx.orgId, fresh),
+          tokenExpiresAt: new Date(fresh.expiresAt),
+          updatedAt: now(),
+        })
+        .where(eq(accountingConnections.id, row.id));
+      return fresh;
+    };
     const session = createTokenSession(
       openTokens(scope.ctx.orgId, row),
-      (rt) => refreshTokens(provider, deps.fetch, c, rt, () => now().getTime()),
-      async (t) => {
-        await scope.tx
-          .update(accountingConnections)
-          .set({
-            tokensSealed: sealTokens(scope.ctx.orgId, t),
-            tokenExpiresAt: new Date(t.expiresAt),
-            updatedAt: now(),
-          })
-          .where(eq(accountingConnections.id, row.id));
-      },
+      (stale) =>
+        deps.database
+          ? deps.database.withTenantTx(scope.ctx, (s) => refreshOnce(s, stale))
+          : refreshOnce(scope, stale),
+      async () => {},
       () => now().getTime(),
     );
     const lim = limiter(scope.ctx.orgId, provider);
@@ -367,6 +403,41 @@ export function createAccountingService(deps: AccountingDeps) {
 
   const toFieldMap = (m: StoredFieldMap): FieldMap | null =>
     m.retention ? { accounts: m.accounts, retention: m.retention } : null;
+
+  /** Turns a failure that needs a person into a sync issue; anything else (a retryable error, a bug) is rethrown. */
+  async function failure(
+    scope: TenantScope,
+    row: ConnectionRow,
+    e: unknown,
+    ref: string,
+  ): Promise<'issue'> {
+    if (e instanceof UnmappedCostCodeError) {
+      await raise(
+        scope,
+        row.id,
+        'unmapped_cost_code',
+        `No account is mapped for cost code ${e.costCodes.join(', ')}.`,
+        ref,
+      );
+      return 'issue';
+    }
+    if (e instanceof ProviderRequestError && !e.retryable) {
+      const kind: SyncIssueKind = e.status === 401 || e.status === 403 ? 'auth_failed' : 'rejected';
+      // Provider error bodies stay in the logs; customers see a fixed sentence.
+      const text =
+        kind === 'auth_failed'
+          ? 'The accounting system refused our access. Reconnect it.'
+          : `The accounting system refused ${ref} (HTTP ${e.status}).`;
+      if (kind === 'auth_failed')
+        await scope.tx
+          .update(accountingConnections)
+          .set({ status: 'error', lastError: text, updatedAt: now() })
+          .where(eq(accountingConnections.id, row.id));
+      await raise(scope, row.id, kind, text, ref);
+      return 'issue';
+    }
+    throw e;
+  }
 
   /**
    * Pushes a bill or invoice from the commercial module (integrations/02 A4, A5). Returns what happened; problems that
@@ -438,34 +509,102 @@ export function createAccountingService(deps: AccountingDeps) {
       }
       return r.outcome;
     } catch (e) {
-      if (e instanceof UnmappedCostCodeError) {
-        await raise(
-          scope,
-          row.id,
-          'unmapped_cost_code',
-          `No account is mapped for cost code ${e.costCodes.join(', ')}.`,
-          ref,
-        );
-        return 'issue';
-      }
-      if (e instanceof ProviderRequestError && !e.retryable) {
-        const kind: SyncIssueKind =
-          e.status === 401 || e.status === 403 ? 'auth_failed' : 'rejected';
-        // Provider error bodies stay in the logs; customers see a fixed sentence.
-        const text =
-          kind === 'auth_failed'
-            ? 'The accounting system refused our access. Reconnect it.'
-            : `The accounting system refused ${ref} (HTTP ${e.status}).`;
-        if (kind === 'auth_failed')
-          await scope.tx
-            .update(accountingConnections)
-            .set({ status: 'error', lastError: text, updatedAt: now() })
-            .where(eq(accountingConnections.id, row.id));
-        await raise(scope, row.id, kind, text, ref);
-        return 'issue';
-      }
-      throw e;
+      return failure(scope, row, e, ref);
     }
+  }
+
+  /**
+   * Records a claim or payment schedule from the financials module as a bill or invoice (A4, A5). Finds the supplier or
+   * customer first, by ABN and then by exact name (A1), and remembers the match; no match is a sync issue naming the
+   * company, since guessing a contact would put a bill against the wrong party.
+   */
+  async function pushSource(
+    scope: TenantScope,
+    provider: AccountingProviderKey,
+    src: LedgerSourceInput,
+  ): Promise<'skipped' | 'created' | 'updated' | 'locked' | 'issue'> {
+    const row = await find(scope, provider);
+    if (!row || row.status !== 'active') return 'skipped';
+    const reference = `PC-${src.contractNumber}-${src.claimNumber}`;
+    const wanted = src.kind === 'bill' ? row.settings.pushBills : row.settings.pushInvoices;
+    if (!wanted || (row.settings.startDate && src.date < row.settings.startDate)) return 'skipped';
+    if (!src.counterparty) {
+      await raise(
+        scope,
+        row.id,
+        'no_contact',
+        `${reference} has no ${src.kind === 'bill' ? 'subcontractor' : 'client'} company set on its contract.`,
+        reference,
+      );
+      return 'issue';
+    }
+    const role = src.kind === 'bill' ? 'supplier' : 'customer';
+    const company = src.counterparty;
+    let contactRemoteId: string | undefined;
+    try {
+      const [known] = await scope.tx
+        .select({ remoteId: accountingContacts.remoteId })
+        .from(accountingContacts)
+        .where(
+          and(
+            eq(accountingContacts.connectionId, row.id),
+            eq(accountingContacts.companyId, company.companyId),
+            eq(accountingContacts.role, role),
+          ),
+        )
+        .limit(1);
+      contactRemoteId = known?.remoteId;
+      if (!contactRemoteId) {
+        const found = await providerFor(scope, row).findContact(
+          { abn: company.abn, name: company.name },
+          role,
+        );
+        if (!found) {
+          await raise(
+            scope,
+            row.id,
+            'no_contact',
+            `No ${role} matching ${company.name}${company.abn ? ` (ABN ${company.abn})` : ''} in the accounting system. Add or fix it there, then retry.`,
+            reference,
+          );
+          return 'issue';
+        }
+        contactRemoteId = found.remoteId;
+        await scope.tx
+          .insert(accountingContacts)
+          .values({
+            id: uuidv7(),
+            orgId: scope.ctx.orgId,
+            connectionId: row.id,
+            companyId: company.companyId,
+            role,
+            remoteId: found.remoteId,
+            matchedBy: found.matchedBy,
+          })
+          .onConflictDoNothing();
+      }
+    } catch (e) {
+      return failure(scope, row, e, reference);
+    }
+    return push(scope, provider, {
+      localType: src.localType,
+      localId: src.localId,
+      document: {
+        kind: src.kind,
+        reference,
+        contactRemoteId,
+        date: src.date,
+        dueDate: src.dueDate,
+        lines: src.lines.map((l) => ({
+          description: l.description,
+          costCode: l.code,
+          amountCents: l.amountCents,
+          gstCents: l.gstCents,
+        })),
+        retentionCents: src.retentionCents,
+        status: row.settings.billStatus,
+      },
+    });
   }
 
   /**
@@ -536,6 +675,7 @@ export function createAccountingService(deps: AccountingDeps) {
     setFieldMap,
     setSettings,
     push,
+    pushSource,
     pullPayments,
     issues,
     resolveIssue,

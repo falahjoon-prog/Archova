@@ -95,6 +95,20 @@ export function createXeroProvider(
       })) as { Invoices: XeroInvoice[] };
       return { outcome: existing ? 'updated' : 'created', ...info(res.Invoices[0] as XeroInvoice) };
     },
+    async findContact(q) {
+      const lookup = async (where: string) =>
+        (
+          (await call(`/Contacts?where=${encodeURIComponent(where)}`)) as {
+            Contacts?: { ContactID: string }[];
+          }
+        ).Contacts?.[0]?.ContactID;
+      const quote = (v: string) => v.replace(/["\\]/g, '');
+      const abn = q.abn?.replace(/\s/g, '');
+      const byAbn = abn ? await lookup(`TaxNumber=="${quote(abn)}"`) : undefined;
+      if (byAbn) return { remoteId: byAbn, matchedBy: 'abn' };
+      const byName = await lookup(`Name=="${quote(q.name)}"`);
+      return byName ? { remoteId: byName, matchedBy: 'name' } : null;
+    },
     async paymentsSince(since) {
       const res = (await call('/Payments', {
         headers: { 'If-Modified-Since': since.toUTCString() },

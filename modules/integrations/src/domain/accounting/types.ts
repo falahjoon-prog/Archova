@@ -56,8 +56,15 @@ export interface RemotePayment {
   amountCents: number;
 }
 
+export type ContactRole = 'supplier' | 'customer';
+
 export interface AccountingProvider {
   readonly name: AccountingProviderName;
+  // The remote supplier or customer for a company: ABN first, then exact name; null when neither matches (A1).
+  findContact(
+    q: { abn: string | null; name: string },
+    role: ContactRole,
+  ): Promise<{ remoteId: string; matchedBy: 'abn' | 'name' } | null>;
   push(doc: LedgerDocument, map: FieldMap): Promise<PushResult>;
   paymentsSince(since: Date): Promise<RemotePayment[]>;
 }

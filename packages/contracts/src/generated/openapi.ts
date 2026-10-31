@@ -8188,7 +8188,7 @@ export interface components {
             id: string;
             provider: components["schemas"]["AccountingProviderName"];
             /** @enum {string} */
-            kind: "unmapped_cost_code" | "remote_locked" | "rejected" | "auth_failed";
+            kind: "unmapped_cost_code" | "remote_locked" | "rejected" | "auth_failed" | "no_contact";
             reference: string | null;
             message: string;
             /** @enum {string} */
