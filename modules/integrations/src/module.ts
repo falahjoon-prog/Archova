@@ -11,7 +11,7 @@ export function createIntegrationsModule(
 ) {
   const imports = createImportService(deps);
   const webhooks = createWebhookService(deps.webhooks);
-  const accounting = createAccountingService(deps.accounting);
+  const accounting = createAccountingService({ database: services.database, ...deps.accounting });
   const available = (['xero', 'myob'] as const).filter((p) => deps.accounting.credentials[p]);
   return {
     definition: defineModule({ name: 'integrations', permissions: INTEGRATIONS_PERMISSIONS }),

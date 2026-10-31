@@ -53,6 +53,7 @@ const KIND_LABEL = {
   unmapped_cost_code: 'Unmapped cost code',
   remote_locked: 'Already approved in the accounting system',
   rejected: 'Refused by the accounting system',
+  no_contact: 'No matching supplier or customer',
   auth_failed: 'Access refused',
 } as const;
 

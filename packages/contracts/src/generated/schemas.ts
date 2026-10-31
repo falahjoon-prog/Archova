@@ -61,7 +61,7 @@ export type AccountingConnectionList = z.infer<typeof AccountingConnectionListSc
 export const AccountingSyncIssueSchema = z.object({
   "id": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
   "provider": AccountingProviderNameSchema,
-  "kind": z.enum(["unmapped_cost_code", "remote_locked", "rejected", "auth_failed"]),
+  "kind": z.enum(["unmapped_cost_code", "remote_locked", "rejected", "auth_failed", "no_contact"]),
   "reference": z.string().nullable(),
   "message": z.string(),
   "status": z.enum(["open", "resolved"]),

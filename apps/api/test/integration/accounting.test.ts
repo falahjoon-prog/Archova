@@ -1,7 +1,7 @@
 import { sql } from 'drizzle-orm';
-import { decodeId } from '@archova/domain';
+import { decodeId, uuidv7 } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
-import type { accounting } from '@archova/mod-integrations';
+import type { LedgerSourceInput, accounting } from '@archova/mod-integrations';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createOrg, createTestContext, signUp, type TestContext } from './helpers';
 
@@ -12,17 +12,34 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 const calls: { url: string; method: string }[] = [];
 let invoiceStatus: string | null = null;
 let failTokens = false;
+let shortLived = false;
+let issued = 0;
+let refreshesPresented: string[] = [];
+let contacts: { ContactID: string }[] = [{ ContactID: 'xc-1' }];
+let contactQueries: string[] = [];
 let tenants = [
   { tenantId: 'ten-1', tenantName: 'Harbour Builders Pty Ltd', tenantType: 'ORGANISATION' },
 ];
 const fakeFetch = async (url: string, init?: RequestInit) => {
   const method = init?.method ?? 'GET';
   calls.push({ url, method });
-  if (url.includes('identity.xero.com/connect/token'))
+  if (url.includes('identity.xero.com/connect/token')) {
+    const body = new URLSearchParams(String(init?.body ?? ''));
+    if (body.get('grant_type') === 'refresh_token')
+      refreshesPresented.push(body.get('refresh_token')!);
     return failTokens
       ? json({ error: 'invalid_grant' }, 400)
-      : json({ access_token: 'at', refresh_token: 'rt', expires_in: 1800 });
+      : json({
+          access_token: 'at',
+          refresh_token: `rt-${++issued}`,
+          expires_in: shortLived ? 1 : 1800,
+        });
+  }
   if (url.endsWith('/connections')) return json(tenants);
+  if (url.includes('/Contacts')) {
+    contactQueries.push(decodeURIComponent(url.split('where=')[1] ?? ''));
+    return json({ Contacts: contacts });
+  }
   if (url.includes('/Invoices') && method === 'GET')
     return json({
       Invoices: invoiceStatus
@@ -237,6 +254,83 @@ describe('Xero and MYOB connections (integrations/02)', () => {
 
     const resolved = await s.owner.browser.post(`${s.base}/sync-issues/${issues[0].id}/resolve`);
     expect(resolved.json()).toMatchObject({ status: 'resolved' });
+  });
+
+  it('records a claim against the matched contact, remembers the match, and flags a missing one', async () => {
+    const s = await setup('acc-source');
+    await connectXero(s);
+    const orgId = decodeId('org', s.org.id)!;
+    await s.owner.browser.put(`${s.base}/connections/xero/field-map`, {
+      accounts: { '03.100': { accountRef: '300', taxRef: 'INPUT2' } },
+      retention: { accountRef: '820', taxRef: 'NONE' },
+    });
+    const src = {
+      kind: 'bill' as const,
+      localType: 'payment_schedule' as const,
+      localId: LOCAL_ID,
+      contractNumber: 4,
+      claimNumber: 2,
+      counterparty: { companyId: uuidv7(), name: "O'Hara Concrete", abn: '51 824 753 556' },
+      date: '2026-10-14',
+      dueDate: '2026-10-28',
+      lines: [{ code: '03.100', description: 'Slab', amountCents: 105_000, gstCents: 10_000 }],
+      retentionCents: 5_000,
+    };
+    const send = (x: LedgerSourceInput = src) =>
+      run(orgId, (sc) => svc().pushSource(sc, 'xero', x));
+
+    contacts = [];
+    contactQueries = [];
+    invoiceStatus = null;
+    expect(await send()).toBe('issue');
+    // The company has an ABN, so a miss never falls back to the name.
+    expect(contactQueries).toEqual(['TaxNumber=="51824753556"']);
+    const issues = (await s.owner.browser.get(`${s.base}/sync-issues`)).json().data;
+    expect(issues[0]).toMatchObject({ kind: 'no_contact', reference: 'PC-4-2' });
+
+    contacts = [{ ContactID: 'xc-1' }];
+    contactQueries = [];
+    expect(await send()).toBe('created');
+    expect(contactQueries).toEqual(['TaxNumber=="51824753556"']);
+    // The match is remembered: no second lookup.
+    contactQueries = [];
+    invoiceStatus = 'DRAFT';
+    expect(await send()).toBe('updated');
+    expect(contactQueries).toEqual([]);
+
+    expect(await send({ ...src, counterparty: null })).toBe('issue');
+  });
+
+  it('keeps a rotated refresh token even when the caller rolls back', async () => {
+    const s = await setup('acc-rotate');
+    shortLived = true;
+    issued = 0;
+    refreshesPresented = [];
+    try {
+      await connectXero(s);
+      const orgId = decodeId('org', s.org.id)!;
+      await s.owner.browser.put(`${s.base}/connections/xero/field-map`, {
+        accounts: { '03.100': { accountRef: '300', taxRef: 'INPUT2' } },
+        retention: { accountRef: '820', taxRef: 'NONE' },
+      });
+      const attempt = () =>
+        run(orgId, async (sc) => {
+          await svc().push(sc, 'xero', {
+            localType: 'payment_schedule',
+            localId: LOCAL_ID,
+            document: doc,
+          });
+          throw new Error('caller failed after the provider call');
+        }).catch(() => undefined);
+      await attempt();
+      await attempt();
+      // Each refresh presented the token the previous one was given (an expiry of 1s refreshes before every call),
+      // so the first attempt's rollback did not send the second back to the original token.
+      expect(refreshesPresented.length).toBeGreaterThan(2);
+      expect(refreshesPresented).toEqual(refreshesPresented.map((_, i) => `rt-${i + 1}`));
+    } finally {
+      shortLived = false;
+    }
   });
 
   it('skips documents before the start date or when a flow is off', async () => {

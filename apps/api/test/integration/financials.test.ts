@@ -1,3 +1,5 @@
+import { decodeId } from '@archova/domain';
+import type { TenantContext } from '@archova/kernel';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
@@ -28,7 +30,7 @@ async function setup(state: 'NSW' | 'QLD' = 'NSW') {
     'Subcontractor',
     'Sparky',
   );
-  return { pm, sub, base, subCo };
+  return { pm, sub, base, subCo, orgId: org.id };
 }
 
 const contractBody = (payeeCompanyId?: string) => ({
@@ -124,6 +126,32 @@ describe('Contracts and payment claims (product/09)', () => {
       overallReason: 'again',
     });
     expect(again.json().code).toBe('financials.claim.already_scheduled');
+
+    // What the accounting system is sent: the schedule as a bill, scaled to the 24,000 payable, retention held aside.
+    const ctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    const source = (claimId: string) =>
+      t.database.withTenantTx(ctx, (sc) =>
+        t.modules.financials.api.ledgerSource(sc, decodeId('paymentClaim', claimId)!),
+      );
+    const bill = await source(c.id);
+    expect(bill).toMatchObject({
+      kind: 'bill',
+      localType: 'payment_schedule',
+      contractNumber: 1,
+      claimNumber: 1,
+      retentionCents: 150_000,
+      counterparty: { name: expect.any(String) },
+      lines: [{ code: 'E1', amountCents: 2_550_000, gstCents: 240_000 }],
+    });
+    // The second claim has no schedule yet, so there is no bill to send.
+    expect(await source(second.json().claim.id)).toBeNull();
   });
 
   it('flags an NSW claim with no Act statement and starts no deadlines', async () => {
@@ -256,6 +284,27 @@ describe('Contracts and payment claims (product/09)', () => {
       variation.id,
     );
     expect((await s.pm.browser.get(one)).json().claimedToDate).toBe('3000.00');
+
+    // A variation line goes to the accounting system under cost code VAR-n, not dropped for lack of a schedule item.
+    const scheduled = await s.pm.browser.post(
+      `${s.base}/payment-claims/${ok.json().claim.id}/schedule`,
+      { scheduledAmount: '12350.00' },
+    );
+    expect(scheduled.statusCode).toBe(201);
+    const bill = await t.database.withTenantTx(
+      {
+        orgId: decodeId('org', s.orgId)!,
+        userId: '00000000-0000-0000-0000-000000000000',
+        principalType: 'member',
+        orgRole: null,
+        entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+        requestId: 'test',
+      },
+      (sc) =>
+        t.modules.financials.api.ledgerSource(sc, decodeId('paymentClaim', ok.json().claim.id)!),
+    );
+    expect(bill?.lines.map((l) => l.code)).toEqual(['E1', 'VAR-1']);
+    expect(bill?.lines.reduce((n, l) => n + l.amountCents, 0)).toBe(1_235_000 + 65_000);
 
     // Cannot take the variation past its amount.
     const over = await s.pm.browser.post(

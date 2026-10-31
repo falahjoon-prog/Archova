@@ -155,7 +155,19 @@ export const accountingPayments = integrationsSchema.table('accounting_payments'
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
-export type SyncIssueKind = 'unmapped_cost_code' | 'remote_locked' | 'rejected' | 'auth_failed';
+export const accountingContacts = integrationsSchema.table('accounting_contacts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  connectionId: uuid('connection_id').notNull(),
+  companyId: uuid('company_id').notNull(),
+  role: text('role').$type<'supplier' | 'customer'>().notNull(),
+  remoteId: text('remote_id').notNull(),
+  matchedBy: text('matched_by').$type<'abn' | 'name' | 'manual'>().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type SyncIssueKind =
+  'unmapped_cost_code' | 'remote_locked' | 'rejected' | 'auth_failed' | 'no_contact';
 export const accountingSyncIssues = integrationsSchema.table('accounting_sync_issues', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

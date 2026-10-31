@@ -13,7 +13,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
   return {
     definition: defineModule({ name: 'financials', permissions: FINANCIALS_PERMISSIONS }),
     routes: financialsRoutes(services.database, service),
-    api: {},
+    api: { ledgerSource: service.ledgerSource },
   };
 }
 

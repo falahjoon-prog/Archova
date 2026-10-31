@@ -12203,7 +12203,11 @@ components:
       properties:
         id: { type: string, pattern: '^syi_[0-9A-Za-z]{26}$' }
         provider: { $ref: '#/components/schemas/AccountingProviderName' }
-        kind: { type: string, enum: [unmapped_cost_code, remote_locked, rejected, auth_failed] }
+        kind:
+          {
+            type: string,
+            enum: [unmapped_cost_code, remote_locked, rejected, auth_failed, no_contact],
+          }
         reference: { type: [string, 'null'] }
         message: { type: string }
         status: { type: string, enum: [open, resolved] }
