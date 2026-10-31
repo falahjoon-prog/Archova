@@ -283,7 +283,8 @@ describe('Xero and MYOB connections (integrations/02)', () => {
     contactQueries = [];
     invoiceStatus = null;
     expect(await send()).toBe('issue');
-    expect(contactQueries).toEqual(['TaxNumber=="51824753556"', 'Name=="O\'Hara Concrete"']);
+    // The company has an ABN, so a miss never falls back to the name.
+    expect(contactQueries).toEqual(['TaxNumber=="51824753556"']);
     const issues = (await s.owner.browser.get(`${s.base}/sync-issues`)).json().data;
     expect(issues[0]).toMatchObject({ kind: 'no_contact', reference: 'PC-4-2' });
 

@@ -60,7 +60,8 @@ export type ContactRole = 'supplier' | 'customer';
 
 export interface AccountingProvider {
   readonly name: AccountingProviderName;
-  // The remote supplier or customer for a company: ABN first, then exact name; null when neither matches (A1).
+  // The remote supplier or customer for a company (A1): by ABN when it has one, with no name fallback; by exact name
+  // only when it has no ABN. Null when nothing matches.
   findContact(
     q: { abn: string | null; name: string },
     role: ContactRole,

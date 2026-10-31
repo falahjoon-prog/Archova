@@ -240,7 +240,7 @@ describe('myob', () => {
 
 describe('contact matching', () => {
   const session = { accessToken: async () => 'at', tenantId: 'ten-1' };
-  it('xero: ABN first, then exact name, never a guess', async () => {
+  it('xero: an ABN matches by ABN only; a name is used only when there is no ABN', async () => {
     const urls: string[] = [];
     const answers = [{ Contacts: [] }, { Contacts: [{ ContactID: 'c-9' }] }];
     const fetchFn: FetchLike = async (url) => {
@@ -248,11 +248,20 @@ describe('contact matching', () => {
       return json(answers.shift() ?? { Contacts: [] });
     };
     const p = createXeroProvider(session, fetchFn, noWait);
-    const hit = await p.findContact({ abn: '51 824 753 556', name: 'Acme "Pty"' }, 'supplier');
-    expect(hit).toEqual({ remoteId: 'c-9', matchedBy: 'name' });
+    // ABN given, nothing found: no second lookup by name.
+    expect(await p.findContact({ abn: '51 824 753 556', name: 'Acme' }, 'supplier')).toBeNull();
+    expect(urls).toHaveLength(1);
     expect(urls[0]).toContain('TaxNumber=="51824753556"');
-    expect(urls[1]).toContain('Name=="Acme Pty"');
-    expect(await p.findContact({ abn: null, name: 'Nobody' }, 'customer')).toBeNull();
+    // No ABN: exact name.
+    expect(await p.findContact({ abn: null, name: 'Acme' }, 'supplier')).toEqual({
+      remoteId: 'c-9',
+      matchedBy: 'name',
+    });
+    expect(urls[1]).toContain('Name=="Acme"');
+    // A malformed ABN or a name that cannot be quoted exactly matches nothing and sends nothing.
+    expect(await p.findContact({ abn: '123', name: 'A' }, 'supplier')).toBeNull();
+    expect(await p.findContact({ abn: null, name: 'Acme "Pty"' }, 'supplier')).toBeNull();
+    expect(urls).toHaveLength(2);
   });
   it('myob: searches suppliers or customers by tax id then company name', async () => {
     const urls: string[] = [];

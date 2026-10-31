@@ -29,6 +29,8 @@ All HTTP goes through an injected `fetch`, so tests run with no network.
   the process that loads the modules) calls `pushSource`. The supplier or customer is found by ABN then exact name and
   remembered in `accounting_contacts`; no match is a `no_contact` sync issue. Set `WORKER_XERO_CLIENT_ID/SECRET`,
   `WORKER_MYOB_CLIENT_ID/SECRET` and `WORKER_WEBHOOK_SECRET_KEY` (the API's key) on the ai-worker to turn it on.
+- **Before hosting:** the push subscriber must move out of the ai-worker (it parses uploads and would hold the sealing key and client secrets) to a non-AI worker. Until then leave the `WORKER_` accounting variables unset there.
+- **Contacts:** a company with an ABN matches by ABN only; the name is used only when it has no ABN.
 - **Refresh tokens** rotate on use, so a refresh runs in its own committed transaction under a row lock.
 - **Not built:** the poll job that writes pulled payments to claims (financials has no payments table yet), webhooks,
   a screen to correct a contact match. Other hardening before a live connection: see

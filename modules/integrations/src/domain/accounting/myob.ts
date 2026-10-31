@@ -111,9 +111,13 @@ export function createMyobProvider(
           }
         ).Items?.[0]?.UID;
       const quote = (v: string) => v.replace(/'/g, "''");
+      // With an ABN, only an ABN match counts: a name fallback could bill a different business with the same name.
       const abn = q.abn?.replace(/\s/g, '');
-      const byAbn = abn ? await lookup(`TaxIdNumber eq '${quote(abn)}'`) : undefined;
-      if (byAbn) return { remoteId: byAbn, matchedBy: 'abn' };
+      if (abn) {
+        if (!/^\d{11}$/.test(abn)) return null;
+        const byAbn = await lookup(`TaxIdNumber eq '${abn}'`);
+        return byAbn ? { remoteId: byAbn, matchedBy: 'abn' } : null;
+      }
       const byName = await lookup(`CompanyName eq '${quote(q.name)}'`);
       return byName ? { remoteId: byName, matchedBy: 'name' } : null;
     },

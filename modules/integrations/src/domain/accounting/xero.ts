@@ -102,11 +102,17 @@ export function createXeroProvider(
             Contacts?: { ContactID: string }[];
           }
         ).Contacts?.[0]?.ContactID;
-      const quote = (v: string) => v.replace(/["\\]/g, '');
+      // An ABN names one entity: when we have it, a lookup that finds nothing must not fall back to a name, which could
+      // bill a different business with the same name.
       const abn = q.abn?.replace(/\s/g, '');
-      const byAbn = abn ? await lookup(`TaxNumber=="${quote(abn)}"`) : undefined;
-      if (byAbn) return { remoteId: byAbn, matchedBy: 'abn' };
-      const byName = await lookup(`Name=="${quote(q.name)}"`);
+      if (abn) {
+        if (!/^\d{11}$/.test(abn)) return null;
+        const byAbn = await lookup(`TaxNumber=="${abn}"`);
+        return byAbn ? { remoteId: byAbn, matchedBy: 'abn' } : null;
+      }
+      // A name with a quote or backslash cannot be matched exactly in a where clause, so it matches nothing.
+      if (/["\\]/.test(q.name)) return null;
+      const byName = await lookup(`Name=="${q.name}"`);
       return byName ? { remoteId: byName, matchedBy: 'name' } : null;
     },
     async paymentsSince(since) {
