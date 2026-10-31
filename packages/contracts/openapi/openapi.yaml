@@ -7367,6 +7367,151 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: listVariations
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Variations to one contract, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Draft a variation to the contract (CLM-AC12).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateVariationRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    get:
+      operationId: getVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: submitVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Send a draft variation for a decision.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: approveVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.decide
+      summary: Approve a submitted variation. Its amount then becomes claimable (CLM-AC13).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VariationDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: rejectVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.decide
+      summary: Reject a submitted variation. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VariationDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/withdraw:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: withdrawVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Withdraw a draft or submitted variation.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7532,6 +7677,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+    VariationId:
+      name: variationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
     PaymentClaimId:
       name: claimId
       in: path
@@ -12408,6 +12558,63 @@ components:
               code: { type: string, minLength: 1, maxLength: 50 }
               description: { type: string, minLength: 1, maxLength: 300 }
               value: { $ref: '#/components/schemas/FinancialsMoney' }
+    VariationStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, withdrawn]
+    Variation:
+      type: object
+      required:
+        [
+          id,
+          contractId,
+          number,
+          title,
+          description,
+          amount,
+          timeImpactDays,
+          status,
+          claimedToDate,
+          submittedAt,
+          decidedAt,
+          decisionNote,
+        ]
+      properties:
+        id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        timeImpactDays: { type: integer }
+        status: { $ref: '#/components/schemas/VariationStatus' }
+        claimedToDate:
+          $ref: '#/components/schemas/FinancialsMoney'
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    VariationList:
+      type: object
+      required: [data, approvedTotal]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Variation' }
+        approvedTotal:
+          $ref: '#/components/schemas/FinancialsMoney'
+    CreateVariationRequest:
+      type: object
+      additionalProperties: false
+      required: [title, amount]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+    VariationDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
     PaymentClaimStatus:
       type: string
       enum: [submitted, scheduled, paid, disputed, adjudication, withdrawn]
@@ -12475,9 +12682,10 @@ components:
           description: Calendar days from the project's today to the schedule due date; negative once passed. Null when there is no deadline or a schedule is issued.
     PaymentClaimLine:
       type: object
-      required: [sovItemId, previous, thisClaim, toDate]
+      required: [sovItemId, variationId, previous, thisClaim, toDate]
       properties:
-        sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+        sovItemId: { type: [string, 'null'], pattern: '^sov_[0-9A-Za-z]{26}$' }
+        variationId: { type: [string, 'null'], pattern: '^var_[0-9A-Za-z]{26}$' }
         previous: { $ref: '#/components/schemas/FinancialsMoney' }
         thisClaim: { $ref: '#/components/schemas/FinancialsMoney' }
         toDate: { $ref: '#/components/schemas/FinancialsMoney' }
@@ -12545,9 +12753,11 @@ components:
           items:
             type: object
             additionalProperties: false
-            required: [sovItemId, thisClaim]
+            required: [thisClaim]
+            description: Give exactly one of sovItemId or variationId. A variation must be approved to be claimed.
             properties:
               sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              variationId: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
               thisClaim: { $ref: '#/components/schemas/FinancialsMoney' }
     IssuePaymentScheduleRequest:
       type: object

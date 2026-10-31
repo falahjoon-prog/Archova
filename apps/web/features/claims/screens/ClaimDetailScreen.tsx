@@ -58,8 +58,11 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
       id: 'item',
       header: 'Item',
       rowHeader: true,
-      cell: (l) =>
-        `${item(l.sovItemId)?.code ?? ''} ${item(l.sovItemId)?.description ?? ''}`.trim() || 'Line',
+      cell: (l) => {
+        if (l.variationId) return 'Variation';
+        const it = l.sovItemId ? item(l.sovItemId) : undefined;
+        return `${it?.code ?? ''} ${it?.description ?? ''}`.trim() || 'Line';
+      },
     },
     {
       id: 'previous',
@@ -146,7 +149,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
         caption="Lines claimed"
         columns={lineColumns}
         rows={d.lines}
-        getRowId={(l) => l.sovItemId}
+        getRowId={(l) => (l.sovItemId ?? l.variationId)!}
       />
       {d.schedule ? (
         <Card title="Payment schedule">

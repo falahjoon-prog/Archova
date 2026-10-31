@@ -200,4 +200,86 @@ describe('Contracts and payment claims (product/09)', () => {
       ).statusCode,
     ).toBe(403);
   });
+  it('takes a variation through approval and lets only an approved one be claimed (CLM-AC12/13)', async () => {
+    const s = await setup('NSW');
+    const { contract, sov } = (
+      await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId))
+    ).json();
+    const v = `${s.base}/contracts/${contract.id}/variations`;
+    const draft = await s.pm.browser.post(v, {
+      title: 'Extra circuits',
+      amount: '5000.00',
+      timeImpactDays: 3,
+    });
+    expect(draft.statusCode).toBe(201);
+    const variation = draft.json();
+    expect(variation).toMatchObject({ number: 1, status: 'draft', claimedToDate: '0.00' });
+
+    const claimBody = (thisClaim: string) => ({
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ variationId: variation.id, thisClaim }],
+    });
+    // Not yet approved: cannot be claimed.
+    const early = await s.pm.browser.post(
+      `${s.base}/contracts/${contract.id}/claims`,
+      claimBody('1000.00'),
+    );
+    expect(early.statusCode).toBe(422);
+    expect(early.json().code).toBe('financials.variation.not_approved');
+
+    const one = `${s.base}/variations/${variation.id}`;
+    expect((await s.pm.browser.post(`${one}/approve`, {})).statusCode).toBe(409); // still a draft
+    expect((await s.pm.browser.post(`${one}/submit`, {})).json().status).toBe('submitted');
+    expect((await s.pm.browser.post(`${one}/reject`, {})).statusCode).toBe(422); // reason needed
+    const approved = await s.pm.browser.post(`${one}/approve`, { note: 'Agreed with client' });
+    expect(approved.json()).toMatchObject({
+      status: 'approved',
+      decisionNote: 'Agreed with client',
+    });
+    expect((await s.pm.browser.post(`${one}/withdraw`, {})).statusCode).toBe(409);
+
+    const list = (await s.pm.browser.get(v)).json();
+    expect(list.approvedTotal).toBe('5000.00');
+
+    const ok = await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+      ...claimBody('3000.00'),
+      lines: [
+        { variationId: variation.id, thisClaim: '3000.00' },
+        { sovItemId: sov[0].id, thisClaim: '10000.00' },
+      ],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json().claim.claimedGross).toBe('13000.00');
+    expect(ok.json().lines.map((l: { variationId: string | null }) => l.variationId)).toContain(
+      variation.id,
+    );
+    expect((await s.pm.browser.get(one)).json().claimedToDate).toBe('3000.00');
+
+    // Cannot take the variation past its amount.
+    const over = await s.pm.browser.post(
+      `${s.base}/contracts/${contract.id}/claims`,
+      claimBody('2500.00'),
+    );
+    expect(over.statusCode).toBe(422);
+    expect(over.json().code).toBe('financials.claim.over_item_value');
+
+    // A subcontractor can read variations put to them on their contract but not change them, and never sees drafts.
+    expect((await s.sub.browser.get(v)).statusCode).toBe(200);
+    const hidden = (
+      await s.pm.browser.post(v, { title: 'Internal draft', amount: '10.00' })
+    ).json();
+    expect((await s.sub.browser.get(v)).json().data.map((x: { id: string }) => x.id)).not.toContain(
+      hidden.id,
+    );
+    expect((await s.sub.browser.get(`${s.base}/variations/${hidden.id}`)).statusCode).toBe(404);
+    expect((await s.sub.browser.get(`${s.base}/variations/${variation.id}`)).statusCode).toBe(200);
+    expect(
+      (await s.pm.browser.post(`${s.base}/variations/${hidden.id}/withdraw`, {})).statusCode,
+    ).toBe(200);
+    expect((await s.sub.browser.get(`${s.base}/variations/${hidden.id}`)).statusCode).toBe(404);
+    expect((await s.sub.browser.post(v, { title: 'Sneaky', amount: '1.00' })).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${one}/approve`, {})).statusCode).toBe(403);
+  });
 });

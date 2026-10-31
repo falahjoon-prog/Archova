@@ -70,3 +70,27 @@ describe('claimTotals (CLM-AC6)', () => {
     ).toMatchObject({ code: 'financials.claim.duplicate_item' });
   });
 });
+
+describe('claimTotals with variations (CLM-AC13)', () => {
+  it('treats a variation line as an item capped at its own amount', () => {
+    const ok = claimTotals({
+      lines: [
+        item('a', 100_000_00, 0, 10_000_00),
+        { variationId: 'v1', itemValue: 5_000_00, previous: 1_000_00, thisClaim: 2_000_00 },
+      ],
+      retentionPct: 0,
+      retentionCap: null,
+      retentionHeld: 0,
+    });
+    if (isClaimError(ok)) throw new Error('unexpected');
+    expect(ok.gross).toBe(13_000_00);
+    expect(ok.lines[1]).toMatchObject({ variationId: 'v1', toDate: 3_000_00 });
+    const over = claimTotals({
+      lines: [{ variationId: 'v1', itemValue: 5_000_00, previous: 4_000_00, thisClaim: 1_000_01 }],
+      retentionPct: 0,
+      retentionCap: null,
+      retentionHeld: 0,
+    });
+    expect(over).toMatchObject({ code: 'financials.claim.over_item_value', sovItemId: 'v1' });
+  });
+});

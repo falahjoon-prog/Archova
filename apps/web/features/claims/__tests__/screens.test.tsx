@@ -45,7 +45,15 @@ const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({
 });
 const detail = (over: Partial<PaymentClaim> = {}): PaymentClaimDetail => ({
   claim: claim(over),
-  lines: [{ sovItemId: 'sov_1', previous: '0.00', thisClaim: '30000.00', toDate: '30000.00' }],
+  lines: [
+    {
+      sovItemId: 'sov_1',
+      variationId: null,
+      previous: '0.00',
+      thisClaim: '30000.00',
+      toDate: '30000.00',
+    },
+  ],
   schedule: null,
 });
 

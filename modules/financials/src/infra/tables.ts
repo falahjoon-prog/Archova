@@ -49,6 +49,26 @@ export const sovItems = financialsSchema.table('sov_items', {
   sort: integer('sort').notNull(),
 });
 
+export const variations = financialsSchema.table('variations', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  number: integer('number').notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  amount: money('amount').notNull(),
+  timeImpactDays: integer('time_impact_days').notNull().default(0),
+  status: text('status').notNull().default('draft'),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decidedBy: uuid('decided_by'),
+  decisionNote: text('decision_note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
 export const paymentClaims = financialsSchema.table('payment_claims', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -83,7 +103,8 @@ export const paymentClaimLines = financialsSchema.table('payment_claim_lines', {
   orgId: uuid('org_id').notNull(),
   projectId: uuid('project_id').notNull(),
   claimId: uuid('claim_id').notNull(),
-  sovItemId: uuid('sov_item_id').notNull(),
+  sovItemId: uuid('sov_item_id'),
+  variationId: uuid('variation_id'),
   previous: money('previous').notNull(),
   thisClaim: money('this_claim').notNull(),
   toDate: money('to_date').notNull(),
