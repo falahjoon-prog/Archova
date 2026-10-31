@@ -78,6 +78,10 @@ export const ID_PREFIXES = {
   observation: 'obs',
   swms: 'sws',
   swmsEvent: 'swe',
+  contract: 'cnt',
+  sovItem: 'sov',
+  paymentClaim: 'pcl',
+  paymentSchedule: 'psc',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

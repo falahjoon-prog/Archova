@@ -5235,6 +5235,129 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Head contracts and subcontracts on the project. */
+        get: operations["listContracts"];
+        put?: never;
+        /** Set up a contract with its schedule of values (CLM-US1). The schedule must add up to the contract value. */
+        post: operations["createContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getContract"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record a payment claim against the schedule of values. Totals, retention and GST are worked out here, and the payment schedule and payment due dates are computed from the time it was received and stored (CLM-AC1). */
+        post: operations["submitPaymentClaim"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The claims register, soonest payment schedule deadline first (CLM-US6). */
+        get: operations["listPaymentClaims"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get: operations["getPaymentClaim"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Issue the payment schedule. A reason is required when the scheduled amount is less than the claim (CLM-AC8). Once issued it cannot be changed, and whether it was in time is recorded (CLM-AC10). */
+        post: operations["issuePaymentSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8223,6 +8346,147 @@ export interface components {
             /** @description Status history, oldest first */
             events: components["schemas"]["DefectEvent"][];
         };
+        /** @description Decimal AUD ex GST unless the field says otherwise. */
+        FinancialsMoney: string;
+        /** @enum {string} */
+        SopaState: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT";
+        /** @enum {string} */
+        ContractKind: "head" | "subcontract";
+        SovItem: {
+            id: string;
+            code: string;
+            description: string;
+            value: components["schemas"]["FinancialsMoney"];
+        };
+        Contract: {
+            id: string;
+            projectId: string;
+            number: number;
+            kind: components["schemas"]["ContractKind"];
+            title: string;
+            payerCompanyId: string | null;
+            payeeCompanyId: string | null;
+            status: string;
+            originalValue: components["schemas"]["FinancialsMoney"];
+            /** @description Percent, for example 5.00. */
+            retentionPct: string;
+            retentionCapPct: string | null;
+            sopaState: components["schemas"]["SopaState"];
+            /** @description Business days the contract gives for a payment schedule; null when silent. */
+            scheduleDays: number | null;
+            /** @description Days the contract gives to pay; null when silent. */
+            paymentDays: number | null;
+        };
+        ContractList: {
+            data: components["schemas"]["Contract"][];
+        };
+        ContractDetail: {
+            contract: components["schemas"]["Contract"];
+            sov: components["schemas"]["SovItem"][];
+        };
+        CreateContractRequest: {
+            kind: components["schemas"]["ContractKind"];
+            title: string;
+            payerCompanyId?: string | null;
+            payeeCompanyId?: string | null;
+            originalValue: components["schemas"]["FinancialsMoney"];
+            retentionPct?: string;
+            retentionCapPct?: string | null;
+            /** @description Defaults to the project's state. */
+            sopaState?: components["schemas"]["SopaState"];
+            scheduleDays?: number | null;
+            paymentDays?: number | null;
+            sov: {
+                code: string;
+                description: string;
+                value: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        /** @enum {string} */
+        PaymentClaimStatus: "submitted" | "scheduled" | "paid" | "disputed" | "adjudication" | "withdrawn";
+        PaymentClaim: {
+            id: string;
+            contractId: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date-time */
+            receivedAt: string;
+            statesAct: boolean;
+            /** @description False when the Act requires a statement the claim lacks; no deadlines start. */
+            isValid: boolean;
+            invalidReason: string | null;
+            claimedGross: components["schemas"]["FinancialsMoney"];
+            lessPrevious: components["schemas"]["FinancialsMoney"];
+            retention: components["schemas"]["FinancialsMoney"];
+            claimedNet: components["schemas"]["FinancialsMoney"];
+            gst: components["schemas"]["FinancialsMoney"];
+            claimedTotal: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            servedOn: string | null;
+            /** Format: date */
+            scheduleDueOn: string | null;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** @description The contract's payment term was longer than the Act allows and was read down. */
+            paymentReadDown: boolean;
+            ruleState: string | null;
+            /** @description False until a lawyer has signed off the rules used. The UI says "rules not yet legally reviewed". */
+            rulesReviewed: boolean;
+            status: components["schemas"]["PaymentClaimStatus"];
+            /** @description Calendar days from the project's today to the schedule due date; negative once passed. Null when there is no deadline or a schedule is issued. */
+            daysToScheduleDue: number | null;
+        };
+        PaymentClaimLine: {
+            sovItemId: string;
+            previous: components["schemas"]["FinancialsMoney"];
+            thisClaim: components["schemas"]["FinancialsMoney"];
+            toDate: components["schemas"]["FinancialsMoney"];
+        };
+        PaymentSchedule: {
+            id: string;
+            scheduledAmount: components["schemas"]["FinancialsMoney"];
+            withheldAmount: components["schemas"]["FinancialsMoney"];
+            overallReason: string | null;
+            lineReasons: {
+                sovItemId: string;
+                reason: string;
+            }[];
+            /** Format: date-time */
+            issuedAt: string;
+            issuedWithinTime: boolean;
+        };
+        PaymentClaimList: {
+            data: components["schemas"]["PaymentClaim"][];
+        };
+        PaymentClaimDetail: {
+            claim: components["schemas"]["PaymentClaim"];
+            lines: components["schemas"]["PaymentClaimLine"][];
+            schedule: components["schemas"]["PaymentSchedule"] | null;
+        };
+        SubmitPaymentClaimRequest: {
+            /** Format: date */
+            periodEnd: string;
+            /**
+             * Format: date-time
+             * @description When the claim reached the nominated service address. Never the Date header.
+             */
+            receivedAt: string;
+            /** @description The claim says it is made under the Act. */
+            statesAct: boolean;
+            lines: {
+                sovItemId: string;
+                thisClaim: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        IssuePaymentScheduleRequest: {
+            scheduledAmount: components["schemas"]["FinancialsMoney"];
+            overallReason?: string;
+            lineReasons?: {
+                sovItemId: string;
+                reason: string;
+            }[];
+        };
         DefectPage: {
             data: components["schemas"]["Defect"][];
             nextCursor: string | null;
@@ -9704,6 +9968,8 @@ export interface components {
         CorrespondenceTypeId: string;
         CorrespondenceId: string;
         RfiId: string;
+        ContractId: string;
+        PaymentClaimId: string;
         DefectId: string;
         TenderPackageId: string;
         QuoteId: string;
@@ -18460,6 +18726,198 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SwmsDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listContracts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createContract: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateContractRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitPaymentClaim: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitPaymentClaimRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPaymentClaims: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PaymentClaimStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPaymentClaim: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    issuePaymentSchedule: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IssuePaymentScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description Issued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimDetail"];
                 };
             };
             default: components["responses"]["Problem"];

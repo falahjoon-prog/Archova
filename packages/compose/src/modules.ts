@@ -16,6 +16,7 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
+import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
 import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
@@ -54,6 +55,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
+  FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
@@ -178,6 +180,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+  });
+
+  const financials = createFinancialsModule(services, {
+    access: access.api,
+    platform: platform.api,
   });
 
   const safety = createSafetyModule(services, {
@@ -311,6 +318,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     defects,
+    financials,
     quality,
     safety,
     estimating,
@@ -341,6 +349,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     defects,
+    financials,
     quality,
     safety,
     estimating,
