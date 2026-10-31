@@ -32,6 +32,7 @@ tags:
   - name: rfis
   - name: correspondence
   - name: defects
+  - name: financials
   - name: quality
   - name: safety
   - name: estimating
@@ -7092,6 +7093,150 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SwmsDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listContracts
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Head contracts and subcontracts on the project.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createContract
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.manage
+      summary: Set up a contract with its schedule of values (CLM-US1). The schedule must add up to the contract value.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateContractRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContract
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: submitPaymentClaim
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Record a payment claim against the schedule of values. Totals, retention and GST are worked out here, and the
+        payment schedule and payment due dates are computed from the time it was received and stored (CLM-AC1).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitPaymentClaimRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPaymentClaims
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: The claims register, soonest payment schedule deadline first (CLM-US6).
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PaymentClaimStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: getPaymentClaim
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/schedule:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    post:
+      operationId: issuePaymentSchedule
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: >
+        Issue the payment schedule. A reason is required when the scheduled amount is less than the claim (CLM-AC8).
+        Once issued it cannot be changed, and whether it was in time is recorded (CLM-AC10).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssuePaymentScheduleRequest' }
+      responses:
+        '201':
+          description: Issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     InspectionTemplateId:
@@ -7189,6 +7334,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    ContractId:
+      name: contractId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+    PaymentClaimId:
+      name: claimId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
     DefectId:
       name: defectId
       in: path
@@ -11856,6 +12011,267 @@ components:
           type: array
           description: Status history, oldest first
           items: { $ref: '#/components/schemas/DefectEvent' }
+    FinancialsMoney:
+      type: string
+      pattern: '^\d{1,16}(\.\d{1,2})?$'
+      description: Decimal AUD ex GST unless the field says otherwise.
+    SopaState:
+      type: string
+      enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT]
+    ContractKind:
+      type: string
+      enum: [head, subcontract]
+    SovItem:
+      type: object
+      required: [id, code, description, value]
+      properties:
+        id: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        value: { $ref: '#/components/schemas/FinancialsMoney' }
+    Contract:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          kind,
+          title,
+          payerCompanyId,
+          payeeCompanyId,
+          status,
+          originalValue,
+          retentionPct,
+          retentionCapPct,
+          sopaState,
+          scheduleDays,
+          paymentDays,
+        ]
+      properties:
+        id: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        kind: { $ref: '#/components/schemas/ContractKind' }
+        title: { type: string }
+        payerCompanyId: { type: [string, 'null'] }
+        payeeCompanyId: { type: [string, 'null'] }
+        status: { type: string }
+        originalValue: { $ref: '#/components/schemas/FinancialsMoney' }
+        retentionPct: { type: string, description: 'Percent, for example 5.00.' }
+        retentionCapPct: { type: [string, 'null'] }
+        sopaState: { $ref: '#/components/schemas/SopaState' }
+        scheduleDays:
+          {
+            type: [integer, 'null'],
+            description: Business days the contract gives for a payment schedule; null when silent.,
+          }
+        paymentDays:
+          {
+            type: [integer, 'null'],
+            description: Days the contract gives to pay; null when silent.,
+          }
+    ContractList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Contract' }
+    ContractDetail:
+      type: object
+      required: [contract, sov]
+      properties:
+        contract: { $ref: '#/components/schemas/Contract' }
+        sov:
+          type: array
+          items: { $ref: '#/components/schemas/SovItem' }
+    CreateContractRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title, originalValue, sov]
+      properties:
+        kind: { $ref: '#/components/schemas/ContractKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        payerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        payeeCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        originalValue: { $ref: '#/components/schemas/FinancialsMoney' }
+        retentionPct: { type: string, pattern: '^\d{1,3}(\.\d{1,2})?$' }
+        retentionCapPct: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$' }
+        sopaState:
+          description: Defaults to the project's state.
+          $ref: '#/components/schemas/SopaState'
+        scheduleDays: { type: [integer, 'null'], minimum: 1, maximum: 60 }
+        paymentDays: { type: [integer, 'null'], minimum: 1, maximum: 120 }
+        sov:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [code, description, value]
+            properties:
+              code: { type: string, minLength: 1, maxLength: 50 }
+              description: { type: string, minLength: 1, maxLength: 300 }
+              value: { $ref: '#/components/schemas/FinancialsMoney' }
+    PaymentClaimStatus:
+      type: string
+      enum: [submitted, scheduled, paid, disputed, adjudication, withdrawn]
+    PaymentClaim:
+      type: object
+      required:
+        [
+          id,
+          contractId,
+          number,
+          periodEnd,
+          receivedAt,
+          statesAct,
+          isValid,
+          invalidReason,
+          claimedGross,
+          lessPrevious,
+          retention,
+          claimedNet,
+          gst,
+          claimedTotal,
+          servedOn,
+          scheduleDueOn,
+          paymentDueOn,
+          paymentReadDown,
+          ruleState,
+          rulesReviewed,
+          status,
+          daysToScheduleDue,
+        ]
+      properties:
+        id: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        receivedAt: { type: string, format: date-time }
+        statesAct: { type: boolean }
+        isValid:
+          {
+            type: boolean,
+            description: False when the Act requires a statement the claim lacks; no deadlines start.,
+          }
+        invalidReason: { type: [string, 'null'] }
+        claimedGross: { $ref: '#/components/schemas/FinancialsMoney' }
+        lessPrevious: { $ref: '#/components/schemas/FinancialsMoney' }
+        retention: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimedNet: { $ref: '#/components/schemas/FinancialsMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimedTotal: { $ref: '#/components/schemas/FinancialsMoney' }
+        servedOn: { type: [string, 'null'], format: date }
+        scheduleDueOn: { type: [string, 'null'], format: date }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        paymentReadDown:
+          {
+            type: boolean,
+            description: The contract's payment term was longer than the Act allows and was read down.,
+          }
+        ruleState: { type: [string, 'null'] }
+        rulesReviewed:
+          type: boolean
+          description: False until a lawyer has signed off the rules used. The UI says "rules not yet legally reviewed".
+        status: { $ref: '#/components/schemas/PaymentClaimStatus' }
+        daysToScheduleDue:
+          type: [integer, 'null']
+          description: Calendar days from the project's today to the schedule due date; negative once passed. Null when there is no deadline or a schedule is issued.
+    PaymentClaimLine:
+      type: object
+      required: [sovItemId, previous, thisClaim, toDate]
+      properties:
+        sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+        previous: { $ref: '#/components/schemas/FinancialsMoney' }
+        thisClaim: { $ref: '#/components/schemas/FinancialsMoney' }
+        toDate: { $ref: '#/components/schemas/FinancialsMoney' }
+    PaymentSchedule:
+      type: object
+      required:
+        [
+          id,
+          scheduledAmount,
+          withheldAmount,
+          overallReason,
+          lineReasons,
+          issuedAt,
+          issuedWithinTime,
+        ]
+      properties:
+        id: { type: string, pattern: '^psc_[0-9A-Za-z]{26}$' }
+        scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        withheldAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        overallReason: { type: [string, 'null'] }
+        lineReasons:
+          type: array
+          items:
+            type: object
+            required: [sovItemId, reason]
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              reason: { type: string }
+        issuedAt: { type: string, format: date-time }
+        issuedWithinTime: { type: boolean }
+    PaymentClaimList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentClaim' }
+    PaymentClaimDetail:
+      type: object
+      required: [claim, lines, schedule]
+      properties:
+        claim: { $ref: '#/components/schemas/PaymentClaim' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentClaimLine' }
+        schedule:
+          oneOf:
+            - { $ref: '#/components/schemas/PaymentSchedule' }
+            - { type: 'null' }
+    SubmitPaymentClaimRequest:
+      type: object
+      additionalProperties: false
+      required: [periodEnd, receivedAt, statesAct, lines]
+      properties:
+        periodEnd: { type: string, format: date }
+        receivedAt:
+          type: string
+          format: date-time
+          description: When the claim reached the nominated service address. Never the Date header.
+        statesAct: { type: boolean, description: The claim says it is made under the Act. }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [sovItemId, thisClaim]
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              thisClaim: { $ref: '#/components/schemas/FinancialsMoney' }
+    IssuePaymentScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [scheduledAmount]
+      properties:
+        scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        overallReason: { type: string, minLength: 1, maxLength: 5000 }
+        lineReasons:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [sovItemId, reason]
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              reason: { type: string, minLength: 1, maxLength: 5000 }
     DefectPage:
       type: object
       required: [data, nextCursor]

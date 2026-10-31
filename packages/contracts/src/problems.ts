@@ -200,6 +200,16 @@ export const PROBLEM_CODES = {
   'defect.incomplete': 422,
   'defect.location_required': 422,
   'defect.assignee_not_on_project': 422,
+  // financials (contracts, claims, payment schedules)
+  'financials.contract.not_found': 404,
+  'financials.claim.not_found': 404,
+  'financials.claim.empty': 422,
+  'financials.claim.duplicate_item': 422,
+  'financials.claim.over_item_value': 422,
+  'financials.claim.already_scheduled': 409,
+  'financials.schedule.reason_required': 422,
+  'financials.schedule.over_claim': 422,
+  'financials.sopa.state_not_live': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,
