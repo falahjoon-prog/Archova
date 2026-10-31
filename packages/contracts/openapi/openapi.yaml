@@ -3432,6 +3432,199 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAccountingConnections
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: The org's Xero and MYOB connections, and which providers this installation can offer (integrations/02 §7).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnectionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    delete:
+      operationId: disconnectAccounting
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Forget the connection and its links. Documents already in the accounting system are left as they are.
+      responses:
+        '204':
+          description: Disconnected
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/connect:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    post:
+      operationId: startAccountingConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Begin sign-in. Send the admin to the returned address; the provider sends them back to the web app with a code.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnectStart' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/callback:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    post:
+      operationId: completeAccountingConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: >-
+        Finish sign-in with the code and state the provider returned. When the account reaches exactly one Xero
+        organisation or MYOB company file it is chosen; otherwise the connection waits for a target.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingCallbackRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/targets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    get:
+      operationId: listAccountingTargets
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: The Xero organisations or MYOB company files the signed-in account can reach.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingTargetList' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: selectAccountingTarget
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Choose which organisation or company file this connection covers. Makes the connection active.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingTarget' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/field-map:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    put:
+      operationId: updateAccountingFieldMap
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Replace the cost-code to account map and the retention account (integrations/02 A3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingFieldMap' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    put:
+      operationId: updateAccountingSettings
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Choose which flows run, the start date and the status new bills are created with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingSettings' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/sync-issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAccountingSyncIssues
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Open sync issues, newest first (integrations/02 §7).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingSyncIssueList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/sync-issues/{syncIssueId}/resolve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/SyncIssueId'
+    post:
+      operationId: resolveAccountingSyncIssue
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Mark an issue as dealt with.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingSyncIssue' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/webhooks:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7229,6 +7422,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tok_[0-9A-Za-z]{26}$' }
+    AccountingProvider:
+      name: provider
+      in: path
+      required: true
+      schema: { type: string, enum: [xero, myob] }
+    SyncIssueId:
+      name: syncIssueId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^syi_[0-9A-Za-z]{26}$' }
     WebhookId:
       name: webhookId
       in: path
@@ -11616,6 +11819,97 @@ components:
         status: { type: string, enum: [active, disabled] }
         disabledReason: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+    AccountingProviderName: { type: string, enum: [xero, myob] }
+    AccountingTarget:
+      type: object
+      required: [ref, name]
+      properties:
+        ref: { type: string, minLength: 1, maxLength: 200 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+    AccountingAccountTarget:
+      type: object
+      required: [accountRef, taxRef]
+      properties:
+        accountRef: { type: string, minLength: 1, maxLength: 100 }
+        taxRef: { type: string, minLength: 1, maxLength: 100 }
+        trackingRef: { type: string, minLength: 1, maxLength: 100 }
+    AccountingFieldMap:
+      type: object
+      required: [accounts, retention]
+      properties:
+        accounts:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/AccountingAccountTarget' }
+        retention:
+          oneOf:
+            - $ref: '#/components/schemas/AccountingAccountTarget'
+            - type: 'null'
+    AccountingSettings:
+      type: object
+      required: [startDate, pushBills, pushInvoices, billStatus]
+      properties:
+        startDate: { type: [string, 'null'], format: date }
+        pushBills: { type: boolean }
+        pushInvoices: { type: boolean }
+        billStatus: { type: string, enum: [draft, awaiting_approval] }
+    AccountingConnection:
+      type: object
+      required: [id, provider, status, targetName, fieldMap, settings, lastError, lastPulledAt]
+      properties:
+        id: { type: string, pattern: '^acn_[0-9A-Za-z]{26}$' }
+        provider: { $ref: '#/components/schemas/AccountingProviderName' }
+        status: { type: string, enum: [pending, needs_target, active, error] }
+        targetName: { type: [string, 'null'] }
+        fieldMap: { $ref: '#/components/schemas/AccountingFieldMap' }
+        settings: { $ref: '#/components/schemas/AccountingSettings' }
+        lastError: { type: [string, 'null'] }
+        lastPulledAt: { type: [string, 'null'], format: date-time }
+    AccountingConnectionList:
+      type: object
+      required: [data, available]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingConnection' }
+        available:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingProviderName' }
+    AccountingConnectStart:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+    AccountingCallbackRequest:
+      type: object
+      required: [code, state]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 2000 }
+        state: { type: string, minLength: 1, maxLength: 200 }
+    AccountingTargetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingTarget' }
+    AccountingSyncIssue:
+      type: object
+      required: [id, provider, kind, reference, message, status, createdAt]
+      properties:
+        id: { type: string, pattern: '^syi_[0-9A-Za-z]{26}$' }
+        provider: { $ref: '#/components/schemas/AccountingProviderName' }
+        kind: { type: string, enum: [unmapped_cost_code, remote_locked, rejected, auth_failed] }
+        reference: { type: [string, 'null'] }
+        message: { type: string }
+        status: { type: string, enum: [open, resolved] }
+        createdAt: { type: string, format: date-time }
+    AccountingSyncIssueList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingSyncIssue' }
     WebhookList:
       type: object
       required: [data, availableEventTypes]

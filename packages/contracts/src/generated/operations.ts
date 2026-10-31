@@ -791,6 +791,48 @@ export const RejectTakeoffMeasurementParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
 });
+export const ListAccountingConnectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const DisconnectAccountingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const StartAccountingConnectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const CompleteAccountingConnectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const CompleteAccountingConnectionBody = s.AccountingCallbackRequestSchema;
+export const ListAccountingTargetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const SelectAccountingTargetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const SelectAccountingTargetBody = s.AccountingTargetSchema;
+export const UpdateAccountingFieldMapParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const UpdateAccountingFieldMapBody = s.AccountingFieldMapSchema;
+export const UpdateAccountingSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const UpdateAccountingSettingsBody = s.AccountingSettingsSchema;
+export const ListAccountingSyncIssuesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ResolveAccountingSyncIssueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
+});
 export const ListWebhooksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3396,6 +3438,126 @@ export const operations = {
     internal: false,
     contentType: null,
     params: RejectTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  listAccountingConnections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/accounting/connections',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ListAccountingConnectionsParams,
+    query: null,
+    body: null,
+  },
+  disconnectAccounting: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: DisconnectAccountingParams,
+    query: null,
+    body: null,
+  },
+  startAccountingConnection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/connect',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: StartAccountingConnectionParams,
+    query: null,
+    body: null,
+  },
+  completeAccountingConnection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/callback',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: CompleteAccountingConnectionParams,
+    query: null,
+    body: CompleteAccountingConnectionBody,
+  },
+  listAccountingTargets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/targets',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ListAccountingTargetsParams,
+    query: null,
+    body: null,
+  },
+  selectAccountingTarget: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/targets',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: SelectAccountingTargetParams,
+    query: null,
+    body: SelectAccountingTargetBody,
+  },
+  updateAccountingFieldMap: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/field-map',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: UpdateAccountingFieldMapParams,
+    query: null,
+    body: UpdateAccountingFieldMapBody,
+  },
+  updateAccountingSettings: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/settings',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: UpdateAccountingSettingsParams,
+    query: null,
+    body: UpdateAccountingSettingsBody,
+  },
+  listAccountingSyncIssues: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/accounting/sync-issues',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ListAccountingSyncIssuesParams,
+    query: null,
+    body: null,
+  },
+  resolveAccountingSyncIssue: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/accounting/sync-issues/{syncIssueId}/resolve',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ResolveAccountingSyncIssueParams,
     query: null,
     body: null,
   },

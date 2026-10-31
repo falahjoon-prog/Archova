@@ -10,9 +10,17 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { ImportService } from '../application/imports';
+import type { AccountingService } from '../application/accounting';
 import type { WebhookService } from '../application/webhooks';
 import { PUBLIC_EVENT_TYPES } from '../domain/webhooks/events';
-import { toImportJobDto, toImportRowDto, toWebhookDeliveryDto, toWebhookDto } from './mappers';
+import {
+  toConnectionDto,
+  toImportJobDto,
+  toImportRowDto,
+  toSyncIssueDto,
+  toWebhookDeliveryDto,
+  toWebhookDto,
+} from './mappers';
 
 const project = (p: { projectId: string }) => {
   const id = decodeId('project', p.projectId);
@@ -29,6 +37,8 @@ export function integrationsRoutes(
   database: Database,
   svc: ImportService,
   webhooks: WebhookService,
+  accounting: AccountingService,
+  available: readonly ('xero' | 'myob')[],
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -46,7 +56,91 @@ export function integrationsRoutes(
     return id;
   };
 
+  const issueIdOf = (p: { syncIssueId: string }) => {
+    const id = decodeId('syncIssue', p.syncIssueId);
+    if (!id) throw new AppError('sync_issue.not_found');
+    return id;
+  };
+
   return defineRoutes({
+    listAccountingConnections: async (input) => {
+      const rows = await read(input, (s) => accounting.list(s));
+      return { status: 200, body: { data: rows.map(toConnectionDto), available: [...available] } };
+    },
+    startAccountingConnection: async (input) => {
+      const t = requireTenant(input);
+      const r = await tx(input, (s) => accounting.start(s, t.userId, input.params.provider));
+      return { status: 200, body: r };
+    },
+    completeAccountingConnection: async (input) => {
+      const { provider } = input.params;
+      const { state, code } = input.body;
+      // The provider calls run with no transaction open.
+      const verifier = await read(input, (s) => accounting.prepareCallback(s, provider, state));
+      let result;
+      try {
+        result = await accounting.exchange(provider, code, verifier);
+      } catch (e) {
+        await tx(input, (s) => accounting.abandonCallback(s, provider));
+        throw e;
+      }
+      const { connection } = await tx(input, (s) =>
+        accounting.finishCallback(s, provider, state, result),
+      );
+      return { status: 200, body: toConnectionDto(connection) };
+    },
+    listAccountingTargets: async (input) => {
+      const data = await read(input, (s) => accounting.targets(s, input.params.provider));
+      return { status: 200, body: { data } };
+    },
+    selectAccountingTarget: async (input) => {
+      const { provider } = input.params;
+      const available = await read(input, (s) => accounting.targets(s, provider));
+      const row = await tx(input, (s) =>
+        accounting.selectTarget(s, provider, input.body.ref, available),
+      );
+      return { status: 200, body: toConnectionDto(row) };
+    },
+    updateAccountingFieldMap: async (input) => {
+      const row = await tx(input, (s) =>
+        accounting.setFieldMap(s, input.params.provider, input.body),
+      );
+      return { status: 200, body: toConnectionDto(row) };
+    },
+    updateAccountingSettings: async (input) => {
+      const row = await tx(input, (s) =>
+        accounting.setSettings(s, input.params.provider, input.body),
+      );
+      return { status: 200, body: toConnectionDto(row) };
+    },
+    disconnectAccounting: async (input) => {
+      await tx(input, (s) => accounting.disconnect(s, input.params.provider));
+      return { status: 204 };
+    },
+    listAccountingSyncIssues: async (input) => {
+      const { issues, providers } = await read(input, async (s) => ({
+        issues: await accounting.issues(s),
+        providers: new Map((await accounting.list(s)).map((c) => [c.id, c.provider] as const)),
+      }));
+      return {
+        status: 200,
+        body: {
+          data: issues.flatMap((i) => {
+            const p = providers.get(i.connectionId);
+            return p ? [toSyncIssueDto(i, p)] : [];
+          }),
+        },
+      };
+    },
+    resolveAccountingSyncIssue: async (input) => {
+      const t = requireTenant(input);
+      const { row, provider } = await tx(input, async (s) => {
+        const row = await accounting.resolveIssue(s, t.userId, issueIdOf(input.params));
+        const conn = (await accounting.list(s)).find((c) => c.id === row.connectionId);
+        return { row, provider: conn!.provider };
+      });
+      return { status: 200, body: toSyncIssueDto(row, provider) };
+    },
     listWebhooks: async (input) => {
       const rows = await read(input, (s) => webhooks.list(s));
       return {

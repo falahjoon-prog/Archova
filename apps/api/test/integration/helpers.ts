@@ -67,6 +67,8 @@ export async function createTestContext(
     logger?: Logger;
     /** Sends webhook test events; the default would make real HTTPS calls. */
     webhookTransport?: WebhookTransport;
+    /** Answers Xero and MYOB calls; the default would reach the real services. */
+    accountingFetch?: (url: string, init?: RequestInit) => Promise<Response>;
   } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
@@ -100,6 +102,7 @@ export async function createTestContext(
     ...(opts.rasterizePage ? { aiRasterizePage: opts.rasterizePage } : {}),
     messages,
     ...(opts.webhookTransport ? { webhookTransport: opts.webhookTransport } : {}),
+    ...(opts.accountingFetch ? { accountingFetch: opts.accountingFetch } : {}),
   });
   await app.ready();
   return {

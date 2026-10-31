@@ -2530,6 +2530,185 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/accounting/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The org's Xero and MYOB connections, and which providers this installation can offer (integrations/02 §7). */
+        get: operations["listAccountingConnections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/connections/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget the connection and its links. Documents already in the accounting system are left as they are. */
+        delete: operations["disconnectAccounting"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/connections/{provider}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin sign-in. Send the admin to the returned address; the provider sends them back to the web app with a code. */
+        post: operations["startAccountingConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/connections/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish sign-in with the code and state the provider returned. When the account reaches exactly one Xero organisation or MYOB company file it is chosen; otherwise the connection waits for a target. */
+        post: operations["completeAccountingConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/connections/{provider}/targets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        /** The Xero organisations or MYOB company files the signed-in account can reach. */
+        get: operations["listAccountingTargets"];
+        /** Choose which organisation or company file this connection covers. Makes the connection active. */
+        put: operations["selectAccountingTarget"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/connections/{provider}/field-map": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Replace the cost-code to account map and the retention account (integrations/02 A3). */
+        put: operations["updateAccountingFieldMap"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/connections/{provider}/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Choose which flows run, the start date and the status new bills are created with. */
+        put: operations["updateAccountingSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/sync-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Open sync issues, newest first (integrations/02 §7). */
+        get: operations["listAccountingSyncIssues"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/accounting/sync-issues/{syncIssueId}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                syncIssueId: components["parameters"]["SyncIssueId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark an issue as dealt with. */
+        post: operations["resolveAccountingSyncIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/webhooks": {
         parameters: {
             query?: never;
@@ -7831,6 +8010,72 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        /** @enum {string} */
+        AccountingProviderName: "xero" | "myob";
+        AccountingTarget: {
+            ref: string;
+            name: string;
+        };
+        AccountingAccountTarget: {
+            accountRef: string;
+            taxRef: string;
+            trackingRef?: string;
+        };
+        AccountingFieldMap: {
+            accounts: {
+                [key: string]: components["schemas"]["AccountingAccountTarget"];
+            };
+            retention: components["schemas"]["AccountingAccountTarget"] | null;
+        };
+        AccountingSettings: {
+            /** Format: date */
+            startDate: string | null;
+            pushBills: boolean;
+            pushInvoices: boolean;
+            /** @enum {string} */
+            billStatus: "draft" | "awaiting_approval";
+        };
+        AccountingConnection: {
+            id: string;
+            provider: components["schemas"]["AccountingProviderName"];
+            /** @enum {string} */
+            status: "pending" | "needs_target" | "active" | "error";
+            targetName: string | null;
+            fieldMap: components["schemas"]["AccountingFieldMap"];
+            settings: components["schemas"]["AccountingSettings"];
+            lastError: string | null;
+            /** Format: date-time */
+            lastPulledAt: string | null;
+        };
+        AccountingConnectionList: {
+            data: components["schemas"]["AccountingConnection"][];
+            available: components["schemas"]["AccountingProviderName"][];
+        };
+        AccountingConnectStart: {
+            url: string;
+        };
+        AccountingCallbackRequest: {
+            code: string;
+            state: string;
+        };
+        AccountingTargetList: {
+            data: components["schemas"]["AccountingTarget"][];
+        };
+        AccountingSyncIssue: {
+            id: string;
+            provider: components["schemas"]["AccountingProviderName"];
+            /** @enum {string} */
+            kind: "unmapped_cost_code" | "remote_locked" | "rejected" | "auth_failed";
+            reference: string | null;
+            message: string;
+            /** @enum {string} */
+            status: "open" | "resolved";
+            /** Format: date-time */
+            createdAt: string;
+        };
+        AccountingSyncIssueList: {
+            data: components["schemas"]["AccountingSyncIssue"][];
+        };
         WebhookList: {
             data: components["schemas"]["Webhook"][];
             availableEventTypes: string[];
@@ -9467,6 +9712,8 @@ export interface components {
         EstimateId: string;
         EstimateLineId: string;
         ApiTokenId: string;
+        AccountingProvider: "xero" | "myob";
+        SyncIssueId: string;
         WebhookId: string;
         ImportJobId: string;
         LateSubmissionId: string;
@@ -13500,6 +13747,258 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TakeoffMeasurement"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAccountingConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnectionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    disconnectAccounting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startAccountingConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnectStart"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeAccountingConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountingCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAccountingTargets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingTargetList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    selectAccountingTarget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountingTarget"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAccountingFieldMap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountingFieldMap"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateAccountingSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["AccountingProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccountingSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAccountingSyncIssues: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingSyncIssueList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    resolveAccountingSyncIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                syncIssueId: components["parameters"]["SyncIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingSyncIssue"];
                 };
             };
             default: components["responses"]["Problem"];

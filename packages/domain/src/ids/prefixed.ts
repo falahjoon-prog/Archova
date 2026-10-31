@@ -29,6 +29,8 @@ export const ID_PREFIXES = {
   importJob: 'imp',
   webhook: 'whk',
   webhookDelivery: 'whd',
+  accountingConnection: 'acn',
+  syncIssue: 'syi',
   importRow: 'imr',
   lateSubmission: 'lsb',
   diary: 'dia',
