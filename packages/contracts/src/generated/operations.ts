@@ -1730,6 +1730,44 @@ export const SubmitPaymentClaimParams = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
 });
 export const SubmitPaymentClaimBody = s.SubmitPaymentClaimRequestSchema;
+export const ListVariationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateVariationBody = s.CreateVariationRequestSchema;
+export const GetVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const SubmitVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const ApproveVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const ApproveVariationBody = s.VariationDecisionRequestSchema;
+export const RejectVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const RejectVariationBody = s.VariationDecisionRequestSchema;
+export const WithdrawVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5482,6 +5520,90 @@ export const operations = {
     params: SubmitPaymentClaimParams,
     query: null,
     body: SubmitPaymentClaimBody,
+  },
+  listVariations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: ListVariationsParams,
+    query: null,
+    body: null,
+  },
+  createVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateVariationParams,
+    query: null,
+    body: CreateVariationBody,
+  },
+  getVariation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetVariationParams,
+    query: null,
+    body: null,
+  },
+  submitVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/submit',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: null,
+    params: SubmitVariationParams,
+    query: null,
+    body: null,
+  },
+  approveVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/approve',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.decide",
+    internal: false,
+    contentType: "application/json",
+    params: ApproveVariationParams,
+    query: null,
+    body: ApproveVariationBody,
+  },
+  rejectVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/reject',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.decide",
+    internal: false,
+    contentType: "application/json",
+    params: RejectVariationParams,
+    query: null,
+    body: RejectVariationBody,
+  },
+  withdrawVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/withdraw',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: null,
+    params: WithdrawVariationParams,
+    query: null,
+    body: null,
   },
   listPaymentClaims: {
     method: 'GET',

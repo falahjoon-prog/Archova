@@ -1179,6 +1179,14 @@ export const CreateUploadRequestSchema = z.object({
 }).strict();
 export type CreateUploadRequest = z.infer<typeof CreateUploadRequestSchema>;
 
+export const CreateVariationRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(5000).optional(),
+  "amount": FinancialsMoneySchema,
+  "timeImpactDays": z.number().int().min(0).max(3650).optional(),
+}).strict();
+export type CreateVariationRequest = z.infer<typeof CreateVariationRequestSchema>;
+
 export const CreateWebhookRequestSchema = z.object({
   "url": z.string().max(2000),
   "description": z.string().max(200).optional(),
@@ -2978,7 +2986,8 @@ export const PaymentClaimSchema = z.object({
 export type PaymentClaim = z.infer<typeof PaymentClaimSchema>;
 
 export const PaymentClaimLineSchema = z.object({
-  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
+  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")).nullable(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).nullable(),
   "previous": FinancialsMoneySchema,
   "thisClaim": FinancialsMoneySchema,
   "toDate": FinancialsMoneySchema,
@@ -3581,7 +3590,8 @@ export const SubmitPaymentClaimRequestSchema = z.object({
   "receivedAt": z.string().datetime({ offset: true }),
   "statesAct": z.boolean(),
   "lines": z.array(z.object({
-  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
+  "sovItemId": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")).optional(),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")).optional(),
   "thisClaim": FinancialsMoneySchema,
 }).strict()).min(1).max(500),
 }).strict();
@@ -4358,6 +4368,36 @@ export const UploadSchema = z.object({
   "expiresAt": z.string().datetime({ offset: true }),
 });
 export type Upload = z.infer<typeof UploadSchema>;
+
+export const VariationStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "withdrawn"]);
+export type VariationStatus = z.infer<typeof VariationStatusSchema>;
+
+export const VariationSchema = z.object({
+  "id": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "amount": FinancialsMoneySchema,
+  "timeImpactDays": z.number().int(),
+  "status": VariationStatusSchema,
+  "claimedToDate": FinancialsMoneySchema,
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decisionNote": z.string().nullable(),
+});
+export type Variation = z.infer<typeof VariationSchema>;
+
+export const VariationDecisionRequestSchema = z.object({
+  "note": z.string().min(1).max(5000).optional(),
+}).strict();
+export type VariationDecisionRequest = z.infer<typeof VariationDecisionRequestSchema>;
+
+export const VariationListSchema = z.object({
+  "data": z.array(VariationSchema),
+  "approvedTotal": FinancialsMoneySchema,
+});
+export type VariationList = z.infer<typeof VariationListSchema>;
 
 export const VerifyInductionAccessRequestSchema = z.object({
   "code": z.string().regex(new RegExp("^[0-9]{6}$")),
