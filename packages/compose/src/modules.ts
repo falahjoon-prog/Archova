@@ -167,6 +167,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    messages: opts.messages,
+    baseUrl: opts.linkBaseUrl,
+    logger: services.logger,
   });
 
   const correspondence = createCorrespondenceModule(services, {

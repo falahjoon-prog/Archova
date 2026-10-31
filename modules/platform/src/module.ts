@@ -50,6 +50,7 @@ export function createPlatformModule(
       resolveTenantAccess: orgs.resolveTenantAccess,
       getProjectMembership: members.getProjectMembership,
       getProjectAccessState: members.getProjectAccessState,
+      contactsOfCompany: members.contactsOfCompany,
       getProject: projects.get,
       getOrg: orgs.getOrg,
       /** Project names for an open support session; read-only and org-wide, never a member's view (Sam 12 §4a). */

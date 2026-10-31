@@ -9,7 +9,14 @@ import {
 } from '@archova/kernel';
 import type { FinancialsService } from '../application/financials';
 import { isMoney } from '../domain/money';
-import { toClaimDto, toContractDto, toLineDto, toScheduleDto, toSovDto } from './mappers';
+import {
+  toClaimDto,
+  toContractDto,
+  toLineDto,
+  toScheduleDto,
+  toSovDto,
+  toVariationDto,
+} from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -46,6 +53,25 @@ export function financialsRoutes(database: Database, financials: FinancialsServi
   }) => ({
     contract: toContractDto(d.contract),
     sov: d.sov.map(toSovDto),
+  });
+
+  const move = async (
+    input: { tenant: TenantContext | null; params: { projectId: string; variationId: string } },
+    to: 'submitted' | 'approved' | 'rejected' | 'withdrawn',
+    note?: string,
+  ) => ({
+    status: 200 as const,
+    body: toVariationDto(
+      await tx(input, (s) =>
+        financials.moveVariation(
+          s,
+          project(input.params),
+          ref('variation', input.params.variationId, 'variationId'),
+          to,
+          note,
+        ),
+      ),
+    ),
   });
 
   return defineRoutes({
@@ -104,6 +130,56 @@ export function financialsRoutes(database: Database, financials: FinancialsServi
         ),
       ),
     }),
+    listVariations: async (input) => {
+      const r = await read(input, (s) =>
+        financials.listVariations(
+          s,
+          project(input.params),
+          ref('contract', input.params.contractId, 'contractId'),
+        ),
+      );
+      return {
+        status: 200,
+        body: { data: r.rows.map(toVariationDto), approvedTotal: r.approvedTotal },
+      };
+    },
+    createVariation: async (input) => {
+      const b = input.body;
+      return {
+        status: 201,
+        body: toVariationDto(
+          await tx(input, (s) =>
+            financials.createVariation(
+              s,
+              project(input.params),
+              ref('contract', input.params.contractId, 'contractId'),
+              {
+                title: b.title,
+                ...(b.description ? { description: b.description } : {}),
+                amount: money(b.amount, 'amount'),
+                ...(b.timeImpactDays !== undefined ? { timeImpactDays: b.timeImpactDays } : {}),
+              },
+            ),
+          ),
+        ),
+      };
+    },
+    getVariation: async (input) => ({
+      status: 200,
+      body: toVariationDto(
+        await read(input, (s) =>
+          financials.getVariation(
+            s,
+            project(input.params),
+            ref('variation', input.params.variationId, 'variationId'),
+          ),
+        ),
+      ),
+    }),
+    submitVariation: async (input) => move(input, 'submitted'),
+    approveVariation: async (input) => move(input, 'approved', input.body?.note),
+    rejectVariation: async (input) => move(input, 'rejected', input.body?.note),
+    withdrawVariation: async (input) => move(input, 'withdrawn'),
     submitPaymentClaim: async (input) => {
       const b = input.body;
       return {
@@ -119,7 +195,12 @@ export function financialsRoutes(database: Database, financials: FinancialsServi
                 receivedAt: new Date(b.receivedAt),
                 statesAct: b.statesAct,
                 lines: b.lines.map((l, n) => ({
-                  sovItemId: ref('sovItem', l.sovItemId, `lines/${n}/sovItemId`),
+                  ...(l.sovItemId
+                    ? { sovItemId: ref('sovItem', l.sovItemId, `lines/${n}/sovItemId`) }
+                    : {}),
+                  ...(l.variationId
+                    ? { variationId: ref('variation', l.variationId, `lines/${n}/variationId`) }
+                    : {}),
                   thisClaim: money(l.thisClaim, `lines/${n}/thisClaim`),
                 })),
               },

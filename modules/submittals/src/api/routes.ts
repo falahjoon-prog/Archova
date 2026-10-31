@@ -6,6 +6,8 @@ import {
   parseIfMatch,
   requireTenant,
   type Database,
+  type Logger,
+  type MessageSender,
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
@@ -54,7 +56,11 @@ function fields(b: FieldsBody): SubmittalFields {
   return out;
 }
 
-export function submittalsRoutes(database: Database, svc: SubmittalService) {
+export function submittalsRoutes(
+  database: Database,
+  svc: SubmittalService,
+  mail: { messages: MessageSender; logger?: Pick<Logger, 'warn'> },
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -129,23 +135,29 @@ export function submittalsRoutes(database: Database, svc: SubmittalService) {
         ),
       );
     },
-    respondToSubmittalStep: async (input) =>
-      ok(
-        200,
-        await tx(input, (s) =>
-          svc.respond(
-            s,
-            project(input.params),
-            submittalId(input.params),
-            ref('submittalStep', input.params.stepId, 'stepId'),
-            {
-              response: input.body.response,
-              ...(input.body.comments !== undefined ? { comments: input.body.comments } : {}),
-              fileIds: (input.body.fileIds ?? []).map((f, i) => ref('file', f, `fileIds/${i}`)),
-            },
-          ),
-        ),
-      ),
+    respondToSubmittalStep: async (input) => {
+      const { detail, notice } = await tx(input, async (s) => {
+        const detail = await svc.respond(
+          s,
+          project(input.params),
+          submittalId(input.params),
+          ref('submittalStep', input.params.stepId, 'stepId'),
+          {
+            response: input.body.response,
+            ...(input.body.comments !== undefined ? { comments: input.body.comments } : {}),
+            fileIds: (input.body.fileIds ?? []).map((f, i) => ref('file', f, `fileIds/${i}`)),
+          },
+        );
+        return { detail, notice: await svc.returnNotice(s, project(input.params), detail) };
+      });
+      // After the commit, and best effort: a mail outage must not undo a review.
+      if (notice)
+        for (const to of notice.to)
+          await mail.messages
+            .email(to, { subject: notice.subject, text: notice.text })
+            .catch((e) => mail.logger?.warn({ err: e }, 'submittal return email failed'));
+      return ok(200, detail);
+    },
     closeSubmittal: async (input) => {
       const expected = parseIfMatch(input.headers['if-match']);
       return ok(

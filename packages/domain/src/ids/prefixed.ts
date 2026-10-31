@@ -82,6 +82,7 @@ export const ID_PREFIXES = {
   sovItem: 'sov',
   paymentClaim: 'pcl',
   paymentSchedule: 'psc',
+  variation: 'var',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

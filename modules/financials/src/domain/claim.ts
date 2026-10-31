@@ -1,7 +1,9 @@
 import { fromCents, percentOf } from './money';
 
+/** A claim line is against a schedule-of-values item or an approved variation: give one of the two. */
 export interface ClaimLineInput {
-  sovItemId: string;
+  sovItemId?: string;
+  variationId?: string;
   /** Value of the item (cents). */
   itemValue: number;
   /** Claimed on earlier claims for this item (cents). */
@@ -17,7 +19,13 @@ export interface ClaimTotals {
   net: number;
   gst: number;
   total: number;
-  lines: { sovItemId: string; previous: number; thisClaim: number; toDate: number }[];
+  lines: {
+    sovItemId?: string;
+    variationId?: string;
+    previous: number;
+    thisClaim: number;
+    toDate: number;
+  }[];
 }
 
 export interface ClaimTotalsInput {
@@ -40,28 +48,31 @@ export type ClaimError =
     }
   | { code: 'financials.claim.duplicate_item'; sovItemId: string };
 
+const keyOf = (l: { sovItemId?: string; variationId?: string }) => (l.sovItemId ?? l.variationId)!;
+
 /**
  * Totals for one claim (CLM-AC6). A line cannot take an item past 100% of its value; that needs a variation, which
- * is a separate line type in a later increment. Retention respects the cap, and GST is 10% of the net.
+ * is a separate line type claimable once approved (CLM-AC13). Retention respects the cap, and GST is 10% of the net.
  */
 export function claimTotals(input: ClaimTotalsInput): ClaimTotals | ClaimError {
   const claimed = input.lines.filter((l) => l.thisClaim > 0);
   if (claimed.length === 0) return { code: 'financials.claim.empty' };
   const seen = new Set<string>();
   for (const l of claimed) {
-    if (seen.has(l.sovItemId))
-      return { code: 'financials.claim.duplicate_item', sovItemId: l.sovItemId };
-    seen.add(l.sovItemId);
+    const key = keyOf(l);
+    if (seen.has(key)) return { code: 'financials.claim.duplicate_item', sovItemId: key };
+    seen.add(key);
     if (l.previous + l.thisClaim > l.itemValue)
       return {
         code: 'financials.claim.over_item_value',
-        sovItemId: l.sovItemId,
+        sovItemId: key,
         toDate: l.previous + l.thisClaim,
         itemValue: l.itemValue,
       };
   }
   const lines = claimed.map((l) => ({
-    sovItemId: l.sovItemId,
+    ...(l.sovItemId ? { sovItemId: l.sovItemId } : {}),
+    ...(l.variationId ? { variationId: l.variationId } : {}),
     previous: l.previous,
     thisClaim: l.thisClaim,
     toDate: l.previous + l.thisClaim,

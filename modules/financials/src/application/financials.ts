@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import {
   SOPA_RULES,
   computeDeadlines,
@@ -21,6 +21,7 @@ import {
   paymentClaims,
   paymentSchedules,
   sovItems,
+  variations,
 } from '../infra/tables';
 
 export type ContractRow = typeof contracts.$inferSelect;
@@ -28,6 +29,7 @@ export type SovRow = typeof sovItems.$inferSelect;
 export type ClaimRow = typeof paymentClaims.$inferSelect;
 export type ClaimLineRow = typeof paymentClaimLines.$inferSelect;
 export type ScheduleRow = typeof paymentSchedules.$inferSelect;
+export type VariationRow = typeof variations.$inferSelect;
 
 export interface FinancialsDeps {
   access: AccessService;
@@ -68,7 +70,14 @@ export interface SubmitClaimInput {
   periodEnd: string;
   receivedAt: Date;
   statesAct: boolean;
-  lines: { sovItemId: string; thisClaim: string }[];
+  lines: { sovItemId?: string; variationId?: string; thisClaim: string }[];
+}
+
+export interface CreateVariationInput {
+  title: string;
+  description?: string;
+  amount: string;
+  timeImpactDays?: number;
 }
 
 export interface IssueScheduleInput {
@@ -76,6 +85,8 @@ export interface IssueScheduleInput {
   overallReason?: string;
   lineReasons?: { sovItemId: string; reason: string }[];
 }
+
+const OUTSIDER_VISIBLE = ['submitted', 'approved', 'rejected'];
 
 const GST_TOTAL = (c: ClaimRow) => toCents(c.claimedTotal);
 
@@ -126,6 +137,15 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .limit(1);
     if (!row) throw new AppError('financials.contract.not_found');
     return row;
+  }
+
+  /** Serialise writes that read running totals for one contract, so two concurrent claims can't both pass a cap. */
+  async function lockContract(scope: TenantScope, contractId: string) {
+    await scope.tx
+      .select({ id: contracts.id })
+      .from(contracts)
+      .where(eq(contracts.id, contractId))
+      .for('update');
   }
 
   /** Setting up contracts and assessing claims is builder-side work whatever custom template a user holds. */
@@ -224,6 +244,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     await need(scope, 'financials.claims.record', projectId);
     await requireStaff(scope, projectId, 'record a claim');
     const contract = await getContractRow(scope, projectId, contractId);
+    await lockContract(scope, contractId);
     if (
       contract.sopaState !== 'NSW' &&
       contract.sopaState !== 'VIC' &&
@@ -236,24 +257,53 @@ export function createFinancialsService(deps: FinancialsDeps) {
     const project = await deps.platform.getProject(scope, projectId);
     const items = await sovFor(scope, contractId);
     const byId = new Map(items.map((i) => [i.id, i]));
-    // What earlier claims on this contract took against each item (withdrawn claims do not count).
+    // What earlier claims on this contract took against each item or variation (withdrawn claims do not count).
     const earlier = await scope.tx
       .select({
         sovItemId: paymentClaimLines.sovItemId,
+        variationId: paymentClaimLines.variationId,
         taken: sql<string>`sum(${paymentClaimLines.thisClaim})`,
-        retention: sql<string>`0`,
       })
       .from(paymentClaimLines)
       .innerJoin(paymentClaims, eq(paymentClaims.id, paymentClaimLines.claimId))
       .where(and(eq(paymentClaims.contractId, contractId), ne(paymentClaims.status, 'withdrawn')))
-      .groupBy(paymentClaimLines.sovItemId);
-    const previousBy = new Map(earlier.map((e) => [e.sovItemId, toCents(e.taken)]));
+      .groupBy(paymentClaimLines.sovItemId, paymentClaimLines.variationId);
+    const previousBy = new Map(
+      earlier.map((e) => [(e.sovItemId ?? e.variationId)!, toCents(e.taken)]),
+    );
+    const varRows = await scope.tx
+      .select()
+      .from(variations)
+      .where(eq(variations.contractId, contractId));
+    const varById = new Map(varRows.map((v) => [v.id, v]));
     const [held] = await scope.tx
       .select({ held: sql<string>`coalesce(sum(${paymentClaims.retention}), 0)` })
       .from(paymentClaims)
       .where(and(eq(paymentClaims.contractId, contractId), ne(paymentClaims.status, 'withdrawn')));
     const lines = input.lines.map((l, i) => {
-      const item = byId.get(l.sovItemId);
+      if (!l.sovItemId === !l.variationId)
+        throw new AppError('validation_failed', 'Claim either a schedule item or a variation.', [
+          { path: `lines/${i}`, message: 'Give exactly one of sovItemId or variationId' },
+        ]);
+      if (l.variationId) {
+        const v = varById.get(l.variationId);
+        if (!v)
+          throw new AppError('validation_failed', 'That variation is not on this contract.', [
+            { path: `lines/${i}/variationId`, message: 'Not on this contract' },
+          ]);
+        if (v.status !== 'approved')
+          throw new AppError(
+            'financials.variation.not_approved',
+            `Variation ${v.number} is ${v.status}. Only an approved variation can be claimed.`,
+          );
+        return {
+          variationId: v.id,
+          itemValue: toCents(v.amount),
+          previous: previousBy.get(v.id) ?? 0,
+          thisClaim: toCents(l.thisClaim),
+        };
+      }
+      const item = byId.get(l.sovItemId!);
       if (!item)
         throw new AppError('validation_failed', 'That item is not on this contract.', [
           { path: `lines/${i}/sovItemId`, message: 'Not on this contract' },
@@ -334,7 +384,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
         orgId: scope.ctx.orgId,
         projectId,
         claimId: id,
-        sovItemId: l.sovItemId,
+        sovItemId: l.sovItemId ?? null,
+        variationId: l.variationId ?? null,
         previous: fromCents(l.previous),
         thisClaim: fromCents(l.thisClaim),
         toDate: fromCents(l.toDate),
@@ -516,21 +567,26 @@ export function createFinancialsService(deps: FinancialsDeps) {
     if (isBill && !schedule) return null;
     const rows = await scope.tx
       .select({
-        code: sovItems.code,
-        description: sovItems.description,
+        itemCode: sovItems.code,
+        itemDescription: sovItems.description,
+        variationNumber: variations.number,
+        variationTitle: variations.title,
         thisClaim: paymentClaimLines.thisClaim,
-        sort: sovItems.sort,
       })
       .from(paymentClaimLines)
-      .innerJoin(sovItems, eq(sovItems.id, paymentClaimLines.sovItemId))
+      .leftJoin(sovItems, eq(sovItems.id, paymentClaimLines.sovItemId))
+      .leftJoin(variations, eq(variations.id, paymentClaimLines.variationId))
       .where(eq(paymentClaimLines.claimId, claimId))
-      .orderBy(asc(sovItems.sort));
+      // Schedule of values items in their order, then variations by number.
+      .orderBy(asc(sovItems.sort), asc(variations.number));
     const retention = toCents(claim.retention);
     const payable = isBill ? toCents(schedule!.scheduledAmount) : toCents(claim.claimedNet);
     const lines = ledgerLines(
       rows.map((r) => ({
-        code: r.code,
-        description: r.description,
+        // A variation line carries the cost code `VAR-n`, which the field map must map like any other (an unmapped
+        // code becomes a sync issue naming it).
+        code: r.itemCode ?? `VAR-${r.variationNumber}`,
+        description: r.itemDescription ?? `Variation ${r.variationNumber}: ${r.variationTitle}`,
         thisClaim: toCents(r.thisClaim),
       })),
       retention,
@@ -557,8 +613,168 @@ export function createFinancialsService(deps: FinancialsDeps) {
     };
   }
 
+  // ---- Variations (CLM-AC12/13) -------------------------------------------------------------------------------
+
+  async function claimedAgainst(scope: TenantScope, variationId: string) {
+    const [r] = await scope.tx
+      .select({ taken: sql<string>`coalesce(sum(${paymentClaimLines.thisClaim}), 0)` })
+      .from(paymentClaimLines)
+      .innerJoin(paymentClaims, eq(paymentClaims.id, paymentClaimLines.claimId))
+      .where(
+        and(eq(paymentClaimLines.variationId, variationId), ne(paymentClaims.status, 'withdrawn')),
+      );
+    return fromCents(toCents(r?.taken ?? '0'));
+  }
+
+  async function withClaimed(scope: TenantScope, row: VariationRow) {
+    return { variation: row, claimedToDate: await claimedAgainst(scope, row.id) };
+  }
+
+  async function variationRow(scope: TenantScope, projectId: string, variationId: string) {
+    const [row] = await scope.tx
+      .select()
+      .from(variations)
+      .where(and(eq(variations.id, variationId), eq(variations.projectId, projectId)))
+      .limit(1);
+    if (!row) throw new AppError('financials.variation.not_found');
+    return row;
+  }
+
+  async function createVariation(
+    scope: TenantScope,
+    projectId: string,
+    contractId: string,
+    input: CreateVariationInput,
+  ) {
+    await need(scope, 'financials.variations.manage', projectId);
+    await requireStaff(scope, projectId, 'draft a variation');
+    await getContractRow(scope, projectId, contractId);
+    await lockContract(scope, contractId);
+    if (toCents(input.amount) <= 0)
+      throw new AppError('validation_failed', 'A variation must be for more than zero.', [
+        { path: 'amount', message: 'Must be more than zero' },
+      ]);
+    const [n] = await scope.tx
+      .select({ n: sql<number>`coalesce(max(${variations.number}), 0) + 1` })
+      .from(variations)
+      .where(eq(variations.contractId, contractId));
+    const id = uuidv7();
+    const [row] = await scope.tx
+      .insert(variations)
+      .values({
+        id,
+        orgId: scope.ctx.orgId,
+        projectId,
+        contractId,
+        number: Number(n!.n),
+        title: input.title.trim(),
+        description: input.description?.trim() || null,
+        amount: input.amount,
+        timeImpactDays: input.timeImpactDays ?? 0,
+        createdBy: scope.ctx.userId,
+      })
+      .returning();
+    return withClaimed(scope, row!);
+  }
+
+  async function listVariations(scope: TenantScope, projectId: string, contractId: string) {
+    await need(scope, 'financials.contracts.read', projectId);
+    await getContractRow(scope, projectId, contractId, false);
+    const v = await viewer(scope, projectId);
+    const rows = await scope.tx
+      .select()
+      .from(variations)
+      .where(
+        and(
+          eq(variations.contractId, contractId),
+          v.isInternal ? undefined : inArray(variations.status, OUTSIDER_VISIBLE),
+        ),
+      )
+      .orderBy(desc(variations.number));
+    const out = [];
+    for (const r of rows) out.push(await withClaimed(scope, r));
+    const approvedTotal = rows
+      .filter((r) => r.status === 'approved')
+      .reduce((n, r) => n + toCents(r.amount), 0);
+    return { rows: out, approvedTotal: fromCents(approvedTotal) };
+  }
+
+  async function getVariation(scope: TenantScope, projectId: string, variationId: string) {
+    await need(scope, 'financials.contracts.read', projectId);
+    const row = await variationRow(scope, projectId, variationId);
+    await getContractRow(scope, projectId, row.contractId, false).catch(() => {
+      throw new AppError('financials.variation.not_found');
+    });
+    // Drafts and withdrawn variations are internal: the payee only sees what has been put to them.
+    if (!(await viewer(scope, projectId)).isInternal && !OUTSIDER_VISIBLE.includes(row.status))
+      throw new AppError('financials.variation.not_found');
+    return withClaimed(scope, row);
+  }
+
+  async function moveVariation(
+    scope: TenantScope,
+    projectId: string,
+    variationId: string,
+    to: 'submitted' | 'approved' | 'rejected' | 'withdrawn',
+    note?: string,
+  ) {
+    const decide = to === 'approved' || to === 'rejected';
+    await need(
+      scope,
+      decide ? 'financials.variations.decide' : 'financials.variations.manage',
+      projectId,
+    );
+    await requireStaff(scope, projectId, decide ? 'decide a variation' : 'change a variation');
+    const row = await variationRow(scope, projectId, variationId);
+    const allowed: Record<string, string[]> = {
+      submitted: ['draft'],
+      approved: ['submitted'],
+      rejected: ['submitted'],
+      withdrawn: ['draft', 'submitted'],
+    };
+    if (!allowed[to]!.includes(row.status))
+      throw new AppError(
+        'financials.variation.bad_state',
+        `A variation that is ${row.status} can't be ${to}.`,
+      );
+    if (to === 'rejected' && !(note ?? '').trim())
+      throw new AppError(
+        'financials.variation.reason_required',
+        'Give the reason for rejecting this variation.',
+        [{ path: 'note', message: 'Required when rejecting' }],
+      );
+    const at = now();
+    const [updated] = await scope.tx
+      .update(variations)
+      .set({
+        status: to,
+        version: row.version + 1,
+        ...(to === 'submitted' ? { submittedAt: at } : {}),
+        ...(decide
+          ? { decidedAt: at, decidedBy: scope.ctx.userId, decisionNote: note?.trim() || null }
+          : {}),
+      })
+      .where(and(eq(variations.id, variationId), eq(variations.version, row.version)))
+      .returning();
+    if (!updated)
+      throw new AppError('conflict', 'This variation just changed. Reload and try again.');
+    scope.events.add({
+      type: `financials.variation.${to}.v1`,
+      projectId,
+      entityType: 'variation',
+      entityId: variationId,
+      entityVersion: updated.version,
+      data: { variationId, contractId: row.contractId, number: row.number, amount: row.amount },
+    });
+    return withClaimed(scope, updated);
+  }
+
   return {
     ledgerSource,
+    createVariation,
+    listVariations,
+    getVariation,
+    moveVariation,
     createContract,
     listContracts,
     getContract,

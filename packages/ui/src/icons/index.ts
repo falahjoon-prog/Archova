@@ -63,6 +63,7 @@ export {
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,
+  Handshake as ContractsIcon,
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,
   PackageCheck as SubmittalsIcon,

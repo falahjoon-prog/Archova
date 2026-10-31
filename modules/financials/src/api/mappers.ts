@@ -6,6 +6,7 @@ import type {
   ContractRow,
   ScheduleRow,
   SovRow,
+  VariationRow,
 } from '../application/financials';
 
 const company = (id: string | null) => (id ? encodeId('company', id) : null);
@@ -59,8 +60,24 @@ export const toClaimDto = (c: ClaimRow, today: string, scheduled: boolean) => ({
   daysToScheduleDue: c.scheduleDueOn && !scheduled ? daysBetween(today, c.scheduleDueOn) : null,
 });
 
+export const toVariationDto = (v: { variation: VariationRow; claimedToDate: string }) => ({
+  id: encodeId('variation', v.variation.id),
+  contractId: encodeId('contract', v.variation.contractId),
+  number: v.variation.number,
+  title: v.variation.title,
+  description: v.variation.description,
+  amount: v.variation.amount,
+  timeImpactDays: v.variation.timeImpactDays,
+  status: v.variation.status as 'draft',
+  claimedToDate: v.claimedToDate,
+  submittedAt: v.variation.submittedAt?.toISOString() ?? null,
+  decidedAt: v.variation.decidedAt?.toISOString() ?? null,
+  decisionNote: v.variation.decisionNote,
+});
+
 export const toLineDto = (l: ClaimLineRow) => ({
-  sovItemId: encodeId('sovItem', l.sovItemId),
+  sovItemId: l.sovItemId ? encodeId('sovItem', l.sovItemId) : null,
+  variationId: l.variationId ? encodeId('variation', l.variationId) : null,
   previous: l.previous,
   thisClaim: l.thisClaim,
   toDate: l.toDate,

@@ -10,4 +10,11 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'financials.claims.read', scope: 'project', tool: 'payment_claims', level: 'standard' },
   { key: 'financials.claims.record', scope: 'project', tool: 'payment_claims', level: 'standard' },
   { key: 'financials.claims.assess', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  {
+    key: 'financials.variations.manage',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  { key: 'financials.variations.decide', scope: 'project', tool: 'payment_claims', level: 'admin' },
 ];
