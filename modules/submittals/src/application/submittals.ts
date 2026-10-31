@@ -1,5 +1,5 @@
 import { and, asc, eq, gt, inArray, isNull, sql, type SQL } from 'drizzle-orm';
-import { uuidv7 } from '@archova/domain';
+import { encodeId, uuidv7 } from '@archova/domain';
 import { localDateOf } from '@archova/time';
 import {
   AppError,
@@ -47,7 +47,12 @@ export type SubmittalView = SubmittalRow & {
 
 export interface SubmittalsDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'getProjectMembership'>;
+  platform: Pick<
+    PlatformApi,
+    'getProject' | 'getProjectMembership' | 'getOrg' | 'contactsOfCompany'
+  >;
+  /** The web origin links in emails point at. */
+  baseUrl?: string;
   files: Pick<FilesModule['api'], 'getFile'>;
   now?: () => Date;
 }
@@ -228,9 +233,15 @@ export function createSubmittalService(deps: SubmittalsDeps) {
   async function checkFiles(scope: TenantScope, projectId: string, fileIds: string[]) {
     for (const [i, fileId] of fileIds.entries()) {
       const f = await deps.files.getFile(scope, fileId);
-      if (f.projectId !== projectId || f.status !== 'ready')
-        throw new AppError('file.not_in_project', 'Attach files uploaded to this project.', [
-          { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
+      // Only files this person uploaded for submittals, so a package can't point at someone else's file.
+      if (
+        f.projectId !== projectId ||
+        f.status !== 'ready' ||
+        f.module !== 'submittals' ||
+        f.createdBy !== scope.ctx.userId
+      )
+        throw new AppError('file.not_in_project', 'Attach files you uploaded to this project.', [
+          { path: `fileIds/${i}`, message: 'Not a ready file you uploaded for submittals' },
         ]);
     }
   }
@@ -643,7 +654,52 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     return detail(scope, projectId, id);
   }
 
-  return { list, detail, create, update, submit, respond, close };
+  /**
+   * SUB-AC5: when a review sends the item back ("revise and resubmit" or "rejected"), the email the subcontractor's
+   * people get, with the reviewer's comments. Null for any other change. The caller sends it after the transaction;
+   * the marked-up files stay on the submittal, behind the sign-in.
+   */
+  async function returnNotice(
+    scope: TenantScope,
+    projectId: string,
+    d: { submittal: SubmittalView; revisions: Array<RevisionRow & { steps: StepRow[] }> },
+  ) {
+    const s = d.submittal;
+    if ((s.status !== 'revise_resubmit' && s.status !== 'rejected') || !s.responsibleCompanyId)
+      return null;
+    const revision = d.revisions.find((r) => r.revision === s.currentRevision);
+    const answered = revision?.steps
+      .filter((x) => x.response === 'revise_resubmit' || x.response === 'rejected')
+      .at(-1);
+    const to = await deps.platform.contactsOfCompany(scope, projectId, s.responsibleCompanyId);
+    if (!to.length || !answered) return null;
+    const [org, project] = await Promise.all([
+      deps.platform.getOrg(scope),
+      deps.platform.getProject(scope, projectId),
+    ]);
+    const verdict = s.status === 'rejected' ? 'Rejected' : 'Revise and resubmit';
+    const link = deps.baseUrl
+      ? `${deps.baseUrl}/${org.slug}/projects/${encodeId('project', projectId)}/submittals/${encodeId('submittal', s.id)}`
+      : null;
+    return {
+      to: to.map((c) => c.email),
+      subject: `${org.name}: ${s.numberLabel} ${s.title} — ${verdict}`,
+      text: [
+        `${s.numberLabel} ${s.title} on ${project.name} was returned: ${verdict}.`,
+        '',
+        answered.comments ? `Comments:\n${answered.comments}` : 'No comments were added.',
+        ...(answered.fileIds.length
+          ? ['', `${answered.fileIds.length} marked-up file(s) are on the submittal.`]
+          : []),
+        '',
+        link
+          ? `Open it and resubmit: ${link}`
+          : 'Sign in to Archova to see the comments and resubmit.',
+      ].join('\n'),
+    };
+  }
+
+  return { list, detail, create, update, submit, respond, close, returnNotice };
 }
 
 export type SubmittalService = ReturnType<typeof createSubmittalService>;
