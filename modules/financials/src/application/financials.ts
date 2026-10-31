@@ -112,8 +112,15 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return row;
   }
 
+  /** Setting up contracts and assessing claims is builder-side work whatever custom template a user holds. */
+  async function requireStaff(scope: TenantScope, projectId: string, what: string) {
+    if (!(await viewer(scope, projectId)).isInternal)
+      throw new AppError('access.denied', `Only the builder's staff can ${what}.`);
+  }
+
   async function createContract(scope: TenantScope, projectId: string, input: CreateContractInput) {
     await need(scope, 'financials.contracts.manage', projectId);
+    await requireStaff(scope, projectId, 'set up a contract');
     const project = await deps.platform.getProject(scope, projectId);
     const sopaState = input.sopaState ?? project.state;
     if (!sopaState)
@@ -199,8 +206,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     input: SubmitClaimInput,
   ) {
     await need(scope, 'financials.claims.record', projectId);
-    if (!(await viewer(scope, projectId)).isInternal)
-      throw new AppError('access.denied', "Only the builder's staff can record a claim.");
+    await requireStaff(scope, projectId, 'record a claim');
     const contract = await getContractRow(scope, projectId, contractId);
     if (
       contract.sopaState !== 'NSW' &&
@@ -396,6 +402,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     input: IssueScheduleInput,
   ) {
     await need(scope, 'financials.claims.assess', projectId);
+    await requireStaff(scope, projectId, 'issue a payment schedule');
     const { claim, schedule } = await claimDetail(scope, projectId, claimId, false);
     if (!claim.isValid || claim.scheduleDueOn === null)
       throw new AppError(
@@ -403,6 +410,11 @@ export function createFinancialsService(deps: FinancialsDeps) {
         'This is not a valid payment claim, so there is no schedule to give.',
       );
     if (schedule) throw new AppError('financials.claim.already_scheduled');
+    if (claim.status !== 'submitted')
+      throw new AppError(
+        'conflict',
+        `A claim that is ${claim.status} can't be given a payment schedule.`,
+      );
     const claimed = GST_TOTAL(claim);
     const net = toCents(claim.claimedNet);
     const scheduled = toCents(input.scheduledAmount);
