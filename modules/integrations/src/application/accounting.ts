@@ -58,6 +58,8 @@ const DEFAULT_SETTINGS: ConnectionSettings = {
 const EMPTY_MAP: StoredFieldMap = { accounts: {}, retention: null };
 // One limiter per org and provider in this process: Xero 50/min with 2 in flight, MYOB 2/s per file
 // (integrations/02 §4, §5). The app-wide MYOB cap is a worker concern.
+/** How long a sign-in link stays valid. */
+const STATE_TTL_MS = 10 * 60_000;
 const BUDGET = { xero: [50, 2], myob: [120, 2] } as const;
 
 export function createAccountingService(deps: AccountingDeps) {
@@ -106,6 +108,7 @@ export function createAccountingService(deps: AccountingDeps) {
     const values = {
       status: 'pending' as const,
       oauthState: state,
+      oauthStateAt: now(),
       verifierSealed: deps.vault.seal(scope.ctx.orgId, pkce.verifier),
       lastError: null,
       updatedAt: now(),
@@ -144,9 +147,18 @@ export function createAccountingService(deps: AccountingDeps) {
     state: string,
   ) {
     const row = await require(scope, provider);
-    if (!row.oauthState || row.oauthState !== state || !row.verifierSealed)
+    const fresh = row.oauthStateAt && now().getTime() - row.oauthStateAt.getTime() <= STATE_TTL_MS;
+    if (!row.oauthState || row.oauthState !== state || !row.verifierSealed || !fresh)
       throw new AppError('accounting.bad_state', 'This sign-in link has expired. Start again.');
     return deps.vault.open(scope.ctx.orgId, row.verifierSealed);
+  }
+
+  /** A failed exchange spends the state: the code is single use, so the link cannot be retried. */
+  async function abandonCallback(scope: TenantScope, provider: AccountingProviderKey) {
+    await scope.tx
+      .update(accountingConnections)
+      .set({ oauthState: null, oauthStateAt: null, verifierSealed: null, updatedAt: now() })
+      .where(eq(accountingConnections.provider, provider));
   }
 
   /** Step 2b: exchanges the code with the provider. Nothing is stored yet. */
@@ -192,6 +204,7 @@ export function createAccountingService(deps: AccountingDeps) {
       .set({
         status: only ? 'active' : 'needs_target',
         oauthState: null,
+        oauthStateAt: null,
         verifierSealed: null,
         tokensSealed: sealTokens(scope.ctx.orgId, result.tokens),
         tokenExpiresAt: new Date(result.tokens.expiresAt),
@@ -220,13 +233,25 @@ export function createAccountingService(deps: AccountingDeps) {
     }
   }
 
+  /**
+   * The ref must be one the signed-in account can actually reach; the name stored is the provider's, not the client's.
+   * `available` comes from `targets`, read before this transaction so the provider call holds none open.
+   */
   async function selectTarget(
     scope: TenantScope,
     provider: AccountingProviderKey,
-    target: { ref: string; name: string },
+    ref: string,
+    available: { ref: string; name: string }[],
   ) {
     const row = await require(scope, provider);
     if (!row.tokensSealed) throw new AppError('accounting.not_ready', 'Sign in first.');
+    const target = available.find((t) => t.ref === ref);
+    if (!target)
+      throw new AppError(
+        'accounting.invalid_target',
+        'That organisation is not available to this sign-in.',
+        [{ path: 'ref', message: 'Not one of the available choices' }],
+      );
     const [saved] = await scope.tx
       .update(accountingConnections)
       .set({ status: 'active', targetRef: target.ref, targetName: target.name, updatedAt: now() })
@@ -423,12 +448,17 @@ export function createAccountingService(deps: AccountingDeps) {
       if (e instanceof ProviderRequestError && !e.retryable) {
         const kind: SyncIssueKind =
           e.status === 401 || e.status === 403 ? 'auth_failed' : 'rejected';
+        // Provider error bodies stay in the logs; customers see a fixed sentence.
+        const text =
+          kind === 'auth_failed'
+            ? 'The accounting system refused our access. Reconnect it.'
+            : `The accounting system refused ${ref} (HTTP ${e.status}).`;
         if (kind === 'auth_failed')
           await scope.tx
             .update(accountingConnections)
-            .set({ status: 'error', lastError: e.message.slice(0, 300), updatedAt: now() })
+            .set({ status: 'error', lastError: text, updatedAt: now() })
             .where(eq(accountingConnections.id, row.id));
-        await raise(scope, row.id, kind, e.message.slice(0, 300), ref);
+        await raise(scope, row.id, kind, text, ref);
         return 'issue';
       }
       throw e;
@@ -497,6 +527,7 @@ export function createAccountingService(deps: AccountingDeps) {
     exchange,
     finishCallback,
     targets,
+    abandonCallback,
     selectTarget,
     disconnect,
     setFieldMap,

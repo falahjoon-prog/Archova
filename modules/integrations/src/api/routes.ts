@@ -77,7 +77,13 @@ export function integrationsRoutes(
       const { state, code } = input.body;
       // The provider calls run with no transaction open.
       const verifier = await read(input, (s) => accounting.prepareCallback(s, provider, state));
-      const result = await accounting.exchange(provider, code, verifier);
+      let result;
+      try {
+        result = await accounting.exchange(provider, code, verifier);
+      } catch (e) {
+        await tx(input, (s) => accounting.abandonCallback(s, provider));
+        throw e;
+      }
       const { connection } = await tx(input, (s) =>
         accounting.finishCallback(s, provider, state, result),
       );
@@ -88,8 +94,10 @@ export function integrationsRoutes(
       return { status: 200, body: { data } };
     },
     selectAccountingTarget: async (input) => {
+      const { provider } = input.params;
+      const available = await read(input, (s) => accounting.targets(s, provider));
       const row = await tx(input, (s) =>
-        accounting.selectTarget(s, input.params.provider, input.body),
+        accounting.selectTarget(s, provider, input.body.ref, available),
       );
       return { status: 200, body: toConnectionDto(row) };
     },

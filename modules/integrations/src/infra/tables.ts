@@ -116,6 +116,7 @@ export const accountingConnections = integrationsSchema.table('accounting_connec
   provider: text('provider').$type<AccountingProviderKey>().notNull(),
   status: text('status').$type<ConnectionStatus>().notNull().default('pending'),
   oauthState: text('oauth_state'),
+  oauthStateAt: timestamp('oauth_state_at', { withTimezone: true }),
   verifierSealed: bytea('verifier_sealed'),
   tokensSealed: bytea('tokens_sealed'),
   tokenExpiresAt: timestamp('token_expires_at', { withTimezone: true }),

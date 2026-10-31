@@ -12,6 +12,8 @@ create table integrations.accounting_connections (
   status           text not null default 'pending'
     check (status in ('pending', 'needs_target', 'active', 'error')),
   oauth_state      text,
+  -- the sign-in link is good for 10 minutes
+  oauth_state_at   timestamptz,
   verifier_sealed  bytea,
   tokens_sealed    bytea,
   token_expires_at timestamptz,

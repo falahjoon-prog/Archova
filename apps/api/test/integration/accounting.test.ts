@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import { decodeId } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
 import type { accounting } from '@archova/mod-integrations';
@@ -10,6 +11,7 @@ const json = (body: unknown, status = 200, headers: Record<string, string> = {})
 // What Xero answers, keyed by the calls the connector makes.
 const calls: { url: string; method: string }[] = [];
 let invoiceStatus: string | null = null;
+let failTokens = false;
 let tenants = [
   { tenantId: 'ten-1', tenantName: 'Harbour Builders Pty Ltd', tenantType: 'ORGANISATION' },
 ];
@@ -17,7 +19,9 @@ const fakeFetch = async (url: string, init?: RequestInit) => {
   const method = init?.method ?? 'GET';
   calls.push({ url, method });
   if (url.includes('identity.xero.com/connect/token'))
-    return json({ access_token: 'at', refresh_token: 'rt', expires_in: 1800 });
+    return failTokens
+      ? json({ error: 'invalid_grant' }, 400)
+      : json({ access_token: 'at', refresh_token: 'rt', expires_in: 1800 });
   if (url.endsWith('/connections')) return json(tenants);
   if (url.includes('/Invoices') && method === 'GET')
     return json({
@@ -135,9 +139,17 @@ describe('Xero and MYOB connections (integrations/02)', () => {
       expect(res.json()).toMatchObject({ status: 'needs_target', targetName: null });
       const listed = (await s.owner.browser.get(`${s.base}/connections/xero/targets`)).json();
       expect(listed.data.map((x: { name: string }) => x.name)).toEqual(['Alpha', 'Beta']);
+      // A ref the sign-in cannot reach is refused, so it never reaches a provider URL.
+      const bad = await s.owner.browser.put(`${s.base}/connections/xero/targets`, {
+        ref: '../..',
+        name: 'Beta',
+      });
+      expect(bad.statusCode).toBe(422);
+      expect(bad.json()).toMatchObject({ code: 'accounting.invalid_target' });
+      // The stored name is the provider's, not the one the client sent.
       const picked = await s.owner.browser.put(`${s.base}/connections/xero/targets`, {
         ref: 'b',
-        name: 'Beta',
+        name: 'Anything',
       });
       expect(picked.json()).toMatchObject({ status: 'active', targetName: 'Beta' });
     } finally {
@@ -145,6 +157,35 @@ describe('Xero and MYOB connections (integrations/02)', () => {
         { tenantId: 'ten-1', tenantName: 'Harbour Builders Pty Ltd', tenantType: 'ORGANISATION' },
       ];
     }
+  });
+
+  it('expires the sign-in link after 10 minutes and spends it on a failed exchange', async () => {
+    const s = await setup('acc-ttl');
+    const orgId = decodeId('org', s.org.id)!;
+    const begin = async () => {
+      const start = (await s.owner.browser.post(`${s.base}/connections/xero/connect`)).json();
+      return new URL(start.url).searchParams.get('state')!;
+    };
+    const post = (state: string) =>
+      s.owner.browser.post(`${s.base}/connections/xero/callback`, { code: 'c', state });
+
+    const old = await begin();
+    await run(orgId, (sc) =>
+      sc.tx.execute(
+        sql`update integrations.accounting_connections set oauth_state_at = now() - interval '11 minutes'`,
+      ),
+    );
+    expect((await post(old)).statusCode).toBe(422);
+
+    // A refused code ends the attempt: the same link cannot be tried again.
+    const fresh = await begin();
+    failTokens = true;
+    try {
+      expect((await post(fresh)).statusCode).toBe(502);
+    } finally {
+      failTokens = false;
+    }
+    expect((await post(fresh)).statusCode).toBe(422);
   });
 
   it('keeps connections to org admins', async () => {

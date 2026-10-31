@@ -37,6 +37,7 @@ export const PROBLEM_CODES = {
   'accounting.not_configured': 409,
   'accounting.not_found': 404,
   'accounting.bad_state': 422,
+  'accounting.invalid_target': 422,
   'accounting.provider_error': 502,
   'accounting.not_ready': 409,
   'sync_issue.not_found': 404,
