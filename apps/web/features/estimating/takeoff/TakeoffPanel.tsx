@@ -31,6 +31,7 @@ import {
   type TakeoffMeasurement,
 } from '../lib/takeoff-types';
 import { NovaTakeoffSection } from './NovaTakeoffSection';
+import { SendToEstimateSection } from './SendToEstimateSection';
 import { ScaleSection } from './ScaleSection';
 import { CursorLayer, GeometrySvg } from './TakeoffLayer';
 import { geometryOf, useTakeoffTool, type TakeoffTool } from './useTakeoffTool';
@@ -544,6 +545,13 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
               <ErrorAlert
                 error={mutations.sendToPackage.error}
                 title="We couldn't send the quantities"
+              />
+              <SendToEstimateSection
+                accepted={saved.map((m) => ({
+                  id: m.id,
+                  label: m.trade ? `${m.trade}: ${m.label}` : m.label,
+                  unit: m.unit,
+                }))}
               />
             </div>
           </>

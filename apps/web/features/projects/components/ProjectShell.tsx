@@ -161,6 +161,16 @@ export function projectToolGroups(
           label: 'Tender packages',
           icon: EstimatingIcon,
         },
+        {
+          href: webRoutes.estimates(orgSlug, projectId),
+          label: 'Estimates',
+          icon: EstimatingIcon,
+        },
+        {
+          href: webRoutes.costLibrary(orgSlug, projectId),
+          label: 'Cost library',
+          icon: EstimatingIcon,
+        },
       ],
     },
   ];

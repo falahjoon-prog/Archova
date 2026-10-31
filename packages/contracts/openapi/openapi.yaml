@@ -2988,6 +2988,330 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/cost-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCostItems
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.read
+      summary: >-
+        The company cost library, in code order. Each item carries the rate in force today (for the region asked
+        about, falling back to a rate with no region), or none when it has no price yet.
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: category, in: query, schema: { $ref: '#/components/schemas/CostCategory' } }
+        - { name: region, in: query, schema: { type: string, maxLength: 60 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItemPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: Add an item to the cost library, optionally with its first rate.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCostItemRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/cost-items/{costItemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/CostItemId'
+    get:
+      operationId: getCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.read
+      summary: One cost library item.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItem' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: Change an item's code, description, unit, trade or category. Prices change through rates.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCostItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItem' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: Remove an item from the library. Estimate lines already priced from it keep their rate.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/cost-items/{costItemId}/rates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/CostItemId'
+    get:
+      operationId: listCostRates
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.read
+      summary: An item's rate history, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostRateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addCostRate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: >-
+        Record a new rate from a date. Earlier rates are kept: an estimate uses the latest rate effective on or
+        before its base date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CostRateInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostRateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEstimates
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.read
+      summary: Estimates on the project, newest first. The lines come with a single estimate.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstimatePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Start an empty estimate sheet.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEstimateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    get:
+      operationId: getEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.read
+      summary: >-
+        The estimate sheet with its lines and totals. Totals are worked out from the lines and the percentages on the
+        sheet. A draft follows the takeoff; an issued estimate is frozen.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Change the name, base date, region, contingency, margin or GST of a draft estimate.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEstimateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Remove a draft estimate.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    post:
+      operationId: addEstimateLine
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: >-
+        Add a section or a priced item. Linking confirmed takeoff measurements sets the quantity and unit from them
+        (unconfirmed ones add nothing). Choosing a library item brings its current rate; a rate typed here wins.
+        Returns the whole sheet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateLineInput' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+      - $ref: '#/components/parameters/EstimateLineId'
+    patch:
+      operationId: updateEstimateLine
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Change a line. Send an empty `measurementIds` to detach it from takeoff and keep typing its quantity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateLineInput' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEstimateLine
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Remove a line. Removing a section removes its items.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/issue:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    post:
+      operationId: issueEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.issue
+      summary: >-
+        Issue the estimate: freeze its quantities, rates and total. Refused (422 `estimate.rates_missing`) while any
+        item has no quantity or rate.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6885,6 +7209,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    CostItemId:
+      name: costItemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cit_[0-9A-Za-z]{26}$' }
+    EstimateId:
+      name: estimateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^est_[0-9A-Za-z]{26}$' }
+    EstimateLineId:
+      name: lineId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^esl_[0-9A-Za-z]{26}$' }
     ApiTokenId:
       name: apiTokenId
       in: path
@@ -10856,6 +11195,269 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    CostCategory:
+      type: string
+      enum: [labour, material, plant, subcontract, other]
+    CostRatePoint:
+      type: object
+      required: [rate, region, effectiveFrom]
+      properties:
+        rate: { type: string, description: 'Dollars ex GST, 2 places' }
+        region: { type: [string, 'null'] }
+        effectiveFrom: { type: string, format: date }
+    CostRate:
+      allOf:
+        - $ref: '#/components/schemas/CostRatePoint'
+        - $ref: '#/components/schemas/CostRateDetail'
+    CostRateDetail:
+      type: object
+      required: [source, note, createdAt]
+      properties:
+        source: { type: string, enum: [manual, quote, import] }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    CostRateInput:
+      type: object
+      additionalProperties: false
+      required: [rate]
+      properties:
+        rate: { type: string, pattern: '^[0-9]{1,15}(\.[0-9]{1,2})?$' }
+        region: { type: string, minLength: 1, maxLength: 60 }
+        effectiveFrom: { type: string, format: date, description: Defaults to today }
+        note: { type: string, maxLength: 300 }
+    CostRateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CostRate' }
+    CostItem:
+      type: object
+      required:
+        [id, code, description, unit, trade, category, currentRate, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        description: { type: string }
+        unit: { type: string }
+        trade: { type: string }
+        category: { $ref: '#/components/schemas/CostCategory' }
+        currentRate:
+          description: The rate in force today, or null while the item has none.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/CostRatePoint'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CostItemPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CostItem' }
+        nextCursor: { type: [string, 'null'] }
+    CreateCostItemRequest:
+      type: object
+      additionalProperties: false
+      required: [code, description, unit]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        trade: { type: string, maxLength: 100 }
+        category: { $ref: '#/components/schemas/CostCategory' }
+        rate: { $ref: '#/components/schemas/CostRateInput' }
+    UpdateCostItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        trade: { type: string, maxLength: 100 }
+        category: { $ref: '#/components/schemas/CostCategory' }
+    EstimateSettings:
+      type: object
+      required: [baseDate, region, contingencyPct, marginPct, marginBasis, gstPct]
+      properties:
+        baseDate:
+          { type: string, format: date, description: Library rates are taken as at this date }
+        region: { type: [string, 'null'] }
+        contingencyPct: { type: string, description: Percent of the line total, 2 places }
+        marginPct: { type: string, description: Percent, 2 places, under 100 }
+        marginBasis:
+          type: string
+          enum: [markup, margin]
+          description: '`markup` adds the percentage on cost; `margin` makes it that share of the selling price.'
+        gstPct: { type: string }
+    EstimateTotals:
+      type: object
+      required:
+        [subtotal, contingency, margin, totalExGst, gst, totalIncGst, missingRates, sections]
+      properties:
+        subtotal: { type: string }
+        contingency: { type: string }
+        margin: { type: string }
+        totalExGst: { type: string }
+        gst: { type: string }
+        totalIncGst: { type: string }
+        missingRates:
+          type: integer
+          description: Items with no quantity or rate. They add nothing to the totals until filled in.
+        sections:
+          type: object
+          additionalProperties: { type: string }
+          description: Cost of the items under each section id.
+    EstimateLine:
+      type: object
+      required:
+        [
+          id,
+          parentId,
+          kind,
+          sort,
+          costItemId,
+          description,
+          quantity,
+          unit,
+          rate,
+          amount,
+          measurementIds,
+          pendingMeasurements,
+          unitMismatch,
+        ]
+      properties:
+        id: { type: string }
+        parentId: { type: [string, 'null'] }
+        kind: { type: string, enum: [section, item] }
+        sort: { type: integer }
+        costItemId: { type: [string, 'null'] }
+        description: { type: string }
+        quantity: { type: [string, 'null'], description: 3 places }
+        unit: { type: [string, 'null'] }
+        rate:
+          {
+            type: [string, 'null'],
+            description: Dollars ex GST per unit; null is unpriced and flagged,
+          }
+        amount:
+          { type: [string, 'null'], description: Quantity × rate; null while either is missing }
+        measurementIds:
+          type: array
+          items: { type: string }
+        pendingMeasurements:
+          type: integer
+          description: Linked measurements still waiting for a person to accept them. They do not count.
+        unitMismatch:
+          type: boolean
+          description: The library item prices in a different unit from this line.
+    Estimate:
+      allOf:
+        - $ref: '#/components/schemas/EstimateSettings'
+        - type: object
+          required:
+            [
+              id,
+              projectId,
+              number,
+              numberLabel,
+              name,
+              status,
+              issuedAt,
+              issuedBy,
+              lines,
+              totals,
+              createdAt,
+              updatedAt,
+              version,
+            ]
+          properties:
+            id: { type: string }
+            projectId: { type: string }
+            number: { type: integer }
+            numberLabel: { type: string }
+            name: { type: string }
+            status: { type: string, enum: [draft, issued] }
+            issuedAt: { type: [string, 'null'], format: date-time }
+            issuedBy: { type: [string, 'null'] }
+            lines:
+              type: array
+              items: { $ref: '#/components/schemas/EstimateLine' }
+            totals: { $ref: '#/components/schemas/EstimateTotals' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { type: integer }
+    EstimateSummary:
+      type: object
+      required:
+        [id, number, numberLabel, name, status, baseDate, totalExGst, issuedAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [draft, issued] }
+        baseDate: { type: string, format: date }
+        totalExGst: { type: [string, 'null'], description: Set when the estimate is issued }
+        issuedAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EstimatePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EstimateSummary' }
+        nextCursor: { type: [string, 'null'] }
+    CreateEstimateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        baseDate: { type: string, format: date }
+        region: { type: string, minLength: 1, maxLength: 60 }
+        contingencyPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+        marginPct: { type: string, pattern: '^[0-9]{1,2}(\.[0-9]{1,2})?$' }
+        marginBasis: { type: string, enum: [markup, margin] }
+        gstPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+    UpdateEstimateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        baseDate: { type: string, format: date }
+        region: { type: [string, 'null'], minLength: 1, maxLength: 60 }
+        contingencyPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+        marginPct: { type: string, pattern: '^[0-9]{1,2}(\.[0-9]{1,2})?$' }
+        marginBasis: { type: string, enum: [markup, margin] }
+        gstPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+    EstimateLineInput:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          {
+            type: string,
+            enum: [section, item],
+            description: Defaults to item on add; ignored on change,
+          }
+        parentId: { type: [string, 'null'], pattern: '^esl_[0-9A-Za-z]{26}$' }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        costItemId: { type: [string, 'null'], pattern: '^cit_[0-9A-Za-z]{26}$' }
+        quantity: { type: [string, 'null'], pattern: '^[0-9]{1,15}(\.[0-9]{1,3})?$' }
+        unit: { type: [string, 'null'], minLength: 1, maxLength: 20 }
+        rate: { type: [string, 'null'], pattern: '^[0-9]{1,15}(\.[0-9]{1,2})?$' }
+        measurementIds:
+          type: array
+          maxItems: 500
+          items: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
     TakeoffMeasurementPage:
       type: object
       required: [data, nextCursor]

@@ -780,6 +780,25 @@ main:focus {
 .takeoff-quantities__head {
   justify-content: space-between;
 }
+.ac-table__group th,
+.ac-table__group td {
+  background: var(--c-surface);
+  font-weight: 600;
+}
+.estimate-lines {
+  min-width: 44rem;
+}
+.estimate-totals {
+  width: 100%;
+  max-width: 24rem;
+  margin-inline-start: auto;
+}
+.estimate-totals tr:nth-child(4) th,
+.estimate-totals tr:nth-child(4) td,
+.estimate-totals tr:last-child th,
+.estimate-totals tr:last-child td {
+  font-weight: 600;
+}
 .nova-takeoff {
   padding-top: var(--space-3);
   border-top: 1px solid var(--c-border-divider);

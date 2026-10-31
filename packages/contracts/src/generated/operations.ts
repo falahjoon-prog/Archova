@@ -672,6 +672,96 @@ export const ConfirmTakeoffMeasurementParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
 });
+export const ListCostItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCostItemsQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "trade": z.string().max(100).optional(),
+  "category": s.CostCategorySchema.optional(),
+  "region": z.string().max(60).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateCostItemBody = s.CreateCostItemRequestSchema;
+export const GetCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCostItemBody = s.UpdateCostItemRequestSchema;
+export const DeleteCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const ListCostRatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const AddCostRateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const AddCostRateBody = s.CostRateInputSchema;
+export const ListEstimatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEstimatesQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEstimateBody = s.CreateEstimateRequestSchema;
+export const GetEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEstimateBody = s.UpdateEstimateRequestSchema;
+export const DeleteEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const AddEstimateLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const AddEstimateLineBody = s.EstimateLineInputSchema;
+export const UpdateEstimateLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^esl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEstimateLineBody = s.EstimateLineInputSchema;
+export const DeleteEstimateLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^esl_[0-9A-Za-z]{26}$")),
+});
+export const IssueEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
 export const CreateAssistedTakeoffMeasurementsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3078,6 +3168,198 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ConfirmTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  listCostItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/cost-items',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.read",
+    internal: false,
+    contentType: null,
+    params: ListCostItemsParams,
+    query: ListCostItemsQuery,
+    body: null,
+  },
+  createCostItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/cost-items',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCostItemParams,
+    query: null,
+    body: CreateCostItemBody,
+  },
+  getCostItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.read",
+    internal: false,
+    contentType: null,
+    params: GetCostItemParams,
+    query: null,
+    body: null,
+  },
+  updateCostItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCostItemParams,
+    query: null,
+    body: UpdateCostItemBody,
+  },
+  deleteCostItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteCostItemParams,
+    query: null,
+    body: null,
+  },
+  listCostRates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}/rates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.read",
+    internal: false,
+    contentType: null,
+    params: ListCostRatesParams,
+    query: null,
+    body: null,
+  },
+  addCostRate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}/rates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddCostRateParams,
+    query: null,
+    body: AddCostRateBody,
+  },
+  listEstimates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.read",
+    internal: false,
+    contentType: null,
+    params: ListEstimatesParams,
+    query: ListEstimatesQuery,
+    body: null,
+  },
+  createEstimate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEstimateParams,
+    query: null,
+    body: CreateEstimateBody,
+  },
+  getEstimate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.read",
+    internal: false,
+    contentType: null,
+    params: GetEstimateParams,
+    query: null,
+    body: null,
+  },
+  updateEstimate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEstimateParams,
+    query: null,
+    body: UpdateEstimateBody,
+  },
+  deleteEstimate: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteEstimateParams,
+    query: null,
+    body: null,
+  },
+  addEstimateLine: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddEstimateLineParams,
+    query: null,
+    body: AddEstimateLineBody,
+  },
+  updateEstimateLine: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEstimateLineParams,
+    query: null,
+    body: UpdateEstimateLineBody,
+  },
+  deleteEstimateLine: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteEstimateLineParams,
+    query: null,
+    body: null,
+  },
+  issueEstimate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/issue',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.issue",
+    internal: false,
+    contentType: null,
+    params: IssueEstimateParams,
     query: null,
     body: null,
   },

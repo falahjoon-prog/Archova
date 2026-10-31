@@ -20,6 +20,8 @@ describe('projectToolGroups', () => {
       'Inductions',
       'Attendance',
       'Tender packages',
+      'Estimates',
+      'Cost library',
     ]);
   });
 
@@ -35,6 +37,8 @@ describe('projectToolGroups', () => {
       'Transmittals',
       'Defects',
       'Tender packages',
+      'Estimates',
+      'Cost library',
     ]);
   });
 

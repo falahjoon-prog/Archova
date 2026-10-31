@@ -17,7 +17,18 @@ import type {
   TenderService,
 } from '../application/tender';
 import type { MeasurementFields, TakeoffService } from '../application/takeoff';
-import { toComparisonDto, toMeasurementDto, toPackageDto, toQuoteDto } from './mappers';
+import type { EstimateService, LineInput as EstimateLineInput } from '../application/estimate';
+import type { LibraryService } from '../application/library';
+import {
+  toComparisonDto,
+  toCostItemDto,
+  toCostRateDto,
+  toEstimateDto,
+  toEstimateSummaryDto,
+  toMeasurementDto,
+  toPackageDto,
+  toQuoteDto,
+} from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -126,7 +137,55 @@ function measurementFields(b: MeasurementBody): MeasurementFields {
   return out;
 }
 
-export function estimatingRoutes(database: Database, svc: TenderService, takeoff: TakeoffService) {
+const costItemIdOf = (p: { costItemId: string }) => {
+  const id = decodeId('costItem', p.costItemId);
+  if (!id) throw new AppError('cost_item.not_found');
+  return id;
+};
+const estimateIdOf = (p: { estimateId: string }) => {
+  const id = decodeId('estimate', p.estimateId);
+  if (!id) throw new AppError('estimate.not_found');
+  return id;
+};
+const lineIdOf = (p: { lineId: string }) => {
+  const id = decodeId('estimateLine', p.lineId);
+  if (!id) throw new AppError('estimate.line_not_found');
+  return id;
+};
+
+type LineBody = Omit<EstimateLineInput, 'parentId' | 'costItemId' | 'measurementIds'> & {
+  parentId?: string | null;
+  costItemId?: string | null;
+  measurementIds?: string[];
+};
+
+function lineFields(b: LineBody): EstimateLineInput {
+  const { parentId, costItemId, measurementIds, ...rest } = b;
+  return {
+    ...rest,
+    ...(parentId !== undefined
+      ? { parentId: parentId === null ? null : ref('estimateLine', parentId, 'parentId') }
+      : {}),
+    ...(costItemId !== undefined
+      ? { costItemId: costItemId === null ? null : ref('costItem', costItemId, 'costItemId') }
+      : {}),
+    ...(measurementIds !== undefined
+      ? {
+          measurementIds: measurementIds.map((m, i) =>
+            ref('takeoffMeasurement', m, `measurementIds/${i}`),
+          ),
+        }
+      : {}),
+  };
+}
+
+export function estimatingRoutes(
+  database: Database,
+  svc: TenderService,
+  takeoff: TakeoffService,
+  library: LibraryService,
+  estimates: EstimateService,
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -148,7 +207,172 @@ export function estimatingRoutes(database: Database, svc: TenderService, takeoff
     headers: { etag: etag(x.version) },
   });
 
+  const costItem = (status: number, x: Awaited<ReturnType<LibraryService['get']>>) => ({
+    status,
+    body: toCostItemDto(x),
+    headers: { etag: etag(x.version) },
+  });
+  const sheet = (status: number, x: Awaited<ReturnType<EstimateService['get']>>) => ({
+    status,
+    body: toEstimateDto(x),
+    headers: { etag: etag(x.estimate.version) },
+  });
+
   return defineRoutes({
+    listCostItems: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        library.list(s, {
+          ...(q.q ? { q: q.q } : {}),
+          ...(q.trade ? { trade: q.trade } : {}),
+          ...(q.category ? { category: q.category } : {}),
+          ...(q.region ? { region: q.region } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toCostItemDto), nextCursor: page.nextCursor },
+      };
+    },
+    createCostItem: async (input) =>
+      costItem(
+        201,
+        await tx(input, (s) =>
+          library.create(s, {
+            code: input.body.code,
+            description: input.body.description,
+            unit: input.body.unit,
+            ...(input.body.trade !== undefined ? { trade: input.body.trade } : {}),
+            ...(input.body.category !== undefined ? { category: input.body.category } : {}),
+            ...(input.body.rate ? { rate: input.body.rate } : {}),
+          }),
+        ),
+      ),
+    getCostItem: async (input) =>
+      costItem(200, await read(input, (s) => library.get(s, costItemIdOf(input.params)))),
+    updateCostItem: async (input) =>
+      costItem(
+        200,
+        await tx(input, (s) =>
+          library.update(
+            s,
+            costItemIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+            input.body,
+          ),
+        ),
+      ),
+    deleteCostItem: async (input) => {
+      await tx(input, (s) => library.remove(s, costItemIdOf(input.params)));
+      return { status: 204 };
+    },
+    listCostRates: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => library.listRates(s, costItemIdOf(input.params)))).map(
+          toCostRateDto,
+        ),
+      },
+    }),
+    addCostRate: async (input) => ({
+      status: 201,
+      body: {
+        data: (
+          await tx(input, (s) => library.addRate(s, costItemIdOf(input.params), input.body))
+        ).map(toCostRateDto),
+      },
+    }),
+    listEstimates: async (input) => {
+      const page = await read(input, (s) =>
+        estimates.list(s, project(input.params), {
+          limit: input.query.limit,
+          ...(input.query.cursor ? { cursor: input.query.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toEstimateSummaryDto), nextCursor: page.nextCursor },
+      };
+    },
+    createEstimate: async (input) =>
+      sheet(201, await tx(input, (s) => estimates.create(s, project(input.params), input.body))),
+    getEstimate: async (input) =>
+      sheet(
+        200,
+        await read(input, (s) =>
+          estimates.get(s, project(input.params), estimateIdOf(input.params)),
+        ),
+      ),
+    updateEstimate: async (input) =>
+      sheet(
+        200,
+        await tx(input, (s) =>
+          estimates.update(
+            s,
+            project(input.params),
+            estimateIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+            input.body,
+          ),
+        ),
+      ),
+    deleteEstimate: async (input) => {
+      await tx(input, (s) =>
+        estimates.remove(s, project(input.params), estimateIdOf(input.params)),
+      );
+      return { status: 204 };
+    },
+    addEstimateLine: async (input) =>
+      sheet(
+        201,
+        await tx(input, (s) =>
+          estimates.addLine(
+            s,
+            project(input.params),
+            estimateIdOf(input.params),
+            lineFields(input.body),
+          ),
+        ),
+      ),
+    updateEstimateLine: async (input) =>
+      sheet(
+        200,
+        await tx(input, (s) =>
+          estimates.updateLine(
+            s,
+            project(input.params),
+            estimateIdOf(input.params),
+            lineIdOf(input.params),
+            lineFields(input.body),
+          ),
+        ),
+      ),
+    deleteEstimateLine: async (input) =>
+      sheet(
+        200,
+        await tx(input, (s) =>
+          estimates.removeLine(
+            s,
+            project(input.params),
+            estimateIdOf(input.params),
+            lineIdOf(input.params),
+          ),
+        ),
+      ),
+    issueEstimate: async (input) =>
+      sheet(
+        200,
+        await tx(input, (s) =>
+          estimates.issue(
+            s,
+            project(input.params),
+            estimateIdOf(input.params),
+            parseIfMatch(input.headers['if-match']),
+          ),
+        ),
+      ),
     listTakeoffMeasurements: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>

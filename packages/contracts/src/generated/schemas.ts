@@ -398,8 +398,61 @@ export type CorrespondenceTypeList = z.infer<typeof CorrespondenceTypeListSchema
 export const CorrespondenceTypeRefSchema = z.string().regex(new RegExp("^cty_[0-9A-Za-z]{26}$"));
 export type CorrespondenceTypeRef = z.infer<typeof CorrespondenceTypeRefSchema>;
 
+export const CostCategorySchema = z.enum(["labour", "material", "plant", "subcontract", "other"]);
+export type CostCategory = z.infer<typeof CostCategorySchema>;
+
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
+
+export const CostRatePointSchema = z.object({
+  "rate": z.string(),
+  "region": z.string().nullable(),
+  "effectiveFrom": z.string().date(),
+});
+export type CostRatePoint = z.infer<typeof CostRatePointSchema>;
+
+export const CostItemSchema = z.object({
+  "id": z.string(),
+  "code": z.string(),
+  "description": z.string(),
+  "unit": z.string(),
+  "trade": z.string(),
+  "category": CostCategorySchema,
+  "currentRate": z.union([z.null(), CostRatePointSchema]),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type CostItem = z.infer<typeof CostItemSchema>;
+
+export const CostItemPageSchema = z.object({
+  "data": z.array(CostItemSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type CostItemPage = z.infer<typeof CostItemPageSchema>;
+
+export const CostRateDetailSchema = z.object({
+  "source": z.enum(["manual", "quote", "import"]),
+  "note": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type CostRateDetail = z.infer<typeof CostRateDetailSchema>;
+
+export const CostRateSchema = z.intersection(CostRatePointSchema, CostRateDetailSchema);
+export type CostRate = z.infer<typeof CostRateSchema>;
+
+export const CostRateInputSchema = z.object({
+  "rate": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,2})?$")),
+  "region": z.string().min(1).max(60).optional(),
+  "effectiveFrom": z.string().date().optional(),
+  "note": z.string().max(300).optional(),
+}).strict();
+export type CostRateInput = z.infer<typeof CostRateInputSchema>;
+
+export const CostRateListSchema = z.object({
+  "data": z.array(CostRateSchema),
+});
+export type CostRateList = z.infer<typeof CostRateListSchema>;
 
 export const CreateApiTokenRequestSchema = z.object({
   "name": z.string().min(1).max(80),
@@ -457,6 +510,16 @@ export const CreateCorrespondenceTypeRequestSchema = z.object({
   "bodyTemplate": z.string().max(20000).optional(),
 }).strict();
 export type CreateCorrespondenceTypeRequest = z.infer<typeof CreateCorrespondenceTypeRequestSchema>;
+
+export const CreateCostItemRequestSchema = z.object({
+  "code": z.string().min(1).max(40),
+  "description": z.string().min(1).max(300),
+  "unit": z.string().min(1).max(20),
+  "trade": z.string().max(100).optional(),
+  "category": CostCategorySchema.optional(),
+  "rate": CostRateInputSchema.optional(),
+}).strict();
+export type CreateCostItemRequest = z.infer<typeof CreateCostItemRequestSchema>;
 
 export const DefectPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
 export type DefectPriority = z.infer<typeof DefectPrioritySchema>;
@@ -586,6 +649,17 @@ export const CreateDrawingSetRequestSchema = z.object({
   "receivedDate": z.string().date().optional(),
 }).strict();
 export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
+
+export const CreateEstimateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "baseDate": z.string().date().optional(),
+  "region": z.string().min(1).max(60).optional(),
+  "contingencyPct": z.string().regex(new RegExp("^[0-9]{1,3}(\\.[0-9]{1,2})?$")).optional(),
+  "marginPct": z.string().regex(new RegExp("^[0-9]{1,2}(\\.[0-9]{1,2})?$")).optional(),
+  "marginBasis": z.enum(["markup", "margin"]).optional(),
+  "gstPct": z.string().regex(new RegExp("^[0-9]{1,3}(\\.[0-9]{1,2})?$")).optional(),
+}).strict();
+export type CreateEstimateRequest = z.infer<typeof CreateEstimateRequestSchema>;
 
 export const CreateFolderRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -1509,6 +1583,94 @@ export const EntitlementsSchema = z.object({
   "limits": z.record(z.string(), z.number().int().nullable()),
 });
 export type Entitlements = z.infer<typeof EntitlementsSchema>;
+
+export const EstimateSettingsSchema = z.object({
+  "baseDate": z.string().date(),
+  "region": z.string().nullable(),
+  "contingencyPct": z.string(),
+  "marginPct": z.string(),
+  "marginBasis": z.enum(["markup", "margin"]),
+  "gstPct": z.string(),
+});
+export type EstimateSettings = z.infer<typeof EstimateSettingsSchema>;
+
+export const EstimateLineSchema = z.object({
+  "id": z.string(),
+  "parentId": z.string().nullable(),
+  "kind": z.enum(["section", "item"]),
+  "sort": z.number().int(),
+  "costItemId": z.string().nullable(),
+  "description": z.string(),
+  "quantity": z.string().nullable(),
+  "unit": z.string().nullable(),
+  "rate": z.string().nullable(),
+  "amount": z.string().nullable(),
+  "measurementIds": z.array(z.string()),
+  "pendingMeasurements": z.number().int(),
+  "unitMismatch": z.boolean(),
+});
+export type EstimateLine = z.infer<typeof EstimateLineSchema>;
+
+export const EstimateTotalsSchema = z.object({
+  "subtotal": z.string(),
+  "contingency": z.string(),
+  "margin": z.string(),
+  "totalExGst": z.string(),
+  "gst": z.string(),
+  "totalIncGst": z.string(),
+  "missingRates": z.number().int(),
+  "sections": z.record(z.string(), z.string()),
+});
+export type EstimateTotals = z.infer<typeof EstimateTotalsSchema>;
+
+export const EstimateSchema = z.intersection(EstimateSettingsSchema, z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "name": z.string(),
+  "status": z.enum(["draft", "issued"]),
+  "issuedAt": z.string().datetime({ offset: true }).nullable(),
+  "issuedBy": z.string().nullable(),
+  "lines": z.array(EstimateLineSchema),
+  "totals": EstimateTotalsSchema,
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+}));
+export type Estimate = z.infer<typeof EstimateSchema>;
+
+export const EstimateLineInputSchema = z.object({
+  "kind": z.enum(["section", "item"]).optional(),
+  "parentId": z.string().regex(new RegExp("^esl_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "description": z.string().min(1).max(300).optional(),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "quantity": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,3})?$")).nullable().optional(),
+  "unit": z.string().min(1).max(20).nullable().optional(),
+  "rate": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,2})?$")).nullable().optional(),
+  "measurementIds": z.array(z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$"))).max(500).optional(),
+}).strict();
+export type EstimateLineInput = z.infer<typeof EstimateLineInputSchema>;
+
+export const EstimateSummarySchema = z.object({
+  "id": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "name": z.string(),
+  "status": z.enum(["draft", "issued"]),
+  "baseDate": z.string().date(),
+  "totalExGst": z.string().nullable(),
+  "issuedAt": z.string().datetime({ offset: true }).nullable(),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type EstimateSummary = z.infer<typeof EstimateSummarySchema>;
+
+export const EstimatePageSchema = z.object({
+  "data": z.array(EstimateSummarySchema),
+  "nextCursor": z.string().nullable(),
+});
+export type EstimatePage = z.infer<typeof EstimatePageSchema>;
 
 export const FileObjectSchema = z.object({
   "id": z.string(),
@@ -3674,6 +3836,15 @@ export const UpdateCorrespondenceTypeRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateCorrespondenceTypeRequest = z.infer<typeof UpdateCorrespondenceTypeRequestSchema>;
 
+export const UpdateCostItemRequestSchema = z.object({
+  "code": z.string().min(1).max(40).optional(),
+  "description": z.string().min(1).max(300).optional(),
+  "unit": z.string().min(1).max(20).optional(),
+  "trade": z.string().max(100).optional(),
+  "category": CostCategorySchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateCostItemRequest = z.infer<typeof UpdateCostItemRequestSchema>;
+
 export const UpdateDefectRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),
   "description": z.string().max(20000).optional(),
@@ -3776,6 +3947,17 @@ export const UpdateDraftDrawingRevisionRequestSchema = z.object({
   "drawingDate": z.string().date().nullable().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDraftDrawingRevisionRequest = z.infer<typeof UpdateDraftDrawingRevisionRequestSchema>;
+
+export const UpdateEstimateRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "baseDate": z.string().date().optional(),
+  "region": z.string().min(1).max(60).nullable().optional(),
+  "contingencyPct": z.string().regex(new RegExp("^[0-9]{1,3}(\\.[0-9]{1,2})?$")).optional(),
+  "marginPct": z.string().regex(new RegExp("^[0-9]{1,2}(\\.[0-9]{1,2})?$")).optional(),
+  "marginBasis": z.enum(["markup", "margin"]).optional(),
+  "gstPct": z.string().regex(new RegExp("^[0-9]{1,3}(\\.[0-9]{1,2})?$")).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEstimateRequest = z.infer<typeof UpdateEstimateRequestSchema>;
 
 export const UpdateFolderRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

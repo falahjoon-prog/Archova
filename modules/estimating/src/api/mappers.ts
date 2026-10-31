@@ -1,5 +1,9 @@
 import { encodeId } from '@archova/domain';
 import type {
+  CostItem,
+  CostRate,
+  Estimate,
+  EstimateSummary,
   Quote,
   QuoteComparison,
   QuoteNote,
@@ -9,6 +13,8 @@ import type {
 import type { QuoteNote as NoteRow } from '../infra/tables';
 import type { PackageView, QuoteView } from '../application/tender';
 import type { MeasurementRow } from '../application/takeoff';
+import type { CostItemView, CostRateRow } from '../application/library';
+import type { EstimateRow, EstimateView } from '../application/estimate';
 import {
   OUTLIER_MIN_CENTS,
   OUTLIER_MIN_PRICES,
@@ -151,4 +157,92 @@ export const toComparisonDto = (packageId: string, c: Comparison): QuoteComparis
     minExGst: fromCents(OUTLIER_MIN_CENTS),
     minPrices: OUTLIER_MIN_PRICES,
   },
+});
+
+const toRateDto = (r: { rate: string; region: string | null; effectiveFrom: string }) => ({
+  rate: r.rate,
+  region: r.region,
+  effectiveFrom: r.effectiveFrom,
+});
+
+export const toCostRateDto = (r: CostRateRow): CostRate => ({
+  ...toRateDto(r),
+  source: r.source,
+  note: r.note,
+  createdAt: r.createdAt.toISOString(),
+});
+
+export const toCostItemDto = (c: CostItemView): CostItem => ({
+  id: encodeId('costItem', c.id),
+  code: c.code,
+  description: c.description,
+  unit: c.unit,
+  trade: c.trade,
+  category: c.category,
+  currentRate: c.currentRate ? toRateDto(c.currentRate) : null,
+  createdAt: c.createdAt.toISOString(),
+  updatedAt: c.updatedAt.toISOString(),
+  version: c.version,
+});
+
+export const formatEstimateNumber = (n: number) => `EST-${String(n).padStart(3, '0')}`;
+
+export const toEstimateSummaryDto = (e: EstimateRow): EstimateSummary => ({
+  id: encodeId('estimate', e.id),
+  number: e.number,
+  numberLabel: formatEstimateNumber(e.number),
+  name: e.name,
+  status: e.status,
+  baseDate: e.baseDate,
+  totalExGst: e.totalExGst,
+  issuedAt: iso(e.issuedAt),
+  updatedAt: e.updatedAt.toISOString(),
+  version: e.version,
+});
+
+export const toEstimateDto = ({ estimate: e, lines, totals }: EstimateView): Estimate => ({
+  id: encodeId('estimate', e.id),
+  projectId: encodeId('project', e.projectId),
+  number: e.number,
+  numberLabel: formatEstimateNumber(e.number),
+  name: e.name,
+  status: e.status,
+  baseDate: e.baseDate,
+  region: e.region,
+  contingencyPct: e.contingencyPct,
+  marginPct: e.marginPct,
+  marginBasis: e.marginBasis,
+  gstPct: e.gstPct,
+  issuedAt: iso(e.issuedAt),
+  issuedBy: userOrNull(e.issuedBy),
+  lines: lines.map((l) => ({
+    id: encodeId('estimateLine', l.id),
+    parentId: l.parentId ? encodeId('estimateLine', l.parentId) : null,
+    kind: l.kind,
+    sort: l.sort,
+    costItemId: l.costItemId ? encodeId('costItem', l.costItemId) : null,
+    description: l.description,
+    quantity: l.quantity,
+    unit: l.unit,
+    rate: l.rate,
+    amount: l.amount,
+    measurementIds: l.measurementIds.map((m) => encodeId('takeoffMeasurement', m)),
+    pendingMeasurements: l.pendingMeasurements,
+    unitMismatch: l.unitMismatch,
+  })),
+  totals: {
+    subtotal: totals.subtotal,
+    contingency: totals.contingency,
+    margin: totals.margin,
+    totalExGst: totals.totalExGst,
+    gst: totals.gst,
+    totalIncGst: totals.totalIncGst,
+    missingRates: totals.missingRates,
+    sections: Object.fromEntries(
+      Object.entries(totals.sections).map(([k, v]) => [encodeId('estimateLine', k), v]),
+    ),
+  },
+  createdAt: e.createdAt.toISOString(),
+  updatedAt: e.updatedAt.toISOString(),
+  version: e.version,
 });
