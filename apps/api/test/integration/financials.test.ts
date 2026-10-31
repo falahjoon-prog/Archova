@@ -265,8 +265,20 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(over.statusCode).toBe(422);
     expect(over.json().code).toBe('financials.claim.over_item_value');
 
-    // A subcontractor can read variations on their contract but not change them.
+    // A subcontractor can read variations put to them on their contract but not change them, and never sees drafts.
     expect((await s.sub.browser.get(v)).statusCode).toBe(200);
+    const hidden = (
+      await s.pm.browser.post(v, { title: 'Internal draft', amount: '10.00' })
+    ).json();
+    expect((await s.sub.browser.get(v)).json().data.map((x: { id: string }) => x.id)).not.toContain(
+      hidden.id,
+    );
+    expect((await s.sub.browser.get(`${s.base}/variations/${hidden.id}`)).statusCode).toBe(404);
+    expect((await s.sub.browser.get(`${s.base}/variations/${variation.id}`)).statusCode).toBe(200);
+    expect(
+      (await s.pm.browser.post(`${s.base}/variations/${hidden.id}/withdraw`, {})).statusCode,
+    ).toBe(200);
+    expect((await s.sub.browser.get(`${s.base}/variations/${hidden.id}`)).statusCode).toBe(404);
     expect((await s.sub.browser.post(v, { title: 'Sneaky', amount: '1.00' })).statusCode).toBe(403);
     expect((await s.sub.browser.post(`${one}/approve`, {})).statusCode).toBe(403);
   });

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, ne, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, ne, sql } from 'drizzle-orm';
 import {
   SOPA_RULES,
   computeDeadlines,
@@ -70,6 +70,8 @@ export interface IssueScheduleInput {
   lineReasons?: { sovItemId: string; reason: string }[];
 }
 
+const OUTSIDER_VISIBLE = ['submitted', 'approved', 'rejected'];
+
 const GST_TOTAL = (c: ClaimRow) => toCents(c.claimedTotal);
 
 export function createFinancialsService(deps: FinancialsDeps) {
@@ -119,6 +121,15 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .limit(1);
     if (!row) throw new AppError('financials.contract.not_found');
     return row;
+  }
+
+  /** Serialise writes that read running totals for one contract, so two concurrent claims can't both pass a cap. */
+  async function lockContract(scope: TenantScope, contractId: string) {
+    await scope.tx
+      .select({ id: contracts.id })
+      .from(contracts)
+      .where(eq(contracts.id, contractId))
+      .for('update');
   }
 
   /** Setting up contracts and assessing claims is builder-side work whatever custom template a user holds. */
@@ -217,6 +228,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     await need(scope, 'financials.claims.record', projectId);
     await requireStaff(scope, projectId, 'record a claim');
     const contract = await getContractRow(scope, projectId, contractId);
+    await lockContract(scope, contractId);
     if (
       contract.sopaState !== 'NSW' &&
       contract.sopaState !== 'VIC' &&
@@ -548,6 +560,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     await need(scope, 'financials.variations.manage', projectId);
     await requireStaff(scope, projectId, 'draft a variation');
     await getContractRow(scope, projectId, contractId);
+    await lockContract(scope, contractId);
     if (toCents(input.amount) <= 0)
       throw new AppError('validation_failed', 'A variation must be for more than zero.', [
         { path: 'amount', message: 'Must be more than zero' },
@@ -578,10 +591,16 @@ export function createFinancialsService(deps: FinancialsDeps) {
   async function listVariations(scope: TenantScope, projectId: string, contractId: string) {
     await need(scope, 'financials.contracts.read', projectId);
     await getContractRow(scope, projectId, contractId, false);
+    const v = await viewer(scope, projectId);
     const rows = await scope.tx
       .select()
       .from(variations)
-      .where(eq(variations.contractId, contractId))
+      .where(
+        and(
+          eq(variations.contractId, contractId),
+          v.isInternal ? undefined : inArray(variations.status, OUTSIDER_VISIBLE),
+        ),
+      )
       .orderBy(desc(variations.number));
     const out = [];
     for (const r of rows) out.push(await withClaimed(scope, r));
@@ -597,6 +616,9 @@ export function createFinancialsService(deps: FinancialsDeps) {
     await getContractRow(scope, projectId, row.contractId, false).catch(() => {
       throw new AppError('financials.variation.not_found');
     });
+    // Drafts and withdrawn variations are internal: the payee only sees what has been put to them.
+    if (!(await viewer(scope, projectId)).isInternal && !OUTSIDER_VISIBLE.includes(row.status))
+      throw new AppError('financials.variation.not_found');
     return withClaimed(scope, row);
   }
 
