@@ -60,7 +60,10 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             { href: webRoutes.apiAccess(orgSlug), label: 'API access' },
             // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
             ...(membership.role === 'owner' || membership.role === 'admin'
-              ? [{ href: webRoutes.supportAccess(orgSlug), label: 'Support access' }]
+              ? [
+                  { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
+                  { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
+                ]
               : []),
           ]}
           actions={

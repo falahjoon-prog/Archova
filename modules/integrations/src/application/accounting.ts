@@ -43,8 +43,9 @@ export interface ProviderCredentials {
 export interface AccountingDeps {
   vault: TokenVault;
   fetch: FetchLike;
-  // The web app's page the provider sends the admin back to; it posts the code and state to the callback route.
-  redirectUri: string;
+  // Base of the web page the provider sends the admin back to: `{redirectBase}/{provider}/callback`. Register that
+  // exact address with each provider. The page posts the code and state to the callback route.
+  redirectBase: string;
   credentials: Record<AccountingProviderKey, ProviderCredentials | null>;
   now?: () => Date;
 }
@@ -80,6 +81,8 @@ export function createAccountingService(deps: AccountingDeps) {
       );
     return c;
   };
+  const redirectUri = (provider: AccountingProviderKey) =>
+    `${deps.redirectBase}/${provider}/callback`;
   const sealTokens = (orgId: string, t: TokenSet) => deps.vault.seal(orgId, JSON.stringify(t));
   const openTokens = (orgId: string, row: ConnectionRow): TokenSet =>
     JSON.parse(deps.vault.open(orgId, row.tokensSealed as Buffer)) as TokenSet;
@@ -133,7 +136,7 @@ export function createAccountingService(deps: AccountingDeps) {
     return {
       url: authorizeUrl(provider, {
         clientId: c.clientId,
-        redirectUri: deps.redirectUri,
+        redirectUri: redirectUri(provider),
         state,
         challenge: pkce.challenge,
       }),
@@ -168,7 +171,7 @@ export function createAccountingService(deps: AccountingDeps) {
         provider,
         deps.fetch,
         creds(provider),
-        { code, redirectUri: deps.redirectUri, verifier },
+        { code, redirectUri: redirectUri(provider), verifier },
         () => now().getTime(),
       );
       const targets = await listTargets(

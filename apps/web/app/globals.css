@@ -1670,3 +1670,56 @@ fieldset.worker-card > legend {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Settings → Accounting: cost-code rows stack their fields on a phone and sit in one line from 1280px. */
+.accounting__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.accounting__row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.accounting__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.accounting__retention {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+.accounting__tabs,
+.accounting__danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.accounting__issue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+@media (min-width: 768px) {
+  .accounting__retention {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .accounting__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .accounting__row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
+}

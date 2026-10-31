@@ -47,7 +47,7 @@ export function loadAiWorkerModules(
       accounting: {
         vault: vaultFromKey(randomBytes(32).toString('base64')),
         fetch: async () => new Response(null, { status: 503 }),
-        redirectUri: 'http://ai-worker.invalid',
+        redirectBase: 'http://ai-worker.invalid',
         credentials: { xero: null, myob: null },
       },
     },
