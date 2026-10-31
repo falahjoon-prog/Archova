@@ -47,6 +47,8 @@ export interface AppDeps {
   aiRasterizePage?: RasterizePage;
   /** Sends webhook test events; tests pass a fake, the default is the SSRF-checked HTTPS sender. */
   webhookTransport?: WebhookTransport;
+  /** Replaces global fetch for Xero and MYOB calls, so tests never reach the network. */
+  accountingFetch?: (url: string, init?: RequestInit) => Promise<Response>;
   /** Hands the loaded modules to the caller, e.g. tests that drive import commands (X49) directly. */
   onModules?: (modules: Modules) => void;
 }
@@ -102,6 +104,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       webhooks: {
         vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
         transport: deps.webhookTransport ?? createHttpsTransport(),
+      },
+      accounting: {
+        // Same sealing key as webhook secrets; both are org-bound AES-GCM blobs.
+        vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
+        fetch: deps.accountingFetch ?? ((url, init) => fetch(url, init)),
+        redirectUri: `${config.linkBaseUrl}/settings/integrations/accounting/callback`,
+        credentials: config.accounting,
       },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {

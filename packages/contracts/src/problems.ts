@@ -33,6 +33,13 @@ export const PROBLEM_CODES = {
   'webhook.invalid_event_type': 422,
   'webhook.verification_failed': 422,
   'webhook.limit_reached': 409,
+  // accounting connections (integrations/02)
+  'accounting.not_configured': 409,
+  'accounting.not_found': 404,
+  'accounting.bad_state': 422,
+  'accounting.provider_error': 502,
+  'accounting.not_ready': 409,
+  'sync_issue.not_found': 404,
   'oauth.invalid_request': 400,
   'oauth.invalid_client': 401,
   'oauth.invalid_grant': 400,

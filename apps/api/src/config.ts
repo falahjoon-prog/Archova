@@ -65,6 +65,11 @@ const Env = z.object({
   // Seals webhook signing secrets (32 bytes, base64). The worker reads the same key as WORKER_WEBHOOK_SECRET_KEY.
   // Required in production; elsewhere a fixed development key is used.
   API_WEBHOOK_SECRET_KEY: z.string().optional(),
+  // Xero and MYOB app registrations (integrations/02). A provider without both values answers 409 not_configured.
+  API_XERO_CLIENT_ID: z.string().optional(),
+  API_XERO_CLIENT_SECRET: z.string().optional(),
+  API_MYOB_CLIENT_ID: z.string().optional(),
+  API_MYOB_CLIENT_SECRET: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -117,6 +122,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
     webhookSecretKey: e.API_WEBHOOK_SECRET_KEY ?? null,
+    accounting: {
+      xero:
+        e.API_XERO_CLIENT_ID && e.API_XERO_CLIENT_SECRET
+          ? { clientId: e.API_XERO_CLIENT_ID, clientSecret: e.API_XERO_CLIENT_SECRET }
+          : null,
+      myob:
+        e.API_MYOB_CLIENT_ID && e.API_MYOB_CLIENT_SECRET
+          ? { clientId: e.API_MYOB_CLIENT_ID, clientSecret: e.API_MYOB_CLIENT_SECRET }
+          : null,
+    },
     ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,

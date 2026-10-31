@@ -22,6 +22,7 @@ import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-est
 import {
   INTEGRATIONS_PERMISSIONS,
   createIntegrationsModule,
+  type AccountingDeps,
   type WebhooksDeps,
 } from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
@@ -74,6 +75,8 @@ export interface ModuleOptions {
   backoffice: BackofficeConfig;
   /** Outbound webhooks: the vault that seals signing secrets and the sender used for the test event. */
   webhooks: WebhooksDeps;
+  /** Xero and MYOB sign-in, token sealing and the fetch used for provider calls (integrations/02). */
+  accounting: AccountingDeps;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -203,6 +206,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     files: files.api,
     webhooks: opts.webhooks,
+    accounting: opts.accounting,
   });
 
   const ai = createAiModule(services, {

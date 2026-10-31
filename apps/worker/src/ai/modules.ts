@@ -44,6 +44,12 @@ export function loadAiWorkerModules(
           send: async () => ({ status: null, error: 'webhooks are off in the ai-worker' }),
         },
       },
+      accounting: {
+        vault: vaultFromKey(randomBytes(32).toString('base64')),
+        fetch: async () => new Response(null, { status: 503 }),
+        redirectUri: 'http://ai-worker.invalid',
+        credentials: { xero: null, myob: null },
+      },
     },
   );
 }

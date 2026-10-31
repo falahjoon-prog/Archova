@@ -5,6 +5,86 @@ import { z } from 'zod';
 export const AbnSchema = z.string().regex(new RegExp("^[0-9]{11}$"));
 export type Abn = z.infer<typeof AbnSchema>;
 
+export const AccountingAccountTargetSchema = z.object({
+  "accountRef": z.string().min(1).max(100),
+  "taxRef": z.string().min(1).max(100),
+  "trackingRef": z.string().min(1).max(100).optional(),
+});
+export type AccountingAccountTarget = z.infer<typeof AccountingAccountTargetSchema>;
+
+export const AccountingCallbackRequestSchema = z.object({
+  "code": z.string().min(1).max(2000),
+  "state": z.string().min(1).max(200),
+});
+export type AccountingCallbackRequest = z.infer<typeof AccountingCallbackRequestSchema>;
+
+export const AccountingConnectStartSchema = z.object({
+  "url": z.string(),
+});
+export type AccountingConnectStart = z.infer<typeof AccountingConnectStartSchema>;
+
+export const AccountingProviderNameSchema = z.enum(["xero", "myob"]);
+export type AccountingProviderName = z.infer<typeof AccountingProviderNameSchema>;
+
+export const AccountingFieldMapSchema = z.object({
+  "accounts": z.record(z.string(), AccountingAccountTargetSchema),
+  "retention": z.union([AccountingAccountTargetSchema, z.null()]),
+});
+export type AccountingFieldMap = z.infer<typeof AccountingFieldMapSchema>;
+
+export const AccountingSettingsSchema = z.object({
+  "startDate": z.string().date().nullable(),
+  "pushBills": z.boolean(),
+  "pushInvoices": z.boolean(),
+  "billStatus": z.enum(["draft", "awaiting_approval"]),
+});
+export type AccountingSettings = z.infer<typeof AccountingSettingsSchema>;
+
+export const AccountingConnectionSchema = z.object({
+  "id": z.string().regex(new RegExp("^acn_[0-9A-Za-z]{26}$")),
+  "provider": AccountingProviderNameSchema,
+  "status": z.enum(["pending", "needs_target", "active", "error"]),
+  "targetName": z.string().nullable(),
+  "fieldMap": AccountingFieldMapSchema,
+  "settings": AccountingSettingsSchema,
+  "lastError": z.string().nullable(),
+  "lastPulledAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type AccountingConnection = z.infer<typeof AccountingConnectionSchema>;
+
+export const AccountingConnectionListSchema = z.object({
+  "data": z.array(AccountingConnectionSchema),
+  "available": z.array(AccountingProviderNameSchema),
+});
+export type AccountingConnectionList = z.infer<typeof AccountingConnectionListSchema>;
+
+export const AccountingSyncIssueSchema = z.object({
+  "id": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
+  "provider": AccountingProviderNameSchema,
+  "kind": z.enum(["unmapped_cost_code", "remote_locked", "rejected", "auth_failed"]),
+  "reference": z.string().nullable(),
+  "message": z.string(),
+  "status": z.enum(["open", "resolved"]),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type AccountingSyncIssue = z.infer<typeof AccountingSyncIssueSchema>;
+
+export const AccountingSyncIssueListSchema = z.object({
+  "data": z.array(AccountingSyncIssueSchema),
+});
+export type AccountingSyncIssueList = z.infer<typeof AccountingSyncIssueListSchema>;
+
+export const AccountingTargetSchema = z.object({
+  "ref": z.string().min(1).max(200),
+  "name": z.string().min(1).max(200),
+});
+export type AccountingTarget = z.infer<typeof AccountingTargetSchema>;
+
+export const AccountingTargetListSchema = z.object({
+  "data": z.array(AccountingTargetSchema),
+});
+export type AccountingTargetList = z.infer<typeof AccountingTargetListSchema>;
+
 export const AcknowledgeSwmsRequestSchema = z.object({
   "workerName": z.string().min(1).max(200),
   "language": z.string().min(2).max(10).optional(),

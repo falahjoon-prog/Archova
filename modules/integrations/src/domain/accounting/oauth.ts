@@ -72,7 +72,12 @@ async function tokenRequest(
       'Content-Type': 'application/x-www-form-urlencoded',
       Authorization: `Basic ${Buffer.from(`${creds.clientId}:${creds.clientSecret}`).toString('base64')}`,
     },
-    body: new URLSearchParams(form).toString(),
+    // MYOB reads the client credentials from the body; Xero from the Basic header.
+    body: new URLSearchParams(
+      provider === 'myob'
+        ? { ...form, client_id: creds.clientId, client_secret: creds.clientSecret }
+        : form,
+    ).toString(),
   });
   const j = (await readJson(provider, res)) as {
     access_token: string;
