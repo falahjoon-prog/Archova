@@ -47,6 +47,13 @@ export const webRoutes = {
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
   delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
+  contracts: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts`,
+  newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
+  contract: (orgSlug: string, projectId: string, contractId: string) =>
+    `${p(orgSlug, projectId)}/contracts/${enc(contractId)}`,
+  paymentClaims: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/payment-claims`,
+  paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>

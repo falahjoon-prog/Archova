@@ -51,7 +51,9 @@ export type ProjectTool =
   | 'attendance'
   | 'tender-packages'
   | 'takeoff-measurements'
-  | 'estimates';
+  | 'estimates'
+  | 'contracts'
+  | 'payment-claims';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */
 const queryOptions = <T extends { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>(

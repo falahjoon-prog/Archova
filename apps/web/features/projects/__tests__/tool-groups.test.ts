@@ -18,6 +18,8 @@ describe('projectToolGroups', () => {
       'Delay register',
       'Defects',
       'Inductions',
+      'Contracts',
+      'Payment claims',
       'Attendance',
       'Tender packages',
       'Estimates',
