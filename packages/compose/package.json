@@ -18,6 +18,7 @@
     "@archova/mod-billing": "workspace:*",
     "@archova/mod-correspondence": "workspace:*",
     "@archova/mod-defects": "workspace:*",
+    "@archova/mod-financials": "workspace:*",
     "@archova/mod-quality": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-diary": "workspace:*",

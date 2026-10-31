@@ -25,6 +25,9 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'correspondence',
     'workforce',
     'estimating',
+    // Contracts, claims and SOPA schedules (phase 2). Paid plans list this as 'claims'; until the catalogue is
+    // reconciled the trial (pilots) is the only way in, and every date shows "rules not yet legally reviewed".
+    'financials',
     // Public API access (integrations/06): personal access tokens. A paid plan includes it from Business up.
     'api',
     // Nova is on every plan with a monthly credit allowance (X27); null = unlimited during the trial.
