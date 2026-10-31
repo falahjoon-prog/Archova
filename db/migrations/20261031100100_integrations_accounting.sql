@@ -1,4 +1,4 @@
--- Composed from modules/integrations/db/migrations/20261031100000_integrations_accounting.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/integrations/db/migrations/20261031100100_integrations_accounting.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- integrations (phase 2): Xero and MYOB connections (integrations/02). One connection per org and provider.
 -- Tokens are sealed (AES-256-GCM, org id as additional data) because they are read back to call the provider;
 -- Xero and MYOB rotate the refresh token on every use, so the sealed blob is rewritten on each refresh.

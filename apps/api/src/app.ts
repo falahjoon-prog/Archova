@@ -109,7 +109,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         // Same sealing key as webhook secrets; both are org-bound AES-GCM blobs.
         vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
         fetch: deps.accountingFetch ?? ((url, init) => fetch(url, init)),
-        redirectUri: `${config.linkBaseUrl}/settings/integrations/accounting/callback`,
+        redirectBase: `${config.linkBaseUrl}/orgs/accounting`,
         credentials: config.accounting,
       },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
