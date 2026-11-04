@@ -234,6 +234,59 @@ describe('Contracts and payment claims (product/09)', () => {
     ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/append-only/) } });
   });
 
+  it('keeps contracts, claims and variations for 10 years and refuses their deletion (compliance/07)', async () => {
+    const s = await setup('NSW');
+    const { contract, sov } = (
+      await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId))
+    ).json();
+    const claim = await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: sov[0].id, thisClaim: '30000.00' }],
+    });
+    expect(claim.statusCode).toBe(201);
+    const variation = await s.pm.browser.post(`${s.base}/contracts/${contract.id}/variations`, {
+      title: 'Extra points',
+      amount: '1200.00',
+    });
+    expect(variation.statusCode).toBe(201);
+    const ctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    const tagged = await t.database.withTenantTx(ctx, (sc) =>
+      sc.tx.execute(
+        sql`select record_type, category, count(*)::int as n,
+                   bool_and(retain_until > now() + interval '9 years 11 months') as ten_years
+            from shared.retention_ledger where record_type like 'financials.%' group by 1, 2 order by 1`,
+      ),
+    );
+    expect(tagged.rows.map((r) => [r.record_type, r.category, r.n, r.ten_years])).toEqual([
+      ['financials.contracts', 'project_records_10y', 1, true],
+      ['financials.payment_claim_lines', 'sopa_evidence_10y', 1, true],
+      ['financials.payment_claims', 'sopa_evidence_10y', 1, true],
+      ['financials.sov_items', 'project_records_10y', 2, true],
+      ['financials.variations', 'sopa_evidence_10y', 1, true],
+    ]);
+    for (const table of [
+      'payment_claim_lines',
+      'payment_claims',
+      'variations',
+      'sov_items',
+      'contracts',
+    ])
+      await expect(
+        t.database.withTenantTx(ctx, (sc) =>
+          sc.tx.execute(sql.raw(`delete from financials.${table}`)),
+        ),
+      ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/retention/) } });
+  });
+
   it('flags an NSW claim with no Act statement and starts no deadlines', async () => {
     const s = await setup('NSW');
     const { contract, sov } = (

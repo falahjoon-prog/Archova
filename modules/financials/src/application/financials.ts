@@ -8,7 +8,13 @@ import {
   type SopaState,
 } from '@archova/domain';
 import { localDateOf } from '@archova/time';
-import { AppError, nextNumber, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  nextNumber,
+  recordRetention,
+  recordRetentionBatch,
+  type TenantScope,
+} from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
@@ -226,19 +232,32 @@ export function createFinancialsService(deps: FinancialsDeps) {
         updatedBy: scope.ctx.userId,
       })
       .returning();
-    if (input.sov.length > 0)
-      await scope.tx.insert(sovItems).values(
-        input.sov.map((s, sort) => ({
-          id: uuidv7(),
-          orgId: scope.ctx.orgId,
-          projectId,
-          contractId: id,
-          code: s.code,
-          description: s.description,
-          value: s.value,
-          sort,
-        })),
-      );
+    const sovValues = input.sov.map((s, sort) => ({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      contractId: id,
+      code: s.code,
+      description: s.description,
+      value: s.value,
+      sort,
+    }));
+    if (sovValues.length > 0) await scope.tx.insert(sovItems).values(sovValues);
+    // Project records, kept 10 years (compliance/07 §3); a legal hold overrides.
+    await recordRetention(scope, {
+      recordType: 'financials.contracts',
+      recordId: id,
+      projectId,
+      category: 'project_records_10y',
+      anchor: row!.createdAt,
+    });
+    await recordRetentionBatch(
+      scope,
+      'financials.sov_items',
+      'project_records_10y',
+      row!.createdAt,
+      sovValues.map((v) => ({ recordId: v.id, projectId })),
+    );
     return { contract: row!, sov: await sovFor(scope, id) };
   }
 
@@ -402,18 +421,32 @@ export function createFinancialsService(deps: FinancialsDeps) {
         createdBy: scope.ctx.userId,
       })
       .returning();
-    await scope.tx.insert(paymentClaimLines).values(
-      totals.lines.map((l) => ({
-        id: uuidv7(),
-        orgId: scope.ctx.orgId,
-        projectId,
-        claimId: id,
-        sovItemId: l.sovItemId ?? null,
-        variationId: l.variationId ?? null,
-        previous: fromCents(l.previous),
-        thisClaim: fromCents(l.thisClaim),
-        toDate: fromCents(l.toDate),
-      })),
+    const lineValues = totals.lines.map((l) => ({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      claimId: id,
+      sovItemId: l.sovItemId ?? null,
+      variationId: l.variationId ?? null,
+      previous: fromCents(l.previous),
+      thisClaim: fromCents(l.thisClaim),
+      toDate: fromCents(l.toDate),
+    }));
+    await scope.tx.insert(paymentClaimLines).values(lineValues);
+    // Claims are SOPA evidence: 10 years (compliance/07 §3), or longer while a hold applies.
+    await recordRetention(scope, {
+      recordType: 'financials.payment_claims',
+      recordId: id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: row!.createdAt,
+    });
+    await recordRetentionBatch(
+      scope,
+      'financials.payment_claim_lines',
+      'sopa_evidence_10y',
+      row!.createdAt,
+      lineValues.map((v) => ({ recordId: v.id, projectId })),
     );
     scope.events.add({
       type: 'financials.claim.submitted.v1',
@@ -878,6 +911,13 @@ export function createFinancialsService(deps: FinancialsDeps) {
         createdBy: scope.ctx.userId,
       })
       .returning();
+    await recordRetention(scope, {
+      recordType: 'financials.variations',
+      recordId: id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: row!.createdAt,
+    });
     return withClaimed(scope, row!);
   }
 
