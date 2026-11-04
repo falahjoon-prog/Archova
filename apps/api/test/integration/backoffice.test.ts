@@ -895,6 +895,48 @@ describe('customer account actions', () => {
     expect(retry.statusCode, retry.body).toBe(200);
   });
 
+  it('counts refunds per invoice so small ones cannot slip under the A$5,000 rule', async () => {
+    const c = await company('refundsum');
+    const ops = await staff(['billing_ops']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    const base = { amountCents: 400_000, paidCents: 1_000_000 };
+    const first = await act(ops, c.orgRef, 'refunds', { ...base, invoiceRef: ' inv-9 ' });
+    expect(first.statusCode, first.body).toBe(200);
+    const d1 = first.json() as { refunds: Array<{ invoiceRef: string; status: string }> };
+    expect(d1.refunds[0]).toMatchObject({ invoiceRef: 'INV-9', status: 'approved' });
+    // Same invoice in other letters: the running total (A$8,000) is over A$5,000, so it waits.
+    const second = await act(ops, c.orgRef, 'refunds', { ...base, invoiceRef: 'INV-9' });
+    const d2 = second.json() as { refunds: Array<{ invoiceRef: string; status: string }> };
+    expect(d2.refunds[0]).toMatchObject({ invoiceRef: 'INV-9', status: 'pending_approval' });
+  });
+
+  it('keeps override limits from being walked around', async () => {
+    const c = await company('overridecap');
+    const ops = await staff(['billing_ops']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    const orgUuid = decodeId('org', c.orgRef)!;
+    const grant = (body: Record<string, unknown>) => act(ops, c.orgRef, 'overrides', body);
+    // A limit above the staff ceiling needs an Owner.
+    expect(
+      code(await grant({ kind: 'limit', key: 'limit.ai_credits', limitValue: 5000, days: 30 })),
+    ).toBe('backoffice.override_limit');
+    expect(
+      (await grant({ kind: 'limit', key: 'limit.ai_credits', limitValue: 1500, days: 60 }))
+        .statusCode,
+    ).toBe(200);
+    await t.adminDb.db.execute(
+      sql`update billing.org_overrides set created_at = now() - interval '61 days', expires_at = now() - interval '1 day' where target_org_id = ${orgUuid}`,
+    );
+    // 60 days already granted this year, so 31 more is over 90 and needs an Owner; 30 is fine.
+    expect(
+      code(await grant({ kind: 'limit', key: 'limit.ai_credits', limitValue: 1500, days: 31 })),
+    ).toBe('backoffice.override_limit');
+    expect(
+      (await grant({ kind: 'limit', key: 'limit.ai_credits', limitValue: 1500, days: 30 }))
+        .statusCode,
+    ).toBe(200);
+  });
+
   it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
     const c = await company('trial');
     const support = await staff(['support']);

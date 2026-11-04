@@ -16,6 +16,16 @@ export const REFUND_APPROVAL_CENTS = 500_000;
 /** Modules a lower plan does not include; adding one by override needs an Owner. */
 export const ENTERPRISE_ONLY_OVERRIDE_MODULES: readonly string[] = ['api'];
 export { OVERRIDE_LIMIT_KEYS };
+/** Highest value a non-Owner may set for each limit; an Owner has no ceiling (Sam, #228 review). */
+export const OVERRIDE_LIMIT_MAX_STAFF: Record<(typeof OVERRIDE_LIMIT_KEYS)[number], number> = {
+  'limit.ai_credits': 2000,
+  'limit.seats': 100,
+  'limit.active_projects': 50,
+  'limit.storage_gb': 500,
+};
+/** Days of override one company may be granted per key in a rolling year without an Owner. */
+export const OVERRIDE_YEAR_DAYS_STAFF = 90;
+export const normaliseInvoiceRef = (ref: string) => ref.trim().toUpperCase();
 
 export type OrgDiscount = typeof orgDiscounts.$inferSelect;
 export type OrgOverride = typeof orgOverrides.$inferSelect;
@@ -156,6 +166,12 @@ export function createAdjustmentService() {
         throw new AppError('backoffice.override_key', 'That limit cannot be overridden.');
       if (input.limitValue === null || !Number.isInteger(input.limitValue) || input.limitValue < 0)
         throw new AppError('backoffice.override_key', 'A limit override needs a whole number.');
+      const max = OVERRIDE_LIMIT_MAX_STAFF[input.key as (typeof OVERRIDE_LIMIT_KEYS)[number]];
+      if (input.limitValue > max && !input.ownerOverride)
+        throw new AppError(
+          'backoffice.override_limit',
+          `A limit override above ${max} for ${input.key} needs an Owner.`,
+        );
     }
     if (!Number.isInteger(input.days) || input.days < 1 || input.days > MAX_OVERRIDE_DAYS_OWNER)
       throw new AppError(
@@ -167,6 +183,31 @@ export function createAdjustmentService() {
         'backoffice.override_limit',
         `An override over ${MAX_OVERRIDE_DAYS_STAFF} days needs an Owner.`,
       );
+    // Re-granting straight after expiry must not walk round the 90 day cap: count what this company already had
+    // for this key over the last 365 days (revoked grants excluded).
+    if (!input.ownerOverride) {
+      const since = new Date(input.now.getTime() - 365 * DAY_MS);
+      const prior = await tx
+        .select({ at: orgOverrides.createdAt, until: orgOverrides.expiresAt })
+        .from(orgOverrides)
+        .where(
+          and(
+            eq(orgOverrides.targetOrgId, orgId),
+            eq(orgOverrides.key, input.key),
+            isNull(orgOverrides.revokedAt),
+            gt(orgOverrides.createdAt, since),
+          ),
+        );
+      const used = prior.reduce(
+        (n, r) => n + Math.ceil((r.until.getTime() - r.at.getTime()) / DAY_MS),
+        0,
+      );
+      if (used + input.days > OVERRIDE_YEAR_DAYS_STAFF)
+        throw new AppError(
+          'backoffice.override_limit',
+          `This company has had ${used} days of this override in the last year; more than ${OVERRIDE_YEAR_DAYS_STAFF} needs an Owner.`,
+        );
+    }
     if (
       input.kind === 'module' &&
       ENTERPRISE_ONLY_OVERRIDE_MODULES.includes(input.key) &&
@@ -277,13 +318,14 @@ export function createAdjustmentService() {
       throw new AppError('backoffice.refund_limit', 'The refund amount must be more than zero.');
     if (!Number.isInteger(input.paidCents) || input.paidCents <= 0)
       throw new AppError('backoffice.refund_limit', 'Enter what the invoice collected.');
+    const invoiceRef = normaliseInvoiceRef(input.invoiceRef);
     const earlier = await tx
       .select()
       .from(orgRefunds)
       .where(
         and(
           eq(orgRefunds.targetOrgId, orgId),
-          eq(orgRefunds.invoiceRef, input.invoiceRef),
+          eq(orgRefunds.invoiceRef, invoiceRef),
           ne(orgRefunds.status, 'cancelled'),
         ),
       );
@@ -298,13 +340,14 @@ export function createAdjustmentService() {
         'backoffice.refund_limit',
         'A refund cannot be more than the invoice collected, counting refunds already recorded.',
       );
-    const needsSecond = input.amountCents > REFUND_APPROVAL_CENTS;
+    // The second-approver rule is on the invoice's running total, so several small refunds cannot slip under it.
+    const needsSecond = already + input.amountCents > REFUND_APPROVAL_CENTS;
     const [row] = await tx
       .insert(orgRefunds)
       .values({
         id: uuidv7(),
         targetOrgId: orgId,
-        invoiceRef: input.invoiceRef,
+        invoiceRef,
         amountCents: input.amountCents,
         paidCents: input.paidCents,
         reason: input.reason,
