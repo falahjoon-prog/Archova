@@ -1,4 +1,13 @@
-import { bigint, boolean, integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  integer,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 export const billingSchema = pgSchema('billing');
 
@@ -113,3 +122,16 @@ export const orgRefunds = billingSchema.table('org_refunds', {
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** A trial-ending email claimed for an account; see migration 20261104170500. */
+export const trialNotices = billingSchema.table(
+  'trial_notices',
+  {
+    accountId: uuid('account_id').notNull(),
+    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }).notNull(),
+    daysBefore: integer('days_before').notNull(),
+    recipients: integer('recipients').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.accountId, t.trialEndsAt, t.daysBefore] })],
+);

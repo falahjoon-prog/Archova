@@ -18,6 +18,7 @@ import { toErrorView } from '@/shared/lib/errors';
 import { formatInstant } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { AskTab } from '../components/AskTab';
 import { DisclaimerBanner } from '../components/DisclaimerBanner';
 import { FlagCard } from '../components/FlagCard';
 import { SourceQuote } from '../components/SourceQuote';
@@ -124,10 +125,12 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
           { id: 'summary', label: 'Summary' },
           { id: 'flags', label: 'Flags', count: r.flags.length },
           { id: 'timebars', label: 'Time bars', count: r.timeBars.length },
+          { id: 'ask', label: 'Ask' },
         ]}
       >
         {tab === 'summary' ? <SummaryTab r={r} /> : null}
         {tab === 'timebars' ? <TimeBarsTab r={r} /> : null}
+        {tab === 'ask' ? <AskTab review={r} /> : null}
         {tab === 'flags' ? (
           <div className="stack">
             <div role="group" aria-label="Show flags" className="row-actions">

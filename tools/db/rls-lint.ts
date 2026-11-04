@@ -22,6 +22,7 @@ export const GLOBAL_TABLES = new Set([
   'billing.org_discounts',
   'billing.org_overrides',
   'billing.org_refunds',
+  'billing.trial_notices',
   'backoffice.staff_users',
   'backoffice.staff_role_assignments',
   'backoffice.staff_sessions',

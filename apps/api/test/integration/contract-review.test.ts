@@ -310,6 +310,67 @@ describe('Nova contract review (F34)', () => {
     expect(t.ai.calls.length).toBe(calls);
   });
 
+  it('answers a question from the contract with its clause, and says so when it is silent', async () => {
+    const s = await setup();
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    const ask = (question: string, user = s.mgr, id = made.suggestionId) =>
+      user.browser.post(`${s.base}/ai/contract-reviews/${id}/questions`, { question });
+    const before = t.ai.calls.length;
+    const a = await ask('How much retention does the Principal hold?');
+    expect(a.statusCode).toBe(200);
+    expect(a.json()).toMatchObject({
+      kind: 'answered',
+      question: 'How much retention does the Principal hold?',
+      runId: expect.stringMatching(/^air_/),
+      citations: [{ page: 1, clause: '14.1', quote: expect.stringContaining('retention of 10%') }],
+      unreadPages: [],
+      truncated: false,
+    });
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'contract.ask')!;
+    expect(call.text).toContain('<question>How much retention');
+    expect(call.text).toContain('14.1 The Principal holds retention');
+    expect(call.text).not.toContain(s.file);
+
+    // The contract is silent: the fixed wording, no citations, nothing from general knowledge.
+    const silent = (await ask('What is the defects liability period?')).json();
+    expect(silent).toMatchObject({
+      kind: 'not_addressed',
+      answer: "The contract doesn't address this.",
+      citations: [],
+    });
+    // A question that asks for a legal view is not answered.
+    expect((await ask('Is the liquidated damages clause enforceable?')).json().kind).toBe(
+      'not_addressed',
+    );
+    // The question is bounded.
+    expect((await ask('?')).statusCode).toBe(422);
+    expect((await ask('x'.repeat(501))).statusCode).toBe(422);
+  });
+
+  it('keeps Ask to the commercial team and to this project, before any model call', async () => {
+    const s = await setup();
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    const calls = t.ai.calls.length;
+    const url = `${s.base}/ai/contract-reviews/${made.suggestionId}/questions`;
+    expect((await s.site.browser.post(url, { question: 'Who is the Principal?' })).statusCode).toBe(
+      403,
+    );
+    // A review that doesn't exist is not found.
+    expect(
+      (
+        await s.mgr.browser.post(
+          `${s.base}/ai/contract-reviews/ais_00000000000000000000000000/questions`,
+          { question: 'Who is the Principal?' },
+        )
+      ).statusCode,
+    ).toBe(404);
+    expect(t.ai.calls.length).toBe(calls);
+  });
+
   it('refuses a PDF with no text', async () => {
     const s = await setup();
     const doc = await PDFDocument.create();
