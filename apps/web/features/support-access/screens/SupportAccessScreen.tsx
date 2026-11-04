@@ -5,12 +5,13 @@ import { Button, Card, Checkbox, Select, SkeletonRows, StatusPill, TextField } f
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { serverFieldErrors } from '@/shared/lib/forms';
-import type { StaffAction, SupportSession } from '../data/api';
+import type { StaffAction, SupportRead, SupportSession } from '../data/api';
 import {
   useGrantSupportAccess,
   useRevokeSupportAccess,
   useStaffActions,
   useSupportAccess,
+  useSupportReads,
   useSupportProjectChoices,
 } from '../hooks/useSupportAccess';
 
@@ -46,6 +47,21 @@ function SessionRow({ s }: { s: SupportSession }) {
   );
 }
 
+const PAGE_LABEL: Record<string, string> = { 'projects.list': 'Project list' };
+
+function ReadRow({ r }: { r: SupportRead }) {
+  return (
+    <li className="support-access__session">
+      <span>
+        <strong>{r.staffName}</strong> viewed {PAGE_LABEL[r.page] ?? r.page}
+      </span>
+      <span className="u-caption">
+        {when(r.at)} · {r.recordCount} {r.recordCount === 1 ? 'record' : 'records'}
+      </span>
+    </li>
+  );
+}
+
 function ActionRow({ a }: { a: StaffAction }) {
   return (
     <li className="support-access__session">
@@ -66,6 +82,7 @@ export function SupportAccessScreen() {
   const grant = useGrantSupportAccess();
   const revoke = useRevokeSupportAccess();
   const actions = useStaffActions();
+  const reads = useSupportReads();
   const [ticketRef, setTicketRef] = useState('');
   const [hours, setHours] = useState('24');
   const [limited, setLimited] = useState(false);
@@ -220,6 +237,22 @@ export function SupportAccessScreen() {
           </ul>
         ) : (
           <p className="u-muted">Support has not opened any sessions.</p>
+        )}
+      </Card>
+
+      <Card title="What support looked at">
+        {reads.isPending ? (
+          <SkeletonRows rows={2} label="Loading what support looked at…" />
+        ) : reads.isError ? (
+          <ErrorAlert error={reads.error} title="We couldn't load what support looked at" />
+        ) : reads.data.length ? (
+          <ul className="support-access__list">
+            {reads.data.slice(0, 20).map((r) => (
+              <ReadRow key={r.id} r={r} />
+            ))}
+          </ul>
+        ) : (
+          <p className="u-muted">Support has not viewed any of your pages.</p>
         )}
       </Card>
 

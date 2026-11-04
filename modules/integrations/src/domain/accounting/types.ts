@@ -53,7 +53,10 @@ export interface RemotePayment {
   remoteId: string;
   documentReference: string;
   paidOn: string;
+  /** Negative for a reversal. */
   amountCents: number;
+  /** Set on a reversal: the `remoteId` of the payment it undoes. */
+  reverses?: string;
 }
 
 export type ContactRole = 'supplier' | 'customer';

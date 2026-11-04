@@ -42,6 +42,16 @@ export interface SessionView {
   pagesViewed: number;
   status: SessionStatus;
 }
+/** One logged read, as the customer sees it: which page, by whom, how many records, never the content. */
+export interface SupportReadView {
+  id: string;
+  sessionId: string;
+  staffName: string;
+  /** The page or list that was read, e.g. `projects.list`. */
+  page: string;
+  recordCount: number;
+  at: string;
+}
 export interface SupportAccessView {
   grants: GrantView[];
   sessions: SessionView[];
@@ -392,6 +402,12 @@ export function createSupportAccessService(
   ): Promise<T> {
     requireKey(staff);
     const gate = await tx(async (t) => {
+      // A disabled staff account reads nothing, even inside a session that was opened before it was disabled.
+      const [who] = await t
+        .select({ status: staffUsers.status })
+        .from(staffUsers)
+        .where(eq(staffUsers.id, staff.staffId));
+      if (who?.status !== 'active') return undefined;
       const [s] = await openSessionQuery(t, orgId, staff.staffId, now());
       return s;
     });
@@ -412,6 +428,35 @@ export function createSupportAccessService(
       }),
     );
     return result;
+  }
+
+  /** Customer side: the most recent logged reads for the company, newest first (record counts, never content). */
+  async function listReads(orgId: string, limit = 100): Promise<SupportReadView[]> {
+    const rows = await tx((t) =>
+      t
+        .select({
+          id: supportEvents.id,
+          sessionId: supportEvents.sessionId,
+          what: supportEvents.what,
+          recordIds: supportEvents.recordIds,
+          createdAt: supportEvents.createdAt,
+          staffName: staffUsers.name,
+        })
+        .from(supportEvents)
+        .leftJoin(staffUsers, eq(staffUsers.id, supportEvents.staffId))
+        .where(eq(supportEvents.targetOrgId, orgId))
+        .orderBy(desc(supportEvents.createdAt))
+        .limit(Math.min(limit, 200)),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      sessionId: r.sessionId,
+      // Rows logged before reads carried a staff id still show, as support in general.
+      staffName: r.staffName ?? 'Archova support',
+      page: r.what,
+      recordCount: r.recordIds.length,
+      at: r.createdAt.toISOString(),
+    }));
   }
 
   /** Project names and status for the caller's open session, limited to the grant's projects. */
@@ -444,7 +489,7 @@ export function createSupportAccessService(
   const hasOpenSession = async (orgId: string, staffId: string) =>
     (await tx((t) => openSessionQuery(t, orgId, staffId, now()))).length > 0;
 
-  return { list, grant, revoke, start, end, banner, read, viewProjects, hasOpenSession };
+  return { list, grant, revoke, start, end, banner, read, viewProjects, hasOpenSession, listReads };
 }
 
 export type SupportAccessService = ReturnType<typeof createSupportAccessService>;

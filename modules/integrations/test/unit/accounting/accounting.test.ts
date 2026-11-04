@@ -153,6 +153,14 @@ describe('xero', () => {
         paidOn: '2023-10-17',
         amountCents: 125_050,
       },
+      // A payment removed in Xero is a reversal of the one recorded, not a silent drop.
+      {
+        remoteId: 'p3:reversed',
+        documentReference: 'PC-X-1',
+        paidOn: '2026-10-01',
+        amountCents: -500,
+        reverses: 'p3',
+      },
     ]);
     expect(xeroDate('2026-10-01T00:00:00')).toBe('2026-10-01');
   });

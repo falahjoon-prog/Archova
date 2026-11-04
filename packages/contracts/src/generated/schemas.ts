@@ -4152,6 +4152,16 @@ export const SupportBannerSchema = z.object({
 });
 export type SupportBanner = z.infer<typeof SupportBannerSchema>;
 
+export const SupportReadSchema = z.object({
+  "id": z.string(),
+  "sessionId": z.string(),
+  "staffName": z.string(),
+  "page": z.string(),
+  "recordCount": z.number().int(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type SupportRead = z.infer<typeof SupportReadSchema>;
+
 export const SwmsStatusSchema = z.enum(["submitted", "reviewed", "accepted", "rejected"]);
 export type SwmsStatus = z.infer<typeof SwmsStatusSchema>;
 

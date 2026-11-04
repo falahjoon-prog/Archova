@@ -123,3 +123,17 @@ export const paymentSchedules = financialsSchema.table('payment_schedules', {
   issuedBy: uuid('issued_by'),
   issuedWithinTime: boolean('issued_within_time').notNull(),
 });
+
+export const payments = financialsSchema.table('payments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  paidOn: date('paid_on').notNull(),
+  amount: money('amount').notNull(),
+  reference: text('reference').notNull(),
+  source: text('source').$type<'manual' | 'xero' | 'myob'>().notNull(),
+  externalRef: text('external_ref'),
+  reversesPaymentId: uuid('reverses_payment_id'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});

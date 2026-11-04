@@ -1,4 +1,4 @@
-import { and, eq, lte, sql } from 'drizzle-orm';
+import { and, eq, isNull, lte, sql } from 'drizzle-orm';
 import { AppError, type Tx } from '@archova/kernel';
 import { orgAccounts, planVersions, plans, type SuspendCategory } from '../infra/tables';
 
@@ -172,7 +172,52 @@ export function createAccountService() {
     });
   }
 
-  return { get, startTrial, extendTrial, setPlan, suspend, reactivate, expireTrial };
+  /**
+   * One-off catch-up for a company created before new companies got a trial end date: it has no account row, or a
+   * trial row with no end date. The end is the later of signup + 14 days and now + 14 days, so a long-standing org
+   * gets a full 14 days from the backfill instead of being made read-only the moment the expiry job next runs.
+   * Idempotent: returns null (changing nothing) when the org already has a dated trial, a paid plan or a suspension.
+   */
+  async function backfillTrialEnd(
+    tx: Tx,
+    orgId: string,
+    createdAt: Date,
+    now: Date,
+  ): Promise<OrgAccount | null> {
+    const trialEndsAt = new Date(
+      Math.max(createdAt.getTime(), now.getTime()) + DEFAULT_TRIAL_DAYS * DAY_MS,
+    );
+    const [inserted] = await tx
+      .insert(orgAccounts)
+      .values({ id: orgId, planCode: 'trial', state: 'trialing', trialEndsAt })
+      .onConflictDoNothing()
+      .returning();
+    if (inserted) return inserted;
+    const [updated] = await tx
+      .update(orgAccounts)
+      .set({ trialEndsAt, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(orgAccounts.id, orgId),
+          eq(orgAccounts.planCode, 'trial'),
+          eq(orgAccounts.state, 'trialing'),
+          isNull(orgAccounts.trialEndsAt),
+        ),
+      )
+      .returning();
+    return updated ?? null;
+  }
+
+  return {
+    get,
+    startTrial,
+    backfillTrialEnd,
+    extendTrial,
+    setPlan,
+    suspend,
+    reactivate,
+    expireTrial,
+  };
 }
 
 export type AccountService = ReturnType<typeof createAccountService>;

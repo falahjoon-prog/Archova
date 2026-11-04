@@ -20,6 +20,7 @@ import {
   paymentClaimLines,
   paymentClaims,
   paymentSchedules,
+  payments,
   sovItems,
   variations,
 } from '../infra/tables';
@@ -64,6 +65,20 @@ export interface LedgerSource {
   dueDate: string;
   lines: { code: string; description: string; amountCents: number; gstCents: number }[];
   retentionCents: number;
+}
+
+/** A payment reported by a connector (Xero or MYOB), in cents, against the record it was pushed from. */
+export interface PaymentInput {
+  localType: 'payment_schedule' | 'claim';
+  localId: string;
+  paidOn: string;
+  /** Negative for a reversal. */
+  amountCents: number;
+  source: 'xero' | 'myob';
+  externalRef: string;
+  reference: string;
+  /** Set on a reversal: the `externalRef` of the payment it undoes. */
+  reversesExternalRef?: string;
 }
 
 export interface SubmitClaimInput {
@@ -769,8 +784,91 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return withClaimed(scope, updated);
   }
 
+  /**
+   * Records a payment a connector pulled from the accounting system (integrations/02 A7). Payments are append-only
+   * facts: a reversal is a negative row pointing at the original. Safe to repeat (the same source and external
+   * reference lands once). Internal: no permission check, called from jobs. Returns `unknown` when the record it names
+   * is gone or, for a reversal, the original was never recorded here.
+   */
+  async function recordPayment(
+    scope: TenantScope,
+    input: PaymentInput,
+  ): Promise<'recorded' | 'duplicate' | 'unknown'> {
+    const claimId =
+      input.localType === 'claim'
+        ? input.localId
+        : (
+            await scope.tx
+              .select({ claimId: paymentSchedules.claimId })
+              .from(paymentSchedules)
+              .where(eq(paymentSchedules.id, input.localId))
+              .limit(1)
+          )[0]?.claimId;
+    if (!claimId || input.amountCents === 0) return 'unknown';
+    const [claim] = await scope.tx
+      .select({ id: paymentClaims.id, projectId: paymentClaims.projectId })
+      .from(paymentClaims)
+      .where(eq(paymentClaims.id, claimId))
+      .limit(1);
+    if (!claim) return 'unknown';
+    let reversesPaymentId: string | null = null;
+    if (input.amountCents < 0) {
+      const [original] = input.reversesExternalRef
+        ? await scope.tx
+            .select({ id: payments.id })
+            .from(payments)
+            .where(
+              and(
+                eq(payments.source, input.source),
+                eq(payments.externalRef, input.reversesExternalRef),
+                eq(payments.claimId, claim.id),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (!original) return 'unknown';
+      reversesPaymentId = original.id;
+    }
+    const id = uuidv7();
+    const inserted = await scope.tx
+      .insert(payments)
+      .values({
+        id,
+        orgId: scope.ctx.orgId,
+        projectId: claim.projectId,
+        claimId: claim.id,
+        paidOn: input.paidOn,
+        amount: fromCents(input.amountCents),
+        reference: input.reference,
+        source: input.source,
+        externalRef: input.externalRef,
+        reversesPaymentId,
+      })
+      .onConflictDoNothing()
+      .returning({ id: payments.id });
+    if (!inserted.length) return 'duplicate';
+    scope.events.add({
+      type: 'financials.payment.recorded.v1',
+      projectId: claim.projectId,
+      entityType: 'payment',
+      entityId: id,
+      entityVersion: 1,
+      data: {
+        paymentId: id,
+        claimId: claim.id,
+        paidOn: input.paidOn,
+        amount: fromCents(input.amountCents),
+        source: input.source,
+        externalRef: input.externalRef,
+        reversesPaymentId,
+      },
+    });
+    return 'recorded';
+  }
+
   return {
     ledgerSource,
+    recordPayment,
     createVariation,
     listVariations,
     getVariation,
