@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, lte, min, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, lte, min, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import { createTokenVault, type TokenVault } from '../domain/accounting/tokens';
@@ -20,6 +20,8 @@ export type DeliveryRow = typeof webhookDeliveries.$inferSelect;
 const MAX_SUBSCRIPTIONS = 20;
 /** Deliveries tried per pass; each is an outbound call of up to 10 s, sent with no transaction open. */
 const BATCH = 20;
+/** Undelivered events one endpoint may hold; past this the endpoint is switched off rather than let the queue grow. */
+export const MAX_PENDING = 5000;
 /** How long a claimed delivery is held back from other workers; longer than the 10 s send timeout times the batch. */
 const LEASE_S = 300;
 
@@ -38,6 +40,8 @@ export interface WebhooksDeps {
   vault: TokenVault;
   transport: WebhookTransport;
   now?: () => Date;
+  /** Overrides `MAX_PENDING`; for tests. */
+  maxPending?: number;
 }
 
 export interface CreateWebhookInput {
@@ -55,6 +59,7 @@ const ok = (r: WebhookResult) => r.status !== null && r.status >= 200 && r.statu
 
 export function createWebhookService(deps: WebhooksDeps) {
   const now = () => (deps.now ?? (() => new Date()))();
+  const maxPending = deps.maxPending ?? MAX_PENDING;
 
   function post(secret: string, url: string, p: WebhookPayload) {
     const body = JSON.stringify(p);
@@ -182,10 +187,50 @@ export function createWebhookService(deps: WebhooksDeps) {
       );
     if (!subs.length) return 0;
     const at = now();
+    const backlog = await scope.tx
+      .select({ id: webhookDeliveries.subscriptionId, n: sql<number>`count(*)::int` })
+      .from(webhookDeliveries)
+      .where(
+        and(
+          eq(webhookDeliveries.status, 'pending'),
+          inArray(
+            webhookDeliveries.subscriptionId,
+            subs.map((s) => s.id),
+          ),
+        ),
+      )
+      .groupBy(webhookDeliveries.subscriptionId);
+    const held = new Map(backlog.map((b) => [b.id, b.n]));
+    const open: typeof subs = [];
+    for (const s of subs) {
+      if ((held.get(s.id) ?? 0) < maxPending) {
+        open.push(s);
+        continue;
+      }
+      const reason = `More than ${maxPending} events were waiting to be delivered.`;
+      await scope.tx
+        .update(webhookSubscriptions)
+        .set({ status: 'disabled', disabledReason: reason, updatedAt: at })
+        .where(eq(webhookSubscriptions.id, s.id));
+      await scope.tx
+        .update(webhookDeliveries)
+        .set({ status: 'abandoned', lastError: 'subscription disabled' })
+        .where(
+          and(eq(webhookDeliveries.subscriptionId, s.id), eq(webhookDeliveries.status, 'pending')),
+        );
+      scope.events.add({
+        type: 'integrations.webhook.disabled.v1',
+        entityType: 'webhook',
+        entityId: s.id,
+        entityVersion: null,
+        data: { webhookId: s.id, reason },
+      });
+    }
+    if (!open.length) return 0;
     const inserted = await scope.tx
       .insert(webhookDeliveries)
       .values(
-        subs.map((s) => ({
+        open.map((s) => ({
           id: uuidv7(),
           orgId: scope.ctx.orgId,
           subscriptionId: s.id,

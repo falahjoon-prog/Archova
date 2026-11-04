@@ -265,6 +265,33 @@ describe('delivery', () => {
     expect(await run((sc) => svc.fanOut(sc, event(orgId, projectId)))).toBe(0);
   });
 
+  it('switches an endpoint off, and drops its queue, once too many events are waiting', async () => {
+    const s = await setup('wh-cap');
+    answer = { status: 200, error: null };
+    await s.owner.browser.post(`/v1/orgs/${s.org.id}/webhooks`, body());
+    const orgId = decodeId('org', s.org.id)!;
+    const svc = createWebhookService({
+      vault: vaultFromKey(DEV_WEBHOOK_KEY),
+      transport,
+      now: () => new Date(),
+      maxPending: 2,
+    });
+    const fan = () =>
+      t.database.withTenantTx(jobContext(orgId, 'test'), (sc) =>
+        svc.fanOut(sc, event(orgId, null)),
+      );
+    expect(await fan()).toBe(1);
+    expect(await fan()).toBe(1);
+    expect(await fan()).toBe(0);
+    const hook = (await s.owner.browser.get(`/v1/orgs/${s.org.id}/webhooks`)).json().data[0];
+    expect(hook).toMatchObject({
+      status: 'disabled',
+      disabledReason: expect.stringContaining('waiting'),
+    });
+    const r = await svc.attemptDue(t.database, jobContext(orgId, 'test'));
+    expect(r).toMatchObject({ delivered: 0, retried: 0 });
+  });
+
   it('stops at once when the endpoint answers 410 Gone', async () => {
     const s = await setup('wh-gone');
     answer = { status: 200, error: null };
