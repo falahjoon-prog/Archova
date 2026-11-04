@@ -1,5 +1,7 @@
 import { decodeId } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
+import type { PaymentInput } from '@archova/mod-financials';
+import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
@@ -152,6 +154,47 @@ describe('Contracts and payment claims (product/09)', () => {
     });
     // The second claim has no schedule yet, so there is no bill to send.
     expect(await source(second.json().claim.id)).toBeNull();
+
+    // Payments pulled from the accounting system land on the claim once, and a reversal is a negative row (A7).
+    const pay = (input: Partial<PaymentInput>) =>
+      t.database.withTenantTx(ctx, (sc) =>
+        t.modules.financials.api.recordPayment(sc, {
+          localType: 'payment_schedule',
+          localId: bill!.localId,
+          paidOn: '2026-11-03',
+          amountCents: 1_000_000,
+          source: 'xero',
+          externalRef: 'pay-1',
+          reference: 'PC-1-1',
+          ...input,
+        }),
+      );
+    expect(await pay({})).toBe('recorded');
+    expect(await pay({})).toBe('duplicate');
+    expect(await pay({ localId: '018f0000-0000-7000-8000-0000000000aa' })).toBe('unknown');
+    // A reversal of a payment we never recorded is ignored; of one we did, it is kept beside the original.
+    expect(
+      await pay({ externalRef: 'pay-9:reversed', amountCents: -5, reversesExternalRef: 'pay-9' }),
+    ).toBe('unknown');
+    expect(
+      await pay({
+        externalRef: 'pay-1:reversed',
+        amountCents: -1_000_000,
+        reversesExternalRef: 'pay-1',
+      }),
+    ).toBe('recorded');
+    const rows = await t.database.withTenantTx(ctx, (sc) =>
+      sc.tx.execute(
+        sql`select amount::text as amount, reverses_payment_id is not null as reversal from financials.payments order by recorded_at, amount desc`,
+      ),
+    );
+    expect(rows.rows.map((r) => [r.amount, r.reversal])).toEqual([
+      ['10000.00', false],
+      ['-10000.00', true],
+    ]);
+    await expect(
+      t.database.withTenantTx(ctx, (sc) => sc.tx.execute(sql`delete from financials.payments`)),
+    ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/append-only/) } });
   });
 
   it('flags an NSW claim with no Act statement and starts no deadlines', async () => {

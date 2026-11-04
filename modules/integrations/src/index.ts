@@ -21,5 +21,6 @@ export {
   createAccountingService,
   type AccountingDeps,
   type LedgerSourceInput,
+  type PulledPayment,
   type AccountingService,
 } from './application/accounting';
