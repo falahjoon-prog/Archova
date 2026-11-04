@@ -1018,7 +1018,7 @@ describe('support access', () => {
     const rows = await t.adminDb.db.execute(
       sql`select e.what, e.staff_id, e.record_ids from backoffice.support_events e
           join backoffice.support_sessions s on s.id = e.session_id
-          where s.target_org_id = ${c.orgRef}`,
+          where s.target_org_id = ${decodeId('org', c.orgRef)!}`,
     );
     expect(rows.rows).toHaveLength(1);
     expect(rows.rows[0]).toMatchObject({ what: 'projects.list' });
