@@ -39,7 +39,23 @@ export interface WalletUpdate {
   archived?: boolean;
 }
 
+const unique = (ids: string[]) => [...new Set(ids)];
+
 export function createWalletService(deps: { files: InductionDeps['files'] }) {
+  /** Audit trail: ids and item type only, never the number or file names. */
+  const audit = (
+    scope: TenantScope,
+    action: 'created' | 'updated' | 'archived' | 'unarchived' | 'sighted',
+    row: ComplianceDocumentRow,
+  ) =>
+    scope.events.add({
+      type: `workforce.compliance_document.${action}.v1`,
+      entityType: 'compliance_document',
+      entityId: row.id,
+      entityVersion: row.version,
+      data: { itemType: row.itemType, actorId: scope.ctx.userId },
+    });
+
   const today = () => localDateOf(new Date(), WALLET_TIME_ZONE);
 
   /** Org-level, scanned and ready: the wallet never points at a project's files. */
@@ -78,7 +94,8 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     return { rows, today: today() };
   }
 
-  async function create(scope: TenantScope, input: WalletCreate) {
+  async function create(scope: TenantScope, raw: WalletCreate) {
+    const input = { ...raw, fileIds: unique(raw.fileIds) };
     assertDates(input.startsOn, input.expiresOn);
     if (input.selfDeclared && input.fileIds.length > 0)
       throw new AppError('validation_failed', 'A declaration has no files.', [
@@ -109,6 +126,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
         updatedBy: scope.ctx.userId,
       })
       .returning();
+    audit(scope, 'created', row!);
     return { row: row!, today: today() };
   }
 
@@ -135,10 +153,10 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       limitCents: input.limitCents === undefined ? cur.limitCents : input.limitCents,
       startsOn: input.startsOn === undefined ? cur.startsOn : input.startsOn,
       expiresOn: input.expiresOn === undefined ? cur.expiresOn : input.expiresOn,
-      fileIds: input.fileIds ?? cur.fileIds,
+      fileIds: input.fileIds ? unique(input.fileIds) : cur.fileIds,
     };
     assertDates(content.startsOn, content.expiresOn);
-    if (input.fileIds) await assertFiles(scope, input.fileIds);
+    if (input.fileIds) await assertFiles(scope, content.fileIds);
     if (cur.evidence !== 'self_declared' && content.fileIds.length === 0)
       throw new AppError('validation_failed', 'A document needs at least one file.', [
         { path: 'fileIds', message: 'At least one file is required' },
@@ -174,6 +192,9 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .where(and(eq(complianceDocuments.id, id), eq(complianceDocuments.version, expected)))
       .returning();
     if (!row) throw versionConflict();
+    if (input.archived !== undefined && input.archived !== (cur.archivedAt !== null))
+      audit(scope, input.archived ? 'archived' : 'unarchived', row);
+    if (changed) audit(scope, 'updated', row);
     return { row, today: today() };
   }
 
@@ -196,6 +217,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .where(and(eq(complianceDocuments.id, id), eq(complianceDocuments.version, expected)))
       .returning();
     if (!row) throw versionConflict();
+    audit(scope, 'sighted', row);
     return { row, today: today() };
   }
 

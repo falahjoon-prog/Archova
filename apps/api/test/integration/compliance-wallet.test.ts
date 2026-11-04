@@ -7,6 +7,7 @@ import {
   createOrg,
   createTestContext,
   enableFlag,
+  outboxData,
   signUp,
   type Browser,
   type TestContext,
@@ -67,6 +68,14 @@ describe('compliance wallet', () => {
     const fileId = await uploadOrgFile(u.browser, org.id);
 
     // A document needs its file, or to be a declaration.
+    // The same file listed twice is stored once.
+    const dup = await u.browser.post(base, {
+      itemType: 'other',
+      title: 'Dup',
+      fileIds: [fileId, fileId],
+    });
+    expect(dup.json().fileIds).toEqual([fileId]);
+
     const none = await u.browser.post(base, { itemType: 'workers_comp', title: 'Workers comp' });
     expect(none.statusCode).toBe(422);
 
@@ -109,7 +118,12 @@ describe('compliance wallet', () => {
 
     // Soonest expiry first, never-expiring last.
     const list = (await u.browser.get(base)).json().data as Array<{ title: string }>;
-    expect(list.map((d) => d.title)).toEqual(['Licence', 'Public liability', 'No employees']);
+    expect(list.map((d) => d.title)).toEqual([
+      'Licence',
+      'Public liability',
+      'Dup',
+      'No employees',
+    ]);
     expect((await u.browser.get(`${base}?itemType=public_liability`)).json().data).toHaveLength(1);
 
     const sighted = await u.browser.post(`${base}/${pl.id}/sight`, undefined, {
@@ -146,8 +160,20 @@ describe('compliance wallet', () => {
       { 'if-match': edited.headers.etag as string },
     );
     expect(archived.json().archivedAt).not.toBeNull();
-    expect((await u.browser.get(base)).json().data).toHaveLength(2);
-    expect((await u.browser.get(`${base}?includeArchived=true`)).json().data).toHaveLength(3);
+    expect((await u.browser.get(base)).json().data).toHaveLength(3);
+    expect((await u.browser.get(`${base}?includeArchived=true`)).json().data).toHaveLength(4);
+
+    // Audit events carry ids and the item type, never the number.
+    for (const action of ['created', 'updated', 'archived', 'sighted']) {
+      const events = await outboxData<{ itemType: string }>(
+        t,
+        org.id,
+        u.userId,
+        `workforce.compliance_document.${action}.v1`,
+      );
+      expect(events.length, action).toBeGreaterThan(0);
+      expect(JSON.stringify(events)).not.toMatch(/5678|PL-1234/);
+    }
   });
 
   it("keeps one company's documents from another's", async () => {
