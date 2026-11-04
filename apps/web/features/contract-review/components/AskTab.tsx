@@ -15,11 +15,19 @@ const MAX_QUESTION = 500;
  * the clauses. When the contract is silent the API says so, and that wording is shown as it comes. The server keeps
  * nothing, so the questions asked here live on this screen until it is closed.
  */
-export function AskTab({ review }: { review: ContractReview }) {
+export function AskTab({
+  review,
+  turns,
+  onAnswer,
+}: {
+  review: ContractReview;
+  /** Answers so far, newest first. Kept by the screen so the export can include them. */
+  turns: readonly ContractAnswer[];
+  onAnswer: (a: ContractAnswer) => void;
+}) {
   const project = useCurrentProject();
   const ask = useAskContract(project.projectId);
   const [question, setQuestion] = useState('');
-  const [turns, setTurns] = useState<ContractAnswer[]>([]);
   const trimmed = question.trim();
   const tooShort = trimmed.length < 3;
 
@@ -30,7 +38,7 @@ export function AskTab({ review }: { review: ContractReview }) {
       { suggestionId: review.suggestionId, question: trimmed },
       {
         onSuccess: (a) => {
-          setTurns((t) => [a, ...t]);
+          onAnswer(a);
           setQuestion('');
         },
       },

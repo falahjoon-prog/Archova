@@ -37,6 +37,19 @@ const open = async (r = review()) => {
 const titles = () => screen.getAllByRole('heading', { level: 3 }).map((h) => h.textContent);
 
 describe('ReviewScreen', () => {
+  it('exports the review as a PDF download', async () => {
+    const create = vi.fn(() => 'blob:review');
+    const revoke = vi.fn();
+    Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    await open();
+    await userEvent.click(screen.getByRole('button', { name: 'Export PDF' }));
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(create).toHaveBeenCalledWith(expect.objectContaining({ type: 'application/pdf' }));
+    expect(revoke).toHaveBeenCalledWith('blob:review');
+    click.mockRestore();
+  });
+
   it('shows the fixed disclaimer from the API', async () => {
     await open();
     expect(screen.getByText(DISCLAIMER)).toBeTruthy();
