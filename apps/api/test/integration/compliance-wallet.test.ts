@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
+import type { TenantContext } from '@archova/kernel';
+import { sql } from 'drizzle-orm';
 import { hexToBase64, quarantineKey } from '@archova/mod-files';
 import {
   clearFlagTargets,
@@ -174,6 +176,40 @@ describe('compliance wallet', () => {
       expect(events.length, action).toBeGreaterThan(0);
       expect(JSON.stringify(events)).not.toMatch(/5678|PL-1234/);
     }
+  });
+
+  it('keeps a document 7 years after expiry and refuses its deletion (compliance/05 §7)', async () => {
+    const u = await signUp(t.app, 'wallet-retain');
+    const org = await createOrg(u.browser, 'Wallet Retain Co');
+    await enableFlag(t, 'subcontractor_wallet', org.id);
+    const base = `/v1/orgs/${org.id}/compliance-documents`;
+    const created = await u.browser.post(base, {
+      itemType: 'other',
+      title: 'Declaration',
+      selfDeclared: true,
+      expiresOn: day(400),
+    });
+    expect(created.statusCode).toBe(201);
+    const ctx: TenantContext = {
+      orgId: decodeId('org', org.id)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    const rows = await t.database.withTenantTx(ctx, (sc) =>
+      sc.tx.execute(
+        sql`select category, retain_until > now() + interval '8 years' as long_enough
+            from shared.retention_ledger where record_type = 'workforce.compliance_documents'`,
+      ),
+    );
+    expect(rows.rows).toEqual([{ category: 'wallet_document_7y', long_enough: true }]);
+    await expect(
+      t.database.withTenantTx(ctx, (sc) =>
+        sc.tx.execute(sql`delete from workforce.compliance_documents`),
+      ),
+    ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/retention/) } });
   });
 
   it('checks the format of an ABN and a licence number as they are entered', async () => {

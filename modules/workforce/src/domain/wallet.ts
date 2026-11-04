@@ -22,6 +22,37 @@ export const last4 = (n: string | null | undefined) => {
   return t ? t.slice(-4) : null;
 };
 
+/** Item types a builder may be granted. `wwcc` is personal data about a worker and stays with the holder. */
+export const SHAREABLE_ITEM_TYPES = [
+  'contractor_licence',
+  'trade_licence',
+  'workers_comp',
+  'public_liability',
+  'contract_works',
+  'professional_indemnity',
+  'personal_accident',
+  'home_warranty',
+  'subcontractor_statement',
+  'plant_registration',
+  'test_and_tag',
+  'modern_slavery',
+  'other',
+] as const;
+
+export const MAX_GRANT_MONTHS = 12;
+export const CODE_VALID_DAYS = 14;
+
+/** A grant is live through the whole of its last day (Sydney calendar day) and until revoked. */
+export const grantLive = (g: { revokedAt: Date | null; expiresOn: string }, today: LocalDate) =>
+  g.revokedAt === null && today <= g.expiresOn;
+
+/** The latest a grant may run from `today`: 12 months on, clamped to the end of a short month. */
+export function maxGrantExpiry(today: LocalDate): LocalDate {
+  const [y, m, d] = today.split('-').map(Number) as [number, number, number];
+  const last = new Date(Date.UTC(y + 1, m, 0)).getUTCDate();
+  return `${y + 1}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}` as LocalDate;
+}
+
 // ---- Register checks (compliance/05 §5). Format only: nothing here queries a register, so a pass is never
 // "verified". The full number is only available at the moment it is entered, so these run on input.
 

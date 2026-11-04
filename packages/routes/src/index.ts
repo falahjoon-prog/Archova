@@ -16,6 +16,7 @@ export const webRoutes = {
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
@@ -75,6 +76,10 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/register`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
+  inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
+    `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
+  inspectionTemplates: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/inspections/templates`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
