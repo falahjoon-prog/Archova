@@ -496,6 +496,14 @@ export const DecideContractFlagBody = z.object({
   "decision": s.ContractFlagDecisionKindSchema,
   "note": z.string().max(1000).nullable().optional(),
 }).strict();
+export const AskContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const AskContractBody = z.object({
+  "question": z.string().min(3).max(500),
+}).strict();
 export const GetContractPlaybookParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "contractType": s.ContractTypeSchema,
@@ -3126,6 +3134,18 @@ export const operations = {
     params: DecideContractFlagParams,
     query: null,
     body: DecideContractFlagBody,
+  },
+  askContract: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: AskContractParams,
+    query: null,
+    body: AskContractBody,
   },
   getContractPlaybook: {
     method: 'GET',

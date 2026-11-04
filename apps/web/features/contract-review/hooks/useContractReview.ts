@@ -62,3 +62,19 @@ export function useContractReviewMutations(projectId: string) {
   });
   return { start, decide };
 }
+
+/** Asking is a plain mutation: nothing is saved by the server, so the screen keeps the questions it shows. */
+export function useAskContract(projectId: string) {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (v: { suggestionId: string; question: string }) =>
+      api.ask(projectId, v.suggestionId, v.question),
+  });
+}
+
+export function useRateAnswer() {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (v: { runId: string; rating: 'up' | 'down' }) => api.rate(v.runId, v.rating),
+  });
+}

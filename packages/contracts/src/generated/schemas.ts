@@ -2967,6 +2967,22 @@ export const NovaAnswerSchema = z.object({
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
+export const NovaContractAnswerSchema = z.object({
+  "runId": z.string(),
+  "question": z.string(),
+  "kind": z.enum(["answered", "not_addressed", "withheld"]),
+  "answer": z.string(),
+  "citations": z.array(z.object({
+  "page": z.number().int().min(1),
+  "clause": z.string().nullable(),
+  "quote": z.string(),
+})),
+  "droppedCitations": z.number().int().min(0),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+});
+export type NovaContractAnswer = z.infer<typeof NovaContractAnswerSchema>;
+
 export const NovaContractReviewSchema = z.object({
   "createdAt": z.string().datetime({ offset: true }),
   "decisions": z.array(z.object({
