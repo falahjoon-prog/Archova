@@ -86,6 +86,11 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.rollCall(projectId))}
       />
       <ListItem
+        title="Meetings"
+        subtitle="Your open actions and the minutes"
+        onPress={() => router.push(mobileRoutes.meetings(projectId))}
+      />
+      <ListItem
         title="Drawings"
         subtitle="Current sheets for this project"
         onPress={() => router.push(mobileRoutes.drawings(projectId))}

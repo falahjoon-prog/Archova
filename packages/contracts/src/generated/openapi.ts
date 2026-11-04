@@ -6196,6 +6196,7 @@ export interface components {
             isOverdue: boolean;
             carriedCount: number;
             stale: boolean;
+            version: number;
         };
         MeetingActionList: {
             data: components["schemas"]["MeetingAction"][];

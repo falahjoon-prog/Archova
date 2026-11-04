@@ -1326,6 +1326,7 @@ export function createMeetingService(deps: MeetingsDeps) {
         isOverdue: i.dueDate !== null && i.dueDate < today,
         carriedCount: i.carriedCount,
         stale: isStale(i),
+        version: i.version,
       })),
     };
   }

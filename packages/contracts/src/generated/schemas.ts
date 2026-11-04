@@ -2703,6 +2703,7 @@ export const MeetingActionSchema = z.object({
   "isOverdue": z.boolean(),
   "carriedCount": z.number().int(),
   "stale": z.boolean(),
+  "version": z.number().int(),
 });
 export type MeetingAction = z.infer<typeof MeetingActionSchema>;
 
