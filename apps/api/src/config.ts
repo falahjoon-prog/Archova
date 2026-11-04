@@ -67,6 +67,10 @@ const Env = z.object({
   // Seals webhook signing secrets (32 bytes, base64). The worker reads the same key as WORKER_WEBHOOK_SECRET_KEY.
   // Required in production; elsewhere a fixed development key is used.
   API_WEBHOOK_SECRET_KEY: z.string().optional(),
+  // Seals Xero and MYOB OAuth tokens (32 bytes, base64): its own key, never the webhook key, so a leak of one does not
+  // open the other. The worker reads the same key as WORKER_ACCOUNTING_SECRET_KEY. Required in production once a
+  // provider is configured; elsewhere a fixed development key is used.
+  API_ACCOUNTING_SECRET_KEY: z.string().optional(),
   // Xero and MYOB app registrations (integrations/02). A provider without both values answers 409 not_configured.
   API_XERO_CLIENT_ID: z.string().optional(),
   API_XERO_CLIENT_SECRET: z.string().optional(),
@@ -77,6 +81,7 @@ const Env = z.object({
 
 /** Development and test only: production refuses to start without API_WEBHOOK_SECRET_KEY. */
 export const DEV_WEBHOOK_KEY = Buffer.alloc(32, 7).toString('base64');
+export const DEV_ACCOUNTING_KEY = Buffer.alloc(32, 9).toString('base64');
 
 export type ApiConfig = ReturnType<typeof loadConfig>;
 
@@ -124,6 +129,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
     webhookSecretKey: e.API_WEBHOOK_SECRET_KEY ?? null,
+    accountingSecretKey: e.API_ACCOUNTING_SECRET_KEY ?? null,
     accounting: {
       xero:
         e.API_XERO_CLIENT_ID && e.API_XERO_CLIENT_SECRET
@@ -149,6 +155,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
   };
   if (config.webhookSecretKey && Buffer.from(config.webhookSecretKey, 'base64').length !== 32)
     throw new Error('API_WEBHOOK_SECRET_KEY must be 32 bytes, base64 encoded');
+  if (config.accountingSecretKey && Buffer.from(config.accountingSecretKey, 'base64').length !== 32)
+    throw new Error('API_ACCOUNTING_SECRET_KEY must be 32 bytes, base64 encoded');
+  if (config.accountingSecretKey && config.accountingSecretKey === config.webhookSecretKey)
+    throw new Error('API_ACCOUNTING_SECRET_KEY must differ from API_WEBHOOK_SECRET_KEY');
   const cdnSet = [e.API_FILES_CDN_DOMAIN, e.API_FILES_CDN_KEY_PAIR_ID, e.API_FILES_CDN_PRIVATE_KEY];
   if (cdnSet.some(Boolean) && !cdnSet.every(Boolean))
     throw new Error(
@@ -188,6 +198,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
     if (!config.webhookSecretKey) missing.push('API_WEBHOOK_SECRET_KEY (32 bytes, base64)');
+    if ((config.accounting.xero || config.accounting.myob) && !config.accountingSecretKey)
+      missing.push('API_ACCOUNTING_SECRET_KEY (32 bytes, base64, not the webhook key)');
     if (missing.length)
       throw new Error(`Refusing to start in production without: ${missing.join(', ')}`);
   }

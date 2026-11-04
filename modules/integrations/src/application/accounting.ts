@@ -51,6 +51,9 @@ export interface LedgerSourceInput {
   retentionCents: number;
 }
 
+/** The provider will not honour the stored refresh token (revoked, expired or already spent): a person must reconnect. */
+class ReconnectRequiredError extends Error {}
+
 export interface ProviderCredentials {
   clientId: string;
   clientSecret: string;
@@ -104,9 +107,36 @@ export function createAccountingService(deps: AccountingDeps) {
   };
   const redirectUri = (provider: AccountingProviderKey) =>
     `${deps.redirectBase}/${provider}/callback`;
-  const sealTokens = (orgId: string, t: TokenSet) => deps.vault.seal(orgId, JSON.stringify(t));
+  const sealTokens = (orgId: string, t: TokenSet) =>
+    deps.vault.seal(orgId, 'oauth-tokens', JSON.stringify(t));
   const openTokens = (orgId: string, row: ConnectionRow): TokenSet =>
-    JSON.parse(deps.vault.open(orgId, row.tokensSealed as Buffer)) as TokenSet;
+    JSON.parse(deps.vault.open(orgId, 'oauth-tokens', row.tokensSealed as Buffer)) as TokenSet;
+
+  /**
+   * The audit trail is the outbox (7 years), as for webhooks: who and what, never a token or a provider response.
+   * Written in the caller's transaction, so a rolled-back action leaves no row.
+   */
+  function audit(
+    scope: TenantScope,
+    action:
+      | 'connected'
+      | 'target_selected'
+      | 'disconnected'
+      | 'token_refreshed'
+      | 'pushed'
+      | 'payments_pulled'
+      | 'connection_error',
+    connectionId: string,
+    data: Record<string, unknown>,
+  ) {
+    scope.events.add({
+      type: `integrations.accounting.${action}.v1`,
+      entityType: 'accounting_connection',
+      entityId: connectionId,
+      entityVersion: null,
+      data: { connectionId, ...data },
+    });
+  }
 
   async function find(scope: TenantScope, provider: AccountingProviderKey) {
     const [row] = await scope.tx
@@ -133,7 +163,7 @@ export function createAccountingService(deps: AccountingDeps) {
       status: 'pending' as const,
       oauthState: state,
       oauthStateAt: now(),
-      verifierSealed: deps.vault.seal(scope.ctx.orgId, pkce.verifier),
+      verifierSealed: deps.vault.seal(scope.ctx.orgId, 'oauth-verifier', pkce.verifier),
       lastError: null,
       updatedAt: now(),
     };
@@ -174,15 +204,27 @@ export function createAccountingService(deps: AccountingDeps) {
     const fresh = row.oauthStateAt && now().getTime() - row.oauthStateAt.getTime() <= STATE_TTL_MS;
     if (!row.oauthState || row.oauthState !== state || !row.verifierSealed || !fresh)
       throw new AppError('accounting.bad_state', 'This sign-in link has expired. Start again.');
-    return deps.vault.open(scope.ctx.orgId, row.verifierSealed);
+    return deps.vault.open(scope.ctx.orgId, 'oauth-verifier', row.verifierSealed);
   }
 
-  /** A failed exchange spends the state: the code is single use, so the link cannot be retried. */
-  async function abandonCallback(scope: TenantScope, provider: AccountingProviderKey) {
+  /**
+   * A failed exchange spends the state: the code is single use, so the link cannot be retried. Only the state it was
+   * given is cleared, so a failed callback cannot cancel a newer sign-in started in the meantime.
+   */
+  async function abandonCallback(
+    scope: TenantScope,
+    provider: AccountingProviderKey,
+    state: string,
+  ) {
     await scope.tx
       .update(accountingConnections)
       .set({ oauthState: null, oauthStateAt: null, verifierSealed: null, updatedAt: now() })
-      .where(eq(accountingConnections.provider, provider));
+      .where(
+        and(
+          eq(accountingConnections.provider, provider),
+          eq(accountingConnections.oauthState, state),
+        ),
+      );
   }
 
   /** Step 2b: exchanges the code with the provider. Nothing is stored yet. */
@@ -239,6 +281,11 @@ export function createAccountingService(deps: AccountingDeps) {
       })
       .where(eq(accountingConnections.id, row.id))
       .returning();
+    audit(scope, 'connected', row.id, {
+      provider,
+      userId: scope.ctx.userId,
+      targetRef: only?.ref ?? null,
+    });
     return { connection: saved!, targets: result.targets };
   }
 
@@ -281,11 +328,17 @@ export function createAccountingService(deps: AccountingDeps) {
       .set({ status: 'active', targetRef: target.ref, targetName: target.name, updatedAt: now() })
       .where(eq(accountingConnections.id, row.id))
       .returning();
+    audit(scope, 'target_selected', row.id, {
+      provider,
+      userId: scope.ctx.userId,
+      targetRef: target.ref,
+    });
     return saved!;
   }
 
   async function disconnect(scope: TenantScope, provider: AccountingProviderKey) {
     const row = await require(scope, provider);
+    audit(scope, 'disconnected', row.id, { provider, userId: scope.ctx.userId });
     // Pushed documents stay in the accounting system untouched; only our access and links go.
     await scope.tx
       .delete(accountingSyncIssues)
@@ -367,7 +420,14 @@ export function createAccountingService(deps: AccountingDeps) {
       const stored = openTokens(s.ctx.orgId, cur);
       // Someone else refreshed while we waited for the lock: use theirs, since the old token is spent.
       if (stored.refreshToken !== stale) return stored;
-      const fresh = await refreshTokens(provider, deps.fetch, c, stale, () => now().getTime());
+      let fresh: TokenSet;
+      try {
+        fresh = await refreshTokens(provider, deps.fetch, c, stale, () => now().getTime());
+      } catch (e) {
+        // A refused refresh token (400 invalid_grant, 401) never recovers on retry; send it to the reconnect path.
+        if (e instanceof ProviderRequestError && !e.retryable) throw new ReconnectRequiredError();
+        throw e;
+      }
       await s.tx
         .update(accountingConnections)
         .set({
@@ -376,6 +436,11 @@ export function createAccountingService(deps: AccountingDeps) {
           updatedAt: now(),
         })
         .where(eq(accountingConnections.id, row.id));
+      // Committed with the rotated token in this same transaction; the timestamp only, never a token value.
+      audit(s, 'token_refreshed', row.id, {
+        provider,
+        expiresAt: new Date(fresh.expiresAt).toISOString(),
+      });
       return fresh;
     };
     const session = createTokenSession(
@@ -421,18 +486,32 @@ export function createAccountingService(deps: AccountingDeps) {
       );
       return 'issue';
     }
-    if (e instanceof ProviderRequestError && !e.retryable) {
-      const kind: SyncIssueKind = e.status === 401 || e.status === 403 ? 'auth_failed' : 'rejected';
+    const reconnect = e instanceof ReconnectRequiredError;
+    if (reconnect || (e instanceof ProviderRequestError && !e.retryable)) {
+      const kind: SyncIssueKind =
+        reconnect ||
+        (e as ProviderRequestError).status === 401 ||
+        (e as ProviderRequestError).status === 403
+          ? 'auth_failed'
+          : 'rejected';
       // Provider error bodies stay in the logs; customers see a fixed sentence.
       const text =
         kind === 'auth_failed'
           ? 'The accounting system refused our access. Reconnect it.'
-          : `The accounting system refused ${ref} (HTTP ${e.status}).`;
-      if (kind === 'auth_failed')
+          : `The accounting system refused ${ref} (HTTP ${(e as ProviderRequestError).status}).`;
+      if (kind === 'auth_failed') {
+        // Admin notice: the connection shows "Needs reconnecting" with this sentence, and an open auth_failed issue
+        // lists the first document that hit it. Announced once, on the change into `error`.
+        if (row.status !== 'error')
+          audit(scope, 'connection_error', row.id, {
+            provider: row.provider,
+            reason: 'auth_failed',
+          });
         await scope.tx
           .update(accountingConnections)
           .set({ status: 'error', lastError: text, updatedAt: now() })
           .where(eq(accountingConnections.id, row.id));
+      }
       await raise(scope, row.id, kind, text, ref);
       return 'issue';
     }
@@ -497,6 +576,13 @@ export function createAccountingService(deps: AccountingDeps) {
             pushedAt: now(),
           },
         });
+      audit(scope, 'pushed', row.id, {
+        provider,
+        localType: input.localType,
+        localId: input.localId,
+        reference: ref,
+        outcome: r.outcome,
+      });
       if (r.outcome === 'locked') {
         await raise(
           scope,
@@ -619,7 +705,13 @@ export function createAccountingService(deps: AccountingDeps) {
     if (!row || row.status !== 'active') return [];
     const since = row.lastPulledAt ?? new Date(0);
     const started = now();
-    const payments = await providerFor(scope, row).paymentsSince(since);
+    let payments: RemotePayment[];
+    try {
+      payments = await providerFor(scope, row).paymentsSince(since);
+    } catch (e) {
+      await failure(scope, row, e, 'payment pull');
+      return [];
+    }
     const fresh: RemotePayment[] = [];
     for (const p of payments) {
       const inserted = await scope.tx
@@ -641,6 +733,11 @@ export function createAccountingService(deps: AccountingDeps) {
       .update(accountingConnections)
       .set({ lastPulledAt: started })
       .where(eq(accountingConnections.id, row.id));
+    audit(scope, 'payments_pulled', row.id, {
+      provider,
+      received: payments.length,
+      new: fresh.length,
+    });
     return fresh;
   }
 

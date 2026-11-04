@@ -18,7 +18,7 @@ import {
   vaultFromKey,
   type WebhookTransport,
 } from '@archova/mod-integrations';
-import { DEV_WEBHOOK_KEY, type ApiConfig } from './config';
+import { DEV_ACCOUNTING_KEY, DEV_WEBHOOK_KEY, type ApiConfig } from './config';
 import { loadModules, type Modules } from '@archova/compose';
 import { apiRateLimiter } from './plugins/rate-limit';
 import { registerInternalOperations } from './internal';
@@ -109,8 +109,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         transport: deps.webhookTransport ?? createHttpsTransport(),
       },
       accounting: {
-        // Same sealing key as webhook secrets; both are org-bound AES-GCM blobs.
-        vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
+        // Its own key, separate from the webhook key; each sealed blob also carries its purpose (tokens.ts).
+        vault: vaultFromKey(config.accountingSecretKey ?? DEV_ACCOUNTING_KEY),
         fetch: deps.accountingFetch ?? ((url, init) => fetch(url, init)),
         redirectBase: `${config.linkBaseUrl}/orgs/accounting`,
         credentials: config.accounting,

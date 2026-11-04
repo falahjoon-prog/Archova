@@ -2,7 +2,7 @@ import { loadAiConfig, type AiConfig } from '@archova/mod-ai';
 
 /** Xero and MYOB pushes, which run here because this is the process that loads the modules. */
 export interface AccountingWorkerConfig {
-  /** The API's key (`API_WEBHOOK_SECRET_KEY`): the API sealed the tokens this worker opens. */
+  /** The API's key (`API_ACCOUNTING_SECRET_KEY`): the API sealed the tokens this worker opens. */
   secretKey: string;
   /** The web origin; only used to build the redirect address the API registers, never called from here. */
   linkBaseUrl: string;
@@ -39,7 +39,7 @@ export function loadAiWorkerConfig(env: NodeJS.ProcessEnv = process.env): AiWork
   };
 }
 
-/** The API's variables with a WORKER_ prefix; the key is the webhook key the API also uses to seal tokens. */
+/** The API's variables with a WORKER_ prefix; the key is the accounting key the API also uses to seal tokens. */
 function accountingConfig(env: NodeJS.ProcessEnv): AccountingWorkerConfig | null {
   const pair = (p: 'XERO' | 'MYOB') => {
     const clientId = env[`WORKER_${p}_CLIENT_ID`];
@@ -47,7 +47,7 @@ function accountingConfig(env: NodeJS.ProcessEnv): AccountingWorkerConfig | null
     return clientId && clientSecret ? { clientId, clientSecret } : null;
   };
   const credentials = { xero: pair('XERO'), myob: pair('MYOB') };
-  const secretKey = env.WORKER_WEBHOOK_SECRET_KEY;
+  const secretKey = env.WORKER_ACCOUNTING_SECRET_KEY;
   if (!secretKey || (!credentials.xero && !credentials.myob)) return null;
   return {
     secretKey,
