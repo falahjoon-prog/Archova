@@ -233,3 +233,112 @@ describe('Ask tab', () => {
     expect(await screen.findByText("Nova couldn't answer that")).toBeTruthy();
   });
 });
+
+const COMPARE = '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares';
+const side = {
+  suggestionId: 'ais_1',
+  fileName: 'Head contract.pdf',
+  pageCount: 30,
+  unreadPages: [],
+  truncated: false,
+};
+const comparison = (over: Record<string, unknown> = {}) => ({
+  runId: 'air_7',
+  base: side,
+  other: { ...side, suggestionId: 'ais_2', fileName: 'Revision 2.pdf' },
+  dropped: { notOnPage: 0, bannedWords: 0, notAChange: 0 },
+  changes: [
+    {
+      kind: 'changed',
+      topic: 'Retention',
+      summary: 'Retention rises from 5% to 10%.',
+      base: { page: 7, clause: '14.1', quote: 'The Principal holds retention of 5%.' },
+      other: { page: 8, clause: '14.1', quote: 'The Principal holds retention of 10%.' },
+    },
+    {
+      kind: 'added',
+      topic: 'Security',
+      summary: 'A security of 2% is added.',
+      base: null,
+      other: { page: 9, clause: '25.2', quote: 'The Contractor pays a security of 2%.' },
+    },
+  ],
+  ...over,
+});
+
+describe('Compare tab', () => {
+  const openCompare = async (
+    others = [review({ suggestionId: 'ais_2', fileName: 'Revision 2.pdf' })],
+  ) => {
+    fake.on('GET', P, () => ({ data: [review(), ...others] }));
+    await open();
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /Compare/ }));
+    return user;
+  };
+
+  it('compares with another review and shows each change with the clause from both contracts', async () => {
+    fake.on('POST', COMPARE, () => comparison());
+    const user = await openCompare();
+    const button = screen.getByRole('button', { name: 'Compare' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    // The review being viewed is not offered as the other side.
+    const select = (await screen.findByLabelText(
+      'Compare this contract with',
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(2));
+    await user.selectOptions(select, 'ais_2');
+    await user.click(button);
+    const card = await screen.findByRole('article', { name: 'Changed: Retention' });
+    expect(within(card).getByText('Retention rises from 5% to 10%.')).toBeTruthy();
+    expect(within(card).getByText('Clause 14.1 · page 7')).toBeTruthy();
+    expect(within(card).getByText('Clause 14.1 · page 8')).toBeTruthy();
+    const added = screen.getByRole('article', { name: 'Added: Security' });
+    expect(within(added).getByText('Not in this contract.')).toBeTruthy();
+    expect(screen.getByText('2 changes found')).toBeTruthy();
+    expect(fake.callsTo('POST', COMPARE)[0]!.init).toMatchObject({
+      params: { path: { orgId: 'org_test', projectId: 'prj_test' } },
+      body: { baseReviewId: 'ais_1', otherReviewId: 'ais_2' },
+    });
+  });
+
+  it('says so when there is nothing else to compare with', async () => {
+    await openCompare([]);
+    expect(await screen.findByText(/No other reviewed contract on this project yet/)).toBeTruthy();
+  });
+
+  it('does not read "no changes" as "the same", and says what was not read or not supported', async () => {
+    fake.on('POST', COMPARE, () =>
+      comparison({
+        changes: [],
+        dropped: { notOnPage: 2, bannedWords: 0, notAChange: 0 },
+        other: { ...side, suggestionId: 'ais_2', fileName: 'Revision 2.pdf', unreadPages: [4, 5] },
+      }),
+    );
+    const user = await openCompare();
+    const select = (await screen.findByLabelText(
+      'Compare this contract with',
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(2));
+    await user.selectOptions(select, 'ais_2');
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    expect(await screen.findByText(/does not mean the contracts match/)).toBeTruthy();
+    expect(screen.getByText('Part of Revision 2.pdf was not read')).toBeTruthy();
+    expect(screen.getByText(/Pages 4, 5 have no text/)).toBeTruthy();
+    expect(screen.getByText(/2 changes that could not be supported/)).toBeTruthy();
+  });
+
+  it('shows the error when Nova cannot compare', async () => {
+    fake.on('POST', COMPARE, () => {
+      throw new Error('boom');
+    });
+    const user = await openCompare();
+    const select = (await screen.findByLabelText(
+      'Compare this contract with',
+    )) as HTMLSelectElement;
+    await waitFor(() => expect(select.options.length).toBe(2));
+    await user.selectOptions(select, 'ais_2');
+    await user.click(screen.getByRole('button', { name: 'Compare' }));
+    expect(await screen.findByText("Nova couldn't compare these contracts")).toBeTruthy();
+  });
+});

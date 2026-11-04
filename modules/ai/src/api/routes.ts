@@ -569,6 +569,26 @@ export function aiRoutes(
       );
       return { status: 200, body: { ...a, runId: encodeId('aiRun', a.runId) } };
     },
+    compareContracts: async (input) => {
+      const baseId = decodeId('aiSuggestion', input.body.baseReviewId);
+      const otherId = decodeId('aiSuggestion', input.body.otherReviewId);
+      if (!baseId || !otherId) throw new AppError('ai.suggestion.not_found');
+      const c = await contractReviews.compare(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        baseId,
+        otherId,
+      );
+      return {
+        status: 200,
+        body: {
+          ...c,
+          runId: encodeId('aiRun', c.runId),
+          base: { ...c.base, suggestionId: encodeId('aiSuggestion', c.base.suggestionId) },
+          other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
+        },
+      };
+    },
     transcribeSpeech: async (input) => {
       const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
         audio: Buffer.from(input.body.audio, 'base64'),

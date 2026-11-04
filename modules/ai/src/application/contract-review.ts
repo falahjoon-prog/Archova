@@ -6,6 +6,7 @@
 // holding the commercial review permission on the project can open, because the team works through it together.
 import {
   contractAskPrompt,
+  contractComparePrompt,
   contractReviewPrompt,
   MAX_CONTRACT_QUESTION_CHARS,
   type BaseForm,
@@ -17,6 +18,7 @@ import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
 import { reviewAnswer, type ReviewedAnswer } from '../domain/contract-ask';
+import { reviewComparison, type ReviewedComparison } from '../domain/contract-compare';
 import {
   reviewContract,
   type PlaybookTopic,
@@ -24,7 +26,7 @@ import {
 } from '../domain/contract-review';
 import { suggestions } from '../infra/tables';
 import type { ContractPlaybookService } from './contract-playbook';
-import { readContractText } from './contract-text';
+import { MAX_CONTRACT_CHARS, readContractText } from './contract-text';
 import type { ReadableFile } from './drawing-register';
 import type { Gateway } from './gateway';
 
@@ -95,6 +97,22 @@ export interface ContractAnswer extends ReviewedAnswer {
   runId: string;
   question: string;
   /** Pages with no text layer, and pages cut: a "not addressed" answer may miss what is on them. */
+  unreadPages: number[];
+  truncated: boolean;
+}
+
+/** A comparison of two reviewed contracts. Nothing is saved: the person keeps what they need. */
+export interface ContractComparison extends ReviewedComparison {
+  runId: string;
+  base: ComparedContract;
+  other: ComparedContract;
+}
+
+/** One side of a comparison, with what Nova could not read of it. */
+export interface ComparedContract {
+  suggestionId: string;
+  fileName: string;
+  pageCount: number;
   unreadPages: number[];
   truncated: boolean;
 }
@@ -360,7 +378,79 @@ export function createContractReviewService(deps: ContractReviewDeps) {
     };
   }
 
-  return { review, list, get, decideFlag, ask };
+  /**
+   * Compares the contracts two reviews of this project were made from (two versions of one contract, or two
+   * contracts) and lists what differs, clause by clause. Both files are read again with the caller's own access, each
+   * to half the usual character budget so the two together are no bigger than one review. A change is shown only when
+   * its quotes are found on the pages of the contract they name. Nothing is saved.
+   */
+  async function compare(
+    ctx: TenantContext,
+    projectId: string,
+    baseId: string,
+    otherId: string,
+    signal?: AbortSignal,
+  ): Promise<ContractComparison> {
+    if (baseId === otherId)
+      throw new AppError('validation_failed', 'Pick two different contracts to compare.', [
+        { path: 'otherReviewId', message: 'Same as the base contract' },
+      ]);
+    const loaded = await database.withTenantTx(
+      ctx,
+      async (scope) => {
+        const out = [];
+        for (const id of [baseId, otherId]) {
+          const row = await load(scope, projectId, id, false);
+          const payload = row.payload as ContractReviewPayload;
+          const file = await deps.readFile(scope, payload.fileId, MAX_CONTRACT_BYTES);
+          if (file.file.projectId !== projectId)
+            throw new AppError('file.not_in_project', 'Attach files uploaded to this project.');
+          out.push({ id, payload, file });
+        }
+        return out as [(typeof out)[number], (typeof out)[number]];
+      },
+      { readOnly: true },
+    );
+    const [b, o] = loaded;
+    const half = Math.floor(MAX_CONTRACT_CHARS / 2);
+    const [baseText, otherText] = await Promise.all([
+      readContractText(b.file, half),
+      readContractText(o.file, half),
+    ]);
+    if (!baseText.pages.length || !otherText.pages.length)
+      throw new AppError('validation_failed', "Nova couldn't find any text in one of these PDFs.");
+    const run = await deps.gateway.runTask(
+      ctx,
+      contractComparePrompt,
+      {
+        contractType: b.payload.contractType,
+        ourSide: b.payload.ourSide,
+        base: baseText.pages,
+        other: otherText.pages,
+      },
+      { projectId, ...(signal ? { signal } : {}) },
+    );
+    if (run.status !== 'ok')
+      throw new AppError('ai.invalid_output', "Nova couldn't compare these contracts. Try again.");
+    const side = (
+      x: (typeof loaded)[number],
+      t: Awaited<ReturnType<typeof readContractText>>,
+    ): ComparedContract => ({
+      suggestionId: x.id,
+      fileName: x.payload.fileName,
+      pageCount: t.pageCount,
+      unreadPages: t.unreadPages,
+      truncated: t.truncated,
+    });
+    return {
+      ...reviewComparison(run.output, baseText.pages, otherText.pages),
+      runId: run.runId,
+      base: side(b, baseText),
+      other: side(o, otherText),
+    };
+  }
+
+  return { review, list, get, decideFlag, ask, compare };
 }
 
 export type ContractReviewService = ReturnType<typeof createContractReviewService>;

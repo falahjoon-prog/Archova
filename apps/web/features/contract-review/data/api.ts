@@ -12,6 +12,8 @@ export type FlagDecisionKind = S['ContractFlagDecisionKind'];
 export type ReviewFlag = ContractReview['flags'][number];
 export type FlagDecision = ContractReview['decisions'][number];
 export type ContractAnswer = S['NovaContractAnswer'];
+export type ContractComparison = S['NovaContractComparison'];
+export type ContractChange = ContractComparison['changes'][number];
 export type OurSide = 'we_pay' | 'we_get_paid';
 export type BaseForm = 'as4000' | 'as2124' | 'as4902' | 'as4903' | 'other';
 
@@ -61,6 +63,20 @@ export function createContractReviewApi(orgId: string) {
         await api.POST(`${P}/{suggestionId}/questions`, {
           params: { path: { orgId, projectId, suggestionId } },
           body: { question },
+        }),
+      );
+    },
+    /** What changed between the contracts two reviews were made from. The server keeps nothing. */
+    async compare(
+      projectId: string,
+      baseReviewId: string,
+      otherReviewId: string,
+    ): Promise<ContractComparison> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares', {
+          params: { path: { orgId, projectId } },
+          body: { baseReviewId, otherReviewId },
         }),
       );
     },

@@ -504,6 +504,14 @@ export const AskContractParams = z.object({
 export const AskContractBody = z.object({
   "question": z.string().min(3).max(500),
 }).strict();
+export const CompareContractsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CompareContractsBody = z.object({
+  "baseReviewId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+  "otherReviewId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+}).strict();
 export const GetContractPlaybookParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "contractType": s.ContractTypeSchema,
@@ -3163,6 +3171,18 @@ export const operations = {
     params: AskContractParams,
     query: null,
     body: AskContractBody,
+  },
+  compareContracts: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: CompareContractsParams,
+    query: null,
+    body: CompareContractsBody,
   },
   getContractPlaybook: {
     method: 'GET',
