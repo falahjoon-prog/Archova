@@ -298,6 +298,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SupportAccess' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/staff-actions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listStaffActions
+      tags: [orgs]
+      x-module: platform
+      summary: Account actions Archova staff took on this organisation (org owners and admins).
+      description: |
+        Trial extensions, plan changes, suspension, reactivation and Nova credit grants, newest first. Each row names
+        the support ticket but never the staff member or the internal reason.
+      responses:
+        '200':
+          description: Staff actions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/StaffAction' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/support-access/banner:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -8883,6 +8907,17 @@ components:
         sessions:
           type: array
           items: { $ref: '#/components/schemas/SupportAccessSession' }
+    StaffAction:
+      type: object
+      required: [id, kind, summary, ticketRef, at]
+      properties:
+        id: { type: string, format: uuid }
+        kind:
+          type: string
+          enum: [trial.extend, plan.change, suspend, reactivate, credits.grant]
+        summary: { type: string }
+        ticketRef: { type: string }
+        at: { type: string, format: date-time }
     SupportBanner:
       type: object
       required: [active, since]

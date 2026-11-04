@@ -251,6 +251,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/staff-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Account actions Archova staff took on this organisation (org owners and admins).
+         * @description Trial extensions, plan changes, suspension, reactivation and Nova credit grants, newest first. Each row names
+         *     the support ticket but never the staff member or the internal reason.
+         */
+        get: operations["listStaffActions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/support-access/banner": {
         parameters: {
             query?: never;
@@ -6261,6 +6284,16 @@ export interface components {
             grants: components["schemas"]["SupportAccessGrant"][];
             sessions: components["schemas"]["SupportAccessSession"][];
         };
+        StaffAction: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "trial.extend" | "plan.change" | "suspend" | "reactivate" | "credits.grant";
+            summary: string;
+            ticketRef: string;
+            /** Format: date-time */
+            at: string;
+        };
         SupportBanner: {
             active: boolean;
             /** Format: date-time */
@@ -11249,6 +11282,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SupportAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listStaffActions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Staff actions */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["StaffAction"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];

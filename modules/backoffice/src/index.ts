@@ -85,6 +85,8 @@ export function createBackofficeModule(
         revoke: support.revoke,
         banner: support.banner,
         hasOpenSession: support.hasOpenSession,
+        /** Staff account actions (trial, plan, suspension, credits) as the customer's admins read them. */
+        listStaffActions: orgActions.listForCustomer,
       },
       /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
       flags: { isOn: flags.isOn, forOrg: flags.forOrg },

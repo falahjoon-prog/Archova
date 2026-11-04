@@ -3909,6 +3909,15 @@ export const SignupRequestSchema = z.object({
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
 
+export const StaffActionSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["trial.extend", "plan.change", "suspend", "reactivate", "credits.grant"]),
+  "summary": z.string(),
+  "ticketRef": z.string(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type StaffAction = z.infer<typeof StaffActionSchema>;
+
 export const StartInductionRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")).optional(),

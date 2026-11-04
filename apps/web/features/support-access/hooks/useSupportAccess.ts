@@ -8,6 +8,7 @@ import { createSupportAccessApi, type CreateGrant } from '../data/api';
 const keys = (orgId: string) => ({
   all: ['orgs', orgId, 'support-access'] as const,
   banner: ['orgs', orgId, 'support-access', 'banner'] as const,
+  actions: ['orgs', orgId, 'staff-actions'] as const,
 });
 
 function useApi() {
@@ -19,6 +20,12 @@ export function useSupportAccess() {
   const { orgId } = useCurrentOrg();
   const source = useApi();
   return useQuery({ queryKey: keys(orgId).all, queryFn: () => source.get() });
+}
+
+export function useStaffActions() {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  return useQuery({ queryKey: keys(orgId).actions, queryFn: () => source.staffActions() });
 }
 
 /** Polled so everyone sees the banner within a minute of a session opening, and it clears soon after it ends. */
