@@ -72,6 +72,7 @@ export const ID_PREFIXES = {
   inductionQuizAttempt: 'iqa',
   workerCredential: 'wcr',
   complianceDocument: 'cdo',
+  complianceExpiryAlert: 'cea',
   accessLink: 'lnk',
   meetingSeries: 'msr',
   meeting: 'mtg',

@@ -15,7 +15,7 @@ import {
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
 import type { WalletService } from '../application/wallet';
-import { toComplianceDocumentDto } from './wallet-mappers';
+import { toComplianceDocumentDto, toExpiryAlertDto } from './wallet-mappers';
 import type { InductionLinkService } from '../application/induction-links';
 import { aiContent, type InductionService } from '../application/inductions';
 import {
@@ -630,6 +630,10 @@ export function workforceRoutes(
         }),
       );
       return { status: 200, body: { data: rows.map((r) => toComplianceDocumentDto(r, today)) } };
+    },
+    listComplianceExpiryAlerts: async (input) => {
+      const { rows } = await read(input, (s) => wallet.listAlerts(s));
+      return { status: 200, body: { data: rows.map(toExpiryAlertDto) } };
     },
     createComplianceDocument: async (input) => {
       const b = input.body;

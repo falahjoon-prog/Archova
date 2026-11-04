@@ -19,6 +19,12 @@ export function useDocuments(f: { itemType?: ItemType; includeArchived: boolean 
   return useQuery({ queryKey: [...key(orgId), { ...f }], queryFn: () => wallet.list(f) });
 }
 
+export function useExpiryAlerts() {
+  const { orgId } = useCurrentOrg();
+  const wallet = useApi();
+  return useQuery({ queryKey: [...key(orgId), 'alerts'], queryFn: () => wallet.alerts() });
+}
+
 export function useWalletMutations() {
   const { orgId } = useCurrentOrg();
   const wallet = useApi();

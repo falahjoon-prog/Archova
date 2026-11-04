@@ -17,6 +17,7 @@ const base = {
   itemType: 'public_liability',
   title: 'Public liability 2026',
   numberLast4: '1234',
+  numberCheck: 'not_checked',
   issuingState: null,
   licenceClass: null,
   insurer: 'Acme Insurance',
@@ -34,8 +35,11 @@ const base = {
 };
 const doc = { ...base, id: 'cdo_01HZZZZZZZZZZZZZZZZZZZZZZ1' };
 
+const A = '/v1/orgs/{orgId}/compliance-document-alerts';
+
 beforeEach(() => {
   fake.reset();
+  fake.on('GET', A, () => ({ data: [] }));
   flag.on = true;
   fake.on('GET', D, () => ({ data: [doc] }));
 });
@@ -56,6 +60,40 @@ describe('WalletScreen', () => {
     expect(screen.getByText('Expiring soon')).toBeTruthy();
     expect(screen.getByText(/Number ends in 1234/)).toBeTruthy();
     expect(document.body.textContent).not.toMatch(/verified(?!”)/i);
+  });
+
+  it('shows a format check as "Format checked", never verified', async () => {
+    fake.on('GET', D, () => ({ data: [{ ...doc, itemType: 'abn', numberCheck: 'format_ok' }] }));
+    renderInProject(<WalletScreen />);
+    expect(await screen.findByText('Format checked')).toBeTruthy();
+    expect(document.body.textContent).toMatch(/Not checked with the register/);
+    expect(document.body.textContent).not.toMatch(/verified(?!”)/i);
+  });
+
+  it('shows no check pill for a number that was not checked', async () => {
+    renderInProject(<WalletScreen />);
+    await screen.findAllByText('Public liability 2026');
+    expect(screen.queryByText('Format checked')).toBeNull();
+  });
+
+  it('lists expiry alerts with their threshold', async () => {
+    fake.on('GET', A, () => ({
+      data: [
+        {
+          id: 'cea_01HZZZZZZZZZZZZZZZZZZZZZZ1',
+          documentId: doc.id,
+          title: 'Public liability 2026',
+          itemType: 'public_liability',
+          threshold: 7,
+          expiresOn: '2027-01-10',
+          raisedOn: '2027-01-03',
+          documentArchived: false,
+        },
+      ],
+    }));
+    renderInProject(<WalletScreen />);
+    expect(await screen.findByText('Expires within 7 days')).toBeTruthy();
+    expect(screen.getByText('Expiry alerts')).toBeTruthy();
   });
 
   it('marks a document sighted with its version', async () => {

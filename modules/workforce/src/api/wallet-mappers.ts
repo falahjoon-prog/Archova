@@ -1,7 +1,7 @@
 import { encodeId } from '@archova/domain';
-import type { ComplianceDocument } from '@archova/contracts';
+import type { ComplianceDocument, ComplianceExpiryAlert } from '@archova/contracts';
 import type { LocalDate } from '@archova/time';
-import type { ComplianceDocumentRow } from '../application/wallet';
+import type { ComplianceDocumentRow, ComplianceAlertRow } from '../application/wallet';
 import { expiryState } from '../domain/wallet';
 
 export const toComplianceDocumentDto = (
@@ -12,6 +12,7 @@ export const toComplianceDocumentDto = (
   itemType: r.itemType as ComplianceDocument['itemType'],
   title: r.title,
   numberLast4: r.numberLast4,
+  numberCheck: r.numberCheck ?? 'not_checked',
   issuingState: r.issuingState as ComplianceDocument['issuingState'],
   licenceClass: r.licenceClass,
   insurer: r.insurer,
@@ -26,4 +27,15 @@ export const toComplianceDocumentDto = (
   archivedAt: r.archivedAt ? r.archivedAt.toISOString() : null,
   version: r.version,
   createdAt: r.createdAt.toISOString(),
+});
+
+export const toExpiryAlertDto = (r: ComplianceAlertRow): ComplianceExpiryAlert => ({
+  id: encodeId('complianceExpiryAlert', r.alert.id),
+  documentId: encodeId('complianceDocument', r.alert.documentId),
+  title: r.title,
+  itemType: r.itemType as ComplianceExpiryAlert['itemType'],
+  threshold: r.alert.threshold,
+  expiresOn: r.alert.expiresOn,
+  raisedOn: r.alert.raisedOn,
+  documentArchived: r.archivedAt !== null,
 });

@@ -23,7 +23,7 @@ import { formatLocalDate, formatMoney } from '@/shared/lib/format';
 import { serverFieldErrors } from '@/shared/lib/forms';
 import { fileDownloadUrl } from '@/shared/lib/uploads';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
-import { useDocuments, useWalletMutations } from '../hooks/useWallet';
+import { useDocuments, useExpiryAlerts, useWalletMutations } from '../hooks/useWallet';
 import {
   centsToDollars,
   dollarsToCents,
@@ -35,6 +35,9 @@ import {
   ITEM_TYPES,
   LICENCE_TYPES,
   STATES,
+  alertLabel,
+  NUMBER_CHECK_HINT,
+  NUMBER_CHECK_LABEL,
   type ComplianceDocument,
   type DocumentForm,
   type Expiry,
@@ -344,6 +347,12 @@ function DocumentRow({
         <strong>{doc.title}</strong>
         <span className="wallet__pills">
           <StatusPill tone={EXPIRY_TONE[doc.expiry]}>{EXPIRY_LABELS[doc.expiry]}</StatusPill>
+          {doc.numberCheck === 'format_ok' ? (
+            <span title={NUMBER_CHECK_HINT}>
+              <StatusPill tone="info">{NUMBER_CHECK_LABEL}</StatusPill>
+              <span className="u-visually-hidden">. {NUMBER_CHECK_HINT}</span>
+            </span>
+          ) : null}
           {archived ? <StatusPill tone="neutral">Archived</StatusPill> : null}
         </span>
       </div>
@@ -384,6 +393,42 @@ function DocumentRow({
   );
 }
 
+const alertTone = (t: number): StatusTone => (t <= 0 ? 'danger' : 'warning');
+
+function AlertsCard() {
+  const alerts = useExpiryAlerts();
+  // Nothing to say, and nothing to fail loudly about: the documents list below is the main job.
+  if (alerts.isPending || (alerts.data && alerts.data.length === 0)) return null;
+  return (
+    <Card title="Expiry alerts">
+      <div className="stack">
+        {alerts.isError ? (
+          isApiError(alerts.error, 403) ? null : (
+            <ErrorAlert error={alerts.error} title="We couldn’t load the expiry alerts" />
+          )
+        ) : null}
+        {alerts.data?.length ? (
+          <ul className="wallet__list">
+            {alerts.data.map((a) => (
+              <li key={a.id} className="wallet__row">
+                <div className="wallet__head">
+                  <strong>{a.title}</strong>
+                  <StatusPill tone={alertTone(a.threshold)}>{alertLabel(a.threshold)}</StatusPill>
+                </div>
+                <span className="u-caption">
+                  {ITEM_TYPE_LABELS[a.itemType]} · Expires {formatLocalDate(a.expiresOn)} · Raised{' '}
+                  {formatLocalDate(a.raisedOn)}
+                  {a.documentArchived ? ' · Archived' : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </div>
+    </Card>
+  );
+}
+
 export function WalletScreen() {
   const enabled = useFeatureFlag('subcontractor_wallet');
   const [itemType, setItemType] = useState<ItemType | ''>('');
@@ -411,6 +456,7 @@ export function WalletScreen() {
         description="Your insurance, licence and card documents, soonest expiry first. A site manager can mark one “Sighted” after looking at the original. Archova never calls a document “verified”."
         actions={<Button onClick={() => setDialog({ doc: null })}>Add document</Button>}
       />
+      <AlertsCard />
       <Card title="Documents">
         <div className="stack">
           <div className="wallet__filters">

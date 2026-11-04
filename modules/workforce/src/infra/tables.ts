@@ -295,6 +295,7 @@ export const complianceDocuments = workforceSchema.table('compliance_documents',
   itemType: text('item_type').notNull(),
   title: text('title').notNull(),
   numberLast4: text('number_last4'),
+  numberCheck: text('number_check').$type<'format_ok'>(),
   issuingState: text('issuing_state'),
   licenceClass: text('licence_class'),
   insurer: text('insurer'),
@@ -307,4 +308,15 @@ export const complianceDocuments = workforceSchema.table('compliance_documents',
   sightedAt: timestamp('sighted_at', { withTimezone: true }),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
   ...audit,
+});
+
+/** Expiry alerts raised by the daily wallet job (compliance/05 §6). The job inserts these with raw SQL. */
+export const complianceExpiryAlerts = workforceSchema.table('compliance_expiry_alerts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  documentId: uuid('document_id').notNull(),
+  threshold: integer('threshold').notNull().$type<number>(),
+  expiresOn: date('expires_on').notNull(),
+  raisedOn: date('raised_on').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

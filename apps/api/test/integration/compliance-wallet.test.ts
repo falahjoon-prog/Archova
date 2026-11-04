@@ -197,6 +197,7 @@ describe('compliance wallet', () => {
     });
     expect(ok.statusCode).toBe(201);
     expect(ok.json().numberLast4).toBe('3556');
+    expect(ok.json().numberCheck).toBe('format_ok');
     const nsw = await u.browser.post(base, {
       itemType: 'contractor_licence',
       title: 'Licence',
@@ -211,6 +212,52 @@ describe('compliance wallet', () => {
       { 'if-match': ok.headers.etag as string },
     );
     expect(patch.statusCode).toBe(422);
+  });
+
+  it('reports the format check on the document and lists raised expiry alerts', async () => {
+    const u = await signUp(t.app, 'wallet-alerts');
+    const org = await createOrg(u.browser, 'Wallet Alerts Co');
+    await enableFlag(t, 'subcontractor_wallet', org.id);
+    const base = `/v1/orgs/${org.id}/compliance-documents`;
+    const fileId = await uploadOrgFile(u.browser, org.id);
+    const plain = await u.browser.post(base, {
+      itemType: 'public_liability',
+      title: 'Public liability',
+      number: 'PL-998877',
+      expiresOn: day(5),
+      fileIds: [fileId],
+    });
+    expect(plain.statusCode).toBe(201);
+    // Only types with a format check carry one.
+    expect(plain.json().numberCheck).toBe('not_checked');
+    const empty = await u.browser.get(`/v1/orgs/${org.id}/compliance-document-alerts`);
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json().data).toEqual([]);
+
+    const docId = decodeId('complianceDocument', plain.json().id)!;
+    await t.adminDb.pool.query(
+      `insert into workforce.compliance_expiry_alerts (id, org_id, document_id, threshold, expires_on, raised_on)
+       values (gen_random_uuid(), $1, $2, 7, $3, $4)`,
+      [decodeId('org', org.id), docId, day(5), day(0)],
+    );
+    const listed = await u.browser.get(`/v1/orgs/${org.id}/compliance-document-alerts`);
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json().data).toEqual([
+      expect.objectContaining({
+        documentId: plain.json().id,
+        title: 'Public liability',
+        threshold: 7,
+        expiresOn: day(5),
+        documentArchived: false,
+      }),
+    ]);
+
+    // Another company sees none of it.
+    const other = await signUp(t.app, 'wallet-alerts-other');
+    const otherOrg = await createOrg(other.browser, 'Other Alerts Co');
+    await enableFlag(t, 'subcontractor_wallet', otherOrg.id);
+    const none = await other.browser.get(`/v1/orgs/${otherOrg.id}/compliance-document-alerts`);
+    expect(none.json().data).toEqual([]);
   });
 
   it("keeps one company's documents from another's", async () => {

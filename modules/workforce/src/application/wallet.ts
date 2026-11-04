@@ -1,13 +1,19 @@
 // Subcontractor compliance wallet, first slice (compliance/05): a company's own documents.
-import { and, asc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
-import { checkNumber, last4 } from '../domain/wallet';
-import { complianceDocuments } from '../infra/tables';
+import { checkNumber, hasNumberCheck, last4 } from '../domain/wallet';
+import { complianceDocuments, complianceExpiryAlerts } from '../infra/tables';
 import type { InductionDeps } from './inductions';
 
 export type ComplianceDocumentRow = typeof complianceDocuments.$inferSelect;
+export type ComplianceAlertRow = {
+  alert: typeof complianceExpiryAlerts.$inferSelect;
+  title: string;
+  itemType: string;
+  archivedAt: Date | null;
+};
 
 /** Orgs carry no time zone yet; expiry follows the Sydney calendar day until they do. */
 export const WALLET_TIME_ZONE = 'Australia/Sydney';
@@ -108,6 +114,22 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     return { rows, today: today() };
   }
 
+  /** Expiry alerts the daily job has raised, newest first, with the document each is about. */
+  async function listAlerts(scope: TenantScope, limit = 100) {
+    const rows = await scope.tx
+      .select({
+        alert: complianceExpiryAlerts,
+        title: complianceDocuments.title,
+        itemType: complianceDocuments.itemType,
+        archivedAt: complianceDocuments.archivedAt,
+      })
+      .from(complianceExpiryAlerts)
+      .innerJoin(complianceDocuments, eq(complianceDocuments.id, complianceExpiryAlerts.documentId))
+      .orderBy(desc(complianceExpiryAlerts.raisedOn), asc(complianceExpiryAlerts.threshold))
+      .limit(limit);
+    return { rows, today: today() };
+  }
+
   async function create(scope: TenantScope, raw: WalletCreate) {
     const input = { ...raw, fileIds: unique(raw.fileIds) };
     assertDates(input.startsOn, input.expiresOn);
@@ -129,6 +151,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
         itemType: input.itemType,
         title: input.title.trim(),
         numberLast4: last4(input.number),
+        numberCheck: input.number && hasNumberCheck(input.itemType) ? ('format_ok' as const) : null,
         issuingState: input.issuingState ?? null,
         licenceClass: input.licenceClass?.trim() || null,
         insurer: input.insurer?.trim() || null,
@@ -161,6 +184,13 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     const content = {
       title: input.title?.trim() ?? cur.title,
       numberLast4: input.number === undefined ? cur.numberLast4 : last4(input.number),
+      // A new number reaching here passed assertNumber below; clearing it clears the check.
+      numberCheck:
+        input.number === undefined
+          ? cur.numberCheck
+          : input.number && hasNumberCheck(cur.itemType)
+            ? ('format_ok' as const)
+            : null,
       issuingState: input.issuingState === undefined ? cur.issuingState : input.issuingState,
       licenceClass:
         input.licenceClass === undefined ? cur.licenceClass : input.licenceClass?.trim() || null,
@@ -183,6 +213,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       JSON.stringify({
         title: cur.title,
         numberLast4: cur.numberLast4,
+        numberCheck: cur.numberCheck,
         issuingState: cur.issuingState,
         licenceClass: cur.licenceClass,
         insurer: cur.insurer,
@@ -237,7 +268,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     return { row, today: today() };
   }
 
-  return { list, create, update, sight };
+  return { list, listAlerts, create, update, sight };
 }
 
 export type WalletService = ReturnType<typeof createWalletService>;
