@@ -322,6 +322,30 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/StaffAction' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/reads:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listSupportReads
+      tags: [orgs]
+      x-module: platform
+      summary: What Archova support looked at in their sessions (org owners and admins).
+      description: |
+        The pages support read, which staff member read them and how many records each showed, newest first. Never
+        the content itself.
+      responses:
+        '200':
+          description: Logged reads
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/SupportRead' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/support-access/banner:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9022,6 +9046,16 @@ components:
         sessions:
           type: array
           items: { $ref: '#/components/schemas/SupportAccessSession' }
+    SupportRead:
+      type: object
+      required: [id, sessionId, staffName, page, recordCount, at]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        staffName: { type: string }
+        page: { type: string }
+        recordCount: { type: integer }
+        at: { type: string, format: date-time }
     StaffAction:
       type: object
       required: [id, kind, summary, ticketRef, at]

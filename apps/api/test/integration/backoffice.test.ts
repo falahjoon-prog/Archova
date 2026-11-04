@@ -1360,6 +1360,65 @@ describe('support access', () => {
     expect((rows.rows[0]!.record_ids as string[]).length).toBe(1);
   });
 
+  it('shows the company what support read, keeps the log append-only, and stops a disabled staff member', async () => {
+    const c = await company('reads');
+    await createProject(c.browser, c.orgId, { name: 'Reads Rd', state: 'NSW' });
+    await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-R1', hours: 4 });
+    const email = `reader-${Date.now()}@archova.test`;
+    await t.modules.backoffice.api.upsertLocalStaff({
+      email,
+      name: 'Reader Support',
+      password: PASSWORD,
+      roles: ['support'],
+    });
+    const me = await new Console(t.app, email).signIn();
+    await start(me, c.orgRef, 'SUP-R1');
+    const list = `/orgs/${c.orgRef}/support-access/projects`;
+    expect((await me.get(list)).statusCode).toBe(200);
+
+    const seen = await c.browser.get(`${c.base}/reads`);
+    expect(seen.statusCode, seen.body).toBe(200);
+    const items = (seen.json() as { items: Array<Record<string, unknown>> }).items;
+    expect(items).toHaveLength(1);
+    expect(items[0]).toMatchObject({
+      staffName: 'Reader Support',
+      page: 'projects.list',
+      recordCount: 1,
+    });
+    expect(JSON.stringify(items[0])).not.toContain('Reads Rd');
+
+    // A row with no staff id (logged before the column existed) still shows, as Archova support.
+    await t.adminDb.db.execute(
+      sql`insert into backoffice.support_events (id, session_id, target_org_id, what, record_ids, staff_id)
+          select gen_random_uuid(), session_id, target_org_id, 'projects.list', '{}', null
+          from backoffice.support_events where target_org_id = ${decodeId('org', c.orgRef)!} limit 1`,
+    );
+    const withLegacy = (
+      (await c.browser.get(`${c.base}/reads`)).json() as { items: Array<{ staffName: string }> }
+    ).items;
+    expect(withLegacy.map((i) => i.staffName).sort()).toEqual([
+      'Archova support',
+      'Reader Support',
+    ]);
+
+    // The log cannot be edited or erased, even with direct database access.
+    await expect(
+      t.adminDb.db.execute(sql`update backoffice.support_events set what = 'x'`),
+    ).rejects.toThrow();
+    await expect(
+      t.adminDb.db.execute(sql`delete from backoffice.support_events`),
+    ).rejects.toThrow();
+
+    // A disabled staff account reads nothing more.
+    await t.adminDb.db.execute(
+      sql`update backoffice.staff_users set status = 'disabled' where email = ${email}`,
+    );
+    expect((await me.get(list)).statusCode).toBeGreaterThanOrEqual(400);
+    expect(
+      ((await c.browser.get(`${c.base}/reads`)).json() as { items: unknown[] }).items,
+    ).toHaveLength(2);
+  });
+
   it('needs a hardware-key sign-in to open a session or read content when required', async () => {
     const strict = await createTestContext({ env: { API_STAFF_SUPPORT_HARDWARE_KEY: 'true' } });
     try {

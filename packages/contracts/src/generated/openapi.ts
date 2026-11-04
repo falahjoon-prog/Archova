@@ -274,6 +274,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/support-access/reads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What Archova support looked at in their sessions (org owners and admins).
+         * @description The pages support read, which staff member read them and how many records each showed, newest first. Never
+         *     the content itself.
+         */
+        get: operations["listSupportReads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/support-access/banner": {
         parameters: {
             query?: never;
@@ -6356,6 +6379,17 @@ export interface components {
             grants: components["schemas"]["SupportAccessGrant"][];
             sessions: components["schemas"]["SupportAccessSession"][];
         };
+        SupportRead: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sessionId: string;
+            staffName: string;
+            page: string;
+            recordCount: number;
+            /** Format: date-time */
+            at: string;
+        };
         StaffAction: {
             /** Format: uuid */
             id: string;
@@ -11380,6 +11414,31 @@ export interface operations {
                 content: {
                     "application/json": {
                         items: components["schemas"]["StaffAction"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSupportReads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logged reads */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["SupportRead"][];
                     };
                 };
             };

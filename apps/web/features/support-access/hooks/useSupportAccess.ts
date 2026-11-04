@@ -10,6 +10,7 @@ const keys = (orgId: string) => ({
   all: ['orgs', orgId, 'support-access'] as const,
   banner: ['orgs', orgId, 'support-access', 'banner'] as const,
   actions: ['orgs', orgId, 'staff-actions'] as const,
+  reads: ['orgs', orgId, 'support-access', 'reads'] as const,
 });
 
 function useApi() {
@@ -27,6 +28,12 @@ export function useStaffActions() {
   const { orgId } = useCurrentOrg();
   const source = useApi();
   return useQuery({ queryKey: keys(orgId).actions, queryFn: () => source.staffActions() });
+}
+
+export function useSupportReads() {
+  const { orgId } = useCurrentOrg();
+  const source = useApi();
+  return useQuery({ queryKey: keys(orgId).reads, queryFn: () => source.reads() });
 }
 
 /** Polled so everyone sees the banner within a minute of a session opening, and it clears soon after it ends. */
