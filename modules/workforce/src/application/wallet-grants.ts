@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
+import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf, type LocalDate } from '@archova/time';
 import { canonicalJson, sha256 } from '../domain/induction';
@@ -58,6 +59,7 @@ export type SharedDocument = ReturnType<typeof sharedDocument>;
 const hashCode = (code: string) => sha256(code.trim());
 
 export function createWalletGrantService(deps: {
+  access: Pick<AccessService, 'assert'>;
   platform: Pick<PlatformApi, 'getOrg' | 'getProject'>;
   now?: () => Date;
 }) {
@@ -176,6 +178,10 @@ export function createWalletGrantService(deps: {
 
   /** The grant a builder reads through: its own, live, and covering the project it names. 404 otherwise. */
   async function liveGrantFor(scope: TenantScope, grantId: string, projectId: string) {
+    // The project must be one of this builder's own (RLS scopes the lookup to its org) and the caller must run
+    // sites on it, whatever the grant says; an all-projects grant never lets a made-up id through.
+    await deps.platform.getProject(scope, projectId);
+    await deps.access.assert(scope, 'workforce.attendance.manage', { projectId });
     const [g] = await scope.tx
       .select()
       .from(complianceGrants)
@@ -306,6 +312,26 @@ export function createWalletGrantService(deps: {
     const r = await openRequest(scope, code);
     const org = await deps.platform.getOrg(scope);
     const at = now();
+    // Claim the request first, and require that this statement changed one row: of two concurrent redemptions
+    // the second waits on the row lock, re-reads it as accepted and matches nothing.
+    const claimed = await scope.tx
+      .update(complianceAccessRequests)
+      .set({
+        status: 'accepted',
+        acceptedOrgId: scope.ctx.orgId,
+        acceptedAt: at,
+        version: r.version + 1,
+        updatedAt: at,
+      })
+      .where(
+        and(
+          eq(complianceAccessRequests.id, r.id),
+          eq(complianceAccessRequests.status, 'requested'),
+          eq(complianceAccessRequests.version, r.version),
+        ),
+      )
+      .returning({ id: complianceAccessRequests.id });
+    if (claimed.length !== 1) throw new AppError('compliance_code.invalid');
     const [g] = await scope.tx
       .insert(complianceGrants)
       .values({
@@ -324,19 +350,6 @@ export function createWalletGrantService(deps: {
         acceptedAt: at,
       })
       .returning();
-    // No RETURNING: once accepted the row no longer matches the redeem policy's read side.
-    await scope.tx
-      .update(complianceAccessRequests)
-      .set({
-        status: 'accepted',
-        acceptedOrgId: scope.ctx.orgId,
-        acceptedAt: at,
-        version: r.version + 1,
-        updatedAt: at,
-      })
-      .where(
-        and(eq(complianceAccessRequests.id, r.id), eq(complianceAccessRequests.version, r.version)),
-      );
     scope.events.add({
       type: 'workforce.compliance_grant.accepted.v1',
       projectId: r.projectId,

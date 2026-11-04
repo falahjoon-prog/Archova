@@ -251,4 +251,85 @@ describe('wallet grants', () => {
     const docs = `/v1/orgs/${s.bldOrg.id}/subcontractor-wallets/${grant.id}/documents?projectId=${s.project.id}`;
     expect((await s.bld.browser.get(docs)).statusCode).toBe(404);
   });
+
+  it('makes one grant from one code however many redeem at once', async () => {
+    const s = await setup('race');
+    const subBase = `/v1/orgs/${s.subOrg.id}`;
+    const { code } = (
+      await request(s, { projectId: s.project.id, itemTypes: ['workers_comp'] })
+    ).json();
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => s.sub.browser.post(`${subBase}/compliance-grants`, { code })),
+    );
+    expect(results.map((r) => r.statusCode).sort()).toEqual([201, 404, 404, 404]);
+    expect((await s.sub.browser.get(`${subBase}/compliance-grants`)).json().data).toHaveLength(1);
+  });
+
+  it('only lets a builder name its own projects, even on an all-projects grant', async () => {
+    const s = await setup('proj');
+    const { code } = (await request(s, { allProjects: true, itemTypes: ['workers_comp'] })).json();
+    const grant = (
+      await s.sub.browser.post(`/v1/orgs/${s.subOrg.id}/compliance-grants`, { code })
+    ).json();
+    const base = `/v1/orgs/${s.bldOrg.id}/subcontractor-wallets/${grant.id}`;
+    const made = 'prj_' + '0'.repeat(26);
+    expect((await s.bld.browser.get(`${base}/documents?projectId=${made}`)).statusCode).toBe(404);
+    expect(
+      (
+        await s.bld.browser.post(`${base}/snapshots`, {
+          projectId: made,
+          documentId: 'cdo_' + '0'.repeat(26),
+          reason: 'other',
+        })
+      ).statusCode,
+    ).toBe(404);
+    // Nothing was logged for the made-up project; a real one works.
+    expect(
+      (await s.sub.browser.get(`/v1/orgs/${s.subOrg.id}/compliance-access-log`)).json().data,
+    ).toEqual([]);
+    expect(
+      (await s.bld.browser.get(`${base}/documents?projectId=${s.project.id}`)).statusCode,
+    ).toBe(200);
+  });
+
+  it('keeps the log and snapshots append-only and requests to status changes', async () => {
+    const s = await setup('append');
+    const { code } = (await request(s, { allProjects: true, itemTypes: ['workers_comp'] })).json();
+    const grant = (
+      await s.sub.browser.post(`/v1/orgs/${s.subOrg.id}/compliance-grants`, { code })
+    ).json();
+    const base = `/v1/orgs/${s.bldOrg.id}/subcontractor-wallets/${grant.id}`;
+    const docs = (await s.bld.browser.get(`${base}/documents?projectId=${s.project.id}`)).json()
+      .data;
+    await s.bld.browser.post(`${base}/snapshots`, {
+      projectId: s.project.id,
+      documentId: docs[0].id,
+      reason: 'other',
+    });
+    const run = (orgId: string, userId: string, stmt: ReturnType<typeof sql>) =>
+      t.adminDb.withTenantTx(ctxFor(orgId, userId), ({ tx }) => tx.execute(stmt));
+    await expect(
+      run(s.subOrg.id, s.sub.userId, sql`update workforce.compliance_access_log set kind = 'list'`),
+    ).rejects.toThrow();
+    await expect(
+      run(s.subOrg.id, s.sub.userId, sql`delete from workforce.compliance_access_log`),
+    ).rejects.toThrow();
+    await expect(
+      run(
+        s.bldOrg.id,
+        s.bld.userId,
+        sql`update workforce.compliance_reliance_snapshots set reason = 'other'`,
+      ),
+    ).rejects.toThrow();
+    await expect(
+      run(s.bldOrg.id, s.bld.userId, sql`delete from workforce.compliance_reliance_snapshots`),
+    ).rejects.toThrow();
+    await expect(
+      run(
+        s.bldOrg.id,
+        s.bld.userId,
+        sql`update workforce.compliance_access_requests set item_types = array['other']`,
+      ),
+    ).rejects.toThrow();
+  });
 });

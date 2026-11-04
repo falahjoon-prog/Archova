@@ -139,4 +139,40 @@ create policy grantee_select on workforce.compliance_documents for select
          and g.revoked_at is null and workforce.wallet_today() <= g.expires_on
          and compliance_documents.item_type = any (g.item_types)));
 
+-- Evidence tables are append-only, even for the application role (as support_events). Nothing in the app updates
+-- or deletes a log row or a snapshot.
+create function workforce.compliance_append_only() returns trigger
+  language plpgsql as $$
+begin
+  raise exception '% is append-only', tg_table_name;
+end;
+$$;
+create trigger compliance_access_log_append_only before update or delete on workforce.compliance_access_log
+  for each row execute function workforce.compliance_append_only();
+create trigger compliance_access_log_no_truncate before truncate on workforce.compliance_access_log
+  for each statement execute function workforce.compliance_append_only();
+create trigger compliance_reliance_snapshots_append_only
+  before update or delete on workforce.compliance_reliance_snapshots
+  for each row execute function workforce.compliance_append_only();
+create trigger compliance_reliance_snapshots_no_truncate before truncate on workforce.compliance_reliance_snapshots
+  for each statement execute function workforce.compliance_append_only();
+
+-- An access request is only ever opened, accepted or cancelled: redeeming (which another org's transaction does)
+-- may change nothing but its status and the accepted_* columns.
+create function workforce.compliance_request_columns() returns trigger
+  language plpgsql as $$
+begin
+  if (new.id, new.org_id, new.requester_name, new.project_id, new.project_name, new.all_projects,
+      new.item_types, new.grant_expires_on, new.code_hash, new.code_expires_at, new.created_by, new.created_at)
+     is distinct from
+     (old.id, old.org_id, old.requester_name, old.project_id, old.project_name, old.all_projects,
+      old.item_types, old.grant_expires_on, old.code_hash, old.code_expires_at, old.created_by, old.created_at) then
+    raise exception 'a compliance access request can only change status and acceptance';
+  end if;
+  return new;
+end;
+$$;
+create trigger compliance_access_requests_columns before update on workforce.compliance_access_requests
+  for each row execute function workforce.compliance_request_columns();
+
 select kernel.grant_module_schema('workforce');
