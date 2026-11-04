@@ -117,6 +117,19 @@ export function createWebhookService(deps: WebhooksDeps) {
         updatedAt: now(),
       })
       .returning();
+    // The outbox is the audit trail (7 years): who pointed the org's events at which address, never the secret.
+    scope.events.add({
+      type: 'integrations.webhook.created.v1',
+      entityType: 'webhook',
+      entityId: row!.id,
+      entityVersion: 1,
+      data: {
+        webhookId: row!.id,
+        url: row!.url,
+        eventTypes: row!.eventTypes,
+        projectIds: row!.projectIds,
+      },
+    });
     return row!;
   }
 
@@ -131,6 +144,13 @@ export function createWebhookService(deps: WebhooksDeps) {
     if (!sub) throw new AppError('webhook.not_found');
     await scope.tx.delete(webhookDeliveries).where(eq(webhookDeliveries.subscriptionId, id));
     await scope.tx.delete(webhookSubscriptions).where(eq(webhookSubscriptions.id, id));
+    scope.events.add({
+      type: 'integrations.webhook.deleted.v1',
+      entityType: 'webhook',
+      entityId: id,
+      entityVersion: null,
+      data: { webhookId: id },
+    });
   }
 
   async function deliveries(scope: TenantScope, id: string, limit = 50) {
@@ -267,16 +287,20 @@ export function createWebhookService(deps: WebhooksDeps) {
         .where(eq(webhookDeliveries.id, c.id));
       if (giveUp) {
         counts.abandoned++;
+        const reason = gone
+          ? 'The endpoint answered 410 Gone.'
+          : 'No successful delivery for 72 hours.';
         await scope.tx
           .update(webhookSubscriptions)
-          .set({
-            status: 'disabled',
-            disabledReason: gone
-              ? 'The endpoint answered 410 Gone.'
-              : 'No successful delivery for 72 hours.',
-            updatedAt: now(),
-          })
+          .set({ status: 'disabled', disabledReason: reason, updatedAt: now() })
           .where(eq(webhookSubscriptions.id, c.subscriptionId));
+        scope.events.add({
+          type: 'integrations.webhook.disabled.v1',
+          entityType: 'webhook',
+          entityId: c.subscriptionId,
+          entityVersion: null,
+          data: { webhookId: c.subscriptionId, reason },
+        });
       } else counts.retried++;
     }
     const [next] = await scope.tx
