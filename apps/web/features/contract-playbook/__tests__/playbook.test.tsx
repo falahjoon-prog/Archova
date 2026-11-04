@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type * as OrgProvider from '@/shared/providers/CurrentOrgProvider';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enterText, renderInProject, testOrg } from '@/test/render';
 
@@ -8,7 +9,7 @@ const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).crea
 vi.mock('@/shared/lib/api', () => fake.module);
 const org = vi.hoisted(() => ({ role: 'admin' }));
 vi.mock('@/shared/providers/CurrentOrgProvider', async (orig) => ({
-  ...(await orig<typeof import('@/shared/providers/CurrentOrgProvider')>()),
+  ...(await orig<typeof OrgProvider>()),
   useCurrentOrg: () => ({
     orgId: 'org_test',
     orgSlug: 'acme',

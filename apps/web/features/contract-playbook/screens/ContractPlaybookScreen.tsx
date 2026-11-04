@@ -12,7 +12,7 @@ import {
   Textarea,
   TextField,
 } from '@archova/ui';
-import { CONTRACT_TYPES } from '@/features/contract-review/lib/labels';
+import { CONTRACT_TYPES } from '@/features/contract-review';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import type { ContractType, PlaybookTopic } from '../data/api';
