@@ -11,6 +11,7 @@ import { loadConfig, workerRole } from './config';
 import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
+import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
 import { templateBackfill } from './jobs/template-backfill';
@@ -55,6 +56,7 @@ async function main() {
       config.email.appBaseUrl,
     ),
     templateBackfill,
+    meetingReminders,
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(async (scope, alerts) => {
       log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');

@@ -17,4 +17,8 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   // Org-level because the documents belong to the company, not to a project.
   { key: 'workforce.wallet.view', scope: 'org', tool: null, level: 'standard' },
   { key: 'workforce.wallet.manage', scope: 'org', tool: null, level: 'admin' },
+  // Wallet sharing: a builder asks for access and reads what it is granted; the subbie accepts and revokes
+  // with `wallet.manage`.
+  { key: 'workforce.wallet.request', scope: 'org', tool: null, level: 'admin' },
+  { key: 'workforce.wallet.read_granted', scope: 'org', tool: null, level: 'standard' },
 ];

@@ -43,6 +43,7 @@ import {
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
+import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
@@ -241,6 +242,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     logger: services.logger,
   });
 
+  const notifications = createNotificationsModule(services);
+
   const financials = createFinancialsModule(services, {
     access: access.api,
     platform: platform.api,
@@ -380,6 +383,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     correspondence,
     defects,
     meetings,
+    notifications,
     financials,
     quality,
     safety,
@@ -412,6 +416,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     correspondence,
     defects,
     meetings,
+    notifications,
     financials,
     quality,
     safety,

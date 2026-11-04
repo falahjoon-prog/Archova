@@ -9,6 +9,7 @@ import {
   useAssistantPanelState,
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
+import { InboxLink } from '@/features/notifications';
 import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -63,12 +64,14 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             ...(membership.role === 'owner' || membership.role === 'admin'
               ? [
                   { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
+                  { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
                   { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
                 ]
               : []),
           ]}
           actions={
             <>
+              <InboxLink />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />
             </>
