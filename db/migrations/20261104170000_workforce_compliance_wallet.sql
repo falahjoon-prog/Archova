@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261104160000_workforce_compliance_wallet.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261104170000_workforce_compliance_wallet.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Subcontractor compliance wallet, first slice (compliance/05, E5): the evidence a company holds about itself.
 -- Documents stay in the holder's org. Status words are "recorded", "sighted" or "self_declared", never
 -- "verified" (§4). Only the last four characters of a number are kept (§7: collect the minimum); full-number
