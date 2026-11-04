@@ -299,6 +299,18 @@ export type SupportSessionDto = {
   status: 'open' | 'ended' | 'expired' | 'revoked';
 };
 /** Names and status only; a support session never sees documents, files or claims. */
+/** A platform legal hold as staff see it. Customers never see these. */
+export type OrgHoldDto = {
+  id: string;
+  projectId: string | null;
+  reason: string;
+  ticketRef: string;
+  placedBy: string;
+  placedAt: string;
+  releasedBy: string | null;
+  releasedAt: string | null;
+  releaseReason: string | null;
+};
 export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
 export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
 
@@ -514,6 +526,34 @@ export const internalOperations = {
       paidCents: z.number().int().min(1).max(100_000_000),
       ...withTicket,
     }),
+  }),
+  listOrgHolds: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/legal-holds',
+    auth: 'staff',
+    permission: 'backoffice.holds.manage',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  placeOrgHold: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/legal-holds',
+    auth: 'staff',
+    permission: 'backoffice.holds.manage',
+    params: orgOnly,
+    query: noParams,
+    // Omit projectId to hold the whole org. `ticketRef` is the request that asked for the hold.
+    body: z.object({ projectId: z.string().min(1).max(40).optional(), ...withTicket }),
+  }),
+  releaseOrgHold: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/legal-holds/{holdId}/release',
+    auth: 'staff',
+    permission: 'backoffice.holds.manage',
+    params: z.object({ orgId: orgRef, holdId: uuid }),
+    query: noParams,
+    body: z.object({ reason }),
   }),
   getOrgSupportAccess: op({
     method: 'GET',
