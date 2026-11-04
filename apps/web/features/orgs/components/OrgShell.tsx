@@ -65,6 +65,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
               ? [
                   { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
                   { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
+                  { href: webRoutes.novaSettings(orgSlug), label: 'Nova settings' },
                   { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
                 ]
               : []),
