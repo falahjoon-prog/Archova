@@ -502,15 +502,18 @@ export function createAccountingService(deps: AccountingDeps) {
       if (kind === 'auth_failed') {
         // Admin notice: the connection shows "Needs reconnecting" with this sentence, and an open auth_failed issue
         // lists the first document that hit it. Announced once, on the change into `error`.
-        if (row.status !== 'error')
-          audit(scope, 'connection_error', row.id, {
-            provider: row.provider,
-            reason: 'auth_failed',
-          });
-        await scope.tx
-          .update(accountingConnections)
-          .set({ status: 'error', lastError: text, updatedAt: now() })
-          .where(eq(accountingConnections.id, row.id));
+        // Committed in its own transaction when we can, so a caller that rolls back later (a transient error on the
+        // next provider in the same job) does not lose the error state or its audit row.
+        const markError = async (s: TenantScope) => {
+          await s.tx
+            .update(accountingConnections)
+            .set({ status: 'error', lastError: text, updatedAt: now() })
+            .where(eq(accountingConnections.id, row.id));
+          if (row.status !== 'error')
+            audit(s, 'connection_error', row.id, { provider: row.provider, reason: 'auth_failed' });
+        };
+        if (deps.database) await deps.database.withTenantTx(scope.ctx, markError);
+        else await markError(scope);
       }
       await raise(scope, row.id, kind, text, ref);
       return 'issue';

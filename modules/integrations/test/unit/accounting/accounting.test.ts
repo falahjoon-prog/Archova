@@ -307,6 +307,14 @@ describe('tokens', () => {
     expect(vault.open('org-a', 'oauth-tokens', sealed)).toBe('refresh-1');
     expect(() => vault.open('org-b', 'oauth-tokens', sealed)).toThrow();
   });
+  it('fails closed on an unknown version, including the old org-only layout', () => {
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    for (const v of [0, 1, 3]) {
+      const bad = Buffer.from(sealed);
+      bad[0] = v;
+      expect(() => vault.open('org-a', 'oauth-tokens', bad)).toThrow('unknown token seal version');
+    }
+  });
   it('binds the purpose and the key', () => {
     const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
     expect(() => vault.open('org-a', 'webhook-secret', sealed)).toThrow();

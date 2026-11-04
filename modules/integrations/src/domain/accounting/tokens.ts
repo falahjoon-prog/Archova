@@ -3,7 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 // Seals secrets for the integrations tables (integrations/01 §52). AES-256-GCM. The additional authenticated data
 // binds each blob to its org and its purpose, so a sealed token copied to another org's row, or a webhook secret
 // moved into a token column, fails to open. Production swaps the key source for KMS data keys; the layout stays
-// [version][iv 12][tag 16][ciphertext]. Version 2 binds the purpose; version 1 (org only) is still read, never written.
+// [version][iv 12][tag 16][ciphertext]. Only version 2 exists: any other version fails closed.
 export type SealPurpose = 'webhook-secret' | 'oauth-tokens' | 'oauth-verifier';
 
 export interface TokenVault {
@@ -24,10 +24,9 @@ export function createTokenVault(key: Buffer): TokenVault {
       return Buffer.concat([Buffer.from([2]), iv, c.getAuthTag(), ct]);
     },
     open(orgId, purpose, sealed) {
-      const version = sealed[0];
-      if (version !== 1 && version !== 2) throw new Error('unknown token seal version');
+      if (sealed[0] !== 2) throw new Error('unknown token seal version');
       const d = createDecipheriv('aes-256-gcm', key, sealed.subarray(1, 13));
-      d.setAAD(version === 1 ? Buffer.from(orgId) : aad(orgId, purpose));
+      d.setAAD(aad(orgId, purpose));
       d.setAuthTag(sealed.subarray(13, 29));
       return Buffer.concat([d.update(sealed.subarray(29)), d.final()]).toString('utf8');
     },
