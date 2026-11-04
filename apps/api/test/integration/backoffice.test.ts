@@ -1550,11 +1550,12 @@ describe('platform legal holds (compliance/07, APP 11.2)', () => {
         () => null,
         (e: { code: string; message: string; extra?: unknown }) => e,
       );
+      // The customer sees exactly what a retention period would show.
       expect(err).toMatchObject({
         code: 'retention.blocked',
-        message: 'This record cannot be deleted right now.',
+        message: 'This record must be kept until its retention period ends.',
+        extra: { reason: 'retention_period' },
       });
-      expect(err!.extra).toBeUndefined();
 
       // The customer's own transaction can see the hold but never change it.
       const seen = await run((s) =>
@@ -1602,6 +1603,93 @@ describe('platform legal holds (compliance/07, APP 11.2)', () => {
     } finally {
       await q(`drop table ${table}`);
     }
+  });
+
+  it('is out of reach of other global transactions, and the staff id cannot be forged', async () => {
+    const c = await company('global');
+    const lead = await staff(['security_lead']);
+    const other = await staff(['security_lead']);
+    const placed = await lead.post(`/orgs/${c.orgRef}/legal-holds`, body);
+    expect(placed.statusCode, placed.body).toBe(201);
+    const holdId = (placed.json() as { items: Array<{ id: string }> }).items[0]!.id;
+
+    // Identity and billing run without an org too, but name no staff member: they see and change nothing.
+    for (const owner of ['identity', 'billing'] as const) {
+      const seen = await t.database.withGlobalTx(owner, (tx) =>
+        tx.execute(sql`select count(*)::int as n from shared.platform_holds`),
+      );
+      expect(seen.rows[0]!.n).toBe(0);
+      await expect(
+        cause(
+          t.database.withGlobalTx(owner, (tx) =>
+            tx.execute(
+              sql`insert into shared.platform_holds (id, org_id, reason, reference, placed_by)
+                  values (${holdId.replace(/.$/, '0')}, ${c.orgId}, 'x', 'ticket', ${holdId})`,
+            ),
+          ),
+        ),
+      ).resolves.toMatch(/row-level security/);
+      const upd = await t.database.withGlobalTx(owner, (tx) =>
+        tx.execute(
+          sql`update shared.platform_holds set released_by = ${holdId}, released_at = now(), release_reason = 'x'
+              where id = ${holdId}`,
+        ),
+      );
+      expect(upd.rowCount).toBe(0);
+    }
+
+    // A staff transaction cannot claim another person as the placer or the releaser.
+    const staffRow = await t.adminDb.pool.query(
+      `select id from backoffice.staff_users order by created_at desc limit 2`,
+    );
+    const [a, b] = staffRow.rows.map((r: { id: string }) => r.id) as [string, string];
+    await expect(
+      cause(
+        t.database.withGlobalTx('backoffice', async (tx) => {
+          await tx.execute(sql`select set_config('app.staff_id', ${a}, true)`);
+          await tx.execute(
+            sql`insert into shared.platform_holds (id, org_id, reason, reference, placed_by)
+                values (${holdId.replace(/.$/, '0')}, ${c.orgId}, 'x', 'ticket', ${b})`,
+          );
+        }),
+      ),
+    ).resolves.toMatch(/row-level security/);
+    await expect(
+      cause(
+        t.database.withGlobalTx('backoffice', async (tx) => {
+          await tx.execute(sql`select set_config('app.staff_id', ${a}, true)`);
+          await tx.execute(
+            sql`update shared.platform_holds set released_by = ${b}, released_at = now(), release_reason = 'x'
+                where id = ${holdId}`,
+          );
+        }),
+      ),
+    ).resolves.toMatch(/signed in/);
+
+    // Placing and releasing leave an audit row with the ticket but not the reason, and tell the other holders.
+    const sentBefore = t.messages.sent.length;
+    expect(
+      (
+        await other.post(`/orgs/${c.orgRef}/legal-holds/${holdId}/release`, {
+          reason: 'Regulator confirmed in writing',
+        })
+      ).statusCode,
+    ).toBe(200);
+    const audit = await t.adminDb.pool.query(
+      `select action, reference, to_jsonb(a)::text as raw from backoffice.staff_audit a
+       where target_org_id = $1 order by created_at`,
+      [c.orgId],
+    );
+    expect(audit.rows.map((r: { action: string }) => r.action)).toEqual([
+      'legal_hold.placed',
+      'legal_hold.released',
+    ]);
+    expect(audit.rows[0].reference).toBe('LEG-7');
+    expect(JSON.stringify(audit.rows)).not.toMatch(/Regulator/);
+    const mails = t.messages.sent.slice(sentBefore).filter((m) => m.text.includes('Legal hold'));
+    expect(mails.some((m) => m.to === lead.email)).toBe(true);
+    expect(mails.some((m) => m.to === other.email)).toBe(false);
+    expect(mails.every((m) => !m.text.includes('Regulator'))).toBe(true);
   });
 
   it('holds one project, and refuses a project that is not in the company', async () => {

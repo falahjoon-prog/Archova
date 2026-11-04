@@ -36,7 +36,7 @@ export interface BackofficeConfig {
 }
 
 export function createBackofficeModule(
-  services: Pick<KernelServices, 'database'>,
+  services: Pick<KernelServices, 'database' | 'logger'>,
   deps: {
     catalogue: CatalogueService;
     accounts: AccountService;
@@ -53,6 +53,8 @@ export function createBackofficeModule(
     notifySupportSession: (notice: SupportSessionNotice) => Promise<void>;
     /** True when the project exists in the org; checked when staff place a legal hold on a project. */
     projectInOrg: () => (orgId: string, projectId: string) => Promise<boolean>;
+    /** Emails staff (the other legal-hold managers are told when a hold is placed or released). */
+    notifyStaff: (emails: string[], subject: string, text: string) => Promise<void>;
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -89,6 +91,8 @@ export function createBackofficeModule(
   const holds = createHoldService({
     database: services.database,
     projectInOrg: deps.projectInOrg,
+    notifyStaff: deps.notifyStaff,
+    logger: services.logger,
     requireHardwareKey: deps.config.requireSupportHardwareKey ?? !deps.config.localLogin,
   });
   const flags = createFlagService({ database: services.database, staff });

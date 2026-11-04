@@ -27,7 +27,7 @@ const YEAR_MS = 365 * 86_400_000;
 const MAX_RETENTION_YEARS = 50;
 
 export type RetentionCategory = keyof typeof RETENTION_PERIODS;
-export type RetentionBlockReason = 'legal_hold' | 'platform_hold' | 'retention_period';
+export type RetentionBlockReason = 'legal_hold' | 'retention_period';
 
 export interface RecordRef {
   /** `schema.table`, as the guard trigger sees the record. */
@@ -101,7 +101,12 @@ export async function retentionBlock(
 ): Promise<RetentionBlockReason | null> {
   const res = await scope.tx.execute(sql`
     select kernel.retention_block(${scope.ctx.orgId}, ${ref.recordType}, ${ref.recordId}, ${ref.projectId ?? null}) as reason`);
-  return (res.rows[0] as { reason: RetentionBlockReason | null } | undefined)?.reason ?? null;
+  const reason = (
+    res.rows[0] as { reason: RetentionBlockReason | 'platform_hold' | null } | undefined
+  )?.reason;
+  // A platform hold (staff, possibly at a regulator's request) reads exactly like a retention period to the caller,
+  // so a customer cannot tell the two apart.
+  return reason === 'platform_hold' ? 'retention_period' : (reason ?? null);
 }
 
 /**
@@ -111,9 +116,6 @@ export async function retentionBlock(
 export async function assertDeletable(scope: TenantScope, ref: RecordRef): Promise<void> {
   const reason = await retentionBlock(scope, ref);
   if (!reason) return;
-  // A platform hold (staff, possibly at a regulator's request) is never named to the customer.
-  if (reason === 'platform_hold')
-    throw new AppError('retention.blocked', 'This record cannot be deleted right now.');
   throw new AppError(
     'retention.blocked',
     reason === 'legal_hold'

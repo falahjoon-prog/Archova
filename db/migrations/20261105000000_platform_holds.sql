@@ -4,9 +4,14 @@
 -- (every tenant transaction sets app.org_id, a staff transaction sets nothing), and it is never listed to customers.
 -- Placing needs one person because it only restricts; releasing needs a different person because it enables deletion.
 
--- True in a staff (global) transaction, which sets no org.
-create function kernel.is_global_context() returns boolean language sql stable as $$
-  select nullif(current_setting('app.org_id', true), '') is null
+-- The staff member a transaction acts for. Only the backoffice holds service sets it (transaction-local), so identity
+-- and billing code, which also run without an org, cannot satisfy the policies below.
+create function kernel.staff_id() returns uuid language sql stable as $$
+  select nullif(current_setting('app.staff_id', true), '')::uuid
+$$;
+-- True in a staff transaction: no org, and a staff member named.
+create function kernel.is_staff_context() returns boolean language sql stable as $$
+  select nullif(current_setting('app.org_id', true), '') is null and kernel.staff_id() is not null
 $$;
 
 create table shared.platform_holds (
@@ -32,10 +37,12 @@ select kernel.enable_tenant_rls('shared.platform_holds');
 drop policy tenant_isolation on shared.platform_holds;
 -- A tenant transaction sees only its own org's holds (so the delete guard can), and writes nothing.
 create policy platform_holds_read on shared.platform_holds for select
-  using (kernel.is_global_context() or org_id = nullif(current_setting('app.org_id', true), '')::uuid);
-create policy platform_holds_insert on shared.platform_holds for insert with check (kernel.is_global_context());
+  using (kernel.is_staff_context() or org_id = nullif(current_setting('app.org_id', true), '')::uuid);
+-- The placer is the staff member the transaction acts for, so an id cannot be made up.
+create policy platform_holds_insert on shared.platform_holds for insert
+  with check (kernel.is_staff_context() and placed_by = kernel.staff_id());
 create policy platform_holds_release on shared.platform_holds for update
-  using (kernel.is_global_context()) with check (kernel.is_global_context());
+  using (kernel.is_staff_context()) with check (kernel.is_staff_context());
 
 -- Append-only apart from the release, which must be by someone else, once, now.
 create function kernel.platform_hold_guard() returns trigger language plpgsql as $$
@@ -47,6 +54,10 @@ begin
      is distinct from (old.id, old.org_id, old.project_id, old.reason, old.reference, old.placed_by, old.placed_at)
      or old.released_at is not null then
     raise exception 'retention: a platform hold can only be released' using errcode = 'RT001';
+  end if;
+  -- The releaser is the staff member the transaction acts for, never a value the caller picks.
+  if new.released_by is distinct from kernel.staff_id() then
+    raise exception 'retention: a release is made by the staff member signed in' using errcode = 'RT001';
   end if;
   if new.released_by is null or new.release_reason is null or new.released_by = old.placed_by
      or abs(extract(epoch from (new.released_at - now()))) > 1 then
