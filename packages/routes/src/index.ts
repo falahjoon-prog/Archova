@@ -16,6 +16,7 @@ export const webRoutes = {
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
