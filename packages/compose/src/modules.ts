@@ -263,6 +263,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
       estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
+    meetingForMinutes: (scope, projectId, meetingId) =>
+      meetings.api.forMinutesDraft(scope, projectId, meetingId),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });

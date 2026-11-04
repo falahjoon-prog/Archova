@@ -23,6 +23,7 @@ describe('projectToolGroups', () => {
       'Payment claims',
       'Attendance',
       'Observations',
+      'SWMS',
       'Tender packages',
       'Estimates',
       'Cost library',
