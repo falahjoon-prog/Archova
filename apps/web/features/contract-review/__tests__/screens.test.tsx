@@ -90,7 +90,7 @@ describe('ReviewScreen', () => {
     await screen.findByText('1 of 3 flags decided');
     const call = fake.callsTo('POST', DECIDE)[0]!;
     expect(call.init.body).toMatchObject({ decision: 'negotiate', note: 'Ask for a cap' });
-    expect(call.init.params?.path).toMatchObject({ suggestionId: 'ais_1', flagIndex: 0 });
+    expect(call.init.params?.path).toMatchObject({ suggestionId: 'ais_1', flagIndex: '0' });
   });
 
   it('disables decision controls for people outside the commercial team', async () => {
