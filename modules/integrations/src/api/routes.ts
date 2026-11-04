@@ -5,7 +5,9 @@ import {
   etag,
   parseIfMatch,
   requireTenant,
+  tenantKey,
   type Database,
+  type RedisClient,
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
@@ -21,6 +23,9 @@ import {
   toWebhookDeliveryDto,
   toWebhookDto,
 } from './mappers';
+
+/** Webhook create attempts per org per hour. */
+const MAX_CREATES_PER_HOUR = 10;
 
 const project = (p: { projectId: string }) => {
   const id = decodeId('project', p.projectId);
@@ -39,6 +44,7 @@ export function integrationsRoutes(
   webhooks: WebhookService,
   accounting: AccountingService,
   available: readonly ('xero' | 'myob')[],
+  redis: RedisClient | null = null,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -61,6 +67,15 @@ export function integrationsRoutes(
     if (!id) throw new AppError('sync_issue.not_found');
     return id;
   };
+
+  async function limitCreates(orgId: string) {
+    if (!redis) return;
+    const key = tenantKey(orgId, 'whk-create', String(Math.floor(Date.now() / 3_600_000)));
+    const used = await redis.incr(key);
+    if (used === 1) await redis.expire(key, 3600);
+    if (used > MAX_CREATES_PER_HOUR)
+      throw new AppError('rate_limited', 'Too many webhook attempts. Try again in an hour.');
+  }
 
   return defineRoutes({
     listAccountingConnections: async (input) => {
@@ -150,6 +165,7 @@ export function integrationsRoutes(
     },
     createWebhook: async (input) => {
       const t = requireTenant(input);
+      await limitCreates(t.orgId);
       const projectIds = (input.body.projectIds ?? []).map((p) => {
         const id = decodeId('project', p);
         if (!id)

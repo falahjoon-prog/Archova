@@ -13,6 +13,7 @@ import {
   createOrg,
   createProject,
   createTestContext,
+  outboxData,
   signUp,
   type TestContext,
 } from './helpers';
@@ -83,6 +84,31 @@ describe('webhook endpoints (integrations/06 §5)', () => {
     expect((await s.owner.browser.get(`/v1/orgs/${s.org.id}/webhooks`)).json().data).toHaveLength(
       0,
     );
+
+    const made = await outboxData<Record<string, unknown>>(
+      t,
+      s.org.id,
+      s.owner.userId,
+      'integrations.webhook.created.v1',
+    );
+    expect(made).toHaveLength(1);
+    expect(made[0]).toMatchObject({ url: 'https://hooks.example.com/archova' });
+    expect(JSON.stringify(made)).not.toContain(created.secret);
+    expect(
+      await outboxData(t, s.org.id, s.owner.userId, 'integrations.webhook.deleted.v1'),
+    ).toHaveLength(1);
+  });
+
+  it('allows ten create attempts an hour, then answers 429', async () => {
+    const s = await setup('wh-limit');
+    answer = { status: 500, error: null };
+    const codes: number[] = [];
+    for (let i = 0; i < 11; i++) {
+      codes.push((await s.owner.browser.post(`/v1/orgs/${s.org.id}/webhooks`, body())).statusCode);
+    }
+    expect(codes.slice(0, 10).every((c) => c === 422)).toBe(true);
+    expect(codes[10]).toBe(429);
+    answer = { status: 200, error: null };
   });
 
   it('refuses an endpoint that does not answer, an unsafe URL and a non-public event type', async () => {

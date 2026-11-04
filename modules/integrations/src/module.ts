@@ -15,7 +15,14 @@ export function createIntegrationsModule(
   const available = (['xero', 'myob'] as const).filter((p) => deps.accounting.credentials[p]);
   return {
     definition: defineModule({ name: 'integrations', permissions: INTEGRATIONS_PERMISSIONS }),
-    routes: integrationsRoutes(services.database, imports, webhooks, accounting, available),
+    routes: integrationsRoutes(
+      services.database,
+      imports,
+      webhooks,
+      accounting,
+      available,
+      services.redis,
+    ),
     api: { accounting },
   };
 }
