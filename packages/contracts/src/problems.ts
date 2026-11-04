@@ -87,6 +87,9 @@ export const PROBLEM_CODES = {
   'backoffice.support_session_open': 409,
   'backoffice.support_no_session': 403,
   'backoffice.support_grant_exists': 409,
+  'backoffice.hardware_key_required': 403,
+  'backoffice.support_notify_failed': 503,
+  'backoffice.support_project_not_in_scope': 403,
   'backoffice.support_session_not_found': 404,
   'backoffice.downgrade_at_term_end': 422,
   // files
