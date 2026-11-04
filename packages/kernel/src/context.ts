@@ -24,12 +24,27 @@ export interface TenantContext {
   principalType: PrincipalType;
   orgRole: 'owner' | 'admin' | 'billing_admin' | 'member' | null;
   entitlements: Entitlements;
+  /** Feature-flag reader for this org; set by apps/api. Absent in jobs and tests, where every flag is off. */
+  flags?: FlagReader;
   requestId: string;
   /**
    * Set when the caller is a person on an access link (X45) rather than a signed-in user. `userId` is then the
    * subject's id in the owning module (a workforce worker), never an identity user.
    */
   actor?: LinkActor;
+}
+
+/** Evaluates registry flags for the request's org (backend 09 §5). A flag never grants an unlicensed module. */
+export interface FlagReader {
+  isOn(key: string): Promise<boolean>;
+}
+
+/** Off unless the context carries a reader that says otherwise. */
+export async function isFlagOn(
+  ctx: { flags?: FlagReader | undefined },
+  key: string,
+): Promise<boolean> {
+  return ctx.flags ? ctx.flags.isOn(key) : false;
 }
 
 export interface LinkActor {

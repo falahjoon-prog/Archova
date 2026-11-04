@@ -50,6 +50,9 @@ export const RevokeSupportAccessGrantParams = z.object({
 export const GetEntitlementsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetFeatureFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1912,6 +1915,8 @@ export interface OperationDef {
   auth: 'required' | 'none';
   permission: string | null;
   internal: boolean;
+  /** Feature flag that must be on for the org (x-flag); absent for ungated operations. */
+  flag?: string;
   contentType: string | null;
   params: z.ZodTypeAny | null;
   query: z.ZodTypeAny | null;
@@ -2168,6 +2173,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetEntitlementsParams,
+    query: null,
+    body: null,
+  },
+  getFeatureFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/feature-flags',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetFeatureFlagsParams,
     query: null,
     body: null,
   },
@@ -2994,6 +3011,7 @@ export const operations = {
     auth: "required",
     permission: "estimating.takeoff.manage",
     internal: false,
+    flag: "nova_estimating",
     contentType: "application/json",
     params: DetectTakeoffWithNovaParams,
     query: null,
@@ -3666,6 +3684,7 @@ export const operations = {
     auth: "required",
     permission: "estimating.takeoff.manage",
     internal: false,
+    flag: "nova_estimating",
     contentType: "application/json",
     params: CreateAssistedTakeoffMeasurementsParams,
     query: null,

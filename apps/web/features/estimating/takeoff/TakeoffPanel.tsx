@@ -18,6 +18,7 @@ import {
 import { Alert, Button, Dialog, Select, StatusPill, TextField, ToggleGroup } from '@archova/ui';
 import { Download } from '@archova/ui/icons';
 import type { ViewerExtensionProps, ViewerToolBinding } from '@/shared/drawing-viewer/extension';
+import { useFeatureFlag } from '@/shared/hooks/useFeatureFlag';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { measurementsToCsv } from '../data/takeoff-source';
@@ -69,6 +70,7 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
     .map((r) => r.id);
   const measurements = useMeasurements(project.projectId, [sheet.revisionId, ...olderRevisionIds]);
   const mutations = useTakeoffMutations(project.projectId);
+  const novaOn = useFeatureFlag('nova_estimating');
   const onSheet = (measurements.data ?? []).filter((m) => m.revisionId === sheet.revisionId);
   // Only accepted marks count: Nova's pending and rejected ones are shown on the sheet, never totalled or sent on.
   const saved = onSheet.filter((m) => m.confirmed);
@@ -365,7 +367,7 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
         <p className="u-caption u-m-0">Confirm the scale to start measuring.</p>
       ) : null}
 
-      {sheet.isCurrent && g ? (
+      {sheet.isCurrent && g && novaOn ? (
         <NovaTakeoffSection
           rows={onSheet}
           canFind={canMeasure}

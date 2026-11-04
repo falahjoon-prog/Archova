@@ -372,6 +372,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/feature-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Which feature flags are on for this org (backend 09 §5).
+         * @description Evaluated on the server from the owner console's rules (all orgs, this org, its pilot cohorts, a rollout
+         *     share). A flag launches a feature; it never makes an unlicensed module reachable, so clients check
+         *     `getEntitlements` as well. Every registry flag appears, off unless a rule turns it on.
+         */
+        get: operations["getFeatureFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects": {
         parameters: {
             query?: never;
@@ -6644,6 +6668,12 @@ export interface components {
                 [key: string]: number | null;
             };
         };
+        FeatureFlags: {
+            orgId: string;
+            flags: {
+                [key: string]: boolean;
+            };
+        };
         AiSettings: {
             aiEnabled: boolean;
             /** @description Features left on; null means every feature. */
@@ -11428,6 +11458,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Entitlements"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getFeatureFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Flags for this org */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlags"];
                 };
             };
             default: components["responses"]["Problem"];

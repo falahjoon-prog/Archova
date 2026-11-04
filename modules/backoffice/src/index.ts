@@ -7,7 +7,7 @@ import {
   type AccountService,
   type CatalogueService,
 } from '@archova/mod-billing';
-import { internalRoutes } from './api/routes';
+import { customerRoutes, internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
 import { createOrgActionService, type OrgActionDeps } from './application/org-actions';
@@ -81,8 +81,8 @@ export function createBackofficeModule(
   const flags = createFlagService({ database: services.database, staff });
   return {
     definition: defineModule({ name: 'backoffice' }),
-    /** No customer routes: /internal/v1 is mounted by apps/api from `internal`. */
-    routes: {},
+    /** /internal/v1 is mounted by apps/api from `internal`; the only customer route is the org's own flag set. */
+    routes: customerRoutes({ flags }),
     internal: internalRoutes({
       staff,
       requests,
@@ -109,7 +109,7 @@ export function createBackofficeModule(
         listStaffActions: orgActions.listForCustomer,
       },
       /** Server-side flag evaluation for one org (backend 09 §5); a flag never grants an unlicensed module. */
-      flags: { isOn: flags.isOn },
+      flags: { isOn: flags.isOn, forOrg: flags.forOrg },
       /** Creates or updates a staff account; used by the seed command only. */
       upsertLocalStaff: staff.upsertLocal,
     },

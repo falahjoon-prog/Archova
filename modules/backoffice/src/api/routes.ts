@@ -6,7 +6,7 @@ import type {
   PlanDraftInput,
 } from '@archova/contracts';
 import { decodeId } from '@archova/domain';
-import { AppError } from '@archova/kernel';
+import { AppError, defineRoutes, requireTenant } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
 import type { FlagService } from '../application/flags';
@@ -238,4 +238,18 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     },
     listStaff: async () => ok({ items: await d.staff.list() }),
   };
+}
+
+/** What the org's own signed-in members may ask: which flags are on for them (never the rules behind them). */
+export function customerRoutes(deps: { flags: FlagService }) {
+  return defineRoutes({
+    getFeatureFlags: async (input) => {
+      const tenant = requireTenant(input);
+      return {
+        status: 200,
+        body: { orgId: input.params.orgId, flags: await deps.flags.forOrg(tenant.orgId) },
+        headers: { 'cache-control': 'private, no-store' },
+      };
+    },
+  });
 }

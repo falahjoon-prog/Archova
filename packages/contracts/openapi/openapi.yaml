@@ -404,6 +404,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Entitlements' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/feature-flags:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getFeatureFlags
+      tags: [platform]
+      x-module: platform
+      summary: Which feature flags are on for this org (backend 09 §5).
+      description: |
+        Evaluated on the server from the owner console's rules (all orgs, this org, its pilot cohorts, a rollout
+        share). A flag launches a feature; it never makes an unlicensed module reachable, so clients check
+        `getEntitlements` as well. Every registry flag appears, off unless a rule turns it on.
+      responses:
+        '200':
+          description: Flags for this org
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FeatureFlags' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -2023,6 +2042,7 @@ paths:
       operationId: detectTakeoffWithNova
       tags: [ai]
       x-module: ai
+      x-flag: nova_estimating
       x-permission: estimating.takeoff.manage
       summary: Nova finds the items to count or outline on a drawing sheet (Nova Esti assisted takeoff).
       description: |
@@ -3478,6 +3498,7 @@ paths:
       operationId: createAssistedTakeoffMeasurements
       tags: [estimating]
       x-module: estimating
+      x-flag: nova_estimating
       x-permission: estimating.takeoff.manage
       summary: Save what Nova found on a sheet as unconfirmed marks (Nova Esti assisted takeoff).
       description: |
@@ -9444,6 +9465,14 @@ components:
         limits:
           type: object
           additionalProperties: { type: [integer, 'null'] }
+    FeatureFlags:
+      type: object
+      required: [orgId, flags]
+      properties:
+        orgId: { type: string }
+        flags:
+          type: object
+          additionalProperties: { type: boolean }
     AiSettings:
       type: object
       required:

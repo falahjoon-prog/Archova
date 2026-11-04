@@ -5,7 +5,9 @@ import {
   addMember,
   createOrg,
   createProject,
+  clearFlagTargets,
   createTestContext,
+  enableFlag,
   signUp,
   uploadBytes,
   type TestContext,
@@ -25,6 +27,7 @@ beforeAll(async () => {
   plain = await createTestContext();
 });
 afterAll(async () => {
+  await clearFlagTargets(t, 'nova_estimating');
   await t.close();
   await plain.close();
 });
@@ -33,6 +36,8 @@ async function setup(ctx: TestContext, label: string) {
   const pm = await signUp(ctx.app, `${label}-pm`);
   const sub = await signUp(ctx.app, `${label}-sub`);
   const org = await createOrg(pm.browser, `${label} Builder`);
+  // Nova assisted takeoff is behind the nova_estimating flag.
+  await enableFlag(ctx, 'nova_estimating', org.id);
   const project = await createProject(pm.browser, org.id, { name: 'Harbour St', state: 'NSW' });
   const base = `/v1/orgs/${org.id}/projects/${project.id}`;
   await addMember(pm.browser, org.id, project.id, sub.email, 'Subcontractor', 'Sparky');

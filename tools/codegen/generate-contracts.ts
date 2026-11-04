@@ -40,6 +40,7 @@ type Operation = {
   'x-auth'?: string;
   'x-permission'?: string;
   'x-internal'?: boolean;
+  'x-flag'?: string;
 };
 type Doc = {
   paths: Record<string, Record<string, Operation | Parameter[]>>;
@@ -224,6 +225,7 @@ async function main() {
           `    auth: ${JSON.stringify(op['x-auth'] ?? 'required')},\n` +
           `    permission: ${JSON.stringify(op['x-permission'] ?? null)},\n` +
           `    internal: ${op['x-internal'] ? 'true' : 'false'},\n` +
+          (op['x-flag'] ? `    flag: ${JSON.stringify(op['x-flag'])},\n` : '') +
           `    contentType: ${JSON.stringify(contentType)},\n` +
           `    params: ${pathZ ? `${P}Params` : 'null'},\n` +
           `    query: ${queryZ ? `${P}Query` : 'null'},\n` +
@@ -241,6 +243,8 @@ async function main() {
     "  auth: 'required' | 'none';",
     '  permission: string | null;',
     '  internal: boolean;',
+    '  /** Feature flag that must be on for the org (x-flag); absent for ungated operations. */',
+    '  flag?: string;',
     '  contentType: string | null;',
     '  params: z.ZodTypeAny | null;',
     '  query: z.ZodTypeAny | null;',

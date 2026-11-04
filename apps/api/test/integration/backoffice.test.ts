@@ -622,6 +622,59 @@ describe('feature flags and pilot cohorts', () => {
     });
   });
 
+  it('serves the org its own flags and gates flagged routes on them', async () => {
+    const { browser } = await signUp(t.app, 'flag-routes');
+    const org = await createOrg(browser, 'Flag Routes Builders');
+    const project = await createProject(browser, org.id);
+    const key = 'nova_estimating';
+    const flags = async () =>
+      (
+        (await browser.get(`/v1/orgs/${org.id}/feature-flags`)).json() as {
+          flags: Record<string, boolean>;
+        }
+      ).flags;
+    const detect = () =>
+      browser.post(`/v1/orgs/${org.id}/projects/${project.id}/ai/takeoff-detections`, {
+        revisionId: `drv_${'0'.repeat(26)}`,
+        target: { kind: 'count', what: 'power points' },
+      });
+
+    // Every registry flag is listed, off by default, and the flagged route looks like it does not exist.
+    expect(await flags()).toEqual({
+      nova_estimating: false,
+      photo_progress_flags: false,
+      subcontractor_wallet: false,
+    });
+    const off = await detect();
+    expect(off.statusCode).toBe(404);
+    expect(code(off)).toBe('feature-unavailable');
+
+    // Turning it on for this org flips both the listing and the route; other flags stay off.
+    const support = await staff(['support']);
+    await support.put(`/flags/${key}`, {
+      scope: 'org',
+      orgId: org.id,
+      on: true,
+      reason: 'Pilot builder asked for it',
+    });
+    expect((await flags())[key]).toBe(true);
+    expect((await flags()).subcontractor_wallet).toBe(false);
+    expect(code(await detect())).not.toBe('feature-unavailable');
+
+    // The kill switch takes it away again at once.
+    await support.post(`/flags/${key}/kill`, { reason: 'Pilot paused after a bug' });
+    expect((await flags())[key]).toBe(false);
+    expect(code(await detect())).toBe('feature-unavailable');
+
+    // Signed-out callers cannot read it.
+    const anon = await t.app.inject({
+      method: 'GET',
+      url: `/v1/orgs/${org.id}/feature-flags`,
+      headers: { host: 'app.archova.test' },
+    });
+    expect(anon.statusCode).toBe(401);
+  });
+
   it('keeps all-orgs and percentage rollouts to an Owner with a fresh password check', async () => {
     const key = 'photo_progress_flags';
     const support = await staff(['support']);

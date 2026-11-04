@@ -1933,6 +1933,12 @@ export const EstimatePageSchema = z.object({
 });
 export type EstimatePage = z.infer<typeof EstimatePageSchema>;
 
+export const FeatureFlagsSchema = z.object({
+  "orgId": z.string(),
+  "flags": z.record(z.string(), z.boolean()),
+});
+export type FeatureFlags = z.infer<typeof FeatureFlagsSchema>;
+
 export const FileObjectSchema = z.object({
   "id": z.string(),
   "projectId": z.string().nullable(),
