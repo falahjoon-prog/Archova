@@ -7840,6 +7840,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MeetingList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meeting-links:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listMeetingsLinkedTo
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.read
+      summary: "Minute items linked to an RFI, defect or variation, for that record's Related tab (MTG-AC5). Project team only; an outsider gets an empty list."
+      parameters:
+        - {
+            name: type,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [rfi, variation, defect] },
+          }
+        - {
+            name: id,
+            in: query,
+            required: true,
+            schema: { type: string, minLength: 5, maxLength: 40 },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingLinkedItemList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -8499,6 +8529,39 @@ components:
         status: { type: string, enum: [draft, issued] }
         issuedVersion: { type: integer }
         openActions: { type: integer }
+    MeetingLinkedItem:
+      type: object
+      required:
+        [
+          meetingId,
+          meetingTitle,
+          meetingNumber,
+          heldAt,
+          itemNo,
+          kind,
+          body,
+          status,
+          ownerName,
+          dueDate,
+        ]
+      properties:
+        meetingId: { type: string }
+        meetingTitle: { type: string }
+        meetingNumber: { type: integer }
+        heldAt: { type: string, format: date-time }
+        itemNo: { type: string }
+        kind: { type: string, enum: [action, decision, information] }
+        body: { type: string }
+        status: { type: string, enum: [open, closed] }
+        ownerName: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'] }
+    MeetingLinkedItemList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingLinkedItem' }
     MeetingList:
       type: object
       required: [data]

@@ -42,6 +42,16 @@ export function useMyActions(scope: 'mine' | 'all') {
   });
 }
 
+export function useLinkedMeetingItems(type: 'rfi' | 'defect' | 'variation', id: string) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'meetings', { linked: `${type}:${id}` }),
+    queryFn: () => source.linkedItems(projectId, { type, id }),
+  });
+}
+
 export function useMeeting(meetingId: string) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();

@@ -5679,6 +5679,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/meeting-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Minute items linked to an RFI, defect or variation, for that record's Related tab (MTG-AC5). Project team only; an outsider gets an empty list. */
+        get: operations["listMeetingsLinkedTo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}": {
         parameters: {
             query?: never;
@@ -5989,6 +6009,24 @@ export interface components {
             status: "draft" | "issued";
             issuedVersion: number;
             openActions: number;
+        };
+        MeetingLinkedItem: {
+            meetingId: string;
+            meetingTitle: string;
+            meetingNumber: number;
+            /** Format: date-time */
+            heldAt: string;
+            itemNo: string;
+            /** @enum {string} */
+            kind: "action" | "decision" | "information";
+            body: string;
+            /** @enum {string} */
+            status: "open" | "closed";
+            ownerName: string | null;
+            dueDate: string | null;
+        };
+        MeetingLinkedItemList: {
+            data: components["schemas"]["MeetingLinkedItem"][];
         };
         MeetingList: {
             data: components["schemas"]["MeetingSummary"][];
@@ -20349,6 +20387,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeetingList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listMeetingsLinkedTo: {
+        parameters: {
+            query: {
+                type: "rfi" | "variation" | "defect";
+                id: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingLinkedItemList"];
                 };
             };
             default: components["responses"]["Problem"];
