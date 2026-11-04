@@ -9,7 +9,6 @@ export function notificationsRoutes(database: Database, service: NotificationSer
         requireTenant(input),
         (s) =>
           service.list(s, {
-            unreadOnly: input.query.unreadOnly ?? false,
             limit: input.query.limit ?? 30,
           }),
         { readOnly: true },

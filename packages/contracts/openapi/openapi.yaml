@@ -433,12 +433,9 @@ paths:
       x-module: platform
       summary: The caller's in-app inbox, newest first, with the unread count.
       description: |
-        Only the caller's own notifications are ever returned. `unreadOnly` hides the ones already read. The inbox
+        Only the caller's own notifications are ever returned. The inbox
         holds the latest `limit` entries; `unreadCount` counts every unread one in the organisation.
       parameters:
-        - name: unreadOnly
-          in: query
-          schema: { type: boolean, default: false }
         - name: limit
           in: query
           schema: { type: integer, minimum: 1, maximum: 100, default: 30 }

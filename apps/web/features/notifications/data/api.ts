@@ -11,10 +11,10 @@ export type NotificationList = S['NotificationList'];
 export function createNotificationsApi(orgId: string) {
   const path = { orgId };
   return {
-    async list(unreadOnly = false): Promise<NotificationList> {
+    async list(): Promise<NotificationList> {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/notifications', {
-          params: { path, query: { unreadOnly, limit: 50 } },
+          params: { path, query: { limit: 50 } },
         }),
       );
     },

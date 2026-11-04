@@ -69,9 +69,7 @@ describe('notification inbox', () => {
     expect(read.json().readAt).not.toBeNull();
     const again = await ana.browser.post(`${base}/${first}/read`, {});
     expect(again.json().readAt).toBe(read.json().readAt);
-    expect(((await ana.browser.get(`${base}?unreadOnly=true`)).json() as Inbox).data).toHaveLength(
-      1,
-    );
+    expect(((await ana.browser.get(base)).json() as Inbox).unreadCount).toBe(1);
     expect(
       (await ana.browser.post(`${base}/ntf_00000000000000000000000000/read`, {})).statusCode,
     ).toBe(404);

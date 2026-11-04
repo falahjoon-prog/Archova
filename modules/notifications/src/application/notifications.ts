@@ -65,7 +65,7 @@ export async function createNotifications(
 }
 
 export interface NotificationService {
-  list(scope: TenantScope, opts: { unreadOnly: boolean; limit: number }): Promise<NotificationList>;
+  list(scope: TenantScope, opts: { limit: number }): Promise<NotificationList>;
   markRead(scope: TenantScope, publicId: string): Promise<Notification>;
   markAllRead(scope: TenantScope): Promise<void>;
 }
@@ -76,11 +76,11 @@ export function createNotificationService(now: () => Date = () => new Date()): N
     and(eq(notifications.orgId, scope.ctx.orgId), eq(notifications.userId, scope.ctx.userId));
 
   return {
-    async list(scope, { unreadOnly, limit }) {
+    async list(scope, { limit }) {
       const rows = await scope.tx
         .select()
         .from(notifications)
-        .where(and(mine(scope), unreadOnly ? isNull(notifications.readAt) : undefined))
+        .where(mine(scope))
         .orderBy(desc(notifications.createdAt), desc(notifications.id))
         .limit(limit);
       const [{ n } = { n: 0 }] = await scope.tx

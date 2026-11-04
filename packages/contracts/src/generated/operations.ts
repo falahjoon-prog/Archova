@@ -57,7 +57,6 @@ export const ListNotificationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const ListNotificationsQuery = z.object({
-  "unreadOnly": z.boolean().default(false),
   "limit": z.coerce.number().int().min(1).max(100).default(30),
 });
 export const MarkAllNotificationsReadParams = z.object({

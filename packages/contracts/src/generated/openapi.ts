@@ -407,7 +407,7 @@ export interface paths {
         };
         /**
          * The caller's in-app inbox, newest first, with the unread count.
-         * @description Only the caller's own notifications are ever returned. `unreadOnly` hides the ones already read. The inbox
+         * @description Only the caller's own notifications are ever returned. The inbox
          *     holds the latest `limit` entries; `unreadCount` counts every unread one in the organisation.
          */
         get: operations["listNotifications"];
@@ -11611,7 +11611,6 @@ export interface operations {
     listNotifications: {
         parameters: {
             query?: {
-                unreadOnly?: boolean;
                 limit?: number;
             };
             header?: never;
