@@ -15,6 +15,7 @@ import {
   Select,
   SkeletonRows,
   StatusPill,
+  Switch,
   TextField,
   buttonClassName,
   type DataTableColumn,
@@ -35,6 +36,7 @@ import {
   type Gate,
   type GateCheckMode,
   type GateWithCode,
+  type SiteInput,
 } from '../lib/types';
 
 type Editing =
@@ -180,7 +182,10 @@ export function SitesScreen() {
           >
             <p className="u-caption u-m-0">
               {site.active ? 'In use' : 'Closed'} · Open sign-ins close at{' '}
-              {dayEnd(site.dayEndLocal)} · {CHECK_MODE_LABELS[site.gateCheckMode]}
+              {dayEnd(site.dayEndLocal)} · {CHECK_MODE_LABELS[site.gateCheckMode]} ·{' '}
+              {site.boundary
+                ? `Boundary ${site.boundary.radiusM} m around ${site.boundary.lat.toFixed(5)}, ${site.boundary.lng.toFixed(5)}`
+                : 'Boundary from the project location'}
             </p>
             <DataTable
               caption={`Gates at ${site.name}`}
@@ -329,12 +334,24 @@ function SiteDialog({
   pending: boolean;
   error: unknown;
   onClose: () => void;
-  onSave: (input: { name: string; dayEndLocal: string; gateCheckMode: GateCheckMode }) => void;
+  onSave: (input: SiteInput) => void;
 }) {
   const [name, setName] = useState(site?.name ?? '');
   const [dayEndLocal, setDayEnd] = useState(site?.dayEndLocal ?? '19:00');
   const [mode, setMode] = useState<GateCheckMode>(site?.gateCheckMode ?? 'block');
-  const valid = name.trim().length > 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(dayEndLocal);
+  const [custom, setCustom] = useState(site?.boundary !== null);
+  const [lat, setLat] = useState(site?.boundary ? String(site.boundary.lat) : '');
+  const [lng, setLng] = useState(site?.boundary ? String(site.boundary.lng) : '');
+  const [radius, setRadius] = useState(site?.boundary ? String(site.boundary.radiusM) : '100');
+  const latN = Number(lat);
+  const lngN = Number(lng);
+  const radiusN = Number(radius);
+  const latOk = lat.trim() !== '' && latN >= -90 && latN <= 90;
+  const lngOk = lng.trim() !== '' && lngN >= -180 && lngN <= 180;
+  const radiusOk = Number.isInteger(radiusN) && radiusN >= 10 && radiusN <= 10000;
+  const boundaryOk = !custom || (latOk && lngOk && radiusOk);
+  const valid =
+    name.trim().length > 0 && /^([01]\d|2[0-3]):[0-5]\d$/.test(dayEndLocal) && boundaryOk;
   return (
     <Dialog
       open
@@ -347,7 +364,14 @@ function SiteDialog({
           </Button>
           <Button
             disabled={!valid || pending}
-            onClick={() => onSave({ name: name.trim(), dayEndLocal, gateCheckMode: mode })}
+            onClick={() =>
+              onSave({
+                name: name.trim(),
+                dayEndLocal,
+                gateCheckMode: mode,
+                boundary: custom ? { lat: latN, lng: lngN, radiusM: radiusN } : null,
+              })
+            }
           >
             {pending ? 'Saving…' : 'Save'}
           </Button>
@@ -372,6 +396,43 @@ function SiteDialog({
           }))}
           onChange={(e) => setMode(e.target.value as GateCheckMode)}
         />
+        <Switch
+          label="Use a custom boundary for this site"
+          checked={custom}
+          onCheckedChange={setCustom}
+        />
+        {custom ? (
+          <>
+            <p className="u-caption u-m-0">
+              A circle for geofence sign-in. Leave it off to use the project’s site location. Only
+              builder staff can sign in by geofence.
+            </p>
+            <TextField
+              label="Latitude"
+              inputMode="decimal"
+              value={lat}
+              placeholder="-33.86882"
+              error={lat !== '' && !latOk ? 'Enter a latitude between -90 and 90.' : undefined}
+              onChange={(e) => setLat(e.target.value)}
+            />
+            <TextField
+              label="Longitude"
+              inputMode="decimal"
+              value={lng}
+              placeholder="151.20929"
+              error={lng !== '' && !lngOk ? 'Enter a longitude between -180 and 180.' : undefined}
+              onChange={(e) => setLng(e.target.value)}
+            />
+            <TextField
+              label="Radius (metres)"
+              inputMode="numeric"
+              value={radius}
+              hint="Between 10 m and 10 km."
+              error={!radiusOk ? 'Enter a whole number from 10 to 10000.' : undefined}
+              onChange={(e) => setRadius(e.target.value)}
+            />
+          </>
+        ) : null}
         <ErrorAlert error={error} title="We couldn't save the site" />
       </div>
     </Dialog>

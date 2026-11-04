@@ -59,6 +59,7 @@ export const toSite = (s: ApiSite): AttendanceSite => ({
   name: s.name,
   dayEndLocal: s.dayEndLocal,
   gateCheckMode: s.gateCheckMode,
+  boundary: s.boundary ?? null,
   active: s.active,
   gates: s.gates.map(toGate),
   version: s.version,

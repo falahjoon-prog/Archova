@@ -61,13 +61,24 @@ export interface Gate {
   version: number;
 }
 
+/** A custom geofence circle for a site. */
+export interface SiteBoundary {
+  lat: number;
+  lng: number;
+  /** 10 to 10,000 metres. */
+  radiusM: number;
+}
+
 /** A sign-in site with its gates. */
+
 export interface AttendanceSite {
   id: string;
   name: string;
   /** `HH:MM` site time; open sign-ins close at this time (ATT-AC4). */
   dayEndLocal: string;
   gateCheckMode: GateCheckMode;
+  /** A custom geofence, or null to use the project's site location. */
+  boundary: SiteBoundary | null;
   active: boolean;
   gates: Gate[];
   version: number;
@@ -77,6 +88,7 @@ export interface SiteInput {
   name: string;
   dayEndLocal: string;
   gateCheckMode: GateCheckMode;
+  boundary?: SiteBoundary | null;
 }
 
 /** A gate with its QR code. The server shows the code only once, when the gate is added or the code reissued. */
