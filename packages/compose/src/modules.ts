@@ -95,6 +95,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
+    adjustments: billing.api.adjustments,
     credits: () => ({ grantCredits: aiApi!.grantCredits }),
     supportReads: () => ({
       projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),

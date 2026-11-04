@@ -35,7 +35,7 @@ export const PLAN_MODULE_KEYS = [
 ] as const;
 export type PlanModuleKey = (typeof PLAN_MODULE_KEYS)[number];
 
-export const REQUEST_KINDS = ['pricebook.publish', 'plan.publish'] as const;
+export const REQUEST_KINDS = ['pricebook.publish', 'plan.publish', 'refund'] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 export const REQUEST_STATUSES = [
   'pending',
@@ -199,9 +199,60 @@ export type OrgAccountDto = {
   trialExtendedDays: number;
   suspended: { category: SuspendCategory; at: string } | null;
 };
+export type OrgActionKind =
+  | 'trial.extend'
+  | 'plan.change'
+  | 'suspend'
+  | 'reactivate'
+  | 'credits.grant'
+  | 'discount.add'
+  | 'discount.revoke'
+  | 'override.grant'
+  | 'override.revoke'
+  | 'refund';
+
+/** `limit.*` keys an override can replace. */
+export const OVERRIDE_LIMIT_KEYS = [
+  'limit.ai_credits',
+  'limit.seats',
+  'limit.active_projects',
+  'limit.storage_gb',
+] as const;
+
+export type OrgDiscountDto = {
+  id: string;
+  percent: number;
+  startsOn: string;
+  endsOn: string;
+  reason: string;
+  ticketRef: string;
+  /** Live while not revoked and not past `endsOn`. */
+  status: 'active' | 'ended' | 'revoked';
+};
+export type OrgOverrideDto = {
+  id: string;
+  kind: 'module' | 'limit';
+  key: string;
+  limitValue: number | null;
+  expiresAt: string;
+  reason: string;
+  ticketRef: string;
+  status: 'live' | 'expired' | 'revoked';
+};
+export type OrgRefundDto = {
+  id: string;
+  invoiceRef: string;
+  amountCents: number;
+  paidCents: number;
+  reason: string;
+  ticketRef: string;
+  status: 'pending_approval' | 'approved' | 'cancelled';
+  at: string;
+};
+
 export type OrgActionDto = {
   id: string;
-  kind: 'trial.extend' | 'plan.change' | 'suspend' | 'reactivate' | 'credits.grant';
+  kind: OrgActionKind;
   summary: string;
   reason: string;
   ticketRef: string;
@@ -212,6 +263,9 @@ export type OrgDetailDto = OrgListItemDto & {
   history: RequestDto[];
   account: OrgAccountDto | null;
   actions: OrgActionDto[];
+  discounts: OrgDiscountDto[];
+  overrides: OrgOverrideDto[];
+  refunds: OrgRefundDto[];
 };
 
 export type SupportGrantDto = {
@@ -382,6 +436,72 @@ export const internalOperations = {
     body: z.object({
       credits: z.number().positive().max(1000),
       kind: z.enum(CREDIT_GRANT_KINDS),
+      ...withTicket,
+    }),
+  }),
+  addOrgDiscount: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/discounts',
+    auth: 'staff',
+    permission: 'backoffice.accounts.discount',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      percent: z.number().int().min(1).max(100),
+      months: z.number().int().min(1).max(12),
+      ...withTicket,
+    }),
+  }),
+  revokeOrgDiscount: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/discounts/{discountId}/revoke',
+    auth: 'staff',
+    permission: 'backoffice.accounts.discount',
+    stepUp: true,
+    params: z.object({ orgId: orgRef, discountId: uuid }),
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  grantOrgOverride: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/overrides',
+    auth: 'staff',
+    permission: 'backoffice.accounts.override',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      kind: z.enum(['module', 'limit']),
+      key: z.string().trim().min(1).max(60),
+      limitValue: z.number().int().min(0).max(1_000_000_000).nullable().default(null),
+      days: z.number().int().min(1).max(365),
+      ...withTicket,
+    }),
+  }),
+  revokeOrgOverride: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/overrides/{overrideId}/revoke',
+    auth: 'staff',
+    permission: 'backoffice.accounts.override',
+    stepUp: true,
+    params: z.object({ orgId: orgRef, overrideId: uuid }),
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  refundOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/refunds',
+    auth: 'staff',
+    permission: 'backoffice.accounts.refund',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      invoiceRef: z.string().trim().min(1).max(60),
+      /** Cents. Over 500000 (A$5,000) the refund waits for a second person. */
+      amountCents: z.number().int().min(1).max(100_000_000),
+      paidCents: z.number().int().min(1).max(100_000_000),
       ...withTicket,
     }),
   }),

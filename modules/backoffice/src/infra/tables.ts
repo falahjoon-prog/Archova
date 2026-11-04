@@ -9,6 +9,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { OrgActionKind } from '@archova/contracts';
 
 export const backofficeSchema = pgSchema('backoffice');
 
@@ -134,9 +135,7 @@ export const flagChanges = backofficeSchema.table('flag_changes', {
 export const orgActions = backofficeSchema.table('org_actions', {
   id: uuid('id').primaryKey(),
   targetOrgId: uuid('target_org_id').notNull(),
-  kind: text('kind')
-    .$type<'trial.extend' | 'plan.change' | 'suspend' | 'reactivate' | 'credits.grant'>()
-    .notNull(),
+  kind: text('kind').$type<OrgActionKind>().notNull(),
   summary: text('summary').notNull(),
   reason: text('reason').notNull(),
   ticketRef: text('ticket_ref').notNull(),

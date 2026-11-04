@@ -2,7 +2,7 @@
 // itself: catalogue changes go through `billing`, and every change that needs a second person is a request here.
 import type { SupportProjectDto } from '@archova/contracts';
 import { defineModule, type KernelServices } from '@archova/kernel';
-import type { AccountService, CatalogueService } from '@archova/mod-billing';
+import type { AccountService, AdjustmentService, CatalogueService } from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
@@ -28,6 +28,7 @@ export function createBackofficeModule(
   deps: {
     catalogue: CatalogueService;
     accounts: AccountService;
+    adjustments: AdjustmentService;
     credits: OrgActionDeps['credits'];
     supportReads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
     config: BackofficeConfig;
@@ -43,6 +44,7 @@ export function createBackofficeModule(
   const requests = createRequestService({
     database: services.database,
     catalogue: deps.catalogue,
+    adjustments: deps.adjustments,
     staff,
     soloCoolingOffHours: deps.config.soloCoolingOffHours,
     ...(deps.now ? { now: deps.now } : {}),
@@ -50,6 +52,8 @@ export function createBackofficeModule(
   const orgActions = createOrgActionService({
     database: services.database,
     accounts: deps.accounts,
+    adjustments: deps.adjustments,
+    requests,
     credits: deps.credits,
     ...(deps.now ? { now: deps.now } : {}),
   });

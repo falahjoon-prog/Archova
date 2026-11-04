@@ -23,6 +23,7 @@ import {
 } from '@archova/contracts';
 import { ApiError, api } from '@/shared/api';
 import { OrgActionDialog } from '@/shared/OrgActionDialog';
+import { Adjustments } from './Adjustments';
 import { useStepUp } from '@/shared/StepUp';
 import { can, useStaff } from '@/shared/staff';
 import {
@@ -408,6 +409,7 @@ export default function CustomerPage({ params }: { params: Promise<{ orgId: stri
         />
       </Card>
       <AccountActions org={o} />
+      <Adjustments org={o} />
       <SupportAccess orgId={o.orgId} />
       <Card title="Staff actions on this customer">
         {o.actions.length ? (

@@ -704,6 +704,197 @@ describe('customer account actions', () => {
     expect(usage.json()).toMatchObject({ granted: 20 });
   });
 
+  it('adds a discount within the role limit, allows one at a time, and ends it early', async () => {
+    const c = await company('discount');
+    const sales = await staff(['sales']);
+    const support = await staff(['support']);
+    expect((await act(support, c.orgRef, 'discounts', { percent: 10, months: 3 })).statusCode).toBe(
+      403,
+    );
+    // Sales can give up to 20%; more needs an Owner, and so does a bad term.
+    const over = await act(sales, c.orgRef, 'discounts', { percent: 21, months: 3 });
+    expect(over.statusCode).toBe(422);
+    expect(code(over)).toBe('backoffice.discount_limit');
+    expect((await act(sales, c.orgRef, 'discounts', { percent: 10, months: 13 })).statusCode).toBe(
+      422,
+    );
+    const ok = await act(sales, c.orgRef, 'discounts', { percent: 15, months: 3 });
+    expect(ok.statusCode, ok.body).toBe(200);
+    const detail = ok.json() as {
+      discounts: Array<{ id: string; percent: number; status: string }>;
+      actions: Array<{ kind: string; summary: string }>;
+    };
+    expect(detail.discounts[0]).toMatchObject({ percent: 15, status: 'active' });
+    expect(detail.actions[0]).toMatchObject({ kind: 'discount.add' });
+    const again = await act(sales, c.orgRef, 'discounts', { percent: 5, months: 1 });
+    expect(code(again)).toBe('backoffice.discount_exists');
+    // An Owner may go beyond 20%, once the first is ended.
+    await c.owner.post('/auth/step-up', { password: PASSWORD });
+    const ended = await act(c.owner, c.orgRef, `discounts/${detail.discounts[0]!.id}/revoke`, {});
+    expect(ended.statusCode, ended.body).toBe(200);
+    expect((ended.json() as { discounts: Array<{ status: string }> }).discounts[0]!.status).toBe(
+      'revoked',
+    );
+    expect(
+      (await act(c.owner, c.orgRef, `discounts/${detail.discounts[0]!.id}/revoke`, {})).statusCode,
+    ).toBe(404);
+    const big = await act(c.owner, c.orgRef, 'discounts', { percent: 50, months: 6 });
+    expect(big.statusCode, big.body).toBe(200);
+  });
+
+  it('overrides entitlements for a limited time, and stops when ended', async () => {
+    const c = await company('override');
+    const sales = await staff(['sales']);
+    const ops = await staff(['billing_ops']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    await sales.post('/auth/step-up', { password: PASSWORD });
+    expect((await act(sales, c.orgRef, 'change-plan', { planCode: 'team' })).statusCode).toBe(200);
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(403);
+
+    // Sales cannot override; Billing ops can, up to 90 days, and only on keys that exist.
+    expect(
+      (await act(sales, c.orgRef, 'overrides', { kind: 'module', key: 'workforce', days: 30 }))
+        .statusCode,
+    ).toBe(403);
+    expect(
+      code(await act(ops, c.orgRef, 'overrides', { kind: 'module', key: 'nope', days: 30 })),
+    ).toBe('backoffice.override_key');
+    expect(
+      code(await act(ops, c.orgRef, 'overrides', { kind: 'module', key: 'workforce', days: 91 })),
+    ).toBe('backoffice.override_limit');
+    expect(
+      code(
+        await act(ops, c.orgRef, 'overrides', {
+          kind: 'limit',
+          key: 'limit.bogus',
+          limitValue: 3,
+          days: 30,
+        }),
+      ),
+    ).toBe('backoffice.override_key');
+    const granted = await act(ops, c.orgRef, 'overrides', {
+      kind: 'module',
+      key: 'workforce',
+      days: 30,
+    });
+    expect(granted.statusCode, granted.body).toBe(200);
+    const detail = granted.json() as {
+      overrides: Array<{ id: string; status: string }>;
+      actions: Array<{ kind: string }>;
+    };
+    expect(detail.overrides[0]).toMatchObject({ status: 'live' });
+    expect(detail.actions[0]).toMatchObject({ kind: 'override.grant' });
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+    expect(
+      code(await act(ops, c.orgRef, 'overrides', { kind: 'module', key: 'workforce', days: 5 })),
+    ).toBe('backoffice.override_exists');
+
+    // An expired override stops applying without anyone ending it.
+    const orgUuid = decodeId('org', c.orgRef)!;
+    await t.adminDb.db.execute(
+      sql`update billing.org_overrides set expires_at = now() - interval '1 minute' where target_org_id = ${orgUuid}`,
+    );
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(403);
+
+    // Ending one early; the module key a lower plan lacks and 91+ days need an Owner.
+    const second = await act(ops, c.orgRef, 'overrides', {
+      kind: 'module',
+      key: 'workforce',
+      days: 30,
+    });
+    const id = (
+      second.json() as { overrides: Array<{ id: string; status: string }> }
+    ).overrides.find((o) => o.status === 'live')!.id;
+    expect((await act(ops, c.orgRef, `overrides/${id}/revoke`, {})).statusCode).toBe(200);
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(403);
+    await c.owner.post('/auth/step-up', { password: PASSWORD });
+    const long = await act(c.owner, c.orgRef, 'overrides', {
+      kind: 'limit',
+      key: 'limit.seats',
+      limitValue: 50,
+      days: 200,
+    });
+    expect(long.statusCode, long.body).toBe(200);
+  });
+
+  it('records a refund within the invoice, and a refund over A$5,000 waits for a second Owner', async () => {
+    const c = await company('refund');
+    const ops = await staff(['billing_ops']);
+    const sales = await staff(['sales']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    const body = { invoiceRef: 'INV-1001', amountCents: 25_000, paidCents: 99_000 };
+    expect((await act(sales, c.orgRef, 'refunds', body)).statusCode).toBe(403);
+    // A refund cannot be more than the invoice collected, counting earlier refunds.
+    expect(code(await act(ops, c.orgRef, 'refunds', { ...body, amountCents: 100_000 }))).toBe(
+      'backoffice.refund_limit',
+    );
+    const small = await act(ops, c.orgRef, 'refunds', body);
+    expect(small.statusCode, small.body).toBe(200);
+    const detail = small.json() as {
+      refunds: Array<{ status: string; amountCents: number }>;
+      actions: Array<{ kind: string; summary: string }>;
+    };
+    expect(detail.refunds[0]).toMatchObject({ status: 'approved', amountCents: 25_000 });
+    expect(detail.actions[0]).toMatchObject({ kind: 'refund' });
+    expect(detail.actions[0]!.summary).toMatch(/A\$250\.00/);
+    expect(code(await act(ops, c.orgRef, 'refunds', { ...body, amountCents: 80_000 }))).toBe(
+      'backoffice.refund_limit',
+    );
+    expect(
+      code(await act(ops, c.orgRef, 'refunds', { ...body, amountCents: 1_000, paidCents: 50_000 })),
+    ).toBe('backoffice.refund_limit');
+
+    // Over A$5,000: held as a request until a second person approves it.
+    const big = { invoiceRef: 'INV-2002', amountCents: 600_000, paidCents: 900_000 };
+    const held = await act(ops, c.orgRef, 'refunds', big);
+    expect(held.statusCode, held.body).toBe(200);
+    const heldDetail = held.json() as {
+      refunds: Array<{ id: string; status: string; invoiceRef: string }>;
+      history: Array<{ id: string; kind: string; status: string }>;
+      actions: Array<{ kind: string }>;
+    };
+    expect(heldDetail.refunds.find((r) => r.invoiceRef === 'INV-2002')!.status).toBe(
+      'pending_approval',
+    );
+    expect(heldDetail.actions.filter((a) => a.kind === 'refund')).toHaveLength(1);
+    const req = heldDetail.history.find((h) => h.kind === 'refund')!;
+    expect(req.status).toBe('pending');
+
+    // The requester cannot approve it; billing ops cannot approve at all; a second Owner can.
+    expect((await ops.post(`/requests/${req.id}/approve`)).statusCode).toBe(403);
+    const second = await staff(['owner'], 'refund-approver');
+    await second.post('/auth/step-up', { password: PASSWORD });
+    const approved = await second.post(`/requests/${req.id}/approve`);
+    expect(approved.statusCode, approved.body).toBe(200);
+    expect(approved.json()).toMatchObject({ status: 'executed' });
+    const after = (await c.owner.get(`/orgs/${c.orgRef}`)).json() as {
+      refunds: Array<{ invoiceRef: string; status: string }>;
+      actions: Array<{ kind: string; summary: string }>;
+    };
+    expect(after.refunds.find((r) => r.invoiceRef === 'INV-2002')!.status).toBe('approved');
+    expect(after.actions[0]!.summary).toMatch(/approved by/);
+
+    // A rejected refund is cancelled and frees the invoice's balance.
+    const other = await act(ops, c.orgRef, 'refunds', {
+      invoiceRef: 'INV-3003',
+      amountCents: 600_000,
+      paidCents: 700_000,
+    });
+    const otherReq = (
+      other.json() as {
+        history: Array<{ id: string; kind: string; status: string; subject: string }>;
+      }
+    ).history.find((h) => h.kind === 'refund' && h.status === 'pending')!;
+    const rejected = await second.post(`/requests/${otherReq.id}/reject`, { reason: 'Not owed' });
+    expect(rejected.statusCode, rejected.body).toBe(200);
+    const retry = await act(ops, c.orgRef, 'refunds', {
+      invoiceRef: 'INV-3003',
+      amountCents: 600_000,
+      paidCents: 700_000,
+    });
+    expect(retry.statusCode, retry.body).toBe(200);
+  });
+
   it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
     const c = await company('trial');
     const support = await staff(['support']);
