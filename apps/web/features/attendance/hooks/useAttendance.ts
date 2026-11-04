@@ -8,7 +8,16 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { createAttendanceApi } from '../data/api';
 import { attendancePreview, type AttendanceSource } from '../data/source';
-import type { AttendanceSite, Gate, RollCall, RollMark, SiteInput } from '../lib/types';
+import type {
+  AttendanceSite,
+  Gate,
+  RollCall,
+  RollMark,
+  SiteInput,
+  Worker,
+  WorkerFilters,
+  WorkerInput,
+} from '../lib/types';
 
 function useAttendanceSource(): AttendanceSource {
   const { orgId } = useCurrentOrg();
@@ -123,6 +132,38 @@ export function useRollCallMutations() {
     end: useMutation({
       mutationFn: async (rollCallId: string) =>
         put(await source.endRollCall(projectId, rollCallId)),
+    }),
+  };
+}
+
+export function useWorkers(filters: WorkerFilters) {
+  const source = useAttendanceSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'attendance', { view: 'workers', ...filters }),
+    queryFn: () => source.workers(projectId, filters),
+  });
+}
+
+export function useWorkerMutations() {
+  const source = useAttendanceSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const qc = useQueryClient();
+  const settle = <T>(value: T) => {
+    void qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'attendance') });
+    return value;
+  };
+  return {
+    create: useMutation({
+      mutationFn: async (input: WorkerInput) => settle(await source.createWorker(projectId, input)),
+    }),
+    update: useMutation({
+      mutationFn: async (v: {
+        worker: Worker;
+        patch: Partial<WorkerInput> & { status?: Worker['status'] };
+      }) => settle(await source.updateWorker(projectId, v.worker, v.patch)),
     }),
   };
 }

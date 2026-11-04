@@ -99,20 +99,25 @@ export function SitesScreen() {
               <span className="row-actions">
                 <Button
                   variant="tertiary"
+                  aria-label={`Rename ${g.name}`}
                   onClick={() => setEditing({ kind: 'gate', site, gate: g })}
                 >
-                  Rename<span className="u-visually-hidden"> {g.name}</span>
-                </Button>
-                <Button variant="tertiary" onClick={() => setReissuing(g)}>
-                  New code<span className="u-visually-hidden"> for {g.name}</span>
+                  Rename
                 </Button>
                 <Button
                   variant="tertiary"
+                  aria-label={`New code for ${g.name}`}
+                  onClick={() => setReissuing(g)}
+                >
+                  New code
+                </Button>
+                <Button
+                  variant="tertiary"
+                  aria-label={`${g.active ? 'Close' : 'Reopen'} ${g.name}`}
                   disabled={m.updateGate.isPending}
                   onClick={() => m.updateGate.mutate({ gate: g, patch: { active: !g.active } })}
                 >
                   {g.active ? 'Close' : 'Reopen'}
-                  <span className="u-visually-hidden"> {g.name}</span>
                 </Button>
               </span>
             ),
