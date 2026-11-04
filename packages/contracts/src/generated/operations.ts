@@ -3188,6 +3188,7 @@ export const operations = {
     auth: "required",
     permission: "meetings.meetings.write",
     internal: false,
+    flag: null,
     contentType: "application/json",
     params: DraftMinutesWithNovaParams,
     query: null,
