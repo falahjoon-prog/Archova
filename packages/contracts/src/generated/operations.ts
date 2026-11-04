@@ -36,6 +36,9 @@ export const GetSupportAccessParams = z.object({
 export const ListStaffActionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListSupportReadsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const GetSupportBannerParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -463,6 +466,10 @@ export const DetectTakeoffWithNovaBody = z.object({
   "y": z.number().min(0).max(1),
 }).strict()).max(5).optional(),
 }).strict();
+export const ListContractReviewsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const ReviewContractWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -473,6 +480,21 @@ export const ReviewContractWithNovaBody = z.object({
   "ourSide": z.enum(["we_pay", "we_get_paid"]),
   "baseForm": z.enum(["as4000", "as2124", "as4902", "as4903", "other"]).nullable().optional(),
   "multiState": z.boolean().optional(),
+}).strict();
+export const GetContractReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const DecideContractFlagParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+  "flagIndex": z.string().regex(new RegExp("^[0-9]{1,4}$")),
+});
+export const DecideContractFlagBody = z.object({
+  "decision": s.ContractFlagDecisionKindSchema,
+  "note": z.string().max(1000).nullable().optional(),
 }).strict();
 export const GetContractPlaybookParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -2144,6 +2166,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  listSupportReads: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/reads',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListSupportReadsParams,
+    query: null,
+    body: null,
+  },
   getSupportBanner: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/support-access/banner',
@@ -3045,6 +3079,18 @@ export const operations = {
     query: null,
     body: DetectTakeoffWithNovaBody,
   },
+  listContractReviews: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: null,
+    params: ListContractReviewsParams,
+    query: null,
+    body: null,
+  },
   reviewContractWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
@@ -3056,6 +3102,30 @@ export const operations = {
     params: ReviewContractWithNovaParams,
     query: null,
     body: ReviewContractWithNovaBody,
+  },
+  getContractReview: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: null,
+    params: GetContractReviewParams,
+    query: null,
+    body: null,
+  },
+  decideContractFlag: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/flags/{flagIndex}/decision',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: DecideContractFlagParams,
+    query: null,
+    body: DecideContractFlagBody,
   },
   getContractPlaybook: {
     method: 'GET',

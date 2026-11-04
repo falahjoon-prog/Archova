@@ -14,6 +14,7 @@ import { accessLinkPurge } from './jobs/access-links';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
 import { templateBackfill } from './jobs/template-backfill';
+import { trialBackfill } from './jobs/trial-backfill';
 import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
@@ -39,6 +40,7 @@ async function main() {
     importStagingPurge,
     syncHoldsPurge,
     trialExpiry,
+    trialBackfill,
     templateBackfill,
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;

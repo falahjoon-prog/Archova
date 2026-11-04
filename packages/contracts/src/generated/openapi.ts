@@ -274,6 +274,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/support-access/reads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What Archova support looked at in their sessions (org owners and admins).
+         * @description The pages support read, which staff member read them and how many records each showed, newest first. Never
+         *     the content itself.
+         */
+        get: operations["listSupportReads"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/support-access/banner": {
         parameters: {
             query?: never;
@@ -1622,7 +1645,11 @@ export interface paths {
             };
             cookie?: never;
         };
-        get?: never;
+        /**
+         * The project's saved Nova contract reviews, newest first.
+         * @description For the commercial team. Each review carries its flags and the decisions recorded on them so far.
+         */
+        get: operations["listContractReviews"];
         put?: never;
         /**
          * Nova reads a contract PDF and flags where it departs from the builder's playbook (F34, first slice).
@@ -1638,6 +1665,55 @@ export interface paths {
          *     Costs 40 Nova credits.
          */
         post: operations["reviewContractWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        /** One saved Nova contract review. */
+        get: operations["getContractReview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/flags/{flagIndex}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+                /** @description The flag's position in the review's `flags`, which never changes. */
+                flagIndex: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Record a person's decision on one flag of a contract review.
+         * @description Accept risk, negotiate, refer to a lawyer, or not relevant (which needs a reason). Decisions are appended with
+         *     who and when, so the history stays and the latest one stands. Nothing is sent, signed or changed in the
+         *     contract.
+         */
+        post: operations["decideContractFlag"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6419,6 +6495,17 @@ export interface components {
             grants: components["schemas"]["SupportAccessGrant"][];
             sessions: components["schemas"]["SupportAccessSession"][];
         };
+        SupportRead: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            sessionId: string;
+            staffName: string;
+            page: string;
+            recordCount: number;
+            /** Format: date-time */
+            at: string;
+        };
         StaffAction: {
             /** Format: uuid */
             id: string;
@@ -7151,7 +7238,21 @@ export interface components {
             /** @description Words found on that page. */
             quote: string;
         };
+        /** @enum {string} */
+        ContractFlagDecisionKind: "accept_risk" | "negotiate" | "refer_to_lawyer" | "not_relevant";
         NovaContractReview: {
+            /** Format: date-time */
+            createdAt: string;
+            /** @description Every decision recorded on a flag, oldest first. The latest for a flag stands. */
+            decisions: {
+                flagIndex: number;
+                decision: components["schemas"]["ContractFlagDecisionKind"];
+                note: string | null;
+                /** @description The person's public user id. */
+                decidedBy: string;
+                /** Format: date-time */
+                decidedAt: string;
+            }[];
             /** @description For feedback (`air_`) */
             runId: string;
             /** @description The saved suggestion (`ais_`). */
@@ -11524,6 +11625,31 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listSupportReads: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Logged reads */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["SupportRead"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getSupportBanner: {
         parameters: {
             query?: never;
@@ -13648,6 +13774,32 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listContractReviews: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The reviews */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NovaContractReview"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     reviewContractWithNova: {
         parameters: {
             query?: never;
@@ -13680,6 +13832,65 @@ export interface operations {
         };
         responses: {
             /** @description The review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideContractFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+                /** @description The flag's position in the review's `flags`, which never changes. */
+                flagIndex: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    decision: components["schemas"]["ContractFlagDecisionKind"];
+                    note?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description The review with the decision recorded */
             200: {
                 headers: {
                     [name: string]: unknown;

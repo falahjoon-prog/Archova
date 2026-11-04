@@ -322,6 +322,30 @@ paths:
                     type: array
                     items: { $ref: '#/components/schemas/StaffAction' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/reads:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listSupportReads
+      tags: [orgs]
+      x-module: platform
+      summary: What Archova support looked at in their sessions (org owners and admins).
+      description: |
+        The pages support read, which staff member read them and how many records each showed, newest first. Never
+        the content itself.
+      responses:
+        '200':
+          description: Logged reads
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/SupportRead' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/support-access/banner:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -2145,6 +2169,88 @@ paths:
       responses:
         '200':
           description: The review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: listContractReviews
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: The project's saved Nova contract reviews, newest first.
+      description: For the commercial team. Each review carries its flags and the decisions recorded on them so far.
+      responses:
+        '200':
+          description: The reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getContractReview
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: One saved Nova contract review.
+      responses:
+        '200':
+          description: The review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/flags/{flagIndex}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+      - name: flagIndex
+        in: path
+        required: true
+        description: The flag's position in the review's `flags`, which never changes.
+        schema: { type: string, pattern: '^[0-9]{1,4}$' }
+    post:
+      operationId: decideContractFlag
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: Record a person's decision on one flag of a contract review.
+      description: |
+        Accept risk, negotiate, refer to a lawyer, or not relevant (which needs a reason). Decisions are appended with
+        who and when, so the history stays and the latest one stands. Nothing is sent, signed or changed in the
+        contract.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { $ref: '#/components/schemas/ContractFlagDecisionKind' }
+                note: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: The review with the decision recorded
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractReview' }
@@ -9135,6 +9241,16 @@ components:
         sessions:
           type: array
           items: { $ref: '#/components/schemas/SupportAccessSession' }
+    SupportRead:
+      type: object
+      required: [id, sessionId, staffName, page, recordCount, at]
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        staffName: { type: string }
+        page: { type: string }
+        recordCount: { type: integer }
+        at: { type: string, format: date-time }
     StaffAction:
       type: object
       required: [id, kind, summary, ticketRef, at]
@@ -10302,6 +10418,9 @@ components:
         page: { type: integer, minimum: 1 }
         clause: { type: [string, 'null'], description: The clause number as printed. }
         quote: { type: string, description: Words found on that page. }
+    ContractFlagDecisionKind:
+      type: string
+      enum: [accept_risk, negotiate, refer_to_lawyer, not_relevant]
     NovaContractReview:
       type: object
       required:
@@ -10324,7 +10443,22 @@ components:
         - timeBars
         - flags
         - dropped
+        - decisions
+        - createdAt
       properties:
+        createdAt: { type: string, format: date-time }
+        decisions:
+          type: array
+          description: Every decision recorded on a flag, oldest first. The latest for a flag stands.
+          items:
+            type: object
+            required: [flagIndex, decision, note, decidedBy, decidedAt]
+            properties:
+              flagIndex: { type: integer, minimum: 0 }
+              decision: { $ref: '#/components/schemas/ContractFlagDecisionKind' }
+              note: { type: [string, 'null'] }
+              decidedBy: { type: string, description: The person's public user id. }
+              decidedAt: { type: string, format: date-time }
         runId: { type: string, description: For feedback (`air_`) }
         suggestionId: { type: string, description: The saved suggestion (`ais_`). }
         disclaimer:

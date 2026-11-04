@@ -10,6 +10,7 @@ import {
   type ContractType,
   type OurSide,
 } from '@archova/ai-prompts';
+import { and, desc, eq, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
@@ -65,6 +66,32 @@ export interface ContractReviewPayload extends ReviewedContract {
   /** Pages with no text layer: not read. The review may miss clauses on them. */
   unreadPages: number[];
   truncated: boolean;
+  /** Every decision a person recorded on a flag, oldest first; the latest per flag stands. Rows saved before decisions existed have none. */
+  decisions?: FlagDecision[];
+}
+
+export const FLAG_DECISIONS = [
+  'accept_risk',
+  'negotiate',
+  'refer_to_lawyer',
+  'not_relevant',
+] as const;
+export type FlagDecisionKind = (typeof FLAG_DECISIONS)[number];
+
+/** A person's call on one flag (design/09 CR2). The flag is named by its position in `flags`, which never changes. */
+export interface FlagDecision {
+  flagIndex: number;
+  decision: FlagDecisionKind;
+  note: string | null;
+  decidedBy: string;
+  decidedAt: string;
+}
+
+export interface ContractReviewRow {
+  id: string;
+  runId: string;
+  createdAt: Date;
+  payload: ContractReviewPayload;
 }
 
 export interface ContractReview extends ContractReviewPayload {
@@ -149,7 +176,7 @@ export function createContractReviewService(deps: ContractReviewDeps) {
           targetId: input.fileId,
           task: CONTRACT_REVIEW_TASK,
           promptVersion: contractReviewPrompt.version,
-          payload,
+          payload: { ...payload, decisions: [] },
           status: 'pending',
           runId: run.runId,
           createdBy: scope.ctx.userId,
@@ -161,7 +188,112 @@ export function createContractReviewService(deps: ContractReviewDeps) {
     return { ...payload, runId: run.runId, suggestionId };
   }
 
-  return { review };
+  /** The latest row for this id, locked, after checking the caller holds the review permission. */
+  async function load(scope: TenantScope, projectId: string, id: string, lock: boolean) {
+    await deps.assert(scope, CONTRACT_REVIEW_PERMISSION, { projectId });
+    const q = scope.tx
+      .select()
+      .from(suggestions)
+      .where(
+        and(
+          eq(suggestions.orgId, scope.ctx.orgId),
+          eq(suggestions.projectId, projectId),
+          eq(suggestions.id, id),
+          eq(suggestions.task, CONTRACT_REVIEW_TASK),
+        ),
+      )
+      .limit(1);
+    const [row] = await (lock ? q.for('update') : q);
+    if (!row) throw new AppError('ai.suggestion.not_found');
+    return row;
+  }
+
+  const toRow = (r: typeof suggestions.$inferSelect): ContractReviewRow => ({
+    id: r.id,
+    runId: r.runId,
+    createdAt: r.createdAt,
+    payload: r.payload as ContractReviewPayload,
+  });
+
+  /** The project's reviews, newest first. Anyone with the review permission sees them all: the team works through them together. */
+  async function list(scope: TenantScope, projectId: string, limit = 50) {
+    await deps.assert(scope, CONTRACT_REVIEW_PERMISSION, { projectId });
+    const rows = await scope.tx
+      .select()
+      .from(suggestions)
+      .where(
+        and(
+          eq(suggestions.orgId, scope.ctx.orgId),
+          eq(suggestions.projectId, projectId),
+          eq(suggestions.task, CONTRACT_REVIEW_TASK),
+        ),
+      )
+      .orderBy(desc(suggestions.id))
+      .limit(limit);
+    return rows.map(toRow);
+  }
+
+  async function get(scope: TenantScope, projectId: string, id: string) {
+    return toRow(await load(scope, projectId, id, false));
+  }
+
+  /**
+   * Records a decision on one flag. Decisions are appended, never replaced, so the history stays; the latest one
+   * stands. Nothing is sent, signed or changed in the contract. "Not relevant" needs a reason.
+   */
+  async function decideFlag(
+    scope: TenantScope,
+    projectId: string,
+    id: string,
+    flagIndex: number,
+    input: { decision: FlagDecisionKind; note: string | null },
+  ) {
+    const row = await load(scope, projectId, id, true);
+    const payload = row.payload as ContractReviewPayload;
+    if (!Number.isInteger(flagIndex) || flagIndex < 0 || flagIndex >= payload.flags.length)
+      throw new AppError('ai.suggestion.not_found', 'That flag is not in this review.');
+    const note = input.note?.trim() || null;
+    if (input.decision === 'not_relevant' && !note)
+      throw new AppError('validation_failed', 'Say why this flag is not relevant.', [
+        { path: 'note', message: 'Required for "Not relevant"' },
+      ]);
+    const entry: FlagDecision = {
+      flagIndex,
+      decision: input.decision,
+      note,
+      decidedBy: scope.ctx.userId,
+      decidedAt: now().toISOString(),
+    };
+    const next: ContractReviewPayload = {
+      ...payload,
+      decisions: [...(payload.decisions ?? []), entry],
+    };
+    const [updated] = await scope.tx
+      .update(suggestions)
+      .set({
+        payload: next,
+        updatedBy: scope.ctx.userId,
+        version: sql`${suggestions.version} + 1`,
+      })
+      .where(eq(suggestions.id, row.id))
+      .returning();
+    scope.events.add({
+      type: 'ai.contract_flag.decided.v1',
+      projectId,
+      entityType: 'ai_suggestion',
+      entityId: row.id,
+      entityVersion: updated!.version,
+      data: {
+        suggestionId: row.id,
+        flagIndex,
+        topicKey: payload.flags[flagIndex]!.topicKey,
+        decision: input.decision,
+      },
+    });
+    return toRow(updated!);
+  }
+
+  return { review, list, get, decideFlag };
 }
 
 export type ContractReviewService = ReturnType<typeof createContractReviewService>;

@@ -1796,3 +1796,92 @@ fieldset.worker-card > legend {
   padding-top: var(--space-3);
   border-top: 1px dashed var(--c-border-divider);
 }
+
+/* Nova contract review (design/09): flag cards, citations, the decision control. */
+.cr-flag-item {
+  list-style: none;
+}
+.cr-flag {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.cr-flag__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.cr-flag__title {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: var(--font-md);
+}
+.cr-quote {
+  margin: 0;
+  padding-left: var(--space-3);
+  border-left: 3px solid var(--c-border-divider);
+}
+.cr-quote__cite {
+  font-size: var(--font-sm);
+  color: var(--c-text-secondary);
+}
+.cr-quote__text {
+  margin: var(--space-1) 0;
+  overflow-wrap: anywhere;
+}
+.cr-wording {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg);
+  border: 1px dashed var(--c-border-divider);
+}
+.cr-wording__text {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.cr-decision__group {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.cr-decision__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+.cr-decision__option {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  cursor: pointer;
+}
+.cr-filter {
+  font: inherit;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--c-border-divider);
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.cr-filter[aria-pressed='true'] {
+  background: var(--c-bg);
+  font-weight: 600;
+}
+.cr-error {
+  color: var(--c-status-danger);
+}
