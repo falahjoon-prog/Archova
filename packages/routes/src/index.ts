@@ -104,6 +104,9 @@ export const mobileRoutes = {
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,
   siteSignIn: (projectId: string) => `/project/${enc(projectId)}/sign-in`,
+  meetings: (projectId: string) => `/project/${enc(projectId)}/meetings`,
+  meeting: (projectId: string, meetingId: string) =>
+    `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (

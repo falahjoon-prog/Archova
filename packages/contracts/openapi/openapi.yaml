@@ -8810,6 +8810,7 @@ components:
           isOverdue,
           carriedCount,
           stale,
+          version,
         ]
       properties:
         id: { type: string }
@@ -8826,6 +8827,7 @@ components:
         isOverdue: { type: boolean }
         carriedCount: { type: integer }
         stale: { type: boolean }
+        version: { type: integer }
     MeetingActionList:
       type: object
       required: [data]
