@@ -235,11 +235,20 @@ describe('compliance wallet', () => {
     expect(empty.json().data).toEqual([]);
 
     const docId = decodeId('complianceDocument', plain.json().id)!;
-    await t.adminDb.pool.query(
-      `insert into workforce.compliance_expiry_alerts (id, org_id, document_id, threshold, expires_on, raised_on)
-       values (gen_random_uuid(), $1, $2, 7, $3, $4)`,
-      [decodeId('org', org.id), docId, day(5), day(0)],
-    );
+    const orgUuid = decodeId('org', org.id)!;
+    const client = await t.adminDb.pool.connect();
+    try {
+      await client.query('begin');
+      await client.query(`select set_config('app.org_id', $1, true)`, [orgUuid]);
+      await client.query(
+        `insert into workforce.compliance_expiry_alerts (id, org_id, document_id, threshold, expires_on, raised_on)
+         values (gen_random_uuid(), $1, $2, 7, $3, $4)`,
+        [orgUuid, docId, day(5), day(0)],
+      );
+      await client.query('commit');
+    } finally {
+      client.release();
+    }
     const listed = await u.browser.get(`/v1/orgs/${org.id}/compliance-document-alerts`);
     expect(listed.statusCode).toBe(200);
     expect(listed.json().data).toEqual([
