@@ -63,13 +63,14 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     return id;
   };
   const orgDetail = async (id: string): Promise<OrgDetailDto> => {
-    const [org, history, account, actions] = await Promise.all([
+    const [org, history, account, actions, adjustments] = await Promise.all([
       d.customers.get(id),
       d.requests.list({ orgId: id, limit: 20 }),
       d.orgActions.account(id),
       d.orgActions.list(id),
+      d.orgActions.adjustments(id),
     ]);
-    return { ...org, history, account, actions };
+    return { ...org, history, account, actions, ...adjustments };
   };
   return {
     login: async (i) => {
@@ -132,6 +133,31 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     grantOrgCredits: async (i) => {
       const id = orgId(i.params.orgId);
       await d.orgActions.grantCredits(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    addOrgDiscount: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.addDiscount(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    revokeOrgDiscount: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.revokeDiscount(me(i), id, i.params.discountId, i.body);
+      return ok(await orgDetail(id));
+    },
+    grantOrgOverride: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.grantOverride(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    revokeOrgOverride: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.revokeOverride(me(i), id, i.params.overrideId, i.body);
+      return ok(await orgDetail(id));
+    },
+    refundOrg: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.refund(me(i), id, i.body);
       return ok(await orgDetail(id));
     },
     listPlans: async () => ok({ items: await d.catalogue.listPlans() }),

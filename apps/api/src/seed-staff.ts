@@ -25,6 +25,7 @@ const billing = createBillingModule(services);
 const backoffice = createBackofficeModule(services, {
   catalogue: billing.api.catalogue,
   accounts: billing.api.accounts,
+  adjustments: billing.api.adjustments,
   credits: () => {
     throw new Error('Granting credits is not available from the seed command');
   },

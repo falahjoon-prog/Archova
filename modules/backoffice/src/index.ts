@@ -5,6 +5,7 @@ import { defineModule, type KernelServices } from '@archova/kernel';
 import {
   createAccountService,
   type AccountService,
+  type AdjustmentService,
   type CatalogueService,
 } from '@archova/mod-billing';
 import { customerRoutes, internalRoutes } from './api/routes';
@@ -15,7 +16,7 @@ import {
   createSupportAccessService,
   type SupportSessionNotice,
 } from './application/support-access';
-import { createRequestService } from './application/requests';
+import { createRequestService, type RequestService } from './application/requests';
 import { createStaffService } from './application/staff';
 
 export { BACKOFFICE_PERMISSIONS, ROLE_PERMISSIONS, permissionsFor } from './permissions';
@@ -38,6 +39,7 @@ export function createBackofficeModule(
   deps: {
     catalogue: CatalogueService;
     accounts: AccountService;
+    adjustments: AdjustmentService;
     credits: OrgActionDeps['credits'];
     supportReads: () => {
       projects(
@@ -61,6 +63,7 @@ export function createBackofficeModule(
   const requests = createRequestService({
     database: services.database,
     catalogue: deps.catalogue,
+    adjustments: deps.adjustments,
     staff,
     soloCoolingOffHours: deps.config.soloCoolingOffHours,
     ...(deps.now ? { now: deps.now } : {}),
@@ -68,6 +71,8 @@ export function createBackofficeModule(
   const orgActions = createOrgActionService({
     database: services.database,
     accounts: deps.accounts,
+    adjustments: deps.adjustments,
+    requests,
     credits: deps.credits,
     ...(deps.now ? { now: deps.now } : {}),
   });
@@ -132,6 +137,9 @@ export function expireLapsedTrial(
     database,
     accounts: createAccountService(),
     credits,
+    // Only `expireTrial` runs here; discounts, overrides and refunds are console actions and are never reached.
+    adjustments: {} as AdjustmentService,
+    requests: {} as RequestService,
     now: () => now,
   }).expireTrial(orgId, now);
 }

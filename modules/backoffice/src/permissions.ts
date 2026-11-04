@@ -15,6 +15,10 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.accounts.plan',
   'backoffice.accounts.suspend',
   'backoffice.accounts.credits',
+  'backoffice.accounts.discount',
+  'backoffice.accounts.override',
+  'backoffice.accounts.refund',
+  'backoffice.accounts.refund_approve',
   'backoffice.support.access',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
@@ -40,6 +44,9 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.pricing.edit',
     'backoffice.accounts.plan',
     'backoffice.accounts.credits',
+    'backoffice.accounts.discount',
+    'backoffice.accounts.override',
+    'backoffice.accounts.refund',
   ],
   sales: [
     'backoffice.customers.read',
@@ -48,6 +55,7 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.flags.edit',
     'backoffice.accounts.trial',
     'backoffice.accounts.plan',
+    'backoffice.accounts.discount',
   ],
   support: [
     'backoffice.customers.read',
