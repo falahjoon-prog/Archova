@@ -110,6 +110,8 @@ export function createBackofficeModule(
         revoke: support.revoke,
         banner: support.banner,
         hasOpenSession: support.hasOpenSession,
+        /** What staff read in support sessions, as the customer's admins see it. */
+        listReads: support.listReads,
         /** Staff account actions (trial, plan, suspension, credits) as the customer's admins read them. */
         listStaffActions: orgActions.listForCustomer,
       },

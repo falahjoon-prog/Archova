@@ -36,6 +36,9 @@ export const GetSupportAccessParams = z.object({
 export const ListStaffActionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListSupportReadsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const GetSupportBannerParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2121,6 +2124,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: ListStaffActionsParams,
+    query: null,
+    body: null,
+  },
+  listSupportReads: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/reads',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListSupportReadsParams,
     query: null,
     body: null,
   },
