@@ -200,15 +200,20 @@ describe('delivery', () => {
 
     answer = { status: 503, error: null };
     sent.length = 0;
-    const first = await run((sc) => svc.attemptDue(sc));
+    const first = await svc.attemptDue(t.database, jobContext(orgId, 'test'));
     expect(first).toMatchObject({ delivered: 0, retried: 1, abandoned: 0 });
     expect(first.nextAt!.getTime()).toBe(clock.now.getTime() + 30_000);
     // not due yet
-    expect(await run((sc) => svc.attemptDue(sc))).toMatchObject({ retried: 0 });
+    expect(await svc.attemptDue(t.database, jobContext(orgId, 'test'))).toMatchObject({
+      retried: 0,
+    });
 
     clock.now = new Date(clock.now.getTime() + 31_000);
     answer = { status: 200, error: null };
-    expect(await run((sc) => svc.attemptDue(sc))).toMatchObject({ delivered: 1, nextAt: null });
+    expect(await svc.attemptDue(t.database, jobContext(orgId, 'test'))).toMatchObject({
+      delivered: 1,
+      nextAt: null,
+    });
     const last = sent.at(-1)!;
     expect(JSON.parse(last.body)).toMatchObject({ id: e.id, type: e.type, entityType: 'rfi' });
     expect(JSON.parse(last.body)).not.toHaveProperty('data');
@@ -225,7 +230,9 @@ describe('delivery', () => {
     await run((sc) => svc.fanOut(sc, e2));
     answer = { status: 500, error: null };
     clock.now = new Date(clock.now.getTime() + 73 * 3_600_000);
-    expect(await run((sc) => svc.attemptDue(sc))).toMatchObject({ abandoned: 1 });
+    expect(await svc.attemptDue(t.database, jobContext(orgId, 'test'))).toMatchObject({
+      abandoned: 1,
+    });
     const after = (await s.owner.browser.get(`/v1/orgs/${s.org.id}/webhooks`)).json().data[0];
     expect(after).toMatchObject({ status: 'disabled' });
     // and a disabled endpoint receives nothing further
@@ -243,12 +250,47 @@ describe('delivery', () => {
       svc.fanOut(sc, event(orgId, null)),
     );
     answer = { status: 410, error: null };
-    const r = await t.database.withTenantTx(jobContext(orgId, 'test'), (sc) => svc.attemptDue(sc));
+    const r = await svc.attemptDue(t.database, jobContext(orgId, 'test'));
     expect(r).toMatchObject({ abandoned: 1 });
     const list = (await s.owner.browser.get(`/v1/orgs/${s.org.id}/webhooks`)).json().data[0];
     expect(list).toMatchObject({
       status: 'disabled',
       disabledReason: expect.stringContaining('410'),
     });
+  });
+  it('sends with no transaction open, and leases a claimed delivery so a second worker skips it', async () => {
+    const s = await setup('wh-lease');
+    answer = { status: 200, error: null };
+    await s.owner.browser.post(`/v1/orgs/${s.org.id}/webhooks`, body());
+    const orgId = decodeId('org', s.org.id)!;
+    const clock = { now: new Date() };
+    const svc = service(clock);
+    const ctx = jobContext(orgId, 'test');
+    await t.database.withTenantTx(ctx, (sc) => svc.fanOut(sc, event(orgId, null)));
+
+    // two passes at once: the claim leases the row, so only one of them sends it
+    sent.length = 0;
+    let openDuringSend = -1;
+    const probe: WebhookTransport = {
+      async send(req) {
+        const r = await t.adminDb.pool.query(
+          "select count(*)::int as n from pg_stat_activity where usename = 'app_rw' and state like 'idle in transaction%'",
+        );
+        openDuringSend = r.rows[0].n;
+        return transport.send(req);
+      },
+    };
+    const probing = createWebhookService({
+      vault: vaultFromKey(DEV_WEBHOOK_KEY),
+      transport: probe,
+      now: () => clock.now,
+    });
+    const [a, b] = await Promise.all([
+      probing.attemptDue(t.database, ctx),
+      probing.attemptDue(t.database, ctx),
+    ]);
+    expect(a.delivered + b.delivered).toBe(1);
+    expect(sent).toHaveLength(1);
+    expect(openDuringSend).toBe(0);
   });
 });

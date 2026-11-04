@@ -40,9 +40,7 @@ export function webhookDelivery(
     );
 
   async function run(orgId: string) {
-    const r = await database.withTenantTx(jobContext(orgId, `webhooks.deliver:${orgId}`), (scope) =>
-      service.attemptDue(scope),
-    );
+    const r = await service.attemptDue(database, jobContext(orgId, `webhooks.deliver:${orgId}`));
     if (r.nextAt) await wake(orgId, r.nextAt);
     return r;
   }
