@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import {
   Alert,
+  Button,
   Card,
   DescriptionList,
   PageHeader,
@@ -22,9 +23,10 @@ import { AskTab } from '../components/AskTab';
 import { DisclaimerBanner } from '../components/DisclaimerBanner';
 import { FlagCard } from '../components/FlagCard';
 import { SourceQuote } from '../components/SourceQuote';
-import type { ContractReview } from '../data/api';
+import type { ContractAnswer, ContractReview } from '../data/api';
 import { useContractReview, useContractReviewMutations } from '../hooks/useContractReview';
 import { useCanReviewContracts } from '../lib/access';
+import { exportFileName, renderReviewPdf, reviewExportLines } from '../lib/exportPdf';
 import {
   CONTRACT_TYPE_LABEL,
   DAY_TYPE_LABEL,
@@ -55,6 +57,9 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
   const { decide } = useContractReviewMutations(project.projectId);
   const [tab, setTab] = useState('flags');
   const [filter, setFilter] = useState<Filter>('all');
+  const [turns, setTurns] = useState<ContractAnswer[]>([]);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState(false);
   const [failed, setFailed] = useState<{ index: number; message: string } | null>(null);
 
   const current = currentDecisions(r);
@@ -73,6 +78,27 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
       (a, b) => Number(current.has(a.index)) - Number(current.has(b.index)) || a.index - b.index,
     );
 
+  const exportPdf = async () => {
+    setExporting(true);
+    setExportError(false);
+    try {
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: project.timezone }).format(
+        new Date(),
+      );
+      const bytes = await renderReviewPdf(reviewExportLines(r, turns, today));
+      const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = exportFileName(r);
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setExportError(true);
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <div className="stack-lg">
       <PageHeader
@@ -82,6 +108,9 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
         actions={
           <>
             <StatusPill tone="neutral">Commercial team only</StatusPill>
+            <Button variant="secondary" onClick={exportPdf} disabled={exporting}>
+              {exporting ? 'Preparing PDF…' : 'Export PDF'}
+            </Button>
             <Link className="link" href={webRoutes.contractReviews(org.orgSlug, project.projectId)}>
               All reviews
             </Link>
@@ -89,6 +118,11 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
         }
       />
       <DisclaimerBanner text={r.disclaimer} />
+      {exportError ? (
+        <Alert tone="danger" title="We couldn't make the PDF">
+          Try again. Nothing was changed on the review.
+        </Alert>
+      ) : null}
       {r.playbookMissing ? (
         <Alert tone="warning" title="No playbook for this contract type">
           Nova summarised the contract but looked for no departures, because your company has no
@@ -130,7 +164,9 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
       >
         {tab === 'summary' ? <SummaryTab r={r} /> : null}
         {tab === 'timebars' ? <TimeBarsTab r={r} /> : null}
-        {tab === 'ask' ? <AskTab review={r} /> : null}
+        {tab === 'ask' ? (
+          <AskTab review={r} turns={turns} onAnswer={(a) => setTurns((t) => [a, ...t])} />
+        ) : null}
         {tab === 'flags' ? (
           <div className="stack">
             <div role="group" aria-label="Show flags" className="row-actions">
