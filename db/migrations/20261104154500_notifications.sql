@@ -1,3 +1,4 @@
+-- Composed from modules/notifications/db/migrations/20261104154500_notifications.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- notifications: the in-app inbox (backend 05 §1, schema/shared.md). One row per person per thing to tell them;
 -- `dedupe_key` makes a scheduled reminder safe to run twice. Read by its recipient only (enforced in the use case).
 
