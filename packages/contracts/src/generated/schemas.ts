@@ -378,6 +378,39 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
+export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "other"]);
+export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
+
+export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
+export type FileRef = z.infer<typeof FileRefSchema>;
+
+export const ComplianceDocumentSchema = z.object({
+  "id": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "itemType": ComplianceItemTypeSchema,
+  "title": z.string(),
+  "numberLast4": z.string().nullable(),
+  "issuingState": z.union([AuStateSchema, z.null()]),
+  "licenceClass": z.string().nullable(),
+  "insurer": z.string().nullable(),
+  "limitCents": z.number().int().nullable(),
+  "startsOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "fileIds": z.array(FileRefSchema),
+  "evidence": z.enum(["recorded", "sighted", "self_declared"]),
+  "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
+  "sightedBy": z.union([UserRefSchema, z.null()]),
+  "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "archivedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceDocument = z.infer<typeof ComplianceDocumentSchema>;
+
+export const ComplianceDocumentListSchema = z.object({
+  "data": z.array(ComplianceDocumentSchema),
+});
+export type ComplianceDocumentList = z.infer<typeof ComplianceDocumentListSchema>;
+
 export const ConfirmSheetScaleRequestSchema = z.object({
   "scale": z.number().int().min(1).max(100000),
 }).strict();
@@ -650,6 +683,21 @@ export const CreateCompanyRequestSchema = z.object({
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
 
+export const CreateComplianceDocumentRequestSchema = z.object({
+  "itemType": ComplianceItemTypeSchema,
+  "title": z.string().min(1).max(200),
+  "number": z.string().min(1).max(50).optional(),
+  "issuingState": AuStateSchema.optional(),
+  "licenceClass": z.string().max(200).optional(),
+  "insurer": z.string().max(200).optional(),
+  "limitCents": z.number().int().min(0).optional(),
+  "startsOn": z.string().date().optional(),
+  "expiresOn": z.string().date().optional(),
+  "fileIds": z.array(FileRefSchema).max(4).optional(),
+  "selfDeclared": z.boolean().optional(),
+}).strict();
+export type CreateComplianceDocumentRequest = z.infer<typeof CreateComplianceDocumentRequestSchema>;
+
 export const CreateContractRequestSchema = z.object({
   "kind": ContractKindSchema,
   "title": z.string().min(1).max(300),
@@ -668,9 +716,6 @@ export const CreateContractRequestSchema = z.object({
 }).strict()).max(500),
 }).strict();
 export type CreateContractRequest = z.infer<typeof CreateContractRequestSchema>;
-
-export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
-export type FileRef = z.infer<typeof FileRefSchema>;
 
 export const CreateCorrespondenceRequestSchema = z.object({
   "typeId": CorrespondenceTypeRefSchema,
@@ -4479,6 +4524,20 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
+
+export const UpdateComplianceDocumentRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "number": z.string().min(1).max(50).nullable().optional(),
+  "issuingState": z.union([AuStateSchema, z.null()]).optional(),
+  "licenceClass": z.string().max(200).nullable().optional(),
+  "insurer": z.string().max(200).nullable().optional(),
+  "limitCents": z.number().int().min(0).nullable().optional(),
+  "startsOn": z.string().date().nullable().optional(),
+  "expiresOn": z.string().date().nullable().optional(),
+  "fileIds": z.array(FileRefSchema).max(4).optional(),
+  "archived": z.boolean().optional(),
+}).strict();
+export type UpdateComplianceDocumentRequest = z.infer<typeof UpdateComplianceDocumentRequestSchema>;
 
 export const UpdateCorrespondenceRequestSchema = z.object({
   "subject": z.string().max(300).optional(),

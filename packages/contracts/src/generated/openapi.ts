@@ -4802,6 +4802,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/compliance-documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The company's compliance wallet: the insurance, licence and card documents it holds, soonest expiry first (compliance/05).
+         * @description Archived documents are left out unless `includeArchived` is set. Each row says what the company has done with it (`evidence`) and where its expiry stands (`expiry`). Archova never calls a document "verified".
+         */
+        get: operations["listComplianceDocuments"];
+        put?: never;
+        /** Record a document in the wallet, or a declaration that has none. */
+        post: operations["createComplianceDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-documents/{documentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Correct a document's details, replace its files, or archive it. A change to what the document says clears a sighting. */
+        patch: operations["updateComplianceDocument"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-documents/{documentId}/sight": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Mark a document as sighted: a named person has looked at the original (shown as "sighted by [name] on [date]", never "verified"). */
+        post: operations["sightComplianceDocument"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links": {
         parameters: {
             query?: never;
@@ -10490,6 +10553,81 @@ export interface components {
             version: number;
             /** Format: date-time */
             createdAt: string;
+        };
+        /** @enum {string} */
+        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "other";
+        ComplianceDocument: {
+            id: string;
+            itemType: components["schemas"]["ComplianceItemType"];
+            title: string;
+            /** @description Only the last four characters are kept. */
+            numberLast4: string | null;
+            issuingState: components["schemas"]["AuState"] | null;
+            licenceClass: string | null;
+            insurer: string | null;
+            /** @description Cover limit for an insurance, in cents. */
+            limitCents: number | null;
+            /** Format: date */
+            startsOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            fileIds: components["schemas"]["FileRef"][];
+            /**
+             * @description What was done with it. Never "verified": no register has been queried.
+             * @enum {string}
+             */
+            evidence: "recorded" | "sighted" | "self_declared";
+            /**
+             * @description `expiring` is within 30 days of `expiresOn`, in the company's own time zone (Sydney until orgs carry one).
+             * @enum {string}
+             */
+            expiry: "no_expiry" | "current" | "expiring" | "expired";
+            sightedBy: components["schemas"]["UserRef"] | null;
+            /** Format: date-time */
+            sightedAt: string | null;
+            /** Format: date-time */
+            archivedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ComplianceDocumentList: {
+            data: components["schemas"]["ComplianceDocument"][];
+        };
+        CreateComplianceDocumentRequest: {
+            itemType: components["schemas"]["ComplianceItemType"];
+            title: string;
+            /** @description Licence, policy or card number. Only the last four characters are stored. */
+            number?: string;
+            issuingState?: components["schemas"]["AuState"];
+            licenceClass?: string;
+            insurer?: string;
+            limitCents?: number;
+            /** Format: date */
+            startsOn?: string;
+            /** Format: date */
+            expiresOn?: string;
+            /** @description Ready files in this org. Required unless `selfDeclared`. */
+            fileIds?: components["schemas"]["FileRef"][];
+            /**
+             * @description A declaration with no document, such as "no employees".
+             * @default false
+             */
+            selfDeclared: boolean;
+        };
+        UpdateComplianceDocumentRequest: {
+            title?: string;
+            number?: string | null;
+            issuingState?: components["schemas"]["AuState"] | null;
+            licenceClass?: string | null;
+            insurer?: string | null;
+            limitCents?: number | null;
+            /** Format: date */
+            startsOn?: string | null;
+            /** Format: date */
+            expiresOn?: string | null;
+            fileIds?: components["schemas"]["FileRef"][];
+            archived?: boolean;
         };
         WorkerCredentialList: {
             data: components["schemas"]["WorkerCredential"][];
@@ -19001,6 +19139,122 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkerCredential"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listComplianceDocuments: {
+        parameters: {
+            query?: {
+                itemType?: components["schemas"]["ComplianceItemType"];
+                includeArchived?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDocumentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createComplianceDocument: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateComplianceDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateComplianceDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateComplianceDocumentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    sightComplianceDocument: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                documentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceDocument"];
                 };
             };
             default: components["responses"]["Problem"];
