@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { decodeId } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
 import type { PaymentInput } from '@archova/mod-financials';
@@ -123,6 +124,42 @@ describe('Contracts and payment claims (product/09)', () => {
       scheduledAmount: '24000.00',
       withheldAmount: '4500.00',
     });
+    // Sealed evidence: one record for the claim, one for the schedule, each re-hashes cleanly (compliance/01 §4).
+    const evidence = await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence`);
+    expect(evidence.statusCode).toBe(200);
+    expect(evidence.json().records).toMatchObject([
+      { kind: 'claim', intact: true, snapshotSha256: expect.stringMatching(/^[0-9a-f]{64}$/) },
+      { kind: 'schedule', intact: true },
+    ]);
+    const pdf = await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/pdf`);
+    expect(pdf.statusCode).toBe(200);
+    const bytes = Buffer.from(pdf.json().dataBase64, 'base64');
+    expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(
+      evidence.json().records[1].pdfSha256,
+    );
+    const json = await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/json`);
+    expect(createHash('sha256').update(json.json().dataText).digest('hex')).toBe(
+      evidence.json().records[1].snapshotSha256,
+    );
+    // The schedule's record names the sealed claim it answers.
+    expect(JSON.parse(json.json().dataText).claimEvidenceSha256).toBe(
+      evidence.json().records[0].snapshotSha256,
+    );
+    // The sealed rows cannot be changed, even by the table owner's app role.
+    const tamper: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    await expect(
+      t.database.withTenantTx(tamper, (sc) =>
+        sc.tx.execute(sql`update financials.evidence_records set snapshot_text = 'x'`),
+      ),
+    ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/sealed evidence/) } });
     const again = await s.pm.browser.post(`${s.base}/payment-claims/${c.id}/schedule`, {
       scheduledAmount: '24000.00',
       overallReason: 'again',

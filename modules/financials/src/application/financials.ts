@@ -16,7 +16,15 @@ import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { fromCents, toCents } from '../domain/money';
 import {
+  canonicalJson,
+  renderEvidencePdf,
+  sha256Hex,
+  type EvidenceKind,
+  type EvidenceSnapshot,
+} from '../domain/evidence';
+import {
   contracts,
+  evidenceRecords,
   paymentClaimLines,
   paymentClaims,
   paymentSchedules,
@@ -31,6 +39,7 @@ export type ClaimRow = typeof paymentClaims.$inferSelect;
 export type ClaimLineRow = typeof paymentClaimLines.$inferSelect;
 export type ScheduleRow = typeof paymentSchedules.$inferSelect;
 export type VariationRow = typeof variations.$inferSelect;
+export type EvidenceRow = typeof evidenceRecords.$inferSelect;
 
 export interface FinancialsDeps {
   access: AccessService;
@@ -414,6 +423,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       entityVersion: 1,
       data: { claimId: id, contractId, number, scheduleDueOn: row!.scheduleDueOn },
     });
+    await seal(scope, projectId, id, 'claim');
     return claimDetail(scope, projectId, id, false);
   }
 
@@ -471,6 +481,184 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .limit(1);
     const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
     return { claim, lines, schedule: schedule ?? null, today };
+  }
+
+  /**
+   * Sealed evidence (compliance/01 §4): in the transaction that records a claim or issues its schedule, take a
+   * snapshot of everything it rests on, hash it, and render the PDF from that snapshot. The row is immutable.
+   */
+  async function seal(scope: TenantScope, projectId: string, claimId: string, kind: EvidenceKind) {
+    const { claim, lines, schedule } = await claimDetail(scope, projectId, claimId, false);
+    const contract = await getContractRow(scope, projectId, claim.contractId, false);
+    const project = await deps.platform.getProject(scope, projectId);
+    const sov = new Map((await sovFor(scope, contract.id)).map((i) => [i.id, i]));
+    const vars = new Map(
+      (await scope.tx.select().from(variations).where(eq(variations.contractId, contract.id))).map(
+        (v) => [v.id, v],
+      ),
+    );
+    const refOf = (l: { sovItemId: string | null; variationId: string | null }) => {
+      const i = l.sovItemId ? sov.get(l.sovItemId) : undefined;
+      if (i) return { ref: i.code, description: i.description };
+      const v = l.variationId ? vars.get(l.variationId) : undefined;
+      return { ref: v ? `V${v.number}` : 'unknown', description: v?.title ?? '' };
+    };
+    const sealedAt = now();
+    const head = {
+      sealedAt: sealedAt.toISOString(),
+      timeZone: project.timezone,
+      contract: {
+        number: contract.number,
+        title: contract.title,
+        kind: contract.kind,
+        sopaState: contract.sopaState,
+      },
+    };
+    let snapshot: EvidenceSnapshot;
+    if (kind === 'claim') {
+      snapshot = {
+        kind,
+        ...head,
+        claim: {
+          id: claim.id,
+          number: claim.number,
+          periodEnd: claim.periodEnd,
+          receivedAt: claim.receivedAt.toISOString(),
+          statesAct: claim.statesAct,
+          isValid: claim.isValid,
+          invalidReason: claim.invalidReason,
+          claimedGross: claim.claimedGross,
+          lessPrevious: claim.lessPrevious,
+          retention: claim.retention,
+          claimedNet: claim.claimedNet,
+          gst: claim.gst,
+          claimedTotal: claim.claimedTotal,
+          servedOn: claim.servedOn,
+          scheduleDueOn: claim.scheduleDueOn,
+          paymentDueOn: claim.paymentDueOn,
+          paymentReadDown: claim.paymentReadDown,
+          ruleState: claim.ruleState,
+          rulesReviewed: claim.rulesReviewed,
+        },
+        lines: lines.map((l) => ({
+          ...refOf(l),
+          previous: l.previous,
+          thisClaim: l.thisClaim,
+          toDate: l.toDate,
+        })),
+      };
+    } else {
+      if (!schedule) throw new AppError('financials.claim.not_found');
+      const [claimEvidence] = await scope.tx
+        .select({ sha: evidenceRecords.snapshotSha256 })
+        .from(evidenceRecords)
+        .where(and(eq(evidenceRecords.claimId, claimId), eq(evidenceRecords.kind, 'claim')))
+        .limit(1);
+      snapshot = {
+        kind,
+        ...head,
+        claim: {
+          id: claim.id,
+          number: claim.number,
+          claimedNet: claim.claimedNet,
+          scheduleDueOn: claim.scheduleDueOn,
+        },
+        claimEvidenceSha256: claimEvidence?.sha ?? null,
+        schedule: {
+          id: schedule.id,
+          scheduledAmount: schedule.scheduledAmount,
+          withheldAmount: schedule.withheldAmount,
+          overallReason: schedule.overallReason,
+          lineReasons: schedule.lineReasons.map((r) => ({
+            ref: refOf({ sovItemId: r.sovItemId, variationId: null }).ref,
+            reason: r.reason,
+          })),
+          issuedAt: schedule.issuedAt.toISOString(),
+          issuedWithinTime: schedule.issuedWithinTime,
+        },
+      };
+    }
+    const snapshotText = canonicalJson(snapshot);
+    const snapshotSha256 = sha256Hex(snapshotText);
+    const pdf = Buffer.from(await renderEvidencePdf(snapshot, snapshotSha256));
+    await scope.tx.insert(evidenceRecords).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      claimId,
+      kind,
+      sealedAt,
+      snapshot: JSON.parse(snapshotText),
+      snapshotText,
+      snapshotSha256,
+      pdf,
+      pdfSha256: sha256Hex(pdf),
+    });
+  }
+
+  /** Evidence for a claim the viewer may see, each record re-hashed so a changed row shows as not intact. */
+  async function listEvidence(scope: TenantScope, projectId: string, claimId: string) {
+    await claimDetail(scope, projectId, claimId, true);
+    const rows = await scope.tx
+      .select()
+      .from(evidenceRecords)
+      .where(eq(evidenceRecords.claimId, claimId))
+      .orderBy(asc(evidenceRecords.sealedAt));
+    return rows.map((r) => ({
+      kind: r.kind,
+      sealedAt: r.sealedAt,
+      snapshotSha256: r.snapshotSha256,
+      pdfSha256: r.pdfSha256,
+      pdfBytes: r.pdf.length,
+      intact: sha256Hex(r.snapshotText) === r.snapshotSha256 && sha256Hex(r.pdf) === r.pdfSha256,
+    }));
+  }
+
+  async function evidenceFile(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+  ) {
+    const { claim } = await claimDetail(scope, projectId, claimId, true);
+    const [r] = await scope.tx
+      .select()
+      .from(evidenceRecords)
+      .where(and(eq(evidenceRecords.claimId, claimId), eq(evidenceRecords.kind, kind)))
+      .limit(1);
+    if (!r) throw new AppError('financials.evidence.not_found');
+    if (sha256Hex(r.snapshotText) !== r.snapshotSha256 || sha256Hex(r.pdf) !== r.pdfSha256)
+      throw new AppError('conflict', 'This evidence record no longer matches its seal.');
+    return { row: r, stem: `claim-${claim.number}-${kind}-evidence` };
+  }
+
+  async function evidencePdf(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+  ) {
+    const { row, stem } = await evidenceFile(scope, projectId, claimId, kind);
+    return {
+      filename: `${stem}.pdf`,
+      contentType: 'application/pdf' as const,
+      dataBase64: row.pdf.toString('base64'),
+    };
+  }
+
+  async function evidenceJson(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+  ) {
+    const { row, stem } = await evidenceFile(scope, projectId, claimId, kind);
+    return {
+      filename: `${stem}.json`,
+      contentType: 'application/json' as const,
+      snapshotSha256: row.snapshotSha256,
+      dataText: row.snapshotText,
+    };
   }
 
   /**
@@ -552,6 +740,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         claimed: claimed,
       },
     });
+    await seal(scope, projectId, claimId, 'schedule');
     return claimDetail(scope, projectId, claimId, false);
   }
 
@@ -880,6 +1069,9 @@ export function createFinancialsService(deps: FinancialsDeps) {
     listClaims,
     claimDetail,
     issueSchedule,
+    listEvidence,
+    evidencePdf,
+    evidenceJson,
   };
 }
 
