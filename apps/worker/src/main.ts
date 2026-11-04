@@ -13,6 +13,7 @@ import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
+import { templateBackfill } from './jobs/template-backfill';
 import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
@@ -33,7 +34,13 @@ async function main() {
   /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
   const SUBSCRIBERS: Subscriber[] = [];
   /** Nightly and hourly per-org jobs (backend 05 §3). */
-  const jobs: TenantJob[] = [accessLinkPurge, importStagingPurge, syncHoldsPurge, trialExpiry];
+  const jobs: TenantJob[] = [
+    accessLinkPurge,
+    importStagingPurge,
+    syncHoldsPurge,
+    trialExpiry,
+    templateBackfill,
+  ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {
     webhooks = webhookDelivery(
