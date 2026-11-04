@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, lte, min, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
-import { createTokenVault, type TokenVault } from '../domain/accounting/tokens';
+import { createKeyringVault, parseKeyring, type KeyringVault } from '../domain/accounting/tokens';
 import {
   PUBLIC_EVENT_TYPES,
   TEST_EVENT_TYPE,
@@ -37,7 +37,7 @@ export interface Claim {
 }
 
 export interface WebhooksDeps {
-  vault: TokenVault;
+  vault: KeyringVault;
   transport: WebhookTransport;
   now?: () => Date;
   /** Overrides `MAX_PENDING`; for tests. */
@@ -51,8 +51,8 @@ export interface CreateWebhookInput {
   projectIds?: string[] | undefined;
 }
 
-export const vaultFromKey = (base64Key: string) =>
-  createTokenVault(Buffer.from(base64Key, 'base64'));
+/** One base64 key, or `version:base64` pairs (see `parseKeyring`); the highest version seals new secrets. */
+export const vaultFromKey = (spec: string) => createKeyringVault(parseKeyring(spec));
 
 /** A 2xx is a success; 410 Gone also tells us to stop (integrations/06 §5). */
 const ok = (r: WebhookResult) => r.status !== null && r.status >= 200 && r.status < 300;
@@ -247,6 +247,27 @@ export function createWebhookService(deps: WebhooksDeps) {
   }
 
   /**
+   * Moves signing secrets sealed under an older key version over to the current one, so an old key can be retired.
+   * Never moves a secret to an older version (a worker started with a stale key list leaves them alone).
+   */
+  async function reseal(scope: TenantScope, limit = 200): Promise<number> {
+    const current = deps.vault.current;
+    const stale = await scope.tx
+      .select({ id: webhookSubscriptions.id, sealed: webhookSubscriptions.secretSealed })
+      .from(webhookSubscriptions)
+      .where(sql`get_byte(${webhookSubscriptions.secretSealed}, 0) < ${current}`)
+      .limit(limit);
+    for (const r of stale) {
+      const secret = deps.vault.open(scope.ctx.orgId, r.sealed);
+      await scope.tx
+        .update(webhookSubscriptions)
+        .set({ secretSealed: deps.vault.seal(scope.ctx.orgId, secret) })
+        .where(eq(webhookSubscriptions.id, r.id));
+    }
+    return stale.length;
+  }
+
+  /**
    * Phase 1 of a delivery pass: takes the deliveries that are due and leases them (their next attempt moves out by
    * `LEASE_S`), so another worker skips them and a crash before phase 3 only delays a retry. Deliveries whose endpoint
    * is already off are closed here. Nothing is sent inside this transaction.
@@ -368,7 +389,18 @@ export function createWebhookService(deps: WebhooksDeps) {
     return database.withTenantTx(ctx, (scope) => record(scope, results));
   }
 
-  return { prepare, create, list, remove, deliveries, fanOut, claimDue, record, attemptDue };
+  return {
+    prepare,
+    create,
+    list,
+    remove,
+    deliveries,
+    fanOut,
+    claimDue,
+    record,
+    attemptDue,
+    reseal,
+  };
 }
 
 export type WebhookService = ReturnType<typeof createWebhookService>;

@@ -20,6 +20,17 @@ describe('config', () => {
     );
   });
 
+  it('takes one webhook key or versioned pairs, and names the problem without echoing a key', () => {
+    const k = (n: number) => Buffer.alloc(32, n).toString('base64');
+    expect(loadConfig({ ...base, API_WEBHOOK_SECRET_KEY: k(1) }).webhookSecretKey).toBe(k(1));
+    expect(
+      loadConfig({ ...base, API_WEBHOOK_SECRET_KEY: `1:${k(1)},2:${k(2)}` }).webhookSecretKey,
+    ).toContain('2:');
+    expect(() => loadConfig({ ...base, API_WEBHOOK_SECRET_KEY: 'c2hvcnQ=' })).toThrow(
+      /API_WEBHOOK_SECRET_KEY is not valid: each key must be 32 bytes/,
+    );
+  });
+
   it('needs S3 for the GuardDuty scanner, which reads object tags', () => {
     expect(() => loadConfig({ ...base, API_FILES_SCANNER: 'guardduty' })).toThrow(
       /API_FILES_STORE=s3/,

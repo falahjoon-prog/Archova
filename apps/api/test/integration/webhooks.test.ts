@@ -292,6 +292,33 @@ describe('delivery', () => {
     expect(r).toMatchObject({ delivered: 0, retried: 0 });
   });
 
+  it('reseals secrets onto a new key version, never back to an older one', async () => {
+    const s = await setup('wh-reseal');
+    answer = { status: 200, error: null };
+    await s.owner.browser.post(`/v1/orgs/${s.org.id}/webhooks`, body());
+    const orgId = decodeId('org', s.org.id)!;
+    const newKey = Buffer.alloc(32, 9).toString('base64');
+    const svcWith = (spec: string) =>
+      createWebhookService({ vault: vaultFromKey(spec), transport, now: () => new Date() });
+    const rotated = svcWith(`1:${DEV_WEBHOOK_KEY},2:${newKey}`);
+    const reseal = (svc: ReturnType<typeof svcWith>) =>
+      t.database.withTenantTx(jobContext(orgId, 'test'), (sc) => svc.reseal(sc));
+    expect(await reseal(rotated)).toBe(1);
+    expect(await reseal(rotated)).toBe(0);
+    // A worker that only knows the old key list does not move it back.
+    expect(await reseal(svcWith(`1:${DEV_WEBHOOK_KEY}`))).toBe(0);
+    // With the old key gone, the endpoint still gets signed notices.
+    const onlyNew = svcWith(`2:${newKey}`);
+    await t.database.withTenantTx(jobContext(orgId, 'test'), (sc) =>
+      onlyNew.fanOut(sc, event(orgId, null)),
+    );
+    sent.length = 0;
+    expect(await onlyNew.attemptDue(t.database, jobContext(orgId, 'test'))).toMatchObject({
+      delivered: 1,
+    });
+    expect(sent[0]!.headers['webhook-signature']).toMatch(/^v1,/);
+  });
+
   it('stops at once when the endpoint answers 410 Gone', async () => {
     const s = await setup('wh-gone');
     answer = { status: 200, error: null };

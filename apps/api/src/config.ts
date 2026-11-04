@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { loadAiConfig } from '@archova/mod-ai';
+import { accounting } from '@archova/mod-integrations';
 
 // Zod 4's .default() skips the transform and returns the value as-is; .prefault() feeds it through like zod 3 did.
 const bool = z.enum(['true', 'false']).transform((v) => v === 'true');
@@ -62,7 +63,9 @@ const Env = z.object({
   // Allows password sign-in and a short solo-owner delay in production: the demo cell with synthetic data only.
   API_STAFF_DEMO_CELL: bool.prefault('false'),
   API_STAFF_SOLO_COOLING_OFF_HOURS: z.coerce.number().min(0).default(24),
-  // Seals webhook signing secrets (32 bytes, base64). The worker reads the same key as WORKER_WEBHOOK_SECRET_KEY.
+  // Seals webhook signing secrets: one 32-byte base64 key, or `version:key` pairs such as `1:AAAA…,2:BBBB…` (the
+  // highest version seals new secrets; older ones still open until the hourly sweep has resealed). The worker reads
+  // the same setting as WORKER_WEBHOOK_SECRET_KEY, and must be given a new key before the API starts using it.
   // Required in production; elsewhere a fixed development key is used.
   API_WEBHOOK_SECRET_KEY: z.string().optional(),
   // Xero and MYOB app registrations (integrations/02). A provider without both values answers 409 not_configured.
@@ -144,8 +147,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     },
     logLevel: e.LOG_LEVEL,
   };
-  if (config.webhookSecretKey && Buffer.from(config.webhookSecretKey, 'base64').length !== 32)
-    throw new Error('API_WEBHOOK_SECRET_KEY must be 32 bytes, base64 encoded');
+  if (config.webhookSecretKey) {
+    try {
+      accounting.parseKeyring(config.webhookSecretKey);
+    } catch (err) {
+      throw new Error(`API_WEBHOOK_SECRET_KEY is not valid: ${(err as Error).message}`);
+    }
+  }
   const cdnSet = [e.API_FILES_CDN_DOMAIN, e.API_FILES_CDN_KEY_PAIR_ID, e.API_FILES_CDN_PRIVATE_KEY];
   if (cdnSet.some(Boolean) && !cdnSet.every(Boolean))
     throw new Error(
