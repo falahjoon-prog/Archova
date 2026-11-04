@@ -1387,6 +1387,20 @@ describe('support access', () => {
     });
     expect(JSON.stringify(items[0])).not.toContain('Reads Rd');
 
+    // A row with no staff id (logged before the column existed) still shows, as Archova support.
+    await t.adminDb.db.execute(
+      sql`insert into backoffice.support_events (id, session_id, target_org_id, what, record_ids, staff_id)
+          select gen_random_uuid(), session_id, target_org_id, 'projects.list', '{}', null
+          from backoffice.support_events where target_org_id = ${decodeId('org', c.orgRef)!} limit 1`,
+    );
+    const withLegacy = (
+      (await c.browser.get(`${c.base}/reads`)).json() as { items: Array<{ staffName: string }> }
+    ).items;
+    expect(withLegacy.map((i) => i.staffName).sort()).toEqual([
+      'Archova support',
+      'Reader Support',
+    ]);
+
     // The log cannot be edited or erased, even with direct database access.
     await expect(
       t.adminDb.db.execute(sql`update backoffice.support_events set what = 'x'`),
@@ -1402,7 +1416,7 @@ describe('support access', () => {
     expect((await me.get(list)).statusCode).toBeGreaterThanOrEqual(400);
     expect(
       ((await c.browser.get(`${c.base}/reads`)).json() as { items: unknown[] }).items,
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
 
   it('needs a hardware-key sign-in to open a session or read content when required', async () => {

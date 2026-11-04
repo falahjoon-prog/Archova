@@ -443,7 +443,7 @@ export function createSupportAccessService(
           staffName: staffUsers.name,
         })
         .from(supportEvents)
-        .innerJoin(staffUsers, eq(staffUsers.id, supportEvents.staffId))
+        .leftJoin(staffUsers, eq(staffUsers.id, supportEvents.staffId))
         .where(eq(supportEvents.targetOrgId, orgId))
         .orderBy(desc(supportEvents.createdAt))
         .limit(Math.min(limit, 200)),
@@ -451,7 +451,8 @@ export function createSupportAccessService(
     return rows.map((r) => ({
       id: r.id,
       sessionId: r.sessionId,
-      staffName: r.staffName,
+      // Rows logged before reads carried a staff id still show, as support in general.
+      staffName: r.staffName ?? 'Archova support',
       page: r.what,
       recordCount: r.recordIds.length,
       at: r.createdAt.toISOString(),
