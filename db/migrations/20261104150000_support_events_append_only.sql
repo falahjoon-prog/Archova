@@ -13,5 +13,3 @@ create trigger support_events_no_update before update or delete on backoffice.su
   for each row execute function backoffice.support_events_immutable();
 create trigger support_events_no_truncate before truncate on backoffice.support_events
   for each statement execute function backoffice.support_events_immutable();
-
-create index support_events_org on backoffice.support_events (target_org_id, created_at desc);
