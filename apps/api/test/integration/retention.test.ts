@@ -193,6 +193,51 @@ describe('retention ledger and legal hold (compliance/07, APP 11.2)', () => {
     await del(s.orgId, s.recordId);
   });
 
+  it('caps extensions, keeps releases honest, and the guard trigger is installed', async () => {
+    const s = await setup('ret-caps');
+    await expect(
+      run(s.orgId, (sc) =>
+        recordRetention(sc, {
+          recordType: type,
+          recordId: s.recordId,
+          category: 'financial_7y',
+          anchor: new Date(),
+          extendToAtLeast: years(60),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'validation_failed' });
+    await expect(
+      run(s.orgId, (sc) =>
+        recordRetention(sc, {
+          recordType: type,
+          recordId: s.recordId,
+          category: 'financial_7y',
+          anchor: years(40),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'validation_failed' });
+    const hold = await run(s.orgId, (sc) => placeLegalHold(sc, { reason: 'Check' }));
+    await refused(
+      run(s.orgId, (sc) =>
+        sc.tx.execute(
+          sql`update shared.legal_holds set released_at = now() - interval '1 day', released_by = placed_by where id = ${hold}`,
+        ),
+      ),
+      /current time/,
+    );
+    await run(s.orgId, (sc) => releaseLegalHold(sc, hold));
+    await refused(
+      run(s.orgId, (sc) =>
+        sc.tx.execute(sql`update shared.legal_holds set released_at = now() where id = ${hold}`),
+      ),
+      /only be released/,
+    );
+    const trg = await t.adminDb.pool.query(
+      "select 1 from pg_trigger where tgrelid = 'shared.retention_probe'::regclass and tgname = 'enforce_retention'",
+    );
+    expect(trg.rowCount).toBe(1);
+  });
+
   it("never lets one org's hold or ledger affect another org", async () => {
     const a = await setup('ret-iso-a');
     const b = await setup('ret-iso-b');

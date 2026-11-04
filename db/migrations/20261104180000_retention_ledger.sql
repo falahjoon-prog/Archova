@@ -17,6 +17,8 @@ create table shared.retention_ledger (
     'location_at_sign_in_12m', 'health_monitoring_30y', 'asbestos_monitoring_40y')),
   retain_until timestamptz not null,
   created_at   timestamptz not null default now(),
+  -- Extension is irreversible, so a bad anchor must not lock a record forever.
+  check (retain_until <= created_at + interval '50 years'),
   unique (org_id, record_type, record_id, category)
 );
 create index retention_ledger_record on shared.retention_ledger (org_id, record_type, record_id);
@@ -64,8 +66,14 @@ begin
   end if;
   if (new.id, new.org_id, new.project_id, new.reason, new.placed_by, new.placed_at)
      is distinct from (old.id, old.org_id, old.project_id, old.reason, old.placed_by, old.placed_at)
-     or (old.released_at is not null and new.released_at is distinct from old.released_at) then
+     or (old.released_at is not null
+         and (new.released_at is distinct from old.released_at or new.released_by is distinct from old.released_by)) then
     raise exception 'retention: a legal hold can only be released' using errcode = 'RT001';
+  end if;
+  -- A release names who did it and happens now, so the release time cannot be backdated.
+  if old.released_at is null and new.released_at is not null
+     and (new.released_by is null or abs(extract(epoch from (new.released_at - now()))) > 1) then
+    raise exception 'retention: a release needs released_by and the current time' using errcode = 'RT001';
   end if;
   return new;
 end $$;

@@ -22,6 +22,9 @@ export const RETENTION_PERIODS = {
   asbestos_monitoring_40y: '40 years',
 } as const;
 
+const YEAR_MS = 365 * 86_400_000;
+const MAX_RETENTION_YEARS = 50;
+
 export type RetentionCategory = keyof typeof RETENTION_PERIODS;
 export type RetentionBlockReason = 'legal_hold' | 'retention_period';
 
@@ -46,6 +49,16 @@ export async function recordRetention(
   input: RecordRetentionInput,
 ): Promise<void> {
   const period = RETENTION_PERIODS[input.category];
+  // Extensions are irreversible (the database also caps retain_until at 50 years), so reject a bad date up front.
+  const now = Date.now();
+  if (input.anchor.getTime() > now + 5 * YEAR_MS || Number.isNaN(input.anchor.getTime()))
+    throw new AppError('validation_failed', 'The retention anchor date is not plausible.');
+  if (
+    input.extendToAtLeast &&
+    (Number.isNaN(input.extendToAtLeast.getTime()) ||
+      input.extendToAtLeast.getTime() > now + MAX_RETENTION_YEARS * YEAR_MS)
+  )
+    throw new AppError('validation_failed', 'A retention extension cannot run past 50 years.');
   const anchor = input.anchor.toISOString();
   const extend = input.extendToAtLeast?.toISOString() ?? null;
   await scope.tx.execute(sql`
@@ -85,7 +98,8 @@ export async function assertDeletable(scope: TenantScope, ref: RecordRef): Promi
 
 /**
  * Places a hold on one project, or on the whole org when `projectId` is omitted. Callers check the legal-hold
- * permission first; the change goes to the outbox so it reaches the security audit log.
+ * permission first (none exists yet, so use only from tests until it does); the change goes to the outbox so it
+ * reaches the security audit log. Platform holds and customer holds need separate design.
  */
 export async function placeLegalHold(
   scope: TenantScope,
@@ -100,7 +114,8 @@ export async function placeLegalHold(
     projectId: input.projectId ?? null,
     entityType: 'legal_hold',
     entityId: id,
-    data: { holdId: id, projectId: input.projectId ?? null, reason: input.reason },
+    // No free-text reason: the outbox is not the place for it.
+    data: { holdId: id, projectId: input.projectId ?? null },
   });
   return id;
 }
