@@ -13,4 +13,8 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'workforce.workers.view_personal', scope: 'project', tool: 'workforce', level: 'admin' },
   // Site managers build and publish the site induction (product/14 I1, I7).
   { key: 'workforce.inductions.manage', scope: 'project', tool: 'workforce', level: 'admin' },
+  // Subcontractor compliance wallet (compliance/05, E5): an org's own insurance, licence and card evidence.
+  // Org-level because the documents belong to the company, not to a project.
+  { key: 'workforce.wallet.view', scope: 'org', tool: null, level: 'standard' },
+  { key: 'workforce.wallet.manage', scope: 'org', tool: null, level: 'admin' },
 ];

@@ -1561,6 +1561,26 @@ export const SightWorkerCredentialParams = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "credentialId": z.string().regex(new RegExp("^wcr_[0-9A-Za-z]{26}$")),
 });
+export const ListComplianceDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceDocumentsQuery = z.object({
+  "itemType": s.ComplianceItemTypeSchema.optional(),
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceDocumentBody = s.CreateComplianceDocumentRequestSchema;
+export const UpdateComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateComplianceDocumentBody = s.UpdateComplianceDocumentRequestSchema;
+export const SightComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+});
 export const ListInductionLinksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5183,6 +5203,58 @@ export const operations = {
     internal: false,
     contentType: null,
     params: SightWorkerCredentialParams,
+    query: null,
+    body: null,
+  },
+  listComplianceDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceDocumentsParams,
+    query: ListComplianceDocumentsQuery,
+    body: null,
+  },
+  createComplianceDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: CreateComplianceDocumentParams,
+    query: null,
+    body: CreateComplianceDocumentBody,
+  },
+  updateComplianceDocument: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/compliance-documents/{documentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: UpdateComplianceDocumentParams,
+    query: null,
+    body: UpdateComplianceDocumentBody,
+  },
+  sightComplianceDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-documents/{documentId}/sight',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: SightComplianceDocumentParams,
     query: null,
     body: null,
   },

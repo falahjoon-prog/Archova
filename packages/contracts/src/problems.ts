@@ -307,6 +307,7 @@ export const PROBLEM_CODES = {
   'induction.completed': 409,
   'induction.white_card_required': 422,
   'credential.not_found': 404,
+  'compliance_document.not_found': 404,
   // access links (X45, Sam security-licensing/11)
   /** Expired, revoked, used up or unknown: the page says only that the link no longer works. */
   'access_link.invalid': 410,
