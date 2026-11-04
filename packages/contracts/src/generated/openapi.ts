@@ -4959,6 +4959,195 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/compliance-access-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The access requests this organisation has made to subcontractors' wallets, newest first. */
+        get: operations["listComplianceAccessRequests"];
+        put?: never;
+        /**
+         * Ask a subcontractor for read access to some of their wallet, for one named project (or all projects, as an explicit choice).
+         * @description The share code is returned once. Give it to the subcontractor, who sees what is asked for and accepts it. Nobody types an organisation id. `wwcc` can't be requested. Access lasts at most 12 months.
+         */
+        post: operations["createComplianceAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-access-requests/{requestId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel an open request so its code stops working. */
+        post: operations["cancelComplianceAccessRequest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-share-codes/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * See what a builder is asking for before accepting.
+         * @description A wrong, expired, used or cancelled code all answer 404, so codes can't be probed.
+         */
+        post: operations["previewComplianceShareCode"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-grants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Who this company has given access to its wallet, newest first, with whether each is live. */
+        get: operations["listComplianceGrants"];
+        put?: never;
+        /** Accept a builder's request using its share code. Access starts now and runs to the date the builder asked for. */
+        post: operations["acceptComplianceGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-grants/{grantId}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw access. The builder can no longer read the documents; snapshots it already took stay in its records. */
+        post: operations["revokeComplianceGrant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/compliance-access-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Who has looked at the wallet and when, newest first. Always on. */
+        get: operations["listComplianceAccessLog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/subcontractor-wallets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The subcontractor wallets this organisation can currently read, soonest expiry first. */
+        get: operations["listGrantedWallets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * Read a subcontractor's documents through a grant, for one project.
+         * @description Only the document types the grant covers, never `wwcc`, never files or the full number. Each read is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A grant for one project answers 404 for any other.
+         */
+        get: operations["listGrantedWalletDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Keep a record of a document you relied on (site entry, claim assessment): its details and a SHA-256, never files.
+         * @description The snapshot belongs to the builder and stays when the grant ends.
+         */
+        post: operations["createComplianceSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links": {
         parameters: {
             query?: never;
@@ -10854,6 +11043,144 @@ export interface components {
             expiresOn?: string | null;
             fileIds?: components["schemas"]["FileRef"][];
             archived?: boolean;
+        };
+        ComplianceShareCodeRequest: {
+            code: string;
+        };
+        CreateComplianceAccessRequest: {
+            /** @description The project the access is for. Give this, or set `allProjects`. */
+            projectId?: string;
+            /**
+             * @description Explicit, separately labelled choice to cover every project of this organisation.
+             * @default false
+             */
+            allProjects: boolean;
+            itemTypes: components["schemas"]["ComplianceItemType"][];
+            /**
+             * Format: date
+             * @description Last day of access. Defaults to and may not exceed 12 months from today.
+             */
+            expiresOn?: string;
+        };
+        ComplianceAccessRequest: {
+            id: string;
+            requesterName: string;
+            projectId: string | null;
+            projectName: string | null;
+            allProjects: boolean;
+            itemTypes: components["schemas"]["ComplianceItemType"][];
+            /** Format: date */
+            grantExpiresOn: string;
+            /** Format: date-time */
+            codeExpiresAt: string;
+            /** @enum {string} */
+            status: "requested" | "accepted" | "cancelled";
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ComplianceAccessRequestCreated: {
+            request: components["schemas"]["ComplianceAccessRequest"];
+            /** @description Shown once. Give it to the subcontractor. */
+            code: string;
+        };
+        ComplianceAccessRequestList: {
+            data: components["schemas"]["ComplianceAccessRequest"][];
+        };
+        ComplianceAccessRequestPreview: {
+            requesterName: string;
+            projectName: string | null;
+            allProjects: boolean;
+            itemTypes: components["schemas"]["ComplianceItemType"][];
+            /** Format: date */
+            grantExpiresOn: string;
+        };
+        ComplianceGrant: {
+            id: string;
+            granteeName: string;
+            itemTypes: components["schemas"]["ComplianceItemType"][];
+            projectId: string | null;
+            projectName: string | null;
+            allProjects: boolean;
+            /** Format: date */
+            expiresOn: string;
+            /** Format: date-time */
+            acceptedAt: string;
+            /** Format: date-time */
+            revokedAt: string | null;
+            /** @enum {string} */
+            status: "live" | "expired" | "revoked";
+            version: number;
+        };
+        ComplianceGrantList: {
+            data: components["schemas"]["ComplianceGrant"][];
+        };
+        ComplianceAccessLogEntry: {
+            id: string;
+            granteeName: string;
+            /** @enum {string} */
+            kind: "list" | "document" | "file";
+            itemType: components["schemas"]["ComplianceItemType"] | null;
+            documentId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        ComplianceAccessLogList: {
+            data: components["schemas"]["ComplianceAccessLogEntry"][];
+        };
+        GrantedWallet: {
+            grantId: string;
+            subbieName: string;
+            itemTypes: components["schemas"]["ComplianceItemType"][];
+            projectId: string | null;
+            projectName: string | null;
+            allProjects: boolean;
+            /** Format: date */
+            expiresOn: string;
+        };
+        GrantedWalletList: {
+            data: components["schemas"]["GrantedWallet"][];
+        };
+        SharedComplianceDocument: {
+            id: string;
+            itemType: components["schemas"]["ComplianceItemType"];
+            title: string;
+            numberLast4: string | null;
+            issuingState: components["schemas"]["AuState"] | null;
+            licenceClass: string | null;
+            insurer: string | null;
+            limitCents: number | null;
+            /** Format: date */
+            startsOn: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            /** @enum {string} */
+            evidence: "recorded" | "sighted" | "self_declared";
+            /** @enum {string} */
+            expiry: "no_expiry" | "current" | "expiring" | "expired";
+            /** Format: date-time */
+            sightedAt: string | null;
+        };
+        SharedComplianceDocumentList: {
+            data: components["schemas"]["SharedComplianceDocument"][];
+        };
+        CreateComplianceSnapshotRequest: {
+            projectId: string;
+            documentId: string;
+            /** @enum {string} */
+            reason: "site_entry" | "claim_assessment" | "other";
+        };
+        ComplianceSnapshot: {
+            id: string;
+            grantId: string;
+            documentId: string;
+            itemType: components["schemas"]["ComplianceItemType"];
+            /** @enum {string} */
+            reason: "site_entry" | "claim_assessment" | "other";
+            sha256: string;
+            document: components["schemas"]["SharedComplianceDocument"];
+            /** Format: date-time */
+            createdAt: string;
         };
         WorkerCredentialList: {
             data: components["schemas"]["WorkerCredential"][];
@@ -19584,6 +19911,295 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComplianceDocument"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listComplianceAccessRequests: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceAccessRequestList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createComplianceAccessRequest: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateComplianceAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceAccessRequestCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelComplianceAccessRequest: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceAccessRequest"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    previewComplianceShareCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComplianceShareCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceAccessRequestPreview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listComplianceGrants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceGrantList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    acceptComplianceGrant: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ComplianceShareCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceGrant"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeComplianceGrant: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceGrant"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listComplianceAccessLog: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceAccessLogList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGrantedWallets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GrantedWalletList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listGrantedWalletDocuments: {
+        parameters: {
+            query: {
+                projectId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SharedComplianceDocumentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createComplianceSnapshot: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateComplianceSnapshotRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceSnapshot"];
                 };
             };
             default: components["responses"]["Problem"];
