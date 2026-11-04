@@ -63,6 +63,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             ...(membership.role === 'owner' || membership.role === 'admin'
               ? [
                   { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
+                  { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
                   { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
                 ]
               : []),
