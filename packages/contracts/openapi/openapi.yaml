@@ -2347,6 +2347,53 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractAnswer' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: compareContracts
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: Ask Nova what changed between two reviewed contracts (F34, Compare).
+      description: |
+        For the commercial team. Compares the contracts two reviews of this project were made from: two versions of
+        one contract, or two contracts. Both files are read again with the caller's own access. Nova lists the
+        differences clause by clause (`added` only in the other contract, `removed` only in the base, `changed` in
+        both) and a change is shown only when its quotes are found on the pages of the contract they name; changes
+        Nova could not support, or that use a banned word (a view on fairness, validity, which version is better or
+        whether to sign), are dropped and counted in `dropped`. A list with no changes means Nova found none it can
+        show, not that the contracts match: `unreadPages` and `truncated` say what Nova could not read of each.
+        Nothing is saved. Costs 5 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [baseReviewId, otherReviewId]
+              properties:
+                baseReviewId:
+                  {
+                    type: string,
+                    pattern: '^ais_[0-9A-Za-z]{26}$',
+                    description: The review of the earlier or reference contract.,
+                  }
+                otherReviewId:
+                  {
+                    type: string,
+                    pattern: '^ais_[0-9A-Za-z]{26}$',
+                    description: The review of the contract to compare against it.,
+                  }
+      responses:
+        '200':
+          description: The differences
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractComparison' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/ai/contract-playbooks/{contractType}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10886,6 +10933,54 @@ components:
     ContractFlagDecisionKind:
       type: string
       enum: [accept_risk, negotiate, refer_to_lawyer, not_relevant]
+    NovaContractComparison:
+      type: object
+      required: [runId, base, other, changes, dropped]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        base: { $ref: '#/components/schemas/ComparedContract' }
+        other: { $ref: '#/components/schemas/ComparedContract' }
+        changes:
+          type: array
+          items:
+            type: object
+            required: [kind, topic, summary, base, other]
+            properties:
+              kind: { type: string, enum: [added, removed, changed] }
+              topic: { type: string }
+              summary: { type: string }
+              base:
+                oneOf:
+                  - { $ref: '#/components/schemas/ContractSourceRef' }
+                  - { type: 'null' }
+              other:
+                oneOf:
+                  - { $ref: '#/components/schemas/ContractSourceRef' }
+                  - { type: 'null' }
+        dropped:
+          type: object
+          description: What code removed from Nova's list, so the person knows it was cut.
+          required: [notOnPage, bannedWords, notAChange]
+          properties:
+            notOnPage: { type: integer, minimum: 0 }
+            bannedWords: { type: integer, minimum: 0 }
+            notAChange: { type: integer, minimum: 0 }
+    ComparedContract:
+      type: object
+      required: [suggestionId, fileName, pageCount, unreadPages, truncated]
+      properties:
+        suggestionId: { type: string, description: The review (`ais_`) }
+        fileName: { type: string }
+        pageCount: { type: integer, minimum: 0 }
+        unreadPages:
+          type: array
+          description: Pages with no text Nova can read.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          {
+            type: boolean,
+            description: Part of this contract was left out (too long to read in one go).,
+          }
     NovaContractAnswer:
       type: object
       required: [runId, question, kind, answer, citations, droppedCitations, unreadPages, truncated]

@@ -72,6 +72,15 @@ export function useAskContract(projectId: string) {
   });
 }
 
+/** Comparing is a plain mutation too: the result lives on the Compare tab until it is closed. */
+export function useCompareContracts(projectId: string) {
+  const api = useApi();
+  return useMutation({
+    mutationFn: (v: { baseReviewId: string; otherReviewId: string }) =>
+      api.compare(projectId, v.baseReviewId, v.otherReviewId),
+  });
+}
+
 export function useRateAnswer() {
   const api = useApi();
   return useMutation({

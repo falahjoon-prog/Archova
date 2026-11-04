@@ -1814,6 +1814,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova what changed between two reviewed contracts (F34, Compare).
+         * @description For the commercial team. Compares the contracts two reviews of this project were made from: two versions of
+         *     one contract, or two contracts. Both files are read again with the caller's own access. Nova lists the
+         *     differences clause by clause (`added` only in the other contract, `removed` only in the base, `changed` in
+         *     both) and a change is shown only when its quotes are found on the pages of the contract they name; changes
+         *     Nova could not support, or that use a banned word (a view on fairness, validity, which version is better or
+         *     whether to sign), are dropped and counted in `dropped`. A list with no changes means Nova found none it can
+         *     show, not that the contracts match: `unreadPages` and `truncated` say what Nova could not read of each.
+         *     Nothing is saved. Costs 5 Nova credits.
+         */
+        post: operations["compareContracts"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}": {
         parameters: {
             query?: never;
@@ -7634,6 +7664,36 @@ export interface components {
         };
         /** @enum {string} */
         ContractFlagDecisionKind: "accept_risk" | "negotiate" | "refer_to_lawyer" | "not_relevant";
+        NovaContractComparison: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            base: components["schemas"]["ComparedContract"];
+            other: components["schemas"]["ComparedContract"];
+            changes: {
+                /** @enum {string} */
+                kind: "added" | "removed" | "changed";
+                topic: string;
+                summary: string;
+                base: components["schemas"]["ContractSourceRef"] | null;
+                other: components["schemas"]["ContractSourceRef"] | null;
+            }[];
+            /** @description What code removed from Nova's list, so the person knows it was cut. */
+            dropped: {
+                notOnPage: number;
+                bannedWords: number;
+                notAChange: number;
+            };
+        };
+        ComparedContract: {
+            /** @description The review (`ais_`) */
+            suggestionId: string;
+            fileName: string;
+            pageCount: number;
+            /** @description Pages with no text Nova can read. */
+            unreadPages: number[];
+            /** @description Part of this contract was left out (too long to read in one go). */
+            truncated: boolean;
+        };
         NovaContractAnswer: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -14553,6 +14613,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaContractAnswer"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    compareContracts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description The review of the earlier or reference contract. */
+                    baseReviewId: string;
+                    /** @description The review of the contract to compare against it. */
+                    otherReviewId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The differences */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractComparison"];
                 };
             };
             default: components["responses"]["Problem"];

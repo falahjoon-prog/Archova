@@ -408,6 +408,15 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
+export const ComparedContractSchema = z.object({
+  "suggestionId": z.string(),
+  "fileName": z.string(),
+  "pageCount": z.number().int().min(0),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+});
+export type ComparedContract = z.infer<typeof ComparedContractSchema>;
+
 export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "abn", "other"]);
 export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
 
@@ -3166,6 +3175,25 @@ export const NovaContractAnswerSchema = z.object({
   "truncated": z.boolean(),
 });
 export type NovaContractAnswer = z.infer<typeof NovaContractAnswerSchema>;
+
+export const NovaContractComparisonSchema = z.object({
+  "runId": z.string(),
+  "base": ComparedContractSchema,
+  "other": ComparedContractSchema,
+  "changes": z.array(z.object({
+  "kind": z.enum(["added", "removed", "changed"]),
+  "topic": z.string(),
+  "summary": z.string(),
+  "base": z.union([ContractSourceRefSchema, z.null()]),
+  "other": z.union([ContractSourceRefSchema, z.null()]),
+})),
+  "dropped": z.object({
+  "notOnPage": z.number().int().min(0),
+  "bannedWords": z.number().int().min(0),
+  "notAChange": z.number().int().min(0),
+}),
+});
+export type NovaContractComparison = z.infer<typeof NovaContractComparisonSchema>;
 
 export const NovaContractReviewSchema = z.object({
   "createdAt": z.string().datetime({ offset: true }),

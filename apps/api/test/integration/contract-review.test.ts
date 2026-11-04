@@ -389,4 +389,77 @@ describe('Nova contract review (F34)', () => {
     });
     expect(res.statusCode).toBe(422);
   });
+
+  it('compares two reviewed contracts and keeps Compare to the commercial team, this project and two different reviews', async () => {
+    const s = await setup();
+    const revised = await uploadBytes(
+      t,
+      s.owner.browser,
+      s.org.id,
+      s.project.id,
+      await contractPdf([
+        [
+          CONTRACT[0]![0]!,
+          CONTRACT[0]![1]!,
+          '14.1 The Principal holds retention of 5% of each payment.',
+          '25.2 The Contractor pays a security of 2% of the contract sum.',
+        ],
+        CONTRACT[1]!,
+      ]),
+      'revised.pdf',
+    );
+    const review = async (fileId: string) =>
+      (await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId, ...REQUEST })).json();
+    const a = await review(s.file);
+    const b = await review(revised);
+    const url = `${s.base}/ai/contract-compares`;
+    const before = t.ai.calls.length;
+    const res = await s.mgr.browser.post(url, {
+      baseReviewId: a.suggestionId,
+      otherReviewId: b.suggestionId,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).toMatchObject({
+      runId: expect.stringMatching(/^air_/),
+      base: { suggestionId: a.suggestionId, fileName: 'subcontract.pdf', unreadPages: [] },
+      other: { suggestionId: b.suggestionId, fileName: 'revised.pdf', truncated: false },
+    });
+    const kinds = Object.fromEntries(
+      body.changes.map(
+        (c: { kind: string; base?: { clause: string }; other?: { clause: string } }) => [
+          (c.base ?? c.other)!.clause,
+          c.kind,
+        ],
+      ),
+    );
+    expect(kinds).toMatchObject({ '14.1': 'changed', '25.2': 'added' });
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'contract.compare')!;
+    expect(call.text).toContain('<base>');
+    expect(call.text).toContain('<other>');
+    expect(call.text).not.toContain(s.file);
+
+    // Not allowed for site staff, not for a review of another contract that doesn't exist, not against itself:
+    // none of them reaches the model.
+    const calls = t.ai.calls.length;
+    const one = { baseReviewId: a.suggestionId, otherReviewId: b.suggestionId };
+    expect((await s.site.browser.post(url, one)).statusCode).toBe(403);
+    expect(
+      (
+        await s.mgr.browser.post(url, {
+          baseReviewId: a.suggestionId,
+          otherReviewId: 'ais_00000000000000000000000000',
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await s.mgr.browser.post(url, {
+          baseReviewId: a.suggestionId,
+          otherReviewId: a.suggestionId,
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect(t.ai.calls.length).toBe(calls);
+  });
 });

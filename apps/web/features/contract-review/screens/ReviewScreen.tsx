@@ -20,6 +20,7 @@ import { formatInstant } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { AskTab } from '../components/AskTab';
+import { CompareTab } from '../components/CompareTab';
 import { DisclaimerBanner } from '../components/DisclaimerBanner';
 import { FlagCard } from '../components/FlagCard';
 import { SourceQuote } from '../components/SourceQuote';
@@ -160,6 +161,7 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
           { id: 'flags', label: 'Flags', count: r.flags.length },
           { id: 'timebars', label: 'Time bars', count: r.timeBars.length },
           { id: 'ask', label: 'Ask' },
+          { id: 'compare', label: 'Compare' },
         ]}
       >
         {tab === 'summary' ? <SummaryTab r={r} /> : null}
@@ -167,6 +169,7 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
         {tab === 'ask' ? (
           <AskTab review={r} turns={turns} onAnswer={(a) => setTurns((t) => [a, ...t])} />
         ) : null}
+        {tab === 'compare' ? <CompareTab review={r} /> : null}
         {tab === 'flags' ? (
           <div className="stack">
             <div role="group" aria-label="Show flags" className="row-actions">

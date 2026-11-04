@@ -23,7 +23,10 @@ export interface ContractText {
   truncated: boolean;
 }
 
-export async function readContractText(file: ReadableFile): Promise<ContractText> {
+export async function readContractText(
+  file: ReadableFile,
+  maxChars: number = MAX_CONTRACT_CHARS,
+): Promise<ContractText> {
   if (file.file.mime !== 'application/pdf')
     throw new AppError('validation_failed', 'Nova reads contracts sent as PDF.', [
       { path: 'fileId', message: 'Not a PDF' },
@@ -45,7 +48,7 @@ export async function readContractText(file: ReadableFile): Promise<ContractText
       text = text.slice(0, MAX_CONTRACT_PAGE_CHARS);
       truncated = true;
     }
-    if (chars + text.length > MAX_CONTRACT_CHARS) {
+    if (chars + text.length > maxChars) {
       truncated = true;
       break;
     }

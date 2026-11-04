@@ -50,6 +50,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'contract.review': 40,
   // F34 Ask the contract: the pages and one question at the standard tier, a short cited answer out. Priya to confirm.
   'contract.ask': 2,
+  // F34 Compare contracts: two contracts' pages and a list of cited differences out, standard tier. Priya to confirm.
+  'contract.compare': 5,
   // Nova listening: one short spoken question turned into text. Priya to confirm.
   'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
