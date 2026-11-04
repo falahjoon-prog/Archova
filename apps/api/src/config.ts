@@ -58,6 +58,8 @@ const Env = z.object({
   API_ADMIN_ORIGINS: list.prefault('http://localhost:3008'),
   // Password sign-in for staff: on by default outside production; hosted staff use the staff IdP.
   API_STAFF_LOCAL_LOGIN: bool.optional(),
+  // Support access needs a hardware-key staff sign-in. Defaults to on whenever local password login is off.
+  API_STAFF_SUPPORT_HARDWARE_KEY: bool.optional(),
   // Solo-owner mode (Sam 12 §4): how long the only Owner waits before approving their own price book. 24 in production.
   // Allows password sign-in and a short solo-owner delay in production: the demo cell with synthetic data only.
   API_STAFF_DEMO_CELL: bool.prefault('false'),
@@ -140,6 +142,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       origins: e.API_ADMIN_ORIGINS.map((o) => new URL(o).origin),
       localLogin: e.API_STAFF_LOCAL_LOGIN ?? e.NODE_ENV !== 'production',
       soloCoolingOffHours: e.API_STAFF_SOLO_COOLING_OFF_HOURS,
+      requireSupportHardwareKey: e.API_STAFF_SUPPORT_HARDWARE_KEY,
       demoCell: e.API_STAFF_DEMO_CELL,
     },
     logLevel: e.LOG_LEVEL,
@@ -162,6 +165,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
       'API_FILES_SCANNER=clamav reads uploads from storage, so it needs API_FILES_STORE=s3',
     );
   if (config.env === 'production' && !config.internal.demoCell) {
+    if (config.internal.requireSupportHardwareKey === false)
+      throw new Error(
+        'API_STAFF_SUPPORT_HARDWARE_KEY=false is not allowed in production: support access needs a hardware key (set API_STAFF_DEMO_CELL=true for a demo cell)',
+      );
     if (config.internal.localLogin)
       throw new Error(
         'API_STAFF_LOCAL_LOGIN=true is not allowed in production: staff sign in through the staff IdP (set API_STAFF_DEMO_CELL=true for a demo cell with synthetic data only)',

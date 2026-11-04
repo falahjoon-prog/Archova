@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNull, lt, sql, type SQL } from 'drizzle-orm';
 import {
   DEFECT_ACTIONS,
+  defectLabel,
   hasDefectLocation,
   uuidv7,
   type DefectAction,
@@ -568,6 +569,50 @@ export function createDefectService(deps: DefectsDeps) {
   }
 
   /**
+   * Meeting agenda (`meetings`, MTG-US5): open, ready-for-review and disputed defects the caller can see, grouped by
+   * trade (no trade last) then oldest first. `restricted` is true when the caller can't read defects at all.
+   */
+  async function openForMeeting(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    if (!(await deps.access.can(scope, 'defects.defects.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(defects.projectId, projectId),
+      isNull(defects.deletedAt),
+      sql`${defects.status} in ('open', 'ready_for_review', 'disputed')`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({
+        id: defects.id,
+        number: defects.number,
+        title: defects.title,
+        status: defects.status,
+        trade: defects.trade,
+      })
+      .from(defects)
+      .where(and(...conditions))
+      .orderBy(sql`${defects.trade} asc nulls last`, asc(defects.number))
+      .limit(opts.limit + 1);
+    const STATUS: Record<string, string> = {
+      open: 'Open',
+      ready_for_review: 'Ready for review',
+      disputed: 'Disputed',
+    };
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: defectLabel(r.number),
+        title: r.title,
+        detail: `${r.trade ?? 'No trade'}, ${STATUS[r.status] ?? r.status}`,
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
+  /**
    * Nova Ask (F2): every issued defect on the project with the notes on its history, for the `ai` indexer. Drafts and
    * voided defects are left out. Not narrowed to the caller: who may retrieve what is decided when Ask searches, by
    * `aiAccessScopes`.
@@ -628,6 +673,7 @@ export function createDefectService(deps: DefectsDeps) {
     update,
     transition,
     openNear,
+    openForMeeting,
     visibleAmong,
     projectOf,
     aiSources,

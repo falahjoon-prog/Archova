@@ -100,6 +100,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       backoffice: {
         localLogin: config.internal.localLogin,
         soloCoolingOffHours: config.internal.soloCoolingOffHours,
+        ...(config.internal.requireSupportHardwareKey === undefined
+          ? {}
+          : { requireSupportHardwareKey: config.internal.requireSupportHardwareKey }),
       },
       webhooks: {
         vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),

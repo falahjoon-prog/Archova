@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Button, Card, Select, SkeletonRows, StatusPill, TextField } from '@archova/ui';
+import { Button, Card, Checkbox, Select, SkeletonRows, StatusPill, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { serverFieldErrors } from '@/shared/lib/forms';
@@ -11,6 +11,7 @@ import {
   useRevokeSupportAccess,
   useStaffActions,
   useSupportAccess,
+  useSupportProjectChoices,
 } from '../hooks/useSupportAccess';
 
 const HOURS = [
@@ -67,14 +68,28 @@ export function SupportAccessScreen() {
   const actions = useStaffActions();
   const [ticketRef, setTicketRef] = useState('');
   const [hours, setHours] = useState('24');
+  const [limited, setLimited] = useState(false);
+  const [chosen, setChosen] = useState<string[]>([]);
+  const choices = useSupportProjectChoices();
+  const projectList = choices.data?.data ?? [];
   const server = serverFieldErrors(grant.error);
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (ticketRef.trim().length < 2) return;
+    if (ticketRef.trim().length < 2 || (limited && chosen.length === 0)) return;
     grant.mutate(
-      { ticketRef: ticketRef.trim(), hours: Number(hours) },
-      { onSuccess: () => setTicketRef('') },
+      {
+        ticketRef: ticketRef.trim(),
+        hours: Number(hours),
+        ...(limited ? { projectIds: chosen } : {}),
+      },
+      {
+        onSuccess: () => {
+          setTicketRef('');
+          setLimited(false);
+          setChosen([]);
+        },
+      },
     );
   }
 
@@ -109,6 +124,14 @@ export function SupportAccessScreen() {
               <div>
                 <dt>Allowed by</dt>
                 <dd>{active.grantedBy}</dd>
+              </div>
+              <div>
+                <dt>Projects</dt>
+                <dd>
+                  {active.projectIds
+                    ? `${active.projectIds.length} chosen ${active.projectIds.length === 1 ? 'project' : 'projects'}`
+                    : 'All projects'}
+                </dd>
               </div>
               <div>
                 <dt>Until</dt>
@@ -148,11 +171,39 @@ export function SupportAccessScreen() {
               onChange={(e) => setHours(e.target.value)}
               options={HOURS}
             />
+            <fieldset className="stack">
+              <legend>Which projects</legend>
+              <Checkbox
+                label="Only the projects I choose"
+                hint="Otherwise support can see every project in the company."
+                checked={limited}
+                onChange={(e) => setLimited(e.target.checked)}
+              />
+              {limited
+                ? projectList.map((p) => (
+                    <Checkbox
+                      key={p.id}
+                      label={p.name}
+                      checked={chosen.includes(p.id)}
+                      onChange={(e) =>
+                        setChosen((c) =>
+                          e.target.checked ? [...c, p.id] : c.filter((id) => id !== p.id),
+                        )
+                      }
+                    />
+                  ))
+                : null}
+            </fieldset>
             {grant.isError && !Object.keys(server).length ? (
               <ErrorAlert error={grant.error} title="We couldn't allow access" />
             ) : null}
             <div>
-              <Button type="submit" disabled={grant.isPending || ticketRef.trim().length < 2}>
+              <Button
+                type="submit"
+                disabled={
+                  grant.isPending || ticketRef.trim().length < 2 || (limited && chosen.length === 0)
+                }
+              >
                 Allow support access
               </Button>
             </div>

@@ -999,7 +999,42 @@ export function createRfiService(deps: RfisDeps) {
     return { ...base, rows: rows.slice(0, opts.limit), truncated: rows.length > opts.limit };
   }
 
+  /**
+   * Meeting agenda (`meetings`, MTG-US5): open RFIs the caller can see that are past their due date, oldest due first.
+   * `restricted` is true when the caller can't read RFIs at all, so the agenda says so rather than showing an empty list.
+   */
+  async function overdueForMeeting(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const { date } = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} = 'open' and ${rfis.dueDate} < ${date}::date`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({ id: rfis.id, number: rfis.number, subject: rfis.subject, dueDate: rfis.dueDate })
+      .from(rfis)
+      .where(and(...conditions))
+      .orderBy(asc(rfis.dueDate), asc(rfis.number))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: r.number === null ? 'RFI' : formatRfiNumber(r.number),
+        title: r.subject,
+        detail: `Due ${r.dueDate}`,
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
   return {
+    overdueForMeeting,
     list,
     detail,
     activity,

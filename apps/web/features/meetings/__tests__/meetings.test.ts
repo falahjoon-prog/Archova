@@ -99,4 +99,18 @@ describe('meetings api', () => {
     expect(call.init.body).toEqual({ decision: 'accepted' });
     expect(call.init.params?.path).toMatchObject({ suggestionId: 'ais_1' });
   });
+
+  it('adds a live section with its source, and a plain one without', async () => {
+    fake.on('POST', '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/sections', () => ({
+      meeting: {},
+    }));
+    const api = createMeetingsApi('org_1');
+    await api.addSection('prj_1', 'mtg_1', { title: 'Overdue RFIs', liveSource: 'rfis_overdue' });
+    await api.addSection('prj_1', 'mtg_1', { title: 'Any other business' });
+    const bodies = fake.calls.filter((c) => c.method === 'POST').map((c) => c.init.body);
+    expect(bodies).toEqual([
+      { title: 'Overdue RFIs', liveSource: 'rfis_overdue' },
+      { title: 'Any other business' },
+    ]);
+  });
 });
