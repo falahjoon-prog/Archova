@@ -109,6 +109,9 @@ main:focus {
 }
 .app-shell__nav {
   flex: 1;
+  /* Many top-level tabs scroll inside the bar instead of widening the page on a phone. */
+  min-width: 0;
+  overflow-x: auto;
 }
 .app-shell__nav ul {
   display: flex;
