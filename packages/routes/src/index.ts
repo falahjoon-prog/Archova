@@ -67,6 +67,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/workers`,
