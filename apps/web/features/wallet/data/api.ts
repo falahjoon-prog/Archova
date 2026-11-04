@@ -3,7 +3,7 @@
 import { unwrap } from '@archova/api-client';
 import { api } from '@/shared/lib/api';
 import { uploadFile } from '@/shared/lib/uploads';
-import type { ComplianceDocument, ItemType } from '../lib/types';
+import type { ComplianceDocument, ExpiryAlert, ItemType } from '../lib/types';
 import type { components } from '@archova/contracts/openapi';
 
 type S = components['schemas'];
@@ -29,6 +29,13 @@ export function createWalletApi(orgId: string) {
               ...(f.includeArchived ? { includeArchived: 'true' as const } : {}),
             },
           },
+        }),
+      ).data;
+    },
+    async alerts(): Promise<ExpiryAlert[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/compliance-document-alerts', {
+          params: { path: { orgId } },
         }),
       ).data;
     },

@@ -75,6 +75,10 @@ export interface NumberCheck {
   message?: string;
 }
 
+/** Item types whose number has a format check. */
+export const hasNumberCheck = (itemType: string) =>
+  itemType === 'abn' || itemType === 'contractor_licence' || itemType === 'trade_licence';
+
 const tidy = (n: string) => n.replace(/[\s-]+/g, '').toUpperCase();
 
 /**

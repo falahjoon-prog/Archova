@@ -6845,6 +6845,24 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WorkerCredential' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-document-alerts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listComplianceExpiryAlerts
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.view
+      summary: 'Expiry alerts the daily wallet job has raised (30, 7 and 0 days), newest first (compliance/05 §6).'
+      description: One alert per document, threshold and expiry date, so renewing a document starts its alerts again. Up to 100 are returned.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceExpiryAlertList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/compliance-documents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16374,6 +16392,7 @@ components:
           itemType,
           title,
           numberLast4,
+          numberCheck,
           issuingState,
           licenceClass,
           insurer,
@@ -16395,6 +16414,10 @@ components:
         title: { type: string }
         numberLast4:
           { type: [string, 'null'], description: Only the last four characters are kept. }
+        numberCheck:
+          type: string
+          enum: [format_ok, not_checked]
+          description: 'Whether the number passed a format check (ABN checksum, state licence shape) when it was entered. Format only: no register was queried, so never "verified".'
         issuingState: { oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }] }
         licenceClass: { type: [string, 'null'] }
         insurer: { type: [string, 'null'] }
@@ -16416,6 +16439,27 @@ components:
         archivedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
         createdAt: { type: string, format: date-time }
+    ComplianceExpiryAlert:
+      type: object
+      required: [id, documentId, title, itemType, threshold, expiresOn, raisedOn, documentArchived]
+      properties:
+        id: { type: string, pattern: '^cea_[0-9A-Za-z]{26}$' }
+        documentId: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        itemType: { $ref: '#/components/schemas/ComplianceItemType' }
+        threshold:
+          type: integer
+          minimum: 0
+          maximum: 30
+          description: 'Days before expiry the alert was raised at: 30, 7 or 0 (the expiry day or later).'
+        expiresOn: { type: string, format: date }
+        raisedOn: { type: string, format: date }
+        documentArchived: { type: boolean }
+    ComplianceExpiryAlertList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ComplianceExpiryAlert' } }
     ComplianceDocumentList:
       type: object
       required: [data]

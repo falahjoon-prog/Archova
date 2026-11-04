@@ -478,6 +478,7 @@ export const ComplianceDocumentSchema = z.object({
   "itemType": ComplianceItemTypeSchema,
   "title": z.string(),
   "numberLast4": z.string().nullable(),
+  "numberCheck": z.enum(["format_ok", "not_checked"]),
   "issuingState": z.union([AuStateSchema, z.null()]),
   "licenceClass": z.string().nullable(),
   "insurer": z.string().nullable(),
@@ -499,6 +500,23 @@ export const ComplianceDocumentListSchema = z.object({
   "data": z.array(ComplianceDocumentSchema),
 });
 export type ComplianceDocumentList = z.infer<typeof ComplianceDocumentListSchema>;
+
+export const ComplianceExpiryAlertSchema = z.object({
+  "id": z.string().regex(new RegExp("^cea_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "itemType": ComplianceItemTypeSchema,
+  "threshold": z.number().int().min(0).max(30),
+  "expiresOn": z.string().date(),
+  "raisedOn": z.string().date(),
+  "documentArchived": z.boolean(),
+});
+export type ComplianceExpiryAlert = z.infer<typeof ComplianceExpiryAlertSchema>;
+
+export const ComplianceExpiryAlertListSchema = z.object({
+  "data": z.array(ComplianceExpiryAlertSchema),
+});
+export type ComplianceExpiryAlertList = z.infer<typeof ComplianceExpiryAlertListSchema>;
 
 export const ComplianceGrantSchema = z.object({
   "id": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),

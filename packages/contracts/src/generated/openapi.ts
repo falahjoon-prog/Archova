@@ -4926,6 +4926,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/compliance-document-alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Expiry alerts the daily wallet job has raised (30, 7 and 0 days), newest first (compliance/05 §6).
+         * @description One alert per document, threshold and expiry date, so renewing a document starts its alerts again. Up to 100 are returned.
+         */
+        get: operations["listComplianceExpiryAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/compliance-documents": {
         parameters: {
             query?: never;
@@ -11037,6 +11059,11 @@ export interface components {
             title: string;
             /** @description Only the last four characters are kept. */
             numberLast4: string | null;
+            /**
+             * @description Whether the number passed a format check (ABN checksum, state licence shape) when it was entered. Format only: no register was queried, so never "verified".
+             * @enum {string}
+             */
+            numberCheck: "format_ok" | "not_checked";
             issuingState: components["schemas"]["AuState"] | null;
             licenceClass: string | null;
             insurer: string | null;
@@ -11065,6 +11092,22 @@ export interface components {
             version: number;
             /** Format: date-time */
             createdAt: string;
+        };
+        ComplianceExpiryAlert: {
+            id: string;
+            documentId: string;
+            title: string;
+            itemType: components["schemas"]["ComplianceItemType"];
+            /** @description Days before expiry the alert was raised at: 30, 7 or 0 (the expiry day or later). */
+            threshold: number;
+            /** Format: date */
+            expiresOn: string;
+            /** Format: date */
+            raisedOn: string;
+            documentArchived: boolean;
+        };
+        ComplianceExpiryAlertList: {
+            data: components["schemas"]["ComplianceExpiryAlert"][];
         };
         ComplianceDocumentList: {
             data: components["schemas"]["ComplianceDocument"][];
@@ -19888,6 +19931,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WorkerCredential"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listComplianceExpiryAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceExpiryAlertList"];
                 };
             };
             default: components["responses"]["Problem"];

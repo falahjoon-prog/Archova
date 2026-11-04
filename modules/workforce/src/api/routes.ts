@@ -21,6 +21,7 @@ import {
   toAccessRequestDto,
   toAccessRequestPreviewDto,
   toComplianceDocumentDto,
+  toExpiryAlertDto,
   toGrantDto,
   toGrantedWalletDto,
   toSharedDocumentDto,
@@ -641,6 +642,10 @@ export function workforceRoutes(
         }),
       );
       return { status: 200, body: { data: rows.map((r) => toComplianceDocumentDto(r, today)) } };
+    },
+    listComplianceExpiryAlerts: async (input) => {
+      const { rows } = await read(input, (s) => wallet.listAlerts(s));
+      return { status: 200, body: { data: rows.map(toExpiryAlertDto) } };
     },
     createComplianceDocument: async (input) => {
       const b = input.body;

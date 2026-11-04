@@ -5,6 +5,8 @@ export type ComplianceDocument = S['ComplianceDocument'];
 export type ItemType = S['ComplianceItemType'];
 export type Evidence = ComplianceDocument['evidence'];
 export type Expiry = ComplianceDocument['expiry'];
+export type ExpiryAlert = S['ComplianceExpiryAlert'];
+export type NumberCheck = ComplianceDocument['numberCheck'];
 export type AuState = S['AuState'];
 
 export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
@@ -90,3 +92,10 @@ export function dollarsToCents(v: string): number | null {
 export function centsToDollars(cents: number | null): string {
   return cents === null ? '' : (cents / 100).toFixed(2);
 }
+
+/** A format check is not a lookup: the wording never says verified (compliance/05 §5). */
+export const NUMBER_CHECK_LABEL = 'Format checked';
+export const NUMBER_CHECK_HINT = 'Format checked when entered. Not checked with the register.';
+
+export const alertLabel = (threshold: number) =>
+  threshold <= 0 ? 'Expired' : threshold <= 7 ? 'Expires within 7 days' : 'Expires within 30 days';

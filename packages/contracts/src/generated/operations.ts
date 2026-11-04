@@ -1612,6 +1612,9 @@ export const SightWorkerCredentialParams = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "credentialId": z.string().regex(new RegExp("^wcr_[0-9A-Za-z]{26}$")),
 });
+export const ListComplianceExpiryAlertsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListComplianceDocumentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5423,6 +5426,19 @@ export const operations = {
     internal: false,
     contentType: null,
     params: SightWorkerCredentialParams,
+    query: null,
+    body: null,
+  },
+  listComplianceExpiryAlerts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-document-alerts',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceExpiryAlertsParams,
     query: null,
     body: null,
   },
