@@ -27,7 +27,7 @@ const YEAR_MS = 365 * 86_400_000;
 const MAX_RETENTION_YEARS = 50;
 
 export type RetentionCategory = keyof typeof RETENTION_PERIODS;
-export type RetentionBlockReason = 'legal_hold' | 'retention_period';
+export type RetentionBlockReason = 'legal_hold' | 'platform_hold' | 'retention_period';
 
 export interface RecordRef {
   /** `schema.table`, as the guard trigger sees the record. */
@@ -110,15 +110,18 @@ export async function retentionBlock(
  */
 export async function assertDeletable(scope: TenantScope, ref: RecordRef): Promise<void> {
   const reason = await retentionBlock(scope, ref);
-  if (reason)
-    throw new AppError(
-      'retention.blocked',
-      reason === 'legal_hold'
-        ? 'This record is under legal hold and cannot be deleted.'
-        : 'This record must be kept until its retention period ends.',
-      undefined,
-      { reason },
-    );
+  if (!reason) return;
+  // A platform hold (staff, possibly at a regulator's request) is never named to the customer.
+  if (reason === 'platform_hold')
+    throw new AppError('retention.blocked', 'This record cannot be deleted right now.');
+  throw new AppError(
+    'retention.blocked',
+    reason === 'legal_hold'
+      ? 'This record is under legal hold and cannot be deleted.'
+      : 'This record must be kept until its retention period ends.',
+    undefined,
+    { reason },
+  );
 }
 
 /**

@@ -108,6 +108,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       projects: (orgId, staffId, projectIds) =>
         platformApi!.listProjectsForSupport(orgId, staffId, projectIds),
     }),
+    projectInOrg: () => (orgId, projectId) => platformApi!.projectInOrg(orgId, projectId),
     notifySupportSession: async (notice) => {
       const admins = await platformApi!.orgAdminContacts(notice.orgId);
       // No one to tell means no session: the company must always be able to learn who is looking.

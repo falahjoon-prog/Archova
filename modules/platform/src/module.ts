@@ -7,7 +7,7 @@ import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
-import { memberships } from './infra/tables';
+import { memberships, projects as projectsTable } from './infra/tables';
 import { platformRoutes, type SupportAccessPort } from './api/routes';
 
 export function createPlatformModule(
@@ -56,6 +56,27 @@ export function createPlatformModule(
       getProject: projects.get,
       getOrg: orgs.getOrg,
       /** Project names for an open support session; read-only and org-wide, never a member's view (Sam 12 §4a). */
+      /** True when the project exists in the org. Used by staff to check a legal hold names a real project. */
+      projectInOrg: async (orgId: string, projectId: string) =>
+        services.database.withTenantTx(
+          {
+            orgId,
+            userId: '00000000-0000-0000-0000-000000000000',
+            principalType: 'support',
+            orgRole: null,
+            entitlements: { plan: 'support', state: 'read_only', modules: [], limits: {} },
+            requestId: 'project-in-org',
+          },
+          async (scope) =>
+            (
+              await scope.tx
+                .select({ id: projectsTable.id })
+                .from(projectsTable)
+                .where(eq(projectsTable.id, projectId))
+                .limit(1)
+            ).length > 0,
+          { readOnly: true },
+        ),
       listProjectsForSupport: async (
         orgId: string,
         staffId: string,

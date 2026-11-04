@@ -11,6 +11,7 @@ import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
 import type { FlagService } from '../application/flags';
 import type { SupportAccessService } from '../application/support-access';
+import type { HoldService } from '../application/holds';
 import type { OrgActionService } from '../application/org-actions';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
@@ -47,6 +48,7 @@ export interface InternalDeps {
   flags: FlagService;
   orgActions: OrgActionService;
   support: SupportAccessService;
+  holds: HoldService;
 }
 
 const me = (input: { staff: StaffContext | null }) => {
@@ -97,6 +99,13 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       if (!id) throw new AppError('org.not_found');
       return ok(await orgDetail(id));
     },
+    listOrgHolds: async (i) => ok({ items: await d.holds.list(me(i), orgId(i.params.orgId)) }),
+    placeOrgHold: async (i) =>
+      ok({ items: await d.holds.place(me(i), orgId(i.params.orgId), i.body) }, 201),
+    releaseOrgHold: async (i) =>
+      ok({
+        items: await d.holds.release(me(i), orgId(i.params.orgId), i.params.holdId, i.body),
+      }),
     getOrgSupportAccess: async (i) => ok(await d.support.list(orgId(i.params.orgId))),
     startSupportSession: async (i) => {
       const id = orgId(i.params.orgId);

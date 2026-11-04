@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { StaffRole } from '@archova/contracts';
+import type { TenantContext } from '@archova/kernel';
 import { decodeId } from '@archova/domain';
 import { createOrg, createProject, createTestContext, signUp, type TestContext } from './helpers';
 
@@ -1455,5 +1456,170 @@ describe('support access', () => {
     } finally {
       await strict.close();
     }
+  });
+});
+
+describe('platform legal holds (compliance/07, APP 11.2)', () => {
+  const probeName = 'guard_probe';
+  let probe = 0;
+  async function company(label: string) {
+    const { browser } = await signUp(t.app, `hold-${label}`);
+    const org = await createOrg(browser, `Hold ${label} Builders`);
+    const project = await createProject(browser, org.id, { name: 'Hold St', state: 'QLD' });
+    const owner = await staff(['owner']);
+    const found = (
+      (await owner.get(`/orgs?q=${encodeURIComponent(`Hold ${label}`)}`)).json() as {
+        items: Array<{ orgId: string }>;
+      }
+    ).items[0]!;
+    return { browser, orgRef: found.orgId, orgId: decodeId('org', org.id)!, project };
+  }
+  const ctx = (orgId: string): TenantContext => ({
+    orgId,
+    userId: '00000000-0000-0000-0000-000000000000',
+    principalType: 'member',
+    orgRole: null,
+    entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+    requestId: 'test',
+  });
+  const cause = async (p: Promise<unknown>) => {
+    const e = (await p.then(
+      () => null,
+      (err: { cause?: { message?: string }; message: string }) => err,
+    )) as { cause?: { message?: string }; message: string } | null;
+    expect(e, 'expected the database to refuse').not.toBeNull();
+    return e!.cause?.message ?? e!.message;
+  };
+  const body = { reason: 'Regulator asked us to preserve records', ticketRef: 'LEG-7' };
+
+  it('is for the Security lead only, and a different person releases it', async () => {
+    const c = await company('perm');
+    const lead = await staff(['security_lead']);
+    const owner = await staff(['owner']);
+    const other = await staff(['security_lead']);
+    expect((await owner.post(`/orgs/${c.orgRef}/legal-holds`, body)).statusCode).toBe(403);
+    expect((await owner.get(`/orgs/${c.orgRef}/legal-holds`)).statusCode).toBe(403);
+
+    const placed = await lead.post(`/orgs/${c.orgRef}/legal-holds`, body);
+    expect(placed.statusCode, placed.body).toBe(201);
+    const hold = (placed.json() as { items: Array<{ id: string; releasedAt: string | null }> })
+      .items[0]!;
+    expect(hold.releasedAt).toBeNull();
+
+    const self = await lead.post(`/orgs/${c.orgRef}/legal-holds/${hold.id}/release`, {
+      reason: 'Hold no longer needed',
+    });
+    expect(self.statusCode).toBe(403);
+    expect(code(self)).toBe('backoffice.hold_release_needs_second_person');
+    const done = await other.post(`/orgs/${c.orgRef}/legal-holds/${hold.id}/release`, {
+      reason: 'Regulator confirmed in writing',
+    });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(
+      (done.json() as { items: Array<{ releasedBy: string }> }).items[0]!.releasedBy,
+    ).toBeTruthy();
+  });
+
+  it('blocks deletion without naming the hold, and a customer cannot touch it', async () => {
+    const c = await company('block');
+    const q = (text: string) => t.adminDb.pool.query(text);
+    const table = `shared.${probeName}_${++probe}`;
+    await q(`create table ${table} (id uuid primary key, org_id uuid not null, project_id uuid)`);
+    await q(`select kernel.enable_retention_guard('${table}')`);
+    await q(`select kernel.enable_tenant_rls('${table}')`);
+    await q(`grant select, insert, update, delete on ${table} to app_rw`);
+    try {
+      const rid = '0194f0a0-0000-7000-8000-000000000001';
+      const run = <T>(fn: Parameters<typeof t.database.withTenantTx<T>>[1]) =>
+        t.database.withTenantTx(ctx(c.orgId), fn);
+      await run((s) =>
+        s.tx.execute(sql.raw(`insert into ${table} values ('${rid}', '${c.orgId}', null)`)),
+      );
+
+      const lead = await staff(['security_lead']);
+      const placed = await lead.post(`/orgs/${c.orgRef}/legal-holds`, body);
+      expect(placed.statusCode, placed.body).toBe(201);
+      const holdId = (placed.json() as { items: Array<{ id: string }> }).items[0]!.id;
+
+      // The delete is refused, and the message reads like any retention block.
+      const refused = await cause(run((s) => s.tx.execute(sql.raw(`delete from ${table}`))));
+      expect(refused).toMatch(/retention/);
+      expect(refused).not.toMatch(/hold/);
+      const { assertDeletable } = await import('@archova/kernel');
+      const err = await run((s) => assertDeletable(s, { recordType: table, recordId: rid })).then(
+        () => null,
+        (e: { code: string; message: string; extra?: unknown }) => e,
+      );
+      expect(err).toMatchObject({
+        code: 'retention.blocked',
+        message: 'This record cannot be deleted right now.',
+      });
+      expect(err!.extra).toBeUndefined();
+
+      // The customer's own transaction can see the hold but never change it.
+      const seen = await run((s) =>
+        s.tx.execute(sql`select count(*)::int as n from shared.platform_holds`),
+      );
+      expect(seen.rows[0]!.n).toBe(1);
+      await expect(
+        cause(
+          run((s) =>
+            s.tx.execute(
+              sql`insert into shared.platform_holds (id, org_id, reason, reference, placed_by)
+                  values (${rid}, ${c.orgId}, 'x', 'ticket', ${rid})`,
+            ),
+          ),
+        ),
+      ).resolves.toMatch(/row-level security/);
+      // Updates and deletes find no row they are allowed to touch.
+      const upd = await run((s) =>
+        s.tx.execute(
+          sql`update shared.platform_holds set released_by = ${rid}, released_at = now(), release_reason = 'x'
+              where id = ${holdId}`,
+        ),
+      );
+      expect(upd.rowCount).toBe(0);
+      const del = await run((s) =>
+        s.tx.execute(sql`delete from shared.platform_holds where id = ${holdId}`),
+      );
+      expect(del.rowCount).toBe(0);
+
+      // Another company sees nothing, and a release by someone else lifts the block.
+      const otherCo = await company('block2');
+      const none = await t.database.withTenantTx(ctx(otherCo.orgId), (s) =>
+        s.tx.execute(sql`select count(*)::int as n from shared.platform_holds`),
+      );
+      expect(none.rows[0]!.n).toBe(0);
+      const other = await staff(['security_lead']);
+      expect(
+        (
+          await other.post(`/orgs/${c.orgRef}/legal-holds/${holdId}/release`, {
+            reason: 'Regulator confirmed in writing',
+          })
+        ).statusCode,
+      ).toBe(200);
+      await run((s) => s.tx.execute(sql.raw(`delete from ${table}`)));
+    } finally {
+      await q(`drop table ${table}`);
+    }
+  });
+
+  it('holds one project, and refuses a project that is not in the company', async () => {
+    const c = await company('proj');
+    const other = await company('proj2');
+    const lead = await staff(['security_lead']);
+    const bad = await lead.post(`/orgs/${c.orgRef}/legal-holds`, {
+      ...body,
+      projectId: other.project.id,
+    });
+    expect(bad.statusCode).toBe(404);
+    const ok = await lead.post(`/orgs/${c.orgRef}/legal-holds`, {
+      ...body,
+      projectId: c.project.id,
+    });
+    expect(ok.statusCode, ok.body).toBe(201);
+    expect((ok.json() as { items: Array<{ projectId: string }> }).items[0]!.projectId).toBe(
+      decodeId('project', c.project.id),
+    );
   });
 });

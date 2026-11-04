@@ -10,6 +10,7 @@ import {
 } from '@archova/mod-billing';
 import { customerRoutes, internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
+import { createHoldService } from './application/holds';
 import { createFlagService } from './application/flags';
 import { createOrgActionService, type OrgActionDeps } from './application/org-actions';
 import {
@@ -50,6 +51,8 @@ export function createBackofficeModule(
     };
     /** Tells the company's owners and admins that a support session opened. */
     notifySupportSession: (notice: SupportSessionNotice) => Promise<void>;
+    /** True when the project exists in the org; checked when staff place a legal hold on a project. */
+    projectInOrg: () => (orgId: string, projectId: string) => Promise<boolean>;
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -83,6 +86,11 @@ export function createBackofficeModule(
     requireHardwareKey: deps.config.requireSupportHardwareKey ?? !deps.config.localLogin,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const holds = createHoldService({
+    database: services.database,
+    projectInOrg: deps.projectInOrg,
+    requireHardwareKey: deps.config.requireSupportHardwareKey ?? !deps.config.localLogin,
+  });
   const flags = createFlagService({ database: services.database, staff });
   return {
     definition: defineModule({ name: 'backoffice' }),
@@ -96,6 +104,7 @@ export function createBackofficeModule(
       flags,
       orgActions,
       support,
+      holds,
     }),
     api: {
       /** The staff session behind a console cookie; null when absent, expired or revoked. */

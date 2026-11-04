@@ -32,6 +32,9 @@ const backoffice = createBackofficeModule(services, {
   supportReads: () => {
     throw new Error('The seed command does not read customer data');
   },
+  projectInOrg: () => {
+    throw new Error('The seed command does not manage legal holds');
+  },
   notifySupportSession: () => {
     throw new Error('The seed command does not open support sessions');
   },
