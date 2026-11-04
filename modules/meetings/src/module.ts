@@ -40,7 +40,10 @@ export function createMeetingsModule(services: KernelServices, deps: MeetingsMod
   return {
     definition: defineModule({ name: 'meetings', permissions: MEETINGS_PERMISSIONS }),
     routes: meetingsRoutes(services.database, service, notify),
-    api: {},
+    api: {
+      /** The meeting's title, day, sections and attendees for Nova minutes drafting (MTG-US7). */
+      forMinutesDraft: service.forMinutesDraft,
+    },
   };
 }
 

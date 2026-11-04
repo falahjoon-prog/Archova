@@ -17,6 +17,23 @@ export type UpdateItem = S['UpdateMeetingItemRequest'];
 export type Issue = S['IssueMeetingRequest'];
 export type Attendance = S['MeetingAttendance'];
 
+/** One item Nova proposes from typed notes (F7): ids are public ids, `quote` is the notes' own words. */
+export interface DraftedItem {
+  kind: 'information' | 'decision' | 'action';
+  text: string;
+  quote: string;
+  sectionId: string | null;
+  attendeeId: string | null;
+  dueDate: string | null;
+}
+export interface MinutesDraft {
+  /** The `ais_` suggestion; decided once the person has added the items they want. */
+  suggestionId: string;
+  items: DraftedItem[];
+  /** Items Nova proposed that failed the checks and were left out. */
+  dropped: number;
+}
+
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -87,6 +104,31 @@ export function createMeetingsApi(orgId: string) {
         await api.PUT(`${P}/meetings/{meetingId}/attendees`, {
           params: { path: { ...path(projectId), meetingId } },
           body: { attendees },
+        }),
+      );
+    },
+    /** F7: Nova proposes minute items from the notes; nothing is written to the minutes. */
+    async draftMinutes(projectId: string, meetingId: string, notes: string): Promise<MinutesDraft> {
+      await ensureCsrfToken();
+      const s = unwrap(
+        await api.POST(`${P}/meetings/{meetingId}/nova-minutes`, {
+          params: { path: { ...path(projectId), meetingId } },
+          body: { notes },
+        }),
+      );
+      const payload = s.payload as { items: DraftedItem[]; dropped: number };
+      return { suggestionId: s.id, items: payload.items, dropped: payload.dropped };
+    },
+    async decideDraft(
+      projectId: string,
+      suggestionId: string,
+      decision: 'accepted' | 'rejected',
+    ): Promise<void> {
+      await ensureCsrfToken();
+      unwrap(
+        await api.POST(`${P}/ai/suggestions/{suggestionId}/decision`, {
+          params: { path: { ...path(projectId), suggestionId } },
+          body: { decision },
         }),
       );
     },

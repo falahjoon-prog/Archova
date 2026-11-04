@@ -11,6 +11,7 @@ import {
 import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
+import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
 import type { ContractPlaybookService } from '../application/contract-playbook';
 import type { ContractReviewPayload, ContractReviewService } from '../application/contract-review';
@@ -89,6 +90,18 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       ...p,
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'minutes.extract') {
+    const p = payload as MinutesExtractPayload;
+    return {
+      ...p,
+      meetingId: encodeId('meeting', p.meetingId),
+      items: p.items.map((i) => ({
+        ...i,
+        sectionId: i.sectionId ? encodeId('meetingSection', i.sectionId) : null,
+        attendeeId: i.attendeeId ? encodeId('meetingAttendee', i.attendeeId) : null,
+      })),
     };
   }
   if (task === 'rfi.draft') {
@@ -244,6 +257,7 @@ export function aiRoutes(
   contractReviews: ContractReviewService,
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
+  minutesExtract: MinutesExtractService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -601,6 +615,17 @@ export function aiRoutes(
         requireTenant(input),
         projectId,
         input.params.weekStart,
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    draftMinutesWithNova: async (input) => {
+      const meetingId = decodeId('meeting', input.params.meetingId);
+      if (!meetingId) throw new AppError('meeting.not_found');
+      const row = await minutesExtract.extract(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        meetingId,
+        { notes: input.body.notes },
       );
       return { status: 200, body: toSuggestionDto(row) };
     },
