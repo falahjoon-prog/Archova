@@ -15,10 +15,13 @@ import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
 import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
+import { trialEndingEmail } from './jobs/trial-ending-email';
+import { createLogSender, createSesSender } from './email';
 import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
+import { walletExpiry } from './jobs/wallet-expiry';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -41,7 +44,21 @@ async function main() {
     syncHoldsPurge,
     trialExpiry,
     trialBackfill,
+    trialEndingEmail(
+      config.email.provider === 'ses'
+        ? createSesSender({
+            region: config.email.region,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg)),
+      config.email.appBaseUrl,
+    ),
     templateBackfill,
+    // Alert rows are the record until the notification inbox lands; log what was raised.
+    walletExpiry(async (scope, alerts) => {
+      log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');
+    }),
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

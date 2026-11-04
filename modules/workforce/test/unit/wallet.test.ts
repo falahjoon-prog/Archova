@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { expiryState, grantLive, last4, maxGrantExpiry } from '../../src/domain/wallet';
+import {
+  checkNumber,
+  expiryState,
+  grantLive,
+  isValidAbn,
+  last4,
+  maxGrantExpiry,
+} from '../../src/domain/wallet';
 
 describe('wallet expiry', () => {
   it('has no expiry when none is set', () =>
@@ -38,4 +45,24 @@ describe('wallet grants', () => {
     expect(maxGrantExpiry('2027-02-28')).toBe('2028-02-28');
     expect(maxGrantExpiry('2028-02-29')).toBe('2029-02-28');
   });
+});
+
+describe('register checks', () => {
+  it('accepts a real ABN and rejects a bad checksum or length', () => {
+    expect(isValidAbn('51 824 753 556')).toBe(true);
+    expect(isValidAbn('51824753557')).toBe(false);
+    expect(isValidAbn('5182475355')).toBe(false);
+    expect(checkNumber('abn', null, '51 824 753 556').ok).toBe(true);
+    expect(checkNumber('abn', null, '123').ok).toBe(false);
+  });
+  it('checks NSW licences are digits then a letter and QBCC digits only', () => {
+    expect(checkNumber('contractor_licence', 'NSW', '123456C').ok).toBe(true);
+    expect(checkNumber('contractor_licence', 'NSW', '1234567').ok).toBe(false);
+    expect(checkNumber('contractor_licence', 'QLD', '1234567').ok).toBe(true);
+    expect(checkNumber('trade_licence', 'QLD', '12A4567').ok).toBe(false);
+    expect(checkNumber('contractor_licence', 'VIC', 'CDB-U 12345').ok).toBe(true);
+    expect(checkNumber('contractor_licence', 'VIC', '!!').ok).toBe(false);
+  });
+  it('leaves other items alone', () =>
+    expect(checkNumber('public_liability', null, '!!').ok).toBe(true));
 });

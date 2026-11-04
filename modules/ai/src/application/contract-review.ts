@@ -5,7 +5,9 @@
 // signs and sends nothing, and decides nothing. The review is kept as a pending `ai_suggestions` row that anyone
 // holding the commercial review permission on the project can open, because the team works through it together.
 import {
+  contractAskPrompt,
   contractReviewPrompt,
+  MAX_CONTRACT_QUESTION_CHARS,
   type BaseForm,
   type ContractType,
   type OurSide,
@@ -14,6 +16,7 @@ import { and, desc, eq, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
+import { reviewAnswer, type ReviewedAnswer } from '../domain/contract-ask';
 import {
   reviewContract,
   type PlaybookTopic,
@@ -85,6 +88,15 @@ export interface FlagDecision {
   note: string | null;
   decidedBy: string;
   decidedAt: string;
+}
+
+/** One answer to a question about a contract. Nothing is saved: the person keeps what they need. */
+export interface ContractAnswer extends ReviewedAnswer {
+  runId: string;
+  question: string;
+  /** Pages with no text layer, and pages cut: a "not addressed" answer may miss what is on them. */
+  unreadPages: number[];
+  truncated: boolean;
 }
 
 export interface ContractReviewRow {
@@ -293,7 +305,62 @@ export function createContractReviewService(deps: ContractReviewDeps) {
     return toRow(updated!);
   }
 
-  return { review, list, get, decideFlag };
+  /**
+   * Answers a question from the reviewed contract's own pages. The file is read again with the caller's own access
+   * (a review opened later does not widen who can read the contract). Nova answers only from the pages and quotes
+   * the clauses; the answer is shown only with a citation code found on a page. Nothing is saved.
+   */
+  async function ask(
+    ctx: TenantContext,
+    projectId: string,
+    id: string,
+    questionText: string,
+    signal?: AbortSignal,
+  ): Promise<ContractAnswer> {
+    const question = questionText.trim();
+    if (question.length < 3 || question.length > MAX_CONTRACT_QUESTION_CHARS)
+      throw new AppError('validation_failed', 'Ask a question of up to 500 characters.', [
+        { path: 'question', message: 'Between 3 and 500 characters' },
+      ]);
+    const { file, payload } = await database.withTenantTx(
+      ctx,
+      async (scope) => {
+        const row = await load(scope, projectId, id, false);
+        const payload = row.payload as ContractReviewPayload;
+        const file = await deps.readFile(scope, payload.fileId, MAX_CONTRACT_BYTES);
+        if (file.file.projectId !== projectId)
+          throw new AppError('file.not_in_project', 'Attach files uploaded to this project.');
+        return { file, payload };
+      },
+      { readOnly: true },
+    );
+    const text = await readContractText(file);
+    if (!text.pages.length)
+      throw new AppError('validation_failed', "Nova couldn't find any text in this PDF.");
+    const run = await deps.gateway.runTask(
+      ctx,
+      contractAskPrompt,
+      {
+        contractType: payload.contractType,
+        ourSide: payload.ourSide,
+        baseForm: payload.baseForm,
+        question,
+        pages: text.pages,
+      },
+      { projectId, ...(signal ? { signal } : {}) },
+    );
+    if (run.status !== 'ok')
+      throw new AppError('ai.invalid_output', "Nova couldn't answer that. Try again.");
+    return {
+      ...reviewAnswer(run.output, text.pages),
+      runId: run.runId,
+      question,
+      unreadPages: text.unreadPages,
+      truncated: text.truncated,
+    };
+  }
+
+  return { review, list, get, decideFlag, ask };
 }
 
 export type ContractReviewService = ReturnType<typeof createContractReviewService>;

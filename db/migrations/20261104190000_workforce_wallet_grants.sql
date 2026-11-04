@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261104180000_workforce_wallet_grants.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261104190000_workforce_wallet_grants.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Wallet sharing (compliance/05, X54; Sam's design review of 4 Nov 2026). A builder asks for read access to a
 -- subcontractor's wallet for a named project; the subbie accepts that specific request with a share code the
 -- builder gave them. Nobody types an org id. Documents stay in the subbie's org: the builder reads them in its

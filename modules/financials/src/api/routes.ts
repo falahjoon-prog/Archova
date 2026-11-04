@@ -234,6 +234,42 @@ export function financialsRoutes(database: Database, financials: FinancialsServi
         ),
       ),
     }),
+    listClaimEvidence: async (input) => ({
+      status: 200,
+      body: {
+        records: (
+          await read(input, (s) =>
+            financials.listEvidence(
+              s,
+              project(input.params),
+              ref('paymentClaim', input.params.claimId, 'claimId'),
+            ),
+          )
+        ).map((r) => ({ ...r, sealedAt: r.sealedAt.toISOString() })),
+      },
+    }),
+    getClaimEvidencePdf: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        financials.evidencePdf(
+          s,
+          project(input.params),
+          ref('paymentClaim', input.params.claimId, 'claimId'),
+          input.params.kind,
+        ),
+      ),
+    }),
+    getClaimEvidenceJson: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        financials.evidenceJson(
+          s,
+          project(input.params),
+          ref('paymentClaim', input.params.claimId, 'claimId'),
+          input.params.kind,
+        ),
+      ),
+    }),
     issuePaymentSchedule: async (input) => {
       const b = input.body;
       return {

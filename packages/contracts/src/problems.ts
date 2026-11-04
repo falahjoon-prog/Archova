@@ -44,6 +44,8 @@ export const PROBLEM_CODES = {
   'oauth.invalid_request': 400,
   'oauth.invalid_client': 401,
   'oauth.invalid_grant': 400,
+  // retention (compliance/07): a legal hold or an unexpired retention period forbids the deletion
+  'retention.blocked': 409,
   // tenancy and access
   'org.not_found': 404,
   'org.slug_taken': 409,
@@ -233,6 +235,7 @@ export const PROBLEM_CODES = {
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,
   'financials.claim.not_found': 404,
+  'financials.evidence.not_found': 404,
   'financials.claim.empty': 422,
   'financials.claim.duplicate_item': 422,
   'financials.claim.over_item_value': 422,

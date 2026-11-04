@@ -1720,6 +1720,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova where the reviewed contract says something (F34, Ask).
+         * @description For the commercial team. Nova answers one question from the pages of the contract the review was made from
+         *     (the file is read again with the caller's own access) and quotes the clauses it relies on. An answer is shown
+         *     only with at least one citation that code found on a page; otherwise, or when the pages say nothing that
+         *     answers the question, `kind` is `not_addressed` and the answer is "The contract doesn't address this."
+         *     Nova never answers from general legal knowledge, and a question that asks for a view on fairness, validity,
+         *     legal effect or whether to sign is not answered (`not_addressed`). Model text that uses a banned word is
+         *     withheld (`kind: withheld`). Nothing is saved, so the client keeps the conversation it wants to show.
+         *     `unreadPages` and `truncated` say what Nova could not read, so a "not addressed" answer can be read with that
+         *     in mind. Costs 2 Nova credits.
+         */
+        post: operations["askContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}": {
         parameters: {
             query?: never;
@@ -5948,6 +5980,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        /** The sealed records of this claim (one for the claim, one for its payment schedule once issued) with the SHA-256 of each, and whether each still matches its seal. */
+        get: operations["listClaimEvidence"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** The sealed PDF, base64 in JSON. Refused if the stored record no longer matches its seal. */
+        get: operations["getClaimEvidencePdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/json": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** The exact JSON text that was hashed, so anyone can recompute the SHA-256. */
+        get: operations["getClaimEvidenceJson"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -6501,6 +6598,32 @@ export interface components {
             sections: components["schemas"]["MeetingSectionView"][];
             versions: components["schemas"]["MeetingVersion"][];
             viewer: components["schemas"]["MeetingViewer"];
+        };
+        ClaimEvidenceRecord: {
+            /** @enum {string} */
+            kind: "claim" | "schedule";
+            /** Format: date-time */
+            sealedAt: string;
+            snapshotSha256: string;
+            pdfSha256: string;
+            pdfBytes: number;
+            intact: boolean;
+        };
+        ClaimEvidenceList: {
+            records: components["schemas"]["ClaimEvidenceRecord"][];
+        };
+        ClaimEvidencePdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        ClaimEvidenceJson: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/json";
+            snapshotSha256: string;
+            dataText: string;
         };
         MeetingPdf: {
             filename: string;
@@ -7429,6 +7552,27 @@ export interface components {
         };
         /** @enum {string} */
         ContractFlagDecisionKind: "accept_risk" | "negotiate" | "refer_to_lawyer" | "not_relevant";
+        NovaContractAnswer: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            question: string;
+            /** @enum {string} */
+            kind: "answered" | "not_addressed" | "withheld";
+            /** @description Nova's sentence when `answered`; fixed wording when the contract is silent or the answer is withheld. */
+            answer: string;
+            /** @description The clauses the answer relies on; at least one when `answered`, none otherwise. */
+            citations: {
+                page: number;
+                clause: string | null;
+                quote: string;
+            }[];
+            /** @description Citations code removed because their words were not on any page. */
+            droppedCitations: number;
+            /** @description Pages with no text Nova can read, so "not addressed" may miss what is on them. */
+            unreadPages: number[];
+            /** @description Part of the contract was left out (too long to read in one go). */
+            truncated: boolean;
+        };
         NovaContractReview: {
             /** Format: date-time */
             createdAt: string;
@@ -10744,7 +10888,7 @@ export interface components {
             createdAt: string;
         };
         /** @enum {string} */
-        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "other";
+        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "other";
         ComplianceDocument: {
             id: string;
             itemType: components["schemas"]["ComplianceItemType"];
@@ -11544,6 +11688,7 @@ export interface components {
         ContractId: string;
         VariationId: string;
         PaymentClaimId: string;
+        ClaimEvidenceKind: "claim" | "schedule";
         DefectId: string;
         TenderPackageId: string;
         QuoteId: string;
@@ -14224,6 +14369,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaContractReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    askContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractAnswer"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -21382,6 +21558,83 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimEvidence: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getClaimEvidencePdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidencePdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getClaimEvidenceJson: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceJson"];
                 };
             };
             default: components["responses"]["Problem"];

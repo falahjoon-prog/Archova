@@ -3,7 +3,7 @@ import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
-import { last4 } from '../domain/wallet';
+import { checkNumber, last4 } from '../domain/wallet';
 import { complianceDocuments } from '../infra/tables';
 import type { InductionDeps } from './inductions';
 
@@ -76,6 +76,20 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       ]);
   }
 
+  /** Format check on the number as typed; it is the only time the full number is available. */
+  function assertNumber(
+    itemType: string,
+    state: string | null | undefined,
+    number?: string | null,
+  ) {
+    if (!number) return;
+    const check = checkNumber(itemType, state, number);
+    if (!check.ok)
+      throw new AppError('validation_failed', check.message ?? 'Check the number.', [
+        { path: 'number', message: check.message ?? 'Check the number' },
+      ]);
+  }
+
   async function list(scope: TenantScope, opts: { itemType?: string; includeArchived?: boolean }) {
     const rows = await scope.tx
       .select()
@@ -97,6 +111,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
   async function create(scope: TenantScope, raw: WalletCreate) {
     const input = { ...raw, fileIds: unique(raw.fileIds) };
     assertDates(input.startsOn, input.expiresOn);
+    assertNumber(input.itemType, input.issuingState, input.number);
     if (input.selfDeclared && input.fileIds.length > 0)
       throw new AppError('validation_failed', 'A declaration has no files.', [
         { path: 'fileIds', message: 'Leave empty for a self-declared item' },
@@ -156,6 +171,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       fileIds: input.fileIds ? unique(input.fileIds) : cur.fileIds,
     };
     assertDates(content.startsOn, content.expiresOn);
+    assertNumber(cur.itemType, content.issuingState, input.number);
     if (input.fileIds) await assertFiles(scope, content.fileIds);
     if (cur.evidence !== 'self_declared' && content.fileIds.length === 0)
       throw new AppError('validation_failed', 'A document needs at least one file.', [

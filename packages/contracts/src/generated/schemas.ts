@@ -349,6 +349,36 @@ export const CaptureSchema = z.object({
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
 
+export const ClaimEvidenceJsonSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/json"]),
+  "snapshotSha256": z.string(),
+  "dataText": z.string(),
+});
+export type ClaimEvidenceJson = z.infer<typeof ClaimEvidenceJsonSchema>;
+
+export const ClaimEvidenceRecordSchema = z.object({
+  "kind": z.enum(["claim", "schedule"]),
+  "sealedAt": z.string().datetime({ offset: true }),
+  "snapshotSha256": z.string(),
+  "pdfSha256": z.string(),
+  "pdfBytes": z.number().int(),
+  "intact": z.boolean(),
+});
+export type ClaimEvidenceRecord = z.infer<typeof ClaimEvidenceRecordSchema>;
+
+export const ClaimEvidenceListSchema = z.object({
+  "records": z.array(ClaimEvidenceRecordSchema),
+});
+export type ClaimEvidenceList = z.infer<typeof ClaimEvidenceListSchema>;
+
+export const ClaimEvidencePdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
+
 export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
@@ -378,7 +408,7 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
-export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "other"]);
+export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "abn", "other"]);
 export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
 
 export const ComplianceAccessLogEntrySchema = z.object({
@@ -3101,6 +3131,22 @@ export const NovaAnswerSchema = z.object({
   "closestMatches": z.array(NovaSourceSchema),
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
+
+export const NovaContractAnswerSchema = z.object({
+  "runId": z.string(),
+  "question": z.string(),
+  "kind": z.enum(["answered", "not_addressed", "withheld"]),
+  "answer": z.string(),
+  "citations": z.array(z.object({
+  "page": z.number().int().min(1),
+  "clause": z.string().nullable(),
+  "quote": z.string(),
+})),
+  "droppedCitations": z.number().int().min(0),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+});
+export type NovaContractAnswer = z.infer<typeof NovaContractAnswerSchema>;
 
 export const NovaContractReviewSchema = z.object({
   "createdAt": z.string().datetime({ offset: true }),
