@@ -1862,6 +1862,23 @@ export const IssuePaymentScheduleParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
 export const IssuePaymentScheduleBody = s.IssuePaymentScheduleRequestSchema;
+export const ListClaimEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetClaimEvidencePdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const GetClaimEvidenceJsonParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5987,6 +6004,42 @@ export const operations = {
     params: IssuePaymentScheduleParams,
     query: null,
     body: IssuePaymentScheduleBody,
+  },
+  listClaimEvidence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceParams,
+    query: null,
+    body: null,
+  },
+  getClaimEvidencePdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/pdf',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetClaimEvidencePdfParams,
+    query: null,
+    body: null,
+  },
+  getClaimEvidenceJson: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/json',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetClaimEvidenceJsonParams,
+    query: null,
+    body: null,
   },
   listMeetingSeries: {
     method: 'GET',

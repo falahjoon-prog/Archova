@@ -349,6 +349,36 @@ export const CaptureSchema = z.object({
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
 
+export const ClaimEvidenceJsonSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/json"]),
+  "snapshotSha256": z.string(),
+  "dataText": z.string(),
+});
+export type ClaimEvidenceJson = z.infer<typeof ClaimEvidenceJsonSchema>;
+
+export const ClaimEvidenceRecordSchema = z.object({
+  "kind": z.enum(["claim", "schedule"]),
+  "sealedAt": z.string().datetime({ offset: true }),
+  "snapshotSha256": z.string(),
+  "pdfSha256": z.string(),
+  "pdfBytes": z.number().int(),
+  "intact": z.boolean(),
+});
+export type ClaimEvidenceRecord = z.infer<typeof ClaimEvidenceRecordSchema>;
+
+export const ClaimEvidenceListSchema = z.object({
+  "records": z.array(ClaimEvidenceRecordSchema),
+});
+export type ClaimEvidenceList = z.infer<typeof ClaimEvidenceListSchema>;
+
+export const ClaimEvidencePdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
+
 export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();

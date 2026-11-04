@@ -1112,6 +1112,9 @@ importers:
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.3(@libsql/client@0.14.0)(@types/pg@8.23.1)(expo-sqlite@57.0.3(expo@57.0.26)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7))(@types/react@19.2.18)(react@19.2.3))(react@19.2.3))(pg@8.23.1)
+      pdf-lib:
+        specifier: ^1.17.1
+        version: 1.17.1
     devDependencies:
       '@archova/config-eslint':
         specifier: workspace:*

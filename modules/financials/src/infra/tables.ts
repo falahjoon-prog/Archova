@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   date,
   integer,
   jsonb,
@@ -12,6 +13,8 @@ import {
 import type { ContractKind, SopaState } from '@archova/domain';
 
 export const financialsSchema = pgSchema('financials');
+
+const bytea = customType<{ data: Buffer; driverData: Buffer }>({ dataType: () => 'bytea' });
 
 const money = (name: string) => numeric(name, { precision: 18, scale: 2 });
 
@@ -136,4 +139,18 @@ export const payments = financialsSchema.table('payments', {
   externalRef: text('external_ref'),
   reversesPaymentId: uuid('reverses_payment_id'),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceRecords = financialsSchema.table('evidence_records', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  kind: text('kind').$type<'claim' | 'schedule'>().notNull(),
+  sealedAt: timestamp('sealed_at', { withTimezone: true }).notNull(),
+  snapshot: jsonb('snapshot').notNull(),
+  snapshotText: text('snapshot_text').notNull(),
+  snapshotSha256: text('snapshot_sha256').notNull(),
+  pdf: bytea('pdf').notNull(),
+  pdfSha256: text('pdf_sha256').notNull(),
 });
