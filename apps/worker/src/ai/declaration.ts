@@ -41,6 +41,18 @@ export const ACCOUNTING_PUSH_ROUTE: SubscriberRoute = {
   queue: 'ai',
 };
 
+export const ACCOUNTING_PULL_JOB = 'accounting.pull';
+
+/**
+ * Payments on the bills and invoices we pushed (integrations/02 A7), hourly. It polls rather than waiting for a webhook
+ * because neither Xero nor MYOB needs a public endpoint this way. Same process as the push, for the same reason.
+ */
+export const ACCOUNTING_PULL_ROUTE: ScheduledRoute = {
+  name: ACCOUNTING_PULL_JOB,
+  cron: '10 * * * *',
+  queue: 'ai',
+};
+
 /** Everything the dispatcher routes to the ai-worker. */
 export const AI_ROUTES: readonly SubscriberRoute[] = [
   AI_REINDEX_ROUTE,
@@ -58,4 +70,4 @@ export const AI_SWEEP_ROUTE: ScheduledRoute = {
 };
 
 /** Everything scheduled per org that runs in the ai-worker. */
-export const AI_JOBS: readonly ScheduledRoute[] = [AI_SWEEP_ROUTE];
+export const AI_JOBS: readonly ScheduledRoute[] = [AI_SWEEP_ROUTE, ACCOUNTING_PULL_ROUTE];

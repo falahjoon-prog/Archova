@@ -697,13 +697,16 @@ export function createAccountingService(deps: AccountingDeps) {
   }
 
   /**
-   * Pulls payments on documents we pushed (A7) and stores new ones. Returns the new payments so the caller (the
-   * claims module) can record them against the right claim. Re-running never duplicates a payment.
+   * Pulls payments on documents we pushed (A7) and stores new ones. Returns the new payments, each with the local claim
+   * or payment schedule it belongs to when exactly one pushed document carries its reference, so the caller (the
+   * claims module) can record them. Re-running never duplicates a payment. A reversal is kept only when the payment it
+   * undoes was seen before. A reference that matches several documents (the same `PC-` number in two projects) is a
+   * sync issue, not a guess.
    */
   async function pullPayments(
     scope: TenantScope,
     provider: AccountingProviderKey,
-  ): Promise<RemotePayment[]> {
+  ): Promise<PulledPayment[]> {
     const row = await find(scope, provider);
     if (!row || row.status !== 'active') return [];
     const since = row.lastPulledAt ?? new Date(0);
@@ -715,8 +718,21 @@ export function createAccountingService(deps: AccountingDeps) {
       await failure(scope, row, e, 'payment pull');
       return [];
     }
-    const fresh: RemotePayment[] = [];
+    const fresh: PulledPayment[] = [];
     for (const p of payments) {
+      if (p.reverses) {
+        const [original] = await scope.tx
+          .select({ id: accountingPayments.id })
+          .from(accountingPayments)
+          .where(
+            and(
+              eq(accountingPayments.connectionId, row.id),
+              eq(accountingPayments.remoteId, p.reverses),
+            ),
+          )
+          .limit(1);
+        if (!original) continue;
+      }
       const inserted = await scope.tx
         .insert(accountingPayments)
         .values({
@@ -730,7 +746,26 @@ export function createAccountingService(deps: AccountingDeps) {
         })
         .onConflictDoNothing()
         .returning({ id: accountingPayments.id });
-      if (inserted.length) fresh.push(p);
+      if (!inserted.length) continue;
+      const docs = await scope.tx
+        .select({ localType: accountingDocuments.localType, localId: accountingDocuments.localId })
+        .from(accountingDocuments)
+        .where(
+          and(
+            eq(accountingDocuments.connectionId, row.id),
+            eq(accountingDocuments.reference, p.documentReference),
+          ),
+        )
+        .limit(2);
+      if (docs.length > 1)
+        await raise(
+          scope,
+          row.id,
+          'rejected',
+          `A payment of ${p.amountCents / 100} on ${p.documentReference} was not recorded: that reference matches more than one claim. Record it by hand.`,
+          p.documentReference,
+        );
+      fresh.push(docs.length === 1 ? { ...p, local: docs[0]! } : p);
     }
     await scope.tx
       .update(accountingConnections)
@@ -781,5 +816,10 @@ export function createAccountingService(deps: AccountingDeps) {
     resolveIssue,
   };
 }
+
+/** A pulled payment and, when one pushed document matches its reference, the local record it is against. */
+export type PulledPayment = RemotePayment & {
+  local?: { localType: 'payment_schedule' | 'claim'; localId: string };
+};
 
 export type AccountingService = ReturnType<typeof createAccountingService>;

@@ -464,6 +464,40 @@ export function createOrgActionService(deps: OrgActionDeps) {
     });
   }
 
+  /**
+   * System action for the trial-backfill job: gives a company created before #231 its trial end date and makes sure
+   * the customer list shows it. Returns whether anything changed.
+   */
+  async function backfillTrial(
+    org: { id: string; name: string; slug: string; createdAt: Date },
+    at: Date = now(),
+  ): Promise<boolean> {
+    return tx(async (t) => {
+      const a = await deps.accounts.backfillTrialEnd(t, org.id, org.createdAt, at);
+      if (!a) return false;
+      await t
+        .insert(tenantDirectory)
+        .values({
+          id: org.id,
+          name: org.name,
+          slug: org.slug,
+          planCode: a.planCode,
+          state: a.state,
+          trialEndsAt: a.trialEndsAt,
+        })
+        .onConflictDoUpdate({
+          target: tenantDirectory.id,
+          set: {
+            planCode: a.planCode,
+            state: a.state,
+            trialEndsAt: a.trialEndsAt,
+            updatedAt: new Date(),
+          },
+        });
+      return true;
+    });
+  }
+
   return {
     account,
     list,
@@ -480,6 +514,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
     revokeOverride,
     refund,
     expireTrial,
+    backfillTrial,
   };
 }
 
