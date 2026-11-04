@@ -9,7 +9,7 @@ import { useMemo } from 'react';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { createTakeoffApi } from '../data/takeoff-api';
 import { takeoffSource as previewSource, type TakeoffSource } from '../data/takeoff-source';
-import type { NewMeasurement, TakeoffMeasurement } from '../lib/takeoff-types';
+import type { NewMeasurement, NovaFindInput, TakeoffMeasurement } from '../lib/takeoff-types';
 
 /** The API once the estimating endpoints are reachable; the in-browser preview store in preview mode and tests. */
 export function useTakeoffSource(): TakeoffSource {
@@ -53,6 +53,23 @@ export function useTakeoffMutations(projectId: string) {
     }),
     remove: useMutation({
       mutationFn: (id: string) => takeoffSource.remove(projectId, id),
+      onSuccess: invalidate,
+    }),
+    findWithNova: useMutation({
+      mutationFn: (input: NovaFindInput) => takeoffSource.findWithNova(projectId, input),
+      onSuccess: invalidate,
+    }),
+    accept: useMutation({
+      mutationFn: (id: string) => takeoffSource.accept(projectId, id),
+      onSuccess: invalidate,
+    }),
+    reject: useMutation({
+      mutationFn: (id: string) => takeoffSource.reject(projectId, id),
+      onSuccess: invalidate,
+    }),
+    acceptAbove: useMutation({
+      mutationFn: (input: { revisionId: string; minConfidence: number }) =>
+        takeoffSource.acceptAbove(projectId, input.revisionId, input.minConfidence),
       onSuccess: invalidate,
     }),
     sendToPackage: useMutation({

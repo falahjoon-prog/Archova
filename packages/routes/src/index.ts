@@ -12,7 +12,9 @@ export const webRoutes = {
   newOrg: () => '/orgs/new',
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
+  accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
+  apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,
@@ -36,10 +38,22 @@ export const webRoutes = {
   newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
   submittal: (orgSlug: string, projectId: string, submittalId: string) =>
     `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
+  newCorrespondence: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/correspondence/new`,
+  correspondenceItem: (orgSlug: string, projectId: string, itemId: string) =>
+    `${p(orgSlug, projectId)}/correspondence/${enc(itemId)}`,
   /** The diary for a project-local date (`YYYY-MM-DD`); without a date it opens today. */
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
   delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
+  contracts: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts`,
+  newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
+  contract: (orgSlug: string, projectId: string, contractId: string) =>
+    `${p(orgSlug, projectId)}/contracts/${enc(contractId)}`,
+  paymentClaims: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/payment-claims`,
+  paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
@@ -59,6 +73,12 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/estimating/packages`,
   tenderPackage: (orgSlug: string, projectId: string, packageId: string) =>
     `${p(orgSlug, projectId)}/estimating/packages/${enc(packageId)}`,
+  estimates: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/estimates`,
+  estimate: (orgSlug: string, projectId: string, estimateId: string) =>
+    `${p(orgSlug, projectId)}/estimating/estimates/${enc(estimateId)}`,
+  costLibrary: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/cost-library`,
 
   // Guest flows outside any org (X58): no app sign-in, the link itself is the access (X45).
   /** A worker's site induction, opened from an SMS or email access link. */

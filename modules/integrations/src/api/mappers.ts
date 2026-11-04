@@ -1,5 +1,13 @@
 import { encodeId } from '@archova/domain';
-import type { ImportJob, ImportRow, Webhook, WebhookDelivery } from '@archova/contracts';
+import type {
+  AccountingConnection,
+  AccountingSyncIssue,
+  ImportJob,
+  ImportRow,
+  Webhook,
+  WebhookDelivery,
+} from '@archova/contracts';
+import type { ConnectionRow, SyncIssueRow } from '../application/accounting';
 import type { ImportJobRow, ImportRowRow } from '../application/imports';
 import type { DeliveryRow, SubscriptionRow } from '../application/webhooks';
 
@@ -57,4 +65,28 @@ export const toWebhookDeliveryDto = (d: DeliveryRow): WebhookDelivery => ({
   lastError: d.lastError,
   createdAt: d.createdAt.toISOString(),
   deliveredAt: iso(d.deliveredAt),
+});
+
+export const toConnectionDto = (c: ConnectionRow): AccountingConnection => ({
+  id: encodeId('accountingConnection', c.id),
+  provider: c.provider,
+  status: c.status,
+  targetName: c.targetName,
+  fieldMap: c.fieldMap,
+  settings: c.settings,
+  lastError: c.lastError,
+  lastPulledAt: iso(c.lastPulledAt),
+});
+
+export const toSyncIssueDto = (
+  i: SyncIssueRow,
+  provider: ConnectionRow['provider'],
+): AccountingSyncIssue => ({
+  id: encodeId('syncIssue', i.id),
+  provider,
+  kind: i.kind,
+  reference: i.reference,
+  message: i.message,
+  status: i.status,
+  createdAt: i.createdAt.toISOString(),
 });

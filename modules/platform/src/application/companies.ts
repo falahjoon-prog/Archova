@@ -105,7 +105,20 @@ export function createCompanyService() {
     return Boolean(row);
   }
 
-  return { list, create, exists, onProject, onProjectWithTrades };
+  /** Name and ABN, for matching a company to a contact in an accounting system. */
+  async function identity(
+    scope: TenantScope,
+    companyId: string,
+  ): Promise<{ name: string; abn: string | null } | null> {
+    const [row] = await scope.tx
+      .select({ name: companies.name, abn: companies.abn })
+      .from(companies)
+      .where(and(eq(companies.id, companyId), isNull(companies.deletedAt)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  return { list, create, exists, identity, onProject, onProjectWithTrades };
 }
 
 export type CompanyService = ReturnType<typeof createCompanyService>;

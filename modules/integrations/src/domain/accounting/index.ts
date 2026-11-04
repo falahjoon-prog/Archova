@@ -13,3 +13,4 @@ export {
   refreshTokens,
   type TokenSet,
 } from './oauth';
+export { listTargets, type RemoteTarget } from './discovery';

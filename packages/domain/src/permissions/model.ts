@@ -13,6 +13,7 @@ export const TOOLS = [
   'documents',
   'rfis',
   'submittals',
+  'correspondence',
   'diary',
   'defects',
   'inspections',

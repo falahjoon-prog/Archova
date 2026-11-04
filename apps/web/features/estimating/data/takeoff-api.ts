@@ -20,7 +20,7 @@ import {
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectMembers } from '@/shared/lib/people';
-import { TRADES, type TakeoffMeasurement } from '../lib/takeoff-types';
+import { TRADES, type NovaFound, type TakeoffMeasurement } from '../lib/takeoff-types';
 import type { TakeoffSource } from './takeoff-source';
 
 type ApiMeasurement = components['schemas']['TakeoffMeasurement'];
@@ -105,12 +105,16 @@ export function createTakeoffApi(orgId: string): TakeoffSource {
       scaleConfirmed: scale.confirmed,
       source: m.source,
       confidence: m.confidence,
+      confirmed: Boolean(m.confirmedAt),
+      rejected: Boolean(m.rejectedAt),
       raster: false,
       label: tag.label,
       trade: tag.trade,
       packageId: m.packageId,
       supersededByRevisionId: null,
-      createdBy: (m.confirmedBy && names.get(m.confirmedBy)) || 'Project member',
+      createdBy:
+        (m.confirmedBy && names.get(m.confirmedBy)) ||
+        (m.source === 'manual' ? 'Project member' : 'Nova'),
       createdAt: m.createdAt,
     };
   };
@@ -186,6 +190,87 @@ export function createTakeoffApi(orgId: string): TakeoffSource {
         );
       }
       return created;
+    },
+
+    /** Nova finds the marks; the quantity is worked out here from the geometry and the confirmed scale, never by Nova. */
+    async findWithNova(projectId, input): Promise<NovaFound> {
+      const ratio = parseScale(input.scale);
+      if (!ratio) throw new Error('Set the sheet scale before asking Nova to measure.');
+      await ensureCsrfToken();
+      const found = unwrap(
+        await api.POST('/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections', {
+          params: { path: { orgId, projectId } },
+          body: {
+            revisionId: input.revisionId,
+            target: { kind: input.kind, what: input.what },
+            ...(input.image ? { image: input.image } : {}),
+          },
+        }),
+      );
+      const base = { caveat: found.caveat, dropped: found.dropped, scanned: found.scanned };
+      if (!found.items.length) return { marks: [], ...base };
+      const unit = UNIT_FOR_KIND[input.kind];
+      const items = found.items.map((item) => {
+        const geometry: TakeoffGeometry =
+          input.kind === 'area'
+            ? { kind: 'area', outer: item.points, holes: [] }
+            : { kind: input.kind, points: item.points };
+        return {
+          label: joinTag(input.trade, item.place ? `${input.what} · ${item.place}` : input.what),
+          kind: input.kind,
+          geometry: toApiGeometry(geometry),
+          quantity: decimal(
+            input.kind === 'count'
+              ? 1
+              : roundQuantity(takeoffQuantity(geometry, input.size, ratio), unit),
+            unit,
+          ),
+          unit,
+          confidence: item.confidence,
+        };
+      });
+      const saved = unwrap(
+        await api.POST(`${P}/batch`, {
+          params: { path: { orgId, projectId } },
+          body: { revisionId: input.revisionId, items },
+        }),
+      );
+      const people = await names(projectId);
+      const scale = { scale: input.scale, confirmed: input.scaleConfirmed };
+      return { marks: saved.data.map((m) => toMeasurement(m, scale, people)), ...base };
+    },
+
+    async accept(projectId, measurementId) {
+      await ensureCsrfToken();
+      const current = await get(projectId, measurementId);
+      const row = unwrap(
+        await api.POST(`${P}/{measurementId}/confirm`, {
+          params: { path: { orgId, projectId, measurementId }, header: ifMatch(current.version) },
+        }),
+      );
+      return toMeasurement(row, await scaleOf(projectId, row.revisionId), await names(projectId));
+    },
+
+    async reject(projectId, measurementId) {
+      await ensureCsrfToken();
+      const current = await get(projectId, measurementId);
+      const row = unwrap(
+        await api.POST(`${P}/{measurementId}/reject`, {
+          params: { path: { orgId, projectId, measurementId }, header: ifMatch(current.version) },
+        }),
+      );
+      return toMeasurement(row, await scaleOf(projectId, row.revisionId), await names(projectId));
+    },
+
+    async acceptAbove(projectId, revisionId, minConfidence) {
+      await ensureCsrfToken();
+      const done = unwrap(
+        await api.POST(`${P}/confirm-batch`, {
+          params: { path: { orgId, projectId } },
+          body: { revisionId, minConfidence },
+        }),
+      );
+      return done.data.length;
     },
 
     async update(projectId, measurementId, patch) {

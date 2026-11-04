@@ -8,6 +8,7 @@ import { Queue, Worker } from 'bullmq';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { loadAiWorkerConfig } from './ai/config';
 import { loadAiWorkerModules, reindexDepsFrom } from './ai/modules';
+import { createAccountingPush } from './ai/accounting';
 import { createReindex, REINDEX_QUEUE, type ReindexJob } from './ai/reindex';
 import { watchQueueAge } from './ai/queue-age';
 import { createRestamp } from './ai/restamp';
@@ -36,7 +37,12 @@ async function main() {
   });
 
   const restamp = createRestamp({ ai: modules.ai.api, log: (msg, o) => log.info(o, msg) });
-  const subscribers = [reindex.subscriber, restamp.subscriber];
+  const accountingPush = createAccountingPush({
+    financials: modules.financials.api,
+    accounting: modules.integrations.api.accounting,
+    log: (msg, o) => log.info(o, msg),
+  });
+  const subscribers = [reindex.subscriber, restamp.subscriber, accountingPush.subscriber];
 
   // Jobs here are queued with the `capped` backoff (queues.ts `ROUTED_RETRY`), which only these workers know.
   const settings = { backoffStrategy: cappedBackoff };

@@ -95,6 +95,26 @@ export function createXeroProvider(
       })) as { Invoices: XeroInvoice[] };
       return { outcome: existing ? 'updated' : 'created', ...info(res.Invoices[0] as XeroInvoice) };
     },
+    async findContact(q) {
+      const lookup = async (where: string) =>
+        (
+          (await call(`/Contacts?where=${encodeURIComponent(where)}`)) as {
+            Contacts?: { ContactID: string }[];
+          }
+        ).Contacts?.[0]?.ContactID;
+      // An ABN names one entity: when we have it, a lookup that finds nothing must not fall back to a name, which could
+      // bill a different business with the same name.
+      const abn = q.abn?.replace(/\s/g, '');
+      if (abn) {
+        if (!/^\d{11}$/.test(abn)) return null;
+        const byAbn = await lookup(`TaxNumber=="${abn}"`);
+        return byAbn ? { remoteId: byAbn, matchedBy: 'abn' } : null;
+      }
+      // A name with a quote or backslash cannot be matched exactly in a where clause, so it matches nothing.
+      if (/["\\]/.test(q.name)) return null;
+      const byName = await lookup(`Name=="${q.name}"`);
+      return byName ? { remoteId: byName, matchedBy: 'name' } : null;
+    },
     async paymentsSince(since) {
       const res = (await call('/Payments', {
         headers: { 'If-Modified-Since': since.toUTCString() },

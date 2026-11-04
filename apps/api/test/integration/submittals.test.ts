@@ -172,6 +172,11 @@ describe('submittal register and review (product/04)', () => {
     });
     expect(returned.json().revisions[0]).toMatchObject({ status: 'revise_resubmit' });
 
+    // The subcontractor's people are emailed the comments (SUB-AC5); nobody else is.
+    const mail = t.messages.sent.filter((m) => m.text.includes('Weld sizes do not match S-301'));
+    expect(mail.map((m) => m.to)).toEqual([s.steel.email]);
+    expect(mail[0]!.text).toContain('Revise and resubmit');
+
     // The return is published with the comments for the subcontractor's email (SUB-AC5).
     const events = await outboxData<{ comments: string; status: string }>(
       t,
@@ -322,5 +327,45 @@ describe('submittal register and review (product/04)', () => {
       { 'if-match': etagOf(mine) },
     );
     expect(hijack.statusCode).toBe(404);
+  });
+
+  it("refuses files that weren't uploaded for submittals by the caller", async () => {
+    const s = await setup();
+    const created = await s.pm.browser.post(`${s.base}/submittals`, {
+      title: 'Doors',
+      responsibleCompanyId: s.steelCo.companyId,
+    });
+    const item = created.json().submittal;
+    const mine = await uploadFile(
+      t,
+      s.steel.browser,
+      s.org.id,
+      s.project.id,
+      'a.pdf',
+      'submittals',
+    );
+    const theirs = await uploadFile(t, s.pm.browser, s.org.id, s.project.id, 'b.pdf', 'submittals');
+    const elsewhere = await uploadFile(
+      t,
+      s.steel.browser,
+      s.org.id,
+      s.project.id,
+      'c.pdf',
+      'defects',
+    );
+    for (const fileId of [theirs, elsewhere]) {
+      const res = await s.steel.browser.post(
+        `${s.base}/submittals/${item.id}/submit`,
+        { fileIds: [mine, fileId] },
+        { 'if-match': etagOf(created) },
+      );
+      expect(res.json().code).toBe('file.not_in_project');
+    }
+    const ok = await s.steel.browser.post(
+      `${s.base}/submittals/${item.id}/submit`,
+      { fileIds: [mine] },
+      { 'if-match': etagOf(created) },
+    );
+    expect(ok.statusCode).toBe(200);
   });
 });

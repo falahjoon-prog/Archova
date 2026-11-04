@@ -6,7 +6,7 @@ export {
   STAGING_RETENTION_DAYS,
   type StagingPurgeResult,
 } from './application/retention';
-export * as accounting from './domain/accounting';
+
 export {
   createWebhookService,
   vaultFromKey,
@@ -15,3 +15,10 @@ export {
 } from './application/webhooks';
 export { createHttpsTransport, type WebhookTransport } from './infra/webhook-transport';
 export { isPublicEventType, type WebhookPayload } from './domain/webhooks/events';
+export * as accounting from './domain/accounting';
+export {
+  createAccountingService,
+  type AccountingDeps,
+  type LedgerSourceInput,
+  type AccountingService,
+} from './application/accounting';

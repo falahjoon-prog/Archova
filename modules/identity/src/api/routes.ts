@@ -8,6 +8,7 @@ import {
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_ABSOLUTE_MS, SESSION_COOKIE } from '../domain/policy';
 import { newToken } from '../application/crypto';
+import { TOKEN_SCOPES } from '../domain/api-scopes';
 import type { ApiTokenService } from '../application/api-tokens';
 import type { AccountService } from '../application/accounts';
 import type { OAuthService } from '../application/oauth';
@@ -43,7 +44,10 @@ export function identityRoutes({
       const tenant = requireTenant(input);
       const admin = tenant.orgRole === 'owner' || tenant.orgRole === 'admin';
       const rows = await apiTokens.list(tenant, admin);
-      return { status: 200, body: { data: rows.map(toApiTokenDto) } };
+      return {
+        status: 200,
+        body: { data: rows.map(toApiTokenDto), availableScopes: [...TOKEN_SCOPES] },
+      };
     },
     createApiToken: async (input) => {
       const tenant = requireTenant(input);

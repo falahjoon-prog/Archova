@@ -16,10 +16,14 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
+import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
+import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
+import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
   INTEGRATIONS_PERMISSIONS,
   createIntegrationsModule,
+  type AccountingDeps,
   type WebhooksDeps,
 } from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
@@ -37,6 +41,10 @@ import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workf
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
+import {
+  CORRESPONDENCE_PERMISSIONS,
+  createCorrespondenceModule,
+} from '@archova/mod-correspondence';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -45,7 +53,11 @@ export const MODULE_PERMISSIONS = [
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
+  CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
+  FINANCIALS_PERMISSIONS,
+  QUALITY_PERMISSIONS,
+  SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
@@ -65,6 +77,8 @@ export interface ModuleOptions {
   backoffice: BackofficeConfig;
   /** Outbound webhooks: the vault that seals signing secrets and the sender used for the test event. */
   webhooks: WebhooksDeps;
+  /** Xero and MYOB sign-in, token sealing and the fetch used for provider calls (integrations/02). */
+  accounting: AccountingDeps;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -118,10 +132,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce: 'workforce.attendance.sign_in_self',
       // The assigned subcontractor's "after" photo when marking a defect ready for review (DEF-AC5).
       defects: 'defects.defects.respond',
+      // Photos on an observation, and a SWMS document from the subcontractor who wrote it.
+      quality: 'quality.observations.create',
+      safety: 'safety.swms.submit',
       // A subcontractor attaches their quote PDF to a tender package they were invited to.
       estimating: 'estimating.quotes.submit',
       // A subcontractor attaches the shop drawing package to the item they are responsible for.
       submittals: 'submittals.submittals.submit',
+      // A subcontractor attaches supporting records to a notice or reply.
+      correspondence: 'correspondence.items.respond',
     },
   });
 
@@ -148,6 +167,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    messages: opts.messages,
+    baseUrl: opts.linkBaseUrl,
+    logger: services.logger,
+  });
+
+  const correspondence = createCorrespondenceModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
   });
 
   const defects = createDefectsModule(services, {
@@ -155,6 +183,24 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+  });
+
+  const financials = createFinancialsModule(services, {
+    access: access.api,
+    platform: platform.api,
+  });
+
+  const safety = createSafetyModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+  });
+
+  const quality = createQualityModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    safety: safety.api,
   });
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
@@ -170,6 +216,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     files: files.api,
     webhooks: opts.webhooks,
+    accounting: opts.accounting,
   });
 
   const ai = createAiModule(services, {
@@ -272,7 +319,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     submittals,
+    correspondence,
     defects,
+    financials,
+    quality,
+    safety,
     estimating,
     integrations,
     diary,
@@ -299,7 +350,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     submittals,
+    correspondence,
     defects,
+    financials,
+    quality,
+    safety,
     estimating,
     integrations,
     sync,

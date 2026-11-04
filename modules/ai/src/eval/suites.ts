@@ -17,6 +17,7 @@ import { quoteNegotiateSuite } from './suites/quote-negotiate';
 import { quoteReadSuite } from './suites/quote-read';
 import { rfiAnswerSuite } from './suites/rfi-answer';
 import { rfiDraftSuite } from './suites/rfi-draft';
+import { takeoffDetectSuite } from './suites/takeoff-detect';
 import { translationSuite } from './suites/translation';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- suites differ in input, output and expected types
@@ -42,4 +43,5 @@ export const SUITES: readonly AnySuite[] = [
   quoteReadSuite,
   quoteNegotiateSuite,
   contractReviewSuite,
+  takeoffDetectSuite,
 ];

@@ -53,6 +53,8 @@ describe('personal access tokens (integrations/06)', () => {
 
     const listed = await s.owner.browser.get(`/v1/orgs/${s.org.id}/api-tokens`);
     expect(listed.json().data).toHaveLength(1);
+    expect(listed.json().availableScopes).toContain('rfis:read');
+    expect(listed.json().availableScopes).not.toContain('financials:write');
     expect(JSON.stringify(listed.json())).not.toContain(body.token);
 
     const res = await call(body.token, 'GET', `/v1/orgs/${s.org.id}/projects`);

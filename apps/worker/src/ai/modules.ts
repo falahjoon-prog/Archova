@@ -20,7 +20,7 @@ import { indexContext, isOrgGone, type ReindexDeps } from './reindex';
 export function loadAiWorkerModules(
   database: Database,
   logger: Logger,
-  config: Pick<AiWorkerConfig, 'ai'>,
+  config: Pick<AiWorkerConfig, 'ai' | 'accounting'>,
   provider?: ModelProvider,
 ): Promise<Modules> {
   return loadModules(
@@ -44,6 +44,20 @@ export function loadAiWorkerModules(
           send: async () => ({ status: null, error: 'webhooks are off in the ai-worker' }),
         },
       },
+      // Real only when configured: the push subscriber opens tokens the API sealed, so it needs the API's key.
+      accounting: config.accounting
+        ? {
+            vault: vaultFromKey(config.accounting.secretKey),
+            fetch: (url, init) => fetch(url, init),
+            redirectBase: `${config.accounting.linkBaseUrl}/orgs/accounting`,
+            credentials: config.accounting.credentials,
+          }
+        : {
+            vault: vaultFromKey(randomBytes(32).toString('base64')),
+            fetch: async () => new Response(null, { status: 503 }),
+            redirectBase: 'http://ai-worker.invalid',
+            credentials: { xero: null, myob: null },
+          },
     },
   );
 }
