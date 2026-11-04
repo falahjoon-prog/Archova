@@ -4,3 +4,4 @@ export { ContractNewScreen } from './screens/ContractNewScreen';
 export { ContractDetailScreen } from './screens/ContractDetailScreen';
 export { ClaimsRegisterScreen } from './screens/ClaimsRegisterScreen';
 export { ClaimDetailScreen } from './screens/ClaimDetailScreen';
+export { useContracts, useVariations } from './hooks/useClaims';

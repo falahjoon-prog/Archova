@@ -1848,6 +1848,14 @@ export const ListMeetingsParams = z.object({
 export const ListMeetingsQuery = z.object({
   "seriesId": s.MeetingSeriesRefSchema.optional(),
 });
+export const ListMeetingsLinkedToParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListMeetingsLinkedToQuery = z.object({
+  "type": z.enum(["rfi", "variation", "defect"]),
+  "id": z.string().min(5).max(40),
+});
 export const GetMeetingParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5896,6 +5904,18 @@ export const operations = {
     contentType: null,
     params: ListMeetingsParams,
     query: ListMeetingsQuery,
+    body: null,
+  },
+  listMeetingsLinkedTo: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-links',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingsLinkedToParams,
+    query: ListMeetingsLinkedToQuery,
     body: null,
   },
   getMeeting: {

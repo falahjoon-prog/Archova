@@ -96,6 +96,15 @@ export function meetingsRoutes(
         ),
       ),
     }),
+    listMeetingsLinkedTo: async (input) => ({
+      status: 200,
+      body: await read(input, (s) =>
+        meetings.linkedTo(s, project(input.params), {
+          type: input.query.type,
+          id: input.query.id,
+        }),
+      ),
+    }),
     getMeeting: async (input) =>
       ok(
         200,

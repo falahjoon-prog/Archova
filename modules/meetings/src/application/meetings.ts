@@ -1227,6 +1227,52 @@ export function createMeetingService(deps: MeetingsDeps) {
     };
   }
 
+  /**
+   * Minute items that point at one RFI, defect or variation, newest meeting first, for that record's Related tab
+   * (MTG-AC5). Only the project team reads the working minutes; an outsider gets nothing. A carried-forward item
+   * appears once, in its latest meeting.
+   */
+  async function linkedTo(scope: TenantScope, projectId: string, link: MeetingLink) {
+    const v = await viewer(scope, projectId);
+    if (!v.isInternal) return { data: [] };
+    const { linkedType, linkedId } = parseLink(link, 'id');
+    const rows = await scope.tx
+      .select({ i: items, m: meetings })
+      .from(items)
+      .innerJoin(meetings, eq(items.meetingId, meetings.id))
+      .where(
+        and(
+          eq(items.projectId, projectId),
+          eq(items.linkedType, linkedType),
+          eq(items.linkedId, linkedId),
+          isNull(items.deletedAt),
+          isNull(meetings.deletedAt),
+        ),
+      )
+      .orderBy(desc(meetings.heldAt), desc(items.id))
+      .limit(200);
+    const seen = new Set<string>();
+    const data = [];
+    for (const r of rows) {
+      if (seen.has(r.i.threadId)) continue;
+      seen.add(r.i.threadId);
+      data.push({
+        meetingId: encodeId('meeting', r.m.id),
+        meetingTitle: r.m.title,
+        meetingNumber: r.m.number,
+        heldAt: r.m.heldAt.toISOString(),
+        itemNo: r.i.itemNo,
+        kind: r.i.kind,
+        body: r.i.body,
+        status: r.i.status,
+        ownerName: r.i.ownerName,
+        dueDate: r.i.dueDate,
+      });
+      if (data.length >= 50) break;
+    }
+    return { data };
+  }
+
   // --------------------------------------------------------------- actions
 
   async function actions(
@@ -1301,6 +1347,7 @@ export function createMeetingService(deps: MeetingsDeps) {
     pdf,
     actions,
     forMinutesDraft,
+    linkedTo,
   };
 }
 

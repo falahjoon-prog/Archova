@@ -11,6 +11,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import type { LiveList, MeetingDetail, MeetingItem } from '../data/api';
 import { useMeetingMutations } from '../hooks/useMeetings';
+import { LinkPicker, type PickedLink } from './LinkPicker';
 import { KIND_LABELS, carriedLabel } from '../lib/labels';
 
 type Section = MeetingDetail['sections'][number];
@@ -89,6 +90,8 @@ function ItemRow({
   const project = useCurrentProject();
   const { updateItem, deleteItem } = useMeetingMutations(meetingId);
   const error = updateItem.error ?? deleteItem.error;
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<PickedLink | null>(null);
   const href = item.link ? linkHref(org.orgSlug, project.projectId, item.link) : null;
   const carried = item.history.length > 0;
   return (
@@ -152,6 +155,42 @@ function ItemRow({
               {item.status === 'open' ? 'Close action' : 'Reopen'}
             </Button>
           ) : null}
+          {picking ? (
+            <div className="form-row">
+              <LinkPicker onChange={setPicked} />
+              <Button
+                size="sm"
+                loading={updateItem.isPending}
+                disabled={!picked}
+                onClick={() =>
+                  picked &&
+                  updateItem.mutate(
+                    { item, body: { link: picked } },
+                    { onSuccess: () => setPicking(false) },
+                  )
+                }
+              >
+                Save link
+              </Button>
+              <Button variant="tertiary" size="sm" onClick={() => setPicking(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button variant="tertiary" size="sm" onClick={() => setPicking(true)}>
+              {item.link ? 'Change link' : 'Attach a record'}
+            </Button>
+          )}
+          {item.link ? (
+            <Button
+              variant="tertiary"
+              size="sm"
+              loading={updateItem.isPending}
+              onClick={() => updateItem.mutate({ item, body: { link: null } })}
+            >
+              Remove link
+            </Button>
+          ) : null}
           {!carried && item.carriedCount === 0 ? (
             <Button
               variant="tertiary"
@@ -175,6 +214,8 @@ function AddItemForm({ section, meetingId }: { section: Section; meetingId: stri
   const [body, setBody] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [link, setLink] = useState<PickedLink | null>(null);
+  const [pickerKey, setPickerKey] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
 
   function submit(e: FormEvent) {
@@ -188,11 +229,14 @@ function AddItemForm({ section, meetingId }: { section: Section; meetingId: stri
         body: body.trim(),
         ...(kind === 'action' && companyId ? { ownerCompanyId: companyId } : {}),
         ...(kind === 'action' && dueDate ? { dueDate } : {}),
+        ...(link ? { link } : {}),
       },
       {
         onSuccess: () => {
           setBody('');
           setDueDate('');
+          setLink(null);
+          setPickerKey((k) => k + 1);
         },
       },
     );
@@ -232,6 +276,9 @@ function AddItemForm({ section, meetingId }: { section: Section; meetingId: stri
             />
           </>
         ) : null}
+      </div>
+      <div className="form-row">
+        <LinkPicker key={pickerKey} onChange={setLink} />
       </div>
       <Textarea
         label={`New ${KIND_LABELS[kind].toLowerCase()} in ${section.title}`}

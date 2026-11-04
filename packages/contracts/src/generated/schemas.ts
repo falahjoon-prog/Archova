@@ -2821,6 +2821,25 @@ export const MeetingDetailSchema = z.object({
 });
 export type MeetingDetail = z.infer<typeof MeetingDetailSchema>;
 
+export const MeetingLinkedItemSchema = z.object({
+  "meetingId": z.string(),
+  "meetingTitle": z.string(),
+  "meetingNumber": z.number().int(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "itemNo": z.string(),
+  "kind": z.enum(["action", "decision", "information"]),
+  "body": z.string(),
+  "status": z.enum(["open", "closed"]),
+  "ownerName": z.string().nullable(),
+  "dueDate": z.string().nullable(),
+});
+export type MeetingLinkedItem = z.infer<typeof MeetingLinkedItemSchema>;
+
+export const MeetingLinkedItemListSchema = z.object({
+  "data": z.array(MeetingLinkedItemSchema),
+});
+export type MeetingLinkedItemList = z.infer<typeof MeetingLinkedItemListSchema>;
+
 export const MeetingSummarySchema = z.object({
   "id": z.string(),
   "seriesId": z.string(),
