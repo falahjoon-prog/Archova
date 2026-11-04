@@ -46,6 +46,7 @@ export const staffSessions = backofficeSchema.table('staff_sessions', {
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
   ip: text('ip'),
   userAgent: text('user_agent'),
+  hardwareKey: boolean('hardware_key').notNull().default(false),
 });
 
 export const requests = backofficeSchema.table('requests', {
@@ -155,6 +156,8 @@ export const supportGrants = backofficeSchema.table('support_grants', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  /** NULL = the whole company; otherwise reads are limited to these projects. */
+  projectIds: uuid('project_ids').array(),
 });
 
 export const supportSessions = backofficeSchema.table('support_sessions', {
@@ -167,6 +170,8 @@ export const supportSessions = backofficeSchema.table('support_sessions', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
   endReason: text('end_reason').$type<'ended' | 'revoked'>(),
+  /** Set once an admin of the company has been emailed; reads need it. */
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
 });
 
 export const supportEvents = backofficeSchema.table('support_events', {
@@ -175,5 +180,6 @@ export const supportEvents = backofficeSchema.table('support_events', {
   targetOrgId: uuid('target_org_id').notNull(),
   what: text('what').notNull(),
   recordIds: text('record_ids').array().notNull().default([]),
+  staffId: uuid('staff_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -708,7 +708,68 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     };
   }
 
-  return { list, detail, create, update, submit, respond, close, returnNotice };
+  /**
+   * Meeting agenda (`meetings`, MTG-US5): submittals the caller can see that still need something and are due soon -
+   * not yet approved, rejected or closed, with a required-on-site date within the next 14 days (or already past) or a
+   * draft with a submit-by date within the next 7. Soonest first. `restricted` is true when the caller can't read
+   * submittals at all.
+   */
+  async function dueForMeeting(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const date = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(submittals.projectId, projectId),
+      isNull(submittals.deletedAt),
+      sql`${submittals.status} not in ('approved', 'approved_as_noted', 'closed', 'rejected')`,
+      sql`(${submittals.requiredOnSite} <= (${date}::date + 14)
+           or (${submittals.status} = 'draft' and ${submittals.submitBy} <= (${date}::date + 7)))`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({
+        id: submittals.id,
+        numberLabel: submittals.numberLabel,
+        title: submittals.title,
+        status: submittals.status,
+        requiredOnSite: submittals.requiredOnSite,
+        submitBy: submittals.submitBy,
+      })
+      .from(submittals)
+      .where(and(...conditions))
+      .orderBy(sql`${submittals.requiredOnSite} asc nulls last`, asc(submittals.number))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: r.numberLabel,
+        title: r.title,
+        detail: [
+          r.status.replace(/_/g, ' '),
+          r.requiredOnSite ? `required on site ${r.requiredOnSite}` : null,
+          r.status === 'draft' && r.submitBy ? `submit by ${r.submitBy}` : null,
+        ]
+          .filter(Boolean)
+          .join(', '),
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
+  return {
+    list,
+    detail,
+    create,
+    update,
+    submit,
+    respond,
+    close,
+    returnNotice,
+    dueForMeeting,
+  };
 }
 
 export type SubmittalService = ReturnType<typeof createSubmittalService>;

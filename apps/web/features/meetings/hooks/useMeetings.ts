@@ -88,6 +88,11 @@ export function useMeetingMutations(meetingId: string | null) {
         source.setAttendees(projectId, id(), attendees),
       onSuccess: settle,
     }),
+    addSection: useMutation({
+      mutationFn: (body: Parameters<typeof source.addSection>[2]) =>
+        source.addSection(projectId, id(), body),
+      onSuccess: settle,
+    }),
     createItem: useMutation({
       mutationFn: (body: Parameters<typeof source.createItem>[2]) =>
         source.createItem(projectId, id(), body),

@@ -8353,6 +8353,14 @@ components:
       properties:
         title: { type: string, minLength: 1, maxLength: 200 }
         internalOnly: { type: boolean }
+        liveSource:
+          description: |
+            Fill the section from a register (MTG-US5): overdue RFIs, submittals due, open defects by trade or delays
+            this week. A live section is always builder-only (`internalOnly`), and issuing the minutes freezes the list
+            as it stood (MTG-AC6).
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLiveSource' }
+            - { type: 'null' }
     CreateMeetingItemRequest:
       type: object
       additionalProperties: false
@@ -8602,14 +8610,52 @@ components:
           description: Earlier appearances of the item, oldest first.
           items: { $ref: '#/components/schemas/MeetingItemHistory' }
         version: { type: integer }
+    MeetingLiveSource:
+      type: string
+      enum: [rfis_overdue, submittals_due, defects_open, delays_week]
+    MeetingLiveRow:
+      type: object
+      required: [ref, title, detail, link]
+      properties:
+        ref: { type: string, description: "The record's own number, or the day for a delay" }
+        title: { type: string }
+        detail: { type: string }
+        link:
+          type: [object, 'null']
+          required: [type, id]
+          properties:
+            type: { type: string, enum: [rfi, defect, submittal] }
+            id: { type: string }
+    MeetingLiveList:
+      type: object
+      required: [source, asOf, rows, truncated, restricted]
+      properties:
+        source: { $ref: '#/components/schemas/MeetingLiveSource' }
+        asOf: { type: string, format: date-time }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingLiveRow' }
+        truncated: { type: boolean }
+        restricted:
+          type: boolean
+          description: The reader can't see this register, so the empty list is about access, not about nothing being due.
     MeetingSectionView:
       type: object
-      required: [id, position, title, internalOnly, items]
+      required: [id, position, title, internalOnly, liveSource, live, items]
       properties:
         id: { type: string }
         position: { type: integer }
         title: { type: string }
         internalOnly: { type: boolean }
+        liveSource:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLiveSource' }
+            - { type: 'null' }
+        live:
+          description: The register list, read now for working minutes and frozen at issue for an issued version.
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLiveList' }
+            - { type: 'null' }
         items:
           type: array
           items: { $ref: '#/components/schemas/MeetingItem' }
@@ -8853,11 +8899,15 @@ components:
         version: { type: integer }
     SupportAccessGrant:
       type: object
-      required: [id, ticketRef, level, createdAt, expiresAt, grantedBy, status]
+      required: [id, ticketRef, level, projectIds, createdAt, expiresAt, grantedBy, status]
       properties:
         id: { type: string, format: uuid }
         ticketRef: { type: string }
         level: { type: string, enum: [view] }
+        projectIds:
+          type: [array, 'null']
+          description: The projects support can see, or null when the grant covers the whole company.
+          items: { type: string }
         grantedBy: { type: string }
         createdAt: { type: string, format: date-time }
         expiresAt: { type: string, format: date-time }
@@ -8910,6 +8960,12 @@ components:
       properties:
         ticketRef: { type: string, minLength: 2, maxLength: 60 }
         hours: { type: integer, minimum: 1, maximum: 72 }
+        projectIds:
+          type: array
+          minItems: 1
+          maxItems: 50
+          description: Limit support to these projects. Leave out to cover the whole company.
+          items: { type: string }
     Abn:
       type: string
       pattern: '^[0-9]{11}$'

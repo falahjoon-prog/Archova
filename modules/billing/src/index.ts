@@ -8,6 +8,7 @@ import { createDbEntitlementProvider, type EntitlementProvider } from './applica
 
 export { TRIAL_ENTITLEMENTS, type EntitlementProvider } from './application/entitlements';
 export {
+  createAccountService,
   MAX_TRIAL_EXTENSION_DAYS,
   MAX_TRIAL_TOTAL_DAYS,
   type AccountSeed,

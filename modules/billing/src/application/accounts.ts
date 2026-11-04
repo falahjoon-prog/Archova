@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, lte, sql } from 'drizzle-orm';
 import { AppError, type Tx } from '@archova/kernel';
 import { orgAccounts, planVersions, plans, type SuspendCategory } from '../infra/tables';
 
@@ -62,6 +62,8 @@ export function createAccountService() {
       .set({
         trialEndsAt: new Date(base.getTime() + input.days * DAY_MS),
         trialExtendedDays: total,
+        // A trial that had already lapsed to read-only comes back to life when staff extend it.
+        state: 'trialing',
         updatedAt: sql`now()`,
       })
       .where(eq(orgAccounts.id, orgId))
@@ -138,7 +140,28 @@ export function createAccountService() {
     return row!;
   }
 
-  return { get, extendTrial, setPlan, suspend, reactivate };
+  /**
+   * Ends a trial whose end date has passed: the account goes read-only until the company picks a plan (security-licensing
+   * 04 §: "convert or the project goes read-only"). Nothing is deleted. Idempotent: returns null when there is no
+   * account row, the org is not on a trial, the trial has not ended, or it is already read-only.
+   */
+  async function expireTrial(tx: Tx, orgId: string, now: Date): Promise<OrgAccount | null> {
+    const [row] = await tx
+      .update(orgAccounts)
+      .set({ state: 'read_only', updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(orgAccounts.id, orgId),
+          eq(orgAccounts.planCode, 'trial'),
+          eq(orgAccounts.state, 'trialing'),
+          lte(orgAccounts.trialEndsAt, now),
+        ),
+      )
+      .returning();
+    return row ?? null;
+  }
+
+  return { get, extendTrial, setPlan, suspend, reactivate, expireTrial };
 }
 
 export type AccountService = ReturnType<typeof createAccountService>;

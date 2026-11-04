@@ -32,6 +32,9 @@ const backoffice = createBackofficeModule(services, {
   supportReads: () => {
     throw new Error('The seed command does not read customer data');
   },
+  notifySupportSession: () => {
+    throw new Error('The seed command does not open support sessions');
+  },
   config: { localLogin: true, soloCoolingOffHours: 24 },
 });
 const id = await backoffice.api.upsertLocalStaff({

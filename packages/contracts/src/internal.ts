@@ -280,6 +280,8 @@ export type SupportGrantDto = {
   id: string;
   ticketRef: string;
   level: 'view';
+  /** Null = the whole company; otherwise support can only see these projects. */
+  projectIds: string[] | null;
   grantedBy: string;
   createdAt: string;
   expiresAt: string;
