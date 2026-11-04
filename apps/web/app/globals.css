@@ -1885,3 +1885,49 @@ fieldset.worker-card > legend {
 .cr-error {
   color: var(--c-status-danger);
 }
+
+/* Settings → Compliance wallet: rows stack their lines and wrap on a phone; actions wrap. */
+.wallet__filters {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+}
+@media (min-width: 768px) {
+  .wallet__filters {
+    grid-template-columns: minmax(0, 20rem) auto;
+  }
+}
+.wallet__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.wallet__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.wallet__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.wallet__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.wallet__pills,
+.wallet__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}

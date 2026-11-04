@@ -77,19 +77,22 @@ export async function untilScanned(
  */
 export async function uploadFile(
   orgId: string,
-  input: { file: File; projectId: string; module: string },
+  input: { file: File; projectId?: string; module: string },
 ): Promise<StoredFile> {
   await ensureCsrfToken();
   const sha256 = await sha256Hex(input.file);
   const upload = unwrap(
     await api.POST('/v1/orgs/{orgId}/uploads', {
-      params: { path: { orgId }, header: { 'Idempotency-Key': `${input.projectId}:${sha256}` } },
+      params: {
+        path: { orgId },
+        header: { 'Idempotency-Key': `${input.projectId ?? orgId}:${sha256}` },
+      },
       body: {
         filename: input.file.name,
         mime: input.file.type || 'application/octet-stream',
         sizeBytes: input.file.size,
         sha256,
-        projectId: input.projectId,
+        ...(input.projectId ? { projectId: input.projectId } : {}),
         module: input.module,
       },
     }),
