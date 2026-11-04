@@ -15,7 +15,12 @@ import {
   StatusPill,
   TextField,
 } from '@archova/ui';
-import { SUSPEND_CATEGORIES, type OrgDetailDto, type SuspendCategory } from '@archova/contracts';
+import {
+  SUSPEND_CATEGORIES,
+  type CreditGrantKind,
+  type OrgDetailDto,
+  type SuspendCategory,
+} from '@archova/contracts';
 import { ApiError, api } from '@/shared/api';
 import { OrgActionDialog } from '@/shared/OrgActionDialog';
 import { useStepUp } from '@/shared/StepUp';
@@ -28,12 +33,17 @@ import {
   statusTone,
 } from '@/shared/format';
 
-type Dialogue = 'trial' | 'plan' | 'suspend' | 'reactivate' | null;
+type Dialogue = 'trial' | 'plan' | 'credits' | 'suspend' | 'reactivate' | null;
 const PLAN_OPTIONS = [
   { value: 'subcontractor', label: 'Subcontractor' },
   { value: 'team', label: 'Team' },
   { value: 'business', label: 'Business' },
   { value: 'enterprise', label: 'Enterprise' },
+];
+const GRANT_KIND_OPTIONS: { value: CreditGrantKind; label: string }[] = [
+  { value: 'top_up', label: 'Top-up (customer paid or agreed)' },
+  { value: 'goodwill', label: 'Goodwill' },
+  { value: 'promo', label: 'Promotion' },
 ];
 const CATEGORY_LABEL: Record<SuspendCategory, string> = {
   abuse: 'Abuse',
@@ -187,10 +197,14 @@ function AccountActions({ org }: { org: OrgDetailDto }) {
   const [days, setDays] = useState('30');
   const [planCode, setPlanCode] = useState('team');
   const [category, setCategory] = useState<SuspendCategory>('abuse');
+  const [credits, setCredits] = useState('100');
+  const [grantKind, setGrantKind] = useState<CreditGrantKind>('goodwill');
   const suspended = Boolean(org.account?.suspended);
   const onTrial = (org.account?.plan ?? org.plan) === 'trial';
   const d = Number(days);
   const daysOk = Number.isInteger(d) && d >= 1 && d <= 30;
+  const c = Number(credits);
+  const creditsOk = Number.isFinite(c) && c > 0 && c <= 1000;
   const done = (fresh: OrgDetailDto) => {
     qc.setQueryData(['org', org.orgId], fresh);
     void qc.invalidateQueries({ queryKey: ['orgs'] });
@@ -200,7 +214,8 @@ function AccountActions({ org }: { org: OrgDetailDto }) {
   const canTrial = can(staff, 'backoffice.accounts.trial') && onTrial && !suspended;
   const canPlan = can(staff, 'backoffice.accounts.plan') && !suspended;
   const canSuspend = can(staff, 'backoffice.accounts.suspend');
-  if (!canTrial && !canPlan && !canSuspend) return null;
+  const canCredits = can(staff, 'backoffice.accounts.credits');
+  if (!canTrial && !canPlan && !canSuspend && !canCredits) return null;
 
   return (
     <Card title="Actions">
@@ -213,6 +228,11 @@ function AccountActions({ org }: { org: OrgDetailDto }) {
         {canPlan ? (
           <Button variant="secondary" onClick={() => setOpen('plan')}>
             Change plan
+          </Button>
+        ) : null}
+        {canCredits ? (
+          <Button variant="secondary" onClick={() => setOpen('credits')}>
+            Grant Nova credits
           </Button>
         ) : null}
         {canSuspend && !suspended ? (
@@ -261,6 +281,38 @@ function AccountActions({ org }: { org: OrgDetailDto }) {
         onConfirm={async (i) =>
           done(await withStepUp(() => api.changePlan(org.orgId, { planCode, ...i })))
         }
+      />
+      <OrgActionDialog
+        open={open === 'credits'}
+        title="Grant Nova credits"
+        description="Adds to this company's allowance for the current month only. Unused credits do not roll over. One grant is up to 1,000 credits."
+        confirmLabel="Grant credits"
+        fields={
+          <>
+            <TextField
+              label="Credits"
+              inputMode="decimal"
+              value={credits}
+              onChange={(e) => setCredits(e.target.value)}
+              error={creditsOk ? undefined : 'A number above 0, up to 1,000'}
+            />
+            <Select
+              label="Kind"
+              value={grantKind}
+              onChange={(e) => setGrantKind(e.target.value as CreditGrantKind)}
+              options={GRANT_KIND_OPTIONS}
+            />
+          </>
+        }
+        onClose={close}
+        onConfirm={async (i) => {
+          if (!creditsOk) throw new Error('Credits must be above 0 and at most 1,000.');
+          done(
+            await withStepUp(() =>
+              api.grantCredits(org.orgId, { credits: c, kind: grantKind, ...i }),
+            ),
+          );
+        }}
       />
       <OrgActionDialog
         open={open === 'suspend'}
