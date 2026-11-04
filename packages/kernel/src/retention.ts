@@ -15,6 +15,7 @@ export const RETENTION_PERIODS = {
   audit_log_7y: '7 years',
   sopa_evidence_10y: '10 years', // from practical completion; customers may extend, never shorten
   project_records_10y: '10 years', // from completion, on customer close
+  wallet_document_7y: '7 years', // compliance/05 §7: 7 years after expiry or last use
   tax_gst_5y: '5 years', // ITAA 1936 s262A
   whs_incident_5y: '5 years', // from notification
   location_at_sign_in_12m: '12 months',
@@ -65,6 +66,30 @@ export async function recordRetention(
     insert into shared.retention_ledger (id, org_id, project_id, record_type, record_id, category, retain_until)
     values (${uuidv7()}, ${scope.ctx.orgId}, ${input.projectId ?? null}, ${input.recordType}, ${input.recordId},
             ${input.category}, greatest(${anchor}::timestamptz + ${period}::interval, ${extend}::timestamptz))
+    on conflict (org_id, record_type, record_id, category) do update
+      set retain_until = greatest(shared.retention_ledger.retain_until, excluded.retain_until)`);
+}
+
+/** Tags many records of one table and category at once (a claim's lines, a contract's schedule of values). */
+export async function recordRetentionBatch(
+  scope: TenantScope,
+  recordType: string,
+  category: RetentionCategory,
+  anchor: Date,
+  records: { recordId: string; projectId?: string | null }[],
+): Promise<void> {
+  if (records.length === 0) return;
+  if (Number.isNaN(anchor.getTime()) || anchor.getTime() > Date.now() + 5 * YEAR_MS)
+    throw new AppError('validation_failed', 'The retention anchor date is not plausible.');
+  // Passed as Postgres array literals (ids are uuids, so nothing needs quoting): a drizzle array parameter would
+  // expand into a record list instead.
+  const ids = `{${records.map((r) => r.recordId).join(',')}}`;
+  const projects = `{${records.map((r) => r.projectId ?? 'NULL').join(',')}}`;
+  await scope.tx.execute(sql`
+    insert into shared.retention_ledger (id, org_id, project_id, record_type, record_id, category, retain_until)
+    select gen_random_uuid(), ${scope.ctx.orgId}, p, ${recordType}, i, ${category},
+           ${anchor.toISOString()}::timestamptz + ${RETENTION_PERIODS[category]}::interval
+    from unnest(${ids}::uuid[], ${projects}::uuid[]) as t(i, p)
     on conflict (org_id, record_type, record_id, category) do update
       set retain_until = greatest(shared.retention_ledger.retain_until, excluded.retain_until)`);
 }

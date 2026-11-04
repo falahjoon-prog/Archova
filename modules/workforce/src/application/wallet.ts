@@ -1,7 +1,7 @@
 // Subcontractor compliance wallet, first slice (compliance/05): a company's own documents.
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
+import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
 import { checkNumber, last4 } from '../domain/wallet';
 import { complianceDocuments } from '../infra/tables';
@@ -142,7 +142,25 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       })
       .returning();
     audit(scope, 'created', row!);
+    await retain(scope, row!);
     return { row: row!, today: today() };
+  }
+
+  /**
+   * Kept 7 years after expiry or last use (compliance/05 §7). Each change re-tags, which only ever extends the period,
+   * so a later expiry date lengthens it and an earlier one cannot shorten it.
+   */
+  async function retain(scope: TenantScope, row: ComplianceDocumentRow) {
+    const anchor = new Date(
+      Math.max(row.updatedAt.getTime(), Date.parse(`${row.expiresOn ?? ''}T00:00:00Z`) || 0),
+    );
+    await recordRetention(scope, {
+      recordType: 'workforce.compliance_documents',
+      recordId: row.id,
+      category: 'wallet_document_7y',
+      // The kernel rejects an anchor over 5 years out; a longer-dated expiry is picked up by the next change.
+      anchor: new Date(Math.min(anchor.getTime(), Date.now() + 4 * 365 * 86_400_000)),
+    });
   }
 
   async function load(scope: TenantScope, id: string) {
@@ -211,6 +229,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     if (input.archived !== undefined && input.archived !== (cur.archivedAt !== null))
       audit(scope, input.archived ? 'archived' : 'unarchived', row);
     if (changed) audit(scope, 'updated', row);
+    await retain(scope, row);
     return { row, today: today() };
   }
 
@@ -234,6 +253,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .returning();
     if (!row) throw versionConflict();
     audit(scope, 'sighted', row);
+    await retain(scope, row);
     return { row, today: today() };
   }
 
