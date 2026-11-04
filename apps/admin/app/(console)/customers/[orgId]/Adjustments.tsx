@@ -92,105 +92,106 @@ export function Adjustments({ org }: { org: OrgDetailDto }) {
 
   return (
     <Card title="Discounts, overrides and refunds">
-      <div className="row">
-        {canDiscount ? (
-          <Button
-            variant="secondary"
-            onClick={() => setOpen('discount')}
-            disabled={hasActiveDiscount}
-          >
-            Add discount
-          </Button>
+      <div className="stack">
+        <div className="row">
+          {canDiscount ? (
+            <Button
+              variant="secondary"
+              onClick={() => setOpen('discount')}
+              disabled={hasActiveDiscount}
+            >
+              Add discount
+            </Button>
+          ) : null}
+          {canOverride ? (
+            <Button variant="secondary" onClick={() => setOpen('override')}>
+              Add override
+            </Button>
+          ) : null}
+          {canRefund ? (
+            <Button variant="secondary" onClick={() => setOpen('refund')}>
+              Record refund
+            </Button>
+          ) : null}
+        </div>
+
+        {org.discounts.length ? (
+          <>
+            <h3 style={{ margin: 0 }}>Discounts</h3>
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {org.discounts.map((x) => (
+                <li key={x.id} className="row">
+                  <StatusPill tone={PILL[x.status]}>{x.status}</StatusPill>
+                  <span>
+                    {x.percent}% off, {formatDate(x.startsOn)} to {formatDate(x.endsOn)}{' '}
+                    <span className="muted">
+                      · {x.ticketRef} · {x.reason}
+                    </span>
+                  </span>
+                  {x.status === 'active' && canDiscount ? (
+                    <Button
+                      variant="tertiary"
+                      onClick={() => setRevoke({ kind: 'discount', item: x })}
+                    >
+                      End early
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
         ) : null}
-        {canOverride ? (
-          <Button variant="secondary" onClick={() => setOpen('override')}>
-            Add override
-          </Button>
+
+        {org.overrides.length ? (
+          <>
+            <h3 style={{ margin: 0 }}>Overrides</h3>
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {org.overrides.map((x) => (
+                <li key={x.id} className="row">
+                  <StatusPill tone={PILL[x.status]}>{x.status}</StatusPill>
+                  <span>
+                    {x.kind === 'module' ? `Adds ${x.key}` : `${x.key} set to ${x.limitValue}`},
+                    until {formatDate(x.expiresAt)}{' '}
+                    <span className="muted">
+                      · {x.ticketRef} · {x.reason}
+                    </span>
+                  </span>
+                  {x.status === 'live' && canOverride ? (
+                    <Button
+                      variant="tertiary"
+                      onClick={() => setRevoke({ kind: 'override', item: x })}
+                    >
+                      End early
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </>
         ) : null}
-        {canRefund ? (
-          <Button variant="secondary" onClick={() => setOpen('refund')}>
-            Record refund
-          </Button>
+
+        {org.refunds.length ? (
+          <>
+            <h3 style={{ margin: 0 }}>Refunds</h3>
+            <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+              {org.refunds.map((x) => (
+                <li key={x.id} className="row">
+                  <StatusPill tone={statusTone(x.status)}>
+                    {STATUS_LABEL[x.status] ?? x.status}
+                  </StatusPill>
+                  <span>
+                    {formatMoney(x.amountCents)} on invoice{' '}
+                    <span className="mono">{x.invoiceRef}</span>{' '}
+                    <span className="muted">
+                      · collected {formatMoney(x.paidCents)} · {x.ticketRef} · {x.reason}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </>
         ) : null}
       </div>
-
-      {org.discounts.length ? (
-        <>
-          <h3>Discounts</h3>
-          <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {org.discounts.map((x) => (
-              <li key={x.id} className="row">
-                <StatusPill tone={PILL[x.status]}>{x.status}</StatusPill>
-                <span>
-                  {x.percent}% off, {formatDate(x.startsOn)} to {formatDate(x.endsOn)}{' '}
-                  <span className="muted">
-                    · {x.ticketRef} · {x.reason}
-                  </span>
-                </span>
-                {x.status === 'active' && canDiscount ? (
-                  <Button
-                    variant="tertiary"
-                    onClick={() => setRevoke({ kind: 'discount', item: x })}
-                  >
-                    End early
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      {org.overrides.length ? (
-        <>
-          <h3>Overrides</h3>
-          <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {org.overrides.map((x) => (
-              <li key={x.id} className="row">
-                <StatusPill tone={PILL[x.status]}>{x.status}</StatusPill>
-                <span>
-                  {x.kind === 'module' ? `Adds ${x.key}` : `${x.key} set to ${x.limitValue}`}, until{' '}
-                  {formatDate(x.expiresAt)}{' '}
-                  <span className="muted">
-                    · {x.ticketRef} · {x.reason}
-                  </span>
-                </span>
-                {x.status === 'live' && canOverride ? (
-                  <Button
-                    variant="tertiary"
-                    onClick={() => setRevoke({ kind: 'override', item: x })}
-                  >
-                    End early
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
-      {org.refunds.length ? (
-        <>
-          <h3>Refunds</h3>
-          <ul className="stack" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-            {org.refunds.map((x) => (
-              <li key={x.id} className="row">
-                <StatusPill tone={statusTone(x.status)}>
-                  {STATUS_LABEL[x.status] ?? x.status}
-                </StatusPill>
-                <span>
-                  {formatMoney(x.amountCents)} on invoice{' '}
-                  <span className="mono">{x.invoiceRef}</span>{' '}
-                  <span className="muted">
-                    · collected {formatMoney(x.paidCents)} · {x.ticketRef} · {x.reason}
-                  </span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </>
-      ) : null}
-
       <OrgActionDialog
         open={open === 'discount'}
         title="Add a discount"
