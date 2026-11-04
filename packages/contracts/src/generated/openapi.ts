@@ -1565,6 +1565,63 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova reads a contract PDF and flags where it departs from the builder's playbook (F34, first slice).
+         * @description For the commercial team (commitments admin on the project). Nova reads the PDF text layer and returns a
+         *     plain-words summary of the key terms, the notice periods and time bars (as the contract words them, never
+         *     converted to dates) and the clauses that depart from the org's playbook for this contract type. Every item
+         *     has the page, the clause number and a quote that code found on that page; an item without one is dropped, and
+         *     so is model text that uses a banned word (a view on fairness, validity, safety, legal effect or whether to
+         *     sign). Nova writes no clause wording: a flag carries the builder's own approved fallback wording from the
+         *     playbook (labelled), or none. Nothing is signed, sent, accepted or changed. The review is saved as a pending
+         *     suggestion any commercial-team member of the project can list. Statutory flags, the MOU check, per-flag
+         *     decisions, compare and export are not part of this slice. Scanned pages are not read (`unreadPages`).
+         *     Costs 40 Nova credits.
+         */
+        post: operations["reviewContractWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contractType: components["schemas"]["ContractType"];
+            };
+            cookie?: never;
+        };
+        /** The org's contract playbook for one contract type (design/09 CR4). Org admins only. */
+        get: operations["getContractPlaybook"];
+        /**
+         * Replace the playbook for one contract type with the topics sent (at most 40).
+         * @description The preferred position, the severity of a departure and the fallback wording are the builder's. Fallback
+         *     wording needs who approved it and when; past `reviewBy` Nova stops offering it. Nova never writes wording.
+         */
+        put: operations["replaceContractPlaybook"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations": {
         parameters: {
             query?: never;
@@ -6003,7 +6060,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -6316,6 +6373,118 @@ export interface components {
                 confidence: number;
                 note: string | null;
             }[];
+        };
+        /** @enum {string} */
+        ContractType: "head_contract" | "subcontract" | "consultant_agreement";
+        ContractPlaybookTopic: {
+            key: string;
+            topic: string;
+            /** @description The builder's preferred position */
+            position: string;
+            threshold: string | null;
+            /**
+             * @description How serious a departure from the position is.
+             * @enum {string}
+             */
+            severity: "high" | "medium" | "low";
+            /** @description Wording the builder's lawyer approved. The only wording Nova offers for a flagged clause. */
+            fallback: {
+                title: string;
+                wording: string;
+                approvedBy: string;
+                /** Format: date */
+                approvedOn: string;
+                /** Format: date */
+                reviewBy: string | null;
+            } | null;
+        };
+        ContractPlaybook: {
+            contractType: components["schemas"]["ContractType"];
+            topics: components["schemas"]["ContractPlaybookTopic"][];
+        };
+        ContractSourceRef: {
+            page: number;
+            /** @description The clause number as printed. */
+            clause: string | null;
+            /** @description Words found on that page. */
+            quote: string;
+        };
+        NovaContractReview: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The saved suggestion (`ais_`). */
+            suggestionId: string;
+            /** @description Fixed wording shown at the top of the review and on every export. Never dismissed. */
+            disclaimer: string;
+            fileId: string;
+            fileName: string;
+            contractType: components["schemas"]["ContractType"];
+            /** @enum {string} */
+            ourSide: "we_pay" | "we_get_paid";
+            baseForm: string | null;
+            /** @description The contract covers more than one state, so statutory checks are for a person. */
+            multiState: boolean;
+            /** @description No playbook for this contract type */
+            playbookMissing: boolean;
+            playbookTopics: number;
+            pageCount: number;
+            /** @description Pages with no text layer. Nova did not read them, so it may have missed clauses on them. */
+            unreadPages: number[];
+            /** @description Pages were cut or left out to stay inside the limits. */
+            truncated: boolean;
+            summary: {
+                /** @enum {string} */
+                key: "parties" | "contract_sum" | "start_date" | "practical_completion" | "security" | "retention" | "defects_period" | "insurance" | "liquidated_damages";
+                text: string;
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
+            /** @description Key terms Nova did not find, shown as "Not found in this contract". */
+            summaryNotFound: string[];
+            timeBars: {
+                /** @enum {string} */
+                event: "delay_notice" | "eot_claim" | "variation" | "payment_claim" | "dispute" | "other";
+                /** @description The contract's own words. */
+                period: string;
+                days: number | null;
+                /** @enum {string} */
+                dayType: "business" | "calendar" | "unclear";
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
+            /** @description Highest severity first. Each cites its clause. */
+            flags: {
+                topicKey: string;
+                topic: string;
+                /** @enum {string} */
+                severity: "high" | "medium" | "low";
+                finding: string;
+                source: components["schemas"]["ContractSourceRef"];
+                /** @description The builder's own position for the topic. */
+                position: string;
+                threshold: string | null;
+                /** @description From the playbook fallback only, never written by Nova. */
+                approvedWording: {
+                    title: string;
+                    wording: string;
+                    approvedBy: string;
+                    /** Format: date */
+                    approvedOn: string;
+                    /** @description Shown with the wording. */
+                    label: string;
+                    /** @description Says the approver is as recorded by an org admin and not checked by Archova. Shown with the approver's name. */
+                    approvalNote: string;
+                } | null;
+                /**
+                 * @description none means refer to your lawyer; review_due means the approved wording is past its review date.
+                 * @enum {string}
+                 */
+                wordingStatus: "offered" | "review_due" | "none";
+            }[];
+            /** @description What code removed from Nova's answer. */
+            dropped: {
+                notOnPage: number;
+                bannedWords: number;
+                unknownTopic: number;
+            };
         };
         NovaQuoteReading: {
             /** @description For feedback (`air_`) */
@@ -12605,6 +12774,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaTakeoffDetection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewContractWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileId: components["schemas"]["FileRef"];
+                    contractType: components["schemas"]["ContractType"];
+                    /**
+                     * @description we_pay means the builder pays the other party; we_get_paid means the builder is paid.
+                     * @enum {string}
+                     */
+                    ourSide: "we_pay" | "we_get_paid";
+                    /** @enum {string|null} */
+                    baseForm?: "as4000" | "as2124" | "as4902" | "as4903" | "other" | null;
+                    /**
+                     * @description The contract covers work in more than one state.
+                     * @default false
+                     */
+                    multiState?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description The review */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractPlaybook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contractType: components["schemas"]["ContractType"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Topics in the order the admin set */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractPlaybook"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    replaceContractPlaybook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                contractType: components["schemas"]["ContractType"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    topics: components["schemas"]["ContractPlaybookTopic"][];
+                };
+            };
+        };
+        responses: {
+            /** @description The saved playbook */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractPlaybook"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -119,7 +119,7 @@ export const AddressSchema = z.object({
 }).strict();
 export type Address = z.infer<typeof AddressSchema>;
 
-export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating"]);
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating", "contract_review"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
 export const AiFeedbackRequestSchema = z.object({
@@ -418,6 +418,38 @@ export const ContractListSchema = z.object({
   "data": z.array(ContractSchema),
 });
 export type ContractList = z.infer<typeof ContractListSchema>;
+
+export const ContractTypeSchema = z.enum(["head_contract", "subcontract", "consultant_agreement"]);
+export type ContractType = z.infer<typeof ContractTypeSchema>;
+
+export const ContractPlaybookTopicSchema = z.object({
+  "key": z.string().regex(new RegExp("^[a-z0-9_]{1,40}$")),
+  "topic": z.string().min(1).max(120),
+  "position": z.string().min(1).max(600),
+  "threshold": z.string().max(120).nullable(),
+  "severity": z.enum(["high", "medium", "low"]),
+  "fallback": z.union([z.object({
+  "title": z.string().min(1).max(160),
+  "wording": z.string().min(1).max(4000),
+  "approvedBy": z.string().min(1).max(160),
+  "approvedOn": z.string().date(),
+  "reviewBy": z.string().date().nullable(),
+}).strict(), z.null()]),
+}).strict();
+export type ContractPlaybookTopic = z.infer<typeof ContractPlaybookTopicSchema>;
+
+export const ContractPlaybookSchema = z.object({
+  "contractType": ContractTypeSchema,
+  "topics": z.array(ContractPlaybookTopicSchema),
+});
+export type ContractPlaybook = z.infer<typeof ContractPlaybookSchema>;
+
+export const ContractSourceRefSchema = z.object({
+  "page": z.number().int().min(1),
+  "clause": z.string().nullable(),
+  "quote": z.string(),
+});
+export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
 export const CorrespondenceStatusSchema = z.enum(["draft", "sent", "responded", "closed", "void"]);
 export type CorrespondenceStatus = z.infer<typeof CorrespondenceStatusSchema>;
@@ -2577,6 +2609,60 @@ export const NovaAnswerSchema = z.object({
   "closestMatches": z.array(NovaSourceSchema),
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
+
+export const NovaContractReviewSchema = z.object({
+  "runId": z.string(),
+  "suggestionId": z.string(),
+  "disclaimer": z.string(),
+  "fileId": z.string(),
+  "fileName": z.string(),
+  "contractType": ContractTypeSchema,
+  "ourSide": z.enum(["we_pay", "we_get_paid"]),
+  "baseForm": z.string().nullable(),
+  "multiState": z.boolean(),
+  "playbookMissing": z.boolean(),
+  "playbookTopics": z.number().int().min(0),
+  "pageCount": z.number().int().min(1),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+  "summary": z.array(z.object({
+  "key": z.enum(["parties", "contract_sum", "start_date", "practical_completion", "security", "retention", "defects_period", "insurance", "liquidated_damages"]),
+  "text": z.string(),
+  "source": ContractSourceRefSchema,
+})),
+  "summaryNotFound": z.array(z.string()),
+  "timeBars": z.array(z.object({
+  "event": z.enum(["delay_notice", "eot_claim", "variation", "payment_claim", "dispute", "other"]),
+  "period": z.string(),
+  "days": z.number().int().nullable(),
+  "dayType": z.enum(["business", "calendar", "unclear"]),
+  "source": ContractSourceRefSchema,
+})),
+  "flags": z.array(z.object({
+  "topicKey": z.string(),
+  "topic": z.string(),
+  "severity": z.enum(["high", "medium", "low"]),
+  "finding": z.string(),
+  "source": ContractSourceRefSchema,
+  "position": z.string(),
+  "threshold": z.string().nullable(),
+  "approvedWording": z.union([z.object({
+  "title": z.string(),
+  "wording": z.string(),
+  "approvedBy": z.string(),
+  "approvedOn": z.string().date(),
+  "label": z.string(),
+  "approvalNote": z.string(),
+}), z.null()]),
+  "wordingStatus": z.enum(["offered", "review_due", "none"]),
+})),
+  "dropped": z.object({
+  "notOnPage": z.number().int().min(0),
+  "bannedWords": z.number().int().min(0),
+  "unknownTopic": z.number().int().min(0),
+}),
+});
+export type NovaContractReview = z.infer<typeof NovaContractReviewSchema>;
 
 export const NovaDefectTagSchema = z.object({
   "runId": z.string(),

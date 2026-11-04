@@ -23,4 +23,7 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'ai.induction.draft', scope: 'project', tool: 'project_admin', level: 'standard' },
   // F31: whoever runs an import asks Nova where the columns go. Moves to the import tool when the importer exists.
   { key: 'ai.import_mapping.suggest', scope: 'project', tool: 'project_admin', level: 'standard' },
+  // F34: the commercial team (commitments admin on the project) reads contract reviews and decides their flags. The
+  // playbook is kept by org admins with `ai.settings.manage`.
+  { key: 'ai.contracts.review', scope: 'project', tool: 'commitments', level: 'admin' },
 ];

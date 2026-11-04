@@ -2054,6 +2054,105 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaTakeoffDetection' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: reviewContractWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: Nova reads a contract PDF and flags where it departs from the builder's playbook (F34, first slice).
+      description: |
+        For the commercial team (commitments admin on the project). Nova reads the PDF text layer and returns a
+        plain-words summary of the key terms, the notice periods and time bars (as the contract words them, never
+        converted to dates) and the clauses that depart from the org's playbook for this contract type. Every item
+        has the page, the clause number and a quote that code found on that page; an item without one is dropped, and
+        so is model text that uses a banned word (a view on fairness, validity, safety, legal effect or whether to
+        sign). Nova writes no clause wording: a flag carries the builder's own approved fallback wording from the
+        playbook (labelled), or none. Nothing is signed, sent, accepted or changed. The review is saved as a pending
+        suggestion any commercial-team member of the project can list. Statutory flags, the MOU check, per-flag
+        decisions, compare and export are not part of this slice. Scanned pages are not read (`unreadPages`).
+        Costs 40 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [fileId, contractType, ourSide]
+              properties:
+                fileId: { $ref: '#/components/schemas/FileRef' }
+                contractType: { $ref: '#/components/schemas/ContractType' }
+                ourSide:
+                  description: we_pay means the builder pays the other party; we_get_paid means the builder is paid.
+                  type: string
+                  enum: [we_pay, we_get_paid]
+                baseForm:
+                  type: [string, 'null']
+                  enum: [as4000, as2124, as4902, as4903, other, null]
+                multiState:
+                  description: The contract covers work in more than one state.
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: The review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/ai/contract-playbooks/{contractType}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: contractType
+        in: path
+        required: true
+        schema: { $ref: '#/components/schemas/ContractType' }
+    get:
+      operationId: getContractPlaybook
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.settings.manage
+      summary: The org's contract playbook for one contract type (design/09 CR4). Org admins only.
+      responses:
+        '200':
+          description: Topics in the order the admin set
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractPlaybook' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: replaceContractPlaybook
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.settings.manage
+      summary: Replace the playbook for one contract type with the topics sent (at most 40).
+      description: |
+        The preferred position, the severity of a departure and the fallback wording are the builder's. Fallback
+        wording needs who approved it and when; past `reviewBy` Nova stops offering it. Nova never writes wording.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [topics]
+              properties:
+                topics:
+                  type: array
+                  maxItems: 40
+                  items: { $ref: '#/components/schemas/ContractPlaybookTopic' }
+      responses:
+        '200':
+          description: The saved playbook
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractPlaybook' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -8502,6 +8601,7 @@ components:
           defect_tagging,
           minutes,
           estimating,
+          contract_review,
         ]
     AiUsage:
       type: object
@@ -9047,6 +9147,200 @@ components:
                     y: { type: number }
               confidence: { type: number, minimum: 0, maximum: 1 }
               note: { type: [string, 'null'] }
+    ContractType:
+      type: string
+      enum: [head_contract, subcontract, consultant_agreement]
+    ContractPlaybookTopic:
+      type: object
+      additionalProperties: false
+      required: [key, topic, position, threshold, severity, fallback]
+      properties:
+        key: { type: string, pattern: '^[a-z0-9_]{1,40}$' }
+        topic: { type: string, minLength: 1, maxLength: 120 }
+        position:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 600,
+            description: The builder's preferred position,
+            in their words.,
+          }
+        threshold: { type: [string, 'null'], maxLength: 120 }
+        severity:
+          {
+            type: string,
+            enum: [high, medium, low],
+            description: How serious a departure from the position is.,
+          }
+        fallback:
+          description: Wording the builder's lawyer approved. The only wording Nova offers for a flagged clause.
+          oneOf:
+            - type: object
+              additionalProperties: false
+              required: [title, wording, approvedBy, approvedOn, reviewBy]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 160 }
+                wording: { type: string, minLength: 1, maxLength: 4000 }
+                approvedBy: { type: string, minLength: 1, maxLength: 160 }
+                approvedOn: { type: string, format: date }
+                reviewBy: { type: [string, 'null'], format: date }
+            - type: 'null'
+    ContractPlaybook:
+      type: object
+      required: [contractType, topics]
+      properties:
+        contractType: { $ref: '#/components/schemas/ContractType' }
+        topics:
+          type: array
+          items: { $ref: '#/components/schemas/ContractPlaybookTopic' }
+    ContractSourceRef:
+      type: object
+      required: [page, clause, quote]
+      properties:
+        page: { type: integer, minimum: 1 }
+        clause: { type: [string, 'null'], description: The clause number as printed. }
+        quote: { type: string, description: Words found on that page. }
+    NovaContractReview:
+      type: object
+      required:
+        - runId
+        - suggestionId
+        - disclaimer
+        - fileId
+        - fileName
+        - contractType
+        - ourSide
+        - baseForm
+        - multiState
+        - playbookMissing
+        - playbookTopics
+        - pageCount
+        - unreadPages
+        - truncated
+        - summary
+        - summaryNotFound
+        - timeBars
+        - flags
+        - dropped
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        suggestionId: { type: string, description: The saved suggestion (`ais_`). }
+        disclaimer:
+          type: string
+          description: Fixed wording shown at the top of the review and on every export. Never dismissed.
+        fileId: { type: string }
+        fileName: { type: string }
+        contractType: { $ref: '#/components/schemas/ContractType' }
+        ourSide: { type: string, enum: [we_pay, we_get_paid] }
+        baseForm: { type: [string, 'null'] }
+        multiState:
+          type: boolean
+          description: The contract covers more than one state, so statutory checks are for a person.
+        playbookMissing:
+          {
+            type: boolean,
+            description: No playbook for this contract type,
+            so no departures were looked for.,
+          }
+        playbookTopics: { type: integer, minimum: 0 }
+        pageCount: { type: integer, minimum: 1 }
+        unreadPages:
+          type: array
+          description: Pages with no text layer. Nova did not read them, so it may have missed clauses on them.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          { type: boolean, description: Pages were cut or left out to stay inside the limits. }
+        summary:
+          type: array
+          items:
+            type: object
+            required: [key, text, source]
+            properties:
+              key:
+                type: string
+                enum:
+                  - parties
+                  - contract_sum
+                  - start_date
+                  - practical_completion
+                  - security
+                  - retention
+                  - defects_period
+                  - insurance
+                  - liquidated_damages
+              text: { type: string }
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
+        summaryNotFound:
+          type: array
+          description: Key terms Nova did not find, shown as "Not found in this contract".
+          items: { type: string }
+        timeBars:
+          type: array
+          items:
+            type: object
+            required: [event, period, days, dayType, source]
+            properties:
+              event:
+                type: string
+                enum: [delay_notice, eot_claim, variation, payment_claim, dispute, other]
+              period: { type: string, description: The contract's own words. }
+              days: { type: [integer, 'null'] }
+              dayType: { type: string, enum: [business, calendar, unclear] }
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
+        flags:
+          type: array
+          description: Highest severity first. Each cites its clause.
+          items:
+            type: object
+            required:
+              [
+                topicKey,
+                topic,
+                severity,
+                finding,
+                source,
+                position,
+                threshold,
+                approvedWording,
+                wordingStatus,
+              ]
+            properties:
+              topicKey: { type: string }
+              topic: { type: string }
+              severity: { type: string, enum: [high, medium, low] }
+              finding: { type: string }
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
+              position: { type: string, description: The builder's own position for the topic. }
+              threshold: { type: [string, 'null'] }
+              approvedWording:
+                description: From the playbook fallback only, never written by Nova.
+                oneOf:
+                  - type: object
+                    required: [title, wording, approvedBy, approvedOn, label, approvalNote]
+                    properties:
+                      title: { type: string }
+                      wording: { type: string }
+                      approvedBy: { type: string }
+                      approvedOn: { type: string, format: date }
+                      label: { type: string, description: Shown with the wording. }
+                      approvalNote:
+                        {
+                          type: string,
+                          description: Says the approver is as recorded by an org admin and not checked by Archova. Shown with the approver's name.,
+                        }
+                  - type: 'null'
+              wordingStatus:
+                description: none means refer to your lawyer; review_due means the approved wording is past its review date.
+                type: string
+                enum: [offered, review_due, none]
+        dropped:
+          type: object
+          description: What code removed from Nova's answer.
+          required: [notOnPage, bannedWords, unknownTopic]
+          properties:
+            notOnPage: { type: integer, minimum: 0 }
+            bannedWords: { type: integer, minimum: 0 }
+            unknownTopic: { type: integer, minimum: 0 }
     NovaQuoteReading:
       type: object
       required:

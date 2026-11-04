@@ -2,6 +2,8 @@
 // the codebase talks to an AI vendor (X26).
 import type { ModelTier, QuoteScopeLine } from '@archova/ai-prompts';
 import { defineModule, type KernelServices, type TenantScope } from '@archova/kernel';
+import { createContractPlaybookService } from './application/contract-playbook';
+import { createContractReviewService } from './application/contract-review';
 import { createAdminService } from './application/admin';
 import { createCreditGrantService } from './application/credit-grants';
 import { createAskService } from './application/ask';
@@ -406,6 +408,15 @@ export function createAiModule(
     readFile: deps.readFile,
     quotePackage: deps.quotePackage,
   });
+  const contractPlaybooks = createContractPlaybookService();
+  const contractReviews = createContractReviewService({
+    database: services.database,
+    gateway,
+    playbooks: contractPlaybooks,
+    assert: deps.assert,
+    readFile: deps.readFile,
+    orgTimeZone: deps.orgTimeZone,
+  });
   const quoteNegotiations = createQuoteNegotiateService({
     database: services.database,
     gateway,
@@ -472,6 +483,8 @@ export function createAiModule(
       importMappings,
       quoteReads,
       quoteNegotiations,
+      contractPlaybooks,
+      contractReviews,
       speech,
       takeoffDetect,
     ),
@@ -513,6 +526,8 @@ export function createAiModule(
       readQuote: quoteReads.read,
       /** Nova: help negotiating a confirmed quote, against a target price or the field; nothing is saved or sent. */
       negotiateQuote: quoteNegotiations.negotiate,
+      /** F34: a contract PDF read into a summary, time bars and playbook departures; nothing is saved but the review. */
+      reviewContract: contractReviews.review,
       /** Nova Esti: items of one kind found on a drawing sheet, as marks to accept or reject; nothing is saved. */
       detectTakeoff: takeoffDetect.detect,
       /** Nova listening: a short spoken question turned into text, in Australia; the clip is not kept. */
