@@ -145,3 +145,33 @@ export function groupByCompany<
   }
   return groups;
 }
+
+/** A worker, visitor or delivery driver known to the builder (ATT-AC2). */
+export interface Worker {
+  id: string;
+  fullName: string;
+  companyId: string | null;
+  /** A company typed at the gate, waiting for a site manager to pick the directory company. */
+  companyNameOther: string | null;
+  phone: string | null;
+  email: string | null;
+  kind: WorkerKind;
+  status: 'active' | 'inactive';
+  version: number;
+}
+
+export interface WorkerFilters {
+  companyId?: string;
+  kind?: WorkerKind;
+  q?: string;
+}
+
+export interface WorkerInput {
+  fullName: string;
+  /** A directory company, or `null` with `companyNameOther` for one that isn't in the directory. */
+  companyId: string | null;
+  companyNameOther: string | null;
+  phone: string | null;
+  email: string | null;
+  kind: WorkerKind;
+}

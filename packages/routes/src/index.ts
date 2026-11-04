@@ -65,6 +65,8 @@ export const webRoutes = {
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
+  attendanceWorkers: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/workers`,
   attendanceRollCall: (orgSlug: string, projectId: string, rollCallId?: string) =>
     `${p(orgSlug, projectId)}/attendance/roll-call${rollCallId ? `?id=${enc(rollCallId)}` : ''}`,
   attendanceSites: (orgSlug: string, projectId: string) =>

@@ -11,6 +11,9 @@ import type {
   RollCall,
   RollMark,
   SiteInput,
+  Worker,
+  WorkerFilters,
+  WorkerInput,
 } from '../lib/types';
 
 export interface AttendanceSource {
@@ -43,6 +46,14 @@ export interface AttendanceSource {
     status: Exclude<RollMark, 'unmarked'>,
   ): Promise<RollCall>;
   endRollCall(projectId: string, rollCallId: string): Promise<RollCall>;
+  workers(projectId: string, filters: WorkerFilters): Promise<Worker[]>;
+  createWorker(projectId: string, input: WorkerInput): Promise<Worker>;
+  /** Changes a worker; picking a directory company confirms one typed at the gate. */
+  updateWorker(
+    projectId: string,
+    worker: Worker,
+    patch: Partial<WorkerInput> & { status?: Worker['status'] },
+  ): Promise<Worker>;
 }
 
 const entry = (over: Partial<AttendanceEntry> & Pick<AttendanceEntry, 'id' | 'workerName'>) =>
@@ -261,4 +272,77 @@ export function resetRollCallPreview() {
   rollStores.reset();
 }
 
-export const attendancePreview: AttendanceSource = { ...entryReads, ...siteOps, ...rollOps };
+const workerStores = projectStores<Worker[]>(() => [
+  {
+    id: 'wkr_1',
+    fullName: 'Sam Nguyen',
+    companyId: 'cmp_elec',
+    companyNameOther: null,
+    phone: '0400 111 222',
+    email: null,
+    kind: 'worker',
+    status: 'active',
+    version: 1,
+  },
+  {
+    id: 'wkr_2',
+    fullName: 'Jo Tran',
+    companyId: null,
+    companyNameOther: 'Hunter Concrete',
+    phone: '0400 333 444',
+    email: null,
+    kind: 'delivery',
+    status: 'active',
+    version: 1,
+  },
+  {
+    id: 'wkr_3',
+    fullName: 'Liam Ford',
+    companyId: 'cmp_dry',
+    companyNameOther: null,
+    phone: null,
+    email: 'liam@example.com',
+    kind: 'worker',
+    status: 'inactive',
+    version: 2,
+  },
+]);
+
+export function resetWorkerPreview() {
+  workerStores.reset();
+}
+
+const workerOps: Pick<AttendanceSource, 'workers' | 'createWorker' | 'updateWorker'> = {
+  workers: (projectId, f) => {
+    const q = f.q?.toLowerCase();
+    return delay(
+      workerStores
+        .get(projectId)
+        .filter(
+          (w) =>
+            (!f.companyId || w.companyId === f.companyId) &&
+            (!f.kind || w.kind === f.kind) &&
+            (!q || w.fullName.toLowerCase().includes(q)),
+        ),
+    );
+  },
+  createWorker: (projectId, input) => {
+    const w: Worker = { id: mockId('wkr'), status: 'active', version: 1, ...input };
+    workerStores.get(projectId).push(w);
+    return delay(w);
+  },
+  updateWorker: (projectId, worker, patch) => {
+    const hit = workerStores.get(projectId).find((w) => w.id === worker.id)!;
+    Object.assign(hit, patch, { version: hit.version + 1 });
+    // A directory company replaces the name typed at the gate (ATT-AC2).
+    if (patch.companyId) hit.companyNameOther = null;
+    return delay(hit);
+  },
+};
+
+export const attendancePreview: AttendanceSource = {
+  ...entryReads,
+  ...siteOps,
+  ...rollOps,
+  ...workerOps,
+};

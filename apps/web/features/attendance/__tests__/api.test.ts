@@ -154,4 +154,42 @@ describe('attendance api', () => {
       status: 'accounted_for',
     });
   });
+
+  it('lists workers with filters and creates one without empty fields', async () => {
+    const W = '/v1/orgs/{orgId}/projects/{projectId}/workers';
+    const apiWorker = {
+      id: 'wkr_1',
+      userId: null,
+      companyId: null,
+      companyNameOther: 'Hunter Concrete',
+      fullName: 'Jo Tran',
+      phone: null,
+      email: null,
+      kind: 'delivery',
+      status: 'active',
+      version: 1,
+    };
+    fake.on('GET', W, () => ({ data: [apiWorker] }));
+    fake.on('POST', W, () => apiWorker);
+    const api = createAttendanceApi('org_1');
+    const list = await api.workers('prj_1', { q: 'jo', kind: 'delivery' });
+    expect(list[0]).toMatchObject({ fullName: 'Jo Tran', companyNameOther: 'Hunter Concrete' });
+    expect(fake.callsTo('GET', W)[0]!.init.params?.query).toMatchObject({
+      q: 'jo',
+      kind: 'delivery',
+    });
+    await api.createWorker('prj_1', {
+      fullName: 'Jo Tran',
+      companyId: null,
+      companyNameOther: 'Hunter Concrete',
+      phone: null,
+      email: null,
+      kind: 'delivery',
+    });
+    expect(fake.callsTo('POST', W)[0]!.init.body).toEqual({
+      fullName: 'Jo Tran',
+      kind: 'delivery',
+      companyNameOther: 'Hunter Concrete',
+    });
+  });
 });

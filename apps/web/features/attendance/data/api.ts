@@ -1,13 +1,26 @@
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
-import type { AttendanceEntry, AttendanceSite, Gate, OnSite, RollCall } from '../lib/types';
+import type { AttendanceEntry, AttendanceSite, Gate, OnSite, RollCall, Worker } from '../lib/types';
 import type { AttendanceSource } from './source';
 
 type ApiEntry = components['schemas']['AttendanceEntry'];
 type ApiSite = components['schemas']['AttendanceSite'];
 type ApiGate = components['schemas']['Gate'];
 type ApiRollCall = components['schemas']['RollCall'];
+type ApiWorker = components['schemas']['Worker'];
+
+export const toWorker = (w: ApiWorker): Worker => ({
+  id: w.id,
+  fullName: w.fullName,
+  companyId: w.companyId,
+  companyNameOther: w.companyNameOther,
+  phone: w.phone,
+  email: w.email,
+  kind: w.kind,
+  status: w.status,
+  version: w.version,
+});
 
 export const toRollCall = (r: ApiRollCall): RollCall => ({
   id: r.id,
@@ -29,6 +42,7 @@ export const toRollCall = (r: ApiRollCall): RollCall => ({
 });
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/attendance' as const;
+const W = '/v1/orgs/{orgId}/projects/{projectId}/workers' as const;
 const ifMatch = (version: number) => ({ 'If-Match': `"${version}"` });
 
 export const toGate = (g: ApiGate): Gate => ({
@@ -182,6 +196,54 @@ export function createAttendanceApi(orgId: string): AttendanceSource {
         unwrap(
           await api.POST(`${P}/roll-calls/{rollCallId}/end`, {
             params: { path: { orgId, projectId, rollCallId } },
+          }),
+        ),
+      );
+    },
+    async workers(projectId, f) {
+      const r = unwrap(
+        await api.GET(W, {
+          params: {
+            path: { orgId, projectId },
+            query: { companyId: f.companyId, kind: f.kind, q: f.q },
+          },
+        }),
+      );
+      return r.data.map(toWorker);
+    },
+    async createWorker(projectId, input) {
+      // Empty optional fields are left out; the create request has no use for explicit nulls.
+      const body = {
+        fullName: input.fullName,
+        kind: input.kind,
+        ...(input.companyId ? { companyId: input.companyId } : {}),
+        ...(!input.companyId && input.companyNameOther
+          ? { companyNameOther: input.companyNameOther }
+          : {}),
+        ...(input.phone ? { phone: input.phone } : {}),
+        ...(input.email ? { email: input.email } : {}),
+      };
+      return toWorker(
+        unwrap(
+          await api.POST(W, {
+            params: {
+              path: { orgId, projectId },
+              header: { 'Idempotency-Key': crypto.randomUUID() },
+            },
+            body,
+          }),
+        ),
+      );
+    },
+    async updateWorker(projectId, worker, patch) {
+      return toWorker(
+        unwrap(
+          await api.PATCH(`${W}/{workerId}`, {
+            params: {
+              path: { orgId, projectId, workerId: worker.id },
+              header: ifMatch(worker.version),
+            },
+            body: patch,
           }),
         ),
       );
