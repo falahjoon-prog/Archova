@@ -45,6 +45,9 @@ beforeAll(async () => {
       getPreviousDrawingRevision: async () => null,
       getMarkup: async () => ({ shapes: [] }),
       dayForSummary: async () => null,
+      meetingForMinutes: async () => {
+        throw new Error('not used');
+      },
       projectCompanies: async () => [],
       openDefectsNear: async () => [],
       quotePackage: async () => {

@@ -1676,6 +1676,11 @@ export const DraftDrawingRevisionInputSchema = z.object({
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
 
+export const DraftMinutesRequestSchema = z.object({
+  "notes": z.string().min(1).max(40000),
+}).strict();
+export type DraftMinutesRequest = z.infer<typeof DraftMinutesRequestSchema>;
+
 export const DrainGrantSchema = z.object({
   "token": z.string(),
   "expiresAt": z.string().datetime({ offset: true }),
