@@ -6260,6 +6260,8 @@ export interface components {
             ticketRef: string;
             /** @enum {string} */
             level: "view";
+            /** @description The projects support can see, or null when the grant covers the whole company. */
+            projectIds: string[] | null;
             grantedBy: string;
             /** Format: date-time */
             createdAt: string;
@@ -6309,6 +6311,8 @@ export interface components {
         CreateSupportAccessGrantRequest: {
             ticketRef: string;
             hours: number;
+            /** @description Limit support to these projects. Leave out to cover the whole company. */
+            projectIds?: string[];
         };
         Abn: string;
         CreateOrgRequest: {

@@ -26,12 +26,14 @@ import {
 
 /** Support access lives with the console's records; the org's own admin reads and changes it through these. */
 export interface SupportAccessPort {
-  list(orgId: string): Promise<unknown>;
+  list(
+    orgId: string,
+  ): Promise<{ grants: Array<{ projectIds: string[] | null }>; sessions: unknown[] }>;
   grant(
     orgId: string,
     by: { userId: string; name: string },
-    input: { ticketRef: string; hours: number },
-  ): Promise<unknown>;
+    input: { ticketRef: string; hours: number; projectIds?: string[] },
+  ): Promise<{ projectIds: string[] | null }>;
   revoke(orgId: string, grantId: string): Promise<void>;
   banner(orgId: string): Promise<{ active: boolean; since: string | null }>;
   listStaffActions(orgId: string): Promise<unknown[]>;
@@ -47,6 +49,12 @@ export interface PlatformRouteDeps {
   companies: CompanyService;
   members: MemberService;
 }
+
+/** Customers see public project ids, never the stored uuids. */
+const withEncodedProjects = <G extends { projectIds: string[] | null }>(g: G) => ({
+  ...g,
+  projectIds: g.projectIds ? g.projectIds.map((id) => encodeId('project', id)) : null,
+});
 
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
@@ -105,17 +113,32 @@ export function platformRoutes(d: PlatformRouteDeps) {
     },
     getSupportAccess: async (input) => {
       const t = requireOrgAdmin(input);
-      return { status: 200, body: await supportPort().list(t.orgId) };
+      const view = await supportPort().list(t.orgId);
+      return { status: 200, body: { ...view, grants: view.grants.map(withEncodedProjects) } };
     },
     createSupportAccessGrant: async (input) => {
       const t = requireOrgAdmin(input);
       const user = await d.identity.getUser(t.userId);
+      // A grant may be limited to chosen projects; each must be a live project of this company.
+      const wanted = [...new Set((input.body.projectIds ?? []).map(projectUuid))];
+      if (wanted.length) {
+        const found = await d.database.withTenantTx(
+          t,
+          (s) => d.projects.existingIds(s, wanted),
+          ro,
+        );
+        if (wanted.some((id) => !found.has(id))) throw new AppError('project.not_found');
+      }
       const grant = await supportPort().grant(
         t.orgId,
         { userId: t.userId, name: user?.name ?? 'An org admin' },
-        input.body,
+        {
+          ticketRef: input.body.ticketRef,
+          hours: input.body.hours,
+          ...(wanted.length ? { projectIds: wanted } : {}),
+        },
       );
-      return { status: 201, body: grant };
+      return { status: 201, body: withEncodedProjects(grant) };
     },
     listStaffActions: async (input) => {
       const t = requireOrgAdmin(input);

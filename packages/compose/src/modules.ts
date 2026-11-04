@@ -1,5 +1,11 @@
 // Composition root: the list of modules this app loads (backend 01 §2). Adding a module means adding it here.
-import type { Database, KernelServices, MessageSender, RouteTable } from '@archova/kernel';
+import {
+  AppError,
+  type Database,
+  type KernelServices,
+  type MessageSender,
+  type RouteTable,
+} from '@archova/kernel';
 import {
   AI_PERMISSIONS,
   createAiModule,
@@ -97,8 +103,36 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     accounts: billing.api.accounts,
     credits: () => ({ grantCredits: aiApi!.grantCredits }),
     supportReads: () => ({
-      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+      projects: (orgId, staffId, projectIds) =>
+        platformApi!.listProjectsForSupport(orgId, staffId, projectIds),
     }),
+    notifySupportSession: async (notice) => {
+      const admins = await platformApi!.orgAdminContacts(notice.orgId);
+      // No one to tell means no session: the company must always be able to learn who is looking.
+      if (admins.length === 0)
+        throw new AppError(
+          'backoffice.support_notify_failed',
+          'This company has no active admin to tell.',
+        );
+      const scope = notice.projectIds ? 'only the projects you chose' : 'your whole company';
+      // Every admin must be told; one failed send fails the lot so the session does not stand.
+      await Promise.all(
+        admins.map((a) =>
+          opts.messages.email(a.email, {
+            subject: 'Archova support has opened a session on your account',
+            text: [
+              `Hi ${a.name},`,
+              '',
+              `${notice.staffName} from Archova support opened a view-only session on your company for ticket ${notice.ticketRef}.`,
+              `It can see ${scope}, and ends at ${notice.expiresAt.toISOString()}.`,
+              'Every page they view is listed under Settings, Support access, where you can withdraw access at any time.',
+              '',
+              'If you did not expect this, withdraw access now and tell us.',
+            ].join('\n'),
+          }),
+        ),
+      );
+    },
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
