@@ -7,6 +7,9 @@ const DAY_MS = 86_400_000;
 export const MAX_TRIAL_EXTENSION_DAYS = 30;
 export const MAX_TRIAL_TOTAL_DAYS = 120;
 
+/** A new company starts on a 14-day trial. A default john can change; staff can extend it (Sam 12 §3). */
+export const DEFAULT_TRIAL_DAYS = 14;
+
 export type OrgAccount = typeof orgAccounts.$inferSelect;
 
 /** What the account starts from when the first staff action creates its row (from the tenant directory). */
@@ -161,7 +164,15 @@ export function createAccountService() {
     return row ?? null;
   }
 
-  return { get, extendTrial, setPlan, suspend, reactivate, expireTrial };
+  /** Gives a newly created company its trial end date. Idempotent: an existing account row is left as it is. */
+  async function startTrial(tx: Tx, orgId: string, now: Date): Promise<OrgAccount> {
+    return ensure(tx, orgId, {
+      planCode: 'trial',
+      trialEndsAt: new Date(now.getTime() + DEFAULT_TRIAL_DAYS * DAY_MS),
+    });
+  }
+
+  return { get, startTrial, extendTrial, setPlan, suspend, reactivate, expireTrial };
 }
 
 export type AccountService = ReturnType<typeof createAccountService>;
