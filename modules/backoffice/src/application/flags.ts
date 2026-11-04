@@ -3,6 +3,7 @@ import type { CohortDto, FlagChangeInput, FlagDto } from '@archova/contracts';
 import { decodeId, encodeId, uuidv7 } from '@archova/domain';
 import {
   AppError,
+  FLAG_KEYS,
   FLAG_REGISTRY,
   evaluateFlag,
   type FlagRules,
@@ -280,31 +281,50 @@ export function createFlagService(
     });
   }
 
-  /** Server-side evaluation for one org: used by the kernel's `ctx.flags.isOn`. Unknown keys are off. */
-  async function isOn(key: string, orgId: string): Promise<boolean> {
-    if (!FLAG_REGISTRY.some((f) => f.key === key)) return false;
+  /** Evaluates the named registry flags for one org inside one transaction. */
+  async function evaluateFor(
+    orgId: string,
+    keys: readonly string[],
+  ): Promise<Record<string, boolean>> {
+    const wanted = keys.filter((k) => FLAG_REGISTRY.some((f) => f.key === k));
+    const out: Record<string, boolean> = Object.fromEntries(keys.map((k) => [k, false]));
+    if (!wanted.length) return out;
     return tx(async (t) => {
-      const [row] = await t.select().from(flags).where(eq(flags.key, key));
-      if (!row) return false;
-      const [targets, mine] = await Promise.all([
-        t.select().from(flagTargets).where(eq(flagTargets.flagKey, key)),
+      const [rows, targets, mine] = await Promise.all([
+        t.select().from(flags).where(inArray(flags.key, wanted)),
+        t.select().from(flagTargets).where(inArray(flagTargets.flagKey, wanted)),
         t
           .select({ id: cohortMembers.cohortId })
           .from(cohortMembers)
           .where(eq(cohortMembers.orgId, orgId)),
       ]);
-      const rules: FlagRules = {
-        key,
-        enabledForAll: row.enabledForAll,
-        percent: row.percent,
-        orgIds: new Set(targets.filter((x) => x.kind === 'org').map((x) => x.refId)),
-        cohortIds: new Set(targets.filter((x) => x.kind === 'cohort').map((x) => x.refId)),
-      };
-      return evaluateFlag(rules, { id: orgId, cohortIds: mine.map((m) => m.id) });
+      const cohortIds = mine.map((m) => m.id);
+      for (const row of rows) {
+        const mineTargets = targets.filter((x) => x.flagKey === row.key);
+        const rules: FlagRules = {
+          key: row.key,
+          enabledForAll: row.enabledForAll,
+          percent: row.percent,
+          orgIds: new Set(mineTargets.filter((x) => x.kind === 'org').map((x) => x.refId)),
+          cohortIds: new Set(mineTargets.filter((x) => x.kind === 'cohort').map((x) => x.refId)),
+        };
+        out[row.key] = evaluateFlag(rules, { id: orgId, cohortIds });
+      }
+      return out;
     });
   }
 
-  return { list, update, kill, listCohorts, createCohort, addMember, removeMember, isOn };
+  /** Server-side evaluation for one org: used by the kernel's `ctx.flags.isOn`. Unknown keys are off. */
+  async function isOn(key: string, orgId: string): Promise<boolean> {
+    return (await evaluateFor(orgId, [key]))[key] ?? false;
+  }
+
+  /** Every registry flag for one org, for the client (`GET /v1/orgs/{orgId}/feature-flags`). */
+  async function forOrg(orgId: string): Promise<Record<string, boolean>> {
+    return evaluateFor(orgId, FLAG_KEYS);
+  }
+
+  return { list, update, kill, listCohorts, createCohort, addMember, removeMember, isOn, forOrg };
 }
 
 export type FlagService = ReturnType<typeof createFlagService>;

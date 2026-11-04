@@ -49,6 +49,7 @@ export const PROBLEM_CODES = {
   'org.slug_taken': 409,
   'org.read_only': 403,
   'entitlement-required': 403,
+  'feature-unavailable': 404,
   'access.denied': 403,
   'project.not_found': 404,
   'project.number_taken': 409,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { isFlagOn } from './context';
 import { evaluateFlag, flagBucket, type FlagRules } from './flags';
 
 const rules = (over: Partial<FlagRules> = {}): FlagRules => ({
@@ -33,5 +34,14 @@ describe('evaluateFlag', () => {
     expect(ids.every((id) => evaluateFlag(rules({ percent: 100 }), { id, cohortIds: [] }))).toBe(
       true,
     );
+  });
+});
+
+describe('isFlagOn', () => {
+  it('is off without a reader and follows the reader when there is one', async () => {
+    expect(await isFlagOn({}, 'nova_estimating')).toBe(false);
+    const flags = { isOn: async (k: string) => k === 'nova_estimating' };
+    expect(await isFlagOn({ flags }, 'nova_estimating')).toBe(true);
+    expect(await isFlagOn({ flags }, 'subcontractor_wallet')).toBe(false);
   });
 });

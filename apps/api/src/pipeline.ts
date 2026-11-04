@@ -10,6 +10,7 @@ import {
   type HandlerResult,
   type Principal,
   type RouteTable,
+  type FlagReader,
   type TenantContext,
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE, requiredScope, scopeAllows } from '@archova/mod-identity';
@@ -135,12 +136,25 @@ export function registerOperations(
     );
     if (!access) throw new AppError('org.not_found');
     const entitlements = await modules.billing.api.entitlements.forOrg(orgId);
+    // Evaluated lazily and at most once per key per request, so routes without a flag pay nothing.
+    const seen = new Map<string, Promise<boolean>>();
+    const flags: FlagReader = {
+      isOn: (key) => {
+        let hit = seen.get(key);
+        if (!hit) {
+          hit = modules.backoffice.api.flags.isOn(key, orgId);
+          seen.set(key, hit);
+        }
+        return hit;
+      },
+    };
     return {
       orgId,
       userId: principal.userId,
       principalType: access.principalType,
       orgRole: access.orgRole,
       entitlements,
+      flags,
       requestId,
     };
   }
@@ -323,6 +337,9 @@ export function registerOperations(
               );
             if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
             checkEntitlement(def, tenant, req.method, operationId);
+            // A flag launches a feature for chosen orgs; off looks the same as a route that does not exist.
+            if (def.flag && !(await tenant.flags!.isOn(def.flag)))
+              throw new AppError('feature-unavailable', 'This feature is not available yet.');
             if (def.permission) {
               const projectId = params.projectId ? decodeId('project', params.projectId) : null;
               if (params.projectId && !projectId) throw new AppError('project.not_found');
