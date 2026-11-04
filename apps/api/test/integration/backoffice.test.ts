@@ -954,6 +954,25 @@ describe('customer account actions', () => {
     ).toBe(200);
   });
 
+  it('counts a revoked override for the days it was live', async () => {
+    const c = await company('revokedcount');
+    const ops = await staff(['billing_ops']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    const orgUuid = decodeId('org', c.orgRef)!;
+    const grant = (days: number) =>
+      act(ops, c.orgRef, 'overrides', { kind: 'limit', key: 'limit.seats', limitValue: 40, days });
+    const first = await grant(90);
+    expect(first.statusCode, first.body).toBe(200);
+    const id = (first.json() as { overrides: Array<{ id: string }> }).overrides[0]!.id;
+    // It has been live for 60 of its 90 days when staff end it.
+    await t.adminDb.db.execute(
+      sql`update billing.org_overrides set created_at = now() - interval '60 days', expires_at = now() + interval '30 days' where target_org_id = ${orgUuid}`,
+    );
+    expect((await act(ops, c.orgRef, `overrides/${id}/revoke`, {})).statusCode).toBe(200);
+    expect(code(await grant(40))).toBe('backoffice.override_limit');
+    expect((await grant(30)).statusCode).toBe(200);
+  });
+
   it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
     const c = await company('trial');
     const support = await staff(['support']);

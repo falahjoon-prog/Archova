@@ -184,24 +184,28 @@ export function createAdjustmentService() {
         `An override over ${MAX_OVERRIDE_DAYS_STAFF} days needs an Owner.`,
       );
     // Re-granting straight after expiry must not walk round the 90 day cap: count what this company already had
-    // for this key over the last 365 days (revoked grants excluded).
+    // for this key over the last 365 days. A grant ended early counts for the days it was live, so grant, revoke
+    // and re-grant cannot reset it.
     if (!input.ownerOverride) {
       const since = new Date(input.now.getTime() - 365 * DAY_MS);
       const prior = await tx
-        .select({ at: orgOverrides.createdAt, until: orgOverrides.expiresAt })
+        .select({
+          at: orgOverrides.createdAt,
+          until: orgOverrides.expiresAt,
+          revokedAt: orgOverrides.revokedAt,
+        })
         .from(orgOverrides)
         .where(
           and(
             eq(orgOverrides.targetOrgId, orgId),
             eq(orgOverrides.key, input.key),
-            isNull(orgOverrides.revokedAt),
             gt(orgOverrides.createdAt, since),
           ),
         );
-      const used = prior.reduce(
-        (n, r) => n + Math.ceil((r.until.getTime() - r.at.getTime()) / DAY_MS),
-        0,
-      );
+      const used = prior.reduce((n, r) => {
+        const end = Math.min((r.revokedAt ?? r.until).getTime(), r.until.getTime());
+        return n + Math.max(0, Math.round((end - r.at.getTime()) / DAY_MS));
+      }, 0);
       if (used + input.days > OVERRIDE_YEAR_DAYS_STAFF)
         throw new AppError(
           'backoffice.override_limit',
