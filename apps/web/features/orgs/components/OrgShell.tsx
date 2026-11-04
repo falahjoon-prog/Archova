@@ -9,6 +9,7 @@ import {
   useAssistantPanelState,
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
+import { InboxLink } from '@/features/notifications';
 import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -69,6 +70,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           ]}
           actions={
             <>
+              <InboxLink />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />
             </>
