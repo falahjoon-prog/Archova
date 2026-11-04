@@ -671,7 +671,16 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     const answered = revision?.steps
       .filter((x) => x.response === 'revise_resubmit' || x.response === 'rejected')
       .at(-1);
-    const to = await deps.platform.contactsOfCompany(scope, projectId, s.responsibleCompanyId);
+    const contacts = await deps.platform.contactsOfCompany(
+      scope,
+      projectId,
+      s.responsibleCompanyId,
+    );
+    const to: typeof contacts = [];
+    for (const c of contacts) {
+      if (await deps.access.canUser(scope, c.userId, 'submittals.submittals.read', projectId))
+        to.push(c);
+    }
     if (!to.length || !answered) return null;
     const [org, project] = await Promise.all([
       deps.platform.getOrg(scope),
