@@ -1,6 +1,6 @@
 import { and, asc, desc, eq, lte, min, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type TenantScope } from '@archova/kernel';
+import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
 import { createTokenVault, type TokenVault } from '../domain/accounting/tokens';
 import {
   PUBLIC_EVENT_TYPES,
@@ -18,8 +18,21 @@ export type SubscriptionRow = typeof webhookSubscriptions.$inferSelect;
 export type DeliveryRow = typeof webhookDeliveries.$inferSelect;
 
 const MAX_SUBSCRIPTIONS = 20;
-/** Deliveries tried per pass; each is an outbound call of up to 10 s, held inside one transaction. */
-const BATCH = 10;
+/** Deliveries tried per pass; each is an outbound call of up to 10 s, sent with no transaction open. */
+const BATCH = 20;
+/** How long a claimed delivery is held back from other workers; longer than the 10 s send timeout times the batch. */
+const LEASE_S = 300;
+
+/** A delivery taken for sending: what to post and what is needed to record the outcome. */
+export interface Claim {
+  id: string;
+  subscriptionId: string;
+  url: string;
+  secret: string;
+  payload: WebhookPayload;
+  attempts: number;
+  createdAt: Date;
+}
 
 export interface WebhooksDeps {
   vault: TokenVault;
@@ -169,10 +182,11 @@ export function createWebhookService(deps: WebhooksDeps) {
   }
 
   /**
-   * Tries the deliveries that are due. Success closes one; a failure schedules the next try (30 s … 6 h); 72 hours after
-   * the event, or a 410, the subscription is disabled. Returns counts for the log and when the next pending delivery is due.
+   * Phase 1 of a delivery pass: takes the deliveries that are due and leases them (their next attempt moves out by
+   * `LEASE_S`), so another worker skips them and a crash before phase 3 only delays a retry. Deliveries whose endpoint
+   * is already off are closed here. Nothing is sent inside this transaction.
    */
-  async function attemptDue(scope: TenantScope) {
+  async function claimDue(scope: TenantScope): Promise<Claim[]> {
     const at = now();
     const due = await scope.tx
       .select()
@@ -181,23 +195,49 @@ export function createWebhookService(deps: WebhooksDeps) {
       .orderBy(asc(webhookDeliveries.nextAttemptAt))
       .limit(BATCH)
       .for('update', { skipLocked: true });
+    if (!due.length) return [];
     const subs = new Map(
       (await scope.tx.select().from(webhookSubscriptions)).map((s) => [s.id, s] as const),
     );
-    const counts = { delivered: 0, retried: 0, abandoned: 0 };
+    const claims: Claim[] = [];
+    const lease = new Date(at.getTime() + LEASE_S * 1000);
     for (const d of due) {
-      const s = subs.get(d.subscriptionId)!;
-      if (s.status === 'disabled') {
+      const s = subs.get(d.subscriptionId);
+      if (!s || s.status === 'disabled') {
         await scope.tx
           .update(webhookDeliveries)
           .set({ status: 'abandoned', lastError: 'subscription disabled' })
           .where(eq(webhookDeliveries.id, d.id));
-        counts.abandoned++;
         continue;
       }
-      const secret = deps.vault.open(scope.ctx.orgId, s.secretSealed);
-      const result = await post(secret, s.url, d.payload);
-      const attempts = d.attempts + 1;
+      await scope.tx
+        .update(webhookDeliveries)
+        .set({ nextAttemptAt: lease })
+        .where(eq(webhookDeliveries.id, d.id));
+      claims.push({
+        id: d.id,
+        subscriptionId: s.id,
+        url: s.url,
+        secret: deps.vault.open(scope.ctx.orgId, s.secretSealed),
+        payload: d.payload,
+        attempts: d.attempts,
+        createdAt: d.createdAt,
+      });
+    }
+    return claims;
+  }
+
+  /**
+   * Phase 3: records what each send returned. Success closes the delivery; a failure schedules the next try
+   * (30 s … 6 h); 72 hours after the event, or a 410, it is abandoned and the endpoint is switched off.
+   */
+  async function record(
+    scope: TenantScope,
+    results: Array<{ claim: Claim; result: WebhookResult }>,
+  ) {
+    const counts = { delivered: 0, retried: 0, abandoned: 0 };
+    for (const { claim: c, result } of results) {
+      const attempts = c.attempts + 1;
       if (ok(result)) {
         await scope.tx
           .update(webhookDeliveries)
@@ -208,12 +248,12 @@ export function createWebhookService(deps: WebhooksDeps) {
             lastError: null,
             deliveredAt: now(),
           })
-          .where(eq(webhookDeliveries.id, d.id));
+          .where(eq(webhookDeliveries.id, c.id));
         counts.delivered++;
         continue;
       }
       const gone = result.status === 410;
-      const giveUp = gone || shouldAbandon(d.createdAt, now());
+      const giveUp = gone || shouldAbandon(c.createdAt, now());
       await scope.tx
         .update(webhookDeliveries)
         .set({
@@ -224,7 +264,7 @@ export function createWebhookService(deps: WebhooksDeps) {
             ? { status: 'abandoned' as const }
             : { nextAttemptAt: new Date(now().getTime() + retryDelayS(attempts) * 1000) }),
         })
-        .where(eq(webhookDeliveries.id, d.id));
+        .where(eq(webhookDeliveries.id, c.id));
       if (giveUp) {
         counts.abandoned++;
         await scope.tx
@@ -236,7 +276,7 @@ export function createWebhookService(deps: WebhooksDeps) {
               : 'No successful delivery for 72 hours.',
             updatedAt: now(),
           })
-          .where(eq(webhookSubscriptions.id, s.id));
+          .where(eq(webhookSubscriptions.id, c.subscriptionId));
       } else counts.retried++;
     }
     const [next] = await scope.tx
@@ -246,7 +286,20 @@ export function createWebhookService(deps: WebhooksDeps) {
     return { ...counts, nextAt: next?.at ?? null };
   }
 
-  return { prepare, create, list, remove, deliveries, fanOut, attemptDue };
+  /**
+   * One delivery pass for an org, in three steps so no transaction is open while an endpoint answers (up to 10 s
+   * each): claim and lease in one, send with none open, record in another. Returns counts for the log and when the
+   * next pending delivery is due.
+   */
+  async function attemptDue(database: Pick<Database, 'withTenantTx'>, ctx: TenantContext) {
+    const claims = await database.withTenantTx(ctx, (scope) => claimDue(scope));
+    const results: Array<{ claim: Claim; result: WebhookResult }> = [];
+    for (const claim of claims)
+      results.push({ claim, result: await post(claim.secret, claim.url, claim.payload) });
+    return database.withTenantTx(ctx, (scope) => record(scope, results));
+  }
+
+  return { prepare, create, list, remove, deliveries, fanOut, claimDue, record, attemptDue };
 }
 
 export type WebhookService = ReturnType<typeof createWebhookService>;
