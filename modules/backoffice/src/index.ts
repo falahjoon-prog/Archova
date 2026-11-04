@@ -144,4 +144,22 @@ export function expireLapsedTrial(
   }).expireTrial(orgId, now);
 }
 
+/** The trial-backfill job's entry point (apps/worker): see `AccountService.backfillTrialEnd`. */
+export function backfillTrialEndDate(
+  database: KernelServices['database'],
+  org: { id: string; name: string; slug: string; createdAt: Date },
+  now: Date,
+): Promise<boolean> {
+  return createOrgActionService({
+    database,
+    accounts: createAccountService(),
+    credits: () => {
+      throw new Error('Nova credits are not available to the trial-backfill job');
+    },
+    adjustments: {} as AdjustmentService,
+    requests: {} as RequestService,
+    now: () => now,
+  }).backfillTrial(org, now);
+}
+
 export type BackofficeModule = ReturnType<typeof createBackofficeModule>;
