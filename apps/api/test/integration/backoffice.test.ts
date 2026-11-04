@@ -973,6 +973,17 @@ describe('customer account actions', () => {
     expect((await grant(30)).statusCode).toBe(200);
   });
 
+  it('starts every new company on a 14-day trial', async () => {
+    const c = await company('newtrial');
+    const res = await (await staff(['support'])).get(`/orgs/${c.orgRef}`);
+    expect(res.statusCode, res.body).toBe(200);
+    const { account } = res.json() as { account: { plan: string; trialEndsAt: string } };
+    expect(account.plan).toBe('trial');
+    const days = (Date.parse(account.trialEndsAt) - Date.now()) / 86_400_000;
+    expect(days).toBeGreaterThan(13.9);
+    expect(days).toBeLessThan(14.1);
+  });
+
   it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
     const c = await company('trial');
     const support = await staff(['support']);
@@ -1071,7 +1082,8 @@ describe('customer account actions', () => {
     const c = await company('ghost');
     const orgUuid = decodeId('org', c.orgRef)!;
     await t.adminDb.db.execute(sql`
-      insert into billing.org_accounts (id, plan_code, state) values (${orgUuid}, 'ghost_plan', 'active')`);
+      insert into billing.org_accounts (id, plan_code, state) values (${orgUuid}, 'ghost_plan', 'active')
+      on conflict (id) do update set plan_code = 'ghost_plan', state = 'active', trial_ends_at = null`);
     const denied = await c.browser.get(c.attendance);
     expect(denied.statusCode).toBe(403);
     expect(code(denied)).toBe('entitlement-required');

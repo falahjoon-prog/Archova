@@ -144,14 +144,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     defaultEntitlements: TRIAL_ENTITLEMENTS,
     supportAccess: backoffice.api.support,
     hasOpenSupportSession: backoffice.api.support.hasOpenSession,
-    onOrgCreated: (scope, org, entitlements) =>
-      backoffice.api.directory.upsert(scope.tx, {
+    onOrgCreated: async (scope, org, entitlements) => {
+      // Every new company starts on a trial with an end date; the trial-expiry job moves it to read-only after that.
+      const account = await billing.api.accounts.startTrial(scope.tx, org.id, new Date());
+      await backoffice.api.directory.upsert(scope.tx, {
         id: org.id,
         name: org.name,
         slug: org.slug,
         planCode: entitlements.plan,
         state: entitlements.state,
-      }),
+        trialEndsAt: account.trialEndsAt,
+      });
+    },
   });
   platformApi = platform.api;
   access = createAccessModule(services, {
