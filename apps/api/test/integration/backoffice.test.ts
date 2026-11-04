@@ -826,7 +826,7 @@ describe('customer account actions', () => {
 
 describe('support access', () => {
   async function company(label: string) {
-    const { browser } = await signUp(t.app, label);
+    const { browser, email } = await signUp(t.app, label);
     const org = await createOrg(browser, `Support ${label} Builders`);
     const reader = await staff(['finance_read']);
     const found = (
@@ -836,6 +836,7 @@ describe('support access', () => {
     ).items[0]!;
     return {
       browser,
+      email,
       orgId: org.id,
       orgRef: found.orgId,
       base: `/v1/orgs/${org.id}/support-access`,
@@ -976,5 +977,90 @@ describe('support access', () => {
       (await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-4', hours: 1 })).statusCode,
     ).toBe(403);
     expect((await c.browser.post(`${c.base}/grants/${grant.id}/revoke`, {})).statusCode).toBe(204);
+  });
+
+  it('limits a grant to chosen projects and logs every read against the staff member', async () => {
+    const c = await company('scope');
+    const open = await createProject(c.browser, c.orgId, { name: 'Open Scope Rd', state: 'NSW' });
+    await createProject(c.browser, c.orgId, { name: 'Hidden Scope Rd', state: 'NSW' });
+    const support = await staff(['support']);
+    const list = `/orgs/${c.orgRef}/support-access/projects`;
+
+    // A project that is not this company's cannot be named in a grant.
+    const bad = await c.browser.post(`${c.base}/grants`, {
+      ticketRef: 'SUP-S1',
+      hours: 4,
+      projectIds: [open.id.replace(/.$/, open.id.endsWith('a') ? 'b' : 'a')],
+    });
+    expect(bad.statusCode).toBeGreaterThanOrEqual(400);
+
+    const made = await c.browser.post(`${c.base}/grants`, {
+      ticketRef: 'SUP-S1',
+      hours: 4,
+      projectIds: [open.id],
+    });
+    expect(made.statusCode, made.body).toBe(201);
+    expect((made.json() as { projectIds: string[] }).projectIds).toEqual([open.id]);
+
+    const sentBefore = t.messages.sent.length;
+    expect((await start(support, c.orgRef, 'SUP-S1')).statusCode).toBe(201);
+    // The company's admin is emailed as the session opens.
+    const mails = t.messages.sent.slice(sentBefore).filter((m) => m.to === c.email);
+    expect(mails).toHaveLength(1);
+    expect(mails[0]!.text).toContain('SUP-S1');
+
+    const view = await support.get(list);
+    expect((view.json() as { items: Array<{ name: string }> }).items.map((p) => p.name)).toEqual([
+      'Open Scope Rd',
+    ]);
+
+    // The read is logged against the session and the staff member, by record id.
+    const rows = await t.adminDb.db.execute(
+      sql`select e.what, e.staff_id, e.record_ids from backoffice.support_events e
+          join backoffice.support_sessions s on s.id = e.session_id
+          where s.target_org_id = ${c.orgRef}`,
+    );
+    expect(rows.rows).toHaveLength(1);
+    expect(rows.rows[0]).toMatchObject({ what: 'projects.list' });
+    expect(rows.rows[0]!.staff_id).toBeTruthy();
+    expect((rows.rows[0]!.record_ids as string[]).length).toBe(1);
+  });
+
+  it('needs a hardware-key sign-in to open a session or read content when required', async () => {
+    const strict = await createTestContext({ env: { API_STAFF_SUPPORT_HARDWARE_KEY: 'true' } });
+    try {
+      const { browser } = await signUp(strict.app, 'hwkey');
+      const org = await createOrg(browser, 'Support hwkey Builders');
+      const email = `hwkey-${Date.now()}@archova.test`;
+      await strict.modules.backoffice.api.upsertLocalStaff({
+        email,
+        name: 'Hardware Key Support',
+        password: PASSWORD,
+        roles: ['support', 'finance_read'],
+      });
+      const me = await new Console(strict.app, email).signIn();
+      const found = (
+        (await me.get(`/orgs?q=${encodeURIComponent('Support hwkey')}`)).json() as {
+          items: Array<{ orgId: string }>;
+        }
+      ).items[0]!;
+      await browser.post(`/v1/orgs/${org.id}/support-access/grants`, {
+        ticketRef: 'SUP-K1',
+        hours: 2,
+      });
+      const denied = await start(me, found.orgId, 'SUP-K1');
+      expect(denied.statusCode).toBe(403);
+      expect(code(denied)).toBe('backoffice.hardware_key_required');
+
+      // The staff IdP marks a hardware-key sign-in on the session; then the same call goes through.
+      await strict.adminDb.db.execute(
+        sql`update backoffice.staff_sessions set hardware_key = true
+            where staff_user_id = (select id from backoffice.staff_users where email = ${email})`,
+      );
+      expect((await start(me, found.orgId, 'SUP-K1')).statusCode).toBe(201);
+      expect((await me.get(`/orgs/${found.orgId}/support-access/projects`)).statusCode).toBe(200);
+    } finally {
+      await strict.close();
+    }
   });
 });

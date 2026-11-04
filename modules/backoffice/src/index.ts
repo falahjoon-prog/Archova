@@ -7,13 +7,17 @@ import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
 import { createOrgActionService, type OrgActionDeps } from './application/org-actions';
-import { createSupportAccessService } from './application/support-access';
+import {
+  createSupportAccessService,
+  type SupportSessionNotice,
+} from './application/support-access';
 import { createRequestService } from './application/requests';
 import { createStaffService } from './application/staff';
 
 export { BACKOFFICE_PERMISSIONS, ROLE_PERMISSIONS, permissionsFor } from './permissions';
 export type { InternalHandlers, InternalInput, InternalResult } from './api/routes';
 export type { StaffContext } from './application/staff';
+export type { SupportSessionNotice } from './application/support-access';
 export type { DirectoryEntry } from './application/customers';
 
 export interface BackofficeConfig {
@@ -21,6 +25,8 @@ export interface BackofficeConfig {
   localLogin: boolean;
   /** Solo-owner mode delay for pricing publishes (24 hours in production, Sam 12 §4). */
   soloCoolingOffHours: number;
+  /** Support access needs a hardware-key sign-in. Defaults to on whenever password sign-in is off (hosted). */
+  requireSupportHardwareKey?: boolean;
 }
 
 export function createBackofficeModule(
@@ -29,7 +35,15 @@ export function createBackofficeModule(
     catalogue: CatalogueService;
     accounts: AccountService;
     credits: OrgActionDeps['credits'];
-    supportReads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
+    supportReads: () => {
+      projects(
+        orgId: string,
+        staffId: string,
+        projectIds: string[] | null,
+      ): Promise<SupportProjectDto[]>;
+    };
+    /** Tells the company's owners and admins that a support session opened. */
+    notifySupportSession?: (notice: SupportSessionNotice) => Promise<void>;
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -56,6 +70,8 @@ export function createBackofficeModule(
   const support = createSupportAccessService({
     database: services.database,
     reads: deps.supportReads,
+    ...(deps.notifySupportSession ? { notify: deps.notifySupportSession } : {}),
+    requireHardwareKey: deps.config.requireSupportHardwareKey ?? !deps.config.localLogin,
     ...(deps.now ? { now: deps.now } : {}),
   });
   const flags = createFlagService({ database: services.database, staff });

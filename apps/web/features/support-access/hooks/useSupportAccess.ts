@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { queries } from '@/shared/lib/api';
 import { createSupportAccessApi, type CreateGrant } from '../data/api';
 
 const keys = (orgId: string) => ({
@@ -51,4 +52,10 @@ export function useRevokeSupportAccess() {
     mutationFn: (grantId: string) => source.revoke(grantId),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys(orgId).all }),
   });
+}
+
+/** The company's projects, for choosing which ones support may see. */
+export function useSupportProjectChoices() {
+  const { orgId } = useCurrentOrg();
+  return useQuery(queries.projects(orgId));
 }

@@ -1159,6 +1159,7 @@ export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema
 export const CreateSupportAccessGrantRequestSchema = z.object({
   "ticketRef": z.string().min(2).max(60),
   "hours": z.number().int().min(1).max(72),
+  "projectIds": z.array(z.string()).min(1).max(50).optional(),
 }).strict();
 export type CreateSupportAccessGrantRequest = z.infer<typeof CreateSupportAccessGrantRequestSchema>;
 
@@ -4032,6 +4033,7 @@ export const SupportAccessGrantSchema = z.object({
   "id": z.string(),
   "ticketRef": z.string(),
   "level": z.enum(["view"]),
+  "projectIds": z.array(z.string()).nullable(),
   "grantedBy": z.string(),
   "createdAt": z.string().datetime({ offset: true }),
   "expiresAt": z.string().datetime({ offset: true }),

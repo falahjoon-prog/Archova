@@ -11,7 +11,11 @@ export interface Principal {
   apiToken?: { id: string; orgId: string; scopes: readonly string[] };
 }
 
-export type PrincipalType = 'member' | 'external';
+/**
+ * `support` is an Archova staff member inside an open support session (Sam 12 §4a): read only, and none of the
+ * member or external checks pass for it, so a module that does not know about support shows it nothing.
+ */
+export type PrincipalType = 'member' | 'external' | 'support';
 
 /** Per-request tenant context (multi-tenancy.md §3). The org always comes from the URL path (X4). */
 export interface TenantContext {

@@ -1,3 +1,4 @@
+import { and, eq, inArray } from 'drizzle-orm';
 import { AppError, defineModule, type Entitlements, type KernelServices } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { IdentityApi } from '@archova/mod-identity';
@@ -6,6 +7,7 @@ import { createKeyDateService } from './application/key-dates';
 import { createMemberService } from './application/members';
 import { createOrgService, type OrgDeps } from './application/orgs';
 import { createProjectService } from './application/projects';
+import { memberships } from './infra/tables';
 import { platformRoutes, type SupportAccessPort } from './api/routes';
 
 export function createPlatformModule(
@@ -54,7 +56,11 @@ export function createPlatformModule(
       getProject: projects.get,
       getOrg: orgs.getOrg,
       /** Project names for an open support session; read-only and org-wide, never a member's view (Sam 12 §4a). */
-      listProjectsForSupport: async (orgId: string, staffId: string) => {
+      listProjectsForSupport: async (
+        orgId: string,
+        staffId: string,
+        projectIds: string[] | null = null,
+      ) => {
         // Checked here as well as by the caller, so this read cannot be reached without a live session.
         if (!deps.hasOpenSupportSession || !(await deps.hasOpenSupportSession(orgId, staffId)))
           throw new AppError('backoffice.support_no_session', 'There is no open support session.');
@@ -62,14 +68,42 @@ export function createPlatformModule(
           {
             orgId,
             userId: staffId,
-            principalType: 'external',
+            principalType: 'support',
             orgRole: null,
             entitlements: { plan: 'support', state: 'read_only', modules: [], limits: {} },
             requestId: 'support',
           },
-          (scope) => projects.listForSupport(scope),
+          (scope) => projects.listForSupport(scope, projectIds),
           { readOnly: true },
         );
+      },
+      /** Active owners and admins with their emails, for the notice sent when a support session opens. */
+      orgAdminContacts: async (orgId: string) => {
+        const ids = await services.database.withTenantTx(
+          {
+            orgId,
+            userId: orgId,
+            principalType: 'support',
+            orgRole: null,
+            entitlements: { plan: 'support', state: 'read_only', modules: [], limits: {} },
+            requestId: 'support-notice',
+          },
+          async (scope) =>
+            (
+              await scope.tx
+                .select({ userId: memberships.userId })
+                .from(memberships)
+                .where(
+                  and(
+                    eq(memberships.status, 'active'),
+                    inArray(memberships.role, ['owner', 'admin']),
+                  ),
+                )
+            ).map((r) => r.userId),
+          { readOnly: true },
+        );
+        const users = await deps.identity.getUsers(ids);
+        return [...users.values()].map((u) => ({ email: u.email, name: u.name }));
       },
       companyExists: companies.exists,
       companyIdentity: companies.identity,

@@ -97,8 +97,30 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     accounts: billing.api.accounts,
     credits: () => ({ grantCredits: aiApi!.grantCredits }),
     supportReads: () => ({
-      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+      projects: (orgId, staffId, projectIds) =>
+        platformApi!.listProjectsForSupport(orgId, staffId, projectIds),
     }),
+    notifySupportSession: async (notice) => {
+      const admins = await platformApi!.orgAdminContacts(notice.orgId);
+      const scope = notice.projectIds ? 'only the projects you chose' : 'your whole company';
+      // Every admin must be told; one failed send fails the lot so the session does not stand.
+      await Promise.all(
+        admins.map((a) =>
+          opts.messages.email(a.email, {
+            subject: 'Archova support has opened a session on your account',
+            text: [
+              `Hi ${a.name},`,
+              '',
+              `${notice.staffName} from Archova support opened a view-only session on your company for ticket ${notice.ticketRef}.`,
+              `It can see ${scope}, and ends at ${notice.expiresAt.toISOString()}.`,
+              'Every page they view is listed under Settings, Support access, where you can withdraw access at any time.',
+              '',
+              'If you did not expect this, withdraw access now and tell us.',
+            ].join('\n'),
+          }),
+        ),
+      );
+    },
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.

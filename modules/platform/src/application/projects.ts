@@ -1,4 +1,4 @@
-import { and, asc, eq, gt, isNull, type SQL } from 'drizzle-orm';
+import { and, asc, eq, gt, inArray, isNull, type SQL } from 'drizzle-orm';
 import { STATE_TIME_ZONES, encodeId, uuidv7 } from '@archova/domain';
 import type { CreateProjectRequest, UpdateProjectRequest } from '@archova/contracts';
 import {
@@ -21,11 +21,11 @@ const isOrgAdmin = (scope: TenantScope) =>
 export function createProjectService(access: AccessService) {
   /** Org owners/admins see every project; everyone else sees projects they're an active member of. */
   /** Names and status only, for the owner console's support view. */
-  async function listForSupport(scope: TenantScope) {
+  async function listForSupport(scope: TenantScope, only: string[] | null = null) {
     const rows = await scope.tx
       .select()
       .from(projects)
-      .where(isNull(projects.deletedAt))
+      .where(and(isNull(projects.deletedAt), only ? inArray(projects.id, only) : undefined))
       .orderBy(asc(projects.id))
       .limit(200);
     return rows.map((r) => ({
@@ -251,7 +251,17 @@ export function createProjectService(access: AccessService) {
     return row;
   }
 
-  return { list, listForSupport, get, create, update };
+  /** Which of these ids are live projects of the caller's org (RLS limits the query to it). */
+  async function existingIds(scope: TenantScope, ids: string[]) {
+    if (!ids.length) return new Set<string>();
+    const rows = await scope.tx
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(isNull(projects.deletedAt), inArray(projects.id, ids)));
+    return new Set(rows.map((r) => r.id));
+  }
+
+  return { list, listForSupport, existingIds, get, create, update };
 }
 
 export type ProjectService = ReturnType<typeof createProjectService>;
