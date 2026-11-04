@@ -20,6 +20,8 @@ const { ReviewsScreen } = await import('../screens/ReviewsScreen');
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews';
 const DECIDE = `${P}/{suggestionId}/flags/{flagIndex}/decision`;
+const ASK = `${P}/{suggestionId}/questions`;
+const FEEDBACK = '/v1/orgs/{orgId}/ai/runs/{runId}/feedback';
 
 beforeEach(() => {
   fake.reset();
@@ -127,5 +129,107 @@ describe('ReviewsScreen', () => {
     expect(screen.getByText('Commercial team only')).toBeTruthy();
     expect(screen.queryByText('Review a contract')).toBeNull();
     await waitFor(() => expect(fake.callsTo('GET', P)).toHaveLength(0));
+  });
+});
+
+const answer = (over: Record<string, unknown> = {}) => ({
+  runId: 'air_9',
+  question: 'How much retention?',
+  kind: 'answered',
+  answer: 'The contract says the Principal holds 5% retention.',
+  citations: [{ page: 7, clause: '14.1', quote: 'The Principal holds retention of 5%.' }],
+  droppedCitations: 0,
+  unreadPages: [],
+  truncated: false,
+  ...over,
+});
+
+describe('Ask tab', () => {
+  const openAsk = async (r = review()) => {
+    await open(r);
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('tab', { name: /Ask/ }));
+    return user;
+  };
+
+  it('asks a question and shows the answer with its clause', async () => {
+    fake.on('POST', ASK, () => answer());
+    const user = await openAsk();
+    const button = screen.getByRole('button', { name: 'Ask Nova' }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+    await enterText(
+      user,
+      screen.getByLabelText('Where does the contract say…?'),
+      '  How much retention? ',
+    );
+    await user.click(button);
+    const card = await screen.findByRole('article', { name: 'Answer to: How much retention?' });
+    expect(
+      within(card).getByText('The contract says the Principal holds 5% retention.'),
+    ).toBeTruthy();
+    expect(within(card).getByText('Clause 14.1 · page 7')).toBeTruthy();
+    expect(fake.callsTo('POST', ASK)[0]!.init).toMatchObject({
+      params: { path: { orgId: 'org_test', projectId: 'prj_test', suggestionId: 'ais_1' } },
+      body: { question: 'How much retention?' },
+    });
+    // The box clears for the next question.
+    expect(
+      (screen.getByLabelText('Where does the contract say…?') as HTMLTextAreaElement).value,
+    ).toBe('');
+  });
+
+  it('shows the API wording when the contract is silent, and says which pages Nova could not read', async () => {
+    fake.on('POST', ASK, () =>
+      answer({
+        kind: 'not_addressed',
+        answer: "The contract doesn't address this.",
+        citations: [],
+        unreadPages: [4, 5],
+      }),
+    );
+    const user = await openAsk();
+    await enterText(
+      user,
+      screen.getByLabelText('Where does the contract say…?'),
+      'Defects period?',
+    );
+    await user.click(screen.getByRole('button', { name: 'Ask Nova' }));
+    expect(await screen.findByText("The contract doesn't address this.")).toBeTruthy();
+    expect(screen.getByText(/couldn't read pages 4, 5/)).toBeTruthy();
+    expect(screen.queryByText(/page \d+$/)).toBeNull();
+  });
+
+  it('sends a thumbs up for the run', async () => {
+    fake.on('POST', ASK, () => answer());
+    fake.on('PUT', FEEDBACK, () => undefined);
+    const user = await openAsk();
+    await enterText(
+      user,
+      screen.getByLabelText('Where does the contract say…?'),
+      'How much retention?',
+    );
+    await user.click(screen.getByRole('button', { name: 'Ask Nova' }));
+    await screen.findByRole('article');
+    await user.click(screen.getByRole('button', { name: 'Helpful' }));
+    await waitFor(() =>
+      expect(fake.callsTo('PUT', FEEDBACK)[0]!.init).toMatchObject({
+        params: { path: { orgId: 'org_test', runId: 'air_9' } },
+        body: { rating: 'up' },
+      }),
+    );
+  });
+
+  it('shows the error when Nova cannot answer', async () => {
+    fake.on('POST', ASK, () => {
+      throw new Error('boom');
+    });
+    const user = await openAsk();
+    await enterText(
+      user,
+      screen.getByLabelText('Where does the contract say…?'),
+      'How much retention?',
+    );
+    await user.click(screen.getByRole('button', { name: 'Ask Nova' }));
+    expect(await screen.findByText("Nova couldn't answer that")).toBeTruthy();
   });
 });

@@ -558,6 +558,17 @@ export function aiRoutes(
       );
       return { status: 200, body: toContractReviewDto(row) };
     },
+    askContract: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const a = await contractReviews.ask(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        id,
+        input.body.question,
+      );
+      return { status: 200, body: { ...a, runId: encodeId('aiRun', a.runId) } };
+    },
     transcribeSpeech: async (input) => {
       const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
         audio: Buffer.from(input.body.audio, 'base64'),

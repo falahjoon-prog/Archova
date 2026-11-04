@@ -1720,6 +1720,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask Nova where the reviewed contract says something (F34, Ask).
+         * @description For the commercial team. Nova answers one question from the pages of the contract the review was made from
+         *     (the file is read again with the caller's own access) and quotes the clauses it relies on. An answer is shown
+         *     only with at least one citation that code found on a page; otherwise, or when the pages say nothing that
+         *     answers the question, `kind` is `not_addressed` and the answer is "The contract doesn't address this."
+         *     Nova never answers from general legal knowledge, and a question that asks for a view on fairness, validity,
+         *     legal effect or whether to sign is not answered (`not_addressed`). Model text that uses a banned word is
+         *     withheld (`kind: withheld`). Nothing is saved, so the client keeps the conversation it wants to show.
+         *     `unreadPages` and `truncated` say what Nova could not read, so a "not addressed" answer can be read with that
+         *     in mind. Costs 2 Nova credits.
+         */
+        post: operations["askContract"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}": {
         parameters: {
             query?: never;
@@ -7331,6 +7363,27 @@ export interface components {
         };
         /** @enum {string} */
         ContractFlagDecisionKind: "accept_risk" | "negotiate" | "refer_to_lawyer" | "not_relevant";
+        NovaContractAnswer: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            question: string;
+            /** @enum {string} */
+            kind: "answered" | "not_addressed" | "withheld";
+            /** @description Nova's sentence when `answered`; fixed wording when the contract is silent or the answer is withheld. */
+            answer: string;
+            /** @description The clauses the answer relies on; at least one when `answered`, none otherwise. */
+            citations: {
+                page: number;
+                clause: string | null;
+                quote: string;
+            }[];
+            /** @description Citations code removed because their words were not on any page. */
+            droppedCitations: number;
+            /** @description Pages with no text Nova can read, so "not addressed" may miss what is on them. */
+            unreadPages: number[];
+            /** @description Part of the contract was left out (too long to read in one go). */
+            truncated: boolean;
+        };
         NovaContractReview: {
             /** Format: date-time */
             createdAt: string;
@@ -13989,6 +14042,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaContractReview"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    askContract: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                suggestionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    question: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The answer */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaContractAnswer"];
                 };
             };
             default: components["responses"]["Problem"];

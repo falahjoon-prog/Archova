@@ -11,6 +11,7 @@ export type ContractType = S['ContractType'];
 export type FlagDecisionKind = S['ContractFlagDecisionKind'];
 export type ReviewFlag = ContractReview['flags'][number];
 export type FlagDecision = ContractReview['decisions'][number];
+export type ContractAnswer = S['NovaContractAnswer'];
 export type OurSide = 'we_pay' | 'we_get_paid';
 export type BaseForm = 'as4000' | 'as2124' | 'as4902' | 'as4903' | 'other';
 
@@ -50,6 +51,26 @@ export function createContractReviewApi(orgId: string) {
             baseForm: input.baseForm,
             multiState: input.multiState,
           },
+        }),
+      );
+    },
+    /** One question about the reviewed contract. The server keeps no conversation. */
+    async ask(projectId: string, suggestionId: string, question: string): Promise<ContractAnswer> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${P}/{suggestionId}/questions`, {
+          params: { path: { orgId, projectId, suggestionId } },
+          body: { question },
+        }),
+      );
+    },
+    /** Thumbs up or down on an answer (`PUT {o}/ai/runs/{runId}/feedback`). */
+    async rate(runId: string, rating: 'up' | 'down'): Promise<void> {
+      await ensureCsrfToken();
+      unwrap(
+        await api.PUT('/v1/orgs/{orgId}/ai/runs/{runId}/feedback', {
+          params: { path: { orgId, runId } },
+          body: { rating },
         }),
       );
     },

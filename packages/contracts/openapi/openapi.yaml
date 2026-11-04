@@ -2255,6 +2255,47 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractReview' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: askContract
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: Ask Nova where the reviewed contract says something (F34, Ask).
+      description: |
+        For the commercial team. Nova answers one question from the pages of the contract the review was made from
+        (the file is read again with the caller's own access) and quotes the clauses it relies on. An answer is shown
+        only with at least one citation that code found on a page; otherwise, or when the pages say nothing that
+        answers the question, `kind` is `not_addressed` and the answer is "The contract doesn't address this."
+        Nova never answers from general legal knowledge, and a question that asks for a view on fairness, validity,
+        legal effect or whether to sign is not answered (`not_addressed`). Model text that uses a banned word is
+        withheld (`kind: withheld`). Nothing is saved, so the client keeps the conversation it wants to show.
+        `unreadPages` and `truncated` say what Nova could not read, so a "not addressed" answer can be read with that
+        in mind. Costs 2 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '200':
+          description: The answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractAnswer' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/ai/contract-playbooks/{contractType}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10516,6 +10557,39 @@ components:
     ContractFlagDecisionKind:
       type: string
       enum: [accept_risk, negotiate, refer_to_lawyer, not_relevant]
+    NovaContractAnswer:
+      type: object
+      required: [runId, question, kind, answer, citations, droppedCitations, unreadPages, truncated]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        question: { type: string }
+        kind:
+          type: string
+          enum: [answered, not_addressed, withheld]
+        answer:
+          type: string
+          description: Nova's sentence when `answered`; fixed wording when the contract is silent or the answer is withheld.
+        citations:
+          type: array
+          description: The clauses the answer relies on; at least one when `answered`, none otherwise.
+          items:
+            type: object
+            required: [page, clause, quote]
+            properties:
+              page: { type: integer, minimum: 1 }
+              clause: { type: [string, 'null'] }
+              quote: { type: string }
+        droppedCitations:
+          type: integer
+          minimum: 0
+          description: Citations code removed because their words were not on any page.
+        unreadPages:
+          type: array
+          description: Pages with no text Nova can read, so "not addressed" may miss what is on them.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          type: boolean
+          description: Part of the contract was left out (too long to read in one go).
     NovaContractReview:
       type: object
       required:

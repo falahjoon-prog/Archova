@@ -79,4 +79,13 @@ describe('contract review api', () => {
     expect(await api.list('prj_1')).toHaveLength(1);
     expect((await api.get('prj_1', 'ais_1')).fileName).toBe('Head contract.pdf');
   });
+
+  it('asks one question of a review', async () => {
+    fake.on('POST', `${P}/{suggestionId}/questions`, () => ({ kind: 'answered' }));
+    await api.ask('prj_1', 'ais_1', 'How much retention?');
+    expect(fake.callsTo('POST', `${P}/{suggestionId}/questions`)[0]!.init).toMatchObject({
+      params: { path: { orgId: 'org_1', projectId: 'prj_1', suggestionId: 'ais_1' } },
+      body: { question: 'How much retention?' },
+    });
+  });
 });
