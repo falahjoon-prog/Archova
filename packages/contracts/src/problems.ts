@@ -233,6 +233,7 @@ export const PROBLEM_CODES = {
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,
   'financials.claim.not_found': 404,
+  'financials.evidence.not_found': 404,
   'financials.claim.empty': 422,
   'financials.claim.duplicate_item': 422,
   'financials.claim.over_item_value': 422,
