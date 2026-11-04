@@ -70,4 +70,33 @@ describe('gateQrSvg', () => {
   it('draws an svg for a gate code', () => {
     expect(gateQrSvg('gqr_abcdefghijklmnop')).toMatch(/^<svg /);
   });
+
+  it('sets a custom boundary, validates it, and can go back to the project location', async () => {
+    const user = userEvent.setup();
+    renderInProject(<SitesScreen />);
+    expect(await screen.findByText(/Boundary from the project location/)).toBeTruthy();
+    await user.click(await screen.findByRole('button', { name: /Edit.*Main site/ }));
+    await user.click(screen.getByRole('switch', { name: 'Use a custom boundary for this site' }));
+    const save = screen.getByRole('button', { name: 'Save' }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    await enterText(user, screen.getByLabelText('Latitude'), '-33.86882');
+    await enterText(user, screen.getByLabelText('Longitude'), '151.20929');
+    await user.clear(screen.getByLabelText('Radius (metres)'));
+    await enterText(user, screen.getByLabelText('Radius (metres)'), '5');
+    expect(screen.getByText('Enter a whole number from 10 to 10000.')).toBeTruthy();
+    expect(save.disabled).toBe(true);
+    await user.clear(screen.getByLabelText('Radius (metres)'));
+    await enterText(user, screen.getByLabelText('Radius (metres)'), '150');
+    await user.click(save);
+    expect(await screen.findByText(/Boundary 150 m around -33.86882, 151.20929/)).toBeTruthy();
+    expect((await attendancePreview.sites('prj_test'))[0]!.boundary).toEqual({
+      lat: -33.86882,
+      lng: 151.20929,
+      radiusM: 150,
+    });
+    await user.click(screen.getByRole('button', { name: /Edit.*Main site/ }));
+    await user.click(screen.getByRole('switch', { name: 'Use a custom boundary for this site' }));
+    await user.click(screen.getByRole('button', { name: 'Save' }));
+    expect(await screen.findByText(/Boundary from the project location/)).toBeTruthy();
+  });
 });

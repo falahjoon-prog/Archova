@@ -133,6 +133,7 @@ const stores = projectStores<AttendanceSite[]>(() => [
     name: 'Main site',
     dayEndLocal: '19:00',
     gateCheckMode: 'block',
+    boundary: null,
     active: true,
     version: 1,
     gates: [
@@ -183,6 +184,7 @@ const siteOps: Pick<
       gates: [],
       version: 1,
       ...input,
+      boundary: input.boundary ?? null,
     };
     stores.get(projectId).push(site);
     return delay(site);
