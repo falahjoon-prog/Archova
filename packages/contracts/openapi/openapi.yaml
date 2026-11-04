@@ -2224,6 +2224,129 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaContractReview' }
         default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: listContractReviews
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: The project's saved Nova contract reviews, newest first.
+      description: For the commercial team. Each review carries its flags and the decisions recorded on them so far.
+      responses:
+        '200':
+          description: The reviews
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    get:
+      operationId: getContractReview
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: One saved Nova contract review.
+      responses:
+        '200':
+          description: The review
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/flags/{flagIndex}/decision:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+      - name: flagIndex
+        in: path
+        required: true
+        description: The flag's position in the review's `flags`, which never changes.
+        schema: { type: string, pattern: '^[0-9]{1,4}$' }
+    post:
+      operationId: decideContractFlag
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: Record a person's decision on one flag of a contract review.
+      description: |
+        Accept risk, negotiate, refer to a lawyer, or not relevant (which needs a reason). Decisions are appended with
+        who and when, so the history stays and the latest one stands. Nothing is sent, signed or changed in the
+        contract.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { $ref: '#/components/schemas/ContractFlagDecisionKind' }
+                note: { type: [string, 'null'], maxLength: 1000 }
+      responses:
+        '200':
+          description: The review with the decision recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractReview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: suggestionId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ais_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: askContract
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.contracts.review
+      summary: Ask Nova where the reviewed contract says something (F34, Ask).
+      description: |
+        For the commercial team. Nova answers one question from the pages of the contract the review was made from
+        (the file is read again with the caller's own access) and quotes the clauses it relies on. An answer is shown
+        only with at least one citation that code found on a page; otherwise, or when the pages say nothing that
+        answers the question, `kind` is `not_addressed` and the answer is "The contract doesn't address this."
+        Nova never answers from general legal knowledge, and a question that asks for a view on fairness, validity,
+        legal effect or whether to sign is not answered (`not_addressed`). Model text that uses a banned word is
+        withheld (`kind: withheld`). Nothing is saved, so the client keeps the conversation it wants to show.
+        `unreadPages` and `truncated` say what Nova could not read, so a "not addressed" answer can be read with that
+        in mind. Costs 2 Nova credits.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [question]
+              properties:
+                question: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        '200':
+          description: The answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaContractAnswer' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/ai/contract-playbooks/{contractType}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6675,6 +6798,119 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WorkerCredential' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-documents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listComplianceDocuments
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.view
+      summary: "The company's compliance wallet: the insurance, licence and card documents it holds, soonest expiry first (compliance/05)."
+      description: Archived documents are left out unless `includeArchived` is set. Each row says what the company has done with it (`evidence`) and where its expiry stands (`expiry`). Archova never calls a document "verified".
+      parameters:
+        - {
+            name: itemType,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/ComplianceItemType' },
+          }
+        - {
+            name: includeArchived,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceDocumentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createComplianceDocument
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.manage
+      summary: Record a document in the wallet, or a declaration that has none.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateComplianceDocumentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceDocument' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-documents/{documentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: documentId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateComplianceDocument
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.manage
+      summary: Correct a document's details, replace its files, or archive it. A change to what the document says clears a sighting.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateComplianceDocumentRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceDocument' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-documents/{documentId}/sight:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: documentId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: sightComplianceDocument
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.manage
+      summary: 'Mark a document as sighted: a named person has looked at the original (shown as "sighted by [name] on [date]", never "verified").'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceDocument' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -7828,6 +8064,64 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: listClaimEvidence
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: >
+        The sealed records of this claim (one for the claim, one for its payment schedule once issued) with the
+        SHA-256 of each, and whether each still matches its seal.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+    get:
+      operationId: getClaimEvidencePdf
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: 'The sealed PDF, base64 in JSON. Refused if the stored record no longer matches its seal.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidencePdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/json:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+    get:
+      operationId: getClaimEvidenceJson
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: 'The exact JSON text that was hashed, so anyone can recompute the SHA-256.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceJson' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -8292,6 +8586,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+    ClaimEvidenceKind:
+      name: kind
+      in: path
+      required: true
+      schema: { type: string, enum: [claim, schedule] }
     DefectId:
       name: defectId
       in: path
@@ -8865,6 +9164,38 @@ components:
           type: array
           items: { $ref: '#/components/schemas/MeetingVersion' }
         viewer: { $ref: '#/components/schemas/MeetingViewer' }
+    ClaimEvidenceRecord:
+      type: object
+      required: [kind, sealedAt, snapshotSha256, pdfSha256, pdfBytes, intact]
+      properties:
+        kind: { type: string, enum: [claim, schedule] }
+        sealedAt: { type: string, format: date-time }
+        snapshotSha256: { type: string }
+        pdfSha256: { type: string }
+        pdfBytes: { type: integer }
+        intact: { type: boolean }
+    ClaimEvidenceList:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimEvidenceRecord' }
+    ClaimEvidencePdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    ClaimEvidenceJson:
+      type: object
+      required: [filename, contentType, snapshotSha256, dataText]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/json] }
+        snapshotSha256: { type: string }
+        dataText: { type: string }
     MeetingPdf:
       type: object
       required: [filename, contentType, dataBase64]
@@ -10302,6 +10633,42 @@ components:
         page: { type: integer, minimum: 1 }
         clause: { type: [string, 'null'], description: The clause number as printed. }
         quote: { type: string, description: Words found on that page. }
+    ContractFlagDecisionKind:
+      type: string
+      enum: [accept_risk, negotiate, refer_to_lawyer, not_relevant]
+    NovaContractAnswer:
+      type: object
+      required: [runId, question, kind, answer, citations, droppedCitations, unreadPages, truncated]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        question: { type: string }
+        kind:
+          type: string
+          enum: [answered, not_addressed, withheld]
+        answer:
+          type: string
+          description: Nova's sentence when `answered`; fixed wording when the contract is silent or the answer is withheld.
+        citations:
+          type: array
+          description: The clauses the answer relies on; at least one when `answered`, none otherwise.
+          items:
+            type: object
+            required: [page, clause, quote]
+            properties:
+              page: { type: integer, minimum: 1 }
+              clause: { type: [string, 'null'] }
+              quote: { type: string }
+        droppedCitations:
+          type: integer
+          minimum: 0
+          description: Citations code removed because their words were not on any page.
+        unreadPages:
+          type: array
+          description: Pages with no text Nova can read, so "not addressed" may miss what is on them.
+          items: { type: integer, minimum: 1 }
+        truncated:
+          type: boolean
+          description: Part of the contract was left out (too long to read in one go).
     NovaContractReview:
       type: object
       required:
@@ -10324,7 +10691,22 @@ components:
         - timeBars
         - flags
         - dropped
+        - decisions
+        - createdAt
       properties:
+        createdAt: { type: string, format: date-time }
+        decisions:
+          type: array
+          description: Every decision recorded on a flag, oldest first. The latest for a flag stands.
+          items:
+            type: object
+            required: [flagIndex, decision, note, decidedBy, decidedAt]
+            properties:
+              flagIndex: { type: integer, minimum: 0 }
+              decision: { $ref: '#/components/schemas/ContractFlagDecisionKind' }
+              note: { type: [string, 'null'] }
+              decidedBy: { type: string, description: The person's public user id. }
+              decidedAt: { type: string, format: date-time }
         runId: { type: string, description: For feedback (`air_`) }
         suggestionId: { type: string, description: The saved suggestion (`ais_`). }
         disclaimer:
@@ -15619,6 +16001,128 @@ components:
         sightedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
         createdAt: { type: string, format: date-time }
+    ComplianceItemType:
+      type: string
+      enum:
+        [
+          contractor_licence,
+          trade_licence,
+          workers_comp,
+          public_liability,
+          contract_works,
+          professional_indemnity,
+          personal_accident,
+          home_warranty,
+          subcontractor_statement,
+          plant_registration,
+          test_and_tag,
+          wwcc,
+          modern_slavery,
+          abn,
+          other,
+        ]
+    ComplianceDocument:
+      type: object
+      required:
+        [
+          id,
+          itemType,
+          title,
+          numberLast4,
+          issuingState,
+          licenceClass,
+          insurer,
+          limitCents,
+          startsOn,
+          expiresOn,
+          fileIds,
+          evidence,
+          expiry,
+          sightedBy,
+          sightedAt,
+          archivedAt,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' }
+        itemType: { $ref: '#/components/schemas/ComplianceItemType' }
+        title: { type: string }
+        numberLast4:
+          { type: [string, 'null'], description: Only the last four characters are kept. }
+        issuingState: { oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }] }
+        licenceClass: { type: [string, 'null'] }
+        insurer: { type: [string, 'null'] }
+        limitCents:
+          { type: [integer, 'null'], description: 'Cover limit for an insurance, in cents.' }
+        startsOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        fileIds: { type: array, items: { $ref: '#/components/schemas/FileRef' } }
+        evidence:
+          type: string
+          enum: [recorded, sighted, self_declared]
+          description: 'What was done with it. Never "verified": no register has been queried.'
+        expiry:
+          type: string
+          enum: [no_expiry, current, expiring, expired]
+          description: "`expiring` is within 30 days of `expiresOn`, in the company's own time zone (Sydney until orgs carry one)."
+        sightedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        sightedAt: { type: [string, 'null'], format: date-time }
+        archivedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    ComplianceDocumentList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ComplianceDocument' } }
+    CreateComplianceDocumentRequest:
+      type: object
+      additionalProperties: false
+      required: [itemType, title]
+      properties:
+        itemType: { $ref: '#/components/schemas/ComplianceItemType' }
+        title: { type: string, minLength: 1, maxLength: 200 }
+        number:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 50,
+            description: 'Licence, policy or card number. Only the last four characters are stored.',
+          }
+        issuingState: { $ref: '#/components/schemas/AuState' }
+        licenceClass: { type: string, maxLength: 200 }
+        insurer: { type: string, maxLength: 200 }
+        limitCents: { type: integer, minimum: 0 }
+        startsOn: { type: string, format: date }
+        expiresOn: { type: string, format: date }
+        fileIds:
+          {
+            type: array,
+            maxItems: 4,
+            items: { $ref: '#/components/schemas/FileRef' },
+            description: 'Ready files in this org. Required unless `selfDeclared`.',
+          }
+        selfDeclared:
+          {
+            type: boolean,
+            default: false,
+            description: 'A declaration with no document, such as "no employees".',
+          }
+    UpdateComplianceDocumentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        number: { type: [string, 'null'], minLength: 1, maxLength: 50 }
+        issuingState: { oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }] }
+        licenceClass: { type: [string, 'null'], maxLength: 200 }
+        insurer: { type: [string, 'null'], maxLength: 200 }
+        limitCents: { type: [integer, 'null'], minimum: 0 }
+        startsOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        fileIds: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/FileRef' } }
+        archived: { type: boolean }
     WorkerCredentialList:
       type: object
       required: [data]

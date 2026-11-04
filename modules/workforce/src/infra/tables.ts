@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   customType,
   date,
@@ -284,5 +285,26 @@ export const workerCredentials = workforceSchema.table('worker_credentials', {
   status: text('status').$type<'recorded' | 'sighted'>().notNull().default('recorded'),
   sightedBy: uuid('sighted_by'),
   sightedAt: timestamp('sighted_at', { withTimezone: true }),
+  ...audit,
+});
+
+/** The company's own compliance documents (compliance/05). Org-level: no project. */
+export const complianceDocuments = workforceSchema.table('compliance_documents', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  itemType: text('item_type').notNull(),
+  title: text('title').notNull(),
+  numberLast4: text('number_last4'),
+  issuingState: text('issuing_state'),
+  licenceClass: text('licence_class'),
+  insurer: text('insurer'),
+  limitCents: bigint('limit_cents', { mode: 'number' }),
+  startsOn: date('starts_on'),
+  expiresOn: date('expires_on'),
+  fileIds: uuid('file_ids').array().notNull(),
+  evidence: text('evidence').$type<'recorded' | 'sighted' | 'self_declared'>().notNull(),
+  sightedBy: uuid('sighted_by'),
+  sightedAt: timestamp('sighted_at', { withTimezone: true }),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
   ...audit,
 });

@@ -255,6 +255,44 @@ describe('Nova contract review (F34)', () => {
     ).toBe(200);
   });
 
+  it('lists reviews and records a decision on a flag, keeping the history', async () => {
+    const s = await setup();
+    await s.owner.browser.put(`/v1/orgs/${s.org.id}/ai/contract-playbooks/subcontract`, PLAYBOOK);
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    expect(made.decisions).toEqual([]);
+    const listed = (await s.mgr.browser.get(`${s.base}/ai/contract-reviews`)).json();
+    expect(listed.data.map((r: { suggestionId: string }) => r.suggestionId)).toEqual([
+      made.suggestionId,
+    ]);
+    const decide = (index: number, body: object, user = s.mgr) =>
+      user.browser.post(
+        `${s.base}/ai/contract-reviews/${made.suggestionId}/flags/${index}/decision`,
+        body,
+      );
+    // "Not relevant" needs a reason; a flag that is not in the review is refused.
+    expect((await decide(0, { decision: 'not_relevant' })).statusCode).toBe(422);
+    expect((await decide(9, { decision: 'negotiate' })).statusCode).toBe(404);
+    expect((await decide(0, { decision: 'negotiate' })).statusCode).toBe(200);
+    const after = await decide(0, { decision: 'refer_to_lawyer', note: 'Ask Jo' });
+    expect(after.statusCode).toBe(200);
+    expect(after.json().decisions).toEqual([
+      expect.objectContaining({ flagIndex: 0, decision: 'negotiate', note: null }),
+      expect.objectContaining({ flagIndex: 0, decision: 'refer_to_lawyer', note: 'Ask Jo' }),
+    ]);
+    const got = (
+      await s.mgr.browser.get(`${s.base}/ai/contract-reviews/${made.suggestionId}`)
+    ).json();
+    expect(got.decisions).toHaveLength(2);
+    // A site manager has no commercial role: nothing to list, open or decide.
+    expect((await s.site.browser.get(`${s.base}/ai/contract-reviews`)).statusCode).toBe(403);
+    expect(
+      (await s.site.browser.get(`${s.base}/ai/contract-reviews/${made.suggestionId}`)).statusCode,
+    ).toBe(403);
+    expect((await decide(0, { decision: 'accept_risk' }, s.site)).statusCode).toBe(403);
+  });
+
   it('refuses callers without the commercial role before any model call', async () => {
     const s = await setup();
     const calls = t.ai.calls.length;
@@ -269,6 +307,67 @@ describe('Nova contract review (F34)', () => {
       ...REQUEST,
     });
     expect(other.statusCode).toBeGreaterThanOrEqual(400);
+    expect(t.ai.calls.length).toBe(calls);
+  });
+
+  it('answers a question from the contract with its clause, and says so when it is silent', async () => {
+    const s = await setup();
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    const ask = (question: string, user = s.mgr, id = made.suggestionId) =>
+      user.browser.post(`${s.base}/ai/contract-reviews/${id}/questions`, { question });
+    const before = t.ai.calls.length;
+    const a = await ask('How much retention does the Principal hold?');
+    expect(a.statusCode).toBe(200);
+    expect(a.json()).toMatchObject({
+      kind: 'answered',
+      question: 'How much retention does the Principal hold?',
+      runId: expect.stringMatching(/^air_/),
+      citations: [{ page: 1, clause: '14.1', quote: expect.stringContaining('retention of 10%') }],
+      unreadPages: [],
+      truncated: false,
+    });
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'contract.ask')!;
+    expect(call.text).toContain('<question>How much retention');
+    expect(call.text).toContain('14.1 The Principal holds retention');
+    expect(call.text).not.toContain(s.file);
+
+    // The contract is silent: the fixed wording, no citations, nothing from general knowledge.
+    const silent = (await ask('What is the defects liability period?')).json();
+    expect(silent).toMatchObject({
+      kind: 'not_addressed',
+      answer: "The contract doesn't address this.",
+      citations: [],
+    });
+    // A question that asks for a legal view is not answered.
+    expect((await ask('Is the liquidated damages clause enforceable?')).json().kind).toBe(
+      'not_addressed',
+    );
+    // The question is bounded.
+    expect((await ask('?')).statusCode).toBe(422);
+    expect((await ask('x'.repeat(501))).statusCode).toBe(422);
+  });
+
+  it('keeps Ask to the commercial team and to this project, before any model call', async () => {
+    const s = await setup();
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    const calls = t.ai.calls.length;
+    const url = `${s.base}/ai/contract-reviews/${made.suggestionId}/questions`;
+    expect((await s.site.browser.post(url, { question: 'Who is the Principal?' })).statusCode).toBe(
+      403,
+    );
+    // A review that doesn't exist is not found.
+    expect(
+      (
+        await s.mgr.browser.post(
+          `${s.base}/ai/contract-reviews/ais_00000000000000000000000000/questions`,
+          { question: 'Who is the Principal?' },
+        )
+      ).statusCode,
+    ).toBe(404);
     expect(t.ai.calls.length).toBe(calls);
   });
 

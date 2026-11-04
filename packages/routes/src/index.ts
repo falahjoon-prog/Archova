@@ -15,6 +15,7 @@ export const webRoutes = {
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
+  wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
@@ -52,6 +53,10 @@ export const webRoutes = {
   newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
   contract: (orgSlug: string, projectId: string, contractId: string) =>
     `${p(orgSlug, projectId)}/contracts/${enc(contractId)}`,
+  contractReviews: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/contracts/review`,
+  contractReview: (orgSlug: string, projectId: string, reviewId: string) =>
+    `${p(orgSlug, projectId)}/contracts/review/${enc(reviewId)}`,
   paymentClaims: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/payment-claims`,
   paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,

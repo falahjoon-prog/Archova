@@ -13,6 +13,7 @@ import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
+import { heuristicContractAsk } from '../../eval/suites/contract-ask';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
@@ -50,6 +51,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,
   'contract.review': heuristicContractReview,
+  'contract.ask': heuristicContractAsk,
   'takeoff.detect': heuristicTakeoffDetect,
 };
 

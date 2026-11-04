@@ -134,7 +134,7 @@ export const normaliseQuote = (s: string) =>
     .trim();
 
 /** The page the quote is on: the page the model named when it is there, else the first page that holds it. */
-function locate(quote: string, named: number, pages: Map<number, string>): number | null {
+export function locate(quote: string, named: number, pages: Map<number, string>): number | null {
   const q = normaliseQuote(quote);
   if (!q) return null;
   if (pages.get(named)?.includes(q)) return named;

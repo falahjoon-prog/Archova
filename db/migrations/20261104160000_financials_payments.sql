@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261104150000_financials_payments.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261104160000_financials_payments.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- financials: payments against a claim (backend schema/financials.md "payments"). Append-only: a payment reversed in
 -- the accounting system is a new row with a negative amount that points at the original, never a delete (Leo L5).
 create table financials.payments (

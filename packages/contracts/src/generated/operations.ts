@@ -479,6 +479,10 @@ export const DetectTakeoffWithNovaBody = z.object({
   "y": z.number().min(0).max(1),
 }).strict()).max(5).optional(),
 }).strict();
+export const ListContractReviewsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const ReviewContractWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -489,6 +493,29 @@ export const ReviewContractWithNovaBody = z.object({
   "ourSide": z.enum(["we_pay", "we_get_paid"]),
   "baseForm": z.enum(["as4000", "as2124", "as4902", "as4903", "other"]).nullable().optional(),
   "multiState": z.boolean().optional(),
+}).strict();
+export const GetContractReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const DecideContractFlagParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+  "flagIndex": z.string().regex(new RegExp("^[0-9]{1,4}$")),
+});
+export const DecideContractFlagBody = z.object({
+  "decision": s.ContractFlagDecisionKindSchema,
+  "note": z.string().max(1000).nullable().optional(),
+}).strict();
+export const AskContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const AskContractBody = z.object({
+  "question": z.string().min(3).max(500),
 }).strict();
 export const GetContractPlaybookParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1577,6 +1604,26 @@ export const SightWorkerCredentialParams = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "credentialId": z.string().regex(new RegExp("^wcr_[0-9A-Za-z]{26}$")),
 });
+export const ListComplianceDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceDocumentsQuery = z.object({
+  "itemType": s.ComplianceItemTypeSchema.optional(),
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceDocumentBody = s.CreateComplianceDocumentRequestSchema;
+export const UpdateComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateComplianceDocumentBody = s.UpdateComplianceDocumentRequestSchema;
+export const SightComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+});
 export const ListInductionLinksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1836,6 +1883,23 @@ export const IssuePaymentScheduleParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
 export const IssuePaymentScheduleBody = s.IssuePaymentScheduleRequestSchema;
+export const ListClaimEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetClaimEvidencePdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const GetClaimEvidenceJsonParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3089,6 +3153,18 @@ export const operations = {
     query: null,
     body: DetectTakeoffWithNovaBody,
   },
+  listContractReviews: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: null,
+    params: ListContractReviewsParams,
+    query: null,
+    body: null,
+  },
   reviewContractWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
@@ -3100,6 +3176,42 @@ export const operations = {
     params: ReviewContractWithNovaParams,
     query: null,
     body: ReviewContractWithNovaBody,
+  },
+  getContractReview: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: null,
+    params: GetContractReviewParams,
+    query: null,
+    body: null,
+  },
+  decideContractFlag: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/flags/{flagIndex}/decision',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: DecideContractFlagParams,
+    query: null,
+    body: DecideContractFlagBody,
+  },
+  askContract: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: AskContractParams,
+    query: null,
+    body: AskContractBody,
   },
   getContractPlaybook: {
     method: 'GET',
@@ -5250,6 +5362,58 @@ export const operations = {
     query: null,
     body: null,
   },
+  listComplianceDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceDocumentsParams,
+    query: ListComplianceDocumentsQuery,
+    body: null,
+  },
+  createComplianceDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: CreateComplianceDocumentParams,
+    query: null,
+    body: CreateComplianceDocumentBody,
+  },
+  updateComplianceDocument: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/compliance-documents/{documentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: UpdateComplianceDocumentParams,
+    query: null,
+    body: UpdateComplianceDocumentBody,
+  },
+  sightComplianceDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-documents/{documentId}/sight',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: SightComplianceDocumentParams,
+    query: null,
+    body: null,
+  },
   listInductionLinks: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links',
@@ -5909,6 +6073,42 @@ export const operations = {
     params: IssuePaymentScheduleParams,
     query: null,
     body: IssuePaymentScheduleBody,
+  },
+  listClaimEvidence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceParams,
+    query: null,
+    body: null,
+  },
+  getClaimEvidencePdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/pdf',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetClaimEvidencePdfParams,
+    query: null,
+    body: null,
+  },
+  getClaimEvidenceJson: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/json',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetClaimEvidenceJsonParams,
+    query: null,
+    body: null,
   },
   listMeetingSeries: {
     method: 'GET',
