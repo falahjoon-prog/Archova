@@ -70,6 +70,7 @@ export {
   Mail as CorrespondenceIcon,
   ShieldCheck as InductionsIcon,
   Scale as EstimatingIcon,
+  Users as MeetingsIcon,
   Send as TransmittalsIcon,
   Sparkles as NovaIcon,
 } from 'lucide-react';

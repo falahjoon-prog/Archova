@@ -41,6 +41,7 @@ tags:
   - name: diary
   - name: workforce
   - name: scheduling
+  - name: meetings
 paths:
   /v1/auth/signup:
     post:
@@ -7674,6 +7675,328 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listMeetingSeries
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.read
+      summary: 'Meeting series on the project (weekly site meeting, PCG, design, safety).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingSeriesList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createMeetingSeries
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Create a series with default attendees and an agenda; the agenda starts from the template (MTG-AC1).'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMeetingSeriesRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingSeries' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingSeriesId' }
+    patch:
+      operationId: updateMeetingSeries
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Change a series. Later meetings start from the previous meeting, so a new agenda applies to a series with no meetings yet.'
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMeetingSeriesRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingSeries' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}/meetings:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingSeriesId' }
+    post:
+      operationId: createMeeting
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Start the next meeting of a series. Open items from the previous meeting come with it, keeping their numbers (MTG-AC2).'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMeetingRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listMeetings
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.read
+      summary: 'Meetings on the project, newest first. Outsiders see only issued meetings they attended.'
+      parameters:
+        - { name: seriesId, in: query, schema: { $ref: '#/components/schemas/MeetingSeriesRef' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingId' }
+    get:
+      operationId: getMeeting
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.read
+      summary: 'A meeting with its attendance, agenda and items. Outsiders get the latest issued version without internal-only sections (MTG-AC7).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateMeeting
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Change the title, time, place, chair or corrections date. Editing after issue does not change the issued version; issue again to publish a correction.'
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMeetingRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/attendees:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingId' }
+    put:
+      operationId: setMeetingAttendees
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Replace the attendance list (present, apologies, absent).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetMeetingAttendeesRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/sections:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingId' }
+    post:
+      operationId: addMeetingSection
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Add an agenda section to this meeting; it takes the next section number.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddMeetingSectionRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/items:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingId' }
+    post:
+      operationId: createMeetingItem
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Record an item as information, decision or action. It is numbered section.item (MTG-US4).'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateMeetingItemRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meeting-items/{itemId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingItemId' }
+    patch:
+      operationId: updateMeetingItem
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: 'Change an item: text, kind, owner, due date, link or status. Returns the meeting it is in.'
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateMeetingItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteMeetingItem
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.write
+      summary: "Remove an item raised in this meeting. An item carried from an earlier meeting can't be removed; close it."
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/issue:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingId' }
+    post:
+      operationId: issueMeeting
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.issue
+      summary: 'Freeze the minutes as the next version and record who they went to. A correction after issue is the next version; every version stays (MTG-AC4).'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssueMeetingRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/versions/{version}/pdf:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/MeetingId' }
+      - { $ref: '#/components/parameters/MeetingVersion' }
+    get:
+      operationId: getMeetingMinutesPdf
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.read
+      summary: 'The issued minutes as a PDF, base64 in JSON. Outsiders get it without internal-only sections.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingPdf' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/meeting-actions:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listMeetingActions
+      tags: [meetings]
+      x-module: meetings
+      x-permission: meetings.meetings.read
+      summary: "Open actions across the project's meetings: yours and your company's by default (MTG-US9)."
+      parameters:
+        - { name: scope, in: query, schema: { type: string, enum: [mine, all], default: mine } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MeetingActionList' }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     InspectionTemplateId:
@@ -7870,6 +8193,26 @@ components:
       required: true
       description: The ETag from the last read. Missing → 428, stale → 412.
       schema: { type: string }
+    MeetingSeriesId:
+      name: seriesId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^msr_[0-9A-Za-z]{26}$' }
+    MeetingId:
+      name: meetingId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^mtg_[0-9A-Za-z]{26}$' }
+    MeetingItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^mit_[0-9A-Za-z]{26}$' }
+    MeetingVersion:
+      name: version
+      in: path
+      required: true
+      schema: { type: string, pattern: '^[1-9][0-9]{0,5}$' }
   headers:
     ETag:
       description: Row version, quoted (`"3"`).
@@ -7881,6 +8224,428 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    CreateMeetingSeriesRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        template: { $ref: '#/components/schemas/MeetingTemplate' }
+        cadence: { type: [string, 'null'], maxLength: 100 }
+        defaultAttendees:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/MeetingPerson' }
+        agenda:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+    UpdateMeetingSeriesRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        cadence: { type: [string, 'null'], maxLength: 100 }
+        defaultAttendees:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/MeetingPerson' }
+        agenda:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+    CreateMeetingRequest:
+      type: object
+      additionalProperties: false
+      required: [heldAt]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        heldAt: { type: string, format: date-time }
+        location: { type: string, maxLength: 300 }
+    UpdateMeetingRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        heldAt: { type: string, format: date-time }
+        location: { type: string, maxLength: 300 }
+        chairUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        correctionsBy: { type: [string, 'null'], format: date }
+    SetMeetingAttendeesRequest:
+      type: object
+      additionalProperties: false
+      required: [attendees]
+      properties:
+        attendees:
+          type: array
+          maxItems: 200
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/MeetingPerson' }
+              - type: object
+                properties:
+                  attendance: { $ref: '#/components/schemas/MeetingAttendance' }
+    AddMeetingSectionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        internalOnly: { type: boolean }
+    CreateMeetingItemRequest:
+      type: object
+      additionalProperties: false
+      required: [sectionId, kind, body]
+      properties:
+        sectionId: { type: string, pattern: '^msc_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/MeetingItemKind' }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+        ownerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        ownerUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        ownerName: { type: [string, 'null'], maxLength: 200 }
+        dueDate: { type: [string, 'null'], format: date }
+        link:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLink' }
+            - { type: 'null' }
+    UpdateMeetingItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/MeetingItemKind' }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+        ownerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        ownerUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        ownerName: { type: [string, 'null'], maxLength: 200 }
+        dueDate: { type: [string, 'null'], format: date }
+        link:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLink' }
+            - { type: 'null' }
+    IssueMeetingRequest:
+      type: object
+      additionalProperties: false
+      required: [recipients]
+      properties:
+        recipients:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, email]
+            properties:
+              name: { type: string, minLength: 1, maxLength: 200 }
+              email: { type: string, format: email, maxLength: 320 }
+        correctionsBy: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    MeetingSeriesRef: { type: string, pattern: '^msr_[0-9A-Za-z]{26}$' }
+    MeetingTemplate:
+      type: string
+      enum: [site_coordination, pcg, design_coordination, safety_committee, custom]
+    MeetingItemKind: { type: string, enum: [information, decision, action] }
+    MeetingItemStatus: { type: string, enum: [open, closed] }
+    MeetingAttendance: { type: string, enum: [present, apologies, absent] }
+    MeetingAgendaSection:
+      type: object
+      additionalProperties: false
+      required: [title, internalOnly]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        internalOnly:
+          type: boolean
+          description: Left out of what outsiders see and of the PDF they get (MTG-AC7).
+    MeetingPerson:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        companyName: { type: string, maxLength: 200 }
+        role: { type: string, maxLength: 200 }
+        email: { type: [string, 'null'], format: email, maxLength: 320 }
+        userId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    MeetingPersonView:
+      type: object
+      required: [name, companyName, role, email, userId, companyId]
+      properties:
+        name: { type: string }
+        companyName: { type: string }
+        role: { type: string }
+        email: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+    MeetingSeries:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          template,
+          cadence,
+          defaultAttendees,
+          agenda,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        template: { $ref: '#/components/schemas/MeetingTemplate' }
+        cadence: { type: [string, 'null'] }
+        defaultAttendees:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingPersonView' }
+        agenda:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MeetingSeriesList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingSeries' }
+    MeetingSummary:
+      type: object
+      required:
+        [id, seriesId, seriesName, number, title, heldAt, status, issuedVersion, openActions]
+      properties:
+        id: { type: string }
+        seriesId: { type: string }
+        seriesName: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        heldAt: { type: string, format: date-time }
+        status: { type: string, enum: [draft, issued] }
+        issuedVersion: { type: integer }
+        openActions: { type: integer }
+    MeetingList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingSummary' }
+    Meeting:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          seriesId,
+          seriesName,
+          number,
+          title,
+          heldAt,
+          location,
+          chairUserId,
+          status,
+          correctionsBy,
+          issuedVersion,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        seriesId: { type: string }
+        seriesName: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        heldAt: { type: string, format: date-time }
+        location: { type: string }
+        chairUserId: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, issued] }
+        correctionsBy: { type: [string, 'null'], format: date }
+        issuedVersion: { type: integer }
+        version: { type: integer }
+    MeetingAttendeeView:
+      allOf:
+        - { $ref: '#/components/schemas/MeetingPersonView' }
+        - type: object
+          required: [id, attendance]
+          properties:
+            id: { type: string }
+            attendance: { $ref: '#/components/schemas/MeetingAttendance' }
+    MeetingItemHistory:
+      type: object
+      required: [meetingId, meetingNumber, heldAt, itemNo, body, status]
+      properties:
+        meetingId: { type: string }
+        meetingNumber: { type: integer }
+        heldAt: { type: string, format: date-time }
+        itemNo: { type: string }
+        body: { type: string }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+    MeetingLink:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [rfi, variation, defect] }
+        id: { type: string, minLength: 5, maxLength: 40 }
+    MeetingItem:
+      type: object
+      required:
+        [
+          id,
+          sectionId,
+          threadId,
+          itemNo,
+          kind,
+          body,
+          status,
+          ownerCompanyId,
+          ownerUserId,
+          ownerName,
+          dueDate,
+          link,
+          carriedCount,
+          stale,
+          history,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        sectionId: { type: string }
+        threadId:
+          { type: string, description: The first appearance of the item; carried copies share it. }
+        itemNo: { type: string, description: 'section.item, e.g. 3.2' }
+        kind: { $ref: '#/components/schemas/MeetingItemKind' }
+        body: { type: string }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+        ownerCompanyId: { type: [string, 'null'] }
+        ownerUserId: { type: [string, 'null'] }
+        ownerName: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        link:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLink' }
+            - { type: 'null' }
+        carriedCount: { type: integer }
+        stale:
+          type: boolean
+          description: An open action carried forward three or more times.
+        history:
+          type: array
+          description: Earlier appearances of the item, oldest first.
+          items: { $ref: '#/components/schemas/MeetingItemHistory' }
+        version: { type: integer }
+    MeetingSectionView:
+      type: object
+      required: [id, position, title, internalOnly, items]
+      properties:
+        id: { type: string }
+        position: { type: integer }
+        title: { type: string }
+        internalOnly: { type: boolean }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingItem' }
+    MeetingVersion:
+      type: object
+      required: [version, issuedAt, issuedBy, correctionsBy, note, recipients]
+      properties:
+        version: { type: integer }
+        issuedAt: { type: string, format: date-time }
+        issuedBy: { type: [string, 'null'] }
+        correctionsBy: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        recipients:
+          type: array
+          items:
+            type: object
+            required: [name, email]
+            properties:
+              name: { type: string }
+              email: { type: string }
+    MeetingViewer:
+      type: object
+      required: [audience, canEdit, canIssue, viewingVersion]
+      properties:
+        audience: { type: string, enum: [internal, external] }
+        canEdit: { type: boolean }
+        canIssue: { type: boolean }
+        viewingVersion:
+          type: [integer, 'null']
+          description: Set when the caller sees an issued version rather than the working minutes.
+    MeetingDetail:
+      type: object
+      required: [meeting, attendees, sections, versions, viewer]
+      properties:
+        meeting: { $ref: '#/components/schemas/Meeting' }
+        attendees:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingAttendeeView' }
+        sections:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingSectionView' }
+        versions:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingVersion' }
+        viewer: { $ref: '#/components/schemas/MeetingViewer' }
+    MeetingPdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    MeetingAction:
+      type: object
+      required:
+        [
+          id,
+          meetingId,
+          meetingNumber,
+          meetingTitle,
+          seriesName,
+          itemNo,
+          body,
+          ownerCompanyId,
+          ownerUserId,
+          ownerName,
+          dueDate,
+          isOverdue,
+          carriedCount,
+          stale,
+        ]
+      properties:
+        id: { type: string }
+        meetingId: { type: string }
+        meetingNumber: { type: integer }
+        meetingTitle: { type: string }
+        seriesName: { type: string }
+        itemNo: { type: string }
+        body: { type: string }
+        ownerCompanyId: { type: [string, 'null'] }
+        ownerUserId: { type: [string, 'null'] }
+        ownerName: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        carriedCount: { type: integer }
+        stale: { type: boolean }
+    MeetingActionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingAction' }
     Problem:
       type: object
       required: [type, title, status, code]

@@ -96,6 +96,12 @@ export const AcknowledgeTransmittalRequestSchema = z.object({
 }).strict();
 export type AcknowledgeTransmittalRequest = z.infer<typeof AcknowledgeTransmittalRequestSchema>;
 
+export const AddMeetingSectionRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "internalOnly": z.boolean().optional(),
+}).strict();
+export type AddMeetingSectionRequest = z.infer<typeof AddMeetingSectionRequestSchema>;
+
 export const EmailSchema = z.string().email().max(320);
 export type Email = z.infer<typeof EmailSchema>;
 
@@ -951,6 +957,66 @@ export const CreateMarkupRequestSchema = z.object({
   "shapes": z.array(MarkupShapeSchema).max(2000),
 }).strict();
 export type CreateMarkupRequest = z.infer<typeof CreateMarkupRequestSchema>;
+
+export const MeetingItemKindSchema = z.enum(["information", "decision", "action"]);
+export type MeetingItemKind = z.infer<typeof MeetingItemKindSchema>;
+
+export const MeetingItemStatusSchema = z.enum(["open", "closed"]);
+export type MeetingItemStatus = z.infer<typeof MeetingItemStatusSchema>;
+
+export const MeetingLinkSchema = z.object({
+  "type": z.enum(["rfi", "variation", "defect"]),
+  "id": z.string().min(5).max(40),
+}).strict();
+export type MeetingLink = z.infer<typeof MeetingLinkSchema>;
+
+export const CreateMeetingItemRequestSchema = z.object({
+  "sectionId": z.string().regex(new RegExp("^msc_[0-9A-Za-z]{26}$")),
+  "kind": MeetingItemKindSchema,
+  "body": z.string().min(1).max(5000),
+  "status": MeetingItemStatusSchema.optional(),
+  "ownerCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "ownerUserId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "ownerName": z.string().max(200).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "link": z.union([MeetingLinkSchema, z.null()]).optional(),
+}).strict();
+export type CreateMeetingItemRequest = z.infer<typeof CreateMeetingItemRequestSchema>;
+
+export const CreateMeetingRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "location": z.string().max(300).optional(),
+}).strict();
+export type CreateMeetingRequest = z.infer<typeof CreateMeetingRequestSchema>;
+
+export const MeetingTemplateSchema = z.enum(["site_coordination", "pcg", "design_coordination", "safety_committee", "custom"]);
+export type MeetingTemplate = z.infer<typeof MeetingTemplateSchema>;
+
+export const MeetingPersonSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "companyName": z.string().max(200).optional(),
+  "role": z.string().max(200).optional(),
+  "email": z.string().email().max(320).nullable().optional(),
+  "userId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type MeetingPerson = z.infer<typeof MeetingPersonSchema>;
+
+export const MeetingAgendaSectionSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "internalOnly": z.boolean(),
+}).strict();
+export type MeetingAgendaSection = z.infer<typeof MeetingAgendaSectionSchema>;
+
+export const CreateMeetingSeriesRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "template": MeetingTemplateSchema.optional(),
+  "cadence": z.string().max(100).nullable().optional(),
+  "defaultAttendees": z.array(MeetingPersonSchema).max(100).optional(),
+  "agenda": z.array(MeetingAgendaSectionSchema).min(1).max(40).optional(),
+}).strict();
+export type CreateMeetingSeriesRequest = z.infer<typeof CreateMeetingSeriesRequestSchema>;
 
 export const ObservationTypeSchema = z.enum(["safety", "quality", "environmental", "commercial"]);
 export type ObservationType = z.infer<typeof ObservationTypeSchema>;
@@ -2435,6 +2501,16 @@ export const InvitePackageRequestSchema = z.object({
 }).strict();
 export type InvitePackageRequest = z.infer<typeof InvitePackageRequestSchema>;
 
+export const IssueMeetingRequestSchema = z.object({
+  "recipients": z.array(z.object({
+  "name": z.string().min(1).max(200),
+  "email": z.string().email().max(320),
+}).strict()).max(200),
+  "correctionsBy": z.string().date().nullable().optional(),
+  "note": z.string().max(1000).nullable().optional(),
+}).strict();
+export type IssueMeetingRequest = z.infer<typeof IssueMeetingRequestSchema>;
+
 export const IssuePaymentScheduleRequestSchema = z.object({
   "scheduledAmount": FinancialsMoneySchema,
   "overallReason": z.string().min(1).max(5000).optional(),
@@ -2578,6 +2654,181 @@ export const MeSchema = z.object({
   "memberships": z.array(MembershipSummarySchema),
 });
 export type Me = z.infer<typeof MeSchema>;
+
+export const MeetingSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "seriesId": z.string(),
+  "seriesName": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "location": z.string(),
+  "chairUserId": z.string().nullable(),
+  "status": z.enum(["draft", "issued"]),
+  "correctionsBy": z.string().date().nullable(),
+  "issuedVersion": z.number().int(),
+  "version": z.number().int(),
+});
+export type Meeting = z.infer<typeof MeetingSchema>;
+
+export const MeetingActionSchema = z.object({
+  "id": z.string(),
+  "meetingId": z.string(),
+  "meetingNumber": z.number().int(),
+  "meetingTitle": z.string(),
+  "seriesName": z.string(),
+  "itemNo": z.string(),
+  "body": z.string(),
+  "ownerCompanyId": z.string().nullable(),
+  "ownerUserId": z.string().nullable(),
+  "ownerName": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "isOverdue": z.boolean(),
+  "carriedCount": z.number().int(),
+  "stale": z.boolean(),
+});
+export type MeetingAction = z.infer<typeof MeetingActionSchema>;
+
+export const MeetingActionListSchema = z.object({
+  "data": z.array(MeetingActionSchema),
+});
+export type MeetingActionList = z.infer<typeof MeetingActionListSchema>;
+
+export const MeetingAttendanceSchema = z.enum(["present", "apologies", "absent"]);
+export type MeetingAttendance = z.infer<typeof MeetingAttendanceSchema>;
+
+export const MeetingPersonViewSchema = z.object({
+  "name": z.string(),
+  "companyName": z.string(),
+  "role": z.string(),
+  "email": z.string().nullable(),
+  "userId": z.string().nullable(),
+  "companyId": z.string().nullable(),
+});
+export type MeetingPersonView = z.infer<typeof MeetingPersonViewSchema>;
+
+export const MeetingAttendeeViewSchema = z.intersection(MeetingPersonViewSchema, z.object({
+  "id": z.string(),
+  "attendance": MeetingAttendanceSchema,
+}));
+export type MeetingAttendeeView = z.infer<typeof MeetingAttendeeViewSchema>;
+
+export const MeetingItemHistorySchema = z.object({
+  "meetingId": z.string(),
+  "meetingNumber": z.number().int(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "itemNo": z.string(),
+  "body": z.string(),
+  "status": MeetingItemStatusSchema,
+});
+export type MeetingItemHistory = z.infer<typeof MeetingItemHistorySchema>;
+
+export const MeetingItemSchema = z.object({
+  "id": z.string(),
+  "sectionId": z.string(),
+  "threadId": z.string(),
+  "itemNo": z.string(),
+  "kind": MeetingItemKindSchema,
+  "body": z.string(),
+  "status": MeetingItemStatusSchema,
+  "ownerCompanyId": z.string().nullable(),
+  "ownerUserId": z.string().nullable(),
+  "ownerName": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "link": z.union([MeetingLinkSchema, z.null()]),
+  "carriedCount": z.number().int(),
+  "stale": z.boolean(),
+  "history": z.array(MeetingItemHistorySchema),
+  "version": z.number().int(),
+});
+export type MeetingItem = z.infer<typeof MeetingItemSchema>;
+
+export const MeetingSectionViewSchema = z.object({
+  "id": z.string(),
+  "position": z.number().int(),
+  "title": z.string(),
+  "internalOnly": z.boolean(),
+  "items": z.array(MeetingItemSchema),
+});
+export type MeetingSectionView = z.infer<typeof MeetingSectionViewSchema>;
+
+export const MeetingVersionSchema = z.object({
+  "version": z.number().int(),
+  "issuedAt": z.string().datetime({ offset: true }),
+  "issuedBy": z.string().nullable(),
+  "correctionsBy": z.string().date().nullable(),
+  "note": z.string().nullable(),
+  "recipients": z.array(z.object({
+  "name": z.string(),
+  "email": z.string(),
+})),
+});
+export type MeetingVersion = z.infer<typeof MeetingVersionSchema>;
+
+export const MeetingViewerSchema = z.object({
+  "audience": z.enum(["internal", "external"]),
+  "canEdit": z.boolean(),
+  "canIssue": z.boolean(),
+  "viewingVersion": z.number().int().nullable(),
+});
+export type MeetingViewer = z.infer<typeof MeetingViewerSchema>;
+
+export const MeetingDetailSchema = z.object({
+  "meeting": MeetingSchema,
+  "attendees": z.array(MeetingAttendeeViewSchema),
+  "sections": z.array(MeetingSectionViewSchema),
+  "versions": z.array(MeetingVersionSchema),
+  "viewer": MeetingViewerSchema,
+});
+export type MeetingDetail = z.infer<typeof MeetingDetailSchema>;
+
+export const MeetingSummarySchema = z.object({
+  "id": z.string(),
+  "seriesId": z.string(),
+  "seriesName": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "status": z.enum(["draft", "issued"]),
+  "issuedVersion": z.number().int(),
+  "openActions": z.number().int(),
+});
+export type MeetingSummary = z.infer<typeof MeetingSummarySchema>;
+
+export const MeetingListSchema = z.object({
+  "data": z.array(MeetingSummarySchema),
+});
+export type MeetingList = z.infer<typeof MeetingListSchema>;
+
+export const MeetingPdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type MeetingPdf = z.infer<typeof MeetingPdfSchema>;
+
+export const MeetingSeriesSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "template": MeetingTemplateSchema,
+  "cadence": z.string().nullable(),
+  "defaultAttendees": z.array(MeetingPersonViewSchema),
+  "agenda": z.array(MeetingAgendaSectionSchema),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type MeetingSeries = z.infer<typeof MeetingSeriesSchema>;
+
+export const MeetingSeriesListSchema = z.object({
+  "data": z.array(MeetingSeriesSchema),
+});
+export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
+
+export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
+export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
 
 export const NegotiationTurnSchema = z.object({
   "role": z.enum(["estimator", "nova"]),
@@ -3601,6 +3852,13 @@ export const SetAllowancesRequestSchema = z.object({
 }).strict();
 export type SetAllowancesRequest = z.infer<typeof SetAllowancesRequestSchema>;
 
+export const SetMeetingAttendeesRequestSchema = z.object({
+  "attendees": z.array(z.intersection(MeetingPersonSchema, z.object({
+  "attendance": MeetingAttendanceSchema.optional(),
+}))).max(200),
+}).strict();
+export type SetMeetingAttendeesRequest = z.infer<typeof SetMeetingAttendeesRequestSchema>;
+
 export const SheetGeometrySchema = z.object({
   "revisionId": z.string(),
   "status": z.enum(["pending", "ready"]),
@@ -4335,6 +4593,35 @@ export const UpdateMarkupRequestSchema = z.object({
   "locationConfirmed": z.boolean().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateMarkupRequest = z.infer<typeof UpdateMarkupRequestSchema>;
+
+export const UpdateMeetingItemRequestSchema = z.object({
+  "kind": MeetingItemKindSchema.optional(),
+  "body": z.string().min(1).max(5000).optional(),
+  "status": MeetingItemStatusSchema.optional(),
+  "ownerCompanyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "ownerUserId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "ownerName": z.string().max(200).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "link": z.union([MeetingLinkSchema, z.null()]).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateMeetingItemRequest = z.infer<typeof UpdateMeetingItemRequestSchema>;
+
+export const UpdateMeetingRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "heldAt": z.string().datetime({ offset: true }).optional(),
+  "location": z.string().max(300).optional(),
+  "chairUserId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "correctionsBy": z.string().date().nullable().optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateMeetingRequest = z.infer<typeof UpdateMeetingRequestSchema>;
+
+export const UpdateMeetingSeriesRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "cadence": z.string().max(100).nullable().optional(),
+  "defaultAttendees": z.array(MeetingPersonSchema).max(100).optional(),
+  "agenda": z.array(MeetingAgendaSectionSchema).min(1).max(40).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateMeetingSeriesRequest = z.infer<typeof UpdateMeetingSeriesRequestSchema>;
 
 export const UpdateObservationRequestSchema = z.object({
   "type": ObservationTypeSchema.optional(),

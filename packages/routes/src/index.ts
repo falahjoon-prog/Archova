@@ -55,6 +55,9 @@ export const webRoutes = {
   paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
+  meeting: (orgSlug: string, projectId: string, meetingId: string) =>
+    `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,

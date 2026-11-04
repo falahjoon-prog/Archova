@@ -36,6 +36,7 @@ import {
   type TileUrls,
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
+import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
@@ -55,6 +56,7 @@ export const MODULE_PERMISSIONS = [
   SUBMITTALS_PERMISSIONS,
   CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
+  MEETINGS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   SAFETY_PERMISSIONS,
@@ -183,6 +185,14 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+  });
+
+  const meetings = createMeetingsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    messages: opts.messages,
+    baseUrl: opts.linkBaseUrl,
+    logger: services.logger,
   });
 
   const financials = createFinancialsModule(services, {
@@ -321,6 +331,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     defects,
+    meetings,
     financials,
     quality,
     safety,
@@ -352,6 +363,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals,
     correspondence,
     defects,
+    meetings,
     financials,
     quality,
     safety,

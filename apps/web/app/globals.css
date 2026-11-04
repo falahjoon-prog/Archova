@@ -1723,3 +1723,76 @@ fieldset.worker-card > legend {
     grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
   }
 }
+
+/* Meetings */
+.details-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.minutes-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+}
+.minutes-items,
+.minutes-people,
+.minutes-versions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.minutes-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.minutes-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.minutes-item__head,
+.minutes-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.minutes-item__no {
+  min-width: 3ch;
+  font-weight: 600;
+}
+.minutes-item__body {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.minutes-item__history {
+  font-size: var(--font-sm);
+}
+.minutes-people__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.minutes-people__controls {
+  display: flex;
+  align-items: end;
+  gap: var(--space-2);
+}
+.minutes-add {
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--c-border-divider);
+}
