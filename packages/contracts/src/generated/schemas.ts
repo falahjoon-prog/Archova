@@ -424,6 +424,9 @@ export const ContractDetailSchema = z.object({
 });
 export type ContractDetail = z.infer<typeof ContractDetailSchema>;
 
+export const ContractFlagDecisionKindSchema = z.enum(["accept_risk", "negotiate", "refer_to_lawyer", "not_relevant"]);
+export type ContractFlagDecisionKind = z.infer<typeof ContractFlagDecisionKindSchema>;
+
 export const ContractListSchema = z.object({
   "data": z.array(ContractSchema),
 });
@@ -2920,6 +2923,14 @@ export const NovaAnswerSchema = z.object({
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
 export const NovaContractReviewSchema = z.object({
+  "createdAt": z.string().datetime({ offset: true }),
+  "decisions": z.array(z.object({
+  "flagIndex": z.number().int().min(0),
+  "decision": ContractFlagDecisionKindSchema,
+  "note": z.string().nullable(),
+  "decidedBy": z.string(),
+  "decidedAt": z.string().datetime({ offset: true }),
+})),
   "runId": z.string(),
   "suggestionId": z.string(),
   "disclaimer": z.string(),
