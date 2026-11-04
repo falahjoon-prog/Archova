@@ -50,6 +50,7 @@ export type ProjectTool =
   | 'meetings'
   | 'inductions'
   | 'attendance'
+  | 'observations'
   | 'tender-packages'
   | 'takeoff-measurements'
   | 'estimates'

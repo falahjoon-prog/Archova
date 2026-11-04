@@ -6,6 +6,7 @@ import { atLeast, type EffectivePermissions, type Tool } from '@archova/domain/p
 import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
+  ObservationsIcon,
   DefectsIcon,
   MeetingsIcon,
   ContractsIcon,
@@ -156,6 +157,11 @@ export function projectToolGroups(
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
       icon: AttendanceIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.observations(orgSlug, projectId),
+      label: 'Observations',
+      icon: ObservationsIcon,
     },
   ];
   return [
