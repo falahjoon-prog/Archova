@@ -7,6 +7,7 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   ObservationsIcon,
+  SwmsIcon,
   DefectsIcon,
   MeetingsIcon,
   ContractsIcon,
@@ -162,6 +163,11 @@ export function projectToolGroups(
       href: webRoutes.observations(orgSlug, projectId),
       label: 'Observations',
       icon: ObservationsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.swms(orgSlug, projectId),
+      label: 'SWMS',
+      icon: SwmsIcon,
     },
   ];
   return [

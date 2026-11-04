@@ -1771,6 +1771,38 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/nova-minutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova proposes minute items from typed meeting notes (F7, MTG-US7).
+         * @description Nova reads the notes the person pasted or typed and proposes information, decision and action items for the
+         *     meeting's own sections, with an owner (one of the meeting's attendees) and a due date where the notes give
+         *     them. Each proposed item carries `quote`, the words of the notes it comes from. Code drops an item whose
+         *     quote is not in the notes, a number the quote does not contain, an owner the quote does not name, and a due
+         *     date the quote does not give. Nova never writes into the minutes: the result is a pending suggestion (`task`
+         *     `minutes.extract`) that only the person who asked can list or decide, and the web adds the items they pick
+         *     through the meetings API. Asking again with the same notes returns the same suggestion at no cost. Costs
+         *     1.5 Nova credits. Only the project team that may write the minutes can ask. Notes shorter than 20
+         *     characters are 422 `ai.minutes.nothing_to_extract`.
+         */
+        post: operations["draftMinutesWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/drawing-revisions/{drawingRevisionId}/changes": {
         parameters: {
             query?: never;
@@ -6623,6 +6655,9 @@ export interface components {
         };
         /** @enum {string} */
         AiSuggestionStatus: "pending" | "accepted" | "edited" | "rejected";
+        DraftMinutesRequest: {
+            notes: string;
+        };
         AiSuggestion: {
             id: string;
             projectId: string | null;
@@ -13550,6 +13585,35 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description The suggestion */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftMinutesWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                meetingId: components["parameters"]["MeetingId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DraftMinutesRequest"];
+            };
+        };
         responses: {
             /** @description The suggestion */
             200: {

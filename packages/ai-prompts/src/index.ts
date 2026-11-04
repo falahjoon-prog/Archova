@@ -10,6 +10,7 @@ export * from './qa-rewrite/prompt';
 export * from './qa-rerank/prompt';
 export * from './diary-summary/prompt';
 export * from './diary-weekly/prompt';
+export * from './meeting-minutes/prompt';
 export * from './rfi-draft/prompt';
 export * from './rfi-answer/prompt';
 export * from './drawing-compare/prompt';

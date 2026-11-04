@@ -60,6 +60,7 @@ export {
   BookOpen as DiaryIcon,
   HardHat as AttendanceIcon,
   Eye as ObservationsIcon,
+  FileWarning as SwmsIcon,
   ClipboardCheck as DefectsIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
