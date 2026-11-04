@@ -137,6 +137,8 @@ export const orgActions = backofficeSchema.table('org_actions', {
   targetOrgId: uuid('target_org_id').notNull(),
   kind: text('kind').$type<OrgActionKind>().notNull(),
   summary: text('summary').notNull(),
+  /** What the customer's own admins read ("Archova staff: ..."); never the reason or the staff member's name. */
+  customerSummary: text('customer_summary').notNull(),
   reason: text('reason').notNull(),
   ticketRef: text('ticket_ref').notNull(),
   staffId: uuid('staff_id').notNull(),

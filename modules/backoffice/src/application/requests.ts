@@ -60,6 +60,7 @@ const KINDS: Record<
         targetOrgId: refund.targetOrgId,
         kind: 'refund',
         summary: `Refund of A$${(refund.amountCents / 100).toFixed(2)} on invoice ${refund.invoiceRef} approved by ${approver?.name ?? 'a second approver'}`,
+        customerSummary: `Archova staff recorded a refund of A$${(refund.amountCents / 100).toFixed(2)} on invoice ${refund.invoiceRef}.`,
         reason: refund.reason,
         ticketRef: refund.ticketRef,
         staffId: refund.requestedBy,

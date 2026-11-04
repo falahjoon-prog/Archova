@@ -7,6 +7,7 @@ import {
   type OrgDiscountDto,
   type OrgOverrideDto,
   type OrgRefundDto,
+  type StaffActionDto,
   type SuspendCategory,
 } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
@@ -85,6 +86,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
     staff: StaffContext,
     kind: OrgActionDto['kind'],
     summary: string,
+    customerSummary: string,
     input: { reason: string; ticketRef: string },
   ) {
     await t.insert(orgActions).values({
@@ -92,6 +94,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
       targetOrgId: orgId,
       kind,
       summary,
+      customerSummary,
       reason: input.reason,
       ticketRef: input.ticketRef,
       staffId: staff.staffId,
@@ -124,6 +127,28 @@ export function createOrgActionService(deps: OrgActionDeps) {
     }));
   }
 
+  /**
+   * The customer's own view of staff account actions: when, what and the ticket, worded for them. It leaves out the
+   * internal reason and the staff member's name, and says "Archova staff" (Sam, #182 review).
+   */
+  async function listForCustomer(orgId: string, limit = 50): Promise<StaffActionDto[]> {
+    const rows = await tx((t) =>
+      t
+        .select()
+        .from(orgActions)
+        .where(eq(orgActions.targetOrgId, orgId))
+        .orderBy(desc(orgActions.createdAt))
+        .limit(limit),
+    );
+    return rows.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      summary: a.customerSummary,
+      ticketRef: a.ticketRef,
+      at: a.createdAt.toISOString(),
+    }));
+  }
+
   type Common = { reason: string; ticketRef: string };
 
   async function extendTrial(staff: StaffContext, orgId: string, input: Common & { days: number }) {
@@ -140,6 +165,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'trial.extend',
         `Extended the trial by ${input.days} days (${a.trialExtendedDays} in total)`,
+        `Archova staff extended your trial by ${input.days} days.`,
         input,
       );
     });
@@ -160,6 +186,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'plan.change',
         `Moved from ${before.planCode} to ${a.planCode}`,
+        `Archova staff moved your plan from ${before.planCode} to ${a.planCode}.`,
         input,
       );
     });
@@ -188,6 +215,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'suspend',
         `Suspended (${input.category.replace('_', ' ')}) by ${actingRole(staff)}`,
+        'Archova staff suspended your account.',
         input,
       );
     });
@@ -204,6 +232,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'reactivate',
         `Reactivated after suspension by ${actingRole(staff)}`,
+        'Archova staff reactivated your account.',
         input,
       );
     });
@@ -227,6 +256,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'credits.grant',
         `Granted ${input.credits} Nova credits (${input.kind.replace('_', '-')}) for ${periodStart.slice(0, 7)}`,
+        `Archova staff added ${input.credits} Nova credits to your account for ${periodStart.slice(0, 7)}.`,
         input,
       ),
     );
@@ -253,6 +283,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'discount.add',
         `Discount of ${d.percent}% from ${d.startsOn} to ${d.endsOn}`,
+        `Archova staff gave your account a ${d.percent}% discount until ${d.endsOn}.`,
         input,
       );
     });
@@ -272,6 +303,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'discount.revoke',
         `Ended the ${d.percent}% discount early`,
+        `Archova staff ended your ${d.percent}% discount early.`,
         input,
       );
     });
@@ -302,6 +334,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'override.grant',
         `${what} for ${input.days} days (until ${o.expiresAt.toISOString().slice(0, 10)})`,
+        `Archova staff changed your account's access until ${o.expiresAt.toISOString().slice(0, 10)}.`,
         input,
       );
     });
@@ -315,7 +348,15 @@ export function createOrgActionService(deps: OrgActionDeps) {
   ) {
     await tx(async (t) => {
       const o = await deps.adjustments.revokeOverride(t, orgId, overrideId, staff.staffId, now());
-      await log(t, orgId, staff, 'override.revoke', `Ended the ${o.key} override early`, input);
+      await log(
+        t,
+        orgId,
+        staff,
+        'override.revoke',
+        `Ended the ${o.key} override early`,
+        `Archova staff ended a temporary change to your account's access.`,
+        input,
+      );
     });
   }
 
@@ -339,6 +380,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
           staff,
           'refund',
           `Refund of ${money(r.amountCents)} on invoice ${r.invoiceRef}`,
+          `Archova staff recorded a refund of ${money(r.amountCents)} on invoice ${r.invoiceRef}.`,
           input,
         );
       return r;
@@ -413,6 +455,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
     account,
     list,
     adjustments,
+    listForCustomer,
     grantCredits,
     extendTrial,
     changePlan,
