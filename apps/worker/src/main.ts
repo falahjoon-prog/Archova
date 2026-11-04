@@ -21,6 +21,7 @@ import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
+import { walletExpiry } from './jobs/wallet-expiry';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -54,6 +55,10 @@ async function main() {
       config.email.appBaseUrl,
     ),
     templateBackfill,
+    // Alert rows are the record until the notification inbox lands; log what was raised.
+    walletExpiry(async (scope, alerts) => {
+      log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');
+    }),
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

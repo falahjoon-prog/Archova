@@ -21,6 +21,7 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   test_and_tag: 'Test and tag',
   wwcc: 'Working with children check',
   modern_slavery: 'Modern slavery statement',
+  abn: 'ABN',
   other: 'Other',
 };
 export const ITEM_TYPES = Object.keys(ITEM_TYPE_LABELS) as ItemType[];

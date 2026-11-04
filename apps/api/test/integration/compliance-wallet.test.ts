@@ -176,6 +176,43 @@ describe('compliance wallet', () => {
     }
   });
 
+  it('checks the format of an ABN and a licence number as they are entered', async () => {
+    const u = await signUp(t.app, 'wallet-checks');
+    const org = await createOrg(u.browser, 'Wallet Checks Co');
+    await enableFlag(t, 'subcontractor_wallet', org.id);
+    const base = `/v1/orgs/${org.id}/compliance-documents`;
+    const fileId = await uploadOrgFile(u.browser, org.id);
+    const bad = await u.browser.post(base, {
+      itemType: 'abn',
+      title: 'ABN',
+      number: '51 824 753 557',
+      fileIds: [fileId],
+    });
+    expect(bad.statusCode).toBe(422);
+    const ok = await u.browser.post(base, {
+      itemType: 'abn',
+      title: 'ABN',
+      number: '51 824 753 556',
+      fileIds: [fileId],
+    });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json().numberLast4).toBe('3556');
+    const nsw = await u.browser.post(base, {
+      itemType: 'contractor_licence',
+      title: 'Licence',
+      issuingState: 'NSW',
+      number: '1234567',
+      fileIds: [fileId],
+    });
+    expect(nsw.statusCode).toBe(422);
+    const patch = await u.browser.patch(
+      `${base}/${ok.json().id}`,
+      { number: '123' },
+      { 'if-match': ok.headers.etag as string },
+    );
+    expect(patch.statusCode).toBe(422);
+  });
+
   it("keeps one company's documents from another's", async () => {
     const a = await signUp(t.app, 'wallet-a');
     const b = await signUp(t.app, 'wallet-b');
