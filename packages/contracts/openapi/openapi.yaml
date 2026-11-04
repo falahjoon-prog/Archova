@@ -15770,6 +15770,7 @@ components:
           test_and_tag,
           wwcc,
           modern_slavery,
+          abn,
           other,
         ]
     ComplianceDocument:
