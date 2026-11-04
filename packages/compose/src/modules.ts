@@ -189,6 +189,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const meetings = createMeetingsModule(services, {
     access: access.api,
+    live: {
+      rfisOverdue: (scope, projectId, opts) => rfis.api.overdueForMeeting(scope, projectId, opts),
+      submittalsDue: (scope, projectId, opts) =>
+        submittals.api.dueForMeeting(scope, projectId, opts),
+      defectsOpen: (scope, projectId, opts) => defects.api.openForMeeting(scope, projectId, opts),
+      delayLines: (scope, projectId, opts) => diaryApi!.delayLines(scope, projectId, opts),
+    },
     platform: platform.api,
     messages: opts.messages,
     baseUrl: opts.linkBaseUrl,

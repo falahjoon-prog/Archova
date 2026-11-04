@@ -17,6 +17,7 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { AddSectionForm } from '../components/AddSectionForm';
 import { AttendanceCard } from '../components/AttendanceCard';
 import { IssueDialog } from '../components/IssueDialog';
 import { NovaMinutesDialog } from '../components/NovaMinutesDialog';
@@ -173,6 +174,7 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
       {d.sections.map((s) => (
         <SectionCard key={s.id} section={s} meetingId={m.id} canEdit={d.viewer.canEdit} />
       ))}
+      {d.viewer.canEdit ? <AddSectionForm meetingId={m.id} /> : null}
       {d.viewer.canEdit ? (
         <NovaMinutesDialog open={drafting} onClose={() => setDrafting(false)} detail={d} />
       ) : null}

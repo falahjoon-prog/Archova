@@ -1,4 +1,4 @@
-import type { Attendance, MeetingItem, MeetingTemplate } from '../data/api';
+import type { Attendance, LiveSource, MeetingItem, MeetingTemplate } from '../data/api';
 
 export const TEMPLATE_LABELS: Record<MeetingTemplate, string> = {
   site_coordination: 'Site coordination',
@@ -12,6 +12,14 @@ export const KIND_LABELS: Record<MeetingItem['kind'], string> = {
   information: 'Information',
   decision: 'Decision',
   action: 'Action',
+};
+
+/** The registers a section can list (MTG-US5), with the title the section starts with. */
+export const LIVE_SOURCE_LABELS: Record<LiveSource, string> = {
+  rfis_overdue: 'Overdue RFIs',
+  submittals_due: 'Submittals due',
+  defects_open: 'Open defects by trade',
+  delays_week: 'Delays this week',
 };
 
 export const ATTENDANCE_LABELS: Record<Attendance, string> = {

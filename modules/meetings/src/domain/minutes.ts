@@ -1,4 +1,5 @@
 // Pure rules for meetings: agenda templates, numbering, carry-forward and what an outsider may see (product/07).
+import type { LiveSnapshot, LiveSource } from './live';
 
 export const ITEM_KINDS = ['information', 'decision', 'action'] as const;
 export type ItemKind = (typeof ITEM_KINDS)[number];
@@ -75,6 +76,8 @@ export interface CarrySection {
   title: string;
   internalOnly: boolean;
   nextItem: number;
+  /** A live section stays live in the next meeting (MTG-US5). */
+  liveSource?: LiveSource | null;
 }
 export interface CarryItem {
   id: string;
@@ -109,6 +112,7 @@ export const sectionsFromAgenda = (agenda: readonly AgendaSection[]): CarrySecti
     title: s.title,
     internalOnly: s.internalOnly,
     nextItem: 1,
+    liveSource: null,
   }));
 
 export interface Viewer {
@@ -149,9 +153,18 @@ export interface MinutesView {
   issuedAt: string;
   correctionsBy: string | null;
   attendees: { name: string; companyName: string; role: string; attendance: string }[];
-  sections: { position: number; title: string; internalOnly: boolean; items: MinutesItemView[] }[];
+  sections: {
+    position: number;
+    title: string;
+    internalOnly: boolean;
+    /** The register list as it stood when the minutes were issued (MTG-AC6). */
+    live?: LiveSnapshot | null;
+    items: MinutesItemView[];
+  }[];
 }
 
 /** MTG-AC7: internal-only sections never leave the builder's side. */
 export const forAudience = (m: MinutesView, audience: 'internal' | 'external'): MinutesView =>
-  audience === 'internal' ? m : { ...m, sections: m.sections.filter((s) => !s.internalOnly) };
+  audience === 'internal'
+    ? m
+    : { ...m, sections: m.sections.filter((s) => !s.internalOnly && !s.live) };
