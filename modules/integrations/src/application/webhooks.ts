@@ -117,7 +117,7 @@ export function createWebhookService(deps: WebhooksDeps) {
         description: input.description?.trim() || null,
         eventTypes: [...new Set(input.eventTypes)],
         projectIds: input.projectIds?.length ? input.projectIds : null,
-        secretSealed: deps.vault.seal(scope.ctx.orgId, secret),
+        secretSealed: deps.vault.seal(scope.ctx.orgId, 'webhook-secret', secret),
         createdAt: now(),
         updatedAt: now(),
       })
@@ -283,7 +283,7 @@ export function createWebhookService(deps: WebhooksDeps) {
         id: d.id,
         subscriptionId: s.id,
         url: s.url,
-        secret: deps.vault.open(scope.ctx.orgId, s.secretSealed),
+        secret: deps.vault.open(scope.ctx.orgId, 'webhook-secret', s.secretSealed),
         payload: d.payload,
         attempts: d.attempts,
         createdAt: d.createdAt,

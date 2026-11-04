@@ -96,7 +96,7 @@ export function integrationsRoutes(
       try {
         result = await accounting.exchange(provider, code, verifier);
       } catch (e) {
-        await tx(input, (s) => accounting.abandonCallback(s, provider));
+        await tx(input, (s) => accounting.abandonCallback(s, provider, state));
         throw e;
       }
       const { connection } = await tx(input, (s) =>

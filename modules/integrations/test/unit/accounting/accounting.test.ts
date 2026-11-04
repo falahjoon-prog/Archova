@@ -311,9 +311,24 @@ describe('rate limiter', () => {
 describe('tokens', () => {
   const vault = createTokenVault(Buffer.alloc(32, 7));
   it('round-trips and binds to the org', () => {
-    const sealed = vault.seal('org-a', 'refresh-1');
-    expect(vault.open('org-a', sealed)).toBe('refresh-1');
-    expect(() => vault.open('org-b', sealed)).toThrow();
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    expect(vault.open('org-a', 'oauth-tokens', sealed)).toBe('refresh-1');
+    expect(() => vault.open('org-b', 'oauth-tokens', sealed)).toThrow();
+  });
+  it('fails closed on an unknown version, including the old org-only layout', () => {
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    for (const v of [0, 1, 3]) {
+      const bad = Buffer.from(sealed);
+      bad[0] = v;
+      expect(() => vault.open('org-a', 'oauth-tokens', bad)).toThrow('unknown token seal version');
+    }
+  });
+  it('binds the purpose and the key', () => {
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    expect(() => vault.open('org-a', 'webhook-secret', sealed)).toThrow();
+    expect(() =>
+      createTokenVault(Buffer.alloc(32, 8)).open('org-a', 'oauth-tokens', sealed),
+    ).toThrow();
   });
   it('builds a PKCE authorize url', () => {
     const { verifier, challenge } = newPkce();
