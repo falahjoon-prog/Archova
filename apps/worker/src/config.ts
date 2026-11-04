@@ -4,6 +4,8 @@ export interface WorkerConfig {
   /** app_rw: tenant transactions for subscribers, exactly like the API. */
   databaseUrl: string;
   redisUrl: string;
+  /** 32 bytes, base64: opens the webhook signing secrets the API sealed (same key as API_WEBHOOK_SECRET_KEY). */
+  webhookSecretKey: string | null;
   /** Object storage for file jobs; `none` leaves them unregistered (local runs without a bucket). */
   files: {
     store: 's3' | 'none';
@@ -36,6 +38,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     platformDatabaseUrl: required(env, 'DATABASE_PLATFORM_URL'),
     databaseUrl: required(env, 'DATABASE_URL'),
     redisUrl: required(env, 'REDIS_URL'),
+    webhookSecretKey: env.WORKER_WEBHOOK_SECRET_KEY || null,
     files: {
       store: env.WORKER_FILES_STORE === 's3' ? 's3' : 'none',
       bucket: env.WORKER_FILES_BUCKET ?? 'archova-local-files',

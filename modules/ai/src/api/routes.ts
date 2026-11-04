@@ -12,6 +12,9 @@ import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
 import type { AnswerSource, AskService } from '../application/ask';
+import type { TakeoffDetectService } from '../application/takeoff-detect';
+import type { SpeechService } from '../application/speech';
+import type { QuoteNegotiateService } from '../application/quote-negotiate';
 import type { SemanticSearchService } from '../application/semantic-search';
 import type {
   DrawingRegisterService,
@@ -229,6 +232,9 @@ export function aiRoutes(
   defectTags: DefectTagService,
   importMappings: ImportMappingService,
   quoteReads: QuoteReadService,
+  quoteNegotiations: QuoteNegotiateService,
+  speech: SpeechService,
+  takeoffDetect: TakeoffDetectService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -438,6 +444,47 @@ export function aiRoutes(
         },
       };
     },
+    transcribeSpeech: async (input) => {
+      const r = await speech.transcribe(requireTenant(input), projectUuid(input.params.projectId), {
+        audio: Buffer.from(input.body.audio, 'base64'),
+        mimeType: input.body.mimeType,
+      });
+      return { status: 200, body: { runId: encodeId('aiRun', r.runId), text: r.text } };
+    },
+    negotiateQuote: async (input) => {
+      const packageId = decodeId('tenderPackage', input.body.packageId);
+      if (!packageId) throw new AppError('tender.not_found');
+      const quoteId = decodeId('quote', input.body.quoteId);
+      if (!quoteId) throw new AppError('quote.not_found');
+      const r = await quoteNegotiations.negotiate(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          packageId,
+          quoteId,
+          targetExGst: input.body.targetExGst ?? null,
+          question: input.body.question ?? '',
+          history: input.body.history ?? [],
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          stance: r.stance,
+          gap: r.gap,
+          reply: r.reply,
+          points: r.points,
+          levers: r.levers,
+          counterExGst: r.counterExGst,
+          counterReason: r.counterReason,
+          draftMessage: r.draftMessage,
+          notes: r.notes,
+          history: r.history,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
     tagDefectWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);
       const photoFileId = decodeId('file', input.body.photo.fileId);
@@ -508,6 +555,36 @@ export function aiRoutes(
         input.params.weekStart,
       );
       return { status: 200, body: toSuggestionDto(row) };
+    },
+    detectTakeoffWithNova: async (input) => {
+      const revisionId = decodeId('drawingRevision', input.body.revisionId);
+      if (!revisionId)
+        throw new AppError('takeoff.revision_not_found', undefined, [
+          { path: 'revisionId', message: 'Not a drawing revision on this project' },
+        ]);
+      const d = await takeoffDetect.detect(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        {
+          revisionId,
+          target: input.body.target,
+          examples: input.body.examples ?? [],
+          ...(input.body.image ? { image: input.body.image } : {}),
+        },
+      );
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', d.runId),
+          revisionId: encodeId('drawingRevision', d.revisionId),
+          kind: d.kind,
+          what: d.what,
+          scanned: d.scanned,
+          caveat: d.caveat,
+          dropped: d.dropped,
+          items: d.items,
+        },
+      };
     },
     compareDrawingRevision: async (input) => {
       const projectId = projectUuid(input.params.projectId);

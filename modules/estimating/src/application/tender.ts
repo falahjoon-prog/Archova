@@ -22,6 +22,7 @@ import {
   nextPackageStatus,
   quoteTotals,
   takesQuotes,
+  fromCents,
   toCents,
   type PackageAction,
 } from '../domain/tender';
@@ -873,8 +874,50 @@ export function createTenderService(deps: EstimatingDeps) {
     });
   }
 
+  /**
+   * For Nova on the comparison (ai/10): one confirmed quote's lines, exclusions and qualifications set against the field.
+   * Builder staff with `quotes.review` only. No company, contact, note or allowance leaves here: Nova sees prices and
+   * terms, not who quoted or what the estimator allowed.
+   */
+  async function quoteForNegotiation(
+    scope: TenantScope,
+    projectId: string,
+    packageId: string,
+    quoteId: string,
+  ) {
+    const { row } = await load(scope, projectId, packageId);
+    const cmp = await comparison(scope, projectId, packageId);
+    const column = cmp.columns.find((c) => c.quoteId === quoteId);
+    if (!column) throw new AppError('quote.not_found');
+    const lowest = cmp.columns.reduce((m, c) => Math.min(m, toCents(c.totalExGst)), Infinity);
+    return {
+      trade: row.trade,
+      totalExGst: column.totalExGst,
+      validUntil: column.validUntil,
+      validityExpired: column.validityExpired,
+      unmappedLines: column.unmappedLines,
+      lines: cmp.rows.map((r) => {
+        const cell = r.cells.find((c) => c.quoteId === quoteId)!;
+        return {
+          scopeKey: r.key,
+          description: r.description,
+          amountExGst: cell.amountExGst,
+          provisional: cell.state === 'provisional',
+        };
+      }),
+      exclusions: column.exclusions.map((e) => e.text),
+      qualifications: column.qualifications.map((q) => q.text),
+      field: {
+        quotes: cmp.columns.length,
+        lowestExGst: fromCents(lowest),
+        medianExGst: cmp.medianTotalExGst,
+      },
+    };
+  }
+
   return {
     scopeForQuoteReading,
+    quoteForNegotiation,
     comparison,
     list,
     get,

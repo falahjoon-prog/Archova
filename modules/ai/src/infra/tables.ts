@@ -49,7 +49,7 @@ export const requests = ai.table('ai_requests', {
   promptVersion: integer('prompt_version').notNull(),
   provider: text('provider').notNull(),
   model: text('model').notNull(),
-  tier: text('tier').$type<ModelTier | 'embedding' | 'ocr'>().notNull(),
+  tier: text('tier').$type<ModelTier | 'embedding' | 'ocr' | 'speech'>().notNull(),
   attempt: smallint('attempt').notNull(),
   tokensIn: integer('tokens_in').notNull().default(0),
   tokensOut: integer('tokens_out').notNull().default(0),
@@ -73,6 +73,18 @@ export const usageLedger = ai.table('ai_usage_ledger', {
   costMicros: bigint('cost_micros', { mode: 'number' }).notNull().default(0),
   runs: integer('runs').notNull().default(0),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const creditGrants = ai.table('ai_credit_grants', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  periodStart: date('period_start', { mode: 'string' }).notNull(),
+  credits: numeric('credits', { precision: 12, scale: 2, mode: 'number' }).notNull(),
+  kind: text('kind').$type<'top_up' | 'goodwill' | 'promo'>().notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  grantedBy: uuid('granted_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export type SuggestionStatus = 'pending' | 'accepted' | 'edited' | 'rejected';

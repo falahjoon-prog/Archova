@@ -17,6 +17,8 @@ overrides:
   'happy-dom@<21.0.4': '^21.0.4'
   # Reached through expo-router > query-string in apps/mobile (GHSA-qr28-fpjm-wq7f, denial of service).
   'decode-uri-component@<0.5.1': '^0.5.1'
+  # Reached through expo > @expo/cli in apps/mobile (build tooling); several high advisories, patched in 1.4.1.
+  'node-forge@<1.4.1': '^1.4.1'
   # Next 15 pins postcss 8.4.31, which has GHSA-6g55-p6wh-862q and GHSA-r28c-9q8g-f849 (build time only).
   'postcss@<8.5.18': '^8.5.18'
 auditConfig:

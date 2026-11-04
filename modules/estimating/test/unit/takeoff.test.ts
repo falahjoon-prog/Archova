@@ -75,3 +75,23 @@ describe('takeoff rules', () => {
     expect(confirmedOnCreate('auto')).toBe(false);
   });
 });
+
+describe('Nova-assisted takeoff', () => {
+  it('waits for a person to confirm what Nova drew, but not what they draw themselves', () => {
+    expect(confirmedOnCreate('assisted')).toBe(false);
+    expect(confirmedOnCreate('auto')).toBe(false);
+    expect(confirmedOnCreate('manual')).toBe(true);
+  });
+
+  it('wants a count to equal the points Nova placed', () => {
+    const points = {
+      type: 'points' as const,
+      points: [
+        [0.1, 0.1],
+        [0.2, 0.2],
+      ],
+    };
+    expect(measurementProblem('count', points, 2)).toBeNull();
+    expect(measurementProblem('count', points, 3)?.path).toBe('quantity');
+  });
+});

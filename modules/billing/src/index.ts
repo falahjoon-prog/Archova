@@ -2,9 +2,17 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
 import { billingRoutes } from './api/routes';
 import { createCatalogueService, type CatalogueService } from './application/catalogue';
-import { trialEntitlementProvider, type EntitlementProvider } from './application/entitlements';
+import { createAccountService, type AccountService } from './application/accounts';
+import { createDbEntitlementProvider, type EntitlementProvider } from './application/entitlements';
 
 export { TRIAL_ENTITLEMENTS, type EntitlementProvider } from './application/entitlements';
+export {
+  MAX_TRIAL_EXTENSION_DAYS,
+  MAX_TRIAL_TOTAL_DAYS,
+  type AccountSeed,
+  type AccountService,
+  type OrgAccount,
+} from './application/accounts';
 export {
   INCREASE_NOTICE_DAYS,
   diffBooks,
@@ -21,7 +29,9 @@ export function createBillingModule(
     definition: defineModule({ name: 'billing' }),
     routes: billingRoutes(catalogue),
     api: {
-      entitlements: opts.entitlements ?? trialEntitlementProvider,
+      entitlements: opts.entitlements ?? createDbEntitlementProvider(services),
+      /** Org account commands (trial, plan, suspension). Called by `backoffice` after its role rules pass. */
+      accounts: createAccountService() as AccountService,
       /** Plans and price books. Called by `backoffice` after its approval rules pass; never by customer routes. */
       catalogue: catalogue as CatalogueService,
     },

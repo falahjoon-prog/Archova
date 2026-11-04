@@ -780,6 +780,76 @@ main:focus {
 .takeoff-quantities__head {
   justify-content: space-between;
 }
+.ac-table__group th,
+.ac-table__group td {
+  background: var(--c-surface);
+  font-weight: 600;
+}
+.estimate-lines {
+  min-width: 44rem;
+}
+.estimate-totals {
+  width: 100%;
+  max-width: 24rem;
+  margin-inline-start: auto;
+}
+.estimate-totals tr:nth-child(4) th,
+.estimate-totals tr:nth-child(4) td,
+.estimate-totals tr:last-child th,
+.estimate-totals tr:last-child td {
+  font-weight: 600;
+}
+.nova-takeoff {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--c-border-divider);
+}
+.nova-tally {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+}
+.nova-tally > div {
+  padding: var(--space-2) var(--space-3);
+  background: var(--c-bg);
+  border-radius: var(--radius-md);
+}
+.nova-tally dt {
+  font-size: var(--font-xs);
+  color: var(--c-text-secondary);
+}
+.nova-tally dd {
+  margin: 0;
+  font-size: var(--font-lg);
+  font-weight: 600;
+}
+.nova-mark__name {
+  flex: 1 1 8rem;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.nova-mark__name:focus-visible {
+  outline: 2px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+.nova-mark--selected {
+  outline: 2px solid var(--c-action-primary);
+  outline-offset: -2px;
+}
+.nova-mark--low {
+  border-left: 3px solid var(--c-status-warning);
+}
+.nova-mark__struck {
+  color: var(--c-text-muted);
+  text-decoration: line-through;
+}
 .scale-picker {
   display: flex;
   flex-wrap: wrap;
@@ -1478,6 +1548,180 @@ fieldset.worker-card > legend {
 }
 .key-history > li:last-child {
   border-bottom: 0;
+}
+
+/* Settings → Support access: the session list reads as a stack of two lines, wrapping on a phone. */
+.support-access__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.support-access__session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.support-access__session:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Settings → API access: token and webhook rows stack their lines and wrap long addresses on a phone. */
+.api-access__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.api-access__row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.api-access__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.api-access__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.api-access__scopes {
+  display: grid;
+  gap: var(--space-1);
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.api-access__secret {
+  display: block;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+@media (min-width: 768px) {
+  .api-access__scopes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Nova on the quote comparison: clip beside the controls from 768px, stacked below it. */
+.negotiate__layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.negotiate__clip {
+  max-width: calc(var(--space-16) * 3);
+  justify-self: center;
+  width: 100%;
+}
+.negotiate__media {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: var(--radius-lg);
+  background: var(--c-bg);
+}
+.negotiate__body {
+  min-width: 0;
+}
+.negotiate__controls {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.negotiate__ask {
+  display: grid;
+  gap: var(--space-3);
+}
+.negotiate__answer {
+  border-top: 1px solid var(--c-border-divider);
+  padding-top: var(--space-4);
+}
+.negotiate__counter {
+  border-left: var(--space-1) solid var(--c-ai);
+  padding-left: var(--space-3);
+}
+@media (min-width: 768px) {
+  .negotiate__layout {
+    grid-template-columns: calc(var(--space-16) * 3) minmax(0, 1fr);
+  }
+  .negotiate__clip {
+    justify-self: start;
+  }
+  .negotiate__controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Settings → Accounting: cost-code rows stack their fields on a phone and sit in one line from 1280px. */
+.accounting__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.accounting__row {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+  align-items: end;
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border-divider);
+}
+.accounting__row:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.accounting__retention {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0, 1fr);
+}
+.accounting__tabs,
+.accounting__danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.accounting__issue {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  overflow-wrap: anywhere;
+}
+@media (min-width: 768px) {
+  .accounting__retention {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .accounting__row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (min-width: 1280px) {
+  .accounting__row {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) auto;
+  }
 }
 
 /* Meetings */

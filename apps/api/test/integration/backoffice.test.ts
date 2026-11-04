@@ -3,7 +3,7 @@ import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { StaffRole } from '@archova/contracts';
 import { decodeId } from '@archova/domain';
-import { createOrg, createTestContext, signUp, type TestContext } from './helpers';
+import { createOrg, createProject, createTestContext, signUp, type TestContext } from './helpers';
 
 let t: TestContext;
 const HOST = 'localhost:4000';
@@ -655,5 +655,326 @@ describe('feature flags and pilot cohorts', () => {
     expect((await reader.get('/flags')).statusCode).toBe(200);
     const res = await reader.post('/cohorts', { name: 'Not allowed' });
     expect(res.statusCode).toBe(403);
+  });
+});
+
+describe('customer account actions', () => {
+  async function company(label: string) {
+    const { browser } = await signUp(t.app, label);
+    const org = await createOrg(browser, `Account ${label} Builders`);
+    const project = await createProject(browser, org.id, { name: 'Wharf St', state: 'QLD' });
+    const owner = await staff(['owner']);
+    const found = (
+      (await owner.get(`/orgs?q=${encodeURIComponent(`Account ${label}`)}`)).json() as {
+        items: Array<{ orgId: string }>;
+      }
+    ).items[0]!;
+    return {
+      browser,
+      owner,
+      orgRef: found.orgId,
+      attendance: `/v1/orgs/${org.id}/projects/${project.id}/attendance/sites`,
+      projects: `/v1/orgs/${org.id}/projects`,
+    };
+  }
+  const act = (c: Console, orgRef: string, action: string, body: Record<string, unknown>) =>
+    c.post(`/orgs/${orgRef}/actions/${action}`, {
+      reason: 'Customer asked in the ticket',
+      ticketRef: 'SUP-101',
+      ...body,
+    });
+
+  it('grants Nova credits for the month, needs the credits permission and step-up, and logs it', async () => {
+    const c = await company('credits');
+    const sales = await staff(['sales']);
+    expect(
+      (await act(sales, c.orgRef, 'grant-credits', { credits: 20, kind: 'goodwill' })).statusCode,
+    ).toBe(403);
+    const ops = await staff(['billing_ops']);
+    await ops.post('/auth/step-up', { password: PASSWORD });
+    expect(
+      (await act(ops, c.orgRef, 'grant-credits', { credits: 5000, kind: 'top_up' })).statusCode,
+    ).toBe(422);
+    const res = await act(ops, c.orgRef, 'grant-credits', { credits: 20, kind: 'goodwill' });
+    expect(res.statusCode, res.body).toBe(200);
+    const detail = res.json() as { actions: Array<{ kind: string; summary: string }> };
+    expect(detail.actions[0]).toMatchObject({ kind: 'credits.grant' });
+    expect(detail.actions[0]!.summary).toMatch(/20 Nova credits/);
+    const usage = await c.browser.get(`${c.projects.replace('/projects', '')}/ai/usage`);
+    expect(usage.json()).toMatchObject({ granted: 20 });
+  });
+
+  it('extends a trial within the limits, with a reason and ticket, and logs it', async () => {
+    const c = await company('trial');
+    const support = await staff(['support']);
+    expect(
+      (await support.post(`/orgs/${c.orgRef}/actions/trial-extend`, { days: 10 })).statusCode,
+    ).toBe(422);
+    expect((await act(support, c.orgRef, 'trial-extend', { days: 31 })).statusCode).toBe(422);
+    const res = await act(support, c.orgRef, 'trial-extend', { days: 30 });
+    expect(res.statusCode, res.body).toBe(200);
+    const detail = res.json() as {
+      account: { plan: string; trialExtendedDays: number };
+      actions: Array<{ kind: string; ticketRef: string; summary: string }>;
+    };
+    expect(detail.account).toMatchObject({ plan: 'trial', trialExtendedDays: 30 });
+    expect(detail.actions[0]).toMatchObject({ kind: 'trial.extend', ticketRef: 'SUP-101' });
+    // 30 + 30 + 30 + 30 = 120 is allowed; the fifth extension needs an Owner.
+    for (let n = 0; n < 3; n++)
+      expect((await act(support, c.orgRef, 'trial-extend', { days: 30 })).statusCode).toBe(200);
+    const over = await act(support, c.orgRef, 'trial-extend', { days: 1 });
+    expect(over.statusCode).toBe(422);
+    expect(code(over)).toBe('backoffice.trial_limit');
+    expect((await act(c.owner, c.orgRef, 'trial-extend', { days: 1 })).statusCode).toBe(200);
+  });
+
+  it('moves a company to a plan, which changes its entitlements, and refuses a downgrade', async () => {
+    const c = await company('plan');
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+
+    const sales = await staff(['sales']);
+    // Plan changes need a fresh password check, and support cannot make them.
+    expect(
+      (await act(await staff(['support']), c.orgRef, 'change-plan', { planCode: 'team' }))
+        .statusCode,
+    ).toBe(403);
+    expect((await act(sales, c.orgRef, 'change-plan', { planCode: 'nope' })).statusCode).toBe(404);
+    const team = await act(sales, c.orgRef, 'change-plan', { planCode: 'team' });
+    expect(team.statusCode, team.body).toBe(200);
+    expect(team.json()).toMatchObject({ plan: 'team', state: 'active' });
+    // The Team plan has no workforce module.
+    const denied = await c.browser.get(c.attendance);
+    expect(denied.statusCode).toBe(403);
+    expect(code(denied)).toBe('entitlement-required');
+
+    const business = await act(sales, c.orgRef, 'change-plan', { planCode: 'business' });
+    expect(business.statusCode, business.body).toBe(200);
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+
+    const down = await act(sales, c.orgRef, 'change-plan', { planCode: 'team' });
+    expect(down.statusCode).toBe(422);
+    expect(code(down)).toBe('backoffice.downgrade_at_term_end');
+  });
+
+  it('suspends and reactivates: only an Owner or Security lead, read-only while suspended', async () => {
+    const c = await company('susp');
+    expect((await c.browser.post(c.projects, { name: 'Before', state: 'QLD' })).statusCode).toBe(
+      201,
+    );
+
+    const support = await staff(['support']);
+    expect((await act(support, c.orgRef, 'suspend', { category: 'abuse' })).statusCode).toBe(403);
+    // Non-payment is not a suspension reason.
+    expect((await act(c.owner, c.orgRef, 'suspend', { category: 'non_payment' })).statusCode).toBe(
+      422,
+    );
+
+    const lead = await staff(['security_lead']);
+    // A Security lead suspends only for a security emergency.
+    expect((await act(lead, c.orgRef, 'suspend', { category: 'fraud' })).statusCode).toBe(403);
+    const done = await act(lead, c.orgRef, 'suspend', { category: 'security' });
+    expect(done.statusCode, done.body).toBe(200);
+    expect(done.json()).toMatchObject({
+      account: { state: 'suspended', suspended: { category: 'security' } },
+      actions: [{ summary: 'Suspended (security) by security lead' }],
+    });
+    expect(code(await act(lead, c.orgRef, 'suspend', { category: 'security' }))).toBe(
+      'backoffice.already_suspended',
+    );
+    // Reads still work; writes stop.
+    expect((await c.browser.get(c.projects)).statusCode).toBe(200);
+    const blocked = await c.browser.post(c.projects, { name: 'During', state: 'QLD' });
+    expect(blocked.statusCode).toBe(403);
+    expect(code(blocked)).toBe('org.read_only');
+    expect(
+      ((await c.owner.get('/orgs?q=Account%20susp')).json() as { items: Array<{ state: string }> })
+        .items[0]!.state,
+    ).toBe('suspended');
+
+    expect((await act(lead, c.orgRef, 'reactivate', {})).statusCode).toBe(200);
+    expect((await c.browser.post(c.projects, { name: 'After', state: 'QLD' })).statusCode).toBe(
+      201,
+    );
+    expect(code(await act(lead, c.orgRef, 'reactivate', {}))).toBe('backoffice.not_suspended');
+  });
+
+  it('fails closed for a plan with no version, and keeps a retired plan for companies on it', async () => {
+    const c = await company('ghost');
+    const orgUuid = decodeId('org', c.orgRef)!;
+    await t.adminDb.db.execute(sql`
+      insert into billing.org_accounts (id, plan_code, state) values (${orgUuid}, 'ghost_plan', 'active')`);
+    const denied = await c.browser.get(c.attendance);
+    expect(denied.statusCode).toBe(403);
+    expect(code(denied)).toBe('entitlement-required');
+    expect(code(await c.browser.post(c.projects, { name: 'Nope', state: 'QLD' }))).toBe(
+      'org.read_only',
+    );
+
+    // A plan retired from sale still gives its latest version to companies already on it.
+    const db = t.adminDb.db;
+    await db.execute(sql`insert into billing.plans (code, sort_order) values ('legacy_plan', 5)`);
+    await db.execute(sql`
+      insert into billing.plan_versions
+        (id, plan_code, version, status, name, blurb, features, modules, ai_credits_monthly, cta_label, cta_href)
+      values (gen_random_uuid(), 'legacy_plan', 1, 'retired', 'Legacy', 'Old plan', '{}', array['workforce'], 10, 'Ask', '/demo')`);
+    await db.execute(
+      sql`update billing.org_accounts set plan_code = 'legacy_plan' where id = ${orgUuid}`,
+    );
+    expect((await c.browser.get(c.attendance)).statusCode).toBe(200);
+  });
+});
+
+describe('support access', () => {
+  async function company(label: string) {
+    const { browser } = await signUp(t.app, label);
+    const org = await createOrg(browser, `Support ${label} Builders`);
+    const reader = await staff(['finance_read']);
+    const found = (
+      (await reader.get(`/orgs?q=${encodeURIComponent(`Support ${label}`)}`)).json() as {
+        items: Array<{ orgId: string }>;
+      }
+    ).items[0]!;
+    return {
+      browser,
+      orgId: org.id,
+      orgRef: found.orgId,
+      base: `/v1/orgs/${org.id}/support-access`,
+    };
+  }
+  const start = (c: Console, orgRef: string, ticketRef: string) =>
+    c.post(`/orgs/${orgRef}/support-access/sessions`, { ticketRef });
+
+  it('is off by default, and only an org admin can grant or see it', async () => {
+    const c = await company('off');
+    const support = await staff(['support']);
+    const none = await start(support, c.orgRef, 'SUP-1');
+    expect(none.statusCode).toBe(409);
+    expect(code(none)).toBe('backoffice.no_support_grant');
+
+    const other = await signUp(t.app, 'stranger');
+    expect((await other.browser.get(c.base)).statusCode).toBeGreaterThanOrEqual(403);
+    const tooLong = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-1', hours: 73 });
+    expect(tooLong.statusCode).toBe(422);
+    expect((await c.browser.get(c.base)).json()).toEqual({ grants: [], sessions: [] });
+  });
+
+  it('runs a grant, a session for the same ticket, and ends it on revoke', async () => {
+    const c = await company('flow');
+    const grant = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-42', hours: 24 });
+    expect(grant.statusCode, grant.body).toBe(201);
+    const g = grant.json() as { id: string; status: string; level: string };
+    expect(g).toMatchObject({ status: 'active', level: 'view' });
+
+    // Only Support and Security lead hold the permission; Owner, Sales and Finance never do.
+    for (const role of ['owner', 'sales', 'finance_read'] as const) {
+      const denied = await start(await staff([role]), c.orgRef, 'SUP-42');
+      expect(denied.statusCode).toBe(403);
+    }
+    const support = await staff(['support']);
+    expect(code(await start(support, c.orgRef, 'SUP-99'))).toBe(
+      'backoffice.support_ticket_mismatch',
+    );
+    const started = await start(support, c.orgRef, 'sup-42');
+    expect(started.statusCode, started.body).toBe(201);
+    const session = (
+      started.json() as {
+        sessions: Array<{ id: string; status: string; expiresAt: string; startedAt: string }>;
+      }
+    ).sessions[0]!;
+    expect(session.status).toBe('open');
+    expect(Date.parse(session.expiresAt) - Date.parse(session.startedAt)).toBe(3_600_000);
+    expect(code(await start(support, c.orgRef, 'SUP-42'))).toBe('backoffice.support_session_open');
+
+    // The customer sees the session.
+    const seen = (await c.browser.get(c.base)).json() as {
+      sessions: Array<{ status: string; ticketRef: string }>;
+    };
+    expect(seen.sessions[0]).toMatchObject({ status: 'open', ticketRef: 'SUP-42' });
+
+    // Revoking ends the open session at once.
+    expect((await c.browser.post(`${c.base}/grants/${g.id}/revoke`, {})).statusCode).toBe(204);
+    const after = (await support.get(`/orgs/${c.orgRef}/support-access`)).json() as {
+      grants: Array<{ status: string }>;
+      sessions: Array<{ status: string }>;
+    };
+    expect(after.grants[0]!.status).toBe('revoked');
+    expect(after.sessions[0]!.status).toBe('revoked');
+    expect(code(await start(support, c.orgRef, 'SUP-42'))).toBe('backoffice.no_support_grant');
+  });
+
+  it('lets staff end their own session, and nobody else', async () => {
+    const c = await company('end');
+    await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-7', hours: 2 });
+    const lead = await staff(['security_lead']);
+    const s = ((await start(lead, c.orgRef, 'SUP-7')).json() as { sessions: Array<{ id: string }> })
+      .sessions[0]!;
+    const other = await staff(['support']);
+    expect(
+      (await other.post(`/orgs/${c.orgRef}/support-access/sessions/${s.id}/end`)).statusCode,
+    ).toBe(404);
+    const ended = await lead.post(`/orgs/${c.orgRef}/support-access/sessions/${s.id}/end`);
+    expect(ended.statusCode).toBe(200);
+    expect((ended.json() as { sessions: Array<{ status: string }> }).sessions[0]!.status).toBe(
+      'ended',
+    );
+  });
+  it('shows the project list only inside an open session, logs it, and shows a banner to the company', async () => {
+    const c = await company('view');
+    await createProject(c.browser, c.orgId, { name: 'Harbour Rd', state: 'NSW' });
+    const support = await staff(['support']);
+    const list = `/orgs/${c.orgRef}/support-access/projects`;
+
+    // No grant, then a grant but no session: nothing is readable and the banner stays off.
+    expect(code(await support.get(list))).toBe('backoffice.support_no_session');
+    const grant = (
+      await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-9', hours: 4 })
+    ).json() as { id: string };
+    expect(code(await support.get(list))).toBe('backoffice.support_no_session');
+    expect((await c.browser.get(`${c.base}/banner`)).json()).toEqual({
+      active: false,
+      since: null,
+    });
+
+    const second = await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-10', hours: 1 });
+    expect(second.statusCode).toBe(409);
+    expect(code(second)).toBe('backoffice.support_grant_exists');
+    await start(support, c.orgRef, 'SUP-9');
+    expect((await c.browser.get(`${c.base}/banner`)).json()).toMatchObject({ active: true });
+    // Another staff member has no session of their own.
+    expect(code(await (await staff(['security_lead'])).get(list))).toBe(
+      'backoffice.support_no_session',
+    );
+    const view = await support.get(list);
+    expect(view.statusCode, view.body).toBe(200);
+    expect((view.json() as { items: Array<{ name: string }> }).items.map((p) => p.name)).toEqual([
+      'Harbour Rd',
+    ]);
+    const seen = (await c.browser.get(c.base)).json() as {
+      sessions: Array<{ pagesViewed: number }>;
+    };
+    expect(seen.sessions[0]!.pagesViewed).toBe(1);
+
+    // Withdrawing consent stops reads and clears the banner.
+    expect((await c.browser.post(`${c.base}/grants/${grant.id}/revoke`, {})).statusCode).toBe(204);
+    expect(code(await support.get(list))).toBe('backoffice.support_no_session');
+    expect((await c.browser.get(`${c.base}/banner`)).json()).toMatchObject({ active: false });
+  });
+
+  it('lets a suspended company withdraw consent', async () => {
+    const c = await company('susp');
+    const grant = (
+      await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-3', hours: 2 })
+    ).json() as { id: string };
+    const owner = await staff(['owner']);
+    const susp = await owner.post(`/orgs/${c.orgRef}/actions/suspend`, {
+      category: 'security',
+      reason: 'Security test',
+      ticketRef: 'SUP-3',
+    });
+    expect(susp.statusCode, susp.body).toBe(200);
+    expect(
+      (await c.browser.post(`${c.base}/grants`, { ticketRef: 'SUP-4', hours: 1 })).statusCode,
+    ).toBe(403);
+    expect((await c.browser.post(`${c.base}/grants/${grant.id}/revoke`, {})).statusCode).toBe(204);
   });
 });

@@ -10,6 +10,7 @@ import { useMemo } from 'react';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { createQuotesApi } from '../data/quotes-api';
 import { quotesSource as previewSource, type QuotesSource } from '../data/quotes-source';
+import type { NegotiateTopic } from '../lib/negotiate';
 import type { PackageAction, ScopeLine } from '../lib/quote-types';
 
 /** The API once the estimating endpoints are reachable; the in-browser preview store in preview mode and tests. */
@@ -115,4 +116,25 @@ export function useCreatePackage() {
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'tender-packages') }),
   });
+}
+
+/** Nova's help on one confirmed quote. Nothing is saved, so no cache is touched. */
+export function useNegotiate(packageId: string) {
+  const quotesSource = useQuotesSource();
+  const { projectId, timezone } = useCurrentProject();
+  return useMutation({
+    mutationFn: (v: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      question?: string;
+    }) => quotesSource.askNova(projectId, packageId, { ...v, today: todayIn(timezone) }),
+  });
+}
+
+/** Nova listening: a short recording in, the words out for the person to read and edit. Nothing is kept. */
+export function useListen() {
+  const quotesSource = useQuotesSource();
+  const { projectId } = useCurrentProject();
+  return useMutation({ mutationFn: (clip: Blob) => quotesSource.listen(projectId, clip) });
 }

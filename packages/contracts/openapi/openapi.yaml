@@ -30,7 +30,11 @@ tags:
   - name: documents
   - name: ai
   - name: rfis
+  - name: correspondence
   - name: defects
+  - name: financials
+  - name: quality
+  - name: safety
   - name: estimating
   - name: integrations
   - name: sync
@@ -98,6 +102,59 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SessionInfo' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/api-tokens:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listApiTokens
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Personal access tokens in the organisation. A member sees their own; an owner or admin sees everyone's. The
+        secret is never returned again after creation.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiTokenList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createApiToken
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Create a personal access token for the public API (integrations/06). Needs a signed-in session, not another
+        token. The secret is in the response once. A token works in this organisation only and never does more than
+        its owner may.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateApiTokenRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiTokenCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/api-tokens/{apiTokenId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ApiTokenId'
+    delete:
+      operationId: revokeApiToken
+      tags: [api-tokens]
+      x-module: identity
+      x-internal: true
+      summary: Revoke a token at once. A member can revoke their own; an owner or admin can revoke any.
+      responses:
+        '204':
+          description: Revoked
         default: { $ref: '#/components/responses/Problem' }
   /v1/oauth/authorize:
     get:
@@ -225,6 +282,74 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Org' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportAccess
+      tags: [orgs]
+      x-module: platform
+      summary: Support access grants and the support sessions held under them (org owners and admins).
+      responses:
+        '200':
+          description: Grants and sessions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/banner:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getSupportBanner
+      tags: [orgs]
+      x-module: platform
+      summary: Whether an Archova support session is open now. Every signed-in user of the company sees the banner.
+      responses:
+        '200':
+          description: Banner state
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportBanner' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: createSupportAccessGrant
+      tags: [orgs]
+      x-module: platform
+      summary: Let Archova support view this organisation for a limited time (off by default).
+      description: |
+        A one-time grant is tied to a support ticket and lasts up to 72 hours. It is view-only. Support staff
+        then start sessions of at most one hour inside it. Only org owners and admins can grant.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSupportAccessGrantRequest' }
+      responses:
+        '201':
+          description: The grant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupportAccessGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/support-access/grants/{grantId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: grantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      operationId: revokeSupportAccessGrant
+      tags: [orgs]
+      x-module: platform
+      summary: Take support access back. Open support sessions end at once.
+      responses:
+        '204': { description: Revoked }
         default: { $ref: '#/components/responses/Problem' }
   /v1/public/price-book:
     get:
@@ -1866,6 +1991,156 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaQuoteReading' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: detectTakeoffWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: estimating.takeoff.manage
+      summary: Nova finds the items to count or outline on a drawing sheet (Nova Esti assisted takeoff).
+      description: |
+        The estimator names what to find in their own words (`what`: "power points (GPOs)", "strip footings") and its
+        `kind`: a count of symbols, the length of runs, or the area of regions. Any trade. They may point at up to five
+        `examples` ("this one, find the rest"). Nova looks at the sheet and returns each item's place on the sheet
+        (page fractions from the top-left corner), how sure it is and why when it is not; software drops anything off
+        the sheet, the wrong shape or a repeat, and caps confidence on scanned sheets at 0.84. Nova never gives a
+        quantity: save the items with `createAssistedTakeoffMeasurements` and size them from the sheet's confirmed
+        scale. Nothing is saved or counted here. Costs one Nova credit per run. Send `image`, or the deployment must be
+        able to render drawing pages, else 503.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revisionId, target]
+              properties:
+                revisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+                target:
+                  type: object
+                  additionalProperties: false
+                  required: [kind, what]
+                  properties:
+                    kind: { $ref: '#/components/schemas/TakeoffKind' }
+                    what: { type: string, minLength: 1, maxLength: 120 }
+                    hint: { type: string, maxLength: 400 }
+                image:
+                  type: object
+                  additionalProperties: false
+                  required: [mime, base64]
+                  description: |
+                    The sheet as the viewer drew it, downscaled (about 2,000 px on the long side). The API has no page
+                    renderer, so the browser sends the picture; without it the server renders the page where it can.
+                  properties:
+                    mime: { type: string, enum: [image/png, image/jpeg, image/webp] }
+                    base64: { type: string, minLength: 1, maxLength: 11500000 }
+                examples:
+                  type: array
+                  maxItems: 5
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [x, y]
+                    properties:
+                      x: { type: number, minimum: 0, maximum: 1 }
+                      y: { type: number, minimum: 0, maximum: 1 }
+      responses:
+        '200':
+          description: What Nova found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaTakeoffDetection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: negotiateQuote
+      tags: [ai]
+      x-module: ai
+      x-permission: estimating.quotes.review
+      summary: Nova helps negotiate a confirmed subcontractor quote (EST-AC6).
+      description: |
+        Nova sets the quote's total against the estimator's target price (`targetExGst`), or the median of the
+        levelled totals when three or more quotes compete, and answers the estimator's question with the gap, points
+        to raise (unpriced scope lines, provisional sums, exclusions, qualifications, expired validity), levers that
+        could close the gap, a counter-offer to consider and, when asked, a draft message to the subcontractor. Code
+        works out the gap and the stance, and removes a counter-offer that doesn't fit the quote and any figure the quote
+        doesn't hold (`notes` says what it removed). She is shown prices and terms only: never the company, contacts,
+        internal notes or the estimator's allowances. The server keeps no conversation; pass `history` from the last
+        answer with the next question. Nothing is saved, sent, accepted or awarded. She is an AI assistant, not a
+        licensed agent (`disclaimer`). Costs half a Nova credit. Builder staff with `estimating.quotes.review` only,
+        and only for a confirmed quote of the package.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [packageId, quoteId]
+              properties:
+                packageId: { type: string, pattern: '^tpk_[0-9A-Za-z]{26}$' }
+                quoteId: { type: string }
+                targetExGst:
+                  description: The estimator's target price, ex GST.
+                  type: [string, 'null']
+                  pattern: '^\d{1,12}(\.\d{1,2})?$'
+                question: { type: string, maxLength: 1000 }
+                history:
+                  type: array
+                  maxItems: 10
+                  items: { $ref: '#/components/schemas/NegotiationTurn' }
+      responses:
+        '200':
+          description: Nova's answer
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuoteNegotiationAdvice' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: transcribeSpeech
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.ask.use
+      summary: Nova listens to a short spoken question and returns it as text.
+      description: |
+        The browser records one short clip (about a minute at most) and sends it here as base64. It is turned into
+        text by the speech service in Australia (X25) and is not kept; only the text comes back, for the person to
+        read and edit before asking. Costs a tenth of a Nova credit. When nothing can be heard the answer is
+        `ai.nothing_heard`; the person types instead.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [audio, mimeType]
+              properties:
+                audio: { type: string, format: byte, minLength: 1, maxLength: 900000 }
+                mimeType: { type: string, enum: [audio/webm, audio/ogg, audio/mp4, audio/wav] }
+      responses:
+        '200':
+          description: What was said
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [runId, text]
+                properties:
+                  runId: { type: string }
+                  text: { type: string }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -2715,6 +2990,715 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/cost-items:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCostItems
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.read
+      summary: >-
+        The company cost library, in code order. Each item carries the rate in force today (for the region asked
+        about, falling back to a rate with no region), or none when it has no price yet.
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: category, in: query, schema: { $ref: '#/components/schemas/CostCategory' } }
+        - { name: region, in: query, schema: { type: string, maxLength: 60 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItemPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: Add an item to the cost library, optionally with its first rate.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCostItemRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/cost-items/{costItemId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/CostItemId'
+    get:
+      operationId: getCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.read
+      summary: One cost library item.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItem' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: Change an item's code, description, unit, trade or category. Prices change through rates.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCostItemRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostItem' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteCostItem
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: Remove an item from the library. Estimate lines already priced from it keep their rate.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/cost-items/{costItemId}/rates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/CostItemId'
+    get:
+      operationId: listCostRates
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.read
+      summary: An item's rate history, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostRateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: addCostRate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.library.manage
+      summary: >-
+        Record a new rate from a date. Earlier rates are kept: an estimate uses the latest rate effective on or
+        before its base date.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CostRateInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostRateList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEstimates
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.read
+      summary: Estimates on the project, newest first. The lines come with a single estimate.
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EstimatePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Start an empty estimate sheet.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEstimateRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    get:
+      operationId: getEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.read
+      summary: >-
+        The estimate sheet with its lines and totals. Totals are worked out from the lines and the percentages on the
+        sheet. A draft follows the takeoff; an issued estimate is frozen.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Change the name, base date, region, contingency, margin or GST of a draft estimate.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEstimateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Remove a draft estimate.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    post:
+      operationId: addEstimateLine
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: >-
+        Add a section or a priced item. Linking confirmed takeoff measurements sets the quantity and unit from them
+        (unconfirmed ones add nothing). Choosing a library item brings its current rate; a rate typed here wins.
+        Returns the whole sheet.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateLineInput' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+      - $ref: '#/components/parameters/EstimateLineId'
+    patch:
+      operationId: updateEstimateLine
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Change a line. Send an empty `measurementIds` to detach it from takeoff and keep typing its quantity.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EstimateLineInput' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteEstimateLine
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.manage
+      summary: Remove a line. Removing a section removes its items.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/issue:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EstimateId'
+    post:
+      operationId: issueEstimate
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.estimates.issue
+      summary: >-
+        Issue the estimate: freeze its quantities, rates and total. Refused (422 `estimate.rates_missing`) while any
+        item has no quantity or rate.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Estimate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: createAssistedTakeoffMeasurements
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.manage
+      summary: Save what Nova found on a sheet as unconfirmed marks (Nova Esti assisted takeoff).
+      description: |
+        Saves up to 200 marks together, all or none, as `assisted` measurements that wait for a person. None counts
+        toward a quantity, scope line or estimate until it is confirmed. Each item is checked like a single measurement:
+        its shape must fit its kind and a count's quantity is the number of points. The quantity is worked out by
+        the client from the sheet's confirmed scale, never by the model.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revisionId, items]
+              properties:
+                revisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+                items:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items:
+                    type: object
+                    additionalProperties: false
+                    required: [label, kind, geometry, quantity, unit, confidence]
+                    properties:
+                      label: { type: string, minLength: 1, maxLength: 200 }
+                      kind: { $ref: '#/components/schemas/TakeoffKind' }
+                      geometry: { $ref: '#/components/schemas/TakeoffGeometry' }
+                      quantity: { type: string, pattern: '^[0-9]{1,15}(\.[0-9]{1,3})?$' }
+                      unit: { type: string, minLength: 1, maxLength: 20 }
+                      confidence: { type: number, minimum: 0, maximum: 1 }
+      responses:
+        '201':
+          description: Saved, unconfirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/confirm-batch:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: confirmTakeoffMeasurements
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.confirm
+      summary: A person accepts many of Nova's marks on a sheet at once.
+      description: |
+        Accepts Nova's pending marks on one drawing revision, either the `ids` given, or every pending mark at least
+        `minConfidence` sure ("Accept 90% and over"), or both. Hand-drawn marks and rejected marks are never touched.
+        Returns the marks it accepted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [revisionId]
+              minProperties: 2
+              properties:
+                revisionId: { type: string, pattern: '^drv_[0-9A-Za-z]{26}$' }
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 200
+                  items: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+                minConfidence: { type: number, minimum: 0, maximum: 1 }
+      responses:
+        '200':
+          description: The marks accepted
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TakeoffMeasurementId'
+    post:
+      operationId: rejectTakeoffMeasurement
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.takeoff.confirm
+      summary: A person turns down a mark Nova drew; it stays struck through and never counts.
+      description: Only marks Nova drew can be rejected; a hand-drawn measurement is deleted instead. Confirming it later undoes the rejection.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TakeoffMeasurement' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAccountingConnections
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: The org's Xero and MYOB connections, and which providers this installation can offer (integrations/02 §7).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnectionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    delete:
+      operationId: disconnectAccounting
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Forget the connection and its links. Documents already in the accounting system are left as they are.
+      responses:
+        '204':
+          description: Disconnected
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/connect:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    post:
+      operationId: startAccountingConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Begin sign-in. Send the admin to the returned address; the provider sends them back to the web app with a code.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnectStart' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/callback:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    post:
+      operationId: completeAccountingConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: >-
+        Finish sign-in with the code and state the provider returned. When the account reaches exactly one Xero
+        organisation or MYOB company file it is chosen; otherwise the connection waits for a target.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingCallbackRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/targets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    get:
+      operationId: listAccountingTargets
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: The Xero organisations or MYOB company files the signed-in account can reach.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingTargetList' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: selectAccountingTarget
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Choose which organisation or company file this connection covers. Makes the connection active.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingTarget' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/field-map:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    put:
+      operationId: updateAccountingFieldMap
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Replace the cost-code to account map and the retention account (integrations/02 A3).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingFieldMap' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/connections/{provider}/settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/AccountingProvider'
+    put:
+      operationId: updateAccountingSettings
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Choose which flows run, the start date and the status new bills are created with.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AccountingSettings' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/sync-issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAccountingSyncIssues
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Open sync issues, newest first (integrations/02 §7).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingSyncIssueList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/accounting/sync-issues/{syncIssueId}/resolve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/SyncIssueId'
+    post:
+      operationId: resolveAccountingSyncIssue
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.accounting.manage
+      x-internal: true
+      summary: Mark an issue as dealt with.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingSyncIssue' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listWebhooks
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: Webhook endpoints in the organisation, and the event types they can subscribe to.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createWebhook
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: >-
+        Subscribe an HTTPS endpoint to public events (integrations/06 §5). The endpoint must answer a signed test
+        event with a 2xx before it is saved. The signing secret is in the response once. Needs a signed-in session,
+        not a token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateWebhookRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+    delete:
+      operationId: deleteWebhook
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: Delete an endpoint and its delivery history. Deliveries not yet sent are dropped.
+      responses:
+        '204':
+          description: Deleted
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+    get:
+      operationId: listWebhookDeliveries
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: The latest 50 deliveries to an endpoint, newest first, with the last response status.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3173,6 +4157,304 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SubmittalDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/correspondence-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCorrespondenceTemplates
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.manage
+      summary: The built-in AU notice templates an org can copy into its own types. Notice periods are defaults to confirm against the contract.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/CorrespondenceTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/correspondence-types:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listCorrespondenceTypes
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.read
+      summary: The org's correspondence types by name.
+      parameters:
+        - { name: includeArchived, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCorrespondenceType
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.manage
+      summary: Add a type, from scratch or by copying a built-in template with `templateKey`.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCorrespondenceTypeRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceType' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/correspondence-types/{typeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/CorrespondenceTypeId'
+    patch:
+      operationId: updateCorrespondenceType
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.types.manage
+      summary: Edit or archive a type. Items already written keep the name and evidential setting they were created with.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCorrespondenceTypeRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceType' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence-types:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listProjectCorrespondenceTypes
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.create
+      summary: The types a user can write on this project (active ones), for the "new" picker.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceTypeList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: The project's correspondence register, oldest first, with time-bar chips on drafts.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/CorrespondenceStatus' } }
+        - {
+            name: typeId,
+            in: query,
+            schema: { $ref: '#/components/schemas/CorrespondenceTypeRef' },
+          }
+        - {
+            name: awaitingResponse,
+            in: query,
+            description: 'Only sent items that need a response and have none yet',
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondencePage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.create
+      summary: Start a draft from a type. Subject and body are filled from the type's template unless given.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCorrespondenceRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    get:
+      operationId: getCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.read
+      summary: One item with its responses.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.create
+      summary: Edit a draft. A sent item is frozen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCorrespondenceRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: sendCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.send
+      summary: Send the draft to its recipients. An evidential type is stamped with a content hash and can't be edited or voided afterwards.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: respondToCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.respond
+      summary: Reply to a sent item. A reply from a receiving company marks it responded.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondCorrespondenceRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: closeCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.close
+      summary: Close a sent or responded item.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CorrespondenceId'
+    post:
+      operationId: voidCorrespondence
+      tags: [correspondence]
+      x-module: correspondence
+      x-permission: correspondence.items.close
+      summary: Void a draft, or a sent item whose type is not evidential. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidCorrespondenceRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorrespondenceDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis:
     parameters:
@@ -5472,6 +6754,828 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/InductionTranslation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listInspectionTemplates
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.read
+      summary: Checklists on the project, newest version of each name first. Builder staff only.
+      parameters:
+        - { name: published, in: query, schema: { type: string, enum: ['true', 'false'] } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Draft a checklist (ITP, pre-pour, handover, safety walk). A draft can be edited until it is published.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInspectionTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionTemplateId'
+    get:
+      operationId: getInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.read
+      summary: A checklist with its items in order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Replace the name, type or items of a draft. A published checklist is frozen.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateInspectionTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionTemplateId'
+    post:
+      operationId: publishInspectionTemplate
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Freeze the checklist so inspections can use it.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/versions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionTemplateId'
+    post:
+      operationId: newInspectionTemplateVersion
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.templates.manage
+      summary: Copy a published checklist into a new draft version. Inspections already started keep the version they used.
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionTemplateDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listInspections
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: The inspection register, newest first. Builder staff only.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/InspectionStatus' } }
+        - {
+            name: templateId,
+            in: query,
+            schema: { type: string, pattern: '^itp_[0-9A-Za-z]{26}$' },
+          }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Start an inspection from a published checklist. It is numbered INS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateInspectionRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    get:
+      operationId: getInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.read
+      summary: An inspection with its checklist items, answers, and what is still unanswered.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    put:
+      operationId: recordInspectionResponses
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Save answers (any subset of items) until the inspection is submitted. The first save moves it to in progress.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordInspectionResponsesRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: submitInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.perform
+      summary: Sign and submit. Every required item must be answered. Failed items flagged to raise a defect are listed in `failedItemIds`.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitInspectionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/close:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/InspectionId'
+    post:
+      operationId: closeInspection
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.inspections.close
+      summary: Close a submitted inspection once its failed items are dealt with.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InspectionDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listObservations
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: The observation register. Subcontractors see their company's observations and ones they raised.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ObservationStatus' } }
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/ObservationType' } }
+        - {
+            name: assigneeCompanyId,
+            in: query,
+            schema: { $ref: '#/components/schemas/CompanyRef' },
+          }
+        - { name: priority, in: query, schema: { $ref: '#/components/schemas/DefectPriority' } }
+        - { name: overdue, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ObservationPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.create
+      summary: Raise a safety, quality, environmental or commercial observation. It is numbered OBS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateObservationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ObservationId'
+    get:
+      operationId: getObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: One observation.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.create
+      summary: Edit an observation that is not closed. Builder staff edit any; others edit their own.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateObservationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ObservationId'
+    post:
+      operationId: transitionObservation
+      tags: [quality]
+      x-module: quality
+      x-permission: quality.observations.read
+      summary: resolve (the assigned company or the builder), close and reopen (builder admin; reopen needs a reason), or stopWork on a safety observation linked to a SWMS, which sends that SWMS back for review.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ObservationTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Observation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.read
+      summary: The SWMS register. Subcontractors see their own company's.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/SwmsStatus' } }
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+        - {
+            name: category,
+            in: query,
+            schema: { $ref: '#/components/schemas/HighRiskWorkCategory' },
+          }
+        - { name: expired, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.submit
+      summary: Submit a SWMS for review. It is numbered SWMS-0001 per project.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSwmsRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    get:
+      operationId: getSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.read
+      summary: A SWMS with its history, this revision's acknowledgements, missing required content and reviewer advisories.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.submit
+      summary: Revise a SWMS. Any change starts a new revision and sends it back for review.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSwmsRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/check:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    get:
+      operationId: checkSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.read
+      summary: Checks a SWMS against the required content (compliance 03 §3) and lists advisories. This is a checklist, not a statement that the SWMS is compliant.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsCheck' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    post:
+      operationId: transitionSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.review
+      summary: markReviewed, accept, reject (reason) or reopen (reason). Accepting needs every required item present and the reviewer's confirmation that it is readily understandable.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SwmsTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/acknowledge:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SwmsId'
+    post:
+      operationId: acknowledgeSwms
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.swms.acknowledge
+      summary: A worker records that they have read the accepted revision. Repeating it is harmless.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AcknowledgeSwmsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SwmsDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listContracts
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Head contracts and subcontracts on the project.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createContract
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.manage
+      summary: Set up a contract with its schedule of values (CLM-US1). The schedule must add up to the contract value.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateContractRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContract
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: submitPaymentClaim
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Record a payment claim against the schedule of values. Totals, retention and GST are worked out here, and the
+        payment schedule and payment due dates are computed from the time it was received and stored (CLM-AC1).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubmitPaymentClaimRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: listVariations
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Variations to one contract, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/VariationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Draft a variation to the contract (CLM-AC12).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateVariationRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    get:
+      operationId: getVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: submitVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Send a draft variation for a decision.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: approveVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.decide
+      summary: Approve a submitted variation. Its amount then becomes claimable (CLM-AC13).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VariationDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: rejectVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.decide
+      summary: Reject a submitted variation. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VariationDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/withdraw:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    post:
+      operationId: withdrawVariation
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Withdraw a draft or submitted variation.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listPaymentClaims
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: The claims register, soonest payment schedule deadline first (CLM-US6).
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PaymentClaimStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    get:
+      operationId: getPaymentClaim
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/schedule:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    post:
+      operationId: issuePaymentSchedule
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.assess
+      summary: >
+        Issue the payment schedule. A reason is required when the scheduled amount is less than the claim (CLM-AC8).
+        Once issued it cannot be changed, and whether it was in time is recorded (CLM-AC10).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IssuePaymentScheduleRequest' }
+      responses:
+        '201':
+          description: Issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -5796,6 +7900,26 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    InspectionTemplateId:
+      name: templateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^itp_[0-9A-Za-z]{26}$' }
+    InspectionId:
+      name: inspectionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ins_[0-9A-Za-z]{26}$' }
+    ObservationId:
+      name: observationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    SwmsId:
+      name: swmsId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
     OrgId:
       name: orgId
       in: path
@@ -5856,11 +7980,36 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^sbs_[0-9A-Za-z]{26}$' }
+    CorrespondenceTypeId:
+      name: typeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    CorrespondenceId:
+      name: correspondenceId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cor_[0-9A-Za-z]{26}$' }
     RfiId:
       name: rfiId
       in: path
       required: true
       schema: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    ContractId:
+      name: contractId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+    VariationId:
+      name: variationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+    PaymentClaimId:
+      name: claimId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
     DefectId:
       name: defectId
       in: path
@@ -5881,6 +8030,41 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    CostItemId:
+      name: costItemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cit_[0-9A-Za-z]{26}$' }
+    EstimateId:
+      name: estimateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^est_[0-9A-Za-z]{26}$' }
+    EstimateLineId:
+      name: lineId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^esl_[0-9A-Za-z]{26}$' }
+    ApiTokenId:
+      name: apiTokenId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tok_[0-9A-Za-z]{26}$' }
+    AccountingProvider:
+      name: provider
+      in: path
+      required: true
+      schema: { type: string, enum: [xero, myob] }
+    SyncIssueId:
+      name: syncIssueId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^syi_[0-9A-Za-z]{26}$' }
+    WebhookId:
+      name: webhookId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^whk_[0-9A-Za-z]{26}$' }
     ImportJobId:
       name: importJobId
       in: path
@@ -5941,6 +8125,428 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    CreateMeetingSeriesRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        template: { $ref: '#/components/schemas/MeetingTemplate' }
+        cadence: { type: [string, 'null'], maxLength: 100 }
+        defaultAttendees:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/MeetingPerson' }
+        agenda:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+    UpdateMeetingSeriesRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        cadence: { type: [string, 'null'], maxLength: 100 }
+        defaultAttendees:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/MeetingPerson' }
+        agenda:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+    CreateMeetingRequest:
+      type: object
+      additionalProperties: false
+      required: [heldAt]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        heldAt: { type: string, format: date-time }
+        location: { type: string, maxLength: 300 }
+    UpdateMeetingRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        heldAt: { type: string, format: date-time }
+        location: { type: string, maxLength: 300 }
+        chairUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        correctionsBy: { type: [string, 'null'], format: date }
+    SetMeetingAttendeesRequest:
+      type: object
+      additionalProperties: false
+      required: [attendees]
+      properties:
+        attendees:
+          type: array
+          maxItems: 200
+          items:
+            allOf:
+              - { $ref: '#/components/schemas/MeetingPerson' }
+              - type: object
+                properties:
+                  attendance: { $ref: '#/components/schemas/MeetingAttendance' }
+    AddMeetingSectionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        internalOnly: { type: boolean }
+    CreateMeetingItemRequest:
+      type: object
+      additionalProperties: false
+      required: [sectionId, kind, body]
+      properties:
+        sectionId: { type: string, pattern: '^msc_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/MeetingItemKind' }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+        ownerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        ownerUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        ownerName: { type: [string, 'null'], maxLength: 200 }
+        dueDate: { type: [string, 'null'], format: date }
+        link:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLink' }
+            - { type: 'null' }
+    UpdateMeetingItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        kind: { $ref: '#/components/schemas/MeetingItemKind' }
+        body: { type: string, minLength: 1, maxLength: 5000 }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+        ownerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        ownerUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        ownerName: { type: [string, 'null'], maxLength: 200 }
+        dueDate: { type: [string, 'null'], format: date }
+        link:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLink' }
+            - { type: 'null' }
+    IssueMeetingRequest:
+      type: object
+      additionalProperties: false
+      required: [recipients]
+      properties:
+        recipients:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [name, email]
+            properties:
+              name: { type: string, minLength: 1, maxLength: 200 }
+              email: { type: string, format: email, maxLength: 320 }
+        correctionsBy: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'], maxLength: 1000 }
+    MeetingSeriesRef: { type: string, pattern: '^msr_[0-9A-Za-z]{26}$' }
+    MeetingTemplate:
+      type: string
+      enum: [site_coordination, pcg, design_coordination, safety_committee, custom]
+    MeetingItemKind: { type: string, enum: [information, decision, action] }
+    MeetingItemStatus: { type: string, enum: [open, closed] }
+    MeetingAttendance: { type: string, enum: [present, apologies, absent] }
+    MeetingAgendaSection:
+      type: object
+      additionalProperties: false
+      required: [title, internalOnly]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        internalOnly:
+          type: boolean
+          description: Left out of what outsiders see and of the PDF they get (MTG-AC7).
+    MeetingPerson:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        companyName: { type: string, maxLength: 200 }
+        role: { type: string, maxLength: 200 }
+        email: { type: [string, 'null'], format: email, maxLength: 320 }
+        userId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+    MeetingPersonView:
+      type: object
+      required: [name, companyName, role, email, userId, companyId]
+      properties:
+        name: { type: string }
+        companyName: { type: string }
+        role: { type: string }
+        email: { type: [string, 'null'] }
+        userId: { type: [string, 'null'] }
+        companyId: { type: [string, 'null'] }
+    MeetingSeries:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          template,
+          cadence,
+          defaultAttendees,
+          agenda,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        template: { $ref: '#/components/schemas/MeetingTemplate' }
+        cadence: { type: [string, 'null'] }
+        defaultAttendees:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingPersonView' }
+        agenda:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    MeetingSeriesList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingSeries' }
+    MeetingSummary:
+      type: object
+      required:
+        [id, seriesId, seriesName, number, title, heldAt, status, issuedVersion, openActions]
+      properties:
+        id: { type: string }
+        seriesId: { type: string }
+        seriesName: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        heldAt: { type: string, format: date-time }
+        status: { type: string, enum: [draft, issued] }
+        issuedVersion: { type: integer }
+        openActions: { type: integer }
+    MeetingList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingSummary' }
+    Meeting:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          seriesId,
+          seriesName,
+          number,
+          title,
+          heldAt,
+          location,
+          chairUserId,
+          status,
+          correctionsBy,
+          issuedVersion,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        seriesId: { type: string }
+        seriesName: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        heldAt: { type: string, format: date-time }
+        location: { type: string }
+        chairUserId: { type: [string, 'null'] }
+        status: { type: string, enum: [draft, issued] }
+        correctionsBy: { type: [string, 'null'], format: date }
+        issuedVersion: { type: integer }
+        version: { type: integer }
+    MeetingAttendeeView:
+      allOf:
+        - { $ref: '#/components/schemas/MeetingPersonView' }
+        - type: object
+          required: [id, attendance]
+          properties:
+            id: { type: string }
+            attendance: { $ref: '#/components/schemas/MeetingAttendance' }
+    MeetingItemHistory:
+      type: object
+      required: [meetingId, meetingNumber, heldAt, itemNo, body, status]
+      properties:
+        meetingId: { type: string }
+        meetingNumber: { type: integer }
+        heldAt: { type: string, format: date-time }
+        itemNo: { type: string }
+        body: { type: string }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+    MeetingLink:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [rfi, variation, defect] }
+        id: { type: string, minLength: 5, maxLength: 40 }
+    MeetingItem:
+      type: object
+      required:
+        [
+          id,
+          sectionId,
+          threadId,
+          itemNo,
+          kind,
+          body,
+          status,
+          ownerCompanyId,
+          ownerUserId,
+          ownerName,
+          dueDate,
+          link,
+          carriedCount,
+          stale,
+          history,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        sectionId: { type: string }
+        threadId:
+          { type: string, description: The first appearance of the item; carried copies share it. }
+        itemNo: { type: string, description: 'section.item, e.g. 3.2' }
+        kind: { $ref: '#/components/schemas/MeetingItemKind' }
+        body: { type: string }
+        status: { $ref: '#/components/schemas/MeetingItemStatus' }
+        ownerCompanyId: { type: [string, 'null'] }
+        ownerUserId: { type: [string, 'null'] }
+        ownerName: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        link:
+          oneOf:
+            - { $ref: '#/components/schemas/MeetingLink' }
+            - { type: 'null' }
+        carriedCount: { type: integer }
+        stale:
+          type: boolean
+          description: An open action carried forward three or more times.
+        history:
+          type: array
+          description: Earlier appearances of the item, oldest first.
+          items: { $ref: '#/components/schemas/MeetingItemHistory' }
+        version: { type: integer }
+    MeetingSectionView:
+      type: object
+      required: [id, position, title, internalOnly, items]
+      properties:
+        id: { type: string }
+        position: { type: integer }
+        title: { type: string }
+        internalOnly: { type: boolean }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingItem' }
+    MeetingVersion:
+      type: object
+      required: [version, issuedAt, issuedBy, correctionsBy, note, recipients]
+      properties:
+        version: { type: integer }
+        issuedAt: { type: string, format: date-time }
+        issuedBy: { type: [string, 'null'] }
+        correctionsBy: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        recipients:
+          type: array
+          items:
+            type: object
+            required: [name, email]
+            properties:
+              name: { type: string }
+              email: { type: string }
+    MeetingViewer:
+      type: object
+      required: [audience, canEdit, canIssue, viewingVersion]
+      properties:
+        audience: { type: string, enum: [internal, external] }
+        canEdit: { type: boolean }
+        canIssue: { type: boolean }
+        viewingVersion:
+          type: [integer, 'null']
+          description: Set when the caller sees an issued version rather than the working minutes.
+    MeetingDetail:
+      type: object
+      required: [meeting, attendees, sections, versions, viewer]
+      properties:
+        meeting: { $ref: '#/components/schemas/Meeting' }
+        attendees:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingAttendeeView' }
+        sections:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingSectionView' }
+        versions:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingVersion' }
+        viewer: { $ref: '#/components/schemas/MeetingViewer' }
+    MeetingPdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    MeetingAction:
+      type: object
+      required:
+        [
+          id,
+          meetingId,
+          meetingNumber,
+          meetingTitle,
+          seriesName,
+          itemNo,
+          body,
+          ownerCompanyId,
+          ownerUserId,
+          ownerName,
+          dueDate,
+          isOverdue,
+          carriedCount,
+          stale,
+        ]
+      properties:
+        id: { type: string }
+        meetingId: { type: string }
+        meetingNumber: { type: integer }
+        meetingTitle: { type: string }
+        seriesName: { type: string }
+        itemNo: { type: string }
+        body: { type: string }
+        ownerCompanyId: { type: [string, 'null'] }
+        ownerUserId: { type: [string, 'null'] }
+        ownerName: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        isOverdue: { type: boolean }
+        carriedCount: { type: integer }
+        stale: { type: boolean }
+    MeetingActionList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/MeetingAction' }
     Problem:
       type: object
       required: [type, title, status, code]
@@ -6089,6 +8695,54 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    SupportAccessGrant:
+      type: object
+      required: [id, ticketRef, level, createdAt, expiresAt, grantedBy, status]
+      properties:
+        id: { type: string, format: uuid }
+        ticketRef: { type: string }
+        level: { type: string, enum: [view] }
+        grantedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [active, expired, revoked] }
+    SupportAccessSession:
+      type: object
+      required: [id, grantId, staffName, ticketRef, startedAt, expiresAt, pagesViewed, status]
+      properties:
+        pagesViewed: { type: integer }
+        id: { type: string, format: uuid }
+        grantId: { type: string, format: uuid }
+        staffName: { type: string }
+        ticketRef: { type: string }
+        startedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+        endedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [open, ended, expired, revoked] }
+    SupportAccess:
+      type: object
+      required: [grants, sessions]
+      properties:
+        grants:
+          type: array
+          items: { $ref: '#/components/schemas/SupportAccessGrant' }
+        sessions:
+          type: array
+          items: { $ref: '#/components/schemas/SupportAccessSession' }
+    SupportBanner:
+      type: object
+      required: [active, since]
+      properties:
+        active: { type: boolean }
+        since: { type: [string, 'null'], format: date-time }
+    CreateSupportAccessGrantRequest:
+      type: object
+      additionalProperties: false
+      required: [ticketRef, hours]
+      properties:
+        ticketRef: { type: string, minLength: 2, maxLength: 60 }
+        hours: { type: integer, minimum: 1, maximum: 72 }
     Abn:
       type: string
       pattern: '^[0-9]{11}$'
@@ -6616,11 +9270,16 @@ components:
         ]
     AiUsage:
       type: object
-      required: [periodStart, timezone, allowance, used, remaining, byFeature]
+      required: [periodStart, timezone, allowance, granted, used, remaining, byFeature]
       properties:
         periodStart: { type: string, format: date }
         timezone: { type: string }
         allowance: { type: [number, 'null'], description: null means unlimited }
+        granted:
+          {
+            type: number,
+            description: Credits staff added to this month; already part of the allowance,
+          }
         used: { type: number }
         remaining: { type: [number, 'null'] }
         byFeature:
@@ -7062,6 +9721,97 @@ components:
           description: Required fields that no column fills.
           type: array
           items: { type: string }
+    NegotiationTurn:
+      type: object
+      additionalProperties: false
+      required: [role, text]
+      properties:
+        role: { type: string, enum: [estimator, nova] }
+        text: { type: string, minLength: 1, maxLength: 1500 }
+    QuoteNegotiationAdvice:
+      type: object
+      required:
+        [
+          runId,
+          stance,
+          gap,
+          reply,
+          points,
+          levers,
+          counterExGst,
+          counterReason,
+          draftMessage,
+          notes,
+          history,
+          disclaimer,
+        ]
+      properties:
+        runId: { type: string }
+        stance: { type: string, enum: [above, within, below, no_reference] }
+        gap:
+          type: object
+          required: [against, referenceExGst, differenceExGst, percent, stance]
+          properties:
+            against: { type: [string, 'null'], enum: [target, median, null] }
+            referenceExGst: { type: [string, 'null'] }
+            differenceExGst:
+              { type: [string, 'null'], description: Quote minus reference; negative when under. }
+            percent: { type: [number, 'null'] }
+            stance: { type: string, enum: [above, within, below, no_reference] }
+        reply: { type: string }
+        points:
+          type: array
+          items:
+            type: object
+            required: [scopeKey, text]
+            properties:
+              scopeKey: { type: [string, 'null'] }
+              text: { type: string }
+        levers: { type: array, items: { type: string } }
+        counterExGst: { type: [string, 'null'] }
+        counterReason: { type: string }
+        draftMessage: { type: [string, 'null'] }
+        notes: { type: array, items: { type: string } }
+        history: { type: array, items: { $ref: '#/components/schemas/NegotiationTurn' } }
+        disclaimer: { type: string }
+    NovaTakeoffDetection:
+      type: object
+      required: [runId, revisionId, kind, what, scanned, caveat, dropped, items]
+      properties:
+        runId: { type: string }
+        revisionId: { type: string }
+        kind: { $ref: '#/components/schemas/TakeoffKind' }
+        what: { type: string }
+        scanned:
+          {
+            type: boolean,
+            description: The sheet is a scan; confidence is capped and every mark needs a look.,
+          }
+        caveat: { type: [string, 'null'], description: Anything that stopped a full answer. }
+        dropped:
+          {
+            type: integer,
+            description: Items software removed (off the sheet,
+            wrong shape,
+            repeat).,
+          }
+        items:
+          type: array
+          items:
+            type: object
+            required: [place, points, confidence, note]
+            properties:
+              place: { type: [string, 'null'] }
+              points:
+                type: array
+                items:
+                  type: object
+                  required: [x, y]
+                  properties:
+                    x: { type: number }
+                    y: { type: number }
+              confidence: { type: number, minimum: 0, maximum: 1 }
+              note: { type: [string, 'null'] }
     NovaQuoteReading:
       type: object
       required:
@@ -8554,6 +11304,298 @@ components:
           maxItems: 20
           description: 'Marked-up PDFs (SUB-AC4)'
           items: { $ref: '#/components/schemas/FileRef' }
+    CorrespondenceTypeRef:
+      type: string
+      pattern: '^cty_[0-9A-Za-z]{26}$'
+    CorrespondenceStatus:
+      type: string
+      enum: [draft, sent, responded, closed, void]
+    CorrespondenceTemplate:
+      type: object
+      required:
+        [
+          key,
+          name,
+          prefix,
+          description,
+          isEvidential,
+          responseRequired,
+          responseDays,
+          timeBarDays,
+          subjectTemplate,
+          bodyTemplate,
+        ]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        prefix: { type: string }
+        description: { type: string }
+        isEvidential: { type: boolean }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer }
+        timeBarDays:
+          {
+            type: [integer, 'null'],
+            description: 'Default notice period in calendar days; confirm against the contract',
+          }
+        subjectTemplate: { type: string }
+        bodyTemplate: { type: string }
+    CorrespondenceType:
+      type: object
+      required:
+        [
+          id,
+          name,
+          prefix,
+          description,
+          templateKey,
+          isEvidential,
+          responseRequired,
+          responseDays,
+          timeBarDays,
+          subjectTemplate,
+          bodyTemplate,
+          archived,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        prefix: { type: string, description: 'Upper-case letters; items are numbered NOD-001' }
+        description: { type: string }
+        templateKey:
+          { type: [string, 'null'], description: 'The built-in template it was copied from' }
+        isEvidential: { type: boolean, description: 'Frozen and hashed when sent' }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer, description: 'Business days allowed to respond' }
+        timeBarDays: { type: [integer, 'null'] }
+        subjectTemplate: { type: string }
+        bodyTemplate:
+          {
+            type: string,
+            description: 'Supports {{projectName}}, {{number}}, {{date}} and {{eventDate}}',
+          }
+        archived: { type: boolean }
+        version: { type: integer }
+    CorrespondenceTypeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceType' }
+    CreateCorrespondenceTypeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        templateKey: { type: string, maxLength: 60 }
+        name: { type: string, minLength: 1, maxLength: 80 }
+        prefix: { type: string, pattern: '^[A-Za-z]{1,6}$' }
+        description: { type: string, maxLength: 500 }
+        isEvidential: { type: boolean }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer, minimum: 0, maximum: 250 }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        subjectTemplate: { type: string, maxLength: 300 }
+        bodyTemplate: { type: string, maxLength: 20000 }
+    UpdateCorrespondenceTypeRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        prefix: { type: string, pattern: '^[A-Za-z]{1,6}$' }
+        description: { type: string, maxLength: 500 }
+        isEvidential: { type: boolean }
+        responseRequired: { type: boolean }
+        responseDays: { type: integer, minimum: 0, maximum: 250 }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        subjectTemplate: { type: string, maxLength: 300 }
+        bodyTemplate: { type: string, maxLength: 20000 }
+        archived: { type: boolean }
+    CorrespondenceRelated:
+      type: object
+      additionalProperties: false
+      required: [kind, id]
+      properties:
+        kind: { type: string, enum: [rfi, submittal, correspondence, variation, diary, other] }
+        id: { type: string, pattern: '^[a-z]{2,4}_[0-9A-Za-z]{26}$' }
+        label: { type: string, maxLength: 120 }
+    CorrespondenceItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          typeId,
+          typeName,
+          isEvidential,
+          number,
+          numberLabel,
+          subject,
+          body,
+          status,
+          fromCompanyId,
+          toCompanyIds,
+          responseRequired,
+          dueDate,
+          eventDate,
+          timeBarDays,
+          timeBarDate,
+          timeBarState,
+          sentInTime,
+          fileIds,
+          related,
+          sentAt,
+          sentBy,
+          contentHash,
+          closedAt,
+          voidReason,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        typeId: { type: string }
+        typeName: { type: string }
+        isEvidential: { type: boolean }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'NOD-001' }
+        subject: { type: string }
+        body: { type: string }
+        status: { $ref: '#/components/schemas/CorrespondenceStatus' }
+        fromCompanyId: { type: [string, 'null'] }
+        toCompanyIds:
+          type: array
+          items: { type: string }
+        responseRequired: { type: boolean }
+        dueDate: { type: [string, 'null'], format: date, description: 'When a response is due' }
+        eventDate:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'The event the notice is about; starts the time bar',
+          }
+        timeBarDays: { type: [integer, 'null'] }
+        timeBarDate:
+          { type: [string, 'null'], format: date, description: 'Last day to give the notice' }
+        timeBarState:
+          type: string
+          enum: [none, ok, amber, red, overdue]
+          description: 'Draft only: amber within 3 business days of the bar, red within 1, overdue after it'
+        sentInTime: { type: [boolean, 'null'], description: 'Whether it was sent by the time bar' }
+        fileIds:
+          type: array
+          items: { type: string }
+        related:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+        sentAt: { type: [string, 'null'], format: date-time }
+        sentBy: { type: [string, 'null'] }
+        contentHash:
+          { type: [string, 'null'], description: 'SHA-256 of what was sent; evidential items only' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        voidReason: { type: [string, 'null'] }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CorrespondenceResponse:
+      type: object
+      required: [id, authorId, authorCompanyId, body, fileIds, sentAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        authorCompanyId: { type: [string, 'null'] }
+        body: { type: string }
+        fileIds:
+          type: array
+          items: { type: string }
+        sentAt: { type: string, format: date-time }
+    CorrespondenceDetail:
+      type: object
+      required: [item, responses]
+      properties:
+        item: { $ref: '#/components/schemas/CorrespondenceItem' }
+        responses:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceResponse' }
+    CorrespondencePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorrespondenceItem' }
+        nextCursor: { type: [string, 'null'] }
+    CreateCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [typeId]
+      properties:
+        typeId: { $ref: '#/components/schemas/CorrespondenceTypeRef' }
+        subject: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 50000 }
+        fromCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        toCompanyIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        responseRequired: { type: boolean }
+        dueDate: { type: string, format: date }
+        eventDate: { type: string, format: date }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        fileIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FileRef' }
+        related:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+    UpdateCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        subject: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 50000 }
+        fromCompanyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        toCompanyIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CompanyRef' }
+        responseRequired: { type: boolean }
+        dueDate: { type: [string, 'null'], format: date }
+        eventDate: { type: [string, 'null'], format: date }
+        timeBarDays: { type: [integer, 'null'], minimum: 1, maximum: 365 }
+        fileIds:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/FileRef' }
+        related:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/CorrespondenceRelated' }
+    RespondCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 50000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    VoidCorrespondenceRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
     RfiStatus:
       type: string
       enum: [draft, open, answered, closed, void]
@@ -9398,6 +12440,8 @@ components:
           scopeKey,
           confirmedBy,
           confirmedAt,
+          rejectedBy,
+          rejectedAt,
           createdAt,
           updatedAt,
           version,
@@ -9416,9 +12460,277 @@ components:
         scopeKey: { type: [string, 'null'] }
         confirmedBy: { type: [string, 'null'] }
         confirmedAt: { type: [string, 'null'], format: date-time }
+        rejectedBy: { type: [string, 'null'] }
+        rejectedAt:
+          type: [string, 'null']
+          format: date-time
+          description: A person turned this mark down. It stays on the sheet, struck through, and never counts.
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
         version: { type: integer }
+    CostCategory:
+      type: string
+      enum: [labour, material, plant, subcontract, other]
+    CostRatePoint:
+      type: object
+      required: [rate, region, effectiveFrom]
+      properties:
+        rate: { type: string, description: 'Dollars ex GST, 2 places' }
+        region: { type: [string, 'null'] }
+        effectiveFrom: { type: string, format: date }
+    CostRate:
+      allOf:
+        - $ref: '#/components/schemas/CostRatePoint'
+        - $ref: '#/components/schemas/CostRateDetail'
+    CostRateDetail:
+      type: object
+      required: [source, note, createdAt]
+      properties:
+        source: { type: string, enum: [manual, quote, import] }
+        note: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    CostRateInput:
+      type: object
+      additionalProperties: false
+      required: [rate]
+      properties:
+        rate: { type: string, pattern: '^[0-9]{1,15}(\.[0-9]{1,2})?$' }
+        region: { type: string, minLength: 1, maxLength: 60 }
+        effectiveFrom: { type: string, format: date, description: Defaults to today }
+        note: { type: string, maxLength: 300 }
+    CostRateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CostRate' }
+    CostItem:
+      type: object
+      required:
+        [id, code, description, unit, trade, category, currentRate, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        code: { type: string }
+        description: { type: string }
+        unit: { type: string }
+        trade: { type: string }
+        category: { $ref: '#/components/schemas/CostCategory' }
+        currentRate:
+          description: The rate in force today, or null while the item has none.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/CostRatePoint'
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    CostItemPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CostItem' }
+        nextCursor: { type: [string, 'null'] }
+    CreateCostItemRequest:
+      type: object
+      additionalProperties: false
+      required: [code, description, unit]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        trade: { type: string, maxLength: 100 }
+        category: { $ref: '#/components/schemas/CostCategory' }
+        rate: { $ref: '#/components/schemas/CostRateInput' }
+    UpdateCostItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        code: { type: string, minLength: 1, maxLength: 40 }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        unit: { type: string, minLength: 1, maxLength: 20 }
+        trade: { type: string, maxLength: 100 }
+        category: { $ref: '#/components/schemas/CostCategory' }
+    EstimateSettings:
+      type: object
+      required: [baseDate, region, contingencyPct, marginPct, marginBasis, gstPct]
+      properties:
+        baseDate:
+          { type: string, format: date, description: Library rates are taken as at this date }
+        region: { type: [string, 'null'] }
+        contingencyPct: { type: string, description: Percent of the line total, 2 places }
+        marginPct: { type: string, description: Percent, 2 places, under 100 }
+        marginBasis:
+          type: string
+          enum: [markup, margin]
+          description: '`markup` adds the percentage on cost; `margin` makes it that share of the selling price.'
+        gstPct: { type: string }
+    EstimateTotals:
+      type: object
+      required:
+        [subtotal, contingency, margin, totalExGst, gst, totalIncGst, missingRates, sections]
+      properties:
+        subtotal: { type: string }
+        contingency: { type: string }
+        margin: { type: string }
+        totalExGst: { type: string }
+        gst: { type: string }
+        totalIncGst: { type: string }
+        missingRates:
+          type: integer
+          description: Items with no quantity or rate. They add nothing to the totals until filled in.
+        sections:
+          type: object
+          additionalProperties: { type: string }
+          description: Cost of the items under each section id.
+    EstimateLine:
+      type: object
+      required:
+        [
+          id,
+          parentId,
+          kind,
+          sort,
+          costItemId,
+          description,
+          quantity,
+          unit,
+          rate,
+          amount,
+          measurementIds,
+          pendingMeasurements,
+          unitMismatch,
+        ]
+      properties:
+        id: { type: string }
+        parentId: { type: [string, 'null'] }
+        kind: { type: string, enum: [section, item] }
+        sort: { type: integer }
+        costItemId: { type: [string, 'null'] }
+        description: { type: string }
+        quantity: { type: [string, 'null'], description: 3 places }
+        unit: { type: [string, 'null'] }
+        rate:
+          {
+            type: [string, 'null'],
+            description: Dollars ex GST per unit; null is unpriced and flagged,
+          }
+        amount:
+          { type: [string, 'null'], description: Quantity × rate; null while either is missing }
+        measurementIds:
+          type: array
+          items: { type: string }
+        pendingMeasurements:
+          type: integer
+          description: Linked measurements still waiting for a person to accept them. They do not count.
+        unitMismatch:
+          type: boolean
+          description: The library item prices in a different unit from this line.
+    Estimate:
+      allOf:
+        - $ref: '#/components/schemas/EstimateSettings'
+        - type: object
+          required:
+            [
+              id,
+              projectId,
+              number,
+              numberLabel,
+              name,
+              status,
+              issuedAt,
+              issuedBy,
+              lines,
+              totals,
+              createdAt,
+              updatedAt,
+              version,
+            ]
+          properties:
+            id: { type: string }
+            projectId: { type: string }
+            number: { type: integer }
+            numberLabel: { type: string }
+            name: { type: string }
+            status: { type: string, enum: [draft, issued] }
+            issuedAt: { type: [string, 'null'], format: date-time }
+            issuedBy: { type: [string, 'null'] }
+            lines:
+              type: array
+              items: { $ref: '#/components/schemas/EstimateLine' }
+            totals: { $ref: '#/components/schemas/EstimateTotals' }
+            createdAt: { type: string, format: date-time }
+            updatedAt: { type: string, format: date-time }
+            version: { type: integer }
+    EstimateSummary:
+      type: object
+      required:
+        [id, number, numberLabel, name, status, baseDate, totalExGst, issuedAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string }
+        name: { type: string }
+        status: { type: string, enum: [draft, issued] }
+        baseDate: { type: string, format: date }
+        totalExGst: { type: [string, 'null'], description: Set when the estimate is issued }
+        issuedAt: { type: [string, 'null'], format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    EstimatePage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EstimateSummary' }
+        nextCursor: { type: [string, 'null'] }
+    CreateEstimateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        baseDate: { type: string, format: date }
+        region: { type: string, minLength: 1, maxLength: 60 }
+        contingencyPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+        marginPct: { type: string, pattern: '^[0-9]{1,2}(\.[0-9]{1,2})?$' }
+        marginBasis: { type: string, enum: [markup, margin] }
+        gstPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+    UpdateEstimateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        baseDate: { type: string, format: date }
+        region: { type: [string, 'null'], minLength: 1, maxLength: 60 }
+        contingencyPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+        marginPct: { type: string, pattern: '^[0-9]{1,2}(\.[0-9]{1,2})?$' }
+        marginBasis: { type: string, enum: [markup, margin] }
+        gstPct: { type: string, pattern: '^[0-9]{1,3}(\.[0-9]{1,2})?$' }
+    EstimateLineInput:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          {
+            type: string,
+            enum: [section, item],
+            description: Defaults to item on add; ignored on change,
+          }
+        parentId: { type: [string, 'null'], pattern: '^esl_[0-9A-Za-z]{26}$' }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        costItemId: { type: [string, 'null'], pattern: '^cit_[0-9A-Za-z]{26}$' }
+        quantity: { type: [string, 'null'], pattern: '^[0-9]{1,15}(\.[0-9]{1,3})?$' }
+        unit: { type: [string, 'null'], minLength: 1, maxLength: 20 }
+        rate: { type: [string, 'null'], pattern: '^[0-9]{1,15}(\.[0-9]{1,2})?$' }
+        measurementIds:
+          type: array
+          maxItems: 500
+          items: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
     TakeoffMeasurementPage:
       type: object
       required: [data, nextCursor]
@@ -9517,6 +12829,218 @@ components:
         updatedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
+    ApiToken:
+      type: object
+      required: [id, userId, name, prefix, scopes, expiresAt, lastUsedAt, revokedAt, createdAt]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        name: { type: string }
+        prefix:
+          { type: string, description: The first characters of the token, to tell tokens apart. }
+        scopes: { type: array, items: { type: string } }
+        expiresAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    ApiTokenList:
+      type: object
+      required: [data, availableScopes]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ApiToken' }
+        availableScopes:
+          type: array
+          items: { type: string }
+          description: The scopes a new token can be given (`<area>:read` or `<area>:write`).
+    ApiTokenCreated:
+      allOf:
+        - $ref: '#/components/schemas/ApiToken'
+        - type: object
+          required: [token]
+          properties:
+            token:
+              { type: string, description: The secret (`pk_live_…`). Shown once; store it safely. }
+    CreateApiTokenRequest:
+      type: object
+      additionalProperties: false
+      required: [name, scopes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        scopes:
+          type: array
+          minItems: 1
+          maxItems: 30
+          items: { type: string, maxLength: 40 }
+        expiresInDays: { type: integer, minimum: 1, maximum: 365, description: Defaults to 90. }
+    Webhook:
+      type: object
+      required: [id, url, description, eventTypes, projectIds, status, disabledReason, createdAt]
+      properties:
+        id: { type: string }
+        url: { type: string }
+        description: { type: [string, 'null'] }
+        eventTypes: { type: array, items: { type: string } }
+        projectIds:
+          type: [array, 'null']
+          items: { type: string }
+          description: Null means every project in the organisation.
+        status: { type: string, enum: [active, disabled] }
+        disabledReason: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+    AccountingProviderName: { type: string, enum: [xero, myob] }
+    AccountingTarget:
+      type: object
+      required: [ref, name]
+      properties:
+        ref: { type: string, minLength: 1, maxLength: 200 }
+        name: { type: string, minLength: 1, maxLength: 200 }
+    AccountingAccountTarget:
+      type: object
+      required: [accountRef, taxRef]
+      properties:
+        accountRef: { type: string, minLength: 1, maxLength: 100 }
+        taxRef: { type: string, minLength: 1, maxLength: 100 }
+        trackingRef: { type: string, minLength: 1, maxLength: 100 }
+    AccountingFieldMap:
+      type: object
+      required: [accounts, retention]
+      properties:
+        accounts:
+          type: object
+          additionalProperties: { $ref: '#/components/schemas/AccountingAccountTarget' }
+        retention:
+          oneOf:
+            - $ref: '#/components/schemas/AccountingAccountTarget'
+            - type: 'null'
+    AccountingSettings:
+      type: object
+      required: [startDate, pushBills, pushInvoices, billStatus]
+      properties:
+        startDate: { type: [string, 'null'], format: date }
+        pushBills: { type: boolean }
+        pushInvoices: { type: boolean }
+        billStatus: { type: string, enum: [draft, awaiting_approval] }
+    AccountingConnection:
+      type: object
+      required: [id, provider, status, targetName, fieldMap, settings, lastError, lastPulledAt]
+      properties:
+        id: { type: string, pattern: '^acn_[0-9A-Za-z]{26}$' }
+        provider: { $ref: '#/components/schemas/AccountingProviderName' }
+        status: { type: string, enum: [pending, needs_target, active, error] }
+        targetName: { type: [string, 'null'] }
+        fieldMap: { $ref: '#/components/schemas/AccountingFieldMap' }
+        settings: { $ref: '#/components/schemas/AccountingSettings' }
+        lastError: { type: [string, 'null'] }
+        lastPulledAt: { type: [string, 'null'], format: date-time }
+    AccountingConnectionList:
+      type: object
+      required: [data, available]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingConnection' }
+        available:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingProviderName' }
+    AccountingConnectStart:
+      type: object
+      required: [url]
+      properties:
+        url: { type: string }
+    AccountingCallbackRequest:
+      type: object
+      required: [code, state]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 2000 }
+        state: { type: string, minLength: 1, maxLength: 200 }
+    AccountingTargetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingTarget' }
+    AccountingSyncIssue:
+      type: object
+      required: [id, provider, kind, reference, message, status, createdAt]
+      properties:
+        id: { type: string, pattern: '^syi_[0-9A-Za-z]{26}$' }
+        provider: { $ref: '#/components/schemas/AccountingProviderName' }
+        kind:
+          {
+            type: string,
+            enum: [unmapped_cost_code, remote_locked, rejected, auth_failed, no_contact],
+          }
+        reference: { type: [string, 'null'] }
+        message: { type: string }
+        status: { type: string, enum: [open, resolved] }
+        createdAt: { type: string, format: date-time }
+    AccountingSyncIssueList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/AccountingSyncIssue' }
+    WebhookList:
+      type: object
+      required: [data, availableEventTypes]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Webhook' }
+        availableEventTypes: { type: array, items: { type: string } }
+    WebhookCreated:
+      allOf:
+        - $ref: '#/components/schemas/Webhook'
+        - type: object
+          required: [secret]
+          properties:
+            secret:
+              {
+                type: string,
+                description: The signing secret (`whsec_…`). Shown once; store it safely.,
+              }
+    CreateWebhookRequest:
+      type: object
+      additionalProperties: false
+      required: [url, eventTypes]
+      properties:
+        url: { type: string, maxLength: 2000, description: An https URL on the public internet. }
+        description: { type: string, maxLength: 200 }
+        eventTypes:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items: { type: string, maxLength: 80 }
+        projectIds:
+          type: array
+          maxItems: 100
+          items: { type: string }
+          description: Only events on these projects. Omit for every project.
+    WebhookDelivery:
+      type: object
+      required:
+        [id, eventId, eventType, status, attempts, lastStatus, lastError, createdAt, deliveredAt]
+      properties:
+        id: { type: string }
+        eventId: { type: string }
+        eventType: { type: string }
+        status: { type: string, enum: [pending, succeeded, abandoned] }
+        attempts: { type: integer }
+        lastStatus: { type: [integer, 'null'] }
+        lastError: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        deliveredAt: { type: [string, 'null'], format: date-time }
+    WebhookDeliveryList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/WebhookDelivery' }
     ImportJobPage:
       type: object
       required: [data, nextCursor]
@@ -9700,6 +13224,327 @@ components:
           type: array
           description: Status history, oldest first
           items: { $ref: '#/components/schemas/DefectEvent' }
+    FinancialsMoney:
+      type: string
+      pattern: '^\d{1,16}(\.\d{1,2})?$'
+      description: Decimal AUD ex GST unless the field says otherwise.
+    SopaState:
+      type: string
+      enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT]
+    ContractKind:
+      type: string
+      enum: [head, subcontract]
+    SovItem:
+      type: object
+      required: [id, code, description, value]
+      properties:
+        id: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        value: { $ref: '#/components/schemas/FinancialsMoney' }
+    Contract:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          kind,
+          title,
+          payerCompanyId,
+          payeeCompanyId,
+          status,
+          originalValue,
+          retentionPct,
+          retentionCapPct,
+          sopaState,
+          scheduleDays,
+          paymentDays,
+        ]
+      properties:
+        id: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        kind: { $ref: '#/components/schemas/ContractKind' }
+        title: { type: string }
+        payerCompanyId: { type: [string, 'null'] }
+        payeeCompanyId: { type: [string, 'null'] }
+        status: { type: string }
+        originalValue: { $ref: '#/components/schemas/FinancialsMoney' }
+        retentionPct: { type: string, description: 'Percent, for example 5.00.' }
+        retentionCapPct: { type: [string, 'null'] }
+        sopaState: { $ref: '#/components/schemas/SopaState' }
+        scheduleDays:
+          {
+            type: [integer, 'null'],
+            description: Business days the contract gives for a payment schedule; null when silent.,
+          }
+        paymentDays:
+          {
+            type: [integer, 'null'],
+            description: Days the contract gives to pay; null when silent.,
+          }
+    ContractList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Contract' }
+    ContractDetail:
+      type: object
+      required: [contract, sov]
+      properties:
+        contract: { $ref: '#/components/schemas/Contract' }
+        sov:
+          type: array
+          items: { $ref: '#/components/schemas/SovItem' }
+    CreateContractRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title, originalValue, sov]
+      properties:
+        kind: { $ref: '#/components/schemas/ContractKind' }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        payerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        payeeCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        originalValue: { $ref: '#/components/schemas/FinancialsMoney' }
+        retentionPct: { type: string, pattern: '^\d{1,3}(\.\d{1,2})?$' }
+        retentionCapPct: { type: [string, 'null'], pattern: '^\d{1,3}(\.\d{1,2})?$' }
+        sopaState:
+          description: Defaults to the project's state.
+          $ref: '#/components/schemas/SopaState'
+        scheduleDays: { type: [integer, 'null'], minimum: 1, maximum: 60 }
+        paymentDays: { type: [integer, 'null'], minimum: 1, maximum: 120 }
+        sov:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [code, description, value]
+            properties:
+              code: { type: string, minLength: 1, maxLength: 50 }
+              description: { type: string, minLength: 1, maxLength: 300 }
+              value: { $ref: '#/components/schemas/FinancialsMoney' }
+    VariationStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, withdrawn]
+    Variation:
+      type: object
+      required:
+        [
+          id,
+          contractId,
+          number,
+          title,
+          description,
+          amount,
+          timeImpactDays,
+          status,
+          claimedToDate,
+          submittedAt,
+          decidedAt,
+          decisionNote,
+        ]
+      properties:
+        id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        timeImpactDays: { type: integer }
+        status: { $ref: '#/components/schemas/VariationStatus' }
+        claimedToDate:
+          $ref: '#/components/schemas/FinancialsMoney'
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    VariationList:
+      type: object
+      required: [data, approvedTotal]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Variation' }
+        approvedTotal:
+          $ref: '#/components/schemas/FinancialsMoney'
+    CreateVariationRequest:
+      type: object
+      additionalProperties: false
+      required: [title, amount]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 5000 }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+    VariationDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    PaymentClaimStatus:
+      type: string
+      enum: [submitted, scheduled, paid, disputed, adjudication, withdrawn]
+    PaymentClaim:
+      type: object
+      required:
+        [
+          id,
+          contractId,
+          number,
+          periodEnd,
+          receivedAt,
+          statesAct,
+          isValid,
+          invalidReason,
+          claimedGross,
+          lessPrevious,
+          retention,
+          claimedNet,
+          gst,
+          claimedTotal,
+          servedOn,
+          scheduleDueOn,
+          paymentDueOn,
+          paymentReadDown,
+          ruleState,
+          rulesReviewed,
+          status,
+          daysToScheduleDue,
+        ]
+      properties:
+        id: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        receivedAt: { type: string, format: date-time }
+        statesAct: { type: boolean }
+        isValid:
+          {
+            type: boolean,
+            description: False when the Act requires a statement the claim lacks; no deadlines start.,
+          }
+        invalidReason: { type: [string, 'null'] }
+        claimedGross: { $ref: '#/components/schemas/FinancialsMoney' }
+        lessPrevious: { $ref: '#/components/schemas/FinancialsMoney' }
+        retention: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimedNet: { $ref: '#/components/schemas/FinancialsMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimedTotal: { $ref: '#/components/schemas/FinancialsMoney' }
+        servedOn: { type: [string, 'null'], format: date }
+        scheduleDueOn: { type: [string, 'null'], format: date }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        paymentReadDown:
+          {
+            type: boolean,
+            description: The contract's payment term was longer than the Act allows and was read down.,
+          }
+        ruleState: { type: [string, 'null'] }
+        rulesReviewed:
+          type: boolean
+          description: False until a lawyer has signed off the rules used. The UI says "rules not yet legally reviewed".
+        status: { $ref: '#/components/schemas/PaymentClaimStatus' }
+        daysToScheduleDue:
+          type: [integer, 'null']
+          description: Calendar days from the project's today to the schedule due date; negative once passed. Null when there is no deadline or a schedule is issued.
+    PaymentClaimLine:
+      type: object
+      required: [sovItemId, variationId, previous, thisClaim, toDate]
+      properties:
+        sovItemId: { type: [string, 'null'], pattern: '^sov_[0-9A-Za-z]{26}$' }
+        variationId: { type: [string, 'null'], pattern: '^var_[0-9A-Za-z]{26}$' }
+        previous: { $ref: '#/components/schemas/FinancialsMoney' }
+        thisClaim: { $ref: '#/components/schemas/FinancialsMoney' }
+        toDate: { $ref: '#/components/schemas/FinancialsMoney' }
+    PaymentSchedule:
+      type: object
+      required:
+        [
+          id,
+          scheduledAmount,
+          withheldAmount,
+          overallReason,
+          lineReasons,
+          issuedAt,
+          issuedWithinTime,
+        ]
+      properties:
+        id: { type: string, pattern: '^psc_[0-9A-Za-z]{26}$' }
+        scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        withheldAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        overallReason: { type: [string, 'null'] }
+        lineReasons:
+          type: array
+          items:
+            type: object
+            required: [sovItemId, reason]
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              reason: { type: string }
+        issuedAt: { type: string, format: date-time }
+        issuedWithinTime: { type: boolean }
+    PaymentClaimList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentClaim' }
+    PaymentClaimDetail:
+      type: object
+      required: [claim, lines, schedule]
+      properties:
+        claim: { $ref: '#/components/schemas/PaymentClaim' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentClaimLine' }
+        schedule:
+          oneOf:
+            - { $ref: '#/components/schemas/PaymentSchedule' }
+            - { type: 'null' }
+    SubmitPaymentClaimRequest:
+      type: object
+      additionalProperties: false
+      required: [periodEnd, receivedAt, statesAct, lines]
+      properties:
+        periodEnd: { type: string, format: date }
+        receivedAt:
+          type: string
+          format: date-time
+          description: When the claim reached the nominated service address. Never the Date header.
+        statesAct: { type: boolean, description: The claim says it is made under the Act. }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [thisClaim]
+            description: Give exactly one of sovItemId or variationId. A variation must be approved to be claimed.
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              variationId: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+              thisClaim: { $ref: '#/components/schemas/FinancialsMoney' }
+    IssuePaymentScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [scheduledAmount]
+      properties:
+        scheduledAmount: { $ref: '#/components/schemas/FinancialsMoney' }
+        overallReason: { type: string, minLength: 1, maxLength: 5000 }
+        lineReasons:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [sovItemId, reason]
+            properties:
+              sovItemId: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+              reason: { type: string, minLength: 1, maxLength: 5000 }
     DefectPage:
       type: object
       required: [data, nextCursor]
@@ -11473,425 +15318,601 @@ components:
               translated: { type: boolean }
               question: { type: string }
               options: { type: array, items: { type: string } }
-    MeetingSeriesRef: { type: string, pattern: '^msr_[0-9A-Za-z]{26}$' }
-    MeetingTemplate:
+    InspectionResponseType:
       type: string
-      enum: [site_coordination, pcg, design_coordination, safety_committee, custom]
-    MeetingItemKind: { type: string, enum: [information, decision, action] }
-    MeetingItemStatus: { type: string, enum: [open, closed] }
-    MeetingAttendance: { type: string, enum: [present, apologies, absent] }
-    MeetingAgendaSection:
+      enum: [pass_fail_na, yes_no, number, text, photo, signature, select]
+    InspectionResult:
+      type: string
+      enum: [pass, fail, na]
+    InspectionStatus:
+      type: string
+      enum: [scheduled, in_progress, submitted, closed]
+    InspectionTemplate:
       type: object
-      additionalProperties: false
-      required: [title, internalOnly]
-      properties:
-        title: { type: string, minLength: 1, maxLength: 200 }
-        internalOnly:
-          type: boolean
-          description: Left out of what outsiders see and of the PDF they get (MTG-AC7).
-    MeetingPerson:
-      type: object
-      additionalProperties: false
-      required: [name]
-      properties:
-        name: { type: string, minLength: 1, maxLength: 200 }
-        companyName: { type: string, maxLength: 200 }
-        role: { type: string, maxLength: 200 }
-        email: { type: [string, 'null'], format: email, maxLength: 320 }
-        userId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
-        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
-    MeetingPersonView:
-      type: object
-      required: [name, companyName, role, email, userId, companyId]
-      properties:
-        name: { type: string }
-        companyName: { type: string }
-        role: { type: string }
-        email: { type: [string, 'null'] }
-        userId: { type: [string, 'null'] }
-        companyId: { type: [string, 'null'] }
-    MeetingSeries:
-      type: object
-      required:
-        [
-          id,
-          projectId,
-          name,
-          template,
-          cadence,
-          defaultAttendees,
-          agenda,
-          version,
-          createdAt,
-          updatedAt,
-        ]
+      required: [id, projectId, name, type, version, published, createdAt, updatedAt]
       properties:
         id: { type: string }
         projectId: { type: string }
         name: { type: string }
-        template: { $ref: '#/components/schemas/MeetingTemplate' }
-        cadence: { type: [string, 'null'] }
-        defaultAttendees:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingPersonView' }
-        agenda:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
+        type: { type: string, description: 'ITP, pre-pour, handover, safety walk or your own' }
         version: { type: integer }
+        published: { type: boolean }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
-    MeetingSeriesList:
+    InspectionTemplateItem:
+      type: object
+      required: [id, section, sort, prompt, responseType, options, required, createsDefectOnFail]
+      properties:
+        id: { type: string }
+        section: { type: string }
+        sort: { type: integer }
+        prompt: { type: string }
+        responseType: { $ref: '#/components/schemas/InspectionResponseType' }
+        options: { type: array, items: { type: string } }
+        required: { type: boolean }
+        createsDefectOnFail: { type: boolean }
+    InspectionTemplateDetail:
+      type: object
+      required: [template, items]
+      properties:
+        template: { $ref: '#/components/schemas/InspectionTemplate' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionTemplateItem' }
+    InspectionTemplateList:
       type: object
       required: [data]
       properties:
         data:
           type: array
-          items: { $ref: '#/components/schemas/MeetingSeries' }
-    CreateMeetingSeriesRequest:
+          items: { $ref: '#/components/schemas/InspectionTemplate' }
+    InspectionTemplateItemInput:
       type: object
       additionalProperties: false
-      required: [name]
+      required: [prompt, responseType]
+      properties:
+        section: { type: string, maxLength: 200 }
+        prompt: { type: string, minLength: 1, maxLength: 1000 }
+        responseType: { $ref: '#/components/schemas/InspectionResponseType' }
+        options:
+          type: array
+          maxItems: 30
+          description: The choices for a `select` item (at least two).
+          items: { type: string, minLength: 1, maxLength: 200 }
+        required: { type: boolean }
+        createsDefectOnFail:
+          type: boolean
+          description: Only for `pass_fail_na`. A failed answer is listed so a defect can be raised from it.
+    CreateInspectionTemplateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, items]
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
-        template: { $ref: '#/components/schemas/MeetingTemplate' }
-        cadence: { type: [string, 'null'], maxLength: 100 }
-        defaultAttendees:
+        type: { type: string, minLength: 1, maxLength: 50 }
+        items:
           type: array
-          maxItems: 100
-          items: { $ref: '#/components/schemas/MeetingPerson' }
-        agenda:
-          type: array
-          minItems: 1
-          maxItems: 40
-          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
-    UpdateMeetingSeriesRequest:
+          maxItems: 300
+          items: { $ref: '#/components/schemas/InspectionTemplateItemInput' }
+    UpdateInspectionTemplateRequest:
       type: object
       additionalProperties: false
       minProperties: 1
       properties:
         name: { type: string, minLength: 1, maxLength: 200 }
-        cadence: { type: [string, 'null'], maxLength: 100 }
-        defaultAttendees:
+        type: { type: string, minLength: 1, maxLength: 50 }
+        items:
           type: array
-          maxItems: 100
-          items: { $ref: '#/components/schemas/MeetingPerson' }
-        agenda:
-          type: array
-          minItems: 1
-          maxItems: 40
-          items: { $ref: '#/components/schemas/MeetingAgendaSection' }
-    MeetingSummary:
+          maxItems: 300
+          items: { $ref: '#/components/schemas/InspectionTemplateItemInput' }
+    InspectionSignature:
       type: object
-      required:
-        [id, seriesId, seriesName, number, title, heldAt, status, issuedVersion, openActions]
+      required: [name, fileId, at]
       properties:
-        id: { type: string }
-        seriesId: { type: string }
-        seriesName: { type: string }
-        number: { type: integer }
-        title: { type: string }
-        heldAt: { type: string, format: date-time }
-        status: { type: string, enum: [draft, issued] }
-        issuedVersion: { type: integer }
-        openActions: { type: integer }
-    MeetingList:
-      type: object
-      required: [data]
-      properties:
-        data:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingSummary' }
-    Meeting:
+        name: { type: string }
+        fileId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    Inspection:
       type: object
       required:
         [
           id,
           projectId,
-          seriesId,
-          seriesName,
           number,
+          numberLabel,
+          templateId,
+          templateVersion,
           title,
-          heldAt,
           location,
-          chairUserId,
           status,
-          correctionsBy,
-          issuedVersion,
+          inspectorId,
+          scheduledFor,
+          completedAt,
+          signedBy,
+          createdAt,
+          updatedAt,
           version,
         ]
       properties:
         id: { type: string }
         projectId: { type: string }
-        seriesId: { type: string }
-        seriesName: { type: string }
         number: { type: integer }
+        numberLabel: { type: string, description: 'INS-0042' }
+        templateId: { type: string }
+        templateVersion: { type: integer }
         title: { type: string }
-        heldAt: { type: string, format: date-time }
-        location: { type: string }
-        chairUserId: { type: [string, 'null'] }
-        status: { type: string, enum: [draft, issued] }
-        correctionsBy: { type: [string, 'null'], format: date }
-        issuedVersion: { type: integer }
+        location: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/InspectionStatus' }
+        inspectorId: { type: [string, 'null'] }
+        scheduledFor: { type: [string, 'null'], format: date }
+        completedAt: { type: [string, 'null'], format: date-time }
+        signedBy:
+          oneOf: [{ $ref: '#/components/schemas/InspectionSignature' }, { type: 'null' }]
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
         version: { type: integer }
-    MeetingAttendeeView:
-      allOf:
-        - { $ref: '#/components/schemas/MeetingPersonView' }
-        - type: object
-          required: [id, attendance]
-          properties:
-            id: { type: string }
-            attendance: { $ref: '#/components/schemas/MeetingAttendance' }
-    MeetingItemHistory:
+    InspectionItemResponse:
       type: object
-      required: [meetingId, meetingNumber, heldAt, itemNo, body, status]
+      required: [templateItemId, value, result, note, fileIds, defectId, updatedAt]
       properties:
-        meetingId: { type: string }
-        meetingNumber: { type: integer }
-        heldAt: { type: string, format: date-time }
-        itemNo: { type: string }
-        body: { type: string }
-        status: { $ref: '#/components/schemas/MeetingItemStatus' }
-    MeetingLink:
+        templateItemId: { type: string }
+        value:
+          description: 'The answer for yes_no (boolean), number, text, select and signature (typed name) items. Null for pass/fail items, which use `result`.'
+          oneOf: [{ type: string }, { type: number }, { type: boolean }, { type: 'null' }]
+        result:
+          oneOf: [{ $ref: '#/components/schemas/InspectionResult' }, { type: 'null' }]
+        note: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        defectId: { type: [string, 'null'] }
+        updatedAt: { type: string, format: date-time }
+    InspectionDetail:
+      type: object
+      required: [inspection, items, responses, missingRequiredItemIds, failedItemIds]
+      properties:
+        inspection: { $ref: '#/components/schemas/Inspection' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionTemplateItem' }
+        responses:
+          type: array
+          items: { $ref: '#/components/schemas/InspectionItemResponse' }
+        missingRequiredItemIds:
+          type: array
+          items: { type: string }
+        failedItemIds:
+          type: array
+          items: { type: string }
+    InspectionPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Inspection' }
+        nextCursor: { type: [string, 'null'] }
+    CreateInspectionRequest:
       type: object
       additionalProperties: false
-      required: [type, id]
+      required: [templateId]
       properties:
-        type: { type: string, enum: [rfi, variation, defect] }
-        id: { type: string, minLength: 5, maxLength: 40 }
-    MeetingItem:
+        templateId: { type: string, pattern: '^itp_[0-9A-Za-z]{26}$' }
+        title:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 300,
+            description: 'Defaults to the checklist name.',
+          }
+        location: { type: string, minLength: 1, maxLength: 300 }
+        scheduledFor: { type: string, format: date }
+        inspectorId: { $ref: '#/components/schemas/UserRef' }
+    InspectionResponseInput:
+      type: object
+      additionalProperties: false
+      required: [templateItemId]
+      properties:
+        templateItemId: { type: string, pattern: '^iti_[0-9A-Za-z]{26}$' }
+        value:
+          oneOf: [{ type: string, maxLength: 5000 }, { type: number }, { type: boolean }]
+        result: { $ref: '#/components/schemas/InspectionResult' }
+        note: { type: string, maxLength: 2000 }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    RecordInspectionResponsesRequest:
+      type: object
+      additionalProperties: false
+      required: [responses]
+      properties:
+        responses:
+          type: array
+          minItems: 1
+          maxItems: 300
+          items: { $ref: '#/components/schemas/InspectionResponseInput' }
+    SubmitInspectionRequest:
+      type: object
+      additionalProperties: false
+      required: [signedByName]
+      properties:
+        signedByName: { type: string, minLength: 1, maxLength: 200 }
+        signatureFileId: { $ref: '#/components/schemas/FileRef' }
+    ObservationType:
+      type: string
+      enum: [safety, quality, environmental, commercial]
+    ObservationStatus:
+      type: string
+      enum: [open, resolved, closed]
+    ObservationAction:
+      type: string
+      enum: [resolve, close, reopen, stopWork]
+    Observation:
       type: object
       required:
         [
           id,
-          sectionId,
-          threadId,
-          itemNo,
-          kind,
-          body,
+          projectId,
+          number,
+          numberLabel,
+          type,
+          hazard,
+          description,
+          location,
+          priority,
+          assigneeCompanyId,
+          raisedByCompanyId,
           status,
-          ownerCompanyId,
-          ownerUserId,
-          ownerName,
           dueDate,
-          link,
-          carriedCount,
-          stale,
-          history,
+          isOverdue,
+          swmsId,
+          resolutionNote,
+          fileIds,
+          resolvedAt,
+          closedAt,
+          availableActions,
+          createdBy,
+          createdAt,
+          updatedAt,
           version,
         ]
       properties:
         id: { type: string }
-        sectionId: { type: string }
-        threadId:
-          { type: string, description: The first appearance of the item; carried copies share it. }
-        itemNo: { type: string, description: 'section.item, e.g. 3.2' }
-        kind: { $ref: '#/components/schemas/MeetingItemKind' }
-        body: { type: string }
-        status: { $ref: '#/components/schemas/MeetingItemStatus' }
-        ownerCompanyId: { type: [string, 'null'] }
-        ownerUserId: { type: [string, 'null'] }
-        ownerName: { type: [string, 'null'] }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'OBS-0042' }
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: [string, 'null'] }
+        description: { type: string }
+        location: { type: [string, 'null'] }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId: { type: [string, 'null'] }
+        raisedByCompanyId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/ObservationStatus' }
         dueDate: { type: [string, 'null'], format: date }
-        link:
-          oneOf:
-            - { $ref: '#/components/schemas/MeetingLink' }
-            - { type: 'null' }
-        carriedCount: { type: integer }
-        stale:
-          type: boolean
-          description: An open action carried forward three or more times.
-        history:
+        isOverdue: { type: boolean }
+        swmsId:
+          {
+            type: [string, 'null'],
+            description: 'The SWMS this observation is about (stop work: SWMS not followed).',
+          }
+        resolutionNote: { type: [string, 'null'] }
+        fileIds: { type: array, items: { type: string } }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        closedAt: { type: [string, 'null'], format: date-time }
+        availableActions:
           type: array
-          description: Earlier appearances of the item, oldest first.
-          items: { $ref: '#/components/schemas/MeetingItemHistory' }
+          description: What the caller can do now, from status, side and permissions.
+          items: { $ref: '#/components/schemas/ObservationAction' }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
         version: { type: integer }
-    MeetingSectionView:
+    ObservationPage:
       type: object
-      required: [id, position, title, internalOnly, items]
+      required: [data, nextCursor]
       properties:
-        id: { type: string }
-        position: { type: integer }
-        title: { type: string }
-        internalOnly: { type: boolean }
-        items:
+        data:
           type: array
-          items: { $ref: '#/components/schemas/MeetingItem' }
-    MeetingVersion:
-      type: object
-      required: [version, issuedAt, issuedBy, correctionsBy, note, recipients]
-      properties:
-        version: { type: integer }
-        issuedAt: { type: string, format: date-time }
-        issuedBy: { type: [string, 'null'] }
-        correctionsBy: { type: [string, 'null'], format: date }
-        note: { type: [string, 'null'] }
-        recipients:
-          type: array
-          items:
-            type: object
-            required: [name, email]
-            properties:
-              name: { type: string }
-              email: { type: string }
-    MeetingViewer:
-      type: object
-      required: [audience, canEdit, canIssue, viewingVersion]
-      properties:
-        audience: { type: string, enum: [internal, external] }
-        canEdit: { type: boolean }
-        canIssue: { type: boolean }
-        viewingVersion:
-          type: [integer, 'null']
-          description: Set when the caller sees an issued version rather than the working minutes.
-    MeetingDetail:
-      type: object
-      required: [meeting, attendees, sections, versions, viewer]
-      properties:
-        meeting: { $ref: '#/components/schemas/Meeting' }
-        attendees:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingAttendeeView' }
-        sections:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingSectionView' }
-        versions:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingVersion' }
-        viewer: { $ref: '#/components/schemas/MeetingViewer' }
-    CreateMeetingRequest:
+          items: { $ref: '#/components/schemas/Observation' }
+        nextCursor: { type: [string, 'null'] }
+    CreateObservationRequest:
       type: object
       additionalProperties: false
-      required: [heldAt]
+      required: [type, description]
       properties:
-        title: { type: string, minLength: 1, maxLength: 300 }
-        heldAt: { type: string, format: date-time }
-        location: { type: string, maxLength: 300 }
-    UpdateMeetingRequest:
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 20000 }
+        location: { type: string, minLength: 1, maxLength: 300 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        dueDate: { type: string, format: date }
+        swmsId: { type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    UpdateObservationRequest:
       type: object
       additionalProperties: false
       minProperties: 1
       properties:
-        title: { type: string, minLength: 1, maxLength: 300 }
-        heldAt: { type: string, format: date-time }
-        location: { type: string, maxLength: 300 }
-        chairUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
-        correctionsBy: { type: [string, 'null'], format: date }
-    SetMeetingAttendeesRequest:
+        type: { $ref: '#/components/schemas/ObservationType' }
+        hazard: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        description: { type: string, minLength: 1, maxLength: 20000 }
+        location: { type: [string, 'null'], minLength: 1, maxLength: 300 }
+        priority: { $ref: '#/components/schemas/DefectPriority' }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        swmsId:
+          oneOf: [{ type: string, pattern: '^sws_[0-9A-Za-z]{26}$' }, { type: 'null' }]
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
+    ObservationTransitionRequest:
       type: object
       additionalProperties: false
-      required: [attendees]
+      required: [action]
       properties:
-        attendees:
+        action: { $ref: '#/components/schemas/ObservationAction' }
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+          description: Required for reopen and stopWork. For resolve it is the resolution note.
+        fileIds:
           type: array
-          maxItems: 200
+          maxItems: 20
+          description: Photos showing the fix, added when resolving.
+          items: { $ref: '#/components/schemas/FileRef' }
+        swmsId:
+          type: string
+          pattern: '^sws_[0-9A-Za-z]{26}$'
+          description: For stopWork when the observation is not already linked to a SWMS.
+    HighRiskWorkCategory:
+      type: string
+      description: The 19 high-risk construction work categories (compliance 03 §2), the same in every state.
+      enum:
+        - fall_2m
+        - telco_tower
+        - demolition_load_bearing
+        - demolition_integrity
+        - asbestos
+        - temp_support
+        - confined_space
+        - shaft_trench_tunnel
+        - explosives
+        - pressurised_gas
+        - chemical_fuel_refrigerant
+        - energised_electrical
+        - contaminated_atmosphere
+        - tilt_up_precast
+        - traffic_corridor
+        - mobile_plant
+        - extreme_temperature
+        - drowning
+        - diving
+    SwmsStatus:
+      type: string
+      enum: [submitted, reviewed, accepted, rejected]
+    SwmsAction:
+      type: string
+      enum: [markReviewed, accept, reject, reopen]
+    SwmsControlLevel:
+      type: string
+      description: Hierarchy of controls, highest first.
+      enum: [eliminate, substitute, isolate, engineer, administrative, ppe]
+    SwmsContent:
+      type: object
+      additionalProperties: false
+      properties:
+        workDescription: { type: string, maxLength: 5000 }
+        hazardsAndRisks: { type: string, maxLength: 20000 }
+        controlMeasures:
+          type: array
+          maxItems: 100
           items:
-            allOf:
-              - { $ref: '#/components/schemas/MeetingPerson' }
-              - type: object
-                properties:
-                  attendance: { $ref: '#/components/schemas/MeetingAttendance' }
-    AddMeetingSectionRequest:
+            type: object
+            additionalProperties: false
+            required: [level, description]
+            properties:
+              level: { $ref: '#/components/schemas/SwmsControlLevel' }
+              description: { type: string, maxLength: 2000 }
+        implementation:
+          type: string
+          maxLength: 10000
+          description: How the controls will be implemented, monitored and reviewed.
+        siteSpecific:
+          type: string
+          maxLength: 10000
+          description: The circumstances at this workplace.
+        whsPlanApplies:
+          { type: boolean, description: 'True on projects of $250,000 or more (Vic $350,000).' }
+        whsPlanConsidered: { type: string, maxLength: 5000 }
+        fallControlsConsidered: { type: string, maxLength: 5000 }
+        responsiblePeople: { type: string, maxLength: 2000 }
+        reviewDate: { type: string, format: date }
+    Swms:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          companyId,
+          highRiskWorkCategories,
+          content,
+          fileId,
+          revision,
+          status,
+          reviewedBy,
+          reviewedAt,
+          expiresOn,
+          isExpired,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'SWMS-0042' }
+        title: { type: string }
+        companyId: { type: [string, 'null'] }
+        highRiskWorkCategories:
+          type: array
+          items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+        content: { $ref: '#/components/schemas/SwmsContent' }
+        fileId: { type: [string, 'null'] }
+        revision: { type: integer }
+        status: { $ref: '#/components/schemas/SwmsStatus' }
+        reviewedBy: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        expiresOn: { type: [string, 'null'], format: date }
+        isExpired: { type: boolean }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    SwmsEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, revision, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromStatus: { type: [string, 'null'] }
+        toStatus: { type: string }
+        revision: { type: integer }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    SwmsAcknowledgement:
+      type: object
+      required: [userId, workerName, language, revision, at]
+      properties:
+        userId: { type: string }
+        workerName: { type: string }
+        language: { type: string }
+        revision: { type: integer }
+        at: { type: string, format: date-time }
+    SwmsGap:
+      type: object
+      required: [item, field, message]
+      properties:
+        item:
+          type: integer
+          description: The row in compliance 03 §3 this relates to.
+        field: { type: string }
+        message: { type: string }
+    SwmsAdvisory:
+      type: object
+      required: [code, message]
+      properties:
+        code: { type: string, enum: [only_admin_or_ppe, silica, asbestos_register] }
+        message: { type: string }
+    SwmsCheck:
+      type: object
+      required: [gaps, advisories]
+      properties:
+        gaps:
+          type: array
+          description: Required content still missing. Accepting needs this to be empty.
+          items: { $ref: '#/components/schemas/SwmsGap' }
+        advisories:
+          type: array
+          description: Things a reviewer should look at. They never block acceptance.
+          items: { $ref: '#/components/schemas/SwmsAdvisory' }
+    SwmsDetail:
+      type: object
+      required: [swms, events, acknowledgements, gaps, advisories, availableActions]
+      properties:
+        swms: { $ref: '#/components/schemas/Swms' }
+        events:
+          type: array
+          description: History, oldest first.
+          items: { $ref: '#/components/schemas/SwmsEvent' }
+        acknowledgements:
+          type: array
+          description: Acknowledgements of the current revision.
+          items: { $ref: '#/components/schemas/SwmsAcknowledgement' }
+        gaps:
+          type: array
+          items: { $ref: '#/components/schemas/SwmsGap' }
+        advisories:
+          type: array
+          items: { $ref: '#/components/schemas/SwmsAdvisory' }
+        availableActions:
+          type: array
+          description: Review actions the caller can take now, from status and permissions.
+          items: { $ref: '#/components/schemas/SwmsAction' }
+    SwmsPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Swms' }
+        nextCursor: { type: [string, 'null'] }
+    CreateSwmsRequest:
       type: object
       additionalProperties: false
       required: [title]
       properties:
-        title: { type: string, minLength: 1, maxLength: 200 }
-        internalOnly: { type: boolean }
-    CreateMeetingItemRequest:
-      type: object
-      additionalProperties: false
-      required: [sectionId, kind, body]
-      properties:
-        sectionId: { type: string, pattern: '^msc_[0-9A-Za-z]{26}$' }
-        kind: { $ref: '#/components/schemas/MeetingItemKind' }
-        body: { type: string, minLength: 1, maxLength: 5000 }
-        status: { $ref: '#/components/schemas/MeetingItemStatus' }
-        ownerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
-        ownerUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
-        ownerName: { type: [string, 'null'], maxLength: 200 }
-        dueDate: { type: [string, 'null'], format: date }
-        link:
-          oneOf:
-            - { $ref: '#/components/schemas/MeetingLink' }
-            - { type: 'null' }
-    UpdateMeetingItemRequest:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        highRiskWorkCategories:
+          type: array
+          maxItems: 19
+          items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+        content: { $ref: '#/components/schemas/SwmsContent' }
+        fileId: { $ref: '#/components/schemas/FileRef' }
+        expiresOn: { type: string, format: date }
+    UpdateSwmsRequest:
       type: object
       additionalProperties: false
       minProperties: 1
       properties:
-        kind: { $ref: '#/components/schemas/MeetingItemKind' }
-        body: { type: string, minLength: 1, maxLength: 5000 }
-        status: { $ref: '#/components/schemas/MeetingItemStatus' }
-        ownerCompanyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
-        ownerUserId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
-        ownerName: { type: [string, 'null'], maxLength: 200 }
-        dueDate: { type: [string, 'null'], format: date }
-        link:
-          oneOf:
-            - { $ref: '#/components/schemas/MeetingLink' }
-            - { type: 'null' }
-    IssueMeetingRequest:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        highRiskWorkCategories:
+          type: array
+          maxItems: 19
+          items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+        content: { $ref: '#/components/schemas/SwmsContent' }
+        fileId: { oneOf: [{ $ref: '#/components/schemas/FileRef' }, { type: 'null' }] }
+        expiresOn: { type: [string, 'null'], format: date }
+    SwmsTransitionRequest:
       type: object
       additionalProperties: false
-      required: [recipients]
+      required: [action]
       properties:
-        recipients:
-          type: array
-          maxItems: 200
-          items:
-            type: object
-            additionalProperties: false
-            required: [name, email]
-            properties:
-              name: { type: string, minLength: 1, maxLength: 200 }
-              email: { type: string, format: email, maxLength: 320 }
-        correctionsBy: { type: [string, 'null'], format: date }
-        note: { type: [string, 'null'], maxLength: 1000 }
-    MeetingPdf:
+        action: { $ref: '#/components/schemas/SwmsAction' }
+        reason:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 1000,
+            description: Required for reject and reopen.,
+          }
+        confirmedUnderstandable:
+          type: boolean
+          description: Required to accept. The reviewer confirms the SWMS is set out so the people who use it can readily understand it (r299).
+    AcknowledgeSwmsRequest:
       type: object
-      required: [filename, contentType, dataBase64]
+      additionalProperties: false
+      required: [workerName]
       properties:
-        filename: { type: string }
-        contentType: { type: string, enum: [application/pdf] }
-        dataBase64: { type: string }
-    MeetingAction:
-      type: object
-      required:
-        [
-          id,
-          meetingId,
-          meetingNumber,
-          meetingTitle,
-          seriesName,
-          itemNo,
-          body,
-          ownerCompanyId,
-          ownerUserId,
-          ownerName,
-          dueDate,
-          isOverdue,
-          carriedCount,
-          stale,
-        ]
-      properties:
-        id: { type: string }
-        meetingId: { type: string }
-        meetingNumber: { type: integer }
-        meetingTitle: { type: string }
-        seriesName: { type: string }
-        itemNo: { type: string }
-        body: { type: string }
-        ownerCompanyId: { type: [string, 'null'] }
-        ownerUserId: { type: [string, 'null'] }
-        ownerName: { type: [string, 'null'] }
-        dueDate: { type: [string, 'null'], format: date }
-        isOverdue: { type: boolean }
-        carriedCount: { type: integer }
-        stale: { type: boolean }
-    MeetingActionList:
-      type: object
-      required: [data]
-      properties:
-        data:
-          type: array
-          items: { $ref: '#/components/schemas/MeetingAction' }
+        workerName: { type: string, minLength: 1, maxLength: 200 }
+        language:
+          {
+            type: string,
+            minLength: 2,
+            maxLength: 10,
+            description: The language the SWMS was shown in.,
+          }

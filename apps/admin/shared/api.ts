@@ -6,7 +6,12 @@ import {
   type FlagChangeInput,
   type FlagDto,
   type InternalOperationId,
+  type OrgDetailDto,
   type OrgListItemDto,
+  type CreditGrantKind,
+  type SuspendCategory,
+  type SupportAccessDto,
+  type SupportProjectDto,
   type Page,
   type PlanDraftInput,
   type PlanDto,
@@ -87,8 +92,29 @@ export const api = {
   me: () => call<StaffDto>('getMe'),
   orgs: (query: { q?: string; cursor?: string; limit?: number }) =>
     call<Page<OrgListItemDto>>('listOrgs', { query }),
-  org: (orgId: string) =>
-    call<OrgListItemDto & { history: RequestDto[] }>('getOrg', { params: { orgId } }),
+  org: (orgId: string) => call<OrgDetailDto>('getOrg', { params: { orgId } }),
+  supportAccess: (orgId: string) =>
+    call<SupportAccessDto>('getOrgSupportAccess', { params: { orgId } }),
+  supportProjects: (orgId: string) =>
+    call<{ items: SupportProjectDto[] }>('listSupportProjects', { params: { orgId } }),
+  startSupportSession: (orgId: string, ticketRef: string) =>
+    call<SupportAccessDto>('startSupportSession', { params: { orgId }, body: { ticketRef } }),
+  endSupportSession: (orgId: string, sessionId: string) =>
+    call<SupportAccessDto>('endSupportSession', { params: { orgId, sessionId } }),
+  trialExtend: (orgId: string, body: { days: number; reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('trialExtendOrg', { params: { orgId }, body }),
+  changePlan: (orgId: string, body: { planCode: string; reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('changeOrgPlan', { params: { orgId }, body }),
+  suspend: (
+    orgId: string,
+    body: { category: SuspendCategory; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('suspendOrg', { params: { orgId }, body }),
+  reactivate: (orgId: string, body: { reason: string; ticketRef: string }) =>
+    call<OrgDetailDto>('reactivateOrg', { params: { orgId }, body }),
+  grantCredits: (
+    orgId: string,
+    body: { credits: number; kind: CreditGrantKind; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('grantOrgCredits', { params: { orgId }, body }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),

@@ -12,12 +12,15 @@ import { heuristicTitleBlock } from '../../eval/suites/drawing-titleblock';
 import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
+import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
+import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
 import { createFakeProvider, type FakeResponder } from './fake';
 import { createTextractOcr } from './textract';
+import { createTranscribe } from './transcribe';
 
 /**
  * What the fake provider answers with when nothing is scripted: deterministic stand-ins, so local development
@@ -42,12 +45,15 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'defect.tag': heuristicDefectTag,
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
+  'quote.negotiate': heuristicQuoteNegotiate,
+  'takeoff.detect': heuristicTakeoffDetect,
 };
 
 export {
   createFakeProvider,
   fakeEmbedding,
   type FakeOcrResponder,
+  type FakeSpeechResponder,
   type FakeProvider,
   type FakeResponder,
 } from './fake';
@@ -66,7 +72,11 @@ export function createProvider(config: ProviderConfig): ModelProvider {
       region: config.region,
       ...(config.ocrEndpoint ? { endpoint: config.ocrEndpoint } : {}),
     });
-    return { ...bedrock, detectText: textract.detectText };
+    return {
+      ...bedrock,
+      detectText: textract.detectText,
+      transcribe: createTranscribe(config.region).transcribe,
+    };
   }
   return createFakeProvider({ ...DEFAULT_FAKE_RESPONDERS, ...config.responders });
 }

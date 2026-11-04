@@ -3,6 +3,7 @@ import type { Database, KernelServices, MessageSender, RouteTable } from '@archo
 import {
   AI_PERMISSIONS,
   createAiModule,
+  type AiApi,
   type AiConfig,
   type ModelProvider,
   type RasterizePage,
@@ -15,8 +16,16 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
+import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
+import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
+import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
-import { INTEGRATIONS_PERMISSIONS, createIntegrationsModule } from '@archova/mod-integrations';
+import {
+  INTEGRATIONS_PERMISSIONS,
+  createIntegrationsModule,
+  type AccountingDeps,
+  type WebhooksDeps,
+} from '@archova/mod-integrations';
 import { DIARY_PERMISSIONS, createDiaryModule, type DiaryApi } from '@archova/mod-diary';
 import { DOCUMENTS_PERMISSIONS, createDocumentsModule } from '@archova/mod-documents';
 import {
@@ -33,6 +42,10 @@ import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workf
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
+import {
+  CORRESPONDENCE_PERMISSIONS,
+  createCorrespondenceModule,
+} from '@archova/mod-correspondence';
 import { SYNC_PERMISSIONS, createSyncModule } from '@archova/mod-sync';
 
 /** Permission keys declared by feature modules, registered with `access` next to the foundation keys. */
@@ -41,8 +54,12 @@ export const MODULE_PERMISSIONS = [
   DOCUMENTS_PERMISSIONS,
   RFIS_PERMISSIONS,
   SUBMITTALS_PERMISSIONS,
+  CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
+  FINANCIALS_PERMISSIONS,
+  QUALITY_PERMISSIONS,
+  SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
   DIARY_PERMISSIONS,
@@ -60,6 +77,10 @@ export interface ModuleOptions {
   /** The web origin access links point at. */
   linkBaseUrl: string;
   backoffice: BackofficeConfig;
+  /** Outbound webhooks: the vault that seals signing secrets and the sender used for the test event. */
+  webhooks: WebhooksDeps;
+  /** Xero and MYOB sign-in, token sealing and the fetch used for provider calls (integrations/02). */
+  accounting: AccountingDeps;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -68,8 +89,16 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
+  // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
+  let aiApi: AiApi | null = null;
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
+    accounts: billing.api.accounts,
+    credits: () => ({ grantCredits: aiApi!.grantCredits }),
+    supportReads: () => ({
+      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+    }),
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
@@ -78,6 +107,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     identity: identity.api,
     access: () => access!.api,
     defaultEntitlements: TRIAL_ENTITLEMENTS,
+    supportAccess: backoffice.api.support,
+    hasOpenSupportSession: backoffice.api.support.hasOpenSession,
     onOrgCreated: (scope, org, entitlements) =>
       backoffice.api.directory.upsert(scope.tx, {
         id: org.id,
@@ -87,6 +118,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
         state: entitlements.state,
       }),
   });
+  platformApi = platform.api;
   access = createAccessModule(services, {
     lookupProjectMember: (scope, projectId, userId) =>
       platform.api.getProjectMembership(scope, projectId, userId),
@@ -102,10 +134,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce: 'workforce.attendance.sign_in_self',
       // The assigned subcontractor's "after" photo when marking a defect ready for review (DEF-AC5).
       defects: 'defects.defects.respond',
+      // Photos on an observation, and a SWMS document from the subcontractor who wrote it.
+      quality: 'quality.observations.create',
+      safety: 'safety.swms.submit',
       // A subcontractor attaches their quote PDF to a tender package they were invited to.
       estimating: 'estimating.quotes.submit',
       // A subcontractor attaches the shop drawing package to the item they are responsible for.
       submittals: 'submittals.submittals.submit',
+      // A subcontractor attaches supporting records to a notice or reply.
+      correspondence: 'correspondence.items.respond',
     },
   });
 
@@ -132,6 +169,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     access: access.api,
     platform: platform.api,
     files: files.api,
+    messages: opts.messages,
+    baseUrl: opts.linkBaseUrl,
+    logger: services.logger,
+  });
+
+  const correspondence = createCorrespondenceModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
   });
 
   const defects = createDefectsModule(services, {
@@ -149,6 +195,24 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     logger: services.logger,
   });
 
+  const financials = createFinancialsModule(services, {
+    access: access.api,
+    platform: platform.api,
+  });
+
+  const safety = createSafetyModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+  });
+
+  const quality = createQualityModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    safety: safety.api,
+  });
+
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
   const estimating = createEstimatingModule(services, {
@@ -161,6 +225,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const integrations = createIntegrationsModule(services, {
     platform: platform.api,
     files: files.api,
+    webhooks: opts.webhooks,
+    accounting: opts.accounting,
   });
 
   const ai = createAiModule(services, {
@@ -193,10 +259,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     openDefectsNear: (scope, projectId, input) => defects.api.openNear(scope, projectId, input),
     quotePackage: (scope, projectId, packageId) =>
       estimating.api.scopeForQuoteReading(scope, projectId, packageId),
+    quoteForNegotiation: (scope, projectId, packageId, quoteId) =>
+      estimating.api.quoteForNegotiation(scope, projectId, packageId, quoteId),
     dayForSummary: (scope, projectId, date) => diaryApi!.dayForSummary(scope, projectId, date),
     ...(opts.ai.provider ? { provider: opts.ai.provider } : {}),
     ...(opts.ai.rasterizePage ? { rasterizePage: opts.ai.rasterizePage } : {}),
   });
+  aiApi = ai.api;
 
   const diary = createDiaryModule(services, {
     access: access.api,
@@ -260,8 +329,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     submittals,
+    correspondence,
     defects,
     meetings,
+    financials,
+    quality,
+    safety,
     estimating,
     integrations,
     diary,
@@ -288,8 +361,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents,
     rfis,
     submittals,
+    correspondence,
     defects,
     meetings,
+    financials,
+    quality,
+    safety,
     estimating,
     integrations,
     sync,

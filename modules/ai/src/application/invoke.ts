@@ -25,7 +25,7 @@ export type CallOutcome = 'ok' | 'refused' | 'error' | 'fallback';
 export interface CallRecord {
   id: string;
   /** `embedding` and `ocr` for calls that have no tier. */
-  tier: ModelTier | 'embedding' | 'ocr';
+  tier: ModelTier | 'embedding' | 'ocr' | 'speech';
   model: string;
   attempt: number;
   usage: ModelUsage;

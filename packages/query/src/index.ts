@@ -42,6 +42,7 @@ export type ProjectTool =
   | 'transmittals'
   | 'rfis'
   | 'submittals'
+  | 'correspondence'
   | 'diary'
   | 'key-dates'
   | 'delays'
@@ -50,7 +51,10 @@ export type ProjectTool =
   | 'inductions'
   | 'attendance'
   | 'tender-packages'
-  | 'takeoff-measurements';
+  | 'takeoff-measurements'
+  | 'estimates'
+  | 'contracts'
+  | 'payment-claims';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */
 const queryOptions = <T extends { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>(

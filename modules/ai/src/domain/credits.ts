@@ -34,6 +34,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // F21 vision pass: up to 12 small pictures of the places the linework changed; with the text compare, a revision
   // pair costs one credit. Cached with it. Priya to confirm.
   'drawing.compare_visual': 0.5,
+  // Nova Esti (ai/10 E1): one sheet image in, the found items out; one run per target on a sheet. Priya to confirm.
+  'takeoff.detect': 1,
   'diary.summary': 0.5,
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,
@@ -42,6 +44,10 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
   'quote.read': 1.5,
+  // Nova: one turn of negotiation help on a confirmed quote; about a diary summary's worth of output. Priya to confirm.
+  'quote.negotiate': 0.5,
+  // Nova listening: one short spoken question turned into text. Priya to confirm.
+  'speech.transcribe': 0.1,
   'minutes.extract': 1.5,
 };
 
@@ -61,13 +67,24 @@ export interface AllowanceInput {
   orgCap: number | null;
   /** Credits used so far this month. */
   used: number;
+  /** Extra credits staff granted for this month; they lift the plan's allowance and the admin's cap alike. */
+  granted?: number;
 }
 
-/** The allowance that applies: the lower of the plan's and the admin's cap. */
-export function effectiveAllowance(a: Pick<AllowanceInput, 'planAllowance' | 'orgCap'>) {
-  if (a.planAllowance === null) return a.orgCap;
-  if (a.orgCap === null) return a.planAllowance;
-  return Math.min(a.planAllowance, a.orgCap);
+/**
+ * The allowance that applies: the lower of the plan's and the admin's cap, plus this month's grants. An unlimited
+ * allowance with no cap stays unlimited (null).
+ */
+export function effectiveAllowance(
+  a: Pick<AllowanceInput, 'planAllowance' | 'orgCap' | 'granted'>,
+) {
+  const base =
+    a.planAllowance === null
+      ? a.orgCap
+      : a.orgCap === null
+        ? a.planAllowance
+        : Math.min(a.planAllowance, a.orgCap);
+  return base === null ? null : base + (a.granted ?? 0);
 }
 
 export type BudgetDecision =

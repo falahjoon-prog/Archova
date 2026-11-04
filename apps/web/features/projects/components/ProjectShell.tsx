@@ -8,6 +8,7 @@ import {
   AttendanceIcon,
   DefectsIcon,
   MeetingsIcon,
+  ContractsIcon,
   DelaysIcon,
   DiaryIcon,
   DocumentsIcon,
@@ -18,6 +19,7 @@ import {
   InductionsIcon,
   RfisIcon,
   SubmittalsIcon,
+  CorrespondenceIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -110,6 +112,11 @@ export function projectToolGroups(
       label: 'Submittals',
       icon: SubmittalsIcon,
     },
+    canRead('correspondence') && {
+      href: webRoutes.correspondence(orgSlug, projectId),
+      label: 'Correspondence',
+      icon: CorrespondenceIcon,
+    },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),
       label: 'Site diary',
@@ -135,6 +142,16 @@ export function projectToolGroups(
       label: 'Inductions',
       icon: InductionsIcon,
     },
+    canRead('payment_claims') && {
+      href: webRoutes.contracts(orgSlug, projectId),
+      label: 'Contracts',
+      icon: ContractsIcon,
+    },
+    canRead('payment_claims') && {
+      href: webRoutes.paymentClaims(orgSlug, projectId),
+      label: 'Payment claims',
+      icon: ContractsIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
@@ -159,6 +176,16 @@ export function projectToolGroups(
         {
           href: webRoutes.tenderPackages(orgSlug, projectId),
           label: 'Tender packages',
+          icon: EstimatingIcon,
+        },
+        {
+          href: webRoutes.estimates(orgSlug, projectId),
+          label: 'Estimates',
+          icon: EstimatingIcon,
+        },
+        {
+          href: webRoutes.costLibrary(orgSlug, projectId),
+          label: 'Cost library',
           icon: EstimatingIcon,
         },
       ],

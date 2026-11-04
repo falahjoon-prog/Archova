@@ -31,6 +31,7 @@ import {
   testRedisUrl,
   uniqueEmail,
 } from '@archova/testing';
+import type { WebhookTransport } from '@archova/mod-integrations';
 import { buildApp } from '../../src/app';
 import type { Modules } from '@archova/compose';
 import { loadConfig } from '../../src/config';
@@ -64,6 +65,10 @@ export async function createTestContext(
     env?: Record<string, string>;
     /** Where the app logs; silent by default. */
     logger?: Logger;
+    /** Sends webhook test events; the default would make real HTTPS calls. */
+    webhookTransport?: WebhookTransport;
+    /** Answers Xero and MYOB calls; the default would reach the real services. */
+    accountingFetch?: (url: string, init?: RequestInit) => Promise<Response>;
   } = {},
 ): Promise<TestContext> {
   const config = loadConfig({
@@ -96,6 +101,8 @@ export async function createTestContext(
     aiProvider: ai,
     ...(opts.rasterizePage ? { aiRasterizePage: opts.rasterizePage } : {}),
     messages,
+    ...(opts.webhookTransport ? { webhookTransport: opts.webhookTransport } : {}),
+    ...(opts.accountingFetch ? { accountingFetch: opts.accountingFetch } : {}),
   });
   await app.ready();
   return {

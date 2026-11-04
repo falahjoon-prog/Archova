@@ -21,6 +21,8 @@ export const PLAN_MODULE_KEYS = [
   'submittals',
   'diary',
   'defects',
+  'quality',
+  'safety',
   'photos',
   'meetings',
   'correspondence',
@@ -85,6 +87,9 @@ export const PlanDraftInput = z.object({
 export type PlanDraftInput = z.infer<typeof PlanDraftInput>;
 
 const orgRef = z.string().min(1).max(40);
+const ticketRef = z.string().trim().min(2).max(60);
+const orgOnly = z.object({ orgId: orgRef });
+const withTicket = { reason, ticketRef };
 
 /** A change to one flag. Orgs and cohorts take effect at once; all-orgs and percentage rollouts are Owner-only. */
 export const FlagChangeInput = z.discriminatedUnion('scope', [
@@ -181,6 +186,58 @@ export type OrgListItemDto = {
   createdAt: string;
 };
 
+export const SUSPEND_CATEGORIES = ['abuse', 'fraud', 'security', 'legal_order'] as const;
+export type SuspendCategory = (typeof SUSPEND_CATEGORIES)[number];
+
+export const CREDIT_GRANT_KINDS = ['top_up', 'goodwill', 'promo'] as const;
+export type CreditGrantKind = (typeof CREDIT_GRANT_KINDS)[number];
+
+export type OrgAccountDto = {
+  plan: string;
+  state: string;
+  trialEndsAt: string | null;
+  trialExtendedDays: number;
+  suspended: { category: SuspendCategory; at: string } | null;
+};
+export type OrgActionDto = {
+  id: string;
+  kind: 'trial.extend' | 'plan.change' | 'suspend' | 'reactivate' | 'credits.grant';
+  summary: string;
+  reason: string;
+  ticketRef: string;
+  by: string;
+  at: string;
+};
+export type OrgDetailDto = OrgListItemDto & {
+  history: RequestDto[];
+  account: OrgAccountDto | null;
+  actions: OrgActionDto[];
+};
+
+export type SupportGrantDto = {
+  id: string;
+  ticketRef: string;
+  level: 'view';
+  grantedBy: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  status: 'active' | 'expired' | 'revoked';
+};
+export type SupportSessionDto = {
+  id: string;
+  grantId: string;
+  staffName: string;
+  ticketRef: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  status: 'open' | 'ended' | 'expired' | 'revoked';
+};
+/** Names and status only; a support session never sees documents, files or claims. */
+export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
+export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
+
 export type FlagOrgRef = { orgId: string; name: string };
 export type FlagDto = {
   key: string;
@@ -272,6 +329,96 @@ export const internalOperations = {
     auth: 'staff',
     permission: 'backoffice.customers.read',
     params: z.object({ orgId: orgRef }),
+    query: noParams,
+    body: null,
+  }),
+  trialExtendOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/trial-extend',
+    auth: 'staff',
+    permission: 'backoffice.accounts.trial',
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ days: z.number().int().min(1).max(30), ...withTicket }),
+  }),
+  changeOrgPlan: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/change-plan',
+    auth: 'staff',
+    permission: 'backoffice.accounts.plan',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ planCode: z.string().min(1).max(30), ...withTicket }),
+  }),
+  suspendOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/suspend',
+    auth: 'staff',
+    permission: 'backoffice.accounts.suspend',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ category: z.enum(SUSPEND_CATEGORIES), ...withTicket }),
+  }),
+  reactivateOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/reactivate',
+    auth: 'staff',
+    permission: 'backoffice.accounts.suspend',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  grantOrgCredits: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/grant-credits',
+    auth: 'staff',
+    permission: 'backoffice.accounts.credits',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      credits: z.number().positive().max(1000),
+      kind: z.enum(CREDIT_GRANT_KINDS),
+      ...withTicket,
+    }),
+  }),
+  getOrgSupportAccess: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access',
+    auth: 'staff',
+    permission: 'backoffice.customers.read',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  startSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ ticketRef }),
+  }),
+  endSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions/{sessionId}/end',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: z.object({ orgId: orgRef, sessionId: uuid }),
+    query: noParams,
+    body: null,
+  }),
+  listSupportProjects: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access/projects',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: orgOnly,
     query: noParams,
     body: null,
   }),

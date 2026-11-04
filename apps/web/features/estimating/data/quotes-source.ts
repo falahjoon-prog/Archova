@@ -5,6 +5,12 @@
 import type { TakeoffUnit } from '@archova/markup';
 import { companyName } from '@/shared/mocks/directory';
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
+import {
+  previewNegotiate,
+  topicFromQuestion,
+  type NegotiateAnswer,
+  type NegotiateTopic,
+} from '../lib/negotiate';
 import { allowanceKey, comparableQuotes, levelQuotes, lowestQuoteId } from '../lib/levelling';
 import type { PackageAction, Quote, QuoteLine, ScopeLine, TenderPackage } from '../lib/quote-types';
 
@@ -294,6 +300,21 @@ export interface QuotesSource {
     actor: { name: string },
     today: string,
   ): Promise<TenderPackage>;
+  /** Nova on one confirmed quote (`POST …/ai/quote-negotiations`); nothing is saved or sent. */
+  askNova(
+    projectId: string,
+    packageId: string,
+    input: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      /** What the person typed or said; the API answers it, the preview only picks the closest help. */
+      question?: string;
+      today: string;
+    },
+  ): Promise<NegotiateAnswer>;
+  /** Nova listening (`POST …/ai/speech-transcriptions`): a short recording turned into text, not kept. */
+  listen(projectId: string, clip: Blob): Promise<string>;
 }
 
 export const quotesSource: QuotesSource & {
@@ -304,6 +325,45 @@ export const quotesSource: QuotesSource & {
   ): Promise<TenderPackage>;
 } = {
   live: false,
+
+  /** Preview of `POST …/ai/quote-negotiations`: Nova on one confirmed quote; nothing is saved or sent. */
+  async askNova(
+    projectId: string,
+    packageId: string,
+    input: {
+      quoteId: string;
+      targetCents: number | null;
+      topic: NegotiateTopic;
+      question?: string;
+      today: string;
+    },
+  ): Promise<NegotiateAnswer> {
+    const pkg = findPackage(projectId, packageId);
+    const quotes = comparableQuotes(
+      stores.get(projectId).quotes.filter((q) => q.packageId === packageId),
+    );
+    const quote = quotes.find((q) => q.id === input.quoteId);
+    if (!quote)
+      problem(404, 'quote.not_found', 'Nova can only help with a confirmed quote of this package.');
+    if (input.targetCents !== null && input.targetCents <= 0)
+      problem(422, 'validation', 'The target price must be more than zero.');
+    const { rows, totals } = levelQuotes(pkg, quotes, input.today);
+    return delay(
+      previewNegotiate({
+        quote,
+        rows,
+        totals,
+        trade: pkg.trade,
+        targetCents: input.targetCents,
+        topic: input.question ? topicFromQuestion(input.question) : input.topic,
+      }),
+    );
+  },
+
+  /** Preview of Nova listening: the preview store has no speech service, so it hears a stand-in question. */
+  async listen(): Promise<string> {
+    return delay('How does this quote compare with the others?');
+  },
 
   async listPackages(projectId: string): Promise<TenderPackage[]> {
     return delay(stores.get(projectId).packages);
