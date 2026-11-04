@@ -21,7 +21,7 @@ const isOrgAdmin = (scope: TenantScope) =>
 export function createProjectService(access: AccessService) {
   /** Org owners/admins see every project; everyone else sees projects they're an active member of. */
   /** Names and status only, for the owner console's support view. */
-  async function listForSupport(scope: TenantScope, only: string[] | null = null) {
+  async function listForSupport(scope: TenantScope, only: string[] | null) {
     const rows = await scope.tx
       .select()
       .from(projects)

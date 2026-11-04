@@ -59,7 +59,7 @@ export function createPlatformModule(
       listProjectsForSupport: async (
         orgId: string,
         staffId: string,
-        projectIds: string[] | null = null,
+        projectIds: string[] | null,
       ) => {
         // Checked here as well as by the caller, so this read cannot be reached without a live session.
         if (!deps.hasOpenSupportSession || !(await deps.hasOpenSupportSession(orgId, staffId)))

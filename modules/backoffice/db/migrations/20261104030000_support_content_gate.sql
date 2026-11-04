@@ -9,3 +9,6 @@ alter table backoffice.support_events add column staff_id uuid references backof
 
 -- Set only by the staff IdP sign-in when the authentication method reference says a hardware key was used.
 alter table backoffice.staff_sessions add column hardware_key boolean not null default false;
+
+-- Set once at least one company admin has been emailed about the session; a session without it reads nothing.
+alter table backoffice.support_sessions add column notified_at timestamptz;

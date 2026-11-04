@@ -43,7 +43,7 @@ export function createBackofficeModule(
       ): Promise<SupportProjectDto[]>;
     };
     /** Tells the company's owners and admins that a support session opened. */
-    notifySupportSession?: (notice: SupportSessionNotice) => Promise<void>;
+    notifySupportSession: (notice: SupportSessionNotice) => Promise<void>;
     config: BackofficeConfig;
     now?: () => Date;
   },
@@ -70,7 +70,7 @@ export function createBackofficeModule(
   const support = createSupportAccessService({
     database: services.database,
     reads: deps.supportReads,
-    ...(deps.notifySupportSession ? { notify: deps.notifySupportSession } : {}),
+    notify: deps.notifySupportSession,
     requireHardwareKey: deps.config.requireSupportHardwareKey ?? !deps.config.localLogin,
     ...(deps.now ? { now: deps.now } : {}),
   });

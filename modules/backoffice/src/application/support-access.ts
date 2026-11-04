@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
@@ -80,7 +80,7 @@ export function createSupportAccessService(
       ): Promise<SupportProjectDto[]>;
     };
     /** Emails the company's owners and admins; resolved lazily because `platform` is built after this module. */
-    notify?: (notice: SupportSessionNotice) => Promise<void>;
+    notify: (notice: SupportSessionNotice) => Promise<void>;
     /** Staff must have signed in with a hardware security key to open a session or read content. */
     requireHardwareKey?: boolean;
     now?: () => Date;
@@ -318,9 +318,12 @@ export function createSupportAccessService(
       };
     });
     // The company's admins are told as the session opens. If we cannot tell them, the session does not stand.
-    if (notice && deps.notify) {
+    if (notice) {
       try {
         await deps.notify(notice);
+        await tx((t) =>
+          t.update(supportSessions).set({ notifiedAt: now() }).where(eq(supportSessions.id, id)),
+        );
       } catch {
         await tx((t) =>
           t
@@ -429,6 +432,7 @@ export function createSupportAccessService(
           eq(supportSessions.targetOrgId, orgId),
           eq(supportSessions.staffId, staffId),
           isNull(supportSessions.endedAt),
+          isNotNull(supportSessions.notifiedAt),
           gt(supportSessions.expiresAt, at),
           isNull(supportGrants.revokedAt),
           gt(supportGrants.expiresAt, at),

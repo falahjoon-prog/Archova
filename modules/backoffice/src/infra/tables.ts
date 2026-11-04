@@ -169,6 +169,8 @@ export const supportSessions = backofficeSchema.table('support_sessions', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
   endReason: text('end_reason').$type<'ended' | 'revoked'>(),
+  /** Set once an admin of the company has been emailed; reads need it. */
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
 });
 
 export const supportEvents = backofficeSchema.table('support_events', {
