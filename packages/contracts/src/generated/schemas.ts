@@ -2894,6 +2894,25 @@ export const NegotiationTurnSchema = z.object({
 }).strict();
 export type NegotiationTurn = z.infer<typeof NegotiationTurnSchema>;
 
+export const NotificationSchema = z.object({
+  "id": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
+  "kind": z.string(),
+  "title": z.string(),
+  "body": z.string(),
+  "entityType": z.enum(["meeting"]),
+  "entityId": z.string(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
+  "readAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Notification = z.infer<typeof NotificationSchema>;
+
+export const NotificationListSchema = z.object({
+  "data": z.array(NotificationSchema),
+  "unreadCount": z.number().int().min(0),
+});
+export type NotificationList = z.infer<typeof NotificationListSchema>;
+
 export const NovaSourceSchema = z.object({
   "sourceType": z.enum(["document", "drawing", "rfi", "defect", "diary"]),
   "sourceId": z.string(),

@@ -77,6 +77,7 @@ export const ID_PREFIXES = {
   meetingSection: 'msc',
   meetingItem: 'mit',
   meetingAttendee: 'mat',
+  notification: 'ntf',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
   inspection: 'ins',

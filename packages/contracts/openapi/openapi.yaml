@@ -42,6 +42,7 @@ tags:
   - name: workforce
   - name: scheduling
   - name: meetings
+  - name: notifications
 paths:
   /v1/auth/signup:
     post:
@@ -422,6 +423,59 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/FeatureFlags' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/notifications:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listNotifications
+      tags: [notifications]
+      x-module: platform
+      summary: The caller's in-app inbox, newest first, with the unread count.
+      description: |
+        Only the caller's own notifications are ever returned. `unreadOnly` hides the ones already read. The inbox
+        holds the latest `limit` entries; `unreadCount` counts every unread one in the organisation.
+      parameters:
+        - name: unreadOnly
+          in: query
+          schema: { type: boolean, default: false }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 30 }
+      responses:
+        '200':
+          description: The inbox
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NotificationList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/notifications/read-all:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: markAllNotificationsRead
+      tags: [notifications]
+      x-module: platform
+      summary: Mark every unread notification of the caller as read.
+      responses:
+        '204':
+          description: Marked
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/notifications/{notificationId}/read:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/NotificationId'
+    post:
+      operationId: markNotificationRead
+      tags: [notifications]
+      x-module: platform
+      summary: Mark one of the caller's notifications as read (idempotent).
+      responses:
+        '200':
+          description: The notification
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects:
     parameters:
@@ -8257,6 +8311,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tok_[0-9A-Za-z]{26}$' }
+    NotificationId:
+      name: notificationId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
     AccountingProvider:
       name: provider
       in: path
@@ -9530,6 +9589,29 @@ components:
         limits:
           type: object
           additionalProperties: { type: [integer, 'null'] }
+    Notification:
+      type: object
+      required: [id, kind, title, body, entityType, entityId, projectId, readAt, createdAt]
+      properties:
+        id: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
+        kind:
+          type: string
+          description: What happened, e.g. `meeting.action_due_soon` or `meeting.action_overdue`.
+        title: { type: string }
+        body: { type: string }
+        entityType: { type: string, enum: [meeting] }
+        entityId: { type: string, description: Public id of the record the notification is about. }
+        projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
+        readAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NotificationList:
+      type: object
+      required: [data, unreadCount]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Notification' }
+        unreadCount: { type: integer, minimum: 0 }
     FeatureFlags:
       type: object
       required: [orgId, flags]

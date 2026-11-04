@@ -11,6 +11,7 @@ import { loadConfig, workerRole } from './config';
 import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
+import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
 import { templateBackfill } from './jobs/template-backfill';
@@ -40,6 +41,7 @@ async function main() {
     syncHoldsPurge,
     trialExpiry,
     templateBackfill,
+    meetingReminders,
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

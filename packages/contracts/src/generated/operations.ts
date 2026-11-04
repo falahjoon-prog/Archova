@@ -53,6 +53,20 @@ export const GetEntitlementsParams = z.object({
 export const GetFeatureFlagsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListNotificationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListNotificationsQuery = z.object({
+  "unreadOnly": z.boolean().default(false),
+  "limit": z.coerce.number().int().min(1).max(100).default(30),
+});
+export const MarkAllNotificationsReadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const MarkNotificationReadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "notificationId": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
+});
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2193,6 +2207,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetFeatureFlagsParams,
+    query: null,
+    body: null,
+  },
+  listNotifications: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/notifications',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListNotificationsParams,
+    query: ListNotificationsQuery,
+    body: null,
+  },
+  markAllNotificationsRead: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/notifications/read-all',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: MarkAllNotificationsReadParams,
+    query: null,
+    body: null,
+  },
+  markNotificationRead: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/notifications/{notificationId}/read',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: MarkNotificationReadParams,
     query: null,
     body: null,
   },

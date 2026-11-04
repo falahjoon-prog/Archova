@@ -4,6 +4,7 @@ export {
   AlertOctagon,
   AlertTriangle,
   ArrowLeft,
+  Bell,
   Calendar,
   Camera,
   Captions,
