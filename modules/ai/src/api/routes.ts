@@ -552,7 +552,7 @@ export function aiRoutes(
           scope,
           projectUuid(input.params.projectId),
           id,
-          input.params.flagIndex,
+          Number(input.params.flagIndex),
           { decision: input.body.decision, note: input.body.note ?? null },
         ),
       );

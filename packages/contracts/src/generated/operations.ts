@@ -487,7 +487,7 @@ export const DecideContractFlagParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
-  "flagIndex": z.number().int().min(0),
+  "flagIndex": z.string().regex(new RegExp("^[0-9]{1,4}$")),
 });
 export const DecideContractFlagBody = z.object({
   "decision": s.ContractFlagDecisionKindSchema,

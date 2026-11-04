@@ -2202,7 +2202,7 @@ paths:
         in: path
         required: true
         description: The flag's position in the review's `flags`, which never changes.
-        schema: { type: integer, minimum: 0 }
+        schema: { type: string, pattern: '^[0-9]{1,4}$' }
     post:
       operationId: decideContractFlag
       tags: [ai]

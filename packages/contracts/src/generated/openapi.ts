@@ -1678,7 +1678,7 @@ export interface paths {
                 projectId: components["parameters"]["ProjectId"];
                 suggestionId: string;
                 /** @description The flag's position in the review's `flags`, which never changes. */
-                flagIndex: number;
+                flagIndex: string;
             };
             cookie?: never;
         };
@@ -13680,7 +13680,7 @@ export interface operations {
                 projectId: components["parameters"]["ProjectId"];
                 suggestionId: string;
                 /** @description The flag's position in the review's `flags`, which never changes. */
-                flagIndex: number;
+                flagIndex: string;
             };
             cookie?: never;
         };

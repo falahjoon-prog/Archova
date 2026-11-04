@@ -67,7 +67,7 @@ describe('contract review api', () => {
     await api.decide('prj_1', 'ais_1', 2, { decision: 'negotiate', note: 'Ask for 10 days' });
     expect(fake.callsTo('POST', path)[0]!.init).toEqual({
       params: {
-        path: { orgId: 'org_1', projectId: 'prj_1', suggestionId: 'ais_1', flagIndex: 2 },
+        path: { orgId: 'org_1', projectId: 'prj_1', suggestionId: 'ais_1', flagIndex: '2' },
       },
       body: { decision: 'negotiate', note: 'Ask for 10 days' },
     });

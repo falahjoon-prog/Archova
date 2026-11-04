@@ -62,7 +62,7 @@ export function createContractReviewApi(orgId: string) {
       await ensureCsrfToken();
       return unwrap(
         await api.POST(`${P}/{suggestionId}/flags/{flagIndex}/decision`, {
-          params: { path: { orgId, projectId, suggestionId, flagIndex } },
+          params: { path: { orgId, projectId, suggestionId, flagIndex: String(flagIndex) } },
           body,
         }),
       );
