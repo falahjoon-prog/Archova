@@ -9,6 +9,7 @@ export type SupportAccess = S['SupportAccess'];
 export type SupportGrant = S['SupportAccessGrant'];
 export type SupportSession = S['SupportAccessSession'];
 export type SupportBanner = S['SupportBanner'];
+export type StaffAction = S['StaffAction'];
 export type CreateGrant = S['CreateSupportAccessGrantRequest'];
 
 const P = '/v1/orgs/{orgId}/support-access' as const;
@@ -26,6 +27,9 @@ export function createSupportAccessApi(orgId: string) {
       unwrap(
         await api.POST(`${P}/grants/{grantId}/revoke`, { params: { path: { orgId, grantId } } }),
       );
+    },
+    async staffActions(): Promise<StaffAction[]> {
+      return unwrap(await api.GET('/v1/orgs/{orgId}/staff-actions', { params: { path } })).items;
     },
     async banner(): Promise<SupportBanner> {
       return unwrap(await api.GET(`${P}/banner`, { params: { path } }));

@@ -208,6 +208,14 @@ export type OrgActionDto = {
   by: string;
   at: string;
 };
+/** What a customer's own admins see of a staff account action; no reason, no staff name. */
+export type StaffActionDto = {
+  id: string;
+  kind: OrgActionDto['kind'];
+  summary: string;
+  ticketRef: string;
+  at: string;
+};
 export type OrgDetailDto = OrgListItemDto & {
   history: RequestDto[];
   account: OrgAccountDto | null;
