@@ -31,6 +31,14 @@ export {
   type OrgOverride,
   type OrgRefund,
 } from './application/adjustments';
+export {
+  TRIAL_NOTICE_DAYS,
+  createTrialNoticeService,
+  dueNoticeDays,
+  renderTrialEndingEmail,
+  type TrialEndingEmailInput,
+  type TrialNoticeService,
+} from './application/trial-notices';
 export { applyOverrides } from './application/entitlements';
 export {
   INCREASE_NOTICE_DAYS,
