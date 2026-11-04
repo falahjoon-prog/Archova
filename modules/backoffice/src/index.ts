@@ -2,7 +2,11 @@
 // itself: catalogue changes go through `billing`, and every change that needs a second person is a request here.
 import type { SupportProjectDto } from '@archova/contracts';
 import { defineModule, type KernelServices } from '@archova/kernel';
-import type { AccountService, CatalogueService } from '@archova/mod-billing';
+import {
+  createAccountService,
+  type AccountService,
+  type CatalogueService,
+} from '@archova/mod-billing';
 import { internalRoutes } from './api/routes';
 import { createCustomerService } from './application/customers';
 import { createFlagService } from './application/flags';
@@ -92,6 +96,26 @@ export function createBackofficeModule(
       upsertLocalStaff: staff.upsertLocal,
     },
   };
+}
+
+/**
+ * The trial-expiry scheduled job's entry point (apps/worker): expires one org's lapsed trial and updates the customer
+ * list in the same transaction. Needs no console services, so the worker does not build the whole module.
+ */
+export function expireLapsedTrial(
+  database: KernelServices['database'],
+  orgId: string,
+  now: Date,
+): Promise<boolean> {
+  const credits = () => {
+    throw new Error('Nova credits are not available to the trial-expiry job');
+  };
+  return createOrgActionService({
+    database,
+    accounts: createAccountService(),
+    credits,
+    now: () => now,
+  }).expireTrial(orgId, now);
 }
 
 export type BackofficeModule = ReturnType<typeof createBackofficeModule>;

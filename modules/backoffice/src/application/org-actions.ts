@@ -216,7 +216,20 @@ export function createOrgActionService(deps: OrgActionDeps) {
     );
   }
 
-  return { account, list, grantCredits, extendTrial, changePlan, suspend, reactivate };
+  /**
+   * System action for the trial-expiry job: moves a lapsed trial to read-only and keeps the customer list in step.
+   * No staff member acts, so there is no action-log row; the worker logs the org id. Returns whether it changed.
+   */
+  async function expireTrial(orgId: string, at: Date = now()): Promise<boolean> {
+    return tx(async (t) => {
+      const a = await deps.accounts.expireTrial(t, orgId, at);
+      if (!a) return false;
+      await syncDirectory(t, orgId, a);
+      return true;
+    });
+  }
+
+  return { account, list, grantCredits, extendTrial, changePlan, suspend, reactivate, expireTrial };
 }
 
 export type OrgActionService = ReturnType<typeof createOrgActionService>;

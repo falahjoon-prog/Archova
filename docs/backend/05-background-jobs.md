@@ -56,6 +56,7 @@ Repeatable jobs, one instance cluster-wide (fixed `jobId`). Scans that cross ten
 | `billing.acv` | nightly | tracked ACV → `billing.acv_snapshots`; 90/100/110% notices |
 | `billing.usage` | hourly | storage, API calls, active workers → `billing.usage_records` |
 | `billing.reconcile` | daily | compare with billing provider, fix drift |
+| `billing.trial-expiry` | hourly (:20 UTC) | per org: a trial past its end date goes `read_only` (nothing deleted) and the customer list follows; a staff extension returns it to `trialing`. Orgs with no account row have no end date. Built |
 | `billing.overrides-expire` | hourly | expire overrides → recompute entitlements |
 | `audit.anchor` | hourly | latest chain hash per org → S3 Object Lock (Sam 07 §4) |
 | `audit.verify` | weekly | re-walk chains, report breaks |

@@ -20,6 +20,7 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-ai": "workspace:*",
+    "@archova/mod-backoffice": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-integrations": "workspace:*",
     "@archova/mod-sync": "workspace:*",
@@ -31,6 +32,7 @@
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",
     "@archova/config-ts": "workspace:*",
+    "@archova/mod-billing": "workspace:*",
     "@archova/testing": "workspace:*",
     "@types/node": "^22.18.0",
     "@types/pg": "^8.15.0",
