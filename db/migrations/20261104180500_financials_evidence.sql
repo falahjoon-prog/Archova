@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261104180000_financials_evidence.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261104180500_financials_evidence.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Sealed evidence (compliance/01 §4): a snapshot of a claim or payment schedule taken in the transaction that
 -- records it, hashed with SHA-256, with the PDF rendered from that snapshot. Immutable like the schedule itself.
 create table financials.evidence_records (
