@@ -5,10 +5,11 @@ import { Button, Card, Select, SkeletonRows, StatusPill, TextField } from '@arch
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { serverFieldErrors } from '@/shared/lib/forms';
-import type { SupportSession } from '../data/api';
+import type { StaffAction, SupportSession } from '../data/api';
 import {
   useGrantSupportAccess,
   useRevokeSupportAccess,
+  useStaffActions,
   useSupportAccess,
 } from '../hooks/useSupportAccess';
 
@@ -44,6 +45,17 @@ function SessionRow({ s }: { s: SupportSession }) {
   );
 }
 
+function ActionRow({ a }: { a: StaffAction }) {
+  return (
+    <li className="support-access__session">
+      <span>{a.summary}</span>
+      <span className="u-caption">
+        {when(a.at)} · ticket {a.ticketRef}
+      </span>
+    </li>
+  );
+}
+
 /**
  * Settings → Support access (Sam 12 §4a). Off by default. An owner or admin allows Archova support to view this
  * company's data, read only, for one ticket and up to 72 hours, and can withdraw it at any time.
@@ -52,6 +64,7 @@ export function SupportAccessScreen() {
   const status = useSupportAccess();
   const grant = useGrantSupportAccess();
   const revoke = useRevokeSupportAccess();
+  const actions = useStaffActions();
   const [ticketRef, setTicketRef] = useState('');
   const [hours, setHours] = useState('24');
   const server = serverFieldErrors(grant.error);
@@ -156,6 +169,22 @@ export function SupportAccessScreen() {
           </ul>
         ) : (
           <p className="u-muted">Support has not opened any sessions.</p>
+        )}
+      </Card>
+
+      <Card title="Account changes by Archova staff">
+        {actions.isPending ? (
+          <SkeletonRows rows={2} label="Loading account changes…" />
+        ) : actions.isError ? (
+          <ErrorAlert error={actions.error} title="We couldn't load account changes" />
+        ) : actions.data.length ? (
+          <ul className="support-access__list">
+            {actions.data.slice(0, 20).map((a) => (
+              <ActionRow key={a.id} a={a} />
+            ))}
+          </ul>
+        ) : (
+          <p className="u-muted">Archova staff have not changed your account.</p>
         )}
       </Card>
     </div>

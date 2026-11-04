@@ -33,6 +33,9 @@ export const GetOrgParams = z.object({
 export const GetSupportAccessParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListStaffActionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const GetSupportBannerParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -508,6 +511,12 @@ export const SummariseDiaryWeekWithNovaParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "weekStart": z.string().date(),
 });
+export const DraftMinutesWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const DraftMinutesWithNovaBody = s.DraftMinutesRequestSchema;
 export const CompareDrawingRevisionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2090,6 +2099,18 @@ export const operations = {
     query: null,
     body: null,
   },
+  listStaffActions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/staff-actions',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListStaffActionsParams,
+    query: null,
+    body: null,
+  },
   getSupportBanner: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/support-access/banner',
@@ -3061,6 +3082,18 @@ export const operations = {
     params: SummariseDiaryWeekWithNovaParams,
     query: null,
     body: null,
+  },
+  draftMinutesWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/nova-minutes',
+    module: "ai",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: DraftMinutesWithNovaParams,
+    query: null,
+    body: DraftMinutesWithNovaBody,
   },
   compareDrawingRevision: {
     method: 'POST',

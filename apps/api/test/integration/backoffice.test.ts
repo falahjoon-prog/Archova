@@ -675,6 +675,7 @@ describe('customer account actions', () => {
       orgRef: found.orgId,
       attendance: `/v1/orgs/${org.id}/projects/${project.id}/attendance/sites`,
       projects: `/v1/orgs/${org.id}/projects`,
+      orgId: org.id,
     };
   }
   const act = (c: Console, orgRef: string, action: string, body: Record<string, unknown>) =>
@@ -700,6 +701,22 @@ describe('customer account actions', () => {
     const detail = res.json() as { actions: Array<{ kind: string; summary: string }> };
     expect(detail.actions[0]).toMatchObject({ kind: 'credits.grant' });
     expect(detail.actions[0]!.summary).toMatch(/20 Nova credits/);
+
+    // The customer's admins see the action in their own words, without the reason or the staff member.
+    const seen = await c.browser.get(`/v1/orgs/${c.orgId}/staff-actions`);
+    expect(seen.statusCode, seen.body).toBe(200);
+    const items = (seen.json() as { items: Array<Record<string, string>> }).items;
+    expect(items[0]).toMatchObject({
+      kind: 'credits.grant',
+      ticketRef: 'SUP-101',
+      summary: expect.stringMatching(/^Archova staff added 20 Nova credits/),
+    });
+    expect(JSON.stringify(items)).not.toMatch(/Customer asked in the ticket/);
+    expect(Object.keys(items[0]!).sort()).toEqual(['at', 'id', 'kind', 'summary', 'ticketRef']);
+    const stranger = await signUp(t.app, 'stranger-actions');
+    expect(
+      (await stranger.browser.get(`/v1/orgs/${c.orgId}/staff-actions`)).statusCode,
+    ).toBeGreaterThanOrEqual(403);
     const usage = await c.browser.get(`${c.projects.replace('/projects', '')}/ai/usage`);
     expect(usage.json()).toMatchObject({ granted: 20 });
   });

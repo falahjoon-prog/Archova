@@ -1077,6 +1077,38 @@ export function createMeetingService(deps: MeetingsDeps) {
     };
   }
 
+  // ------------------------------------------------------------ nova drafting
+
+  /**
+   * What Nova needs to turn typed notes into minute items (MTG-US7): the meeting's title, day and agenda sections, and
+   * who attended. Only the project team that may write the minutes can ask; `ai` never reads anything else.
+   */
+  async function forMinutesDraft(scope: TenantScope, projectId: string, meetingId: string) {
+    await internalViewer(scope, projectId);
+    if (!(await deps.access.can(scope, 'meetings.meetings.write', { projectId })))
+      throw new AppError('meeting.not_allowed');
+    const m = await getMeetingRow(scope, projectId, meetingId);
+    const project = await deps.platform.getProject(scope, projectId);
+    const [secs, people] = await Promise.all([
+      scope.tx
+        .select({ id: sections.id, title: sections.title })
+        .from(sections)
+        .where(eq(sections.meetingId, m.id))
+        .orderBy(asc(sections.position)),
+      scope.tx
+        .select({ id: attendees.id, name: attendees.name, company: attendees.companyName })
+        .from(attendees)
+        .where(eq(attendees.meetingId, m.id))
+        .orderBy(asc(attendees.position)),
+    ]);
+    return {
+      title: m.title,
+      date: localDateOf(m.heldAt, project.timezone),
+      sections: secs,
+      attendees: people,
+    };
+  }
+
   // --------------------------------------------------------------- actions
 
   async function actions(
@@ -1150,6 +1182,7 @@ export function createMeetingService(deps: MeetingsDeps) {
     issue,
     pdf,
     actions,
+    forMinutesDraft,
   };
 }
 

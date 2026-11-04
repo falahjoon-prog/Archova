@@ -34,6 +34,7 @@ export interface SupportAccessPort {
   ): Promise<unknown>;
   revoke(orgId: string, grantId: string): Promise<void>;
   banner(orgId: string): Promise<{ active: boolean; since: string | null }>;
+  listStaffActions(orgId: string): Promise<unknown[]>;
 }
 
 export interface PlatformRouteDeps {
@@ -115,6 +116,10 @@ export function platformRoutes(d: PlatformRouteDeps) {
         input.body,
       );
       return { status: 201, body: grant };
+    },
+    listStaffActions: async (input) => {
+      const t = requireOrgAdmin(input);
+      return { status: 200, body: { items: await supportPort().listStaffActions(t.orgId) } };
     },
     getSupportBanner: async (input) => {
       // Any signed-in user of the company, not only admins: the banner tells everyone who is looking.
