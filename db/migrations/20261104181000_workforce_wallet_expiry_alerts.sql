@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261104180000_workforce_wallet_expiry_alerts.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261104181000_workforce_wallet_expiry_alerts.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Wallet expiry alerts (compliance/05 §6): one row per document, threshold (30, 7 or 0 days) and expiry date, so a
 -- threshold is raised once however often the daily job runs, and again if the expiry date is renewed. Also adds
 -- the ABN as a wallet item so its checksum can be checked on entry.
