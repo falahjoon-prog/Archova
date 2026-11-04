@@ -96,9 +96,13 @@ export const AcknowledgeTransmittalRequestSchema = z.object({
 }).strict();
 export type AcknowledgeTransmittalRequest = z.infer<typeof AcknowledgeTransmittalRequestSchema>;
 
+export const MeetingLiveSourceSchema = z.enum(["rfis_overdue", "submittals_due", "defects_open", "delays_week"]);
+export type MeetingLiveSource = z.infer<typeof MeetingLiveSourceSchema>;
+
 export const AddMeetingSectionRequestSchema = z.object({
   "title": z.string().min(1).max(200),
   "internalOnly": z.boolean().optional(),
+  "liveSource": z.union([MeetingLiveSourceSchema, z.null()]).optional(),
 }).strict();
 export type AddMeetingSectionRequest = z.infer<typeof AddMeetingSectionRequestSchema>;
 
@@ -2719,6 +2723,26 @@ export const MeetingAttendeeViewSchema = z.intersection(MeetingPersonViewSchema,
 }));
 export type MeetingAttendeeView = z.infer<typeof MeetingAttendeeViewSchema>;
 
+export const MeetingLiveRowSchema = z.object({
+  "ref": z.string(),
+  "title": z.string(),
+  "detail": z.string(),
+  "link": z.object({
+  "type": z.enum(["rfi", "defect", "submittal"]),
+  "id": z.string(),
+}).nullable(),
+});
+export type MeetingLiveRow = z.infer<typeof MeetingLiveRowSchema>;
+
+export const MeetingLiveListSchema = z.object({
+  "source": MeetingLiveSourceSchema,
+  "asOf": z.string().datetime({ offset: true }),
+  "rows": z.array(MeetingLiveRowSchema),
+  "truncated": z.boolean(),
+  "restricted": z.boolean(),
+});
+export type MeetingLiveList = z.infer<typeof MeetingLiveListSchema>;
+
 export const MeetingItemHistorySchema = z.object({
   "meetingId": z.string(),
   "meetingNumber": z.number().int(),
@@ -2754,6 +2778,8 @@ export const MeetingSectionViewSchema = z.object({
   "position": z.number().int(),
   "title": z.string(),
   "internalOnly": z.boolean(),
+  "liveSource": z.union([MeetingLiveSourceSchema, z.null()]),
+  "live": z.union([MeetingLiveListSchema, z.null()]),
   "items": z.array(MeetingItemSchema),
 });
 export type MeetingSectionView = z.infer<typeof MeetingSectionViewSchema>;

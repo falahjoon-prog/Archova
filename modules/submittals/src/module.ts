@@ -19,7 +19,10 @@ export function createSubmittalsModule(
       messages: deps.messages,
       ...(deps.logger ? { logger: deps.logger } : {}),
     }),
-    api: {},
+    api: {
+      /** Meeting agenda (`meetings`): submittals the caller can see that are due soon. */
+      dueForMeeting: service.dueForMeeting,
+    },
   };
 }
 

@@ -5,11 +5,11 @@ import { useState, type FormEvent } from 'react';
 import { Button, Select, StatusPill, TextField, Textarea } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { formatLocalDate } from '@/shared/lib/format';
+import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
-import type { MeetingDetail, MeetingItem } from '../data/api';
+import type { LiveList, MeetingDetail, MeetingItem } from '../data/api';
 import { useMeetingMutations } from '../hooks/useMeetings';
 import { KIND_LABELS, carriedLabel } from '../lib/labels';
 
@@ -22,6 +22,58 @@ function linkHref(orgSlug: string, projectId: string, link: NonNullable<MeetingI
   if (link.type === 'rfi') return webRoutes.rfi(orgSlug, projectId, link.id);
   if (link.type === 'defect') return webRoutes.defect(orgSlug, projectId, link.id);
   return null;
+}
+
+/** The register list of a live section (MTG-US5): each row links to its record. */
+function LiveRows({ live }: { live: LiveList }) {
+  const org = useCurrentOrg();
+  const project = useCurrentProject();
+  const href = (link: NonNullable<LiveList['rows'][number]['link']>) =>
+    link.type === 'rfi'
+      ? webRoutes.rfi(org.orgSlug, project.projectId, link.id)
+      : link.type === 'defect'
+        ? webRoutes.defect(org.orgSlug, project.projectId, link.id)
+        : webRoutes.submittal(org.orgSlug, project.projectId, link.id);
+  if (live.restricted)
+    return (
+      <p className="u-muted">
+        You can&apos;t see this register, so its list is not shown. Someone who can must issue these
+        minutes.
+      </p>
+    );
+  return (
+    <div className="stack">
+      <p className="u-caption u-m-0">
+        List as at {formatInstant(live.asOf, project.timezone)}. Issuing the minutes freezes it.
+      </p>
+      {live.rows.length === 0 ? (
+        <p className="u-muted">Nothing on this list.</p>
+      ) : (
+        <ul className="minutes-items" aria-label="Live list">
+          {live.rows.map((r, i) => (
+            <li key={`${r.ref}-${i}`} className="minutes-item">
+              <p className="minutes-item__body">
+                <span className="u-mono">{r.ref}</span>{' '}
+                {r.link ? (
+                  <Link className="link" href={href(r.link)}>
+                    {r.title}
+                  </Link>
+                ) : (
+                  r.title
+                )}
+              </p>
+              {r.detail ? <p className="u-caption u-m-0">{r.detail}</p> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {live.truncated ? (
+        <p className="u-caption u-m-0">
+          The list is longer than this; open the register for the rest.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function ItemRow({
@@ -214,9 +266,13 @@ export function SectionCard({
       <h2 id={`sec-${section.id}`} className="panel-heading">
         {section.position}. {section.title}{' '}
         {section.internalOnly ? <StatusPill tone="neutral">Builder only</StatusPill> : null}
+        {section.live ? <StatusPill tone="info">Live list</StatusPill> : null}
       </h2>
+      {section.live ? <LiveRows live={section.live} /> : null}
       {section.items.length === 0 ? (
-        <p className="u-muted">Nothing recorded.</p>
+        section.live ? null : (
+          <p className="u-muted">Nothing recorded.</p>
+        )
       ) : (
         <ul className="minutes-items">
           {section.items.map((i) => (

@@ -5889,6 +5889,12 @@ export interface components {
         AddMeetingSectionRequest: {
             title: string;
             internalOnly?: boolean;
+            /**
+             * @description Fill the section from a register (MTG-US5): overdue RFIs, submittals due, open defects by trade or delays
+             *     this week. A live section is always builder-only (`internalOnly`), and issuing the minutes freezes the list
+             *     as it stood (MTG-AC6).
+             */
+            liveSource?: components["schemas"]["MeetingLiveSource"] | null;
         };
         CreateMeetingItemRequest: {
             sectionId: string;
@@ -6046,11 +6052,36 @@ export interface components {
             history: components["schemas"]["MeetingItemHistory"][];
             version: number;
         };
+        /** @enum {string} */
+        MeetingLiveSource: "rfis_overdue" | "submittals_due" | "defects_open" | "delays_week";
+        MeetingLiveRow: {
+            /** @description The record's own number, or the day for a delay */
+            ref: string;
+            title: string;
+            detail: string;
+            link: {
+                /** @enum {string} */
+                type: "rfi" | "defect" | "submittal";
+                id: string;
+            } | null;
+        };
+        MeetingLiveList: {
+            source: components["schemas"]["MeetingLiveSource"];
+            /** Format: date-time */
+            asOf: string;
+            rows: components["schemas"]["MeetingLiveRow"][];
+            truncated: boolean;
+            /** @description The reader can't see this register, so the empty list is about access, not about nothing being due. */
+            restricted: boolean;
+        };
         MeetingSectionView: {
             id: string;
             position: number;
             title: string;
             internalOnly: boolean;
+            liveSource: components["schemas"]["MeetingLiveSource"] | null;
+            /** @description The register list, read now for working minutes and frozen at issue for an issued version. */
+            live: components["schemas"]["MeetingLiveList"] | null;
             items: components["schemas"]["MeetingItem"][];
         };
         MeetingVersion: {

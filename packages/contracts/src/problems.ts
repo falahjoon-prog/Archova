@@ -217,6 +217,7 @@ export const PROBLEM_CODES = {
   'meeting.not_issued': 404,
   'meeting.item_carried': 409,
   'meeting.nothing_to_issue': 422,
+  'meeting.live_unavailable': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,
   'financials.claim.not_found': 404,
