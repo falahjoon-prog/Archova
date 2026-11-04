@@ -381,6 +381,56 @@ export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "other"]);
 export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
 
+export const ComplianceAccessLogEntrySchema = z.object({
+  "id": z.string().regex(new RegExp("^cal_[0-9A-Za-z]{26}$")),
+  "granteeName": z.string(),
+  "kind": z.enum(["list", "document", "file"]),
+  "itemType": z.union([ComplianceItemTypeSchema, z.null()]),
+  "documentId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type ComplianceAccessLogEntry = z.infer<typeof ComplianceAccessLogEntrySchema>;
+
+export const ComplianceAccessLogListSchema = z.object({
+  "data": z.array(ComplianceAccessLogEntrySchema),
+});
+export type ComplianceAccessLogList = z.infer<typeof ComplianceAccessLogListSchema>;
+
+export const ComplianceAccessRequestSchema = z.object({
+  "id": z.string().regex(new RegExp("^car_[0-9A-Za-z]{26}$")),
+  "requesterName": z.string(),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "grantExpiresOn": z.string().date(),
+  "codeExpiresAt": z.string().datetime({ offset: true }),
+  "status": z.enum(["requested", "accepted", "cancelled"]),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceAccessRequest = z.infer<typeof ComplianceAccessRequestSchema>;
+
+export const ComplianceAccessRequestCreatedSchema = z.object({
+  "request": ComplianceAccessRequestSchema,
+  "code": z.string(),
+});
+export type ComplianceAccessRequestCreated = z.infer<typeof ComplianceAccessRequestCreatedSchema>;
+
+export const ComplianceAccessRequestListSchema = z.object({
+  "data": z.array(ComplianceAccessRequestSchema),
+});
+export type ComplianceAccessRequestList = z.infer<typeof ComplianceAccessRequestListSchema>;
+
+export const ComplianceAccessRequestPreviewSchema = z.object({
+  "requesterName": z.string(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "grantExpiresOn": z.string().date(),
+});
+export type ComplianceAccessRequestPreview = z.infer<typeof ComplianceAccessRequestPreviewSchema>;
+
 export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
 export type FileRef = z.infer<typeof FileRefSchema>;
 
@@ -410,6 +460,60 @@ export const ComplianceDocumentListSchema = z.object({
   "data": z.array(ComplianceDocumentSchema),
 });
 export type ComplianceDocumentList = z.infer<typeof ComplianceDocumentListSchema>;
+
+export const ComplianceGrantSchema = z.object({
+  "id": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "granteeName": z.string(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "expiresOn": z.string().date(),
+  "acceptedAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+  "status": z.enum(["live", "expired", "revoked"]),
+  "version": z.number().int(),
+});
+export type ComplianceGrant = z.infer<typeof ComplianceGrantSchema>;
+
+export const ComplianceGrantListSchema = z.object({
+  "data": z.array(ComplianceGrantSchema),
+});
+export type ComplianceGrantList = z.infer<typeof ComplianceGrantListSchema>;
+
+export const ComplianceShareCodeRequestSchema = z.object({
+  "code": z.string().min(8).max(100),
+}).strict();
+export type ComplianceShareCodeRequest = z.infer<typeof ComplianceShareCodeRequestSchema>;
+
+export const SharedComplianceDocumentSchema = z.object({
+  "id": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "itemType": ComplianceItemTypeSchema,
+  "title": z.string(),
+  "numberLast4": z.string().nullable(),
+  "issuingState": z.union([AuStateSchema, z.null()]),
+  "licenceClass": z.string().nullable(),
+  "insurer": z.string().nullable(),
+  "limitCents": z.number().int().nullable(),
+  "startsOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "evidence": z.enum(["recorded", "sighted", "self_declared"]),
+  "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
+  "sightedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type SharedComplianceDocument = z.infer<typeof SharedComplianceDocumentSchema>;
+
+export const ComplianceSnapshotSchema = z.object({
+  "id": z.string().regex(new RegExp("^crs_[0-9A-Za-z]{26}$")),
+  "grantId": z.string(),
+  "documentId": z.string(),
+  "itemType": ComplianceItemTypeSchema,
+  "reason": z.enum(["site_entry", "claim_assessment", "other"]),
+  "sha256": z.string().regex(new RegExp("^[0-9a-f]{64}$")),
+  "document": SharedComplianceDocumentSchema,
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceSnapshot = z.infer<typeof ComplianceSnapshotSchema>;
 
 export const ConfirmSheetScaleRequestSchema = z.object({
   "scale": z.number().int().min(1).max(100000),
@@ -683,6 +787,14 @@ export const CreateCompanyRequestSchema = z.object({
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
 
+export const CreateComplianceAccessRequestSchema = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "allProjects": z.boolean().optional(),
+  "itemTypes": z.array(ComplianceItemTypeSchema).min(1),
+  "expiresOn": z.string().date().optional(),
+}).strict();
+export type CreateComplianceAccessRequest = z.infer<typeof CreateComplianceAccessRequestSchema>;
+
 export const CreateComplianceDocumentRequestSchema = z.object({
   "itemType": ComplianceItemTypeSchema,
   "title": z.string().min(1).max(200),
@@ -697,6 +809,13 @@ export const CreateComplianceDocumentRequestSchema = z.object({
   "selfDeclared": z.boolean().optional(),
 }).strict();
 export type CreateComplianceDocumentRequest = z.infer<typeof CreateComplianceDocumentRequestSchema>;
+
+export const CreateComplianceSnapshotRequestSchema = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "reason": z.enum(["site_entry", "claim_assessment", "other"]),
+}).strict();
+export type CreateComplianceSnapshotRequest = z.infer<typeof CreateComplianceSnapshotRequestSchema>;
 
 export const CreateContractRequestSchema = z.object({
   "kind": ContractKindSchema,
@@ -2023,6 +2142,22 @@ export const GateWithCodeSchema = z.object({
   "code": z.string(),
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
+
+export const GrantedWalletSchema = z.object({
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "subbieName": z.string(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "expiresOn": z.string().date(),
+});
+export type GrantedWallet = z.infer<typeof GrantedWalletSchema>;
+
+export const GrantedWalletListSchema = z.object({
+  "data": z.array(GrantedWalletSchema),
+});
+export type GrantedWalletList = z.infer<typeof GrantedWalletListSchema>;
 
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
@@ -3972,6 +4107,11 @@ export const SetMeetingAttendeesRequestSchema = z.object({
 }))).max(200),
 }).strict();
 export type SetMeetingAttendeesRequest = z.infer<typeof SetMeetingAttendeesRequestSchema>;
+
+export const SharedComplianceDocumentListSchema = z.object({
+  "data": z.array(SharedComplianceDocumentSchema),
+});
+export type SharedComplianceDocumentList = z.infer<typeof SharedComplianceDocumentListSchema>;
 
 export const SheetGeometrySchema = z.object({
   "revisionId": z.string(),

@@ -6819,6 +6819,256 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ComplianceDocument' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-access-requests:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listComplianceAccessRequests
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.request
+      summary: The access requests this organisation has made to subcontractors' wallets, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceAccessRequestList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createComplianceAccessRequest
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.request
+      summary: Ask a subcontractor for read access to some of their wallet, for one named project (or all projects, as an explicit choice).
+      description: The share code is returned once. Give it to the subcontractor, who sees what is asked for and accepts it. Nobody types an organisation id. `wwcc` can't be requested. Access lasts at most 12 months.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateComplianceAccessRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceAccessRequestCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-access-requests/{requestId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: requestId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^car_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: cancelComplianceAccessRequest
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.request
+      summary: Cancel an open request so its code stops working.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceAccessRequest' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-share-codes/preview:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: previewComplianceShareCode
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.manage
+      summary: See what a builder is asking for before accepting.
+      description: A wrong, expired, used or cancelled code all answer 404, so codes can't be probed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ComplianceShareCodeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceAccessRequestPreview' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-grants:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listComplianceGrants
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.view
+      summary: Who this company has given access to its wallet, newest first, with whether each is live.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceGrantList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: acceptComplianceGrant
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.manage
+      summary: Accept a builder's request using its share code. Access starts now and runs to the date the builder asked for.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ComplianceShareCodeRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-grants/{grantId}/revoke:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: grantId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: revokeComplianceGrant
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.manage
+      summary: Withdraw access. The builder can no longer read the documents; snapshots it already took stay in its records.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceGrant' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/compliance-access-log:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listComplianceAccessLog
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.view
+      summary: Who has looked at the wallet and when, newest first. Always on.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceAccessLogList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/subcontractor-wallets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listGrantedWallets
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.read_granted
+      summary: The subcontractor wallets this organisation can currently read, soonest expiry first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GrantedWalletList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: grantId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: listGrantedWalletDocuments
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.read_granted
+      summary: Read a subcontractor's documents through a grant, for one project.
+      description: Only the document types the grant covers, never `wwcc`, never files or the full number. Each read is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A grant for one project answers 404 for any other.
+      parameters:
+        - {
+            name: projectId,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SharedComplianceDocumentList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: grantId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: createComplianceSnapshot
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-permission: workforce.wallet.read_granted
+      summary: 'Keep a record of a document you relied on (site entry, claim assessment): its details and a SHA-256, never files.'
+      description: The snapshot belongs to the builder and stays when the grant ends.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateComplianceSnapshotRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceSnapshot' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15874,6 +16124,208 @@ components:
         expiresOn: { type: [string, 'null'], format: date }
         fileIds: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/FileRef' } }
         archived: { type: boolean }
+    ComplianceShareCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code]
+      properties:
+        code: { type: string, minLength: 8, maxLength: 100 }
+    CreateComplianceAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [itemTypes]
+      properties:
+        projectId:
+          {
+            type: string,
+            pattern: '^prj_[0-9A-Za-z]{26}$',
+            description: 'The project the access is for. Give this, or set `allProjects`.',
+          }
+        allProjects:
+          {
+            type: boolean,
+            default: false,
+            description: 'Explicit, separately labelled choice to cover every project of this organisation.',
+          }
+        itemTypes:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/ComplianceItemType' }
+        expiresOn:
+          {
+            type: string,
+            format: date,
+            description: 'Last day of access. Defaults to and may not exceed 12 months from today.',
+          }
+    ComplianceAccessRequest:
+      type: object
+      required:
+        [
+          id,
+          requesterName,
+          projectId,
+          projectName,
+          allProjects,
+          itemTypes,
+          grantExpiresOn,
+          codeExpiresAt,
+          status,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^car_[0-9A-Za-z]{26}$' }
+        requesterName: { type: string }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        allProjects: { type: boolean }
+        itemTypes: { type: array, items: { $ref: '#/components/schemas/ComplianceItemType' } }
+        grantExpiresOn: { type: string, format: date }
+        codeExpiresAt: { type: string, format: date-time }
+        status: { type: string, enum: [requested, accepted, cancelled] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    ComplianceAccessRequestCreated:
+      type: object
+      required: [request, code]
+      properties:
+        request: { $ref: '#/components/schemas/ComplianceAccessRequest' }
+        code: { type: string, description: Shown once. Give it to the subcontractor. }
+    ComplianceAccessRequestList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ComplianceAccessRequest' } }
+    ComplianceAccessRequestPreview:
+      type: object
+      required: [requesterName, projectName, allProjects, itemTypes, grantExpiresOn]
+      properties:
+        requesterName: { type: string }
+        projectName: { type: [string, 'null'] }
+        allProjects: { type: boolean }
+        itemTypes: { type: array, items: { $ref: '#/components/schemas/ComplianceItemType' } }
+        grantExpiresOn: { type: string, format: date }
+    ComplianceGrant:
+      type: object
+      required:
+        [
+          id,
+          granteeName,
+          itemTypes,
+          projectId,
+          projectName,
+          allProjects,
+          expiresOn,
+          acceptedAt,
+          revokedAt,
+          status,
+          version,
+        ]
+      properties:
+        id: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' }
+        granteeName: { type: string }
+        itemTypes: { type: array, items: { $ref: '#/components/schemas/ComplianceItemType' } }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        allProjects: { type: boolean }
+        expiresOn: { type: string, format: date }
+        acceptedAt: { type: string, format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+        status: { type: string, enum: [live, expired, revoked] }
+        version: { type: integer }
+    ComplianceGrantList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ComplianceGrant' } }
+    ComplianceAccessLogEntry:
+      type: object
+      required: [id, granteeName, kind, itemType, documentId, at]
+      properties:
+        id: { type: string, pattern: '^cal_[0-9A-Za-z]{26}$' }
+        granteeName: { type: string }
+        kind: { type: string, enum: [list, document, file] }
+        itemType: { oneOf: [{ $ref: '#/components/schemas/ComplianceItemType' }, { type: 'null' }] }
+        documentId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    ComplianceAccessLogList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/ComplianceAccessLogEntry' } }
+    GrantedWallet:
+      type: object
+      required: [grantId, subbieName, itemTypes, projectId, projectName, allProjects, expiresOn]
+      properties:
+        grantId: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' }
+        subbieName: { type: string }
+        itemTypes: { type: array, items: { $ref: '#/components/schemas/ComplianceItemType' } }
+        projectId: { type: [string, 'null'] }
+        projectName: { type: [string, 'null'] }
+        allProjects: { type: boolean }
+        expiresOn: { type: string, format: date }
+    GrantedWalletList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/GrantedWallet' } }
+    SharedComplianceDocument:
+      type: object
+      required:
+        [
+          id,
+          itemType,
+          title,
+          numberLast4,
+          issuingState,
+          licenceClass,
+          insurer,
+          limitCents,
+          startsOn,
+          expiresOn,
+          evidence,
+          expiry,
+          sightedAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' }
+        itemType: { $ref: '#/components/schemas/ComplianceItemType' }
+        title: { type: string }
+        numberLast4: { type: [string, 'null'] }
+        issuingState: { oneOf: [{ $ref: '#/components/schemas/AuState' }, { type: 'null' }] }
+        licenceClass: { type: [string, 'null'] }
+        insurer: { type: [string, 'null'] }
+        limitCents: { type: [integer, 'null'] }
+        startsOn: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        evidence: { type: string, enum: [recorded, sighted, self_declared] }
+        expiry: { type: string, enum: [no_expiry, current, expiring, expired] }
+        sightedAt: { type: [string, 'null'], format: date-time }
+    SharedComplianceDocumentList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/SharedComplianceDocument' } }
+    CreateComplianceSnapshotRequest:
+      type: object
+      additionalProperties: false
+      required: [projectId, documentId, reason]
+      properties:
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        documentId: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' }
+        reason: { type: string, enum: [site_entry, claim_assessment, other] }
+    ComplianceSnapshot:
+      type: object
+      required: [id, grantId, documentId, itemType, reason, sha256, document, createdAt]
+      properties:
+        id: { type: string, pattern: '^crs_[0-9A-Za-z]{26}$' }
+        grantId: { type: string }
+        documentId: { type: string }
+        itemType: { $ref: '#/components/schemas/ComplianceItemType' }
+        reason: { type: string, enum: [site_entry, claim_assessment, other] }
+        sha256: { type: string, pattern: '^[0-9a-f]{64}$' }
+        document: { $ref: '#/components/schemas/SharedComplianceDocument' }
+        createdAt: { type: string, format: date-time }
     WorkerCredentialList:
       type: object
       required: [data]

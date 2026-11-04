@@ -15,7 +15,17 @@ import {
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
 import type { WalletService } from '../application/wallet';
-import { toComplianceDocumentDto } from './wallet-mappers';
+import type { WalletGrantService } from '../application/wallet-grants';
+import {
+  toAccessLogDto,
+  toAccessRequestDto,
+  toAccessRequestPreviewDto,
+  toComplianceDocumentDto,
+  toGrantDto,
+  toGrantedWalletDto,
+  toSharedDocumentDto,
+  toSnapshotDto,
+} from './wallet-mappers';
 import type { InductionLinkService } from '../application/induction-links';
 import { aiContent, type InductionService } from '../application/inductions';
 import {
@@ -84,6 +94,7 @@ export function workforceRoutes(
   ind: InductionService,
   links: InductionLinkService,
   wallet: WalletService,
+  grants: WalletGrantService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -690,6 +701,102 @@ export function workforceRoutes(
         body: toComplianceDocumentDto(row, today),
         headers: { etag: etag(row.version) },
       };
+    },
+    // -------------------------------------------------------------------- wallet sharing (builder side)
+
+    listComplianceAccessRequests: async (input) => {
+      const rows = await read(input, (s) => grants.listRequests(s));
+      return { status: 200, body: { data: rows.map(toAccessRequestDto) } };
+    },
+    createComplianceAccessRequest: async (input) => {
+      const b = input.body;
+      const { row, code } = await tx(input, (s) =>
+        grants.createRequest(s, {
+          ...(b.projectId ? { projectId: ref('project', b.projectId, 'projectId') } : {}),
+          allProjects: b.allProjects === true,
+          itemTypes: b.itemTypes,
+          ...(b.expiresOn ? { expiresOn: b.expiresOn } : {}),
+        }),
+      );
+      return {
+        status: 201,
+        body: { request: toAccessRequestDto(row), code },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    cancelComplianceAccessRequest: async (input) => {
+      const row = await tx(input, (s) =>
+        grants.cancelRequest(
+          s,
+          id('complianceAccessRequest', input.params.requestId, 'compliance_grant.not_found'),
+          parseIfMatch(input.headers['if-match']),
+        ),
+      );
+      return { status: 200, body: toAccessRequestDto(row), headers: { etag: etag(row.version) } };
+    },
+    listGrantedWallets: async (input) => {
+      const { rows } = await read(input, (s) => grants.listGranted(s));
+      return { status: 200, body: { data: rows.map(toGrantedWalletDto) } };
+    },
+    // Writes the subbie's access log in the same transaction, so it is not a read-only transaction.
+    listGrantedWalletDocuments: async (input) => {
+      const r = await tx(input, (s) =>
+        grants.listGrantedDocuments(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          ref('project', input.query.projectId, 'projectId'),
+        ),
+      );
+      return {
+        status: 200,
+        body: { data: r.documents.map(toSharedDocumentDto) },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    createComplianceSnapshot: async (input) => {
+      const b = input.body;
+      const row = await tx(input, (s) =>
+        grants.createSnapshot(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          ref('project', b.projectId, 'projectId'),
+          ref('complianceDocument', b.documentId, 'documentId'),
+          b.reason,
+        ),
+      );
+      return { status: 201, body: toSnapshotDto(row) };
+    },
+    // -------------------------------------------------------------------- wallet sharing (subcontractor side)
+
+    previewComplianceShareCode: async (input) => {
+      const r = await tx(input, (s) => grants.previewCode(s, input.body.code));
+      return {
+        status: 200,
+        body: toAccessRequestPreviewDto(r),
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    acceptComplianceGrant: async (input) => {
+      const g = await tx(input, (s) => grants.acceptCode(s, input.body.code));
+      return { status: 201, body: toGrantDto(g, new Date().toISOString().slice(0, 10)) };
+    },
+    listComplianceGrants: async (input) => {
+      const { rows, today } = await read(input, (s) => grants.listGrants(s));
+      return { status: 200, body: { data: rows.map((g) => toGrantDto(g, today)) } };
+    },
+    revokeComplianceGrant: async (input) => {
+      const { row, today } = await tx(input, (s) =>
+        grants.revokeGrant(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          parseIfMatch(input.headers['if-match']),
+        ),
+      );
+      return { status: 200, body: toGrantDto(row, today), headers: { etag: etag(row.version) } };
+    },
+    listComplianceAccessLog: async (input) => {
+      const rows = await read(input, (s) => grants.accessLog(s));
+      return { status: 200, body: { data: rows.map(toAccessLogDto) } };
     },
     // -------------------------------------------------------------------- inductions over an access link
 

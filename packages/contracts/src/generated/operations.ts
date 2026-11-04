@@ -1603,6 +1603,50 @@ export const SightComplianceDocumentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
 });
+export const ListComplianceAccessRequestsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceAccessRequestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceAccessRequestBody = s.CreateComplianceAccessRequestSchema;
+export const CancelComplianceAccessRequestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "requestId": z.string().regex(new RegExp("^car_[0-9A-Za-z]{26}$")),
+});
+export const PreviewComplianceShareCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const PreviewComplianceShareCodeBody = s.ComplianceShareCodeRequestSchema;
+export const ListComplianceGrantsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const AcceptComplianceGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const AcceptComplianceGrantBody = s.ComplianceShareCodeRequestSchema;
+export const RevokeComplianceGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceAccessLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListGrantedWalletsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListGrantedWalletDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+});
+export const ListGrantedWalletDocumentsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceSnapshotBody = s.CreateComplianceSnapshotRequestSchema;
 export const ListInductionLinksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5327,6 +5371,149 @@ export const operations = {
     params: SightComplianceDocumentParams,
     query: null,
     body: null,
+  },
+  listComplianceAccessRequests: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-access-requests',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.request",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceAccessRequestsParams,
+    query: null,
+    body: null,
+  },
+  createComplianceAccessRequest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-access-requests',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.request",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: CreateComplianceAccessRequestParams,
+    query: null,
+    body: CreateComplianceAccessRequestBody,
+  },
+  cancelComplianceAccessRequest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-access-requests/{requestId}/cancel',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.request",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: CancelComplianceAccessRequestParams,
+    query: null,
+    body: null,
+  },
+  previewComplianceShareCode: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-share-codes/preview',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: PreviewComplianceShareCodeParams,
+    query: null,
+    body: PreviewComplianceShareCodeBody,
+  },
+  listComplianceGrants: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-grants',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceGrantsParams,
+    query: null,
+    body: null,
+  },
+  acceptComplianceGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-grants',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: AcceptComplianceGrantParams,
+    query: null,
+    body: AcceptComplianceGrantBody,
+  },
+  revokeComplianceGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-grants/{grantId}/revoke',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: RevokeComplianceGrantParams,
+    query: null,
+    body: null,
+  },
+  listComplianceAccessLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-access-log',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceAccessLogParams,
+    query: null,
+    body: null,
+  },
+  listGrantedWallets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListGrantedWalletsParams,
+    query: null,
+    body: null,
+  },
+  listGrantedWalletDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListGrantedWalletDocumentsParams,
+    query: ListGrantedWalletDocumentsQuery,
+    body: null,
+  },
+  createComplianceSnapshot: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: CreateComplianceSnapshotParams,
+    query: null,
+    body: CreateComplianceSnapshotBody,
   },
   listInductionLinks: {
     method: 'GET',
