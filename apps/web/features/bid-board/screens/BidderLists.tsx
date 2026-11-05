@@ -56,7 +56,7 @@ export function BidderLists() {
       ) : lists.data?.length ? (
         <ul className="plain-list">
           {lists.data.map((l) => (
-            <li key={l.id} className="plain-list__item row-actions">
+            <li key={l.id} className="plain-list__item bidder-list__item">
               <span>
                 <strong>{l.name}</strong>
                 <span className="u-muted">
