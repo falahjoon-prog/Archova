@@ -4931,6 +4931,23 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AccountingSyncIssue' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/integrations/catalogue:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getIntegrationsCatalogue
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.marketplace.read
+      x-internal: true
+      summary: Every connector the org can set up, with its live status (integrations/06 §4).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegrationCatalogue' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/webhooks:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18612,6 +18629,31 @@ components:
         status: { type: string, enum: [active, disabled] }
         disabledReason: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+    IntegrationCatalogueEntry:
+      type: object
+      required: [key, name, category, summary, status, detail, manage]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        category: { type: string, enum: [accounting, files, developer] }
+        summary: { type: string }
+        status:
+          {
+            type: string,
+            enum: [connected, available, needs_attention, not_configured, coming_soon],
+          }
+        detail: { type: [string, 'null'] }
+        manage:
+          type: [string, 'null']
+          enum: [accounting, folders, api, null]
+          description: Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+    IntegrationCatalogue:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IntegrationCatalogueEntry' }
     AccountingProviderName: { type: string, enum: [xero, myob] }
     AccountingTarget:
       type: object

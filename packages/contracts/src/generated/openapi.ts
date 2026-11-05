@@ -3711,6 +3711,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/integrations/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Every connector the org can set up, with its live status (integrations/06 §4). */
+        get: operations["getIntegrationsCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/webhooks": {
         parameters: {
             query?: never;
@@ -12847,6 +12866,24 @@ export interface components {
             /** Format: date-time */
             createdAt: string;
         };
+        IntegrationCatalogueEntry: {
+            key: string;
+            name: string;
+            /** @enum {string} */
+            category: "accounting" | "files" | "developer";
+            summary: string;
+            /** @enum {string} */
+            status: "connected" | "available" | "needs_attention" | "not_configured" | "coming_soon";
+            detail: string | null;
+            /**
+             * @description Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+             * @enum {string|null}
+             */
+            manage: "accounting" | "folders" | "api" | null;
+        };
+        IntegrationCatalogue: {
+            data: components["schemas"]["IntegrationCatalogueEntry"][];
+        };
         /** @enum {string} */
         AccountingProviderName: "xero" | "myob";
         AccountingTarget: {
@@ -21868,6 +21905,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountingSyncIssue"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getIntegrationsCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCatalogue"];
                 };
             };
             default: components["responses"]["Problem"];
