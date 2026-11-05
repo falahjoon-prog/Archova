@@ -630,6 +630,25 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const ListBidderListsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListBidderListsQuery = z.object({
+  "trade": z.string().max(100).optional(),
+});
+export const CreateBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateBidderListBody = s.CreateBidderListRequestSchema;
+export const UpdateBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateBidderListBody = s.UpdateBidderListRequestSchema;
+export const DeleteBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+});
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3507,6 +3526,54 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  listBidderLists: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bidder-lists',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.read",
+    internal: false,
+    contentType: null,
+    params: ListBidderListsParams,
+    query: ListBidderListsQuery,
+    body: null,
+  },
+  createBidderList: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/bidder-lists',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBidderListParams,
+    query: null,
+    body: CreateBidderListBody,
+  },
+  updateBidderList: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/bidder-lists/{bidderListId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateBidderListParams,
+    query: null,
+    body: UpdateBidderListBody,
+  },
+  deleteBidderList: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/bidder-lists/{bidderListId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteBidderListParams,
+    query: null,
+    body: null,
   },
   getBidBoard: {
     method: 'GET',

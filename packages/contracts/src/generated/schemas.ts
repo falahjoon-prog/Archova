@@ -371,6 +371,22 @@ export const BidBoardSchema = z.object({
 });
 export type BidBoard = z.infer<typeof BidBoardSchema>;
 
+export const BidderListSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "companyIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type BidderList = z.infer<typeof BidderListSchema>;
+
+export const BidderListListSchema = z.object({
+  "data": z.array(BidderListSchema),
+});
+export type BidderListList = z.infer<typeof BidderListListSchema>;
+
 export const GeoFixSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -918,6 +934,13 @@ export const CreateAttendanceSiteRequestSchema = z.object({
   "gateCheckMode": z.enum(["block", "warn"]).optional(),
 }).strict();
 export type CreateAttendanceSiteRequest = z.infer<typeof CreateAttendanceSiteRequestSchema>;
+
+export const CreateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict();
+export type CreateBidderListRequest = z.infer<typeof CreateBidderListRequestSchema>;
 
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -4866,6 +4889,13 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
+
+export const UpdateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateBidderListRequest = z.infer<typeof UpdateBidderListRequestSchema>;
 
 export const UpdateComplianceDocumentRequestSchema = z.object({
   "title": z.string().min(1).max(200).optional(),

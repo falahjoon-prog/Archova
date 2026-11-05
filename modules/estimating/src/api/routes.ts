@@ -18,9 +18,11 @@ import type {
 } from '../application/tender';
 import type { MeasurementFields, TakeoffService } from '../application/takeoff';
 import type { EstimateService, LineInput as EstimateLineInput } from '../application/estimate';
+import type { BiddersService } from '../application/bidders';
 import type { BoardService } from '../application/board';
 import type { LibraryService } from '../application/library';
 import {
+  toBidderListDto,
   toBoardEntryDto,
   toComparisonDto,
   toCostItemDto,
@@ -53,6 +55,13 @@ const measurementIdOf = (p: { measurementId: string }) => {
   if (!id) throw new AppError('takeoff.not_found');
   return id;
 };
+const bidderListIdOf = (p: { bidderListId: string }) => {
+  const id = decodeId('bidderList', p.bidderListId);
+  if (!id) throw new AppError('bidder_list.not_found');
+  return id;
+};
+const companyIds = (ids: string[] | undefined) =>
+  ids?.map((c, i) => ref('company', c, `companyIds/${i}`));
 const quoteIdOf = (p: { quoteId: string }) => {
   const id = decodeId('quote', p.quoteId);
   if (!id) throw new AppError('quote.not_found');
@@ -188,6 +197,7 @@ export function estimatingRoutes(
   library: LibraryService,
   estimates: EstimateService,
   board: BoardService,
+  bidders: BiddersService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -492,6 +502,41 @@ export function estimatingRoutes(
           ),
         ),
       ),
+    listBidderLists: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            bidders.list(s, input.query.trade ? { trade: input.query.trade } : {}),
+          )
+        ).map(toBidderListDto),
+      },
+    }),
+    createBidderList: async (input) => {
+      const row = await tx(input, (s) =>
+        bidders.create(s, {
+          name: input.body.name,
+          ...(input.body.trade !== undefined ? { trade: input.body.trade } : {}),
+          ...(input.body.companyIds ? { companyIds: companyIds(input.body.companyIds)! } : {}),
+        }),
+      );
+      return { status: 201, body: toBidderListDto(row), headers: { etag: etag(row.version) } };
+    },
+    updateBidderList: async (input) => {
+      const b = input.body;
+      const row = await tx(input, (s) =>
+        bidders.update(s, bidderListIdOf(input.params), parseIfMatch(input.headers['if-match']), {
+          ...(b.name !== undefined ? { name: b.name } : {}),
+          ...(b.trade !== undefined ? { trade: b.trade } : {}),
+          ...(b.companyIds ? { companyIds: companyIds(b.companyIds)! } : {}),
+        }),
+      );
+      return { status: 200, body: toBidderListDto(row), headers: { etag: etag(row.version) } };
+    },
+    deleteBidderList: async (input) => {
+      await tx(input, (s) => bidders.remove(s, bidderListIdOf(input.params)));
+      return { status: 204 };
+    },
     getBidBoard: async (input) => {
       const q = input.query;
       const r = await read(input, (s) =>

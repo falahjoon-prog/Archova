@@ -20,6 +20,7 @@ import {
 import { EstimatingIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { listsFor, listCandidates, useBidderLists } from '@/features/bid-board';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
@@ -465,6 +466,7 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
   const [invite, setInvite] = useState<string[]>([]);
+  const bidderLists = useBidderLists({ enabled: !previewDataOnly });
   const locked = pkg.status === 'awarded';
   const invited = new Set(pkg.invites.map((i) => i.companyId));
   const candidates = companies
@@ -622,6 +624,31 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
         {!locked && candidates.length ? (
           <fieldset className="fieldset">
             <legend>Invite (they get one link by email and can quote without an account)</legend>
+            {bidderLists.data?.length ? (
+              <Select
+                label="Tick a bidder list"
+                value=""
+                placeholder="Choose a list"
+                hint="Ticks the list's subcontractors who are on this project and not yet invited."
+                options={listsFor(bidderLists.data, pkg.trade).map((l) => ({
+                  value: l.id,
+                  label: l.trade ? `${l.name} · ${l.trade}` : l.name,
+                }))}
+                onChange={(e) => {
+                  const list = bidderLists.data?.find((l) => l.id === e.target.value);
+                  if (list)
+                    setInvite([
+                      ...new Set([
+                        ...invite,
+                        ...listCandidates(
+                          list,
+                          candidates.map((c) => c.id),
+                        ),
+                      ]),
+                    ]);
+                }}
+              />
+            ) : null}
             <div className="check-grid">
               {candidates.map((c) => (
                 <Checkbox
