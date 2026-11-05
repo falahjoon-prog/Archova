@@ -31,6 +31,7 @@ import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
 import { walletRetention } from './jobs/wallet-retention';
+import { dataExportBuilder, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -114,9 +115,13 @@ async function main() {
       ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
       ...(config.files.credentials ? { credentials: config.files.credentials } : {}),
     });
-    jobs.push(threatMove(store, log));
+    jobs.push(threatMove(store, log), dataExportSweep(store));
+    SUBSCRIBERS.push(dataExportBuilder(store, (msg, o) => log.info(o ?? {}, msg)));
   } else {
-    log.warn({}, 'WORKER_FILES_STORE is not s3: file jobs (threat move) are not scheduled');
+    log.warn(
+      {},
+      'WORKER_FILES_STORE is not s3: file jobs (threat move, data export) are not scheduled',
+    );
   }
   const platform = new pg.Pool({ connectionString: config.platformDatabaseUrl, max: 2 });
   const { publish, running } = startQueues(config.redisUrl, database, SUBSCRIBERS, {
