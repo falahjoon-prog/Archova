@@ -498,6 +498,22 @@ export function createDrawingService(c: DocumentsContext) {
     return withSuccessors(scope, rows);
   }
 
+  /** Each sheet's current revision and file, for folder links to publish what is already issued (integrations/03 M2). */
+  async function currentRevisions(scope: TenantScope, projectId: string) {
+    return scope.tx
+      .select({
+        sheetId: drawingSheets.id,
+        revisionId: drawingRevisions.id,
+        sheetNumber: drawingSheets.sheetNumber,
+        rev: drawingRevisions.rev,
+        fileId: drawingRevisions.fileId,
+      })
+      .from(drawingSheets)
+      .innerJoin(drawingRevisions, eq(drawingRevisions.id, drawingSheets.currentRevisionId))
+      .where(eq(drawingSheets.projectId, projectId))
+      .orderBy(drawingSheets.sheetNumber);
+  }
+
   async function getRevision(scope: TenantScope, projectId: string, revisionId: string) {
     const [row] = await scope.tx
       .select()
@@ -579,6 +595,7 @@ export function createDrawingService(c: DocumentsContext) {
     listSheets,
     sheetHistory,
     getRevision,
+    currentRevisions,
     getPreviousRevision,
     currentForDisciplines,
     revisionsByIds,

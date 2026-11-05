@@ -2421,6 +2421,33 @@ export const DiaryEntryListSchema = z.object({
 });
 export type DiaryEntryList = z.infer<typeof DiaryEntryListSchema>;
 
+export const DirectCostCategorySchema = z.enum(["labour", "materials", "plant", "fees", "other"]);
+export type DirectCostCategory = z.infer<typeof DirectCostCategorySchema>;
+
+export const DirectCostSchema = z.object({
+  "id": z.string().regex(new RegExp("^dcs_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "category": DirectCostCategorySchema,
+  "description": z.string(),
+  "supplier": z.string().nullable(),
+  "reference": z.string().nullable(),
+  "incurredOn": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "gst": FinancialsMoneySchema,
+  "status": z.enum(["recorded", "void"]),
+  "voidReason": z.string().nullable(),
+  "voidedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type DirectCost = z.infer<typeof DirectCostSchema>;
+
+export const DirectCostListSchema = z.object({
+  "data": z.array(DirectCostSchema),
+  "total": FinancialsMoneySchema,
+});
+export type DirectCostList = z.infer<typeof DirectCostListSchema>;
+
 export const DocumentRevisionSchema = z.object({
   "id": z.string(),
   "documentId": z.string(),
@@ -4047,7 +4074,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting", "tender_package", "contract"]),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -5100,6 +5127,18 @@ export const RecordClaimStatementRequestSchema = z.object({
   "note": z.string().max(500).optional(),
 }).strict();
 export type RecordClaimStatementRequest = z.infer<typeof RecordClaimStatementRequestSchema>;
+
+export const RecordDirectCostRequestSchema = z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "category": DirectCostCategorySchema,
+  "description": z.string().min(1).max(300),
+  "supplier": z.string().min(1).max(200).optional(),
+  "reference": z.string().min(1).max(100).optional(),
+  "incurredOn": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "gst": FinancialsMoneySchema.optional(),
+}).strict();
+export type RecordDirectCostRequest = z.infer<typeof RecordDirectCostRequestSchema>;
 
 export const RecordInspectionResponsesRequestSchema = z.object({
   "responses": z.array(InspectionResponseInputSchema).min(1).max(300),
@@ -6759,6 +6798,11 @@ export const VoidCorrespondenceRequestSchema = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
 export type VoidCorrespondenceRequest = z.infer<typeof VoidCorrespondenceRequestSchema>;
+
+export const VoidDirectCostRequestSchema = z.object({
+  "note": z.string().min(1).max(5000),
+}).strict();
+export type VoidDirectCostRequest = z.infer<typeof VoidDirectCostRequestSchema>;
 
 export const WebhookSchema = z.object({
   "id": z.string(),

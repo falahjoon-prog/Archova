@@ -2536,6 +2536,26 @@ export const WithdrawVariationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
+export const ListDirectCostsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const RecordDirectCostParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const RecordDirectCostBody = s.RecordDirectCostRequestSchema;
+export const GetDirectCostParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "directCostId": z.string().regex(new RegExp("^dcs_[0-9A-Za-z]{26}$")),
+});
+export const VoidDirectCostParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "directCostId": z.string().regex(new RegExp("^dcs_[0-9A-Za-z]{26}$")),
+});
+export const VoidDirectCostBody = s.VoidDirectCostRequestSchema;
 export const ListCommitmentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -8379,6 +8399,54 @@ export const operations = {
     params: WithdrawVariationParams,
     query: null,
     body: null,
+  },
+  listDirectCosts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/direct-costs',
+    module: "financials",
+    auth: "required",
+    permission: "financials.direct_costs.read",
+    internal: false,
+    contentType: null,
+    params: ListDirectCostsParams,
+    query: null,
+    body: null,
+  },
+  recordDirectCost: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/direct-costs',
+    module: "financials",
+    auth: "required",
+    permission: "financials.direct_costs.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordDirectCostParams,
+    query: null,
+    body: RecordDirectCostBody,
+  },
+  getDirectCost: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.direct_costs.read",
+    internal: false,
+    contentType: null,
+    params: GetDirectCostParams,
+    query: null,
+    body: null,
+  },
+  voidDirectCost: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.direct_costs.manage",
+    internal: false,
+    contentType: "application/json",
+    params: VoidDirectCostParams,
+    query: null,
+    body: VoidDirectCostBody,
   },
   listCommitments: {
     method: 'GET',

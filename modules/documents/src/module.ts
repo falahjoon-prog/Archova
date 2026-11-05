@@ -106,6 +106,8 @@ export function createDocumentsModule(
       logger: services.logger,
     }),
     api: {
+      /** For folder links (integrations/03 M2): each sheet's current revision, to publish what is already issued. */
+      currentDrawingRevisions: drawings.currentRevisions,
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
       /** The drawing register and revisions the mobile pull reads (modules/sync). */

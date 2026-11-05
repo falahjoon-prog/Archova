@@ -45,4 +45,7 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
     tool: 'payment_claims',
     level: 'admin',
   },
+  // Direct costs post to the budget, so they sit on the budget tool (admin-only by default).
+  { key: 'financials.direct_costs.read', scope: 'project', tool: 'budget', level: 'standard' },
+  { key: 'financials.direct_costs.manage', scope: 'project', tool: 'budget', level: 'standard' },
 ];
