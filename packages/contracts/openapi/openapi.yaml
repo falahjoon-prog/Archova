@@ -13074,6 +13074,8 @@ components:
           variationsOverdue,
           incidentsOpen,
           incidentsOverdue,
+          programmeOpen,
+          programmeOverdue,
         ]
       properties:
         projects: { type: integer }
@@ -13089,6 +13091,8 @@ components:
         variationsOverdue: { type: integer }
         incidentsOpen: { type: integer }
         incidentsOverdue: { type: integer }
+        programmeOpen: { type: integer }
+        programmeOverdue: { type: integer }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -13217,7 +13221,11 @@ components:
       additionalProperties: false
       required: [source, state, projectIds, columns, overdueOnly]
       properties:
-        source: { type: string, enum: [rfis, defects, submittals, claims, variations, incidents] }
+        source:
+          {
+            type: string,
+            enum: [rfis, defects, submittals, claims, variations, incidents, programme],
+          }
         state:
           {
             type: string,

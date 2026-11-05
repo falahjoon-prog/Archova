@@ -393,6 +393,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     submittals: submittals.api,
     platform: platform.api,
+    access: access.api,
   });
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
@@ -433,6 +434,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
     incidents: safety.api.reporting,
+    programme: scheduling.api.reporting,
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,

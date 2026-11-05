@@ -1786,6 +1786,9 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
       '@archova/mod-diary':
         specifier: workspace:*
         version: link:../diary
@@ -12485,9 +12488,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 

@@ -9391,6 +9391,8 @@ export interface components {
             variationsOverdue: number;
             incidentsOpen: number;
             incidentsOverdue: number;
+            programmeOpen: number;
+            programmeOverdue: number;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -9471,7 +9473,7 @@ export interface components {
         };
         ReportConfig: {
             /** @enum {string} */
-            source: "rfis" | "defects" | "submittals" | "claims" | "variations" | "incidents";
+            source: "rfis" | "defects" | "submittals" | "claims" | "variations" | "incidents" | "programme";
             /**
              * @description Open is what is still waiting on someone; closed is answered, approved or closed.
              * @enum {string}

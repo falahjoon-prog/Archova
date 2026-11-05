@@ -180,7 +180,7 @@ export function lookahead(
       activityId: a.id,
       startsInWindow: a.start >= start,
       finishesInWindow: a.finish <= end,
-      late: (a.start < today && a.pctComplete === 0) || (a.finish < today && a.pctComplete < 100),
+      late: isLate(a, today),
     });
   }
   items.sort((x, y) =>
@@ -245,3 +245,14 @@ export function cascade(
   changed.delete(movedId);
   return changed;
 }
+
+export type ProgrammeStatus = 'not_started' | 'in_progress' | 'complete';
+
+export const programmeStatus = (pctComplete: number): ProgrammeStatus =>
+  pctComplete >= 100 ? 'complete' : pctComplete > 0 ? 'in_progress' : 'not_started';
+
+/** Work that should have started (or finished) before today and has not; same rule as the look-ahead. */
+export const isLate = (
+  a: { start: LocalDate; finish: LocalDate; pctComplete: number },
+  today: LocalDate,
+): boolean => (a.start < today && a.pctComplete === 0) || (a.finish < today && a.pctComplete < 100);

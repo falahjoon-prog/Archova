@@ -92,6 +92,12 @@ export function PortfolioScreen() {
       cell: (r) => <ToolCell tool={r.incidents} />,
     },
     {
+      id: 'programme',
+      header: 'Programme activities open',
+      sortValue: (r) => r.programme.open,
+      cell: (r) => <ToolCell tool={r.programme} />,
+    },
+    {
       id: 'attention',
       header: 'Overdue',
       align: 'end',
@@ -135,6 +141,10 @@ export function PortfolioScreen() {
             {
               label: 'Incidents open',
               value: `${data.totals.incidentsOpen} (${data.totals.incidentsOverdue} to notify)`,
+            },
+            {
+              label: 'Programme activities open',
+              value: `${data.totals.programmeOpen} (${data.totals.programmeOverdue} late)`,
             },
           ]}
         />

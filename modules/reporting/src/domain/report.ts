@@ -7,6 +7,7 @@ export const REPORT_SOURCES = [
   'claims',
   'variations',
   'incidents',
+  'programme',
 ] as const;
 export type ReportSource = (typeof REPORT_SOURCES)[number];
 
@@ -94,6 +95,7 @@ export interface ProjectCounts {
   claims: ToolCounts;
   variations: ToolCounts;
   incidents: ToolCounts;
+  programme: ToolCounts;
 }
 
 export const attention = (p: ProjectCounts) =>
@@ -121,6 +123,8 @@ export function totals(projects: readonly ProjectCounts[]) {
     variationsOverdue: sum((p) => p.variations, 'overdue'),
     incidentsOpen: sum((p) => p.incidents, 'open'),
     incidentsOverdue: sum((p) => p.incidents, 'overdue'),
+    programmeOpen: sum((p) => p.programme, 'open'),
+    programmeOverdue: sum((p) => p.programme, 'overdue'),
   };
 }
 
@@ -134,7 +138,8 @@ export function orderPortfolio<T extends { name: string; attention: number } & P
     p.submittals.open +
     p.claims.open +
     p.variations.open +
-    p.incidents.open;
+    p.incidents.open +
+    p.programme.open;
   return [...rows].sort(
     (a, b) => b.attention - a.attention || open(b) - open(a) || a.name.localeCompare(b.name),
   );
