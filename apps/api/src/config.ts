@@ -76,6 +76,13 @@ const Env = z.object({
   API_XERO_CLIENT_SECRET: z.string().optional(),
   API_MYOB_CLIENT_ID: z.string().optional(),
   API_MYOB_CLIENT_SECRET: z.string().optional(),
+  // SharePoint and Google Drive folder links (integrations/03, 04). Microsoft authenticates the app with a certificate:
+  // the PEM private key and the certificate's SHA-256 thumbprint (hex). Google needs a client id and secret.
+  API_M365_CLIENT_ID: z.string().optional(),
+  API_M365_PRIVATE_KEY_PEM: z.string().optional(),
+  API_M365_CERT_THUMBPRINT: z.string().optional(),
+  API_GOOGLE_CLIENT_ID: z.string().optional(),
+  API_GOOGLE_CLIENT_SECRET: z.string().optional(),
   LOG_LEVEL: z.string().default('info'),
 });
 
@@ -140,6 +147,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
           ? { clientId: e.API_MYOB_CLIENT_ID, clientSecret: e.API_MYOB_CLIENT_SECRET }
           : null,
     },
+    folders: {
+      m365:
+        e.API_M365_CLIENT_ID && e.API_M365_PRIVATE_KEY_PEM && e.API_M365_CERT_THUMBPRINT
+          ? {
+              clientId: e.API_M365_CLIENT_ID,
+              privateKeyPem: e.API_M365_PRIVATE_KEY_PEM.replace(/\\n/g, '\n'),
+              thumbprintHex: e.API_M365_CERT_THUMBPRINT,
+            }
+          : null,
+      google:
+        e.API_GOOGLE_CLIENT_ID && e.API_GOOGLE_CLIENT_SECRET
+          ? { clientId: e.API_GOOGLE_CLIENT_ID, clientSecret: e.API_GOOGLE_CLIENT_SECRET }
+          : null,
+    },
     ai: loadAiConfig(env),
     messages: e.API_MESSAGES,
     linkBaseUrl: new URL(e.API_LINK_BASE_URL ?? appOrigins[0] ?? 'http://localhost:3000').origin,
@@ -198,7 +219,13 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
     if (!config.webhookSecretKey) missing.push('API_WEBHOOK_SECRET_KEY (32 bytes, base64)');
-    if ((config.accounting.xero || config.accounting.myob) && !config.accountingSecretKey)
+    if (
+      (config.accounting.xero ||
+        config.accounting.myob ||
+        config.folders.m365 ||
+        config.folders.google) &&
+      !config.accountingSecretKey
+    )
       missing.push('API_ACCOUNTING_SECRET_KEY (32 bytes, base64, not the webhook key)');
     if (missing.length)
       throw new Error(`Refusing to start in production without: ${missing.join(', ')}`);

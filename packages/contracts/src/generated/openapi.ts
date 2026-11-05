@@ -1056,6 +1056,174 @@ export interface paths {
         patch: operations["updateFolder"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's specification books, newest first, with how many sections each has been split into. */
+        get: operations["listSpecBooks"];
+        put?: never;
+        /** Register an issued specification book. Naming the book it replaces marks that one superseded. */
+        post: operations["createSpecBook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        /** One book with its sections in page order. */
+        get: operations["getSpecBook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Split the book into sections by page range, replacing the list. Numbers must be unique within the book. */
+        put: operations["replaceSpecSections"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Sections of current books whose number starts with, or title contains, the text. For picking a spec reference. */
+        get: operations["searchSpecSections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/bim-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's registered models, newest first. */
+        get: operations["listBimModels"];
+        put?: never;
+        /** Register a model file. Naming the model it supersedes retires that one. */
+        post: operations["createBimModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Coordination issues, newest first, up to 500. */
+        get: operations["listCoordinationIssues"];
+        put?: never;
+        /** Raise a coordination issue. */
+        post: operations["createCoordinationIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        /** One issue with its comments. */
+        get: operations["getCoordinationIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an issue or move it along. A change of status not allowed from the current one is refused. */
+        patch: operations["updateCoordinationIssue"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a comment to an issue. */
+        post: operations["addCoordinationIssueComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/documents": {
         parameters: {
             query?: never;
@@ -2905,6 +3073,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/commitment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Raise the draft budget commitment for an awarded package from its winning quote.
+         * @description A draft subcontract commitment in financials: vendor is the winning company, with one line for the quote total
+         *     ex GST against the budget line given. It still goes through submit and approve like any commitment. Also needs
+         *     `financials.commitments.manage`. Safe to repeat: a quote raises one commitment, and a repeat returns it with
+         *     `created` false (the budget line in a repeat is ignored).
+         */
+        post: operations["createCommitmentFromAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison": {
         parameters: {
             query?: never;
@@ -3571,6 +3766,127 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The org's SharePoint and Google Drive connections, and which providers this installation can offer (integrations/03, 04). */
+        get: operations["listFolderConnections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget the connection and every project link on it. Files already published are left where they are. */
+        delete: operations["disconnectFolders"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections/{provider}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin sign-in. Google returns its sign-in address; Microsoft 365 returns the admin-consent address for the tenant id given. */
+        post: operations["startFolderConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish sign-in with the state (and, for Google, the code) the provider returned. Makes the connection active. */
+        post: operations["completeFolderConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/folder-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The folders this project's current drawing set is published to. */
+        get: operations["listFolderLinks"];
+        put?: never;
+        /** Publish the project's drawing set, one way, to a SharePoint folder (the address is required) or a new Google Drive folder. Each drawing revision published from now on is uploaded and the revision it replaces is moved to a Superseded subfolder. */
+        post: operations["createFolderLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/folder-links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop publishing to the folder. What is already there stays. */
+        delete: operations["deleteFolderLink"];
         options?: never;
         head?: never;
         patch?: never;
@@ -4679,6 +4995,469 @@ export interface paths {
         head?: never;
         /** Change a stand down line. */
         patch: operations["updateDiaryStandDown"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Daily timesheets in a date range (up to 62 days). A subcontractor sees only its own workers. */
+        get: operations["listTimesheets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill draft timesheets from closed sign-ins in a date range. Safe to repeat; sheets past draft are left alone. */
+        post: operations["generateTimesheets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** CSV of approved timesheets in a range, one row per line. The sheets are marked exported. */
+        post: operations["exportTimesheets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        /** One timesheet with its lines. */
+        get: operations["getTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add hours that sign-in did not capture. A reason is required. Only while the sheet is draft or rejected. */
+        post: operations["addTimesheetLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a line's minutes, break or cost code. A reason is required; a sign-in line becomes an adjusted line. */
+        patch: operations["adjustTimesheetLine"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit for approval. */
+        post: operations["submitTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve and lock the timesheet. */
+        post: operations["approveTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a submitted timesheet back with a reason; it can be edited and submitted again. */
+        post: operations["rejectTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's equipment register. */
+        get: operations["listEquipment"];
+        put?: never;
+        /** Add a machine to the register. */
+        post: operations["createEquipment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a machine or change its status (available, in use, maintenance, retired). */
+        patch: operations["updateEquipment"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment-bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Bookings across the project's equipment that touch a date range. */
+        get: operations["listEquipmentBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book a machine for a date range. Refused when it overlaps another active booking. */
+        post: operations["createEquipmentBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings/{bookingId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+                bookingId: components["parameters"]["EquipmentBookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a booking. */
+        post: operations["cancelEquipmentBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        /** Hours a machine has run, newest first. */
+        get: operations["listEquipmentLogs"];
+        put?: never;
+        /** Log hours a machine ran on a day. */
+        post: operations["logEquipmentHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Shifts in a date range, with the assigned workers. Drafts show only to site managers; a subcontractor sees only its own workers. */
+        get: operations["listShifts"];
+        put?: never;
+        /** Draft a shift at a site. */
+        post: operations["createShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        /** One shift with its assigned workers. */
+        get: operations["getShift"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Offer a draft shift to the workers assigned to it. */
+        post: operations["publishShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a shift. */
+        post: operations["cancelShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add workers to a shift. A worker already on an overlapping shift is refused. */
+        post: operations["assignShiftWorkers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a worker off a shift. */
+        delete: operations["removeShiftAssignment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept or decline an offer, or (site managers, once the shift has begun) record attended or no show. */
+        post: operations["respondToShiftAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/orgs/{orgId}/projects/{projectId}/attendance/sites": {
@@ -6566,6 +7345,26 @@ export interface paths {
         patch: operations["updateIncidentAction"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/incident-actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The corrective actions that came from one inspection or observation, with the incident each belongs to. */
+        get: operations["listIncidentActionsFromSource"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/swms": {
         parameters: {
             query?: never;
@@ -6862,6 +7661,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Retention held, the contract's release terms and what has been released, visible to the payee. */
+        get: operations["getContractRetentionRelease"];
+        /** Set practical completion, the defects period and the share released at practical completion (builder staff). */
+        put: operations["saveContractRetentionTerms"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record retention released to the payee, up to what the stage entitles (append-only). */
+        post: operations["recordRetentionRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations": {
         parameters: {
             query?: never;
@@ -7149,6 +7991,216 @@ export interface paths {
         put?: never;
         /** Withdraw a draft or submitted variation. */
         post: operations["withdrawVariation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/direct-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Direct costs, newest first, with the total of those not voided (ex GST). */
+        get: operations["listDirectCosts"];
+        put?: never;
+        /** Record money spent against a budget line outside a subcontract or purchase order. It adds to the line's actual cost. */
+        post: operations["recordDirectCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        /** One direct cost. */
+        get: operations["getDirectCost"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a direct cost with a reason. The amount comes off the budget line's actual cost. */
+        post: operations["voidDirectCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Subcontracts and purchase orders, newest first. */
+        get: operations["listCommitments"];
+        put?: never;
+        /** Draft a subcontract or purchase order against budget lines. */
+        post: operations["createCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** One commitment with its lines. */
+        get: operations["getCommitment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a draft for approval. */
+        post: operations["submitCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve. Counts as committed cost; past budget needs allowOverBudget and a note. */
+        post: operations["approveCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted commitment. A reason is required. */
+        post: operations["rejectCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a commitment, releasing its committed cost. A reason is required once submitted. */
+        post: operations["voidCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Code a variation to a cost code, or clear it with null. Allowed after approval; not for rejected or withdrawn ones. */
+        put: operations["setVariationCostCode"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -8974,12 +10026,12 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue` or `safety.incident_action_assigned`. */
             kind: string;
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package";
+            entityType: "meeting" | "tender_package" | "contract" | "incident";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -9815,6 +10867,158 @@ export interface components {
             allowedUserIds: string[];
             allowedCompanyIds: string[];
             version: number;
+        };
+        SpecBook: {
+            id: string;
+            projectId: string;
+            name: string;
+            /** Format: date */
+            issuedDate: string | null;
+            fileId: string | null;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            supersededById: string | null;
+            sectionCount: number;
+            version: number;
+        };
+        SpecSection: {
+            id: string;
+            bookId: string;
+            /** @description As the book numbers it, e.g. 03 30 00 */
+            sectionNumber: string;
+            title: string;
+            division: string | null;
+            pageFrom: number;
+            pageTo: number;
+            revision: string | null;
+        };
+        /** @enum {string} */
+        BimDiscipline: "architectural" | "structural" | "mechanical" | "electrical" | "hydraulic" | "fire" | "civil" | "other";
+        /** @enum {string} */
+        CoordinationIssueStatus: "open" | "in_progress" | "resolved" | "closed";
+        /** @enum {string} */
+        CoordinationIssuePriority: "low" | "medium" | "high" | "critical";
+        BimModel: {
+            id: string;
+            projectId: string;
+            name: string;
+            discipline: components["schemas"]["BimDiscipline"];
+            versionLabel: string;
+            fileId: string | null;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            supersededById: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BimModelList: {
+            data: components["schemas"]["BimModel"][];
+        };
+        CreateBimModelRequest: {
+            name: string;
+            discipline: components["schemas"]["BimDiscipline"];
+            versionLabel?: string;
+            fileId?: string;
+            supersedesModelId?: string;
+        };
+        CoordinationIssue: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            status: components["schemas"]["CoordinationIssueStatus"];
+            priority: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            modelId: string | null;
+            elementGuids: string[];
+            location: string;
+            rfiId: string | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            commentCount: number;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CoordinationIssueList: {
+            data: components["schemas"]["CoordinationIssue"][];
+        };
+        CoordinationComment: {
+            id: string;
+            authorId: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CoordinationIssueDetail: {
+            issue: components["schemas"]["CoordinationIssue"];
+            comments: components["schemas"]["CoordinationComment"][];
+        };
+        CreateCoordinationIssueRequest: {
+            title: string;
+            description?: string;
+            priority?: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId?: string;
+            /** Format: date */
+            dueDate?: string;
+            modelId?: string;
+            elementGuids?: string[];
+            location?: string;
+            rfiId?: string;
+        };
+        UpdateCoordinationIssueRequest: {
+            title?: string;
+            description?: string;
+            status?: components["schemas"]["CoordinationIssueStatus"];
+            priority?: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            modelId?: string | null;
+            elementGuids?: string[];
+            location?: string;
+            rfiId?: string | null;
+        };
+        AddCoordinationCommentRequest: {
+            body: string;
+        };
+        SpecBookList: {
+            data: components["schemas"]["SpecBook"][];
+        };
+        SpecBookDetail: {
+            book: components["schemas"]["SpecBook"];
+            sections: components["schemas"]["SpecSection"][];
+        };
+        SpecSectionHit: {
+            section: components["schemas"]["SpecSection"];
+            bookId: string;
+            bookName: string;
+        };
+        SpecSectionHitList: {
+            data: components["schemas"]["SpecSectionHit"][];
+        };
+        CreateSpecBookRequest: {
+            name: string;
+            /** Format: date */
+            issuedDate?: string | null;
+            fileId?: string | null;
+            supersedesBookId?: string | null;
+        };
+        ReplaceSpecSectionsRequest: {
+            sections: {
+                sectionNumber: string;
+                title: string;
+                division?: string | null;
+                pageFrom: number;
+                pageTo: number;
+                revision?: string | null;
+            }[];
         };
         FolderList: {
             data: components["schemas"]["Folder"][];
@@ -11002,6 +12206,18 @@ export interface components {
                 [key: string]: string;
             };
         };
+        CreateCommitmentFromAwardRequest: {
+            budgetLineId: string;
+        };
+        AwardedCommitment: {
+            commitmentId: string;
+            number: number;
+            title: string;
+            /** @description Ex GST */
+            total: string;
+            /** @description False when the quote had already raised this commitment. */
+            created: boolean;
+        };
         AwardedSubcontract: {
             contractId: string;
             number: number;
@@ -11572,6 +12788,50 @@ export interface components {
             data: components["schemas"]["AccountingConnection"][];
             available: components["schemas"]["AccountingProviderName"][];
         };
+        /** @enum {string} */
+        FolderProviderName: "m365" | "google";
+        FolderConnection: {
+            id: string;
+            provider: components["schemas"]["FolderProviderName"];
+            /** @enum {string} */
+            status: "pending" | "active" | "error";
+            tenantId: string | null;
+            lastError: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        FolderConnectionList: {
+            data: components["schemas"]["FolderConnection"][];
+            available: components["schemas"]["FolderProviderName"][];
+        };
+        FolderConnectRequest: {
+            tenantId?: string;
+        };
+        FolderCallbackRequest: {
+            state: string;
+            code?: string;
+        };
+        FolderLink: {
+            id: string;
+            projectId: string;
+            provider: components["schemas"]["FolderProviderName"];
+            folderName: string;
+            webUrl: string | null;
+            /** @enum {string} */
+            status: "active" | "error";
+            lastError: string | null;
+            /** Format: date-time */
+            lastPublishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        FolderLinkList: {
+            data: components["schemas"]["FolderLink"][];
+        };
+        FolderLinkCreate: {
+            provider: components["schemas"]["FolderProviderName"];
+            url?: string;
+        };
         AccountingConnectStart: {
             url: string;
         };
@@ -11880,6 +13140,7 @@ export interface components {
             committed: components["schemas"]["FinancialsMoney"];
             claimed: components["schemas"]["FinancialsMoney"];
             adjustments: components["schemas"]["FinancialsSignedMoney"];
+            directCosts: components["schemas"]["FinancialsMoney"];
             forecastFinal: components["schemas"]["FinancialsSignedMoney"];
             /** @description Revised budget less forecast final cost. Negative is over budget. */
             variance: components["schemas"]["FinancialsSignedMoney"];
@@ -11944,6 +13205,7 @@ export interface components {
             claimedToDate: components["schemas"]["FinancialsMoney"];
             costToComplete: components["schemas"]["FinancialsMoney"];
             projectAdjustments: components["schemas"]["FinancialsSignedMoney"];
+            directCosts: components["schemas"]["FinancialsMoney"];
             forecastFinalCost: components["schemas"]["FinancialsSignedMoney"];
             pendingCostVariations: components["schemas"]["FinancialsMoney"];
             forecastMargin: components["schemas"]["FinancialsSignedMoney"];
@@ -11968,6 +13230,10 @@ export interface components {
             /** Format: date-time */
             decidedAt: string | null;
             decisionNote: string | null;
+            costCodeId: string | null;
+        };
+        SetVariationCostCodeRequest: {
+            costCodeId: string | null;
         };
         /** @enum {string} */
         TrustStatus: "not_required" | "not_set_up" | "ok" | "shortfall";
@@ -12054,6 +13320,55 @@ export interface components {
             totalPaid: components["schemas"]["FinancialsSignedMoney"];
             trust: components["schemas"]["ContractTrust"];
         };
+        /** @enum {string} */
+        RetentionStage: "practical_completion" | "defects_end";
+        /** @enum {string} */
+        RetentionStageStatus: "awaiting_date" | "upcoming" | "due" | "released";
+        RetentionRelease: {
+            contractId: string;
+            terms: {
+                /** Format: date */
+                practicalCompletionOn: string | null;
+                defectsPeriodDays: number | null;
+                firstReleasePct: string;
+            };
+            retentionHeld: components["schemas"]["FinancialsMoney"];
+            stages: {
+                stage: components["schemas"]["RetentionStage"];
+                /** Format: date */
+                dueOn: string | null;
+                entitled: components["schemas"]["FinancialsMoney"];
+                released: components["schemas"]["FinancialsMoney"];
+                remaining: components["schemas"]["FinancialsMoney"];
+                status: components["schemas"]["RetentionStageStatus"];
+            }[];
+            releases: {
+                stage: components["schemas"]["RetentionStage"];
+                amount: components["schemas"]["FinancialsMoney"];
+                /** Format: date */
+                releasedOn: string;
+                reference: string;
+                note: string | null;
+                /** Format: date-time */
+                recordedAt: string;
+            }[];
+        };
+        SaveRetentionTermsRequest: {
+            /** Format: date */
+            practicalCompletionOn?: string | null;
+            defectsPeriodDays?: number | null;
+            firstReleasePct?: string;
+        };
+        RecordRetentionReleaseRequest: {
+            stage: components["schemas"]["RetentionStage"];
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            releasedOn: string;
+            reference: string;
+            note?: string;
+            /** @description Take the release out of the contract's trust account too. Default: yes when a trust account is recorded. The release is refused if the account holds less than the amount. */
+            fromTrust?: boolean;
+        };
         VariationList: {
             data: components["schemas"]["Variation"][];
             approvedTotal: components["schemas"]["FinancialsMoney"];
@@ -12063,9 +13378,98 @@ export interface components {
             description?: string;
             amount: components["schemas"]["FinancialsMoney"];
             timeImpactDays?: number;
+            costCodeId?: string;
         };
         VariationDecisionRequest: {
             note?: string;
+        };
+        /** @enum {string} */
+        CommitmentStatus: "draft" | "submitted" | "approved" | "rejected" | "void";
+        Commitment: {
+            id: string;
+            number: number;
+            /** @enum {string} */
+            kind: "subcontract" | "purchase_order";
+            title: string;
+            vendorCompanyId: string | null;
+            status: components["schemas"]["CommitmentStatus"];
+            total: components["schemas"]["FinancialsMoney"];
+            overBudgetOverride: boolean;
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+        };
+        CommitmentLine: {
+            budgetLineId: string;
+            description: string;
+            amount: components["schemas"]["FinancialsMoney"];
+        };
+        CommitmentDetail: {
+            commitment: components["schemas"]["Commitment"];
+            lines: components["schemas"]["CommitmentLine"][];
+        };
+        /** @enum {string} */
+        DirectCostCategory: "labour" | "materials" | "plant" | "fees" | "other";
+        DirectCost: {
+            id: string;
+            number: number;
+            budgetLineId: string;
+            category: components["schemas"]["DirectCostCategory"];
+            description: string;
+            supplier: string | null;
+            reference: string | null;
+            /** Format: date */
+            incurredOn: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            gst: components["schemas"]["FinancialsMoney"];
+            /** @enum {string} */
+            status: "recorded" | "void";
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DirectCostList: {
+            data: components["schemas"]["DirectCost"][];
+            total: components["schemas"]["FinancialsMoney"];
+        };
+        RecordDirectCostRequest: {
+            budgetLineId: string;
+            category: components["schemas"]["DirectCostCategory"];
+            description: string;
+            supplier?: string;
+            reference?: string;
+            /** Format: date */
+            incurredOn: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            gst?: components["schemas"]["FinancialsMoney"];
+        };
+        VoidDirectCostRequest: {
+            note: string;
+        };
+        CommitmentList: {
+            data: components["schemas"]["Commitment"][];
+        };
+        CreateCommitmentRequest: {
+            /** @enum {string} */
+            kind: "subcontract" | "purchase_order";
+            title: string;
+            vendorCompanyId?: string | null;
+            lines: {
+                budgetLineId: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        CommitmentDecisionRequest: {
+            note?: string;
+        };
+        CommitmentApprovalRequest: {
+            note?: string;
+            allowOverBudget?: boolean;
         };
         /** @enum {string} */
         PaymentClaimStatus: "submitted" | "scheduled" | "paid" | "disputed" | "adjudication" | "withdrawn";
@@ -12597,6 +14001,191 @@ export interface components {
             gate: components["schemas"]["Gate"];
             /** @description The secret printed on the gate poster as a QR. Shown only once; reissue to get a new one. */
             code: string;
+        };
+        /** @enum {string} */
+        ShiftStatus: "draft" | "published" | "cancelled";
+        /** @enum {string} */
+        ShiftAssignmentStatus: "offered" | "accepted" | "declined" | "no_show" | "attended";
+        ShiftAssignment: {
+            id: string;
+            shiftId: string;
+            workerId: string;
+            companyId: string | null;
+            status: components["schemas"]["ShiftAssignmentStatus"];
+            /** Format: date-time */
+            notifiedAt: string | null;
+            /** Format: date-time */
+            respondedAt: string | null;
+        };
+        /** @enum {string} */
+        TimesheetStatus: "draft" | "submitted" | "approved" | "rejected" | "exported";
+        TimesheetLine: {
+            id: string;
+            minutes: number;
+            breakMinutes: number;
+            costCodeId: string | null;
+            /** @enum {string} */
+            source: "attendance" | "manual" | "adjusted";
+            adjustedReason: string | null;
+        };
+        Timesheet: {
+            id: string;
+            workerId: string;
+            companyId: string | null;
+            /**
+             * Format: date
+             * @description The day in the project's time zone.
+             */
+            date: string;
+            status: components["schemas"]["TimesheetStatus"];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            rejectionReason: string | null;
+            /** @description Minutes worked less breaks. */
+            paidMinutes: number;
+            paidHours: string;
+            lines: components["schemas"]["TimesheetLine"][];
+        };
+        TimesheetList: {
+            data: components["schemas"]["Timesheet"][];
+        };
+        DateRangeRequest: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+        };
+        GenerateTimesheetsResult: {
+            sheetsCreated: number;
+            linesAdded: number;
+        };
+        TimesheetExport: {
+            filename: string;
+            csv: string;
+            /** @description Timesheets included */
+            count: number;
+        };
+        AddTimesheetLineRequest: {
+            minutes: number;
+            breakMinutes?: number;
+            costCodeId?: string;
+            reason: string;
+        };
+        AdjustTimesheetLineRequest: {
+            minutes?: number;
+            breakMinutes?: number;
+            costCodeId?: string | null;
+            reason: string;
+        };
+        RejectTimesheetRequest: {
+            reason: string;
+        };
+        /** @enum {string} */
+        EquipmentStatus: "available" | "in_use" | "maintenance" | "retired";
+        Equipment: {
+            id: string;
+            name: string;
+            assetNumber: string;
+            type: string;
+            status: components["schemas"]["EquipmentStatus"];
+            version: number;
+        };
+        EquipmentList: {
+            data: components["schemas"]["Equipment"][];
+        };
+        CreateEquipmentRequest: {
+            name: string;
+            assetNumber: string;
+            type: string;
+        };
+        UpdateEquipmentRequest: {
+            name?: string;
+            type?: string;
+            status?: components["schemas"]["EquipmentStatus"];
+        };
+        EquipmentBooking: {
+            id: string;
+            equipmentId: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            bookedFor: string;
+            note: string | null;
+            /** @enum {string} */
+            status: "active" | "cancelled";
+        };
+        EquipmentBookingList: {
+            data: components["schemas"]["EquipmentBooking"][];
+        };
+        CreateEquipmentBookingRequest: {
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            bookedFor: string;
+            note?: string;
+        };
+        EquipmentLog: {
+            id: string;
+            equipmentId: string;
+            /** Format: date */
+            date: string;
+            hours: string;
+            operator: string | null;
+            notes: string | null;
+        };
+        EquipmentLogList: {
+            data: components["schemas"]["EquipmentLog"][];
+        };
+        LogEquipmentHoursRequest: {
+            /** Format: date */
+            date: string;
+            /** @description In quarter hours */
+            hours: string;
+            operator?: string;
+            notes?: string;
+        };
+        Shift: {
+            id: string;
+            siteId: string;
+            crew: string | null;
+            trade: string;
+            note: string | null;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            requiredHeadcount: number;
+            /** @description Workers assigned who have not declined, across all companies. */
+            filled: number;
+            status: components["schemas"]["ShiftStatus"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            assignments: components["schemas"]["ShiftAssignment"][];
+        };
+        ShiftList: {
+            data: components["schemas"]["Shift"][];
+        };
+        CreateShiftRequest: {
+            siteId: string;
+            crew?: string;
+            trade: string;
+            note?: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            requiredHeadcount: number;
+        };
+        AssignShiftWorkersRequest: {
+            workerIds: string[];
+        };
+        RespondToShiftRequest: {
+            /** @enum {string} */
+            status: "accepted" | "declined" | "attended" | "no_show";
         };
         AttendanceSite: {
             id: string;
@@ -14041,6 +15630,15 @@ export interface components {
             closeBlockers: components["schemas"]["IncidentCloseBlocker"][];
             canManage: boolean;
         };
+        IncidentActionFromSource: {
+            action: components["schemas"]["IncidentAction"];
+            incidentId: string;
+            incidentNumberLabel: string;
+            incidentTitle: string;
+        };
+        IncidentActionFromSourceList: {
+            data: components["schemas"]["IncidentActionFromSource"][];
+        };
         IncidentPage: {
             data: components["schemas"]["Incident"][];
             nextCursor: string | null;
@@ -14253,6 +15851,11 @@ export interface components {
         };
     };
     parameters: {
+        TimesheetId: string;
+        EquipmentId: string;
+        EquipmentBookingId: string;
+        ShiftId: string;
+        ShiftAssignmentId: string;
         InspectionTemplateId: string;
         InspectionId: string;
         ObservationId: string;
@@ -14262,6 +15865,7 @@ export interface components {
         OrgId: string;
         ProjectId: string;
         FileId: string;
+        SpecBookId: string;
         FolderId: string;
         DocumentId: string;
         DrawingSetId: string;
@@ -14272,6 +15876,7 @@ export interface components {
         SubmittalId: string;
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
+        CoordinationIssueId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -14279,6 +15884,8 @@ export interface components {
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
+        DirectCostId: string;
+        CommitmentId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
         DefectId: string;
@@ -14292,6 +15899,7 @@ export interface components {
         ApiTokenId: string;
         NotificationId: string;
         AccountingProvider: "xero" | "myob";
+        FolderProvider: "m365" | "google";
         SyncIssueId: string;
         WebhookId: string;
         ImportJobId: string;
@@ -15943,6 +17551,349 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Folder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSpecBooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Books */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSpecBook: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpecBookRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSpecBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    replaceSpecSections: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceSpecSectionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchSpecSections: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecSectionHitList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBimModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BimModelList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBimModel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBimModelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BimModel"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCoordinationIssues: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CoordinationIssueStatus"];
+                modelId?: string;
+                q?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCoordinationIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCoordinationIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addCoordinationIssueComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddCoordinationCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -18608,6 +20559,35 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    createCommitmentFromAward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommitmentFromAwardRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardedCommitment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getQuoteComparison: {
         parameters: {
             query?: never;
@@ -19878,6 +21858,182 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WebhookDeliveryList"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFolderConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderConnectionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    disconnectFolders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startFolderConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FolderConnectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnectStart"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeFolderConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderConnection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFolderLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createFolderLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderLinkCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteFolderLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unlinked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -21988,6 +24144,706 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaryStandDown"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listTimesheets: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                status?: components["schemas"]["TimesheetStatus"];
+                workerId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimesheetList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    generateTimesheets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DateRangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateTimesheetsResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    exportTimesheets: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DateRangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimesheetExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addTimesheetLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTimesheetLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    adjustTimesheetLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustTimesheetLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectTimesheetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEquipment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEquipmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEquipment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEquipmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipmentBookings: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentBookingList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEquipmentBooking: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEquipmentBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentBooking"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelEquipmentBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+                bookingId: components["parameters"]["EquipmentBookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentBooking"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipmentLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentLogList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logEquipmentHours: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogEquipmentHoursRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentLog"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listShifts: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                siteId?: string;
+                status?: components["schemas"]["ShiftStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createShift: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishShift: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelShift: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    assignShiftWorkers: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignShiftWorkersRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeShiftAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondToShiftAssignment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondToShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -25159,6 +28015,33 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listIncidentActionsFromSource: {
+        parameters: {
+            query: {
+                sourceType: "inspection" | "observation";
+                sourceId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentActionFromSourceList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listSwms: {
         parameters: {
             query?: {
@@ -25661,6 +28544,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractRetentionRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveContractRetentionTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRetentionTermsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordRetentionRelease: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordRetentionReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -26177,6 +29145,346 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Variation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDirectCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCostList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordDirectCost: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordDirectCostRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCost"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDirectCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCost"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidDirectCost: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidDirectCostRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCost"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCommitments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommitmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setVariationCostCode: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetVariationCostCodeRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

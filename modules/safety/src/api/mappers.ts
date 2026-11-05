@@ -2,6 +2,7 @@ import { encodeId } from '@archova/domain';
 import type {
   Incident,
   IncidentAction,
+  IncidentActionFromSource,
   IncidentDetail,
   Swms,
   SwmsDetail,
@@ -122,6 +123,15 @@ export const toActionDto = (a: ActionData): IncidentAction => ({
   completedAt: iso(a.completedAt),
   verifiedAt: iso(a.verifiedAt),
   version: a.version,
+});
+
+export const toActionFromSource = (
+  r: Awaited<ReturnType<IncidentService['actionsFromSource']>>[number],
+): IncidentActionFromSource => ({
+  action: toActionDto(r),
+  incidentId: encodeId('incident', r.incidentId),
+  incidentNumberLabel: incidentLabel(r.incidentNumber),
+  incidentTitle: r.incidentTitle,
 });
 
 export const toIncidentDetail = (d: IncidentDetailData): IncidentDetail => ({

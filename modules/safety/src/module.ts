@@ -3,6 +3,7 @@ import { createIncidentService } from './application/incidents';
 import { createSwmsService, type SafetyDeps } from './application/swms';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
+import { incidentSyncCommands } from './sync';
 
 export type { SafetyDeps } from './application/swms';
 
@@ -13,6 +14,8 @@ export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
     routes: safetyRoutes(services.database, swms, incidents),
     api: {
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: incidentSyncCommands(incidents, deps),
       /** "Stop work: SWMS not followed" (r300). Called by `quality` only, from an observation. */
       reopenForReview: swms.reopenForReview,
       /** Whether a SWMS is on the project, for observations that link to one. Called by `quality` only. */

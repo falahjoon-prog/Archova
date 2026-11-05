@@ -12,6 +12,7 @@ import { createDrawingService } from './application/drawings';
 import { createGeometryService } from './application/geometry';
 import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
+import { createSpecService } from './application/specs';
 import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
 import { createTransmittalLinkService } from './application/transmittal-links';
@@ -46,6 +47,7 @@ export function createDocumentsModule(
   const documents = createDocumentService(c, folders);
   const drawings = createDrawingService(c);
   const markups = createMarkupService(c, drawings);
+  const specs = createSpecService(c);
   const geometry = createGeometryService(drawings);
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
@@ -93,6 +95,7 @@ export function createDocumentsModule(
       documents,
       drawings,
       markups,
+      specs,
       geometry,
       tiles,
       transmittals,
@@ -103,6 +106,8 @@ export function createDocumentsModule(
       logger: services.logger,
     }),
     api: {
+      /** For folder links (integrations/03 M2): each sheet's current revision, to publish what is already issued. */
+      currentDrawingRevisions: drawings.currentRevisions,
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
       /** The drawing register and revisions the mobile pull reads (modules/sync). */

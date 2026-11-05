@@ -9,8 +9,10 @@ import {
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
+  IncidentsIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
+  FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
@@ -27,6 +29,7 @@ import {
   InductionsIcon,
   RfisIcon,
   SubmittalsIcon,
+  CoordinationIcon,
   CorrespondenceIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -115,6 +118,11 @@ export function projectToolGroups(
       icon: DrawingsIcon,
     },
     canRead('documents') && {
+      href: webRoutes.specifications(orgSlug, projectId),
+      label: 'Specifications',
+      icon: DocumentsIcon,
+    },
+    canRead('documents') && {
       href: webRoutes.transmittals(orgSlug, projectId),
       label: 'Transmittals',
       icon: TransmittalsIcon,
@@ -129,6 +137,11 @@ export function projectToolGroups(
       href: webRoutes.correspondence(orgSlug, projectId),
       label: 'Correspondence',
       icon: CorrespondenceIcon,
+    },
+    canRead('coordination') && {
+      href: webRoutes.coordination(orgSlug, projectId),
+      label: 'Coordination',
+      icon: CoordinationIcon,
     },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),
@@ -195,6 +208,11 @@ export function projectToolGroups(
       label: 'SWMS',
       icon: SwmsIcon,
     },
+    canRead('inspections') && {
+      href: webRoutes.incidents(orgSlug, projectId),
+      label: 'Incidents',
+      icon: IncidentsIcon,
+    },
     canRead('owner_portal') && {
       href: webRoutes.ownerPortal(orgSlug, projectId),
       label: 'Owner portal',
@@ -209,6 +227,11 @@ export function projectToolGroups(
       href: webRoutes.imports(orgSlug, projectId),
       label: 'Imports',
       icon: ImportsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.folderLinks(orgSlug, projectId),
+      label: 'SharePoint and Drive',
+      icon: FolderLinksIcon,
     },
   ];
   return [

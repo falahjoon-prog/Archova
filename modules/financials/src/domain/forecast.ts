@@ -31,6 +31,8 @@ export interface ProjectForecast {
   claimedCents: number;
   costToCompleteCents: number;
   projectAdjustmentsCents: number;
+  /** Direct costs recorded (not voided): already spent, nothing left to complete. */
+  directCostsCents: number;
   forecastFinalCostCents: number;
   pendingCostExposureCents: number;
   revenueCents: number;
@@ -52,6 +54,7 @@ export function computeForecast(
   commitments: CommitmentInput[],
   heads: HeadInput[],
   adjustments: AdjustmentInput[],
+  directCostsCents = 0,
 ): ProjectForecast {
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
   const rows: CommitmentForecast[] = commitments.map((c) => {
@@ -77,7 +80,7 @@ export function computeForecast(
       .filter((a) => a.contractId === null || !known.has(a.contractId))
       .map((a) => a.amountCents),
   );
-  const cost = sum(rows.map((r) => r.forecastFinalCents)) + projectAdj;
+  const cost = sum(rows.map((r) => r.forecastFinalCents)) + projectAdj + directCostsCents;
   const revenue = sum(heads.map((h) => h.originalCents + h.approvedVariationCents));
   const margin = revenue - cost;
   return {
@@ -86,6 +89,7 @@ export function computeForecast(
     claimedCents: sum(rows.map((r) => r.claimedCents)),
     costToCompleteCents: sum(rows.map((r) => r.costToCompleteCents)),
     projectAdjustmentsCents: projectAdj,
+    directCostsCents,
     forecastFinalCostCents: cost,
     pendingCostExposureCents: sum(rows.map((r) => r.pendingVariationCents)),
     revenueCents: revenue,

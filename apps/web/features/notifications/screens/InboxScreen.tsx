@@ -18,6 +18,8 @@ function target(orgSlug: string, n: Notification): string | null {
   if (n.entityType === 'meeting') return webRoutes.meeting(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'tender_package')
     return webRoutes.tenderPackage(orgSlug, n.projectId, n.entityId);
+  if (n.entityType === 'contract') return webRoutes.contract(orgSlug, n.projectId, n.entityId);
+  if (n.entityType === 'incident') return webRoutes.incidents(orgSlug, n.projectId, n.entityId);
   return null;
 }
 

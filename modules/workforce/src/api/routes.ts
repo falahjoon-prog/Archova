@@ -14,6 +14,12 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { EquipmentService } from '../application/equipment';
+import type { TimesheetService } from '../application/timesheet';
+import { toTimesheetDto } from './timesheet-mappers';
+import type { RosterService } from '../application/roster';
+import { toBookingDto, toEquipmentDto, toLogDto } from './equipment-mappers';
+import { toShiftDto } from './roster-mappers';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
 import {
@@ -96,6 +102,9 @@ export function workforceRoutes(
   links: InductionLinkService,
   wallet: WalletService,
   grants: WalletGrantService,
+  roster: RosterService,
+  equip: EquipmentService,
+  sheets: TimesheetService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -117,7 +126,261 @@ export function workforceRoutes(
   const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
     input.cookies[ACCESS_LINK_COOKIE];
 
+  const shiftId = (p: { shiftId: string }) => id('shift', p.shiftId, 'workforce_shift.not_found');
+  const assignmentId = (p: { assignmentId: string }) =>
+    id('shiftAssignment', p.assignmentId, 'workforce_shift.assignment_not_found');
+
+  const sheetId = (p: { timesheetId: string }) =>
+    id('timesheet', p.timesheetId, 'workforce_timesheet.not_found');
+  const lineId = (p: { lineId: string }) =>
+    id('timesheetLine', p.lineId, 'workforce_timesheet.line_not_found');
+  const equipId = (p: { equipmentId: string }) =>
+    id('equipment', p.equipmentId, 'workforce_equipment.not_found');
+  const bookingId = (p: { bookingId: string }) =>
+    id('equipmentBooking', p.bookingId, 'workforce_equipment.booking_not_found');
+
   return defineRoutes({
+    listTimesheets: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        sheets.list(s, project(input.params), {
+          from: q.from,
+          to: q.to,
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.workerId ? { workerId: ref('worker', q.workerId, 'workerId') } : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toTimesheetDto) } };
+    },
+    generateTimesheets: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) => sheets.generate(s, project(input.params), input.body)),
+    }),
+    exportTimesheets: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) => sheets.exportCsv(s, project(input.params), input.body)),
+    }),
+    getTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await read(input, (s) => sheets.get(s, project(input.params), sheetId(input.params))),
+      ),
+    }),
+    addTimesheetLine: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) =>
+          sheets.addLine(s, project(input.params), sheetId(input.params), {
+            minutes: input.body.minutes,
+            ...(input.body.breakMinutes !== undefined
+              ? { breakMinutes: input.body.breakMinutes }
+              : {}),
+            ...(input.body.costCodeId
+              ? { costCodeId: ref('costCode', input.body.costCodeId, 'costCodeId') }
+              : {}),
+            reason: input.body.reason,
+          }),
+        ),
+      ),
+    }),
+    adjustTimesheetLine: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) =>
+          sheets.adjustLine(s, project(input.params), sheetId(input.params), lineId(input.params), {
+            ...(input.body.minutes !== undefined ? { minutes: input.body.minutes } : {}),
+            ...(input.body.breakMinutes !== undefined
+              ? { breakMinutes: input.body.breakMinutes }
+              : {}),
+            ...(input.body.costCodeId !== undefined
+              ? {
+                  costCodeId: input.body.costCodeId
+                    ? ref('costCode', input.body.costCodeId, 'costCodeId')
+                    : null,
+                }
+              : {}),
+            reason: input.body.reason,
+          }),
+        ),
+      ),
+    }),
+    submitTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) => sheets.submit(s, project(input.params), sheetId(input.params))),
+      ),
+    }),
+    approveTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) => sheets.approve(s, project(input.params), sheetId(input.params))),
+      ),
+    }),
+    rejectTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) =>
+          sheets.reject(s, project(input.params), sheetId(input.params), input.body.reason),
+        ),
+      ),
+    }),
+    listEquipment: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => equip.list(s, project(input.params)))).map(toEquipmentDto),
+      },
+    }),
+    createEquipment: async (input) => ({
+      status: 201,
+      body: toEquipmentDto(
+        await tx(input, (s) => equip.create(s, project(input.params), input.body)),
+      ),
+    }),
+    updateEquipment: async (input) => ({
+      status: 200,
+      body: toEquipmentDto(
+        await tx(input, (s) =>
+          equip.update(s, project(input.params), equipId(input.params), input.body),
+        ),
+      ),
+    }),
+    listEquipmentBookings: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            equip.bookings(s, project(input.params), {
+              ...(input.query.from ? { from: input.query.from } : {}),
+              ...(input.query.to ? { to: input.query.to } : {}),
+            }),
+          )
+        ).map(toBookingDto),
+      },
+    }),
+    createEquipmentBooking: async (input) => ({
+      status: 201,
+      body: toBookingDto(
+        await tx(input, (s) =>
+          equip.book(s, project(input.params), equipId(input.params), input.body),
+        ),
+      ),
+    }),
+    cancelEquipmentBooking: async (input) => ({
+      status: 200,
+      body: toBookingDto(
+        await tx(input, (s) =>
+          equip.cancelBooking(
+            s,
+            project(input.params),
+            equipId(input.params),
+            bookingId(input.params),
+          ),
+        ),
+      ),
+    }),
+    listEquipmentLogs: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) => equip.logs(s, project(input.params), equipId(input.params)))
+        ).map(toLogDto),
+      },
+    }),
+    logEquipmentHours: async (input) => ({
+      status: 201,
+      body: toLogDto(
+        await tx(input, (s) =>
+          equip.logHours(s, project(input.params), equipId(input.params), input.body),
+        ),
+      ),
+    }),
+    listShifts: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        roster.listShifts(s, project(input.params), {
+          ...(q.from ? { from: new Date(q.from) } : {}),
+          ...(q.to ? { to: new Date(q.to) } : {}),
+          ...(q.siteId ? { siteId: ref('workforceSite', q.siteId, 'siteId') } : {}),
+          ...(q.status ? { status: q.status } : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toShiftDto) } };
+    },
+    createShift: async (input) => {
+      const b = input.body;
+      const d = await tx(input, (s) =>
+        roster.createShift(s, project(input.params), {
+          siteId: ref('workforceSite', b.siteId, 'siteId'),
+          ...(b.crew ? { crew: b.crew } : {}),
+          trade: b.trade,
+          ...(b.note ? { note: b.note } : {}),
+          startsAt: new Date(b.startsAt),
+          endsAt: new Date(b.endsAt),
+          requiredHeadcount: b.requiredHeadcount,
+        }),
+      );
+      return { status: 201, body: toShiftDto(d) };
+    },
+    getShift: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await read(input, (s) => roster.getShift(s, project(input.params), shiftId(input.params))),
+      ),
+    }),
+    publishShift: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.publishShift(s, project(input.params), shiftId(input.params)),
+        ),
+      ),
+    }),
+    cancelShift: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) => roster.cancelShift(s, project(input.params), shiftId(input.params))),
+      ),
+    }),
+    assignShiftWorkers: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.assign(
+            s,
+            project(input.params),
+            shiftId(input.params),
+            input.body.workerIds.map((w, i) => ref('worker', w, `workerIds/${i}`)),
+          ),
+        ),
+      ),
+    }),
+    removeShiftAssignment: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.unassign(
+            s,
+            project(input.params),
+            shiftId(input.params),
+            assignmentId(input.params),
+          ),
+        ),
+      ),
+    }),
+    respondToShiftAssignment: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.respond(
+            s,
+            project(input.params),
+            shiftId(input.params),
+            assignmentId(input.params),
+            input.body.status,
+          ),
+        ),
+      ),
+    }),
     listAttendanceSites: async (input) => {
       const rows = await read(input, (s) => svc.listSites(s, project(input.params)));
       return { status: 200, body: { data: rows.map((r) => toSiteDto(r.site, r.gates)) } };

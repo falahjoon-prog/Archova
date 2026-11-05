@@ -24,7 +24,7 @@ import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-back
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
 import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
-import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
+import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
@@ -44,6 +44,7 @@ import {
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
+import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
@@ -68,6 +69,7 @@ export const MODULE_PERMISSIONS = [
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
+  BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
@@ -253,6 +255,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     logger: services.logger,
   });
 
+  const bim = createBimModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    rfis: rfis.api,
+  });
+
   const ownerportal = createOwnerPortalModule(services, {
     access: access.api,
     platform: platform.api,
@@ -265,10 +274,17 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
   });
 
+  // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
+  // inspection or observation), so safety asks for it lazily.
+  let qualityApi: QualityApi | null = null;
   const safety = createSafetyModule(services, {
     access: access.api,
     platform: platform.api,
     files: files.api,
+    sources: {
+      exists: (scope, projectId, type, sourceId) =>
+        qualityApi!.sourceExists(scope, projectId, type, sourceId),
+    },
   });
 
   const quality = createQualityModule(services, {
@@ -277,6 +293,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     safety: safety.api,
   });
+  qualityApi = quality.api;
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
@@ -399,7 +416,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ],
     commands: [
       ...defects.api.syncCommands,
+      ...diary.api.syncCommands,
       ...quality.api.syncCommands,
+      ...safety.api.syncCommands,
       ...documents.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,
@@ -420,6 +439,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     defects,
     meetings,
     ownerportal,
+    bim,
     notifications,
     financials,
     quality,
@@ -456,6 +476,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     defects,
     meetings,
     ownerportal,
+    bim,
     notifications,
     financials,
     quality,

@@ -131,7 +131,8 @@ export const toCredentialDto = (c: CredentialRow): WorkerCredential => ({
   id: encodeId('workerCredential', c.id),
   workerId: encodeId('worker', c.workerId),
   kind: c.kind,
-  number: c.number,
+  // Only the last four characters are stored (compliance/05 §7); show them masked.
+  number: `•••• ${c.numberLast4}`,
   issuingState: c.issuingState as WorkerCredential['issuingState'],
   licenceClass: c.licenceClass,
   issuedOn: c.issuedOn,

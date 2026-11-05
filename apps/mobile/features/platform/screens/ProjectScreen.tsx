@@ -76,6 +76,11 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.inspections(projectId))}
       />
       <ListItem
+        title="Report an incident"
+        subtitle="Log an injury or near miss, offline"
+        onPress={() => router.push(mobileRoutes.incidents(projectId))}
+      />
+      <ListItem
         title="Site sign-in"
         subtitle="Scan the gate code to sign in or out"
         onPress={() => router.push(mobileRoutes.siteSignIn(projectId))}
@@ -94,6 +99,11 @@ export function ProjectScreen({
         title="Meetings"
         subtitle="Your open actions and the minutes"
         onPress={() => router.push(mobileRoutes.meetings(projectId))}
+      />
+      <ListItem
+        title="Tenders"
+        subtitle="Packages you are invited to, and your quotes"
+        onPress={() => router.push(mobileRoutes.tenders(projectId))}
       />
       <ListItem
         title="Owner portal"

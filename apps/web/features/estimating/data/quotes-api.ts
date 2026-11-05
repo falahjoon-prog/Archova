@@ -410,6 +410,17 @@ export function createQuotesApi(orgId: string): QuotesSource {
       return { contractId: r.contractId, number: r.number, created: r.created };
     },
 
+    async createCommitment(projectId, packageId, budgetLineId) {
+      await ensureCsrfToken();
+      const r = unwrap(
+        await api.POST(`${PKG}/commitment`, {
+          params: { path: { orgId, projectId, packageId } },
+          body: { budgetLineId },
+        }),
+      );
+      return { commitmentId: r.commitmentId, number: r.number, total: r.total, created: r.created };
+    },
+
     async askNova(projectId, packageId, { quoteId, targetCents, topic, question }) {
       await ensureCsrfToken();
       const advice = unwrap(

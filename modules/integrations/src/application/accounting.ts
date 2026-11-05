@@ -10,6 +10,7 @@ import {
   createTokenSession,
   createXeroProvider,
   exchangeCode,
+  ledgerReference,
   listTargets,
   newPkce,
   refreshTokens,
@@ -22,6 +23,12 @@ import {
   type TokenSet,
   type TokenVault,
 } from '../domain/accounting';
+import type {
+  FolderProvider,
+  FolderProviderName,
+  GoogleCredentials,
+  M365Credentials,
+} from '../domain/folders';
 import {
   accountingConnections,
   accountingContacts,
@@ -42,6 +49,7 @@ export interface LedgerSourceInput {
   kind: 'bill' | 'invoice';
   localType: 'payment_schedule' | 'claim';
   localId: string;
+  projectId: string;
   contractNumber: number;
   claimNumber: number;
   counterparty: { companyId: string; name: string; abn: string | null } | null;
@@ -72,6 +80,11 @@ export interface AccountingDeps {
    */
   database?: Database;
   now?: () => Date;
+  /** SharePoint and Google Drive folder links share this vault, fetch and redirect base (integrations/03, 04). */
+  folders?: {
+    credentials: { m365: M365Credentials | null; google: GoogleCredentials | null };
+    providerOverride?: (provider: FolderProviderName) => FolderProvider;
+  };
 }
 
 const DEFAULT_SETTINGS: ConnectionSettings = {
@@ -614,7 +627,20 @@ export function createAccountingService(deps: AccountingDeps) {
   ): Promise<'skipped' | 'created' | 'updated' | 'locked' | 'issue'> {
     const row = await find(scope, provider);
     if (!row || row.status !== 'active') return 'skipped';
-    const reference = `PC-${src.contractNumber}-${src.claimNumber}`;
+    // A document already pushed keeps the reference it went out with (it may predate the project key), so a re-push
+    // finds and updates it instead of creating a second one.
+    const [pushed] = await scope.tx
+      .select({ reference: accountingDocuments.reference })
+      .from(accountingDocuments)
+      .where(
+        and(
+          eq(accountingDocuments.connectionId, row.id),
+          eq(accountingDocuments.localType, src.localType),
+          eq(accountingDocuments.localId, src.localId),
+        ),
+      )
+      .limit(1);
+    const reference = pushed?.reference ?? ledgerReference(src);
     const wanted = src.kind === 'bill' ? row.settings.pushBills : row.settings.pushInvoices;
     if (!wanted || (row.settings.startDate && src.date < row.settings.startDate)) return 'skipped';
     if (!src.counterparty) {
@@ -700,7 +726,8 @@ export function createAccountingService(deps: AccountingDeps) {
    * Pulls payments on documents we pushed (A7) and stores new ones. Returns the new payments, each with the local claim
    * or payment schedule it belongs to when exactly one pushed document carries its reference, so the caller (the
    * claims module) can record them. Re-running never duplicates a payment. A reversal is kept only when the payment it
-   * undoes was seen before. A reference that matches several documents (the same `PC-` number in two projects) is a
+   * undoes was seen before. A reference that matches several documents (only possible for documents pushed before
+   * references carried a project key) is a
    * sync issue, not a guess.
    */
   async function pullPayments(

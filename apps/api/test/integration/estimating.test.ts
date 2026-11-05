@@ -240,6 +240,13 @@ describe('tender packages and quotes (product/10)', () => {
     expect(
       (await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`)).json().code,
     ).toBe('tender.invalid_state');
+    expect(
+      (
+        await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/commitment`, {
+          budgetLineId: 'bln_00000000000000000000000000',
+        })
+      ).json().code,
+    ).toBe('tender.invalid_state');
     const noReason = await s.pm.browser.post(
       `${s.base}/tender-packages/${pkg.id}/award`,
       { quoteId: qb.json().id },
@@ -281,6 +288,50 @@ describe('tender packages and quotes (product/10)', () => {
       payeeCompanyId: s.coB.companyId,
       originalValue: raised.json().originalValue,
     });
+
+    // The same award can raise the budget commitment against a chosen budget line, once.
+    const code = (
+      await s.pm.browser.post(`${s.base}/cost-codes`, { code: '09-200', description: 'Tiling' })
+    ).json();
+    await s.pm.browser.post(`${s.base}/budget`);
+    const line = (
+      await s.pm.browser.post(`${s.base}/budget/lines`, {
+        costCodeId: code.id,
+        original: '90000.00',
+      })
+    ).json();
+    const raisedCommitment = await s.pm.browser.post(
+      `${s.base}/tender-packages/${pkg.id}/commitment`,
+      { budgetLineId: line.id },
+    );
+    expect(raisedCommitment.statusCode).toBe(200);
+    expect(raisedCommitment.json()).toMatchObject({
+      created: true,
+      total: raised.json().originalValue,
+    });
+    const repeatCommitment = await s.pm.browser.post(
+      `${s.base}/tender-packages/${pkg.id}/commitment`,
+      { budgetLineId: line.id },
+    );
+    expect(repeatCommitment.json()).toMatchObject({
+      created: false,
+      commitmentId: raisedCommitment.json().commitmentId,
+    });
+    const commitment = await s.pm.browser.get(
+      `${s.base}/commitments/${raisedCommitment.json().commitmentId}`,
+    );
+    expect(commitment.json().commitment).toMatchObject({
+      kind: 'subcontract',
+      status: 'draft',
+      vendorCompanyId: s.coB.companyId,
+    });
+    expect(
+      (
+        await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/commitment`, {
+          budgetLineId: line.id,
+        })
+      ).statusCode,
+    ).toBeGreaterThanOrEqual(400);
 
     // After the award: no more quotes, no edits, and the winning quote can't be declined.
     const late = await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/quotes`, {

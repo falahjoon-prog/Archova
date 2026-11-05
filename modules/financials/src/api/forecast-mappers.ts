@@ -23,6 +23,7 @@ export function toForecastDto(d: Awaited<ReturnType<ForecastService['costForecas
     claimedToDate: fromCents(r.claimedCents),
     costToComplete: fromCents(r.costToCompleteCents),
     projectAdjustments: fromCents(r.projectAdjustmentsCents),
+    directCosts: fromCents(r.directCostsCents),
     forecastFinalCost: fromCents(r.forecastFinalCostCents),
     pendingCostVariations: fromCents(r.pendingCostExposureCents),
     forecastMargin: fromCents(r.forecastMarginCents),

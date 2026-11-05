@@ -19,12 +19,13 @@ import {
 import { atLeast } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { useCostCodes } from '@/features/budget';
 import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
-import type { CostForecast, ForecastAdjustment } from '../data/api';
-import { useCostForecast, useForecastMutations } from '../hooks/useClaims';
+import type { BudgetVsForecastRow, CostForecast, ForecastAdjustment } from '../data/api';
+import { useBudgetVsForecast, useCostForecast, useForecastMutations } from '../hooks/useClaims';
 import { aud } from '../lib/money';
 
 type Commitment = CostForecast['commitments'][number];
@@ -128,6 +129,7 @@ function ForecastBody({ f, projectId }: { f: CostForecast; projectId: string }) 
               { label: 'Committed', value: aud(f.committed), mono: true },
               { label: 'Claimed to date', value: aud(f.claimedToDate), mono: true },
               { label: 'Cost to complete', value: aud(f.costToComplete), mono: true },
+              { label: 'Direct costs', value: aud(f.directCosts), mono: true },
               { label: 'Adjustments', value: aud(f.projectAdjustments), mono: true },
               { label: 'Forecast final cost', value: aud(f.forecastFinalCost), mono: true },
             ]}
@@ -168,6 +170,7 @@ function ForecastBody({ f, projectId }: { f: CostForecast; projectId: string }) 
           />
         }
       />
+      <BudgetTable projectId={projectId} />
       <Adjustments f={f} projectId={projectId} />
     </>
   );
@@ -187,10 +190,101 @@ function money(
   };
 }
 
+/** The forecast against the budget, one row per cost code. A negative variance is over budget. */
+function BudgetTable({ projectId }: { projectId: string }) {
+  const q = useBudgetVsForecast(projectId);
+  const columns: DataTableColumn<BudgetVsForecastRow>[] = [
+    {
+      id: 'code',
+      header: 'Cost code',
+      rowHeader: true,
+      sortValue: (r) => r.code ?? '\uffff',
+      cell: (r) => (r.code ? `${r.code} ${r.codeDescription}` : r.codeDescription),
+    },
+    cmp('budget', 'Revised budget', (r) => r.revised),
+    cmp('committed', 'Committed', (r) => r.committed),
+    cmp('claimed', 'Claimed to date', (r) => r.claimed),
+    cmp('direct', 'Direct costs', (r) => r.directCosts),
+    cmp('adjustments', 'Adjustments', (r) => r.adjustments),
+    cmp('final', 'Forecast final', (r) => r.forecastFinal),
+    {
+      id: 'variance',
+      header: 'Under / (over) budget',
+      align: 'end',
+      sortValue: (r) => Number(r.variance),
+      cell: (r) => <Variance value={r.variance} />,
+    },
+  ];
+  const hasUnallocated =
+    q.data &&
+    (Number(q.data.unallocated.forecastFinal) !== 0 || Number(q.data.unallocated.committed) !== 0);
+  return (
+    <div className="stack-lg">
+      <h2 className="u-m-0">Budget against forecast</h2>
+      <ErrorAlert error={q.error} title="We couldn't load the budget comparison" />
+      {q.data && q.data.budgetStatus === null ? (
+        <Alert tone="info">
+          This project has no budget yet, so every cost code shows as unbudgeted.
+        </Alert>
+      ) : null}
+      {q.data && q.data.budgetStatus === 'draft' ? (
+        <Alert tone="info">
+          The budget is still a draft; lock it to freeze the original amounts.
+        </Alert>
+      ) : null}
+      {q.isPending ? <SkeletonRows label="Loading the budget comparison…" /> : null}
+      {q.data ? (
+        <>
+          <DataTable
+            caption="Budget against forecast by cost code"
+            columns={columns}
+            rows={hasUnallocated ? [...q.data.rows, q.data.unallocated] : q.data.rows}
+            getRowId={(r) => r.costCodeId ?? 'none'}
+            empty={
+              <EmptyState
+                title="Nothing to compare yet"
+                description="Add cost codes to the budget, and give schedule of values lines a cost code, to see them side by side."
+              />
+            }
+          />
+          <p className="u-m-0">
+            Total budget <span className="u-mono">{aud(q.data.totals.revised)}</span>, forecast
+            final <span className="u-mono">{aud(q.data.totals.forecastFinal)}</span>,{' '}
+            <Variance value={q.data.totals.variance} />.
+          </p>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+function cmp(
+  id: string,
+  header: string,
+  get: (r: BudgetVsForecastRow) => string,
+): DataTableColumn<BudgetVsForecastRow> {
+  return {
+    id,
+    header,
+    align: 'end',
+    sortValue: (r) => Number(get(r)),
+    cell: (r) => <span className="u-mono">{aud(get(r))}</span>,
+  };
+}
+
+function Variance({ value }: { value: string }) {
+  const over = value.startsWith('-');
+  return (
+    <span className="u-mono">{over ? `(${aud(value.slice(1))}) over` : `${aud(value)} under`}</span>
+  );
+}
+
 function Adjustments({ f, projectId }: { f: CostForecast; projectId: string }) {
   const { createAdjustment, deleteAdjustment } = useForecastMutations(projectId);
   const [category, setCategory] = useState<ForecastAdjustment['category']>('unawarded_work');
   const [contractId, setContractId] = useState('');
+  const [costCodeId, setCostCodeId] = useState('');
+  const costCodes = (useCostCodes(projectId).data ?? []).filter((c) => !c.archived);
   const [label, setLabel] = useState('');
   const [note, setNote] = useState('');
   const [amount, setAmount] = useState('');
@@ -239,6 +333,7 @@ function Adjustments({ f, projectId }: { f: CostForecast; projectId: string }) {
         label: label.trim(),
         amount: a,
         ...(contractId ? { contractId } : {}),
+        ...(costCodeId ? { costCodeId } : {}),
         ...(note.trim() ? { note: note.trim() } : {}),
       },
       {
@@ -289,6 +384,17 @@ function Adjustments({ f, projectId }: { f: CostForecast; projectId: string }) {
               ]}
             />
           </div>
+          {costCodes.length > 0 ? (
+            <Select
+              label="Cost code"
+              value={costCodeId}
+              onChange={(e) => setCostCodeId(e.target.value)}
+              options={[
+                { value: '', label: 'No cost code' },
+                ...costCodes.map((c) => ({ value: c.id, label: `${c.code} ${c.description}` })),
+              ]}
+            />
+          ) : null}
           <TextField
             label="What is it for"
             required

@@ -33,6 +33,7 @@ const forecast = (over: Record<string, unknown> = {}) => ({
   committed: '100000.00',
   claimedToDate: '30000.00',
   costToComplete: '70000.00',
+  directCosts: '0.00',
   projectAdjustments: '25000.00',
   forecastFinalCost: '125000.00',
   pendingCostVariations: '0.00',
@@ -55,9 +56,41 @@ const forecast = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+const budgetRow = (over: Record<string, unknown> = {}) => ({
+  costCodeId: 'ccd_1',
+  code: '16-100',
+  codeDescription: 'Electrical',
+  revised: '120000.00',
+  committed: '100000.00',
+  claimed: '30000.00',
+  adjustments: '0.00',
+  directCosts: '0.00',
+  forecastFinal: '100000.00',
+  variance: '20000.00',
+  ...over,
+});
+
 beforeEach(() => {
   fake.reset();
   perm.level = 'admin';
+  fake.on('GET', `${P}/cost-codes`, () => ({ data: [] }));
+  fake.on('GET', `${P}/budget/vs-forecast`, () => ({
+    budgetStatus: 'locked',
+    rows: [],
+    unallocated: budgetRow({
+      costCodeId: null,
+      code: null,
+      codeDescription: 'Not tagged to a cost code',
+      revised: '0.00',
+      committed: '0.00',
+      claimed: '0.00',
+      adjustments: '0.00',
+      directCosts: '0.00',
+      forecastFinal: '0.00',
+      variance: '0.00',
+    }),
+    totals: budgetRow({ costCodeId: null, code: null, codeDescription: 'Total' }),
+  }));
 });
 
 describe('CostForecastScreen', () => {
@@ -103,5 +136,27 @@ describe('CostForecastScreen', () => {
     perm.level = 'standard';
     renderInProject(<CostForecastScreen />);
     expect(await screen.findByText(/only project administrators/)).toBeTruthy();
+  });
+
+  it('compares the forecast with the budget per cost code and flags what is over', async () => {
+    fake.on('GET', `${P}/cost-forecast`, () => forecast());
+    fake.on('GET', `${P}/budget/vs-forecast`, () => ({
+      budgetStatus: 'locked',
+      rows: [budgetRow()],
+      unallocated: budgetRow({
+        costCodeId: null,
+        code: null,
+        codeDescription: 'No cost code',
+        revised: '0.00',
+        forecastFinal: '8000.00',
+        variance: '-8000.00',
+      }),
+      totals: budgetRow({ costCodeId: null, code: null, codeDescription: 'Total' }),
+    }));
+    renderInProject(<CostForecastScreen />);
+    expect(await screen.findByText('16-100 Electrical')).toBeTruthy();
+    expect(screen.getByText('No cost code')).toBeTruthy();
+    expect(screen.getAllByText(/over$/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/under$/).length).toBeGreaterThan(0);
   });
 });

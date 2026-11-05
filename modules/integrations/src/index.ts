@@ -24,3 +24,9 @@ export {
   type PulledPayment,
   type AccountingService,
 } from './application/accounting';
+export * as folders from './domain/folders';
+export {
+  createFoldersService,
+  type FoldersService,
+  type PublishedRevision,
+} from './application/folders';

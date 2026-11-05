@@ -9,6 +9,7 @@ import { createDatabase, createLogger } from '@archova/kernel';
 import { loadAiWorkerConfig } from './ai/config';
 import { loadAiWorkerModules, reindexDepsFrom } from './ai/modules';
 import { createAccountingPush } from './ai/accounting';
+import { createFolderPublish } from './ai/folders';
 import { createAccountingPull } from './ai/accounting-pull';
 import { createReindex, REINDEX_QUEUE, type ReindexJob } from './ai/reindex';
 import { watchQueueAge } from './ai/queue-age';
@@ -49,7 +50,18 @@ async function main() {
     accounting: modules.integrations.api.accounting,
     log: (msg, o) => log.info(o, msg),
   });
-  const subscribers = [reindex.subscriber, restamp.subscriber, accountingPush.subscriber];
+  const folderPublish = createFolderPublish({
+    documents: modules.documents.api,
+    folders: modules.integrations.api.folders,
+    log: (msg, o) => log.info(o, msg),
+  });
+  const subscribers = [
+    reindex.subscriber,
+    restamp.subscriber,
+    accountingPush.subscriber,
+    folderPublish.subscriber,
+    folderPublish.backfill,
+  ];
 
   // Jobs here are queued with the `capped` backoff (queues.ts `ROUTED_RETRY`), which only these workers know.
   const settings = { backoffStrategy: cappedBackoff };

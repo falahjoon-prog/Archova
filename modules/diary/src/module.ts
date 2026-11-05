@@ -2,6 +2,7 @@ import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import { createDiaryService, type DiaryDeps } from './application/diary';
 import { diaryRoutes } from './api/routes';
+import { diarySyncCommands } from './api/sync';
 import { LINE_ID_KIND, toEntryDto, toLineDto } from './api/mappers';
 import type { LineKind } from './domain/diary';
 import { DIARY_PERMISSIONS } from './permissions';
@@ -37,6 +38,8 @@ export function createDiaryModule(services: KernelServices, deps: DiaryDeps) {
     api: {
       /** What the mobile pull reads (modules/sync). */
       syncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: diarySyncCommands(service, deps.access),
       /** Subscriber for `workforce.attendance.session_closed.v1` (its `dayTotals`), run by the worker. */
       applyAttendanceTotals: service.applyAttendanceTotals,
       /** The day's lines for the Nova diary summary; null when unreadable or absent. */

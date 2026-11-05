@@ -57,4 +57,11 @@ describe('computeForecast', () => {
     expect(loss.forecastMarginCents).toBe(-20_000_00);
     expect(computeForecast([sub('a')], [], []).forecastMarginPctHundredths).toBeNull();
   });
+
+  it('adds direct costs to the forecast final cost and takes them off the margin', () => {
+    const r = computeForecast([sub('a')], [head], [], 2_500_00);
+    expect(r.directCostsCents).toBe(2_500_00);
+    expect(r.forecastFinalCostCents).toBe(102_500_00);
+    expect(r.forecastMarginCents).toBe(500_000_00 - 102_500_00);
+  });
 });

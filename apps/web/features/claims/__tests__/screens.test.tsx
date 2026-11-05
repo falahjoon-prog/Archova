@@ -32,6 +32,7 @@ const variation = (over: Record<string, unknown> = {}) => ({
   submittedAt: '2026-10-20T00:00:00Z',
   decidedAt: null,
   decisionNote: null,
+  costCodeId: null,
   ...over,
 });
 const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({

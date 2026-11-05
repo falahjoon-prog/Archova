@@ -118,7 +118,11 @@ export function ComparisonTable({
             {totals.map((t) => (
               <td key={t.quoteId} className="ac-table__num">
                 <strong>{money(t.quotedCents)}</strong>
-                {t.gaps ? <div className="u-caption">{t.gaps} gaps</div> : null}
+                {t.gaps ? (
+                  <div className="u-caption">
+                    {t.gaps} {t.gaps === 1 ? 'gap' : 'gaps'}
+                  </div>
+                ) : null}
               </td>
             ))}
           </tr>

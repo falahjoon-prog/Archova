@@ -23,6 +23,7 @@ import type { FolderService } from '../application/folders';
 import type { GeometryService } from '../application/geometry';
 import type { TileService } from '../application/tiles';
 import type { MarkupService } from '../application/markups';
+import type { SpecService } from '../application/specs';
 import type {
   IssuedLink,
   TransmittalItemView,
@@ -38,6 +39,8 @@ import {
   toFolderDto,
   toMarkupDto,
   toRecipientDto,
+  toSpecBookDto,
+  toSpecSectionDto,
   toSheetGeometryDto,
   toTransmittalDto,
 } from './mappers';
@@ -49,6 +52,7 @@ export interface DocumentsRouteDeps {
   documents: DocumentService;
   drawings: DrawingService;
   markups: MarkupService;
+  specs: SpecService;
   geometry: GeometryService;
   tiles: TileService;
   transmittals: TransmittalService;
@@ -87,6 +91,14 @@ const toTransmittalDetail = (x: Awaited<ReturnType<TransmittalService['detail']>
     ),
   })),
   recipients: x.recipients.map(toRecipientDto),
+});
+
+const toSpecDetail = (x: {
+  book: Parameters<typeof toSpecBookDto>[0];
+  sections: Parameters<typeof toSpecSectionDto>[0][];
+}) => ({
+  book: toSpecBookDto(x.book, x.sections.length),
+  sections: x.sections.map(toSpecSectionDto),
 });
 
 export function documentsRoutes(d: DocumentsRouteDeps) {
@@ -164,6 +176,65 @@ export function documentsRoutes(d: DocumentsRouteDeps) {
     listFolders: async (input) => {
       const rows = await read(input, (s) => d.folders.list(s, project(input.params)));
       return { status: 200, body: { data: rows.map(toFolderDto) } };
+    },
+    listSpecBooks: async (input) => {
+      const rows = await read(input, (s) => d.specs.list(s, project(input.params)));
+      return {
+        status: 200,
+        body: { data: rows.map((r) => toSpecBookDto(r.book, r.sectionCount)) },
+      };
+    },
+    createSpecBook: async (input) => {
+      const b = input.body;
+      const x = await tx(input, (s) =>
+        d.specs.create(s, project(input.params), {
+          name: b.name,
+          issuedDate: b.issuedDate ?? null,
+          fileId: b.fileId ? ref('file', b.fileId, 'fileId') : null,
+          supersedesBookId: b.supersedesBookId
+            ? ref('specBook', b.supersedesBookId, 'supersedesBookId')
+            : null,
+        }),
+      );
+      return { status: 201, body: toSpecDetail(x), headers: { etag: etag(x.book.version) } };
+    },
+    getSpecBook: async (input) => {
+      const x = await read(input, (s) =>
+        d.specs.get(
+          s,
+          project(input.params),
+          id('specBook', input.params.bookId, 'spec_book.not_found'),
+        ),
+      );
+      return { status: 200, body: toSpecDetail(x), headers: { etag: etag(x.book.version) } };
+    },
+    replaceSpecSections: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const x = await tx(input, (s) =>
+        d.specs.replaceSections(
+          s,
+          project(input.params),
+          id('specBook', input.params.bookId, 'spec_book.not_found'),
+          expected,
+          input.body.sections,
+        ),
+      );
+      return { status: 200, body: toSpecDetail(x), headers: { etag: etag(x.book.version) } };
+    },
+    searchSpecSections: async (input) => {
+      const rows = await read(input, (s) =>
+        d.specs.search(s, project(input.params), input.query.q ?? '', input.query.limit ?? 20),
+      );
+      return {
+        status: 200,
+        body: {
+          data: rows.map((r) => ({
+            section: toSpecSectionDto(r.section),
+            bookId: encodeId('specBook', r.book.id),
+            bookName: r.book.name,
+          })),
+        },
+      };
     },
     createFolder: async (input) => {
       const b = input.body;

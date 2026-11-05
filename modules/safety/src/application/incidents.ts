@@ -5,6 +5,7 @@ import {
   AppError,
   decodeCursor,
   nextNumber,
+  recordRetention,
   toPage,
   versionConflict,
   type TenantScope,
@@ -111,6 +112,19 @@ export function createIncidentService(deps: SafetyDeps) {
       ]);
   }
 
+  async function checkSource(
+    scope: TenantScope,
+    projectId: string,
+    source: { type: 'inspection' | 'observation'; id: string },
+  ) {
+    if (deps.sources && !(await deps.sources.exists(scope, projectId, source.type, source.id)))
+      throw new AppError(
+        'validation_failed',
+        `Name ${source.type === 'inspection' ? 'an inspection' : 'an observation'} on this project.`,
+        [{ path: 'source.id', message: 'Not found on this project' }],
+      );
+  }
+
   async function record(
     scope: TenantScope,
     row: IncidentRow,
@@ -128,6 +142,25 @@ export function createIncidentService(deps: SafetyDeps) {
       actorId: scope.ctx.userId,
       at: now(),
     });
+  }
+
+  /**
+   * Incident records are kept at least 5 years from notification (WHS Act s38(7)). Until the regulator is notified,
+   * or when it never needs to be, the period counts from the day it happened, which is never shorter. The period
+   * only ever lengthens, so re-tagging after notification or at a later action is safe.
+   */
+  async function keep(scope: TenantScope, r: IncidentRow, actionIds: string[] = []) {
+    const anchor = r.regulatorNotifiedAt ?? r.occurredAt;
+    const tag = (recordType: string, recordId: string) =>
+      recordRetention(scope, {
+        recordType,
+        recordId,
+        projectId: r.projectId,
+        category: 'whs_incident_5y',
+        anchor,
+      });
+    await tag('safety.incidents', r.id);
+    for (const id of actionIds) await tag('safety.incident_actions', id);
   }
 
   async function changed(scope: TenantScope, r: IncidentRow) {
@@ -285,6 +318,8 @@ export function createIncidentService(deps: SafetyDeps) {
       title: string;
       type: IncidentType;
       occurredAt: Date;
+      /** A device-chosen id, so a report made offline keeps its identity once it syncs. */
+      id?: string;
     },
   ) {
     await deps.platform.getProject(scope, projectId);
@@ -304,7 +339,7 @@ export function createIncidentService(deps: SafetyDeps) {
           ...(input.people ? { people: input.people } : {}),
         };
     validateFields(f);
-    const id = uuidv7();
+    const id = input.id ?? uuidv7();
     const number = await nextNumber(scope, projectId, 'incident');
     const [row] = await scope.tx
       .insert(incidents)
@@ -330,6 +365,7 @@ export function createIncidentService(deps: SafetyDeps) {
       })
       .returning();
     await replacePeople(scope, row!, f.people ?? []);
+    await keep(scope, row!);
     await record(scope, row!, { action: 'report', from: null });
     await changed(scope, row!);
     scope.events.add({
@@ -388,6 +424,17 @@ export function createIncidentService(deps: SafetyDeps) {
       .returning();
     if (!next) throw versionConflict();
     if (patch.people) await replacePeople(scope, next, patch.people);
+    if (next.regulatorNotifiedAt) {
+      const actions = await scope.tx
+        .select({ id: incidentActions.id })
+        .from(incidentActions)
+        .where(eq(incidentActions.incidentId, id));
+      await keep(
+        scope,
+        next,
+        actions.map((a) => a.id),
+      );
+    } else await keep(scope, next);
     await record(scope, next, { action: 'update', from: row.status });
     await changed(scope, next);
     if (!wasNotified && next.regulatorNotifiedAt)
@@ -485,6 +532,7 @@ export function createIncidentService(deps: SafetyDeps) {
       throw new AppError('incident.closed', 'Reopen the incident before adding actions.');
     if (input.assigneeCompanyId)
       await checkCompany(scope, projectId, input.assigneeCompanyId, 'assigneeCompanyId');
+    if (input.source) await checkSource(scope, projectId, input.source);
     // Numbered within the incident under the incident row lock, so concurrent adds cannot clash.
     await scope.tx.execute(sql`select 1 from safety.incidents where id = ${incidentId} for update`);
     const [last] = await scope.tx
@@ -510,6 +558,7 @@ export function createIncidentService(deps: SafetyDeps) {
         updatedBy: scope.ctx.userId,
       })
       .returning();
+    await keep(scope, row, [action!.id]);
     await record(scope, row, { action: 'action_added', from: row.status, note: action!.title });
     scope.events.add({
       type: 'safety.incident.action_added.v1',
@@ -574,6 +623,7 @@ export function createIncidentService(deps: SafetyDeps) {
       throw new AppError('incident.closed', 'Reopen the incident before changing its actions.');
     if (patch.assigneeCompanyId)
       await checkCompany(scope, projectId, patch.assigneeCompanyId, 'assigneeCompanyId');
+    if (patch.source) await checkSource(scope, projectId, patch.source);
     const at = now();
     const to = patch.status ?? cur.status;
     const [next] = await scope.tx
@@ -648,7 +698,47 @@ export function createIncidentService(deps: SafetyDeps) {
     return { row, viewer };
   }
 
-  return { list, create, detail, update, transition, addAction, updateAction };
+  /**
+   * The corrective actions that came from one inspection or observation, with the incident each belongs to. Staff
+   * see all of them; anyone else only the incidents they reported or actions assigned to them.
+   */
+  async function actionsFromSource(
+    scope: TenantScope,
+    projectId: string,
+    source: { type: 'inspection' | 'observation'; id: string },
+  ) {
+    const v = await viewerOf(scope, projectId);
+    const conditions: SQL[] = [
+      eq(incidentActions.projectId, projectId),
+      eq(incidentActions.sourceType, source.type),
+      eq(incidentActions.sourceId, source.id),
+      isNull(incidents.deletedAt),
+    ];
+    if (!v.isInternal) {
+      const mine = [
+        sql`${incidents.createdBy} = ${v.userId}`,
+        sql`${incidentActions.assigneeUserId} = ${v.userId}`,
+      ];
+      if (v.companyId) mine.push(sql`${incidentActions.assigneeCompanyId} = ${v.companyId}`);
+      conditions.push(sql`(${sql.join(mine, sql` or `)})`);
+    }
+    const date = await today(scope, projectId);
+    const rows = await scope.tx
+      .select({ action: incidentActions, incident: incidents })
+      .from(incidentActions)
+      .innerJoin(incidents, eq(incidents.id, incidentActions.incidentId))
+      .where(and(...conditions))
+      .orderBy(desc(incidentActions.createdAt))
+      .limit(100);
+    return rows.map((r) => ({
+      ...r.action,
+      incidentNumber: r.incident.number,
+      incidentTitle: r.incident.title,
+      isOverdue: isOverdue(r.action.dueDate, r.action.status, date),
+    }));
+  }
+
+  return { list, create, detail, update, transition, addAction, updateAction, actionsFromSource };
 }
 
 export type IncidentService = ReturnType<typeof createIncidentService>;

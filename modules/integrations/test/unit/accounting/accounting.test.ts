@@ -10,6 +10,7 @@ import {
   createTokenSession,
   createTokenVault,
   createXeroProvider,
+  ledgerReference,
   newPkce,
   xeroDate,
   type FetchLike,
@@ -356,5 +357,23 @@ describe('tokens', () => {
     expect(await Promise.all([get(), get()])).toEqual(['a1', 'a1']);
     expect(refreshes).toBe(1);
     expect(saved).toEqual(['r0+']);
+  });
+});
+
+describe('ledgerReference', () => {
+  it('differs for the same contract and claim number in two projects, and fits MYOB limits', () => {
+    const a = ledgerReference({
+      projectId: '018f0000-0000-7000-8000-0000000000a1',
+      contractNumber: 1,
+      claimNumber: 1,
+    });
+    const b = ledgerReference({
+      projectId: '018f0000-0000-7000-8000-0000000000b2',
+      contractNumber: 1,
+      claimNumber: 1,
+    });
+    expect(a).toBe('PC-000000a1-1-1');
+    expect(a).not.toBe(b);
+    expect(a.length).toBeLessThanOrEqual(20);
   });
 });

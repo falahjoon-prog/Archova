@@ -3,6 +3,15 @@ import { readFileSync } from 'node:fs';
 import { relative } from 'node:path';
 import { ROOT, sourceMigrations } from './sources';
 
+/**
+ * Merged migrations can't be edited (applied files are checksummed), so a file that predates a rule it breaks is
+ * listed here with the reason. Don't add new files.
+ */
+const NON_CONCURRENT_INDEX_OK = new Set([
+  // Index on a column added in the same file, on a table with no rows referencing it yet (#308).
+  'modules/financials/db/migrations/20261105090000_financials_contract_source.sql',
+]);
+
 export function lintMigrationFiles(): string[] {
   const problems: string[] = [];
   for (const m of sourceMigrations()) {
@@ -17,7 +26,7 @@ export function lintMigrationFiles(): string[] {
       /create\s+(?:unique\s+)?index\s+(concurrently\s+)?(?:if\s+not\s+exists\s+)?\w+\s+on\s+([a-z_]+\.[a-z_0-9]+)/gi,
     )) {
       const table = x[2]!.toLowerCase();
-      if (!x[1] && !created.has(table)) {
+      if (!x[1] && !created.has(table) && !NON_CONCURRENT_INDEX_OK.has(where)) {
         problems.push(
           `${where}: CREATE INDEX on existing table ${table} must use CONCURRENTLY (and -- archova:no-transaction)`,
         );

@@ -70,6 +70,7 @@ export const variations = financialsSchema.table('variations', {
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   decidedBy: uuid('decided_by'),
   decisionNote: text('decision_note'),
+  costCodeId: uuid('cost_code_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),
@@ -225,6 +226,62 @@ export const forecastAdjustments = financialsSchema.table('forecast_adjustments'
   createdBy: uuid('created_by'),
 });
 
+export const commitments = financialsSchema.table('commitments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  kind: text('kind').$type<'subcontract' | 'purchase_order'>().notNull(),
+  title: text('title').notNull(),
+  vendorCompanyId: uuid('vendor_company_id'),
+  status: text('status').notNull().default('draft'),
+  total: money('total').notNull(),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  submittedBy: uuid('submitted_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decidedBy: uuid('decided_by'),
+  decisionNote: text('decision_note'),
+  overBudgetOverride: boolean('over_budget_override').notNull().default(false),
+  sourcePackageId: uuid('source_package_id'),
+  sourceQuoteId: uuid('source_quote_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const commitmentLines = financialsSchema.table('commitment_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  commitmentId: uuid('commitment_id').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  description: text('description').notNull(),
+  amount: money('amount').notNull(),
+  sort: integer('sort').notNull(),
+});
+
+export const directCosts = financialsSchema.table('direct_costs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  category: text('category').$type<'labour' | 'materials' | 'plant' | 'fees' | 'other'>().notNull(),
+  description: text('description').notNull(),
+  supplier: text('supplier'),
+  reference: text('reference'),
+  incurredOn: date('incurred_on').notNull(),
+  amount: money('amount').notNull(),
+  gst: money('gst').notNull().default('0'),
+  status: text('status').$type<'recorded' | 'void'>().notNull().default('recorded'),
+  voidReason: text('void_reason'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidedBy: uuid('voided_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
 export const trustAccounts = financialsSchema.table('trust_accounts', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
@@ -269,4 +326,30 @@ export const claimStatements = financialsSchema.table('claim_statements', {
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   version: integer('version').notNull().default(1),
+});
+
+export const retentionTerms = financialsSchema.table('retention_terms', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  practicalCompletionOn: date('practical_completion_on'),
+  defectsPeriodDays: integer('defects_period_days'),
+  firstReleasePct: numeric('first_release_pct', { precision: 5, scale: 2 }).notNull().default('50'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const retentionReleases = financialsSchema.table('retention_releases', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  stage: text('stage').$type<'practical_completion' | 'defects_end'>().notNull(),
+  amount: money('amount').notNull(),
+  releasedOn: date('released_on').notNull(),
+  reference: text('reference').notNull(),
+  note: text('note'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  recordedBy: uuid('recorded_by'),
 });

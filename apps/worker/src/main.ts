@@ -12,6 +12,8 @@ import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
+import { trustReminders } from './jobs/trust-reminders';
+import { incidentActionNotices } from './jobs/incident-action-notices';
 import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
@@ -24,6 +26,7 @@ import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry } from './jobs/wallet-expiry';
+import { walletRetention } from './jobs/wallet-retention';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -59,10 +62,13 @@ async function main() {
     templateBackfill,
     meetingReminders,
     bidReminders,
+    trustReminders,
+    incidentActionNotices,
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(async (scope, alerts) => {
       log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');
     }),
+    walletRetention(),
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

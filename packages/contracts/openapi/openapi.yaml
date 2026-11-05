@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: bim
   - name: defects
   - name: financials
   - name: quality
@@ -1258,6 +1259,267 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Folder' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-books:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSpecBooks
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: The project's specification books, newest first, with how many sections each has been split into.
+      responses:
+        '200':
+          description: Books
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSpecBook
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Register an issued specification book. Naming the book it replaces marks that one superseded.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSpecBookRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SpecBookId'
+    get:
+      operationId: getSpecBook
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: One book with its sections in page order.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SpecBookId'
+    put:
+      operationId: replaceSpecSections
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Split the book into sections by page range, replacing the list. Numbers must be unique within the book.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplaceSpecSectionsRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-sections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: searchSpecSections
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Sections of current books whose number starts with, or title contains, the text. For picking a spec reference.
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 50, default: 20 },
+          }
+      responses:
+        '200':
+          description: Sections
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecSectionHitList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/bim-models:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBimModels
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.models.read
+      summary: The project's registered models, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BimModelList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBimModel
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.models.manage
+      summary: Register a model file. Naming the model it supersedes retires that one.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBimModelRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BimModel' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCoordinationIssues
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.read
+      summary: Coordination issues, newest first, up to 500.
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/CoordinationIssueStatus' },
+          }
+        - { name: modelId, in: query, schema: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' } }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Raise a coordination issue.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCoordinationIssueRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoordinationIssueId'
+    get:
+      operationId: getCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.read
+      summary: One issue with its comments.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Edit an issue or move it along. A change of status not allowed from the current one is refused.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCoordinationIssueRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoordinationIssueId'
+    post:
+      operationId: addCoordinationIssueComment
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Add a comment to an issue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddCoordinationCommentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/documents:
     parameters:
@@ -3709,6 +3971,34 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AwardedSubcontract' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/commitment:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: createCommitmentFromAward
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: Raise the draft budget commitment for an awarded package from its winning quote.
+      description: |
+        A draft subcontract commitment in financials: vendor is the winning company, with one line for the quote total
+        ex GST against the budget line given. It still goes through submit and approve like any commitment. Also needs
+        `financials.commitments.manage`. Safe to repeat: a quote raises one commitment, and a repeat returns it with
+        `created` false (the budget line in a repeat is ignored).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommitmentFromAwardRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AwardedCommitment' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -4708,6 +4998,145 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listFolderConnections
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: The org's SharePoint and Google Drive connections, and which providers this installation can offer (integrations/03, 04).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderConnectionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections/{provider}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FolderProvider'
+    delete:
+      operationId: disconnectFolders
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: Forget the connection and every project link on it. Files already published are left where they are.
+      responses:
+        '204':
+          description: Disconnected
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections/{provider}/connect:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FolderProvider'
+    post:
+      operationId: startFolderConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: >-
+        Begin sign-in. Google returns its sign-in address; Microsoft 365 returns the admin-consent address for the
+        tenant id given.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderConnectRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnectStart' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections/{provider}/callback:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FolderProvider'
+    post:
+      operationId: completeFolderConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: Finish sign-in with the state (and, for Google, the code) the provider returned. Makes the connection active.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderCallbackRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/folder-links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFolderLinks
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folder_links.manage
+      x-internal: true
+      summary: The folders this project's current drawing set is published to.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFolderLink
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folder_links.manage
+      x-internal: true
+      summary: >-
+        Publish the project's drawing set, one way, to a SharePoint folder (the address is required) or a new Google
+        Drive folder. Each drawing revision published from now on is uploaded and the revision it replaces is moved to a
+        Superseded subfolder.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderLinkCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/folder-links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: linkId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteFolderLink
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folder_links.manage
+      x-internal: true
+      summary: Stop publishing to the folder. What is already there stays.
+      responses:
+        '204':
+          description: Unlinked
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
     parameters:
@@ -6443,6 +6872,535 @@ paths:
       responses:
         '204':
           description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: Daily timesheets in a date range (up to 62 days). A subcontractor sees only its own workers.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/TimesheetStatus' } }
+        - { name: workerId, in: query, schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/generate:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: generateTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Fill draft timesheets from closed sign-ins in a date range. Safe to repeat; sheets past draft are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DateRangeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenerateTimesheetsResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: exportTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.export
+      summary: CSV of approved timesheets in a range, one row per line. The sheets are marked exported.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DateRangeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    get:
+      operationId: getTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: One timesheet with its lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: addTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Add hours that sign-in did not capture. A reason is required. Only while the sheet is draft or rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddTimesheetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+      - {
+          name: lineId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: adjustTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Change a line's minutes, break or cost code. A reason is required; a sign-in line becomes an adjusted line.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdjustTimesheetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: submitTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Submit for approval.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: approveTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: Approve and lock the timesheet.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: rejectTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: Send a submitted timesheet back with a reason; it can be edited and submitted again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectTimesheetRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: The project's equipment register.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Add a machine to the register.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEquipmentRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+    patch:
+      operationId: updateEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Rename a machine or change its status (available, in use, maintenance, retired).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEquipmentRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment-bookings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEquipmentBookings
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: Bookings across the project's equipment that touch a date range.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentBookingList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+    post:
+      operationId: createEquipmentBooking
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Book a machine for a date range. Refused when it overlaps another active booking.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEquipmentBookingRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentBooking' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings/{bookingId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+      - $ref: '#/components/parameters/EquipmentBookingId'
+    post:
+      operationId: cancelEquipmentBooking
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Cancel a booking.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentBooking' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/logs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+    get:
+      operationId: listEquipmentLogs
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: Hours a machine has run, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentLogList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logEquipmentHours
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.log
+      summary: Log hours a machine ran on a day.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogEquipmentHoursRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentLog' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listShifts
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.view
+      summary: Shifts in a date range, with the assigned workers. Drafts show only to site managers; a subcontractor sees only its own workers.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: siteId, in: query, schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ShiftStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Draft a shift at a site.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateShiftRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    get:
+      operationId: getShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.view
+      summary: One shift with its assigned workers.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    post:
+      operationId: publishShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Offer a draft shift to the workers assigned to it.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    post:
+      operationId: cancelShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Cancel a shift.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    post:
+      operationId: assignShiftWorkers
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Add workers to a shift. A worker already on an overlapping shift is refused.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignShiftWorkersRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+      - $ref: '#/components/parameters/ShiftAssignmentId'
+    delete:
+      operationId: removeShiftAssignment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Take a worker off a shift.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}/respond:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+      - $ref: '#/components/parameters/ShiftAssignmentId'
+    post:
+      operationId: respondToShiftAssignment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.view
+      summary: Accept or decline an offer, or (site managers, once the shift has begun) record attended or no show.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondToShiftRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/attendance/sites:
     parameters:
@@ -9133,6 +10091,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IncidentAction' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listIncidentActionsFromSource
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: The corrective actions that came from one inspection or observation, with the incident each belongs to.
+      parameters:
+        - {
+            name: sourceType,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [inspection, observation] },
+          }
+        - {
+            name: sourceId,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^(ins|obs)_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentActionFromSourceList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/swms:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9513,6 +10501,67 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ContractTrust' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractRetentionRelease
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Retention held, the contract's release terms and what has been released, visible to the payee.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveContractRetentionTerms
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.retention.manage
+      summary: Set practical completion, the defects period and the share released at practical completion (builder staff).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveRetentionTermsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: recordRetentionRelease
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.retention.manage
+      summary: Record retention released to the payee, up to what the stage entitles (append-only).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordRetentionReleaseRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9880,6 +10929,261 @@ paths:
       summary: Withdraw a draft or submitted variation.
       parameters:
         - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/direct-costs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDirectCosts
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.read
+      summary: Direct costs, newest first, with the total of those not voided (ex GST).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCostList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordDirectCost
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.manage
+      summary: Record money spent against a budget line outside a subcontract or purchase order. It adds to the line's actual cost.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordDirectCostRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DirectCostId'
+    get:
+      operationId: getDirectCost
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.read
+      summary: One direct cost.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DirectCostId'
+    post:
+      operationId: voidDirectCost
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.manage
+      summary: Void a direct cost with a reason. The amount comes off the budget line's actual cost.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidDirectCostRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCommitments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Subcontracts and purchase orders, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Draft a subcontract or purchase order against budget lines.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommitmentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: getCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: One commitment with its lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: submitCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Send a draft for approval.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: approveCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Approve. Counts as committed cost; past budget needs allowOverBudget and a note.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentApprovalRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: rejectCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Reject a submitted commitment. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: voidCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Void a commitment, releasing its committed cost. A reason is required once submitted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    put:
+      operationId: setVariationCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Code a variation to a cost code, or clear it with null. Allowed after approval; not for rejected or withdrawn ones.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetVariationCostCodeRequest' }
       responses:
         '200':
           description: OK
@@ -10615,6 +11919,31 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    TimesheetId:
+      name: timesheetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
+    EquipmentId:
+      name: equipmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+    EquipmentBookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^eqb_[0-9A-Za-z]{26}$' }
+    ShiftId:
+      name: shiftId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^shf_[0-9A-Za-z]{26}$' }
+    ShiftAssignmentId:
+      name: assignmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sha_[0-9A-Za-z]{26}$' }
     InspectionTemplateId:
       name: templateId
       in: path
@@ -10660,6 +11989,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    SpecBookId:
+      name: bookId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^spb_[0-9A-Za-z]{26}$' }
     FolderId:
       name: folderId
       in: path
@@ -10710,6 +12044,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    CoordinationIssueId:
+      name: issueId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -10745,6 +12084,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+    DirectCostId:
+      name: directCostId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dcs_[0-9A-Za-z]{26}$' }
+    CommitmentId:
+      name: commitmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
     PaymentClaimId:
       name: claimId
       in: path
@@ -10810,6 +12159,11 @@ components:
       in: path
       required: true
       schema: { type: string, enum: [xero, myob] }
+    FolderProvider:
+      name: provider
+      in: path
+      required: true
+      schema: { type: string, enum: [m365, google] }
     SyncIssueId:
       name: syncIssueId
       in: path
@@ -12734,10 +14088,10 @@ components:
         id: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
         kind:
           type: string
-          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`.
+          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue` or `safety.incident_action_assigned`.
         title: { type: string }
         body: { type: string }
-        entityType: { type: string, enum: [meeting, tender_package] }
+        entityType: { type: string, enum: [meeting, tender_package, contract, incident] }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
         readAt: { type: [string, 'null'], format: date-time }
@@ -14128,6 +15482,248 @@ components:
           type: array
           items: { type: string }
         version: { type: integer }
+    SpecBook:
+      type: object
+      required:
+        [id, projectId, name, issuedDate, fileId, status, supersededById, sectionCount, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        issuedDate: { type: [string, 'null'], format: date }
+        fileId: { type: [string, 'null'] }
+        status: { type: string, enum: [current, superseded] }
+        supersededById: { type: [string, 'null'] }
+        sectionCount: { type: integer }
+        version: { type: integer }
+    SpecSection:
+      type: object
+      required: [id, bookId, sectionNumber, title, division, pageFrom, pageTo, revision]
+      properties:
+        id: { type: string }
+        bookId: { type: string }
+        sectionNumber: { type: string, description: 'As the book numbers it, e.g. 03 30 00' }
+        title: { type: string }
+        division: { type: [string, 'null'] }
+        pageFrom: { type: integer, minimum: 1 }
+        pageTo: { type: integer, minimum: 1 }
+        revision: { type: [string, 'null'] }
+    BimDiscipline:
+      type: string
+      enum: [architectural, structural, mechanical, electrical, hydraulic, fire, civil, other]
+    CoordinationIssueStatus:
+      type: string
+      enum: [open, in_progress, resolved, closed]
+    CoordinationIssuePriority:
+      type: string
+      enum: [low, medium, high, critical]
+    BimModel:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          discipline,
+          versionLabel,
+          fileId,
+          status,
+          supersededById,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        discipline: { $ref: '#/components/schemas/BimDiscipline' }
+        versionLabel: { type: string }
+        fileId: { type: [string, 'null'] }
+        status: { type: string, enum: [current, superseded] }
+        supersededById: { type: [string, 'null'] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    BimModelList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BimModel' }
+    CreateBimModelRequest:
+      type: object
+      additionalProperties: false
+      required: [name, discipline]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { $ref: '#/components/schemas/BimDiscipline' }
+        versionLabel: { type: string, maxLength: 50 }
+        fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+        supersedesModelId: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' }
+    CoordinationIssue:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          status,
+          priority,
+          assigneeId,
+          dueDate,
+          modelId,
+          elementGuids,
+          location,
+          rfiId,
+          resolvedAt,
+          commentCount,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/CoordinationIssueStatus' }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        modelId: { type: [string, 'null'] }
+        elementGuids:
+          type: array
+          items: { type: string }
+        location: { type: string }
+        rfiId: { type: [string, 'null'] }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        commentCount: { type: integer }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CoordinationIssueList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CoordinationIssue' }
+    CoordinationComment:
+      type: object
+      required: [id, authorId, body, createdAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    CoordinationIssueDetail:
+      type: object
+      required: [issue, comments]
+      properties:
+        issue: { $ref: '#/components/schemas/CoordinationIssue' }
+        comments:
+          type: array
+          items: { $ref: '#/components/schemas/CoordinationComment' }
+    CreateCoordinationIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: string, format: date }
+        modelId: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' }
+        elementGuids:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 200 }
+        rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    UpdateCoordinationIssueRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        status: { $ref: '#/components/schemas/CoordinationIssueStatus' }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: [string, 'null'], format: date }
+        modelId: { type: [string, 'null'], pattern: '^bmd_[0-9A-Za-z]{26}$' }
+        elementGuids:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 200 }
+        rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    AddCoordinationCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
+    SpecBookList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SpecBook' }
+    SpecBookDetail:
+      type: object
+      required: [book, sections]
+      properties:
+        book: { $ref: '#/components/schemas/SpecBook' }
+        sections:
+          type: array
+          items: { $ref: '#/components/schemas/SpecSection' }
+    SpecSectionHit:
+      type: object
+      required: [section, bookId, bookName]
+      properties:
+        section: { $ref: '#/components/schemas/SpecSection' }
+        bookId: { type: string }
+        bookName: { type: string }
+    SpecSectionHitList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SpecSectionHit' }
+    CreateSpecBookRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        issuedDate: { type: [string, 'null'], format: date }
+        fileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
+        supersedesBookId: { type: [string, 'null'], pattern: '^spb_[0-9A-Za-z]{26}$' }
+    ReplaceSpecSectionsRequest:
+      type: object
+      additionalProperties: false
+      required: [sections]
+      properties:
+        sections:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [sectionNumber, title, pageFrom, pageTo]
+            properties:
+              sectionNumber: { type: string, minLength: 1, maxLength: 20 }
+              title: { type: string, minLength: 1, maxLength: 300 }
+              division: { type: [string, 'null'], maxLength: 100 }
+              pageFrom: { type: integer, minimum: 1 }
+              pageTo: { type: integer, minimum: 1 }
+              revision: { type: [string, 'null'], maxLength: 20 }
     FolderList:
       type: object
       required: [data]
@@ -16010,6 +17606,22 @@ components:
         allowances:
           type: object
           additionalProperties: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    CreateCommitmentFromAwardRequest:
+      type: object
+      additionalProperties: false
+      required: [budgetLineId]
+      properties:
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+    AwardedCommitment:
+      type: object
+      required: [commitmentId, number, title, total, created]
+      properties:
+        commitmentId: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        total: { type: string, description: Ex GST }
+        created:
+          { type: boolean, description: False when the quote had already raised this commitment. }
     AwardedSubcontract:
       type: object
       required: [contractId, number, title, originalValue, created]
@@ -16896,6 +18508,66 @@ components:
         available:
           type: array
           items: { $ref: '#/components/schemas/AccountingProviderName' }
+    FolderProviderName:
+      type: string
+      enum: [m365, google]
+    FolderConnection:
+      type: object
+      required: [id, provider, status, tenantId, lastError, updatedAt]
+      properties:
+        id: { type: string }
+        provider: { $ref: '#/components/schemas/FolderProviderName' }
+        status: { type: string, enum: [pending, active, error] }
+        tenantId: { type: [string, 'null'] }
+        lastError: { type: [string, 'null'] }
+        updatedAt: { type: string, format: date-time }
+    FolderConnectionList:
+      type: object
+      required: [data, available]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FolderConnection' }
+        available:
+          type: array
+          items: { $ref: '#/components/schemas/FolderProviderName' }
+    FolderConnectRequest:
+      type: object
+      properties:
+        tenantId: { type: string, minLength: 1, maxLength: 255 }
+    FolderCallbackRequest:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, minLength: 1, maxLength: 200 }
+        code: { type: string, minLength: 1, maxLength: 2000 }
+    FolderLink:
+      type: object
+      required:
+        [id, projectId, provider, folderName, webUrl, status, lastError, lastPublishedAt, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        provider: { $ref: '#/components/schemas/FolderProviderName' }
+        folderName: { type: string }
+        webUrl: { type: [string, 'null'] }
+        status: { type: string, enum: [active, error] }
+        lastError: { type: [string, 'null'] }
+        lastPublishedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    FolderLinkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FolderLink' }
+    FolderLinkCreate:
+      type: object
+      required: [provider]
+      properties:
+        provider: { $ref: '#/components/schemas/FolderProviderName' }
+        url: { type: string, minLength: 1, maxLength: 2000 }
     AccountingConnectStart:
       type: object
       required: [url]
@@ -17422,6 +19094,7 @@ components:
           committed,
           claimed,
           adjustments,
+          directCosts,
           forecastFinal,
           variance,
         ]
@@ -17433,6 +19106,7 @@ components:
         committed: { $ref: '#/components/schemas/FinancialsMoney' }
         claimed: { $ref: '#/components/schemas/FinancialsMoney' }
         adjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        directCosts: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         variance:
           {
@@ -17534,6 +19208,7 @@ components:
           claimedToDate,
           costToComplete,
           projectAdjustments,
+          directCosts,
           forecastFinalCost,
           pendingCostVariations,
           forecastMargin,
@@ -17549,6 +19224,7 @@ components:
         claimedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
         costToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
         projectAdjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        directCosts: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastFinalCost: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         pendingCostVariations: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastMargin: { $ref: '#/components/schemas/FinancialsSignedMoney' }
@@ -17578,6 +19254,7 @@ components:
           submittedAt,
           decidedAt,
           decisionNote,
+          costCodeId,
         ]
       properties:
         id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
@@ -17593,6 +19270,13 @@ components:
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    SetVariationCostCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [costCodeId]
+      properties:
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
     TrustStatus:
       type: string
       enum: [not_required, not_set_up, ok, shortfall]
@@ -17712,6 +19396,71 @@ components:
         totalDue: { $ref: '#/components/schemas/FinancialsMoney' }
         totalPaid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         trust: { $ref: '#/components/schemas/ContractTrust' }
+    RetentionStage:
+      type: string
+      enum: [practical_completion, defects_end]
+    RetentionStageStatus:
+      type: string
+      enum: [awaiting_date, upcoming, due, released]
+    RetentionRelease:
+      type: object
+      required: [contractId, terms, retentionHeld, stages, releases]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        terms:
+          type: object
+          required: [practicalCompletionOn, defectsPeriodDays, firstReleasePct]
+          properties:
+            practicalCompletionOn: { type: [string, 'null'], format: date }
+            defectsPeriodDays: { type: [integer, 'null'] }
+            firstReleasePct: { type: string }
+        retentionHeld: { $ref: '#/components/schemas/FinancialsMoney' }
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage, dueOn, entitled, released, remaining, status]
+            properties:
+              stage: { $ref: '#/components/schemas/RetentionStage' }
+              dueOn: { type: [string, 'null'], format: date }
+              entitled: { $ref: '#/components/schemas/FinancialsMoney' }
+              released: { $ref: '#/components/schemas/FinancialsMoney' }
+              remaining: { $ref: '#/components/schemas/FinancialsMoney' }
+              status: { $ref: '#/components/schemas/RetentionStageStatus' }
+        releases:
+          type: array
+          items:
+            type: object
+            required: [stage, amount, releasedOn, reference, note, recordedAt]
+            properties:
+              stage: { $ref: '#/components/schemas/RetentionStage' }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+              releasedOn: { type: string, format: date }
+              reference: { type: string }
+              note: { type: [string, 'null'] }
+              recordedAt: { type: string, format: date-time }
+    SaveRetentionTermsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        practicalCompletionOn: { type: [string, 'null'], format: date }
+        defectsPeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        firstReleasePct: { type: string, pattern: '^\d{1,3}(\.\d{1,2})?$' }
+    RecordRetentionReleaseRequest:
+      type: object
+      additionalProperties: false
+      required: [stage, amount, releasedOn, reference]
+      properties:
+        stage: { $ref: '#/components/schemas/RetentionStage' }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        releasedOn: { type: string, format: date }
+        reference: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        fromTrust:
+          type: boolean
+          description: >-
+            Take the release out of the contract's trust account too. Default: yes when a trust account is
+            recorded. The release is refused if the account holds less than the amount.
     VariationList:
       type: object
       required: [data, approvedTotal]
@@ -17730,11 +19479,160 @@ components:
         description: { type: string, maxLength: 5000 }
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
         timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
     VariationDecisionRequest:
       type: object
       additionalProperties: false
       properties:
         note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, void]
+    Commitment:
+      type: object
+      required:
+        [
+          id,
+          number,
+          kind,
+          title,
+          vendorCompanyId,
+          status,
+          total,
+          overBudgetOverride,
+          submittedAt,
+          decidedAt,
+          decisionNote,
+        ]
+      properties:
+        id: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        kind: { type: string, enum: [subcontract, purchase_order] }
+        title: { type: string }
+        vendorCompanyId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/CommitmentStatus' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        overBudgetOverride: { type: boolean }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    CommitmentLine:
+      type: object
+      required: [budgetLineId, description, amount]
+      properties:
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        description: { type: string }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentDetail:
+      type: object
+      required: [commitment, lines]
+      properties:
+        commitment: { $ref: '#/components/schemas/Commitment' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentLine' }
+    DirectCostCategory:
+      type: string
+      enum: [labour, materials, plant, fees, other]
+    DirectCost:
+      type: object
+      required:
+        [
+          id,
+          number,
+          budgetLineId,
+          category,
+          description,
+          supplier,
+          reference,
+          incurredOn,
+          amount,
+          gst,
+          status,
+          voidReason,
+          voidedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^dcs_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        category: { $ref: '#/components/schemas/DirectCostCategory' }
+        description: { type: string }
+        supplier: { type: [string, 'null'] }
+        reference: { type: [string, 'null'] }
+        incurredOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+        status: { type: string, enum: [recorded, void] }
+        voidReason: { type: [string, 'null'] }
+        voidedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    DirectCostList:
+      type: object
+      required: [data, total]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DirectCost' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+    RecordDirectCostRequest:
+      type: object
+      additionalProperties: false
+      required: [budgetLineId, category, description, incurredOn, amount]
+      properties:
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        category: { $ref: '#/components/schemas/DirectCostCategory' }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        supplier: { type: string, minLength: 1, maxLength: 200 }
+        reference: { type: string, minLength: 1, maxLength: 100 }
+        incurredOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+    VoidDirectCostRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Commitment' }
+    CreateCommitmentRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title, lines]
+      properties:
+        kind: { type: string, enum: [subcontract, purchase_order] }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        vendorCompanyId: { type: [string, 'null'] }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [budgetLineId, description, amount]
+            properties:
+              budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+              description: { type: string, minLength: 1, maxLength: 300 }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentApprovalRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+        allowOverBudget: { type: boolean }
     PaymentClaimStatus:
       type: string
       enum: [submitted, scheduled, paid, disputed, adjudication, withdrawn]
@@ -18612,6 +20510,283 @@ components:
         code:
           type: string
           description: The secret printed on the gate poster as a QR. Shown only once; reissue to get a new one.
+    ShiftStatus:
+      type: string
+      enum: [draft, published, cancelled]
+    ShiftAssignmentStatus:
+      type: string
+      enum: [offered, accepted, declined, no_show, attended]
+    ShiftAssignment:
+      type: object
+      required: [id, shiftId, workerId, companyId, status, notifiedAt, respondedAt]
+      properties:
+        id: { type: string, pattern: '^sha_[0-9A-Za-z]{26}$' }
+        shiftId: { type: string, pattern: '^shf_[0-9A-Za-z]{26}$' }
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        status: { $ref: '#/components/schemas/ShiftAssignmentStatus' }
+        notifiedAt: { type: [string, 'null'], format: date-time }
+        respondedAt: { type: [string, 'null'], format: date-time }
+    TimesheetStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, exported]
+    TimesheetLine:
+      type: object
+      required: [id, minutes, breakMinutes, costCodeId, source, adjustedReason]
+      properties:
+        id: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' }
+        minutes: { type: integer }
+        breakMinutes: { type: integer }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        source: { type: string, enum: [attendance, manual, adjusted] }
+        adjustedReason: { type: [string, 'null'] }
+    Timesheet:
+      type: object
+      required:
+        [
+          id,
+          workerId,
+          companyId,
+          date,
+          status,
+          submittedAt,
+          approvedAt,
+          rejectionReason,
+          paidMinutes,
+          paidHours,
+          lines,
+        ]
+      properties:
+        id: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        date: { type: string, format: date, description: The day in the project's time zone. }
+        status: { $ref: '#/components/schemas/TimesheetStatus' }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        rejectionReason: { type: [string, 'null'] }
+        paidMinutes: { type: integer, description: Minutes worked less breaks. }
+        paidHours: { type: string, pattern: '^\\d+\\.\\d{2}$' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/TimesheetLine' }
+    TimesheetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Timesheet' }
+    DateRangeRequest:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+    GenerateTimesheetsResult:
+      type: object
+      required: [sheetsCreated, linesAdded]
+      properties:
+        sheetsCreated: { type: integer }
+        linesAdded: { type: integer }
+    TimesheetExport:
+      type: object
+      required: [filename, csv, count]
+      properties:
+        filename: { type: string }
+        csv: { type: string }
+        count: { type: integer, description: Timesheets included, now marked exported. }
+    AddTimesheetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [minutes, reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    AdjustTimesheetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    RejectTimesheetRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    EquipmentStatus:
+      type: string
+      enum: [available, in_use, maintenance, retired]
+    Equipment:
+      type: object
+      required: [id, name, assetNumber, type, status, version]
+      properties:
+        id: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        assetNumber: { type: string }
+        type: { type: string }
+        status: { $ref: '#/components/schemas/EquipmentStatus' }
+        version: { type: integer }
+    EquipmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Equipment' }
+    CreateEquipmentRequest:
+      type: object
+      additionalProperties: false
+      required: [name, assetNumber, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        assetNumber: { type: string, minLength: 1, maxLength: 60 }
+        type: { type: string, minLength: 1, maxLength: 100 }
+    UpdateEquipmentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { type: string, minLength: 1, maxLength: 100 }
+        status: { $ref: '#/components/schemas/EquipmentStatus' }
+    EquipmentBooking:
+      type: object
+      required: [id, equipmentId, startsOn, endsOn, bookedFor, note, status]
+      properties:
+        id: { type: string, pattern: '^eqb_[0-9A-Za-z]{26}$' }
+        equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        bookedFor: { type: string }
+        note: { type: [string, 'null'] }
+        status: { type: string, enum: [active, cancelled] }
+    EquipmentBookingList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EquipmentBooking' }
+    CreateEquipmentBookingRequest:
+      type: object
+      additionalProperties: false
+      required: [startsOn, endsOn, bookedFor]
+      properties:
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        bookedFor: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    EquipmentLog:
+      type: object
+      required: [id, equipmentId, date, hours, operator, notes]
+      properties:
+        id: { type: string, pattern: '^eql_[0-9A-Za-z]{26}$' }
+        equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        date: { type: string, format: date }
+        hours: { type: string, pattern: '^\\d{1,2}\\.\\d{2}$' }
+        operator: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+    EquipmentLogList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EquipmentLog' }
+    LogEquipmentHoursRequest:
+      type: object
+      additionalProperties: false
+      required: [date, hours]
+      properties:
+        date: { type: string, format: date }
+        hours:
+          {
+            type: string,
+            pattern: '^\\d{1,2}(\\.\\d{1,2})?$',
+            description: In quarter hours,
+            up to 24.,
+          }
+        operator: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: string, minLength: 1, maxLength: 2000 }
+    Shift:
+      type: object
+      required:
+        [
+          id,
+          siteId,
+          crew,
+          trade,
+          note,
+          startsAt,
+          endsAt,
+          requiredHeadcount,
+          filled,
+          status,
+          publishedAt,
+          assignments,
+        ]
+      properties:
+        id: { type: string, pattern: '^shf_[0-9A-Za-z]{26}$' }
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        crew: { type: [string, 'null'] }
+        trade: { type: string }
+        note: { type: [string, 'null'] }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        requiredHeadcount: { type: integer }
+        filled:
+          description: Workers assigned who have not declined, across all companies.
+          type: integer
+        status: { $ref: '#/components/schemas/ShiftStatus' }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        assignments:
+          type: array
+          items: { $ref: '#/components/schemas/ShiftAssignment' }
+    ShiftList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Shift' }
+    CreateShiftRequest:
+      type: object
+      additionalProperties: false
+      required: [siteId, trade, startsAt, endsAt, requiredHeadcount]
+      properties:
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        crew: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        requiredHeadcount: { type: integer, minimum: 1, maximum: 500 }
+    AssignShiftWorkersRequest:
+      type: object
+      additionalProperties: false
+      required: [workerIds]
+      properties:
+        workerIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+    RespondToShiftRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [accepted, declined, attended, no_show]
     AttendanceSite:
       type: object
       required:
@@ -20903,6 +23078,21 @@ components:
           description: What stops the incident closing now. Empty when it can close.
           items: { $ref: '#/components/schemas/IncidentCloseBlocker' }
         canManage: { type: boolean }
+    IncidentActionFromSource:
+      type: object
+      required: [action, incidentId, incidentNumberLabel, incidentTitle]
+      properties:
+        action: { $ref: '#/components/schemas/IncidentAction' }
+        incidentId: { type: string }
+        incidentNumberLabel: { type: string }
+        incidentTitle: { type: string }
+    IncidentActionFromSourceList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentActionFromSource' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

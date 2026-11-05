@@ -194,6 +194,27 @@ describe('subcontract from the award', () => {
   });
 });
 
+describe('commitment from the award', () => {
+  it('raises the draft commitment against the chosen budget line', async () => {
+    fake.on('POST', `${PKG}/commitment`, () => ({
+      commitmentId: 'cmt_1',
+      number: 3,
+      title: 'Tiling',
+      total: '11000.00',
+      created: true,
+    }));
+    expect(await source.createCommitment('prj_1', 'tpk_1', 'bln_1')).toEqual({
+      commitmentId: 'cmt_1',
+      number: 3,
+      total: '11000.00',
+      created: true,
+    });
+    expect(fake.callsTo('POST', `${PKG}/commitment`)[0]!.init.body).toEqual({
+      budgetLineId: 'bln_1',
+    });
+  });
+});
+
 describe('quotes', () => {
   it('maps a quote with its file name, lines and sources', async () => {
     fake.on('GET', QUOTES, () => ({ data: [apiQuote()] }));

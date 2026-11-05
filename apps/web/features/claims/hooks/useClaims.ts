@@ -12,7 +12,9 @@ import {
   type IssuePaymentSchedule,
   type RecordClaimStatement,
   type PaymentClaimStatus,
+  type RecordRetentionRelease,
   type RecordTrustMovement,
+  type SaveRetentionTerms,
   type SaveContractTrust,
   type SubmitPaymentClaim,
   type VariationAction,
@@ -71,12 +73,51 @@ export function useTrustMutations(projectId: string, contractId: string) {
   };
 }
 
+export function useRetentionRelease(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'contracts', { retentionRelease: contractId }),
+    queryFn: () => source.retentionRelease(projectId, contractId),
+  });
+}
+
+export function useRetentionMutations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') });
+  return {
+    saveTerms: useMutation({
+      mutationFn: (body: SaveRetentionTerms) =>
+        source.saveRetentionTerms(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+    recordRelease: useMutation({
+      mutationFn: (body: RecordRetentionRelease) =>
+        source.recordRetentionRelease(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+  };
+}
+
 export function useCostForecast(projectId: string, enabled = true) {
   const { orgId } = useCurrentOrg();
   const source = useClaimsApi();
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'cost-forecast', {}),
     queryFn: () => source.costForecast(projectId),
+    enabled,
+  });
+}
+
+export function useBudgetVsForecast(projectId: string, enabled = true) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'cost-forecast', { view: 'budget' }),
+    queryFn: () => source.budgetVsForecast(projectId),
     enabled,
   });
 }
@@ -146,6 +187,11 @@ export function useClaimsMutations(projectId: string) {
     createVariation: useMutation({
       mutationFn: (v: { contractId: string; body: CreateVariation }) =>
         source.createVariation(projectId, v.contractId, v.body),
+      onSuccess: refresh,
+    }),
+    setVariationCostCode: useMutation({
+      mutationFn: (v: { variationId: string; costCodeId: string | null }) =>
+        source.setVariationCostCode(projectId, v.variationId, v.costCodeId),
       onSuccess: refresh,
     }),
     moveVariation: useMutation({

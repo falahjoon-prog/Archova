@@ -9,6 +9,7 @@ import type {
   SovRow,
   VariationRow,
 } from '../application/financials';
+import type { CommitmentLineRow, CommitmentRow } from '../application/commitments';
 
 const company = (id: string | null) => (id ? encodeId('company', id) : null);
 
@@ -75,6 +76,7 @@ export const toVariationDto = (v: { variation: VariationRow; claimedToDate: stri
   submittedAt: v.variation.submittedAt?.toISOString() ?? null,
   decidedAt: v.variation.decidedAt?.toISOString() ?? null,
   decisionNote: v.variation.decisionNote,
+  costCodeId: v.variation.costCodeId ? encodeId('costCode', v.variation.costCodeId) : null,
 });
 
 export const toLineDto = (l: ClaimLineRow) => ({
@@ -104,4 +106,24 @@ export const toScheduleDto = (s: ScheduleRow) => ({
   })),
   issuedAt: s.issuedAt.toISOString(),
   issuedWithinTime: s.issuedWithinTime,
+});
+
+export const toCommitmentDto = (c: CommitmentRow) => ({
+  id: encodeId('commitment', c.id),
+  number: c.number,
+  kind: c.kind,
+  title: c.title,
+  vendorCompanyId: company(c.vendorCompanyId),
+  status: c.status as 'draft',
+  total: c.total,
+  overBudgetOverride: c.overBudgetOverride,
+  submittedAt: c.submittedAt?.toISOString() ?? null,
+  decidedAt: c.decidedAt?.toISOString() ?? null,
+  decisionNote: c.decisionNote,
+});
+
+export const toCommitmentLineDto = (l: CommitmentLineRow) => ({
+  budgetLineId: encodeId('budgetLine', l.budgetLineId),
+  description: l.description,
+  amount: l.amount,
 });

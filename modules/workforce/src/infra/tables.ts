@@ -6,6 +6,7 @@ import {
   doublePrecision,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   real,
   text,
@@ -276,7 +277,7 @@ export const workerCredentials = workforceSchema.table('worker_credentials', {
   orgId: uuid('org_id').notNull(),
   workerId: uuid('worker_id').notNull(),
   kind: text('kind').$type<CredentialKind>().notNull(),
-  number: text('number').notNull(),
+  numberLast4: text('number_last4').notNull(),
   issuingState: text('issuing_state'),
   licenceClass: text('licence_class'),
   issuedOn: date('issued_on'),
@@ -397,4 +398,116 @@ export const complianceExpiryAlerts = workforceSchema.table('compliance_expiry_a
   expiresOn: date('expires_on').notNull(),
   raisedOn: date('raised_on').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ShiftStatus = 'draft' | 'published' | 'cancelled';
+export type AssignmentStatus = 'offered' | 'accepted' | 'declined' | 'no_show' | 'attended';
+
+export const shifts = workforceSchema.table('shifts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  siteId: uuid('site_id').notNull(),
+  crew: text('crew'),
+  trade: text('trade').notNull(),
+  note: text('note'),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  requiredHeadcount: integer('required_headcount').notNull(),
+  status: text('status').$type<ShiftStatus>().notNull().default('draft'),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const shiftAssignments = workforceSchema.table('shift_assignments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  shiftId: uuid('shift_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  companyId: uuid('company_id'),
+  status: text('status').$type<AssignmentStatus>().notNull().default('offered'),
+  notifiedAt: timestamp('notified_at', { withTimezone: true }),
+  respondedAt: timestamp('responded_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'retired';
+
+export const equipment = workforceSchema.table('equipment', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  assetNumber: text('asset_number').notNull(),
+  type: text('type').notNull(),
+  status: text('status').$type<EquipmentStatus>().notNull().default('available'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const equipmentBookings = workforceSchema.table('equipment_bookings', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  equipmentId: uuid('equipment_id').notNull(),
+  startsOn: date('starts_on').notNull(),
+  endsOn: date('ends_on').notNull(),
+  bookedFor: text('booked_for').notNull(),
+  note: text('note'),
+  status: text('status').$type<'active' | 'cancelled'>().notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const equipmentLogs = workforceSchema.table('equipment_logs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  equipmentId: uuid('equipment_id').notNull(),
+  logDate: date('log_date').notNull(),
+  hours: numeric('hours', { precision: 5, scale: 2 }).notNull(),
+  operator: text('operator'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'exported';
+export type TimesheetLineSource = 'attendance' | 'manual' | 'adjusted';
+
+export const timesheets = workforceSchema.table('timesheets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  companyId: uuid('company_id'),
+  localDate: date('local_date').notNull(),
+  status: text('status').$type<TimesheetStatus>().notNull().default('draft'),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  rejectionReason: text('rejection_reason'),
+  exportedAt: timestamp('exported_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});
+
+export const timesheetLines = workforceSchema.table('timesheet_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  timesheetId: uuid('timesheet_id').notNull(),
+  minutes: integer('minutes').notNull(),
+  breakMinutes: integer('break_minutes').notNull().default(0),
+  costCodeId: uuid('cost_code_id'),
+  source: text('source').$type<TimesheetLineSource>().notNull(),
+  attendanceSessionId: uuid('attendance_session_id'),
+  adjustedReason: text('adjusted_reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
 });

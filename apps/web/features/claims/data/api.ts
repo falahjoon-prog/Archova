@@ -18,6 +18,8 @@ export type CreateVariation = S['CreateVariationRequest'];
 export type VariationAction = 'submit' | 'approve' | 'reject' | 'withdraw';
 export type CostForecast = S['CostForecast'];
 export type ForecastAdjustment = S['ForecastAdjustment'];
+export type BudgetVsForecast = S['BudgetVsForecast'];
+export type BudgetVsForecastRow = S['BudgetVsForecastRow'];
 export type CreateForecastAdjustment = S['CreateForecastAdjustmentRequest'];
 export type ContractPaymentSummary = S['ContractPaymentSummary'];
 export type ContractTrust = S['ContractTrust'];
@@ -25,6 +27,9 @@ export type TrustMovement = S['TrustMovement'];
 export type TrustStatus = S['TrustStatus'];
 export type SaveContractTrust = S['SaveContractTrustRequest'];
 export type RecordTrustMovement = S['RecordTrustMovementRequest'];
+export type RetentionRelease = S['RetentionRelease'];
+export type SaveRetentionTerms = S['SaveRetentionTermsRequest'];
+export type RecordRetentionRelease = S['RecordRetentionReleaseRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
@@ -85,9 +90,45 @@ export function createClaimsApi(orgId: string) {
         }),
       );
     },
+    async retentionRelease(projectId: string, contractId: string): Promise<RetentionRelease> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/retention-release`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      );
+    },
+    async saveRetentionTerms(
+      projectId: string,
+      contractId: string,
+      body: SaveRetentionTerms,
+    ): Promise<RetentionRelease> {
+      return unwrap(
+        await api.PUT(`${P}/contracts/{contractId}/retention-release`, {
+          params: { path: { orgId, projectId, contractId } },
+          body,
+        }),
+      );
+    },
+    async recordRetentionRelease(
+      projectId: string,
+      contractId: string,
+      body: RecordRetentionRelease,
+    ): Promise<RetentionRelease> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/retention-release/releases`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
     async costForecast(projectId: string): Promise<CostForecast> {
       return unwrap(
         await api.GET(`${P}/cost-forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async budgetVsForecast(projectId: string): Promise<BudgetVsForecast> {
+      return unwrap(
+        await api.GET(`${P}/budget/vs-forecast`, { params: { path: { orgId, projectId } } }),
       );
     },
     async createAdjustment(
@@ -124,6 +165,18 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/contracts/{contractId}/variations`, {
           params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async setVariationCostCode(
+      projectId: string,
+      variationId: string,
+      costCodeId: string | null,
+    ): Promise<Variation> {
+      return unwrap(
+        await api.PUT(`${P}/variations/{variationId}/cost-code`, {
+          params: { path: { orgId, projectId, variationId }, header: idempotencyKey() },
+          body: { costCodeId },
         }),
       );
     },
