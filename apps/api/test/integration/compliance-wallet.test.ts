@@ -329,4 +329,96 @@ describe('compliance wallet', () => {
     );
     expect(patch.statusCode).toBe(404);
   });
+
+  it('holds white cards and licences against a named holder and applies the 2-year rule', async () => {
+    const u = await signUp(t.app, 'wallet-worker');
+    const org = await createOrg(u.browser, 'Wallet Worker Co');
+    await enableFlag(t, 'subcontractor_wallet', org.id);
+    const base = `/v1/orgs/${org.id}/compliance-documents`;
+    const fileId = await uploadOrgFile(u.browser, org.id);
+
+    // A worker card names its holder; a company item has none.
+    const noHolder = await u.browser.post(base, {
+      itemType: 'white_card',
+      title: 'White card',
+      fileIds: [fileId],
+    });
+    expect(noHolder.statusCode).toBe(422);
+    const companyWithHolder = await u.browser.post(base, {
+      itemType: 'public_liability',
+      title: 'PL',
+      holderName: 'Sam Hand',
+      fileIds: [fileId],
+    });
+    expect(companyWithHolder.statusCode).toBe(422);
+
+    // Only a white card has a last work date, and not one in the future.
+    const wrongType = await u.browser.post(base, {
+      itemType: 'hrw_licence',
+      title: 'Forklift',
+      holderName: 'Sam Hand',
+      lastWorkOn: day(-10),
+      fileIds: [fileId],
+    });
+    expect(wrongType.statusCode).toBe(422);
+    const future = await u.browser.post(base, {
+      itemType: 'white_card',
+      title: 'White card',
+      holderName: 'Sam Hand',
+      lastWorkOn: day(5),
+      fileIds: [fileId],
+    });
+    expect(future.statusCode).toBe(422);
+
+    const recent = await u.browser.post(base, {
+      itemType: 'white_card',
+      title: 'White card',
+      holderName: 'Sam Hand',
+      number: 'WC-12345678',
+      lastWorkOn: day(-30),
+      fileIds: [fileId],
+    });
+    expect(recent.statusCode).toBe(201);
+    expect(recent.json()).toMatchObject({
+      holderName: 'Sam Hand',
+      workerId: null,
+      numberLast4: '5678',
+      expiry: 'no_expiry',
+      whiteCard: { state: 'recent_work', lastWorkOn: day(-30), source: 'declared' },
+    });
+
+    // Two years and a few days on, it only says the card may have lapsed; nothing is deleted or blocked.
+    const old = await u.browser.post(base, {
+      itemType: 'white_card',
+      title: 'Old card',
+      holderName: 'Pat Old',
+      lastWorkOn: day(-800),
+      fileIds: [fileId],
+    });
+    expect(old.json().whiteCard.state).toBe('may_have_lapsed');
+
+    // The holder's own declaration can be corrected without clearing a sighting of the card itself.
+    const sighted = await u.browser.post(`${base}/${recent.json().id}/sight`, undefined, {
+      'if-match': recent.headers.etag as string,
+    });
+    expect(sighted.statusCode).toBe(200);
+    const updated = await u.browser.patch(
+      `${base}/${recent.json().id}`,
+      { lastWorkOn: day(-1) },
+      { 'if-match': sighted.headers.etag as string },
+    );
+    expect(updated.statusCode).toBe(200);
+    expect(updated.json().evidence).toBe('sighted');
+    expect(updated.json().whiteCard.lastWorkOn).toBe(day(-1));
+
+    // A link to a worker that is not on this org's list is refused.
+    const bad = await u.browser.post(base, {
+      itemType: 'white_card',
+      title: 'Linked',
+      holderName: 'Nobody',
+      workerId: 'wkr_00000000000000000000000000',
+      fileIds: [fileId],
+    });
+    expect(bad.statusCode).toBe(422);
+  });
 });

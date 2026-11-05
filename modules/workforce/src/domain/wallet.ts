@@ -39,6 +39,49 @@ export const SHAREABLE_ITEM_TYPES = [
   'other',
 ] as const;
 
+// ---- Per-worker items (compliance/05 §3.4)
+
+/** Item types held by a named worker rather than the company. Never shareable to a builder. */
+export const WORKER_ITEM_TYPES = ['white_card', 'hrw_licence'] as const;
+export const isWorkerItem = (itemType: string) =>
+  (WORKER_ITEM_TYPES as readonly string[]).includes(itemType);
+
+/** A white card has no expiry date; it lapses after 2 years without construction work (model WHS Regulation r317). */
+export const WHITE_CARD_LAPSE_YEARS = 2;
+export type WhiteCardState = 'no_work_recorded' | 'recent_work' | 'may_have_lapsed';
+
+function addYears(day: string, years: number): string {
+  const [y, m, d] = day.split('-').map(Number) as [number, number, number];
+  const last = new Date(Date.UTC(y + years, m, 0)).getUTCDate();
+  return `${y + years}-${String(m).padStart(2, '0')}-${String(Math.min(d, last)).padStart(2, '0')}`;
+}
+
+export interface WhiteCardCheck {
+  state: WhiteCardState;
+  /** The later of the holder's declaration and their last Archova sign-in. */
+  lastWorkOn: string | null;
+  source: 'sign_in' | 'declared' | null;
+}
+
+/**
+ * Where the 2-year rule stands. "May have lapsed", never "lapsed": whether a state treats the card as lapsed is for
+ * the person and the regulator (VIC is unconfirmed), and no record of work is not a record of no work.
+ */
+export function whiteCardCheck(
+  declaredOn: string | null,
+  lastSignInOn: string | null,
+  today: LocalDate,
+): WhiteCardCheck {
+  const signIn = lastSignInOn && (!declaredOn || lastSignInOn >= declaredOn);
+  const lastWorkOn = signIn ? lastSignInOn : declaredOn;
+  if (!lastWorkOn) return { state: 'no_work_recorded', lastWorkOn: null, source: null };
+  return {
+    state: today > addYears(lastWorkOn, WHITE_CARD_LAPSE_YEARS) ? 'may_have_lapsed' : 'recent_work',
+    lastWorkOn,
+    source: signIn ? 'sign_in' : 'declared',
+  };
+}
+
 export const MAX_GRANT_MONTHS = 12;
 export const CODE_VALID_DAYS = 14;
 

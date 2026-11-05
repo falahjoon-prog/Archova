@@ -1,13 +1,22 @@
 // Subcontractor compliance wallet, first slice (compliance/05): a company's own documents.
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
-import { checkNumber, hasNumberCheck, last4 } from '../domain/wallet';
-import { complianceDocuments, complianceExpiryAlerts } from '../infra/tables';
+import { checkNumber, hasNumberCheck, isWorkerItem, last4 } from '../domain/wallet';
+import {
+  attendanceSessions,
+  complianceDocuments,
+  complianceExpiryAlerts,
+  workers,
+} from '../infra/tables';
 import type { InductionDeps } from './inductions';
 
 export type ComplianceDocumentRow = typeof complianceDocuments.$inferSelect;
+/** A wallet row with what a per-worker item needs beside it: the holder's name and last sign-in day. */
+export type WalletDoc = ComplianceDocumentRow & {
+  lastSignInOn: string | null;
+};
 export type ComplianceAlertRow = {
   alert: typeof complianceExpiryAlerts.$inferSelect;
   title: string;
@@ -30,6 +39,11 @@ export interface WalletCreate {
   expiresOn?: string;
   fileIds: string[];
   selfDeclared: boolean;
+  /** Per-worker items only: who holds the card, and optionally their entry on this org's worker list. */
+  holderName?: string;
+  workerId?: string;
+  /** White card only: the day the holder last did construction work. */
+  lastWorkOn?: string;
 }
 
 export interface WalletUpdate {
@@ -42,6 +56,7 @@ export interface WalletUpdate {
   startsOn?: string | null;
   expiresOn?: string | null;
   fileIds?: string[];
+  lastWorkOn?: string | null;
   archived?: boolean;
 }
 
@@ -63,6 +78,87 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     });
 
   const today = () => localDateOf(new Date(), WALLET_TIME_ZONE);
+
+  /** The last sign-in day of linked workers, in one query however many rows there are. */
+  async function withWorkers(
+    scope: TenantScope,
+    rows: ComplianceDocumentRow[],
+  ): Promise<WalletDoc[]> {
+    const ids = [...new Set(rows.flatMap((r) => (r.workerId ? [r.workerId] : [])))];
+    const signIns = ids.length
+      ? await scope.tx
+          .select({
+            workerId: attendanceSessions.workerId,
+            last: sql<string>`max(${attendanceSessions.localDate})::text`,
+          })
+          .from(attendanceSessions)
+          .where(
+            and(
+              inArray(attendanceSessions.workerId, ids),
+              eq(attendanceSessions.orgId, scope.ctx.orgId),
+            ),
+          )
+          .groupBy(attendanceSessions.workerId)
+      : [];
+    const last = new Map(signIns.map((n) => [n.workerId, n.last]));
+    return rows.map((r) => ({
+      ...r,
+      lastSignInOn: r.workerId ? (last.get(r.workerId) ?? null) : null,
+    }));
+  }
+
+  /** A per-worker item names its holder; a company item has none. A linked worker must be on this org's list. */
+  async function assertHolder(
+    scope: TenantScope,
+    itemType: string,
+    holderName?: string,
+    workerId?: string,
+  ) {
+    if (!isWorkerItem(itemType)) {
+      if (holderName || workerId)
+        throw new AppError('validation_failed', 'This item belongs to the company, not a worker.', [
+          {
+            path: holderName ? 'holderName' : 'workerId',
+            message: 'Leave empty for a company item',
+          },
+        ]);
+      return;
+    }
+    if (!holderName?.trim())
+      throw new AppError('validation_failed', 'Say whose card this is.', [
+        { path: 'holderName', message: 'Required for a worker item' },
+      ]);
+    if (!workerId) return;
+    const [w] = await scope.tx
+      .select({ id: workers.id })
+      .from(workers)
+      .where(
+        and(
+          eq(workers.id, workerId),
+          eq(workers.orgId, scope.ctx.orgId),
+          eq(workers.kind, 'worker'),
+        ),
+      )
+      .limit(1);
+    if (!w)
+      throw new AppError('validation_failed', 'That worker is not on this company’s list.', [
+        { path: 'workerId', message: 'Not a worker in this organisation' },
+      ]);
+  }
+
+  function assertLastWork(itemType: string, lastWorkOn?: string | null) {
+    if (!lastWorkOn) return;
+    if (itemType !== 'white_card')
+      throw new AppError(
+        'validation_failed',
+        'Only a white card has a last construction work date.',
+        [{ path: 'lastWorkOn', message: 'Only for a white card' }],
+      );
+    if (lastWorkOn > today())
+      throw new AppError('validation_failed', 'The last work date is in the future.', [
+        { path: 'lastWorkOn', message: 'Must not be in the future' },
+      ]);
+  }
 
   /** Org-level, scanned and ready: the wallet never points at a project's files. */
   async function assertFiles(scope: TenantScope, fileIds: string[]) {
@@ -112,7 +208,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
         sql`${complianceDocuments.expiresOn} asc nulls last`,
         asc(complianceDocuments.createdAt),
       );
-    return { rows, today: today() };
+    return { rows: await withWorkers(scope, rows), today: today() };
   }
 
   /** Expiry alerts the daily job has raised, newest first, with the document each is about. */
@@ -141,6 +237,8 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     const input = { ...raw, fileIds: unique(raw.fileIds) };
     assertDates(input.startsOn, input.expiresOn);
     assertNumber(input.itemType, input.issuingState, input.number);
+    await assertHolder(scope, input.itemType, input.holderName, input.workerId);
+    assertLastWork(input.itemType, input.lastWorkOn);
     if (input.selfDeclared && input.fileIds.length > 0)
       throw new AppError('validation_failed', 'A declaration has no files.', [
         { path: 'fileIds', message: 'Leave empty for a self-declared item' },
@@ -166,6 +264,9 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
         startsOn: input.startsOn ?? null,
         expiresOn: input.expiresOn ?? null,
         fileIds: input.fileIds,
+        holderName: input.holderName?.trim() || null,
+        workerId: input.workerId ?? null,
+        lastWorkDeclaredOn: input.lastWorkOn ?? null,
         evidence: input.selfDeclared ? 'self_declared' : 'recorded',
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
@@ -173,7 +274,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .returning();
     audit(scope, 'created', row!);
     await retain(scope, row!);
-    return { row: row!, today: today() };
+    return { row: (await withWorkers(scope, [row!]))[0]!, today: today() };
   }
 
   /**
@@ -227,6 +328,9 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     };
     assertDates(content.startsOn, content.expiresOn);
     assertNumber(cur.itemType, content.issuingState, input.number);
+    assertLastWork(cur.itemType, input.lastWorkOn);
+    // The holder's declaration is not on the card, so changing it never clears a sighting.
+    const lastWork = input.lastWorkOn === undefined ? cur.lastWorkDeclaredOn : input.lastWorkOn;
     if (input.fileIds) await assertFiles(scope, content.fileIds);
     if (cur.evidence !== 'self_declared' && content.fileIds.length === 0)
       throw new AppError('validation_failed', 'A document needs at least one file.', [
@@ -253,6 +357,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .update(complianceDocuments)
       .set({
         ...content,
+        lastWorkDeclaredOn: lastWork,
         ...(resighted ? { evidence: 'recorded' as const, sightedBy: null, sightedAt: null } : {}),
         ...(input.archived === undefined
           ? {}
@@ -266,9 +371,9 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     if (!row) throw versionConflict();
     if (input.archived !== undefined && input.archived !== (cur.archivedAt !== null))
       audit(scope, input.archived ? 'archived' : 'unarchived', row);
-    if (changed) audit(scope, 'updated', row);
+    if (changed || lastWork !== cur.lastWorkDeclaredOn) audit(scope, 'updated', row);
     await retain(scope, row);
-    return { row, today: today() };
+    return { row: (await withWorkers(scope, [row]))[0]!, today: today() };
   }
 
   async function sight(scope: TenantScope, id: string, expected: number) {
@@ -292,7 +397,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     if (!row) throw versionConflict();
     audit(scope, 'sighted', row);
     await retain(scope, row);
-    return { row, today: today() };
+    return { row: (await withWorkers(scope, [row]))[0]!, today: today() };
   }
 
   return { list, listAlerts, create, update, sight };

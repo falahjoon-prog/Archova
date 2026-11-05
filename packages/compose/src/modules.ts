@@ -44,6 +44,7 @@ import {
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
+import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
@@ -66,6 +67,7 @@ export const MODULE_PERMISSIONS = [
   CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
+  OWNERPORTAL_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
@@ -251,6 +253,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     logger: services.logger,
   });
 
+  const ownerportal = createOwnerPortalModule(services, {
+    access: access.api,
+    platform: platform.api,
+  });
+
   const notifications = createNotificationsModule(services);
 
   const financials = createFinancialsModule(services, {
@@ -271,12 +278,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     safety: safety.api,
   });
 
-  const precon = createPreconModule(services, { platform: platform.api });
-
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
+  const precon = createPreconModule(services, { platform: platform.api });
+
   const estimating = createEstimatingModule(services, {
     access: access.api,
+    prequal: precon.api,
     platform: platform.api,
     documents: documents.api,
     files: files.api,
@@ -410,6 +418,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     correspondence,
     defects,
     meetings,
+    ownerportal,
     notifications,
     financials,
     quality,
@@ -445,6 +454,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     correspondence,
     defects,
     meetings,
+    ownerportal,
     notifications,
     financials,
     quality,

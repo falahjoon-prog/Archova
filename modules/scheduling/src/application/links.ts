@@ -132,7 +132,56 @@ export function createLinksService(deps: LinksDeps) {
     if (!gone.length) throw new AppError('schedule.item_link_not_found');
   }
 
-  return { list, create, remove };
+  /** Reverse view: where one RFI or submittal sits on the programme. Nothing unless the caller can see the item. */
+  async function forItem(
+    scope: TenantScope,
+    projectId: string,
+    kind: LinkKind,
+    targetPublicId: string,
+  ) {
+    const targetId = decodeId(KIND_ID[kind], targetPublicId);
+    if (!targetId)
+      throw new AppError('validation_failed', 'Not a valid id.', [
+        { path: 'targetId', message: 'Invalid id' },
+      ]);
+    const [visible] = await sources[kind](scope, projectId, [targetId]);
+    if (!visible) return { data: [] };
+    const rows = await scope.tx
+      .select({
+        linkId: activityLinks.id,
+        scheduleId: schedules.id,
+        scheduleName: schedules.name,
+        activityId: activities.id,
+        activityName: activities.name,
+        start: activities.startDate,
+        finish: activities.finishDate,
+      })
+      .from(activityLinks)
+      .innerJoin(activities, eq(activities.id, activityLinks.activityId))
+      .innerJoin(schedules, eq(schedules.id, activityLinks.scheduleId))
+      .where(
+        and(
+          eq(activityLinks.projectId, projectId),
+          eq(activityLinks.kind, kind),
+          eq(activityLinks.targetId, targetId),
+          isNull(schedules.deletedAt),
+        ),
+      )
+      .orderBy(asc(activities.startDate), asc(activityLinks.id));
+    return {
+      data: rows.map((r) => ({
+        linkId: encodeId('scheduleLink', r.linkId),
+        scheduleId: encodeId('schedule', r.scheduleId),
+        scheduleName: r.scheduleName,
+        activityId: encodeId('scheduleActivity', r.activityId),
+        activityName: r.activityName,
+        start: r.start,
+        finish: r.finish,
+      })),
+    };
+  }
+
+  return { list, create, remove, forItem };
 }
 
 export type LinksService = ReturnType<typeof createLinksService>;

@@ -56,13 +56,15 @@ export type ProjectTool =
   | 'swms'
   | 'inspections'
   | 'late-submissions'
+  | 'owner-portal'
   | 'imports'
   | 'tender-packages'
   | 'takeoff-measurements'
   | 'estimates'
   | 'contracts'
   | 'payment-claims'
-  | 'cost-forecast';
+  | 'cost-forecast'
+  | 'budget';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */
 const queryOptions = <T extends { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>(

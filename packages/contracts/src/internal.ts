@@ -31,6 +31,7 @@ export const PLAN_MODULE_KEYS = [
   'variations',
   'claims',
   'estimating',
+  'ownerportal',
   'ai',
 ] as const;
 export type PlanModuleKey = (typeof PLAN_MODULE_KEYS)[number];

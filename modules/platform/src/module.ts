@@ -50,6 +50,7 @@ export function createPlatformModule(
     }),
     api: {
       resolveTenantAccess: orgs.resolveTenantAccess,
+      findRecentOrdinaryRemoval: orgs.findRecentOrdinaryRemoval,
       getProjectMembership: members.getProjectMembership,
       getProjectAccessState: members.getProjectAccessState,
       contactsOfCompany: members.contactsOfCompany,
