@@ -60,6 +60,8 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
             ...(membership.kind === 'member'
               ? [
+                  { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
+                  { href: webRoutes.reports(orgSlug), label: 'Reports' },
                   { href: webRoutes.bidBoard(orgSlug), label: 'Bid board' },
                   { href: webRoutes.prequalification(orgSlug), label: 'Prequalification' },
                 ]

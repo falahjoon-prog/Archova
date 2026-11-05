@@ -45,6 +45,7 @@ tags:
   - name: meetings
   - name: ownerportal
   - name: notifications
+  - name: reporting
 paths:
   /v1/auth/signup:
     post:
@@ -3303,6 +3304,159 @@ paths:
       responses:
         '204':
           description: Removed
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/portfolio:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPortfolio
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: One row per project with what is open and overdue, and company totals.
+      description: |
+        The portfolio dashboard. Covers the projects the caller can see (org owners and admins: every project), tender,
+        active and on-hold projects unless `includeClosed` is true, at most 200. For each project the open and overdue
+        counts of RFIs, defects and submittals, counted only from what the caller may read on that project: a tool the
+        caller cannot read shows `restricted` and counts nothing, and is left out of the company totals. `attention`
+        is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The portfolio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Portfolio' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listReports
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Saved reports the caller made, and those shared with the company.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Save a report definition.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/preview:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: previewReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Run a report definition without saving it.
+      description: A read-only POST so the builder can show rows while the definition is being edited. Nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportConfig' }
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/{reportId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: getReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: One saved report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Replace a saved report. Only its maker, or an org owner or admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Delete a saved report. Only its maker, or an org owner or admin.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/{reportId}/run:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: runReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Run a saved report now.
+      description: |
+        One row per RFI, defect or submittal across the report's projects (or every project the caller can see), counted
+        only from what the caller may read. Projects where the caller cannot read the tool are counted in
+        `restrictedProjects` and add no rows. At most 500 rows per project and 5000 in all; `truncated` says when the
+        answer was cut short.
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResult' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -9529,6 +9683,23 @@ paths:
         '204':
           description: No content
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/vs-forecast:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudgetVsForecast
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Revised budget against forecast final cost for each cost code, with what is not yet tagged to a code.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetVsForecast' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10666,6 +10837,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^oci_[0-9A-Za-z]{26}$' }
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -10831,6 +11007,144 @@ components:
       properties:
         kind: { type: string, enum: [rfi, submittal] }
         targetId: { type: string }
+    PortfolioTool:
+      type: object
+      required: [restricted, open, overdue]
+      properties:
+        restricted:
+          {
+            type: boolean,
+            description: 'True when the caller cannot read this tool on the project; counts are then zero.',
+          }
+        open: { type: integer }
+        overdue: { type: integer }
+    PortfolioProject:
+      type: object
+      required: [id, name, number, status, rfis, defects, submittals, attention]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        number: { type: [string, 'null'] }
+        status: { type: string }
+        rfis: { $ref: '#/components/schemas/PortfolioTool' }
+        defects: { $ref: '#/components/schemas/PortfolioTool' }
+        submittals: { $ref: '#/components/schemas/PortfolioTool' }
+        attention: { type: integer, description: 'Overdue RFIs, defects and submittals together.' }
+    PortfolioTotals:
+      type: object
+      required:
+        [
+          projects,
+          rfisOpen,
+          rfisOverdue,
+          defectsOpen,
+          defectsOverdue,
+          submittalsOpen,
+          submittalsOverdue,
+        ]
+      properties:
+        projects: { type: integer }
+        rfisOpen: { type: integer }
+        rfisOverdue: { type: integer }
+        defectsOpen: { type: integer }
+        defectsOverdue: { type: integer }
+        submittalsOpen: { type: integer }
+        submittalsOverdue: { type: integer }
+    Portfolio:
+      type: object
+      required: [totals, projects, truncated]
+      properties:
+        totals: { $ref: '#/components/schemas/PortfolioTotals' }
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/PortfolioProject' }
+        truncated:
+          {
+            type: boolean,
+            description: 'True when more than 200 projects matched and the rest were left out.',
+          }
+    ReportConfig:
+      type: object
+      additionalProperties: false
+      required: [source, state, projectIds, columns, overdueOnly]
+      properties:
+        source: { type: string, enum: [rfis, defects, submittals] }
+        state:
+          {
+            type: string,
+            enum: [open, closed, all],
+            description: 'Open is what is still waiting on someone; closed is answered, approved or closed.',
+          }
+        projectIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
+          description: 'Projects to cover; empty means every project the caller can see.'
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items: { type: string, enum: [project, ref, title, status, dueDate, overdue, createdAt] }
+        overdueOnly: { type: boolean }
+    ReportInput:
+      type: object
+      additionalProperties: false
+      required: [name, shared, config]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        shared:
+          {
+            type: boolean,
+            description: 'True lets everyone in the company run it; false keeps it to its maker.',
+          }
+        config: { $ref: '#/components/schemas/ReportConfig' }
+    Report:
+      type: object
+      required: [id, name, shared, config, mine, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        shared: { type: boolean }
+        config: { $ref: '#/components/schemas/ReportConfig' }
+        mine:
+          {
+            type: boolean,
+            description: 'True when the caller made it, or is an org owner or admin, so may change it.',
+          }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ReportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Report' }
+    ReportRow:
+      type: object
+      required: [projectId, project, ref, title, status, dueDate, overdue, createdAt]
+      properties:
+        projectId: { type: string }
+        project: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        overdue: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ReportResult:
+      type: object
+      required: [columns, rows, restrictedProjects, truncated, generatedAt]
+      properties:
+        columns:
+          type: array
+          items: { type: string, enum: [project, ref, title, status, dueDate, overdue, createdAt] }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
+        generatedAt: { type: string, format: date-time }
     ScheduleDetail:
       type: object
       required: [schedule, activities, dependencies, criticalCount, violationCount]
@@ -16817,9 +17131,10 @@ components:
       enum: [head, subcontract]
     SovItem:
       type: object
-      required: [id, code, description, value]
+      required: [id, code, description, value, costCodeId]
       properties:
         id: { type: string, pattern: '^sov_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
         code: { type: string }
         description: { type: string }
         value: { $ref: '#/components/schemas/FinancialsMoney' }
@@ -16908,6 +17223,7 @@ components:
               code: { type: string, minLength: 1, maxLength: 50 }
               description: { type: string, minLength: 1, maxLength: 300 }
               value: { $ref: '#/components/schemas/FinancialsMoney' }
+              costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
     CostCode:
       type: object
       required: [id, code, description, parentId, archived]
@@ -17038,6 +17354,44 @@ components:
             description: Signed decimal AUD ex GST.,
           }
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BudgetVsForecastRow:
+      type: object
+      required:
+        [
+          costCodeId,
+          code,
+          codeDescription,
+          revised,
+          committed,
+          claimed,
+          adjustments,
+          forecastFinal,
+          variance,
+        ]
+      properties:
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: [string, 'null'] }
+        codeDescription: { type: string }
+        revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimed: { $ref: '#/components/schemas/FinancialsMoney' }
+        adjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        variance:
+          {
+            $ref: '#/components/schemas/FinancialsSignedMoney',
+            description: Revised budget less forecast final cost. Negative is over budget.,
+          }
+    BudgetVsForecast:
+      type: object
+      required: [budgetStatus, rows, unallocated, totals]
+      properties:
+        budgetStatus: { type: [string, 'null'], enum: [draft, locked, null] }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetVsForecastRow' }
+        unallocated: { $ref: '#/components/schemas/BudgetVsForecastRow' }
+        totals: { $ref: '#/components/schemas/BudgetVsForecastRow' }
     BudgetAdjustment:
       type: object
       required: [id, amount, reason, createdAt]
@@ -17064,10 +17418,11 @@ components:
       description: Decimal AUD ex GST, negative allowed.
     ForecastAdjustment:
       type: object
-      required: [id, contractId, category, label, note, amount, createdAt]
+      required: [id, contractId, costCodeId, category, label, note, amount, createdAt]
       properties:
         id: { type: string, pattern: '^fca_[0-9A-Za-z]{26}$' }
         contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
         category: { $ref: '#/components/schemas/ForecastAdjustmentCategory' }
         label: { type: string }
         note: { type: [string, 'null'] }
@@ -17082,6 +17437,7 @@ components:
       required: [category, label, amount]
       properties:
         contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
         category: { $ref: '#/components/schemas/ForecastAdjustmentCategory' }
         label: { type: string, minLength: 1, maxLength: 300 }
         note: { type: string, minLength: 1, maxLength: 5000 }

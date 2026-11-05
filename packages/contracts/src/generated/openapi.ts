@@ -2608,6 +2608,122 @@ export interface paths {
         patch: operations["updateBidderList"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One row per project with what is open and overdue, and company totals.
+         * @description The portfolio dashboard. Covers the projects the caller can see (org owners and admins: every project), tender,
+         *     active and on-hold projects unless `includeClosed` is true, at most 200. For each project the open and overdue
+         *     counts of RFIs, defects and submittals, counted only from what the caller may read on that project: a tool the
+         *     caller cannot read shows `restricted` and counts nothing, and is left out of the company totals. `attention`
+         *     is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
+         */
+        get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Saved reports the caller made, and those shared with the company. */
+        get: operations["listReports"];
+        put?: never;
+        /** Save a report definition. */
+        post: operations["createReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a report definition without saving it.
+         * @description A read-only POST so the builder can show rows while the definition is being edited. Nothing is stored.
+         */
+        post: operations["previewReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports/{reportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        /** One saved report. */
+        get: operations["getReport"];
+        /** Replace a saved report. Only its maker, or an org owner or admin. */
+        put: operations["updateReport"];
+        post?: never;
+        /** Delete a saved report. Only its maker, or an org owner or admin. */
+        delete: operations["deleteReport"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports/{reportId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Run a saved report now.
+         * @description One row per RFI, defect or submittal across the report's projects (or every project the caller can see), counted
+         *     only from what the caller may read. Projects where the caller cannot read the tool are counted in
+         *     `restrictedProjects` and add no rows. At most 500 rows per project and 5000 in all; `truncated` says when the
+         *     answer was cut short.
+         */
+        get: operations["runReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bid-board": {
         parameters: {
             query?: never;
@@ -6846,6 +6962,26 @@ export interface paths {
         patch: operations["updateBudgetLine"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/vs-forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Revised budget against forecast final cost for each cost code, with what is not yet tagged to a code. */
+        get: operations["getBudgetVsForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lock": {
         parameters: {
             query?: never;
@@ -7657,6 +7793,92 @@ export interface components {
             /** @enum {string} */
             kind: "rfi" | "submittal";
             targetId: string;
+        };
+        PortfolioTool: {
+            /** @description True when the caller cannot read this tool on the project; counts are then zero. */
+            restricted: boolean;
+            open: number;
+            overdue: number;
+        };
+        PortfolioProject: {
+            id: string;
+            name: string;
+            number: string | null;
+            status: string;
+            rfis: components["schemas"]["PortfolioTool"];
+            defects: components["schemas"]["PortfolioTool"];
+            submittals: components["schemas"]["PortfolioTool"];
+            /** @description Overdue RFIs, defects and submittals together. */
+            attention: number;
+        };
+        PortfolioTotals: {
+            projects: number;
+            rfisOpen: number;
+            rfisOverdue: number;
+            defectsOpen: number;
+            defectsOverdue: number;
+            submittalsOpen: number;
+            submittalsOverdue: number;
+        };
+        Portfolio: {
+            totals: components["schemas"]["PortfolioTotals"];
+            projects: components["schemas"]["PortfolioProject"][];
+            /** @description True when more than 200 projects matched and the rest were left out. */
+            truncated: boolean;
+        };
+        ReportConfig: {
+            /** @enum {string} */
+            source: "rfis" | "defects" | "submittals";
+            /**
+             * @description Open is what is still waiting on someone; closed is answered, approved or closed.
+             * @enum {string}
+             */
+            state: "open" | "closed" | "all";
+            /** @description Projects to cover; empty means every project the caller can see. */
+            projectIds: string[];
+            columns: ("project" | "ref" | "title" | "status" | "dueDate" | "overdue" | "createdAt")[];
+            overdueOnly: boolean;
+        };
+        ReportInput: {
+            name: string;
+            /** @description True lets everyone in the company run it; false keeps it to its maker. */
+            shared: boolean;
+            config: components["schemas"]["ReportConfig"];
+        };
+        Report: {
+            id: string;
+            name: string;
+            shared: boolean;
+            config: components["schemas"]["ReportConfig"];
+            /** @description True when the caller made it, or is an org owner or admin, so may change it. */
+            mine: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ReportList: {
+            data: components["schemas"]["Report"][];
+        };
+        ReportRow: {
+            projectId: string;
+            project: string;
+            ref: string;
+            title: string;
+            status: string;
+            /** Format: date */
+            dueDate: string | null;
+            overdue: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReportResult: {
+            columns: ("project" | "ref" | "title" | "status" | "dueDate" | "overdue" | "createdAt")[];
+            rows: components["schemas"]["ReportRow"][];
+            restrictedProjects: number;
+            truncated: boolean;
+            /** Format: date-time */
+            generatedAt: string;
         };
         ScheduleDetail: {
             schedule: components["schemas"]["ScheduleSummary"];
@@ -11470,6 +11692,7 @@ export interface components {
         ContractKind: "head" | "subcontract";
         SovItem: {
             id: string;
+            costCodeId: string | null;
             code: string;
             description: string;
             value: components["schemas"]["FinancialsMoney"];
@@ -11516,6 +11739,7 @@ export interface components {
                 code: string;
                 description: string;
                 value: components["schemas"]["FinancialsMoney"];
+                costCodeId?: string;
             }[];
         };
         CostCode: {
@@ -11588,6 +11812,25 @@ export interface components {
             amount: string;
             reason: string;
         };
+        BudgetVsForecastRow: {
+            costCodeId: string | null;
+            code: string | null;
+            codeDescription: string;
+            revised: components["schemas"]["FinancialsSignedMoney"];
+            committed: components["schemas"]["FinancialsMoney"];
+            claimed: components["schemas"]["FinancialsMoney"];
+            adjustments: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Revised budget less forecast final cost. Negative is over budget. */
+            variance: components["schemas"]["FinancialsSignedMoney"];
+        };
+        BudgetVsForecast: {
+            /** @enum {string|null} */
+            budgetStatus: "draft" | "locked" | null;
+            rows: components["schemas"]["BudgetVsForecastRow"][];
+            unallocated: components["schemas"]["BudgetVsForecastRow"];
+            totals: components["schemas"]["BudgetVsForecastRow"];
+        };
         BudgetAdjustment: {
             id: string;
             /** @description Signed decimal AUD ex GST. */
@@ -11604,6 +11847,7 @@ export interface components {
         ForecastAdjustment: {
             id: string;
             contractId: string | null;
+            costCodeId: string | null;
             category: components["schemas"]["ForecastAdjustmentCategory"];
             label: string;
             note: string | null;
@@ -11615,6 +11859,7 @@ export interface components {
         ForecastAdjustmentCategory: "unawarded_work" | "allowance" | "risk" | "saving" | "other";
         CreateForecastAdjustmentRequest: {
             contractId?: string;
+            costCodeId?: string;
             category: components["schemas"]["ForecastAdjustmentCategory"];
             label: string;
             note?: string;
@@ -13970,6 +14215,7 @@ export interface components {
         OwnerProgressUpdateId: string;
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
+        ReportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -17761,6 +18007,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BidderList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPortfolio: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The portfolio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createReport: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    previewReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportConfig"];
+            };
+        };
+        responses: {
+            /** @description The rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    runReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResult"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -25372,6 +25820,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetLine"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetVsForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetVsForecast"];
                 };
             };
             default: components["responses"]["Problem"];

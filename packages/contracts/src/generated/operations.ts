@@ -739,6 +739,40 @@ export const DeleteBidderListParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
 });
+export const GetPortfolioParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const ListReportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateReportBody = s.ReportInputSchema;
+export const PreviewReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const PreviewReportBody = s.ReportConfigSchema;
+export const GetReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateReportBody = s.ReportInputSchema;
+export const DeleteReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const RunReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2211,6 +2245,10 @@ export const DeleteBudgetLineParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const GetBudgetVsForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const LockBudgetParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -4105,6 +4143,102 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteBidderListParams,
+    query: null,
+    body: null,
+  },
+  getPortfolio: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/portfolio',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetPortfolioParams,
+    query: GetPortfolioQuery,
+    body: null,
+  },
+  listReports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: ListReportsParams,
+    query: null,
+    body: null,
+  },
+  createReport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/reports',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateReportParams,
+    query: null,
+    body: CreateReportBody,
+  },
+  previewReport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/reports/preview',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: "application/json",
+    params: PreviewReportParams,
+    query: null,
+    body: PreviewReportBody,
+  },
+  getReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: GetReportParams,
+    query: null,
+    body: null,
+  },
+  updateReport: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateReportParams,
+    query: null,
+    body: UpdateReportBody,
+  },
+  deleteReport: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteReportParams,
+    query: null,
+    body: null,
+  },
+  runReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/{reportId}/run',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: RunReportParams,
     query: null,
     body: null,
   },
@@ -7326,6 +7460,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteBudgetLineParams,
+    query: null,
+    body: null,
+  },
+  getBudgetVsForecast: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/vs-forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetVsForecastParams,
     query: null,
     body: null,
   },

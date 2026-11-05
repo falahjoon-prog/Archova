@@ -16,6 +16,7 @@ export const toSovDto = (s: SovRow) => ({
   code: s.code,
   description: s.description,
   value: s.value,
+  costCodeId: s.costCodeId ? encodeId('costCode', s.costCodeId) : null,
 });
 
 export const toContractDto = (c: ContractRow) => ({

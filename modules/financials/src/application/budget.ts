@@ -3,6 +3,7 @@ import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fromCents, toCents } from '../domain/money';
+import { budgetVsForecast, type BvfAdjustment, type BvfSub } from '../domain/budget-vs-forecast';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
 import { budgetAdjustments, budgetLines, budgets, costCodes } from '../infra/tables';
 
@@ -10,6 +11,11 @@ export type CostCodeRow = typeof costCodes.$inferSelect;
 export type BudgetRow = typeof budgets.$inferSelect;
 export type BudgetLineRow = typeof budgetLines.$inferSelect;
 export type BudgetAdjustmentRow = typeof budgetAdjustments.$inferSelect;
+
+export interface ForecastInputs {
+  subs: BvfSub[];
+  adjustments: BvfAdjustment[];
+}
 
 export interface BudgetDeps {
   access: AccessService;
@@ -22,7 +28,12 @@ export interface BudgetLineView {
   codeDescription: string;
 }
 
-export function createBudgetService(deps: BudgetDeps) {
+export function createBudgetService(
+  deps: BudgetDeps & {
+    /** Forecast inputs for the budget comparison; the forecast service owns how they're read. */
+    forecastInputs?: (scope: TenantScope, projectId: string) => Promise<ForecastInputs>;
+  },
+) {
   const now = deps.now ?? (() => new Date());
   const need = (scope: TenantScope, key: string, projectId: string) =>
     deps.access.assert(scope, key, { projectId });
@@ -331,7 +342,37 @@ export function createBudgetService(deps: BudgetDeps) {
       .orderBy(asc(budgetAdjustments.createdAt), asc(budgetAdjustments.id));
   }
 
+  async function budgetVsForecastFor(scope: TenantScope, projectId: string) {
+    await need(scope, 'financials.forecast.read', projectId);
+    const { budget, lines } = await getBudget(scope, projectId);
+    const showMargin = await deps.access.can(scope, 'financials.budget.view_margin', { projectId });
+    const all = await scope.tx.select().from(costCodes).where(eq(costCodes.projectId, projectId));
+    const byId = new Map(all.map((c) => [c.id, c]));
+    const hidden = new Set<string>();
+    if (budget && !showMargin) {
+      const margin = await scope.tx
+        .select({ costCodeId: budgetLines.costCodeId })
+        .from(budgetLines)
+        .where(and(eq(budgetLines.budgetId, budget.id), eq(budgetLines.isMargin, true)));
+      for (const m of margin) hidden.add(m.costCodeId);
+    }
+    const inputs = await deps.forecastInputs!(scope, projectId);
+    const r = budgetVsForecast(
+      lines.map((l) => ({
+        costCodeId: l.line.costCodeId,
+        code: l.code,
+        description: l.codeDescription,
+        revisedCents: signedCents(revisedOf(l.line)),
+      })),
+      inputs.subs,
+      inputs.adjustments,
+      hidden,
+    );
+    return { budget, ...r, byId };
+  }
+
   return {
+    budgetVsForecastFor,
     listCostCodes,
     createCostCode,
     updateCostCode,

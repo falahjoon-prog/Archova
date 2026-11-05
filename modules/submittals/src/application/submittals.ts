@@ -794,6 +794,84 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     };
   }
 
+  /**
+   * Portfolio dashboard (`reporting`): submittals the caller can see that are with the reviewers (submitted, in review
+   * or sent back), and those whose required-on-site date has passed.
+   */
+  async function portfolioCounts(scope: TenantScope, projectId: string) {
+    if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return { restricted: true, open: 0, overdue: 0 };
+    const date = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(submittals.projectId, projectId),
+      isNull(submittals.deletedAt),
+      sql`${submittals.status} in ('submitted', 'in_review', 'revise_resubmit')`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const [row] = await scope.tx
+      .select({
+        open: sql<number>`count(*)::int`,
+        overdue: sql<number>`(count(*) filter (where ${submittals.requiredOnSite} < ${date}::date))::int`,
+      })
+      .from(submittals)
+      .where(and(...conditions));
+    return { restricted: false, open: row?.open ?? 0, overdue: row?.overdue ?? 0 };
+  }
+
+  /** Report builder (`reporting`): submittals the caller can see, one flat row each. `state` open = with the reviewers. */
+  async function reportRows(
+    scope: TenantScope,
+    projectId: string,
+    opts: { state: 'open' | 'closed' | 'all'; limit: number },
+  ) {
+    if (!(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const date = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(submittals.projectId, projectId),
+      isNull(submittals.deletedAt),
+      opts.state === 'open'
+        ? sql`${submittals.status} in ('submitted', 'in_review', 'revise_resubmit')`
+        : opts.state === 'closed'
+          ? sql`${submittals.status} in ('approved', 'approved_as_noted', 'rejected', 'closed')`
+          : sql`${submittals.status} <> 'draft'`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({
+        id: submittals.id,
+        numberLabel: submittals.numberLabel,
+        title: submittals.title,
+        status: submittals.status,
+        requiredOnSite: submittals.requiredOnSite,
+        createdAt: submittals.createdAt,
+      })
+      .from(submittals)
+      .where(and(...conditions))
+      .orderBy(asc(submittals.number))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: r.numberLabel,
+        title: r.title,
+        status: r.status as string,
+        dueDate: r.requiredOnSite,
+        overdue:
+          ['submitted', 'in_review', 'revise_resubmit'].includes(r.status) &&
+          r.requiredOnSite !== null &&
+          r.requiredOnSite < date,
+        createdAt: r.createdAt.toISOString(),
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
   return {
     list,
     detail,
@@ -804,6 +882,8 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     close,
     returnNotice,
     dueForMeeting,
+    portfolioCounts,
+    reportRows,
     summariesByIds,
   };
 }

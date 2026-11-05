@@ -14,6 +14,8 @@ export const webRoutes = {
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
+  portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
+  reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
@@ -139,6 +141,7 @@ export const mobileRoutes = {
   meetings: (projectId: string) => `/project/${enc(projectId)}/meetings`,
   meeting: (projectId: string, meetingId: string) =>
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
+  ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (

@@ -546,7 +546,10 @@ type PlanItem = CapitalPlan['items'][number];
 
 function CapitalTab({ isTeam }: { isTeam: boolean }) {
   const plan = useCapitalPlan();
+  const m = useOwnerPortalMutations();
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<PlanItem | null>(null);
+  const [removing, setRemoving] = useState<PlanItem | null>(null);
   const items = plan.data?.items ?? [];
   const totals = plan.data?.totals ?? [];
   const label = (y: number | null) => (y === null ? 'All years' : `FY${y}`);
@@ -572,6 +575,35 @@ function CapitalTab({ isTeam }: { isTeam: boolean }) {
     { id: 'budget', header: 'Budget', align: 'end', cell: (i) => money(i.budgetCents) },
     { id: 'forecast', header: 'Forecast', align: 'end', cell: (i) => money(i.forecastCents) },
     { id: 'spent', header: 'Spent', align: 'end', cell: (i) => money(i.spentCents) },
+    ...(isTeam
+      ? [
+          {
+            id: 'actions',
+            header: 'Actions',
+            cell: (i: PlanItem) => (
+              <span className="u-row">
+                <Button
+                  variant="tertiary"
+                  aria-label={`Edit ${i.category} FY${i.fiscalYear}`}
+                  onClick={() => setEditing(i)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="tertiary"
+                  aria-label={`Remove ${i.category} FY${i.fiscalYear}`}
+                  onClick={() => {
+                    m.removeItem.reset();
+                    setRemoving(i);
+                  }}
+                >
+                  Remove
+                </Button>
+              </span>
+            ),
+          },
+        ]
+      : []),
   ];
   const totalColumns: DataTableColumn<(typeof totals)[number]>[] = [
     { id: 'year', header: 'Year', rowHeader: true, cell: (t) => label(t.fiscalYear) },
@@ -579,6 +611,7 @@ function CapitalTab({ isTeam }: { isTeam: boolean }) {
     { id: 'budget', header: 'Budget', align: 'end', cell: (t) => money(t.budgetCents) },
     { id: 'forecast', header: 'Forecast', align: 'end', cell: (t) => money(t.forecastCents) },
     { id: 'spent', header: 'Spent', align: 'end', cell: (t) => money(t.spentCents) },
+    ...(isTeam ? [{ id: 'actions', header: '', cell: () => null }] : []),
   ];
 
   return (
@@ -609,18 +642,54 @@ function CapitalTab({ isTeam }: { isTeam: boolean }) {
         </>
       )}
       {adding ? <ItemDialog onClose={() => setAdding(false)} /> : null}
+      {editing ? <ItemDialog item={editing} onClose={() => setEditing(null)} /> : null}
+      {removing ? (
+        <Dialog
+          open
+          onClose={() => setRemoving(null)}
+          title="Remove this line"
+          footer={
+            <>
+              <Button variant="secondary" onClick={() => setRemoving(null)}>
+                Cancel
+              </Button>
+              <Button
+                disabled={m.removeItem.isPending}
+                onClick={() =>
+                  m.removeItem.mutate(removing.id, { onSuccess: () => setRemoving(null) })
+                }
+              >
+                {m.removeItem.isPending ? 'Removing…' : 'Remove line'}
+              </Button>
+            </>
+          }
+        >
+          <div className="stack">
+            <p>
+              {removing.category}, FY{removing.fiscalYear}, budget {money(removing.budgetCents)}.
+              The client will no longer see it.
+            </p>
+            <ErrorAlert error={m.removeItem.error} title="We couldn't remove this line" />
+          </div>
+        </Dialog>
+      ) : null}
     </div>
   );
 }
 
-function ItemDialog({ onClose }: { onClose: () => void }) {
+const dollars = (cents: number) =>
+  `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
+
+/** Adds a capital plan line, or changes `item` when given. */
+function ItemDialog({ item, onClose }: { item?: PlanItem; onClose: () => void }) {
   const m = useOwnerPortalMutations();
-  const [year, setYear] = useState(String(new Date().getFullYear() + 1));
-  const [category, setCategory] = useState('');
-  const [description, setDescription] = useState('');
-  const [budget, setBudget] = useState('');
-  const [forecast, setForecast] = useState('');
-  const [spent, setSpent] = useState('');
+  const [year, setYear] = useState(String(item?.fiscalYear ?? new Date().getFullYear() + 1));
+  const [category, setCategory] = useState(item?.category ?? '');
+  const [description, setDescription] = useState(item?.description ?? '');
+  const [budget, setBudget] = useState(item ? dollars(item.budgetCents) : '');
+  const [forecast, setForecast] = useState(item ? dollars(item.forecastCents) : '');
+  const [spent, setSpent] = useState(item ? dollars(item.spentCents) : '');
+  const mutation = item ? m.updateItem : m.addItem;
   const b = parseDollars(budget);
   const f = parseDollars(forecast);
   const s = spent.trim() === '' ? 0 : parseDollars(spent);
@@ -636,17 +705,17 @@ function ItemDialog({ onClose }: { onClose: () => void }) {
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (!valid) return;
-    m.addItem.mutate(
-      {
-        fiscalYear: y,
-        category: category.trim(),
-        description: description.trim(),
-        budgetCents: b,
-        forecastCents: f,
-        spentCents: s,
-      },
-      { onSuccess: onClose },
-    );
+    const body = {
+      fiscalYear: y,
+      category: category.trim(),
+      description: description.trim(),
+      budgetCents: b,
+      forecastCents: f,
+      spentCents: s,
+    };
+    if (item)
+      m.updateItem.mutate({ id: item.id, version: item.version, body }, { onSuccess: onClose });
+    else m.addItem.mutate(body, { onSuccess: onClose });
   };
   const money_error = (text: string, v: number | null) =>
     text.trim() !== '' && v === null ? 'Enter a dollar amount, for example 250000' : undefined;
@@ -654,14 +723,14 @@ function ItemDialog({ onClose }: { onClose: () => void }) {
     <Dialog
       open
       onClose={onClose}
-      title="Add a capital plan line"
+      title={item ? 'Change this capital plan line' : 'Add a capital plan line'}
       footer={
         <>
           <Button variant="secondary" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" form="item-form" disabled={!valid || m.addItem.isPending}>
-            {m.addItem.isPending ? 'Saving…' : 'Add line'}
+          <Button type="submit" form="item-form" disabled={!valid || mutation.isPending}>
+            {mutation.isPending ? 'Saving…' : item ? 'Save line' : 'Add line'}
           </Button>
         </>
       }
@@ -704,7 +773,7 @@ function ItemDialog({ onClose }: { onClose: () => void }) {
           error={money_error(spent, s)}
           onChange={(e) => setSpent(e.target.value)}
         />
-        <ErrorAlert error={m.addItem.error} title="We couldn't add this line" />
+        <ErrorAlert error={mutation.error} title="We couldn't save this line" />
       </form>
     </Dialog>
   );
