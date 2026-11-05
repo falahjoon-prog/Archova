@@ -4188,6 +4188,77 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TenderPackage' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - { name: companyId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: resendTenderInvite
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: Email an invited company a new link to the package. The earlier link stops working (X45).
+      responses:
+        '200':
+          description: The package; the invite's `deliveredAt` shows when the email went out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/tender-access:
+    post:
+      operationId: openTenderAccess
+      tags: [estimating]
+      x-module: estimating
+      x-auth: none
+      summary: Exchange a tender link token for a session on that link (web `/q/[token]`, X45). Marks the invite viewed.
+      description: 'Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, or a package no longer out to tender, returns `access_link.invalid` with no detail about the record.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The package behind the link; `__Host-lnk` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getTenderAccess
+      tags: [estimating]
+      x-module: estimating
+      x-auth: none
+      summary: The package behind the current link session.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/tender-access/respond:
+    post:
+      operationId: respondTenderAccess
+      tags: [estimating]
+      x-module: estimating
+      x-auth: none
+      summary: The invited company says it intends to quote or declines. It can change its answer until a quote is submitted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondTenderAccessRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderAccess' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18365,13 +18436,59 @@ components:
         id: { type: string, description: 'A drv_ or doc_ id; linked, not copied' }
     PackageInvite:
       type: object
-      required: [companyId, status, invitedAt, viewedAt, respondedAt]
+      required: [companyId, status, invitedAt, viewedAt, respondedAt, deliveredAt]
       properties:
         companyId: { type: string }
         status: { $ref: '#/components/schemas/PackageInviteStatus' }
         invitedAt: { type: string, format: date-time }
         viewedAt: { type: [string, 'null'], format: date-time }
         respondedAt: { type: [string, 'null'], format: date-time }
+        deliveredAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When the invite email last went out; null if it has not (no contact email, or the send failed)',
+          }
+    RespondTenderAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [response]
+      properties:
+        response: { type: string, enum: [intends_to_quote, declined] }
+    TenderAccess:
+      type: object
+      required: [package, invite, actions, expiresAt]
+      properties:
+        package:
+          type: object
+          required: [number, name, trade, dueAt, scope, fromOrg, projectName]
+          properties:
+            number: { type: string }
+            name: { type: string }
+            trade: { type: string }
+            dueAt: { type: [string, 'null'], format: date-time }
+            scope:
+              type: array
+              items:
+                type: object
+                required: [description]
+                properties:
+                  description: { type: string }
+            fromOrg: { type: string }
+            projectName: { type: string }
+        invite:
+          type: object
+          required: [companyId, email, status, viewedAt, respondedAt]
+          properties:
+            companyId: { type: string }
+            email: { type: [string, 'null'] }
+            status: { $ref: '#/components/schemas/PackageInviteStatus' }
+            viewedAt: { type: [string, 'null'], format: date-time }
+            respondedAt: { type: [string, 'null'], format: date-time }
+        actions:
+          type: array
+          items: { type: string, enum: [view, respond] }
+        expiresAt: { type: string, format: date-time }
     PackageAward:
       type: object
       required: [quoteId, by, at, reason, notLowest]

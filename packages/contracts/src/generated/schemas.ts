@@ -4972,6 +4972,7 @@ export const PackageInviteSchema = z.object({
   "invitedAt": z.string().datetime({ offset: true }),
   "viewedAt": z.string().datetime({ offset: true }).nullable(),
   "respondedAt": z.string().datetime({ offset: true }).nullable(),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 
@@ -5679,6 +5680,11 @@ export const RespondSubmittalStepRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict();
 export type RespondSubmittalStepRequest = z.infer<typeof RespondSubmittalStepRequestSchema>;
+
+export const RespondTenderAccessRequestSchema = z.object({
+  "response": z.enum(["intends_to_quote", "declined"]),
+}).strict();
+export type RespondTenderAccessRequest = z.infer<typeof RespondTenderAccessRequestSchema>;
 
 export const RespondToShiftRequestSchema = z.object({
   "status": z.enum(["accepted", "declined", "attended", "no_show"]),
@@ -6495,6 +6501,30 @@ export const TakeoffMeasurementPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type TakeoffMeasurementPage = z.infer<typeof TakeoffMeasurementPageSchema>;
+
+export const TenderAccessSchema = z.object({
+  "package": z.object({
+  "number": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "dueAt": z.string().datetime({ offset: true }).nullable(),
+  "scope": z.array(z.object({
+  "description": z.string(),
+})),
+  "fromOrg": z.string(),
+  "projectName": z.string(),
+}),
+  "invite": z.object({
+  "companyId": z.string(),
+  "email": z.string().nullable(),
+  "status": PackageInviteStatusSchema,
+  "viewedAt": z.string().datetime({ offset: true }).nullable(),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+}),
+  "actions": z.array(z.enum(["view", "respond"])),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type TenderAccess = z.infer<typeof TenderAccessSchema>;
 
 export const TenderPackageSchema = z.object({
   "id": z.string(),

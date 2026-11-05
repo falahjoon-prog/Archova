@@ -37,7 +37,7 @@ const nextConfig: NextConfig = {
    * everything else is limited to our own origin. Uploads and downloads go to presigned object-store URLs, so
    * `connect-src` and `img-src` allow https; nothing can frame the app or load plugins.
    *
-   * Guest pages (`/i/*` inductions and `/t/*` transmittals, X45, Sam's review) hold a worker's name, mobile number
+   * Guest pages (`/i/*` inductions, `/t/*` transmittals and `/q/*` tender invites, X45, Sam's review) hold a worker's name, mobile number
    * and ticket photos, or a link's files, so they also send no referrer: the link token must not leak to anything
    * the page links to (Sam 11 §3). Their rule comes last so it wins on the shared header.
    */
@@ -77,6 +77,7 @@ const nextConfig: NextConfig = {
       { source: '/:path*', headers: appWide },
       { source: '/i/:path*', headers: guest },
       { source: '/t/:path*', headers: guest },
+      { source: '/q/:path*', headers: guest },
     ];
   },
   async rewrites() {
