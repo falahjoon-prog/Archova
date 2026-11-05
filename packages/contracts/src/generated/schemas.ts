@@ -492,6 +492,7 @@ export const BudgetVsForecastRowSchema = z.object({
   "committed": FinancialsMoneySchema,
   "claimed": FinancialsMoneySchema,
   "adjustments": FinancialsSignedMoneySchema,
+  "directCosts": FinancialsMoneySchema,
   "forecastFinal": FinancialsSignedMoneySchema,
   "variance": FinancialsSignedMoneySchema,
 });
@@ -1131,6 +1132,7 @@ export const CostForecastSchema = z.object({
   "claimedToDate": FinancialsMoneySchema,
   "costToComplete": FinancialsMoneySchema,
   "projectAdjustments": FinancialsSignedMoneySchema,
+  "directCosts": FinancialsMoneySchema,
   "forecastFinalCost": FinancialsSignedMoneySchema,
   "pendingCostVariations": FinancialsMoneySchema,
   "forecastMargin": FinancialsSignedMoneySchema,

@@ -14,6 +14,9 @@ export type UpdateBudgetLine = S['UpdateBudgetLineRequest'];
 export type AdjustBudgetLine = S['AdjustBudgetLineRequest'];
 export type CreateCostCode = S['CreateCostCodeRequest'];
 export type UpdateCostCode = S['UpdateCostCodeRequest'];
+export type DirectCost = S['DirectCost'];
+export type DirectCostList = S['DirectCostList'];
+export type RecordDirectCost = S['RecordDirectCostRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -76,6 +79,29 @@ export function createBudgetApi(orgId: string) {
         await api.POST(`${P}/budget/lines/{lineId}/adjustments`, {
           params: { path: { orgId, projectId, lineId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async directCosts(projectId: string): Promise<DirectCostList> {
+      return unwrap(await api.GET(`${P}/direct-costs`, { params: { path: { orgId, projectId } } }));
+    },
+    async recordDirectCost(projectId: string, body: RecordDirectCost): Promise<DirectCost> {
+      return unwrap(
+        await api.POST(`${P}/direct-costs`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async voidDirectCost(
+      projectId: string,
+      directCostId: string,
+      note: string,
+    ): Promise<DirectCost> {
+      return unwrap(
+        await api.POST(`${P}/direct-costs/{directCostId}/void`, {
+          params: { path: { orgId, projectId, directCostId }, header: idempotencyKey() },
+          body: { note },
         }),
       );
     },

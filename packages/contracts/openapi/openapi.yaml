@@ -18576,6 +18576,7 @@ components:
           committed,
           claimed,
           adjustments,
+          directCosts,
           forecastFinal,
           variance,
         ]
@@ -18587,6 +18588,7 @@ components:
         committed: { $ref: '#/components/schemas/FinancialsMoney' }
         claimed: { $ref: '#/components/schemas/FinancialsMoney' }
         adjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        directCosts: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         variance:
           {
@@ -18688,6 +18690,7 @@ components:
           claimedToDate,
           costToComplete,
           projectAdjustments,
+          directCosts,
           forecastFinalCost,
           pendingCostVariations,
           forecastMargin,
@@ -18703,6 +18706,7 @@ components:
         claimedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
         costToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
         projectAdjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        directCosts: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastFinalCost: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         pendingCostVariations: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastMargin: { $ref: '#/components/schemas/FinancialsSignedMoney' }

@@ -7,11 +7,13 @@ import {
   Card,
   DataTable,
   EmptyState,
+  Select,
   StatusPill,
   Textarea,
   TextField,
   type DataTableColumn,
 } from '@archova/ui';
+import { useCostCodes } from '@/features/budget';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { Variation, VariationAction } from '../data/api';
@@ -42,7 +44,10 @@ export function VariationsPanel({
 }) {
   const project = useCurrentProject();
   const q = useVariations(project.projectId, contractId);
-  const { moveVariation } = useClaimsMutations(project.projectId);
+  const { moveVariation, setVariationCostCode } = useClaimsMutations(project.projectId);
+  // Only people who can see cost codes get the picker; for everyone else the column is left out.
+  const costCodes = (useCostCodes(project.projectId).data ?? []).filter((c) => !c.archived);
+  const codeOf = (id: string | null) => costCodes.find((c) => c.id === id);
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [note, setNote] = useState('');
   const [noteError, setNoteError] = useState<string | null>(null);
@@ -79,6 +84,40 @@ export function VariationsPanel({
       align: 'end',
       cell: (v) => <span className="u-mono">{aud(v.claimedToDate)}</span>,
     },
+    ...(costCodes.length > 0
+      ? [
+          {
+            id: 'costCode',
+            header: 'Cost code',
+            cell: (v: Variation) =>
+              canManage && v.status !== 'rejected' && v.status !== 'withdrawn' ? (
+                <select
+                  className="ac-input ac-select"
+                  aria-label={`Cost code for variation ${v.number}`}
+                  value={v.costCodeId ?? ''}
+                  onChange={(e) =>
+                    setVariationCostCode.mutate({
+                      variationId: v.id,
+                      costCodeId: e.target.value || null,
+                    })
+                  }
+                >
+                  <option value="">Not coded</option>
+                  {costCodes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} {c.description}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                (() => {
+                  const c = codeOf(v.costCodeId);
+                  return c ? `${c.code} ${c.description}` : 'Not coded';
+                })()
+              ),
+          } satisfies DataTableColumn<Variation>,
+        ]
+      : []),
     { id: 'days', header: 'Time', align: 'end', cell: (v) => `${v.timeImpactDays} days` },
     {
       id: 'status',
@@ -140,6 +179,7 @@ export function VariationsPanel({
         </p>
       ) : null}
       <ErrorAlert error={moveVariation.error} title="We couldn't update that variation" />
+      <ErrorAlert error={setVariationCostCode.error} title="We couldn't code that variation" />
       {rejectingRow ? (
         <Card title={`Reject variation ${rejectingRow.number}`}>
           <form
@@ -183,6 +223,8 @@ function NewVariationForm({ contractId }: { contractId: string }) {
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [days, setDays] = useState('0');
+  const [costCodeId, setCostCodeId] = useState('');
+  const costCodes = (useCostCodes(project.projectId).data ?? []).filter((c) => !c.archived);
   const [error, setError] = useState<string | null>(null);
 
   function save(e: FormEvent) {
@@ -200,6 +242,7 @@ function NewVariationForm({ contractId }: { contractId: string }) {
           ...(description.trim() ? { description: description.trim() } : {}),
           amount: amount.trim(),
           timeImpactDays: Number(days),
+          ...(costCodeId ? { costCodeId } : {}),
         },
       },
       {
@@ -208,6 +251,7 @@ function NewVariationForm({ contractId }: { contractId: string }) {
           setDescription('');
           setAmount('');
           setDays('0');
+          setCostCodeId('');
         },
       },
     );
@@ -242,6 +286,15 @@ function NewVariationForm({ contractId }: { contractId: string }) {
             onChange={(e) => setDays(e.target.value)}
           />
         </div>
+        {costCodes.length > 0 ? (
+          <Select
+            label="Cost code"
+            placeholder="Not coded"
+            options={costCodes.map((c) => ({ value: c.id, label: `${c.code} ${c.description}` }))}
+            value={costCodeId}
+            onChange={(e) => setCostCodeId(e.target.value)}
+          />
+        ) : null}
         {error ? <Alert tone="danger">{error}</Alert> : null}
         <ErrorAlert error={createVariation.error} title="We couldn't save this variation" />
         <div className="row-actions">
