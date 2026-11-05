@@ -8177,6 +8177,61 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-forecast:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getCostForecast
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.forecast.read
+      summary: Projected cost to complete and margin, from contracts, approved variations, claims and adjustments.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostForecast' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: createForecastAdjustment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.forecast.manage
+      summary: Add unawarded work, an allowance, a risk or a saving to the forecast.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateForecastAdjustmentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ForecastAdjustment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments/{adjustmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ForecastAdjustmentId'
+    delete:
+      operationId: deleteForecastAdjustment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.forecast.manage
+      summary: Remove a forecast adjustment.
+      responses:
+        '204': { description: Deleted }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -8897,6 +8952,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+    ForecastAdjustmentId:
+      name: adjustmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^fca_[0-9A-Za-z]{26}$' }
     VariationId:
       name: variationId
       in: path
@@ -14709,6 +14769,94 @@ components:
               code: { type: string, minLength: 1, maxLength: 50 }
               description: { type: string, minLength: 1, maxLength: 300 }
               value: { $ref: '#/components/schemas/FinancialsMoney' }
+    FinancialsSignedMoney:
+      type: string
+      pattern: '^-?\d{1,16}(\.\d{1,2})?$'
+      description: Decimal AUD ex GST, negative allowed.
+    ForecastAdjustment:
+      type: object
+      required: [id, contractId, category, label, note, amount, createdAt]
+      properties:
+        id: { type: string, pattern: '^fca_[0-9A-Za-z]{26}$' }
+        contractId: { type: [string, 'null'], pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        category: { $ref: '#/components/schemas/ForecastAdjustmentCategory' }
+        label: { type: string }
+        note: { type: [string, 'null'] }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        createdAt: { type: string, format: date-time }
+    ForecastAdjustmentCategory:
+      type: string
+      enum: [unawarded_work, allowance, risk, saving, other]
+    CreateForecastAdjustmentRequest:
+      type: object
+      additionalProperties: false
+      required: [category, label, amount]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        category: { $ref: '#/components/schemas/ForecastAdjustmentCategory' }
+        label: { type: string, minLength: 1, maxLength: 300 }
+        note: { type: string, minLength: 1, maxLength: 5000 }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+    CommitmentForecast:
+      type: object
+      required:
+        [
+          contractId,
+          number,
+          title,
+          committed,
+          claimedToDate,
+          costToComplete,
+          adjustments,
+          forecastFinal,
+          pendingVariations,
+        ]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        costToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
+        adjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        pendingVariations: { $ref: '#/components/schemas/FinancialsMoney' }
+    CostForecast:
+      type: object
+      required:
+        [
+          revenue,
+          billedToDate,
+          pendingRevenueVariations,
+          committed,
+          claimedToDate,
+          costToComplete,
+          projectAdjustments,
+          forecastFinalCost,
+          pendingCostVariations,
+          forecastMargin,
+          forecastMarginPct,
+          commitments,
+          adjustments,
+        ]
+      properties:
+        revenue: { $ref: '#/components/schemas/FinancialsMoney' }
+        billedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        pendingRevenueVariations: { $ref: '#/components/schemas/FinancialsMoney' }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        claimedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
+        costToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
+        projectAdjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        forecastFinalCost: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        pendingCostVariations: { $ref: '#/components/schemas/FinancialsMoney' }
+        forecastMargin: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        forecastMarginPct: { type: [string, 'null'] }
+        commitments:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentForecast' }
+        adjustments:
+          type: array
+          items: { $ref: '#/components/schemas/ForecastAdjustment' }
     VariationStatus:
       type: string
       enum: [draft, submitted, approved, rejected, withdrawn]

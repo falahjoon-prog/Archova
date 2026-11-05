@@ -1882,6 +1882,20 @@ export const SubmitPaymentClaimParams = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
 });
 export const SubmitPaymentClaimBody = s.SubmitPaymentClaimRequestSchema;
+export const GetCostForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateForecastAdjustmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateForecastAdjustmentBody = s.CreateForecastAdjustmentRequestSchema;
+export const DeleteForecastAdjustmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "adjustmentId": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
+});
 export const ListVariationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6184,6 +6198,42 @@ export const operations = {
     params: SubmitPaymentClaimParams,
     query: null,
     body: SubmitPaymentClaimBody,
+  },
+  getCostForecast: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.read",
+    internal: false,
+    contentType: null,
+    params: GetCostForecastParams,
+    query: null,
+    body: null,
+  },
+  createForecastAdjustment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateForecastAdjustmentParams,
+    query: null,
+    body: CreateForecastAdjustmentBody,
+  },
+  deleteForecastAdjustment: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments/{adjustmentId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteForecastAdjustmentParams,
+    query: null,
+    body: null,
   },
   listVariations: {
     method: 'GET',
