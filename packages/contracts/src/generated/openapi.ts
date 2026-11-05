@@ -1056,6 +1056,89 @@ export interface paths {
         patch: operations["updateFolder"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's specification books, newest first, with how many sections each has been split into. */
+        get: operations["listSpecBooks"];
+        put?: never;
+        /** Register an issued specification book. Naming the book it replaces marks that one superseded. */
+        post: operations["createSpecBook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        /** One book with its sections in page order. */
+        get: operations["getSpecBook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Split the book into sections by page range, replacing the list. Numbers must be unique within the book. */
+        put: operations["replaceSpecSections"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Sections of current books whose number starts with, or title contains, the text. For picking a spec reference. */
+        get: operations["searchSpecSections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/documents": {
         parameters: {
             query?: never;
@@ -7011,6 +7094,49 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Retention held, the contract's release terms and what has been released, visible to the payee. */
+        get: operations["getContractRetentionRelease"];
+        /** Set practical completion, the defects period and the share released at practical completion (builder staff). */
+        put: operations["saveContractRetentionTerms"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record retention released to the payee, up to what the stage entitles (append-only). */
+        post: operations["recordRetentionRelease"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations": {
         parameters: {
             query?: never;
@@ -7424,6 +7550,27 @@ export interface paths {
         put?: never;
         /** Void a commitment, releasing its committed cost. A reason is required once submitted. */
         post: operations["voidCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Code a variation to a cost code, or clear it with null. Allowed after approval; not for rejected or withdrawn ones. */
+        put: operations["setVariationCostCode"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -10091,6 +10238,62 @@ export interface components {
             allowedCompanyIds: string[];
             version: number;
         };
+        SpecBook: {
+            id: string;
+            projectId: string;
+            name: string;
+            /** Format: date */
+            issuedDate: string | null;
+            fileId: string | null;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            supersededById: string | null;
+            sectionCount: number;
+            version: number;
+        };
+        SpecSection: {
+            id: string;
+            bookId: string;
+            /** @description As the book numbers it, e.g. 03 30 00 */
+            sectionNumber: string;
+            title: string;
+            division: string | null;
+            pageFrom: number;
+            pageTo: number;
+            revision: string | null;
+        };
+        SpecBookList: {
+            data: components["schemas"]["SpecBook"][];
+        };
+        SpecBookDetail: {
+            book: components["schemas"]["SpecBook"];
+            sections: components["schemas"]["SpecSection"][];
+        };
+        SpecSectionHit: {
+            section: components["schemas"]["SpecSection"];
+            bookId: string;
+            bookName: string;
+        };
+        SpecSectionHitList: {
+            data: components["schemas"]["SpecSectionHit"][];
+        };
+        CreateSpecBookRequest: {
+            name: string;
+            /** Format: date */
+            issuedDate?: string | null;
+            fileId?: string | null;
+            supersedesBookId?: string | null;
+        };
+        ReplaceSpecSectionsRequest: {
+            sections: {
+                sectionNumber: string;
+                title: string;
+                division?: string | null;
+                pageFrom: number;
+                pageTo: number;
+                revision?: string | null;
+            }[];
+        };
         FolderList: {
             data: components["schemas"]["Folder"][];
         };
@@ -12243,6 +12446,10 @@ export interface components {
             /** Format: date-time */
             decidedAt: string | null;
             decisionNote: string | null;
+            costCodeId: string | null;
+        };
+        SetVariationCostCodeRequest: {
+            costCodeId: string | null;
         };
         /** @enum {string} */
         TrustStatus: "not_required" | "not_set_up" | "ok" | "shortfall";
@@ -12329,6 +12536,55 @@ export interface components {
             totalPaid: components["schemas"]["FinancialsSignedMoney"];
             trust: components["schemas"]["ContractTrust"];
         };
+        /** @enum {string} */
+        RetentionStage: "practical_completion" | "defects_end";
+        /** @enum {string} */
+        RetentionStageStatus: "awaiting_date" | "upcoming" | "due" | "released";
+        RetentionRelease: {
+            contractId: string;
+            terms: {
+                /** Format: date */
+                practicalCompletionOn: string | null;
+                defectsPeriodDays: number | null;
+                firstReleasePct: string;
+            };
+            retentionHeld: components["schemas"]["FinancialsMoney"];
+            stages: {
+                stage: components["schemas"]["RetentionStage"];
+                /** Format: date */
+                dueOn: string | null;
+                entitled: components["schemas"]["FinancialsMoney"];
+                released: components["schemas"]["FinancialsMoney"];
+                remaining: components["schemas"]["FinancialsMoney"];
+                status: components["schemas"]["RetentionStageStatus"];
+            }[];
+            releases: {
+                stage: components["schemas"]["RetentionStage"];
+                amount: components["schemas"]["FinancialsMoney"];
+                /** Format: date */
+                releasedOn: string;
+                reference: string;
+                note: string | null;
+                /** Format: date-time */
+                recordedAt: string;
+            }[];
+        };
+        SaveRetentionTermsRequest: {
+            /** Format: date */
+            practicalCompletionOn?: string | null;
+            defectsPeriodDays?: number | null;
+            firstReleasePct?: string;
+        };
+        RecordRetentionReleaseRequest: {
+            stage: components["schemas"]["RetentionStage"];
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            releasedOn: string;
+            reference: string;
+            note?: string;
+            /** @description Take the release out of the contract's trust account too. Default: yes when a trust account is recorded. The release is refused if the account holds less than the amount. */
+            fromTrust?: boolean;
+        };
         VariationList: {
             data: components["schemas"]["Variation"][];
             approvedTotal: components["schemas"]["FinancialsMoney"];
@@ -12338,6 +12594,7 @@ export interface components {
             description?: string;
             amount: components["schemas"]["FinancialsMoney"];
             timeImpactDays?: number;
+            costCodeId?: string;
         };
         VariationDecisionRequest: {
             note?: string;
@@ -14641,6 +14898,7 @@ export interface components {
         OrgId: string;
         ProjectId: string;
         FileId: string;
+        SpecBookId: string;
         FolderId: string;
         DocumentId: string;
         DrawingSetId: string;
@@ -16323,6 +16581,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Folder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSpecBooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Books */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSpecBook: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpecBookRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSpecBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    replaceSpecSections: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceSpecSectionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchSpecSections: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecSectionHitList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -26273,6 +26672,91 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getContractRetentionRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveContractRetentionTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRetentionTermsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordRetentionRelease: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordRetentionReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listVariations: {
         parameters: {
             query?: never;
@@ -26991,6 +27475,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setVariationCostCode: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                variationId: components["parameters"]["VariationId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetVariationCostCodeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Variation"];
                 };
             };
             default: components["responses"]["Problem"];

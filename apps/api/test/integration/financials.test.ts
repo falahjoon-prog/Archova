@@ -818,6 +818,153 @@ describe('Budget and cost codes', () => {
   });
 });
 
+describe('Retention release', () => {
+  it('releases retention in two stages, capped at what the terms entitle, and shows the payee', async () => {
+    const s = await setup('NSW');
+    const made = (
+      await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId))
+    ).json();
+    const url = `${s.base}/contracts/${made.contract.id}/retention-release`;
+    await s.pm.browser.post(`${s.base}/contracts/${made.contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: made.sov[0].id, thisClaim: '40000.00' }],
+    });
+    // 5% of 40,000 is 2,000 retention. No dates yet, so nothing can be released.
+    const none = (await s.pm.browser.get(url)).json();
+    expect(none).toMatchObject({
+      retentionHeld: '2000.00',
+      terms: { practicalCompletionOn: null, firstReleasePct: '50.00' },
+      stages: [{ status: 'awaiting_date' }, { status: 'awaiting_date' }],
+    });
+    const release = (body: Record<string, unknown>) =>
+      s.pm.browser.post(`${url}/releases`, {
+        releasedOn: '2026-11-01',
+        reference: 'R-1',
+        ...body,
+      });
+    const early = await release({ stage: 'practical_completion', amount: '100.00' });
+    expect(early.statusCode).toBe(422);
+    expect(early.json().code).toBe('financials.retention.terms_missing');
+
+    const saved = await s.pm.browser.put(url, {
+      practicalCompletionOn: '2026-10-01',
+      defectsPeriodDays: 365,
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().stages).toMatchObject([
+      { stage: 'practical_completion', entitled: '1000.00', remaining: '1000.00' },
+      { stage: 'defects_end', dueOn: '2027-10-01', entitled: '1000.00' },
+    ]);
+
+    const over = await release({ stage: 'practical_completion', amount: '1000.01' });
+    expect(over.json().code).toBe('financials.retention.over_entitlement');
+    const ok = await release({ stage: 'practical_completion', amount: '1000.00' });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json().stages[0]).toMatchObject({
+      released: '1000.00',
+      remaining: '0.00',
+      status: 'released',
+    });
+    const again = await release({
+      stage: 'practical_completion',
+      amount: '0.01',
+      reference: 'R-2',
+    });
+    expect(again.json().code).toBe('financials.retention.over_entitlement');
+
+    // The payee can read it but not change it; another company's contract is hidden.
+    expect((await s.sub.browser.get(url)).json().releases).toHaveLength(1);
+    expect((await s.sub.browser.put(url, { defectsPeriodDays: 1 })).statusCode).toBe(403);
+    expect(
+      (
+        await s.sub.browser.post(`${url}/releases`, {
+          stage: 'defects_end',
+          amount: '1.00',
+          releasedOn: '2026-11-01',
+          reference: 'x',
+        })
+      ).statusCode,
+    ).toBe(403);
+    const theirs = (await s.pm.browser.post(`${s.base}/contracts`, contractBody())).json();
+    expect(
+      (await s.sub.browser.get(`${s.base}/contracts/${theirs.contract.id}/retention-release`))
+        .statusCode,
+    ).toBe(404);
+  });
+});
+
+describe('Retention release and the trust ledger', () => {
+  it('takes released retention out of the trust account unless told not to, and refuses an overdraw', async () => {
+    const s = await setup('QLD');
+    const made = (
+      await s.pm.browser.post(`${s.base}/contracts`, {
+        kind: 'subcontract',
+        title: 'Services package',
+        payeeCompanyId: s.subCo.companyId,
+        originalValue: '12000000.00',
+        retentionPct: '5.00',
+        sov: [{ code: 'S1', description: 'Services', value: '12000000.00' }],
+      })
+    ).json();
+    const c = `${s.base}/contracts/${made.contract.id}`;
+    await s.pm.browser.post(`${c}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-01T00:00:00Z',
+      statesAct: false,
+      lines: [{ sovItemId: made.sov[0].id, thisClaim: '1000000.00' }],
+    });
+    await s.pm.browser.put(`${c}/retention-release`, {
+      practicalCompletionOn: '2026-10-01',
+      defectsPeriodDays: 365,
+    });
+    await s.pm.browser.put(`${c}/trust`, { institution: 'Example Bank' });
+    await s.pm.browser.post(`${c}/trust/movements`, {
+      kind: 'deposit',
+      amount: '30000.00',
+      movedOn: '2026-10-20',
+      reference: 'TT-1',
+    });
+    const release = (body: Record<string, unknown>) =>
+      s.pm.browser.post(`${c}/retention-release/releases`, {
+        releasedOn: '2026-11-01',
+        reference: 'R-1',
+        ...body,
+      });
+    const trust = async () => (await s.pm.browser.get(`${c}/trust`)).json();
+
+    // 50,000 retention: 25,000 at practical completion. The release comes out of the trust account.
+    expect((await release({ stage: 'practical_completion', amount: '20000.00' })).statusCode).toBe(
+      201,
+    );
+    expect((await trust()).position).toMatchObject({ balance: '10000.00', released: '20000.00' });
+    expect((await trust()).movements.at(-1)).toMatchObject({
+      kind: 'release',
+      amount: '-20000.00',
+      reference: 'R-1',
+    });
+
+    // Opting out records the release only.
+    const quiet = await release({
+      stage: 'practical_completion',
+      amount: '5000.00',
+      reference: 'R-2',
+      fromTrust: false,
+    });
+    expect(quiet.statusCode).toBe(201);
+    expect((await trust()).position.balance).toBe('10000.00');
+
+    // The trust holds 10,000: releasing 15,000 is refused and nothing is recorded.
+    const over = await release({ stage: 'defects_end', amount: '15000.00', reference: 'R-3' });
+    expect(over.statusCode).toBe(422);
+    expect(over.json().code).toBe('financials.trust.insufficient');
+    const after = (await s.pm.browser.get(`${c}/retention-release`)).json();
+    expect(after.releases).toHaveLength(2);
+    expect(after.stages[1]).toMatchObject({ released: '0.00' });
+  });
+});
+
 describe('Cost forecast', () => {
   it('projects cost to complete from contracts, claims and adjustments, for staff only', async () => {
     const s = await setup('NSW');
@@ -1044,5 +1191,63 @@ describe('Budget against forecast', () => {
     expect(f.forecastFinalCost).toBe(r.totals.forecastFinal);
 
     expect((await s.sub.browser.get(`${s.base}/budget/vs-forecast`)).statusCode).toBe(403);
+  });
+
+  it('counts an approved variation against the cost code it is coded to', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const cc = (await post('/cost-codes', { code: '16-100', description: 'Electrical' })).json();
+    const { contract } = (
+      await post('/contracts', {
+        ...contractBody(s.subCo.companyId),
+        sov: [{ code: 'E1', description: 'Rough-in', value: '100000.00' }],
+      })
+    ).json();
+    const vs = async () => (await s.pm.browser.get(`${s.base}/budget/vs-forecast`)).json();
+
+    // Coded at creation; counts only once approved.
+    const bad = await post(`/contracts/${contract.id}/variations`, {
+      title: 'x',
+      amount: '1.00',
+      costCodeId: 'ccd_0000000000000000000000000A',
+    });
+    expect(bad.statusCode).toBe(404);
+    const v = (
+      await post(`/contracts/${contract.id}/variations`, {
+        title: 'Extra circuits',
+        amount: '5000.00',
+        costCodeId: cc.id,
+      })
+    ).json();
+    expect(v.costCodeId).toBe(cc.id);
+    await post(`/variations/${v.id}/submit`, {});
+    expect((await vs()).rows.find((r: { code: string }) => r.code === '16-100')).toBeUndefined();
+    await post(`/variations/${v.id}/approve`, {});
+    let r = await vs();
+    expect(r.rows.find((x: { code: string }) => x.code === '16-100')).toMatchObject({
+      committed: '5000.00',
+      forecastFinal: '5000.00',
+    });
+    expect(r.unallocated).toMatchObject({ committed: '100000.00' });
+
+    // Clearing it after approval moves the amount to unallocated; totals do not change.
+    const put = (id: string, costCodeId: string | null) =>
+      s.pm.browser.put(`${s.base}/variations/${id}/cost-code`, { costCodeId });
+    expect((await put(v.id, null)).json().costCodeId).toBeNull();
+    r = await vs();
+    expect(r.unallocated).toMatchObject({ committed: '105000.00' });
+    expect((await put(v.id, cc.id)).json().costCodeId).toBe(cc.id);
+    expect((await vs()).totals.forecastFinal).toBe(r.totals.forecastFinal);
+
+    // A subcontractor cannot code a variation; a withdrawn one cannot be coded.
+    expect(
+      (await s.sub.browser.put(`${s.base}/variations/${v.id}/cost-code`, { costCodeId: null }))
+        .statusCode,
+    ).toBe(403);
+    const w = (
+      await post(`/contracts/${contract.id}/variations`, { title: 'Dropped', amount: '10.00' })
+    ).json();
+    await post(`/variations/${w.id}/withdraw`, {});
+    expect((await put(w.id, cc.id)).statusCode).toBe(409);
   });
 });

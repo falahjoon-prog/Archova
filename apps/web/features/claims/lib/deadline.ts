@@ -51,3 +51,15 @@ export const TRUST_MOVEMENT_LABELS = {
   release: 'Release to payee',
   reversal: 'Reversal',
 } as const;
+
+export const RELEASE_STAGE_LABELS = {
+  practical_completion: 'At practical completion',
+  defects_end: 'After the defects period',
+} as const;
+
+export const RELEASE_STATUS_LABELS = {
+  awaiting_date: 'Awaiting dates',
+  upcoming: 'Upcoming',
+  due: 'Due for release',
+  released: 'Released',
+} as const;

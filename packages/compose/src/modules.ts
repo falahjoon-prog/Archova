@@ -399,6 +399,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ],
     commands: [
       ...defects.api.syncCommands,
+      ...diary.api.syncCommands,
       ...quality.api.syncCommands,
       ...documents.api.syncCommands,
     ],

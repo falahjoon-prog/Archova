@@ -27,6 +27,9 @@ export type TrustMovement = S['TrustMovement'];
 export type TrustStatus = S['TrustStatus'];
 export type SaveContractTrust = S['SaveContractTrustRequest'];
 export type RecordTrustMovement = S['RecordTrustMovementRequest'];
+export type RetentionRelease = S['RetentionRelease'];
+export type SaveRetentionTerms = S['SaveRetentionTermsRequest'];
+export type RecordRetentionRelease = S['RecordRetentionReleaseRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
@@ -82,6 +85,37 @@ export function createClaimsApi(orgId: string) {
     ): Promise<ContractTrust> {
       return unwrap(
         await api.POST(`${P}/contracts/{contractId}/trust/movements`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async retentionRelease(projectId: string, contractId: string): Promise<RetentionRelease> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/retention-release`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      );
+    },
+    async saveRetentionTerms(
+      projectId: string,
+      contractId: string,
+      body: SaveRetentionTerms,
+    ): Promise<RetentionRelease> {
+      return unwrap(
+        await api.PUT(`${P}/contracts/{contractId}/retention-release`, {
+          params: { path: { orgId, projectId, contractId } },
+          body,
+        }),
+      );
+    },
+    async recordRetentionRelease(
+      projectId: string,
+      contractId: string,
+      body: RecordRetentionRelease,
+    ): Promise<RetentionRelease> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/retention-release/releases`, {
           params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
           body,
         }),
