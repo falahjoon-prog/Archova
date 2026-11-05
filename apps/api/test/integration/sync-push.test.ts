@@ -131,6 +131,35 @@ describe('mobile sync push (backend 04 §4)', () => {
     const closed = mutation(d3.id, 3, { note: 'Checked' }, 'defects.close');
     expect((await push(pm, [closed]))[0]).toMatchObject({ status: 'applied', version: 4 });
 
+    // A photo attached on its own counts as the "after" photo, and does not move the version the step was queued against.
+    const d4 = await issued('Cracked tile');
+    const attach = (purpose: string) =>
+      mutation(d4.id, null, { fileId: photo, purpose }, 'defects.attachPhoto');
+    expect((await push(sub, [attach('before')]))[0]).toMatchObject({
+      status: 'applied',
+      version: 2,
+    });
+    expect(
+      (await push(sub, [mutation(d4.id, d4.version, {}, 'defects.markReadyForReview')]))[0],
+    ).toMatchObject({ status: 'rejected', problem: { code: 'defect.photo_required' } });
+    const photo2 = await uploadFile(t, sub.browser, org.id, project.id, 'after2.pdf', 'defects');
+    const afterPhoto = mutation(
+      d4.id,
+      null,
+      { fileId: photo2, purpose: 'after' },
+      'defects.attachPhoto',
+    );
+    expect((await push(sub, [afterPhoto]))[0]).toMatchObject({ status: 'applied', version: 2 });
+    expect((await push(sub, [{ ...afterPhoto, mutationId: randomUUID() }]))[0]).toMatchObject({
+      status: 'applied',
+      version: 2,
+    });
+    expect(
+      (await push(sub, [mutation(d4.id, d4.version, {}, 'defects.markReadyForReview')]))[0],
+    ).toMatchObject({ status: 'applied', version: 3 });
+    const bad = mutation(d4.id, null, { fileId: photo2, purpose: 'during' }, 'defects.attachPhoto');
+    expect((await push(sub, [bad]))[0]).toMatchObject({ status: 'rejected' });
+
     // Changed since the device last saw it: a conflict with the server's copy, not stored.
     const d2 = await issued('Loose handrail');
     const edit = await pm.browser.patch(

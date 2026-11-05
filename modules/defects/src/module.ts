@@ -104,6 +104,31 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
   const transitionCommand = makeTransition('defects.transition');
   /** `defects.markReadyForReview`, `defects.close`, ...: the phone queues one command per action (mobile 02 §2.4). */
   const actionCommands = DEFECT_ACTIONS.map((a) => makeTransition(`defects.${a}`, a));
+  /**
+   * `defects.attachPhoto`: a photo taken on site for a defect. The phone queues it held until the upload has
+   * finished, then fills in `fileId`; the step that needs the photo ("after" for ready for review) depends on it.
+   */
+  const attachPhotoCommand: SyncCommand = {
+    name: 'defects.attachPhoto',
+    module: 'defects',
+    async projectOf(scope, entityId) {
+      const defectId = typeof entityId === 'string' ? decodeId('defect', entityId) : null;
+      return defectId ? service.projectOf(scope, defectId) : null;
+    },
+    async run(scope, m) {
+      const defectId = id('defect', m.entityId, 'entityId');
+      const fileId = id('file', m.payload.fileId, 'payload/fileId');
+      const purpose = m.payload.purpose;
+      if (purpose !== 'before' && purpose !== 'after')
+        throw new AppError('validation_failed', 'Say whether it is a before or after photo.', [
+          { path: 'payload/purpose', message: 'Expected before or after' },
+        ]);
+      const projectId = await service.projectOf(scope, defectId);
+      if (!projectId) throw new AppError('defect.not_found');
+      return service.attachPhoto(scope, projectId, defectId, fileId, purpose);
+    },
+    current: transitionCommand.current,
+  };
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
     routes: defectsRoutes(services.database, service),
@@ -122,7 +147,7 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       /** What the mobile pull reads (modules/sync). */
       syncSource,
       /** What a device may queue offline and push (modules/sync). */
-      syncCommands: [transitionCommand, ...actionCommands],
+      syncCommands: [transitionCommand, ...actionCommands, attachPhotoCommand],
     },
   };
 }

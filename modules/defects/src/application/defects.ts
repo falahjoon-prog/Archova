@@ -439,10 +439,13 @@ export function createDefectService(deps: DefectsDeps) {
     if (!(await deps.access.can(scope, permissionFor(input.action), { projectId })))
       throw new AppError('access.denied', `You can't ${input.action} this defect.`);
     const fileIds = [...new Set(input.fileIds ?? [])];
+    // Photos the phone attached one by one before this step (`attachPhoto`) count as its "after" evidence.
+    const attachedAfter =
+      input.action === 'markReadyForReview' ? await attachedPhotos(scope, defectId, 'after') : 0;
     const result = resolveTransition(defect, v, {
       action: input.action,
       reason: input.reason ?? null,
-      photoCount: fileIds.length,
+      photoCount: fileIds.length + attachedAfter,
     });
     if (!result.ok) {
       const messages: Record<typeof result.code, string> = {
@@ -520,6 +523,56 @@ export function createDefectService(deps: DefectsDeps) {
       },
     });
     return detail(scope, projectId, defectId);
+  }
+
+  async function attachedPhotos(scope: TenantScope, defectId: string, purpose: 'before' | 'after') {
+    const rows = await scope.tx
+      .select({ fileIds: events.fileIds })
+      .from(events)
+      .where(
+        and(eq(events.defectId, defectId), eq(events.action, 'photo'), eq(events.note, purpose)),
+      );
+    return rows.reduce((n, r) => n + r.fileIds.length, 0);
+  }
+
+  /**
+   * A photo taken on site for a defect, attached on its own because the phone only knows the file's id once the
+   * upload finishes. It is a history line (`photo`, with the purpose as its note) and does not change the defect's
+   * version, so a transition queued against that version still applies. Sending the same file again changes nothing.
+   */
+  async function attachPhoto(
+    scope: TenantScope,
+    projectId: string,
+    defectId: string,
+    fileId: string,
+    purpose: 'before' | 'after',
+  ) {
+    const { defect } = await getVisible(scope, projectId, defectId);
+    const permission = purpose === 'after' ? 'defects.defects.respond' : 'defects.defects.create';
+    if (!(await deps.access.can(scope, permission, { projectId })))
+      throw new AppError('access.denied', "You can't add photos to this defect.");
+    const [have] = await scope.tx
+      .select({ id: events.id })
+      .from(events)
+      .where(
+        and(
+          eq(events.defectId, defectId),
+          eq(events.action, 'photo'),
+          sql`${fileId}::uuid = any(${events.fileIds})`,
+        ),
+      )
+      .limit(1);
+    if (have) return { version: defect.version };
+    await checkFiles(scope, projectId, [fileId]);
+    const [row] = await scope.tx.select().from(defects).where(eq(defects.id, defectId));
+    await recordEvent(scope, row!, {
+      action: 'photo',
+      from: defect.status,
+      note: purpose,
+      fileIds: [fileId],
+    });
+    await changed(scope, row!);
+    return { version: row!.version };
   }
 
   /**
@@ -709,7 +762,12 @@ export function createDefectService(deps: DefectsDeps) {
       })
       .from(events)
       .innerJoin(defects, eq(defects.id, events.defectId))
-      .where(and(live, sql`${events.note} is not null and btrim(${events.note}) <> ''`))
+      .where(
+        and(
+          live,
+          sql`${events.action} <> 'photo' and ${events.note} is not null and btrim(${events.note}) <> ''`,
+        ),
+      )
       .orderBy(asc(events.at), asc(events.id));
     const companies = new Map(
       (await deps.platform.projectCompanies(scope, projectId)).map((c) => [c.id, c.name]),
@@ -747,6 +805,7 @@ export function createDefectService(deps: DefectsDeps) {
     detail,
     update,
     transition,
+    attachPhoto,
     openNear,
     openForMeeting,
     portfolioCounts,
