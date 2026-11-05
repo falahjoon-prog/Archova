@@ -1203,6 +1203,9 @@ export const ResolveAccountingSyncIssueParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
 });
+export const GetIntegrationsCatalogueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListWebhooksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2748,6 +2751,29 @@ export const QueueClaimEvidenceDeliveryParams = z.object({
   "kind": z.enum(["claim", "schedule"]),
 });
 export const QueueClaimEvidenceDeliveryBody = s.QueueClaimEvidenceDeliveryRequestSchema;
+export const ListClaimEvidenceServiceRecordsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const RecordClaimEvidenceServiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const RecordClaimEvidenceServiceBody = s.RecordClaimEvidenceServiceRequestSchema;
+export const VoidClaimEvidenceServiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+  "recordId": z.string(),
+});
+export const VoidClaimEvidenceServiceBody = z.object({
+  "reason": z.string().min(1).max(1000),
+}).strict();
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5563,6 +5589,18 @@ export const operations = {
     internal: true,
     contentType: null,
     params: ResolveAccountingSyncIssueParams,
+    query: null,
+    body: null,
+  },
+  getIntegrationsCatalogue: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/integrations/catalogue',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.marketplace.read",
+    internal: true,
+    contentType: null,
+    params: GetIntegrationsCatalogueParams,
     query: null,
     body: null,
   },
@@ -8965,6 +9003,42 @@ export const operations = {
     params: QueueClaimEvidenceDeliveryParams,
     query: null,
     body: QueueClaimEvidenceDeliveryBody,
+  },
+  listClaimEvidenceServiceRecords: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceServiceRecordsParams,
+    query: null,
+    body: null,
+  },
+  recordClaimEvidenceService: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimEvidenceServiceParams,
+    query: null,
+    body: RecordClaimEvidenceServiceBody,
+  },
+  voidClaimEvidenceService: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: VoidClaimEvidenceServiceParams,
+    query: null,
+    body: VoidClaimEvidenceServiceBody,
   },
   listMeetingSeries: {
     method: 'GET',

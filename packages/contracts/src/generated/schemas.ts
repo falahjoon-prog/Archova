@@ -566,9 +566,17 @@ export const CaptureSchema = z.object({
 export type Capture = z.infer<typeof CaptureSchema>;
 
 export const ClaimEvidenceDeliverySchema = z.object({
+  "serviceBasis": z.enum(["confirmed_delivery", "dispatch_only"]),
+  "sendProof": z.object({
+  "recordedAt": z.string().datetime({ offset: true }),
+  "messageSha256": z.string(),
+  "signed": z.boolean(),
+  "timestampedAt": z.string().datetime({ offset: true }).nullable(),
+}).nullable(),
   "id": z.string(),
   "kind": z.enum(["claim", "schedule"]),
   "recipientEmail": z.string(),
+  "addressBasis": z.string().nullable(),
   "status": z.enum(["queued", "sending", "sent", "delivered", "bounced", "failed"]),
   "queuedAt": z.string().datetime({ offset: true }),
   "sentAt": z.string().datetime({ offset: true }).nullable(),
@@ -634,6 +642,25 @@ export const ClaimEvidencePdfSchema = z.object({
   "dataBase64": z.string(),
 });
 export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
+
+export const ClaimEvidenceServiceRecordSchema = z.object({
+  "voidedAt": z.string().datetime({ offset: true }).nullable(),
+  "voidReason": z.string().nullable(),
+  "basis": z.enum(["self_reported"]),
+  "id": z.string(),
+  "kind": z.enum(["claim", "schedule"]),
+  "method": z.enum(["hand", "courier", "post", "recipient_reply", "other"]),
+  "servedAt": z.string().datetime({ offset: true }),
+  "servedTo": z.string().max(200),
+  "note": z.string().max(2000).nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type ClaimEvidenceServiceRecord = z.infer<typeof ClaimEvidenceServiceRecordSchema>;
+
+export const ClaimEvidenceServiceRecordListSchema = z.object({
+  "records": z.array(ClaimEvidenceServiceRecordSchema),
+});
+export type ClaimEvidenceServiceRecordList = z.infer<typeof ClaimEvidenceServiceRecordListSchema>;
 
 export const ClaimStatementSchema = z.object({
   "periodEnd": z.string().date(),
@@ -3878,6 +3905,22 @@ export const InspectionTemplateListSchema = z.object({
 });
 export type InspectionTemplateList = z.infer<typeof InspectionTemplateListSchema>;
 
+export const IntegrationCatalogueEntrySchema = z.object({
+  "key": z.string(),
+  "name": z.string(),
+  "category": z.enum(["accounting", "files", "developer"]),
+  "summary": z.string(),
+  "status": z.enum(["connected", "available", "needs_attention", "not_configured", "coming_soon"]),
+  "detail": z.string().nullable(),
+  "manage": z.enum(["accounting", "folders", "api"]).nullable(),
+});
+export type IntegrationCatalogueEntry = z.infer<typeof IntegrationCatalogueEntrySchema>;
+
+export const IntegrationCatalogueSchema = z.object({
+  "data": z.array(IntegrationCatalogueEntrySchema),
+});
+export type IntegrationCatalogue = z.infer<typeof IntegrationCatalogueSchema>;
+
 export const InvitePackageRequestSchema = z.object({
   "companyIds": z.array(CompanyRefSchema).min(1).max(50),
   "overrideReason": z.string().min(1).max(500).optional(),
@@ -5199,6 +5242,7 @@ export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSche
 
 export const QueueClaimEvidenceDeliveryRequestSchema = z.object({
   "recipientEmail": z.string().email().max(254),
+  "addressBasis": z.string().max(500).nullable().optional(),
 }).strict();
 export type QueueClaimEvidenceDeliveryRequest = z.infer<typeof QueueClaimEvidenceDeliveryRequestSchema>;
 
@@ -5425,6 +5469,14 @@ export const RecordAttendanceRequestSchema = z.object({
   "overrideReason": z.string().min(1).max(500).optional(),
 }).strict();
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
+
+export const RecordClaimEvidenceServiceRequestSchema = z.object({
+  "method": z.enum(["hand", "courier", "post", "recipient_reply", "other"]),
+  "servedAt": z.string().datetime({ offset: true }),
+  "servedTo": z.string().min(1).max(200),
+  "note": z.string().max(2000).nullable().optional(),
+}).strict();
+export type RecordClaimEvidenceServiceRequest = z.infer<typeof RecordClaimEvidenceServiceRequestSchema>;
 
 export const RecordClaimStatementRequestSchema = z.object({
   "periodEnd": z.string().date(),

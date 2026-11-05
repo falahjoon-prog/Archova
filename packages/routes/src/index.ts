@@ -19,6 +19,7 @@ export const webRoutes = {
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  integrations: (orgSlug: string) => `/${enc(orgSlug)}/settings/integrations`,
   folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
@@ -90,6 +91,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  safetySignals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/safety-signals`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
   incidents: (orgSlug: string, projectId: string, incidentId?: string) =>

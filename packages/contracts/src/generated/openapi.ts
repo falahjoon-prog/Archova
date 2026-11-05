@@ -3932,6 +3932,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/integrations/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Every connector the org can set up, with its live status (integrations/06 §4). */
+        get: operations["getIntegrationsCatalogue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/webhooks": {
         parameters: {
             query?: never;
@@ -8601,6 +8620,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** Records that this sealed record was served by other means. Builder staff only. */
+        get: operations["listClaimEvidenceServiceRecords"];
+        put?: never;
+        /** Record that the sealed claim or schedule was served by hand, courier, post or the recipient's own reply, and when. Append-only; it is a person's statement, kept apart from email deliveries. Recording service of a schedule needs `financials.claims.assess`. */
+        post: operations["recordClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate append-only row. Voiding service of a schedule needs `financials.claims.assess`. */
+        post: operations["voidClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -9847,16 +9912,38 @@ export interface components {
             caChainPem: string;
         };
         ClaimEvidenceDelivery: {
+            /**
+             * @description `confirmed_delivery` only when the receiving mail server confirmed it. `dispatch_only` means we sent it and have a record of that, which is not proof it arrived. Never show dispatch_only as served.
+             * @enum {string}
+             */
+            serviceBasis: "confirmed_delivery" | "dispatch_only";
+            /** @description Our signed record of what was sent, to whom and when. Null until the message has been sent. */
+            sendProof: {
+                /** Format: date-time */
+                recordedAt: string;
+                messageSha256: string;
+                signed: boolean;
+                /**
+                 * Format: date-time
+                 * @description Time the outside authority stamped the send proof, once taken.
+                 */
+                timestampedAt: string | null;
+            } | null;
             /** Format: uuid */
             id: string;
             /** @enum {string} */
             kind: "claim" | "schedule";
             recipientEmail: string;
+            /** @description Where the address came from, e.g. the contract clause that nominates it, as typed at send time. */
+            addressBasis: string | null;
             /** @enum {string} */
             status: "queued" | "sending" | "sent" | "delivered" | "bounced" | "failed";
             /** Format: date-time */
             queuedAt: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description When our mail relay accepted it. Not delivery to the recipient.
+             */
             sentAt: string | null;
             /**
              * Format: date-time
@@ -9868,6 +9955,45 @@ export interface components {
             /** @description True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it. */
             notConfirmed: boolean;
         };
+        ClaimEvidenceServiceRecord: {
+            /**
+             * Format: date-time
+             * @description Set when the record was voided as mistaken. A voided record stays on file.
+             */
+            voidedAt: string | null;
+            voidReason: string | null;
+            /**
+             * @description The recording user's own statement; Archova has not checked it. Never show as verified.
+             * @enum {string}
+             */
+            basis: "self_reported";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "claim" | "schedule";
+            /** @enum {string} */
+            method: "hand" | "courier" | "post" | "recipient_reply" | "other";
+            /**
+             * Format: date-time
+             * @description When it reached the recipient, as stated by the person recording.
+             */
+            servedAt: string;
+            servedTo: string;
+            note: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ClaimEvidenceServiceRecordList: {
+            records: components["schemas"]["ClaimEvidenceServiceRecord"][];
+        };
+        RecordClaimEvidenceServiceRequest: {
+            /** @enum {string} */
+            method: "hand" | "courier" | "post" | "recipient_reply" | "other";
+            /** Format: date-time */
+            servedAt: string;
+            servedTo: string;
+            note?: string | null;
+        };
         ClaimEvidenceDeliveryList: {
             deliveries: components["schemas"]["ClaimEvidenceDelivery"][];
         };
@@ -9877,6 +10003,8 @@ export interface components {
              * @description The address the payer gave for service.
              */
             recipientEmail: string;
+            /** @description Where the address came from, e.g. the contract clause that nominates it. Kept in the signed send record. */
+            addressBasis?: string | null;
         };
         ClaimEvidenceList: {
             records: components["schemas"]["ClaimEvidenceRecord"][];
@@ -13224,6 +13352,24 @@ export interface components {
             disabledReason: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        IntegrationCatalogueEntry: {
+            key: string;
+            name: string;
+            /** @enum {string} */
+            category: "accounting" | "files" | "developer";
+            summary: string;
+            /** @enum {string} */
+            status: "connected" | "available" | "needs_attention" | "not_configured" | "coming_soon";
+            detail: string | null;
+            /**
+             * @description Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+             * @enum {string|null}
+             */
+            manage: "accounting" | "folders" | "api" | null;
+        };
+        IntegrationCatalogue: {
+            data: components["schemas"]["IntegrationCatalogueEntry"][];
         };
         /** @enum {string} */
         AccountingProviderName: "xero" | "myob";
@@ -22518,6 +22664,29 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getIntegrationsCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCatalogue"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listWebhooks: {
         parameters: {
             query?: never;
@@ -30489,6 +30658,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceDelivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimEvidenceServiceRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecordList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimEvidenceServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -55,11 +55,13 @@ function reader(socket: tls.TLSSocket) {
 /**
  * Sends through an SMTP server over implicit TLS (port 465) with AUTH PLAIN, for mail that goes out through the
  * domain's own mail host instead of SES. No new dependency: the message is the same MIME the SES raw path builds.
- * There is no provider message id and no delivery confirmation, so nothing that needs those may rely on this sender.
+ * The Message-ID is our own and there is no delivery confirmation: it returns the exact bytes sent and the relay's
+ * reply as a send record, and nothing that needs delivery confirmation may rely on this sender.
  */
 export function createSmtpSender(opts: SmtpOptions): EmailSender {
   return {
     async send(m: EmailMessage) {
+      let sent: { messageId: string; raw: Uint8Array; serverResponse: string } | undefined;
       const socket = tls.connect({
         host: opts.host,
         port: opts.port,
@@ -93,17 +95,21 @@ export function createSmtpSender(opts: SmtpOptions): EmailSender {
         await say(`RCPT TO:<${bare(m.to)}>`, [250, 251], 'recipient');
         await say('DATA', [354], 'DATA');
         const domain = bare(opts.from).split('@')[1] ?? 'archova.com.au';
+        const messageId = `<${randomUUID()}@${domain}>`;
         const raw =
-          `Date: ${new Date().toUTCString()}\r\nMessage-ID: <${randomUUID()}@${domain}>\r\n` +
+          `Date: ${new Date().toUTCString()}\r\nMessage-ID: ${messageId}\r\n` +
           buildRawMessage(m, opts.from, opts.replyTo);
         // Dot-stuffing keeps a body line that starts with "." from ending the message early.
         socket.write(`${raw.replace(/^\./gm, '..')}\r\n.\r\n`);
-        await expect([250], 'message');
+        const accepted = await expect([250], 'message');
+        // What we handed the relay, and its reply. The relay accepting it is not delivery to the recipient.
+        sent = { messageId, raw: Buffer.from(raw, 'utf8'), serverResponse: accepted.text };
         socket.write('QUIT\r\n');
       } finally {
         clearTimeout(timer);
         socket.destroy();
       }
+      return sent;
     },
   };
 }
