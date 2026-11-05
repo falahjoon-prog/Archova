@@ -54,6 +54,8 @@ export const REVIEWED_COLUMNS: ReadonlySet<string> = new Set([
   'correspondence.items.content_hash',
   'financials.evidence_records.evidence_hash',
   'financials.evidence_timestamps.token',
+  // The timestamp authority's public token over a send proof; checked like the seal timestamp above.
+  'financials.evidence_send_timestamps.token',
   'ai.ai_translations.source_hash',
   'workforce.induction_completions.translation_hash',
   'workforce.induction_completions.evidence_hash',

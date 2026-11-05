@@ -4,6 +4,7 @@ import { createLinksService, type LinksDeps } from './application/links';
 import { createProgrammeService, type ProgrammeDeps } from './application/programme';
 import { SCHEDULING_PERMISSIONS } from './permissions';
 import { createReportingSources, type ReportingSourcesDeps } from './application/reportingSources';
+import { createRiskService, type RiskDeps } from './application/risk';
 import { createRegisterService, type SchedulingDeps } from './application/register';
 
 /**
@@ -12,18 +13,25 @@ import { createRegisterService, type SchedulingDeps } from './application/regist
  * MS Project / P6 import, and the RFIs and submittals tied to activities (read through their public interfaces). Notices and delay events come with the EOT work.
  */
 export function createSchedulingModule(
-  deps: SchedulingDeps & ProgrammeDeps & LinksDeps & Pick<ReportingSourcesDeps, 'access'>,
+  deps: SchedulingDeps &
+    ProgrammeDeps &
+    LinksDeps &
+    RiskDeps &
+    Pick<ReportingSourcesDeps, 'access'>,
 ) {
   const register = createRegisterService(deps);
   const programme = createProgrammeService(deps);
   const links = createLinksService(deps);
   const reportingSources = createReportingSources(deps);
+  const risk = createRiskService(deps);
   return {
     definition: defineModule({ name: 'scheduling', permissions: SCHEDULING_PERMISSIONS }),
     routes: schedulingRoutes(deps.database, register, programme, links),
     api: {
       /** Portfolio dashboard and report builder (`reporting`): programme activity counts and rows. */
       reporting: reportingSources,
+      /** For `reporting` (Nova project risk): how far the programme has slipped. */
+      slipSignals: risk.slipSignals,
     },
   };
 }

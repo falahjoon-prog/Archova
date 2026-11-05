@@ -129,6 +129,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the consent page shows for a partner app. Needs a signed-in web session. */
+        get: operations["getOauthConsent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Partner apps this organisation has registered. Owners and admins only. */
+        get: operations["listOauthApps"];
+        put?: never;
+        /** Register a private partner app for this organisation (integrations/06 §4). Needs a recent sign-in. The client secret is in the response once. A private app can be installed only into this organisation. */
+        post: operations["createOauthApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace an app's client secret. The old one stops working at once. Needs a recent sign-in. */
+        post: operations["rotateOauthAppSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Apps installed in this organisation, with their approved scopes and last use. Owners and admins only. */
+        get: operations["listAppInstalls"];
+        put?: never;
+        /** Approve a partner app for this organisation and the scopes it asked for. Needs a recent sign-in. Returns the address to send the browser to, carrying a single-use 60-second code. Other owners and admins are emailed. */
+        post: operations["installApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs/{appInstallId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an app. Every token it holds stops working on its next request. */
+        delete: operations["revokeAppInstall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/token": {
         parameters: {
             query?: never;
@@ -2652,6 +2749,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a first version of a Safe Work Method Statement for high-risk work (F20).
+         * @description Nova drafts hazards, controls (highest level of the hierarchy first), how they are put in place and what is
+         *     particular to this site, for the high-risk work codes given and nothing else (compliance/08 §3). It will not
+         *     draft without the site, the activity, at least one high-risk code, the work area, the access, the plant and the
+         *     adjacent trades (an empty list means none). It reads site rules and a WHS management plan the caller can open.
+         *     Controls too general to follow, claims that the SWMS is compliant or safe, and anything outside the chosen codes
+         *     are removed and listed in `warnings`; a number nobody supplied, a code without a hazard or control, and
+         *     a site section that fits any site are flagged, not fixed. The result is a pending suggestion (task
+         *     `swms.draft`) for the caller alone, shaped like the SWMS content so they can edit it and submit it to the SWMS
+         *     register: it is never a SWMS until a person submits it, and a competent person must review it on site and accept
+         *     it before work starts. Costs 3 Nova credits. Returns `ai.swms.not_enabled` (403) until the feature is switched
+         *     on for pilots.
+         */
+        post: operations["draftSwms"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency": {
         parameters: {
             query?: never;
@@ -2931,6 +3061,36 @@ export interface paths {
          *     is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
          */
         get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/risk/late-sopa-claims": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Projects at risk of a late SOPA payment schedule, with the schedule and insurance signals behind each.
+         * @description Nova project risk. Lists the projects the caller can see that have a valid subcontract claim still waiting for a
+         *     payment schedule that is due within 5 days or already past due. Each project is ranked high, medium or low:
+         *     both aggravators (an expired insurance, or one expiring on or before the payment due date, for a claiming
+         *     subcontractor; and programme tasks past their planned finish) make it high, one makes it medium, none makes it
+         *     low, raised to medium when a schedule is already overdue. Every figure comes from the tool modules, each read
+         *     as the caller: projects where the caller cannot read claims are counted in `unreadableProjects` and left out;
+         *     a subcontractor's insurance is read only through a live compliance wallet grant, otherwise it is `not_visible`;
+         *     a programme the caller cannot read is listed under `unknown`. All sentences come from fixed rules, not a model.
+         *     Staff only.
+         */
+        get: operations["getLateSopaClaimRisk"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9398,6 +9558,53 @@ export interface components {
             programmeOpen: number;
             programmeOverdue: number;
         };
+        LateSopaClaimRisk: {
+            projects: components["schemas"]["LateSopaClaimRiskProject"][];
+            /** @description Projects left out because the caller cannot read their claims. */
+            unreadableProjects: number;
+            truncated: boolean;
+        };
+        LateSopaClaimRiskProject: {
+            projectId: string;
+            projectName: string;
+            number: string | null;
+            /** @enum {string} */
+            level: "high" | "medium" | "low";
+            insuranceProblem: boolean;
+            scheduleSlip: boolean;
+            /** @description Signals Nova could not read, so a gap is never shown as no risk. */
+            unknown: string[];
+            claims: components["schemas"]["LateSopaClaimRiskClaim"][];
+            slip: {
+                lateCount: number;
+                worst: {
+                    id: string;
+                    wbs: string;
+                    name: string;
+                    /** Format: date */
+                    finish: string;
+                    daysLate: number;
+                }[];
+            };
+        };
+        LateSopaClaimRiskClaim: {
+            claimId: string;
+            claimNumber: number;
+            contractNumber: number;
+            contractTitle: string;
+            subbieName: string | null;
+            claimedTotal: string;
+            /** Format: date */
+            scheduleDueOn: string;
+            /** Format: date */
+            paymentDueOn: string | null;
+            /** @enum {string} */
+            deadline: "overdue" | "due_soon";
+            daysToScheduleDue: number;
+            /** @enum {string} */
+            insurance: "expired" | "expires_before_payment_due" | "current" | "none_on_file" | "not_visible";
+            summary: string;
+        };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
             projects: components["schemas"]["PortfolioProject"][];
@@ -10276,6 +10483,8 @@ export interface components {
             redirect_uri?: string;
             code_verifier?: string;
             refresh_token?: string;
+            /** @description Required for partner apps. */
+            client_secret?: string;
         };
         TokenResponse: {
             access_token: string;
@@ -10283,6 +10492,8 @@ export interface components {
             token_type: "Bearer";
             expires_in: number;
             refresh_token: string;
+            /** @description Partner apps only. The scopes approved */
+            scope?: string;
         };
         RevokeRequest: {
             token: string;
@@ -13539,6 +13750,67 @@ export interface components {
             /** Format: date-time */
             finishedAt: string | null;
             version: number;
+        };
+        OauthConsent: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            /** @description The only organisation this app can be installed into. */
+            ownerOrgId: string;
+            scopes: string[];
+        };
+        OauthApp: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            redirectUris: string[];
+            scopes: string[];
+            disabled: boolean;
+        };
+        OauthAppList: {
+            data: components["schemas"]["OauthApp"][];
+            availableScopes: string[];
+        };
+        CreateOauthAppRequest: {
+            name: string;
+            description?: string;
+            redirectUris: string[];
+            scopes: string[];
+        };
+        OauthAppCreated: components["schemas"]["OauthApp"] & {
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        OauthAppSecret: {
+            clientId: string;
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        InstallAppRequest: {
+            clientId: string;
+            redirectUri: string;
+            codeChallenge: string;
+            state: string;
+            scopes: string[];
+        };
+        InstallAppResponse: {
+            redirectUrl: string;
+        };
+        AppInstall: {
+            id: string;
+            clientId: string;
+            appName: string;
+            scopes: string[];
+            installedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        AppInstallList: {
+            data: components["schemas"]["AppInstall"][];
         };
         ApiToken: {
             id: string;
@@ -17018,6 +17290,176 @@ export interface operations {
         responses: {
             /** @description Redirect to the client with an authorisation code */
             302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOauthConsent: {
+        parameters: {
+            query: {
+                client_id: string;
+                redirect_uri: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthConsent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOauthApps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOauthApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOauthAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rotateOauthAppSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppSecret"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAppInstalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInstallList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    installApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Installed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallAppResponse"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeAppInstall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -20842,6 +21284,45 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    draftSwms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    siteAddress: string;
+                    activity: string;
+                    highRiskWorkCategories: components["schemas"]["HighRiskWorkCategory"][];
+                    workArea: string;
+                    access: string;
+                    plant: string[];
+                    adjacentTrades: string[];
+                    /** @description True on projects of $250,000 or more (Vic $350,000). */
+                    whsPlanApplies?: boolean;
+                    notes?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getInductionDraftCurrency: {
         parameters: {
             query?: never;
@@ -21189,6 +21670,30 @@ export interface operations {
                 };
             };
             default: components["responses"]["Problem"];
+        };
+    };
+    getLateSopaClaimRisk: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The projects at risk */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LateSopaClaimRisk"];
+                };
+            };
         };
     };
     getReadinessPack: {

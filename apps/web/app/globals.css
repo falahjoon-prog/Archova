@@ -2595,6 +2595,11 @@ fieldset.worker-card > legend {
   padding-bottom: 0;
 }
 /* Integration cards: one column on a phone, two from tablet, three on desktop. */
+.consent__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
 .marketplace__grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -2702,4 +2707,45 @@ fieldset.worker-card > legend {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-2);
+}
+/* Coordination: the 3D model viewer beside its selection and clash panel. */
+.bim-layout {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+.bim-canvas {
+  height: 60vh;
+  min-height: 320px;
+}
+.bim-clashes {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.bim-clash {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  text-align: left;
+  color: var(--c-text);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.bim-clash[aria-pressed='true'] {
+  border-color: var(--c-status-danger);
+}
+@media (min-width: 1024px) {
+  .bim-layout {
+    grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  }
+  .bim-canvas {
+    height: 70vh;
+  }
 }

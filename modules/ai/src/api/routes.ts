@@ -40,6 +40,7 @@ import type {
 import type { ProjectIndexService } from '../application/project-index';
 import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answer';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
+import type { SwmsDraftPayload, SwmsDraftService } from '../application/swms-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
 import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
@@ -120,6 +121,10 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
         ? { ...p.pin, drawingRevisionId: encodeId('drawingRevision', p.pin.drawingRevisionId) }
         : null,
     };
+  }
+  if (task === 'swms.draft') {
+    const p = payload as SwmsDraftPayload;
+    return { ...p, references: p.references.map((c) => ({ ...c, ...sourceIds(c) })) };
   }
   if (task === 'rfi.answer') {
     const p = payload as RfiAnswerPayload;
@@ -290,6 +295,7 @@ export function aiRoutes(
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
+  swmsDrafts: SwmsDraftService,
   hazardScans: HazardScanService,
 ) {
   const ro = { readOnly: true } as const;
@@ -850,6 +856,11 @@ export function aiRoutes(
       const row = await inductionDrafts.draft(requireTenant(input), projectId, {
         siteName: input.body.siteName,
       });
+      return { status: 201, body: toSuggestionDto(row) };
+    },
+    draftSwms: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const row = await swmsDrafts.draft(requireTenant(input), projectId, input.body);
       return { status: 201, body: toSuggestionDto(row) };
     },
     getInductionDraftCurrency: async (input) => {

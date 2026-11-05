@@ -16,9 +16,12 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-defects": "workspace:*",
+    "@archova/mod-financials": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@archova/mod-rfis": "workspace:*",
+    "@archova/mod-scheduling": "workspace:*",
     "@archova/mod-submittals": "workspace:*",
+    "@archova/mod-workforce": "workspace:*",
     "@archova/time": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "pdf-lib": "^1.17.1"

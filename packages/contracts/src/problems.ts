@@ -31,6 +31,12 @@ export const PROBLEM_CODES = {
   'api_token.limit_reached': 409,
   'api_token.scope_missing': 403,
   'api_token.not_allowed': 403,
+  // partner apps (third-party OAuth clients for the public API)
+  'app.not_found': 404,
+  'app.invalid_redirect': 422,
+  'app.invalid_scope': 422,
+  'app.limit_reached': 409,
+  'app.not_allowed': 403,
   // webhooks (public API)
   'webhook.not_found': 404,
   'webhook.invalid_event_type': 422,
@@ -364,6 +370,7 @@ export const PROBLEM_CODES = {
   'incident.closed': 409,
   'incident.cannot_close': 422,
   'incident.reason_required': 422,
+  'ai.swms.not_enabled': 403,
   'ai.induction.no_documents': 422,
   'ai.induction.up_to_date': 409,
   'ai.induction.cannot_refresh': 422,

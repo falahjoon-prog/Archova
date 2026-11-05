@@ -19,6 +19,7 @@ export const webRoutes = {
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  apps: (orgSlug: string) => `/${enc(orgSlug)}/settings/apps`,
   integrations: (orgSlug: string) => `/${enc(orgSlug)}/settings/integrations`,
   folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
@@ -38,6 +39,9 @@ export const webRoutes = {
   documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
   drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
   coordination: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/coordination`,
+  /** The 3D viewer for the project's IFC models, with clash checking. */
+  coordinationModels: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/coordination/models`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>

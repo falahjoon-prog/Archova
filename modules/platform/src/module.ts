@@ -143,6 +143,7 @@ export function createPlatformModule(
       companyExists: companies.exists,
       companyContacts: companies.contacts,
       companyIdentity: companies.identity,
+      companyLinkedOrgs: companies.linkedOrgs,
       projectCompanies: companies.onProject,
       projectCompaniesWithTrades: companies.onProjectWithTrades,
     },

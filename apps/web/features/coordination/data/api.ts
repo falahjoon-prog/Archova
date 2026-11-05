@@ -1,6 +1,7 @@
 import { unwrap } from '@archova/api-client';
 import type { components } from '@archova/contracts/openapi';
 import { api } from '@/shared/lib/api';
+import { fileDownloadUrl, uploadFile } from '@/shared/lib/uploads';
 
 export type BimModel = components['schemas']['BimModel'];
 export type CoordinationIssue = components['schemas']['CoordinationIssue'];
@@ -33,6 +34,18 @@ export function createCoordinationApi(orgId: string) {
           body,
         }),
       );
+    },
+    /** Stores an IFC file for a model; resolves with the `fileId` to register it under. */
+    async uploadModelFile(projectId: string, file: File): Promise<string> {
+      // Browsers leave `.ifc` untyped, and storage only accepts known types, so say what it is.
+      const typed = new File([file], file.name, { type: 'model/ifc' });
+      return (await uploadFile(orgId, { file: typed, projectId, module: 'bim' })).id;
+    },
+    /** The bytes of a stored model file, read from a short-lived signed URL. */
+    async downloadModelFile(fileId: string): Promise<Uint8Array> {
+      const res = await fetch(await fileDownloadUrl(orgId, fileId));
+      if (!res.ok) throw new Error(`The model file could not be downloaded (${res.status}).`);
+      return new Uint8Array(await res.arrayBuffer());
     },
     async listIssues(
       projectId: string,

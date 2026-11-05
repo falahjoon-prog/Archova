@@ -1,4 +1,4 @@
-import { boolean, customType, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, customType, jsonb, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
@@ -66,6 +66,8 @@ export const oauthClients = identity.table('oauth_clients', {
   redirectUris: text('redirect_uris').array().notNull(),
   scopes: text('scopes').array().notNull(),
   ownerOrgId: uuid('owner_org_id'),
+  description: text('description'),
+  disabledAt: timestamp('disabled_at', { withTimezone: true }),
 });
 
 export const oauthCodes = identity.table('oauth_codes', {
@@ -101,5 +103,67 @@ export const apiTokenEvents = identity.table('api_token_events', {
   event: text('event').$type<'created' | 'revoked' | 'first_used'>().notNull(),
   userId: uuid('user_id').notNull(),
   ip: text('ip'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appInstalls = identity.table('app_installs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  clientId: text('client_id').notNull(),
+  installedBy: uuid('installed_by').notNull(),
+  scopes: text('scopes').array().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  revokedBy: uuid('revoked_by'),
+});
+
+export const appEvents = identity.table('app_events', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  clientId: text('client_id').notNull(),
+  installId: uuid('install_id'),
+  event: text('event')
+    .$type<
+      | 'app_created'
+      | 'secret_rotated'
+      | 'installed'
+      | 'scope_changed'
+      | 'revoked'
+      | 'reuse_detected'
+    >()
+    .notNull(),
+  userId: uuid('user_id'),
+  ip: text('ip'),
+  detail: jsonb('detail').$type<Record<string, unknown>>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const appCodes = identity.table('app_codes', {
+  codeHash: bytea('code_hash').primaryKey(),
+  clientId: text('client_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  installId: uuid('install_id').notNull(),
+  familyId: uuid('family_id').notNull(),
+  redirectUri: text('redirect_uri').notNull(),
+  codeChallenge: text('code_challenge').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+});
+
+export const appTokens = identity.table('app_tokens', {
+  id: uuid('id').primaryKey(),
+  installId: uuid('install_id').notNull(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  userId: uuid('user_id').notNull(),
+  kind: text('kind').$type<'access' | 'refresh'>().notNull(),
+  tokenHash: bytea('token_hash').notNull(),
+  familyId: uuid('family_id').notNull(),
+  scopes: text('scopes').array().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  absoluteExpiresAt: timestamp('absolute_expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
