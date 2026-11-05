@@ -156,6 +156,16 @@ export const DeleteScheduleActivityParams = z.object({
   "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
   "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
 });
+export const SetScheduleBaselineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const ClearScheduleBaselineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
 export const CreateScheduleDependencyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3369,6 +3379,30 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteScheduleActivityParams,
+    query: null,
+    body: null,
+  },
+  setScheduleBaseline: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: SetScheduleBaselineParams,
+    query: null,
+    body: null,
+  },
+  clearScheduleBaseline: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: ClearScheduleBaselineParams,
     query: null,
     body: null,
   },

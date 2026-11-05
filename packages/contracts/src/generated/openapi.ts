@@ -687,6 +687,28 @@ export interface paths {
         patch: operations["updateScheduleActivity"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the current dates as the baseline, replacing any earlier one. Returns the whole programme. */
+        put: operations["setScheduleBaseline"];
+        post?: never;
+        /** Remove the baseline. Returns the whole programme. */
+        delete: operations["clearScheduleBaseline"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies": {
         parameters: {
             query?: never;
@@ -8837,6 +8859,8 @@ export interface components {
             source: components["schemas"]["ScheduleSource"];
             /** Format: date */
             dataDate: string | null;
+            /** Format: date-time */
+            baselineSetAt: string | null;
             activityCount: number;
             /** Format: date */
             startDate: string | null;
@@ -8866,6 +8890,12 @@ export interface components {
             /** @description Total float in working days, from the dates on the programme. */
             floatDays: number;
             critical: boolean;
+            /** Format: date */
+            baselineStart: string | null;
+            /** Format: date */
+            baselineFinish: string | null;
+            /** @description Working days the finish is after the baseline finish (negative = ahead); null without a baseline. */
+            varianceDays: number | null;
         };
         ScheduleDependency: {
             id: string;
@@ -9049,6 +9079,8 @@ export interface components {
             finish?: string;
             pctComplete?: number;
             assignee?: string;
+            /** @description Push successors later where the move breaks a link, keeping their durations (drag-to-reschedule). */
+            cascade?: boolean;
         };
         CreateScheduleDependencyRequest: {
             predecessorId: string;
@@ -17073,6 +17105,56 @@ export interface operations {
                 "application/json": components["schemas"]["UpdateScheduleActivityRequest"];
             };
         };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    setScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             200: {
