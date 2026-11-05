@@ -73,6 +73,7 @@ module "exports" {
   kms_key_arn                        = module.kms_files.arn
   expiration_days                    = 30
   noncurrent_version_expiration_days = 1
+  expire_prefixes                    = { "exports/" = 8 } # one-click full data export (Sam): gone after 8 days, earlier than the bucket's 30
   access_log_bucket                  = module.access_logs.id
   force_destroy                      = var.force_destroy_buckets
   tags                               = merge(local.tags, { service = "files" })
