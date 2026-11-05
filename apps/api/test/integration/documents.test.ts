@@ -667,3 +667,75 @@ describe('tenant isolation', () => {
     expect(cross.statusCode).toBe(404);
   });
 });
+
+describe('specification books (DOC-US10)', () => {
+  it('splits a book into sections, supersedes it with the next issue and finds sections in the current one', async () => {
+    const s = await setup();
+    const fileId = await uploadFile(t, s.owner.browser, s.org.id, s.project.id, 'spec.pdf');
+    const made = await s.owner.browser.post(`${s.base}/spec-books`, {
+      name: 'Architectural spec, Issue A',
+      issuedDate: '2026-10-01',
+      fileId,
+    });
+    expect(made.statusCode).toBe(201);
+    const book = made.json().book;
+    expect(book).toMatchObject({ status: 'current', sectionCount: 0 });
+
+    const sections = [
+      { sectionNumber: '03 30 00', title: 'Cast-in-place concrete', pageFrom: 4, pageTo: 20 },
+      { sectionNumber: '09 30 00', title: 'Tiling', pageFrom: 21, pageTo: 30, revision: 'A' },
+    ];
+    const stale = await s.owner.browser.put(
+      `${s.base}/spec-books/${book.id}/sections`,
+      { sections },
+      {
+        'if-match': '"99"',
+      },
+    );
+    expect(stale.statusCode).toBeGreaterThanOrEqual(400);
+    const split = await s.owner.browser.put(
+      `${s.base}/spec-books/${book.id}/sections`,
+      { sections },
+      {
+        'if-match': String(made.headers.etag),
+      },
+    );
+    expect(split.statusCode).toBe(200);
+    expect(split.json().sections.map((x: { sectionNumber: string }) => x.sectionNumber)).toEqual([
+      '03 30 00',
+      '09 30 00',
+    ]);
+    expect(split.json().sections[0]).toMatchObject({ division: '03', pageFrom: 4, pageTo: 20 });
+
+    const twice = await s.owner.browser.put(
+      `${s.base}/spec-books/${book.id}/sections`,
+      { sections: [sections[0], sections[0]] },
+      { 'if-match': String(split.headers.etag) },
+    );
+    expect(twice.json().code).toBe('spec_book.invalid');
+
+    const found = await s.owner.browser.get(`${s.base}/spec-sections?q=09`);
+    expect(found.json().data).toHaveLength(1);
+    expect(found.json().data[0]).toMatchObject({ bookName: 'Architectural spec, Issue A' });
+    expect(
+      (await s.owner.browser.get(`${s.base}/spec-sections?q=tiling`)).json().data,
+    ).toHaveLength(1);
+
+    // The next issue supersedes it; searches then only see the current book.
+    const next = await s.owner.browser.post(`${s.base}/spec-books`, {
+      name: 'Architectural spec, Issue B',
+      supersedesBookId: book.id,
+    });
+    expect(next.statusCode).toBe(201);
+    const old = (await s.owner.browser.get(`${s.base}/spec-books/${book.id}`)).json().book;
+    expect(old).toMatchObject({ status: 'superseded', supersededById: next.json().book.id });
+    expect((await s.owner.browser.get(`${s.base}/spec-sections?q=09`)).json().data).toHaveLength(0);
+    const listed = (await s.owner.browser.get(`${s.base}/spec-books`)).json().data;
+    expect(listed).toHaveLength(2);
+    const again = await s.owner.browser.post(`${s.base}/spec-books`, {
+      name: 'Issue C',
+      supersedesBookId: book.id,
+    });
+    expect(again.json().code).toBe('spec_book.invalid');
+  });
+});

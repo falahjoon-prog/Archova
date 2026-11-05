@@ -115,6 +115,11 @@ export function projectToolGroups(
       icon: DrawingsIcon,
     },
     canRead('documents') && {
+      href: webRoutes.specifications(orgSlug, projectId),
+      label: 'Specifications',
+      icon: DocumentsIcon,
+    },
+    canRead('documents') && {
       href: webRoutes.transmittals(orgSlug, projectId),
       label: 'Transmittals',
       icon: TransmittalsIcon,

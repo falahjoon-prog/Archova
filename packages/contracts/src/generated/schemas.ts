@@ -1872,6 +1872,14 @@ export const CreateScheduleRequestSchema = z.object({
 }).strict();
 export type CreateScheduleRequest = z.infer<typeof CreateScheduleRequestSchema>;
 
+export const CreateSpecBookRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "issuedDate": z.string().date().nullable().optional(),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "supersedesBookId": z.string().regex(new RegExp("^spb_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type CreateSpecBookRequest = z.infer<typeof CreateSpecBookRequestSchema>;
+
 export const SubmittalTypeSchema = z.enum(["shop_drawing", "product_data", "sample", "mock_up", "certificate", "other"]);
 export type SubmittalType = z.infer<typeof SubmittalTypeSchema>;
 
@@ -4921,6 +4929,18 @@ export const RemoveProjectMemberRequestSchema = z.object({
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
 
+export const ReplaceSpecSectionsRequestSchema = z.object({
+  "sections": z.array(z.object({
+  "sectionNumber": z.string().min(1).max(20),
+  "title": z.string().min(1).max(300),
+  "division": z.string().max(100).nullable().optional(),
+  "pageFrom": z.number().int().min(1),
+  "pageTo": z.number().int().min(1),
+  "revision": z.string().max(20).nullable().optional(),
+}).strict()).max(500),
+}).strict();
+export type ReplaceSpecSectionsRequest = z.infer<typeof ReplaceSpecSectionsRequestSchema>;
+
 export const ReportConfigSchema = z.object({
   "source": z.enum(["rfis", "defects", "submittals"]),
   "state": z.enum(["open", "closed", "all"]),
@@ -5327,6 +5347,54 @@ export const SignupRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const SpecBookSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "issuedDate": z.string().date().nullable(),
+  "fileId": z.string().nullable(),
+  "status": z.enum(["current", "superseded"]),
+  "supersededById": z.string().nullable(),
+  "sectionCount": z.number().int(),
+  "version": z.number().int(),
+});
+export type SpecBook = z.infer<typeof SpecBookSchema>;
+
+export const SpecSectionSchema = z.object({
+  "id": z.string(),
+  "bookId": z.string(),
+  "sectionNumber": z.string(),
+  "title": z.string(),
+  "division": z.string().nullable(),
+  "pageFrom": z.number().int().min(1),
+  "pageTo": z.number().int().min(1),
+  "revision": z.string().nullable(),
+});
+export type SpecSection = z.infer<typeof SpecSectionSchema>;
+
+export const SpecBookDetailSchema = z.object({
+  "book": SpecBookSchema,
+  "sections": z.array(SpecSectionSchema),
+});
+export type SpecBookDetail = z.infer<typeof SpecBookDetailSchema>;
+
+export const SpecBookListSchema = z.object({
+  "data": z.array(SpecBookSchema),
+});
+export type SpecBookList = z.infer<typeof SpecBookListSchema>;
+
+export const SpecSectionHitSchema = z.object({
+  "section": SpecSectionSchema,
+  "bookId": z.string(),
+  "bookName": z.string(),
+});
+export type SpecSectionHit = z.infer<typeof SpecSectionHitSchema>;
+
+export const SpecSectionHitListSchema = z.object({
+  "data": z.array(SpecSectionHitSchema),
+});
+export type SpecSectionHitList = z.infer<typeof SpecSectionHitListSchema>;
 
 export const StaffActionSchema = z.object({
   "id": z.string(),

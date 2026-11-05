@@ -121,6 +121,8 @@ export const PROBLEM_CODES = {
   'folder.not_found': 404,
   'folder.name_taken': 409,
   'folder.invalid_parent': 422,
+  'spec_book.not_found': 404,
+  'spec_book.invalid': 422,
   'document.not_found': 404,
   'document.number_taken': 409,
   'document.revision_exists': 409,
