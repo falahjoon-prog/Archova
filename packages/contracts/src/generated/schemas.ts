@@ -882,6 +882,9 @@ export const ContractSourceRefSchema = z.object({
 });
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
 
+export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
+export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
+
 export const CorrespondenceStatusSchema = z.enum(["draft", "sent", "responded", "closed", "void"]);
 export type CorrespondenceStatus = z.infer<typeof CorrespondenceStatusSchema>;
 
@@ -1394,6 +1397,22 @@ export const CreateImportJobRequestSchema = z.object({
   "headerRow": z.number().int().min(1).max(100).optional(),
 }).strict();
 export type CreateImportJobRequest = z.infer<typeof CreateImportJobRequestSchema>;
+
+export const IncidentSourceSchema = z.object({
+  "type": z.enum(["inspection", "observation"]),
+  "id": z.string().regex(new RegExp("^(ins|obs)_[0-9A-Za-z]{26}$")),
+}).strict();
+export type IncidentSource = z.infer<typeof IncidentSourceSchema>;
+
+export const CreateIncidentActionRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(4000).optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+  "assigneeUserId": UserRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+  "source": IncidentSourceSchema.optional(),
+}).strict();
+export type CreateIncidentActionRequest = z.infer<typeof CreateIncidentActionRequestSchema>;
 
 export const MobileNumberSchema = z.string().regex(new RegExp("^\\+[1-9][0-9]{6,14}$"));
 export type MobileNumber = z.infer<typeof MobileNumberSchema>;
@@ -2738,6 +2757,132 @@ export const ImportScheduleResultSchema = z.object({
   "skipped": z.array(z.string()),
 });
 export type ImportScheduleResult = z.infer<typeof ImportScheduleResultSchema>;
+
+export const IncidentTypeSchema = z.enum(["injury", "near_miss", "property_damage", "environmental", "dangerous_occurrence"]);
+export type IncidentType = z.infer<typeof IncidentTypeSchema>;
+
+export const IncidentSeveritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type IncidentSeverity = z.infer<typeof IncidentSeveritySchema>;
+
+export const NotifiableClassSchema = z.enum(["death", "serious_injury_illness", "dangerous_incident"]);
+export type NotifiableClass = z.infer<typeof NotifiableClassSchema>;
+
+export const IncidentRootCauseSchema = z.object({
+  "method": z.enum(["five_whys", "fishbone", "other"]),
+  "causes": z.array(z.string().max(500)).max(20),
+  "summary": z.string().max(4000),
+}).strict();
+export type IncidentRootCause = z.infer<typeof IncidentRootCauseSchema>;
+
+export const IncidentStatusSchema = z.enum(["reported", "investigating", "closed"]);
+export type IncidentStatus = z.infer<typeof IncidentStatusSchema>;
+
+export const IncidentSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "type": IncidentTypeSchema,
+  "severity": IncidentSeveritySchema,
+  "occurredAt": z.string().datetime({ offset: true }),
+  "location": z.string().nullable(),
+  "description": z.string(),
+  "immediateActions": z.string().nullable(),
+  "isNotifiable": z.boolean(),
+  "notifiableClass": z.union([NotifiableClassSchema, z.null()]),
+  "regulatorNotifiedAt": z.string().datetime({ offset: true }).nullable(),
+  "writtenNoticeRequestedAt": z.string().datetime({ offset: true }).nullable(),
+  "writtenNoticeDueAt": z.string().datetime({ offset: true }).nullable(),
+  "keepUntil": z.string().datetime({ offset: true }).nullable(),
+  "rootCause": z.union([IncidentRootCauseSchema, z.null()]),
+  "status": IncidentStatusSchema,
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "openActions": z.number().int(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Incident = z.infer<typeof IncidentSchema>;
+
+export const IncidentActionSchema = z.object({
+  "id": z.string(),
+  "incidentId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "assigneeCompanyId": z.string().nullable(),
+  "assigneeUserId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "source": z.union([IncidentSourceSchema, z.null()]),
+  "status": CorrectiveStatusSchema,
+  "isOverdue": z.boolean(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "verifiedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+});
+export type IncidentAction = z.infer<typeof IncidentActionSchema>;
+
+export const IncidentCloseBlockerSchema = z.object({
+  "field": z.string(),
+  "message": z.string(),
+});
+export type IncidentCloseBlocker = z.infer<typeof IncidentCloseBlockerSchema>;
+
+export const IncidentPersonSchema = z.object({
+  "id": z.string(),
+  "personName": z.string(),
+  "companyId": z.string().nullable(),
+  "role": z.enum(["injured", "witness", "involved"]),
+  "injury": z.record(z.string(), z.unknown()).nullable(),
+});
+export type IncidentPerson = z.infer<typeof IncidentPersonSchema>;
+
+export const IncidentEventSchema = z.object({
+  "id": z.string(),
+  "action": z.string(),
+  "fromStatus": z.string().nullable(),
+  "toStatus": z.string(),
+  "note": z.string().nullable(),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type IncidentEvent = z.infer<typeof IncidentEventSchema>;
+
+export const IncidentDetailSchema = z.object({
+  "incident": IncidentSchema,
+  "people": z.array(IncidentPersonSchema),
+  "injuryHidden": z.boolean(),
+  "actions": z.array(IncidentActionSchema),
+  "events": z.array(IncidentEventSchema),
+  "closeBlockers": z.array(IncidentCloseBlockerSchema),
+  "canManage": z.boolean(),
+});
+export type IncidentDetail = z.infer<typeof IncidentDetailSchema>;
+
+export const IncidentPageSchema = z.object({
+  "data": z.array(IncidentSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type IncidentPage = z.infer<typeof IncidentPageSchema>;
+
+export const IncidentPersonInputSchema = z.object({
+  "personName": z.string().min(1).max(200),
+  "companyId": CompanyRefSchema.optional(),
+  "role": z.enum(["injured", "witness", "involved"]),
+  "injury": z.record(z.string(), z.unknown()).optional(),
+}).strict();
+export type IncidentPersonInput = z.infer<typeof IncidentPersonInputSchema>;
+
+export const IncidentTransitionActionSchema = z.enum(["investigate", "close", "reopen"]);
+export type IncidentTransitionAction = z.infer<typeof IncidentTransitionActionSchema>;
+
+export const IncidentTransitionRequestSchema = z.object({
+  "action": IncidentTransitionActionSchema,
+  "reason": z.string().max(2000).optional(),
+}).strict();
+export type IncidentTransitionRequest = z.infer<typeof IncidentTransitionRequestSchema>;
 
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
@@ -4627,6 +4772,22 @@ export const RemoveProjectMemberRequestSchema = z.object({
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
 
+export const ReportIncidentRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "type": IncidentTypeSchema,
+  "occurredAt": z.string().datetime({ offset: true }),
+  "location": z.string().max(500).optional(),
+  "description": z.string().max(8000).optional(),
+  "immediateActions": z.string().max(4000).optional(),
+  "severity": IncidentSeveritySchema.optional(),
+  "isNotifiable": z.boolean().optional(),
+  "notifiableClass": NotifiableClassSchema.optional(),
+  "regulatorNotifiedAt": z.string().datetime({ offset: true }).optional(),
+  "writtenNoticeRequestedAt": z.string().datetime({ offset: true }).optional(),
+  "people": z.array(IncidentPersonInputSchema).max(50).optional(),
+}).strict();
+export type ReportIncidentRequest = z.infer<typeof ReportIncidentRequestSchema>;
+
 export const RespondCorrespondenceRequestSchema = z.object({
   "body": z.string().min(1).max(50000),
   "fileIds": z.array(FileRefSchema).max(20).optional(),
@@ -5677,6 +5838,34 @@ export const UpdateGateRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateGateRequest = z.infer<typeof UpdateGateRequestSchema>;
+
+export const UpdateIncidentActionRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(4000).nullable().optional(),
+  "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "assigneeUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "source": z.union([IncidentSourceSchema, z.null()]).optional(),
+  "status": CorrectiveStatusSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateIncidentActionRequest = z.infer<typeof UpdateIncidentActionRequestSchema>;
+
+export const UpdateIncidentRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "type": IncidentTypeSchema.optional(),
+  "occurredAt": z.string().datetime({ offset: true }).optional(),
+  "location": z.string().max(500).nullable().optional(),
+  "description": z.string().max(8000).optional(),
+  "immediateActions": z.string().max(4000).nullable().optional(),
+  "severity": IncidentSeveritySchema.optional(),
+  "isNotifiable": z.boolean().optional(),
+  "notifiableClass": z.union([NotifiableClassSchema, z.null()]).optional(),
+  "regulatorNotifiedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "writtenNoticeRequestedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "rootCause": z.union([IncidentRootCauseSchema, z.null()]).optional(),
+  "people": z.array(IncidentPersonInputSchema).max(50).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateIncidentRequest = z.infer<typeof UpdateIncidentRequestSchema>;
 
 export const UpdateInductionRequestSchema = z.object({
   "title": z.string().min(1).max(200).optional(),
