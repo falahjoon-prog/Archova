@@ -2307,6 +2307,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/bid-board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tender packages across the company's projects, with how invitees have answered and where the price stands.
+         * @description The bid board. One entry per tender package on projects where the caller holds `estimating.quotes.review`
+         *     (other projects are left out, since the board shows prices). Each entry carries a tally of invitee answers,
+         *     quotes confirmed and waiting for review, the lowest levelled total ex GST (allowances included), and a due state
+         *     for packages still out to tender: `overdue`, `closing_soon` (within 72 hours) or `open`. Ordered by due date,
+         *     soonest first. At most 500 packages; `truncated` says when there are more. Builder staff only; a subcontractor
+         *     never reaches it.
+         */
+        get: operations["getBidBoard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages": {
         parameters: {
             query?: never;
@@ -9212,6 +9239,44 @@ export interface components {
         RfiReasonRequest: {
             reason: string;
         };
+        BidBoard: {
+            data: components["schemas"]["BidBoardEntry"][];
+            /** Format: date-time */
+            asOf: string;
+            truncated: boolean;
+        };
+        BidBoardEntry: {
+            id: string;
+            projectId: string;
+            projectName: string;
+            /** @description TP-001 */
+            numberLabel: string;
+            name: string;
+            trade: string;
+            status: components["schemas"]["PackageStatus"];
+            /** Format: date-time */
+            dueAt: string | null;
+            /**
+             * @description Null unless the package is out to tender with a due date.
+             * @enum {string|null}
+             */
+            dueState: "overdue" | "closing_soon" | "open" | null;
+            invites: components["schemas"]["BidBoardInviteTally"];
+            quotesConfirmed: number;
+            quotesToReview: number;
+            /** @description Lowest levelled total ex GST across confirmed quotes, decimal AUD. Null with none confirmed. */
+            lowestExGst: string | null;
+            awarded: boolean;
+        };
+        BidBoardInviteTally: {
+            invited: number;
+            viewed: number;
+            declined: number;
+            intendsToQuote: number;
+            submitted: number;
+            /** @description Invited or only viewed */
+            awaiting: number;
+        };
         /** @enum {string} */
         PackageStatus: "draft" | "out_to_tender" | "closed" | "awarded" | "cancelled";
         /** @enum {string} */
@@ -15274,6 +15339,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LateSubmission"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBidBoard: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PackageStatus"];
+                trade?: string;
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidBoard"];
                 };
             };
             default: components["responses"]["Problem"];

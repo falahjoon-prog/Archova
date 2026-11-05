@@ -372,4 +372,61 @@ describe('tender packages and quotes (product/10)', () => {
       uploadFile(t, s.viewer.browser, s.org.id, s.project.id, 'quote.pdf', 'estimating'),
     ).rejects.toThrow(/403/);
   });
+  it('shows the bid board to staff only, with invitee answers and the lowest levelled price', async () => {
+    const s = await setup();
+    const make = async (name: string, trade: string, dueAt: string) => {
+      const res = await s.pm.browser.post(`${s.base}/tender-packages`, {
+        name,
+        trade,
+        dueAt,
+        scope,
+      });
+      return res.json();
+    };
+    const tiling = await make('Tiling', 'Tiling', '2031-01-15T05:00:00Z');
+    await make('Electrical', 'Electrical', '2030-01-15T05:00:00Z');
+    await s.pm.browser.post(`${s.base}/tender-packages/${tiling.id}/invites`, {
+      companyIds: [s.coA.companyId, s.coB.companyId],
+    });
+    const draft = await s.pm.browser.get(`${s.base}/tender-packages/${tiling.id}`);
+    await s.pm.browser.post(
+      `${s.base}/tender-packages/${tiling.id}/transition`,
+      { action: 'send' },
+      { 'if-match': etagOf(draft) },
+    );
+    const quoted = await s.tilerA.browser.post(`${s.base}/tender-packages/${tiling.id}/quotes`, {
+      lines: [
+        { scopeKey: 'floor', description: 'Floor', amount: '4000.00' },
+        { scopeKey: 'wall', description: 'Wall', amount: '7000.00' },
+      ],
+    });
+    await s.pm.browser.post(
+      `${s.base}/tender-packages/${tiling.id}/quotes/${quoted.json().id}/confirm`,
+      undefined,
+      { 'if-match': etagOf(quoted) },
+    );
+
+    const board = await s.pm.browser.get(`/v1/orgs/${s.org.id}/bid-board`);
+    expect(board.statusCode).toBe(200);
+    const rows = board.json().data as Array<Record<string, unknown>>;
+    expect(rows.map((r) => r.name)).toEqual(['Electrical', 'Tiling']);
+    expect(rows[1]).toMatchObject({
+      projectName: 'Tower T',
+      status: 'out_to_tender',
+      dueState: 'open',
+      quotesConfirmed: 1,
+      quotesToReview: 0,
+      lowestExGst: '11000.00',
+      invites: { submitted: 1, invited: 1, awaiting: 1 },
+    });
+    expect(rows[0]).toMatchObject({ status: 'draft', dueState: null, lowestExGst: null });
+
+    const filtered = await s.pm.browser.get(`/v1/orgs/${s.org.id}/bid-board?status=draft`);
+    expect(filtered.json().data).toHaveLength(1);
+
+    // Subcontractors and clients never reach the board.
+    for (const who of [s.tilerA, s.viewer]) {
+      expect((await who.browser.get(`/v1/orgs/${s.org.id}/bid-board`)).statusCode).toBe(403);
+    }
+  });
 });
