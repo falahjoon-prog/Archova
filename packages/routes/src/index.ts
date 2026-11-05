@@ -141,6 +141,7 @@ export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
   offline: () => '/offline',
+  deleteAccount: () => '/delete-account',
   bidBoard: () => '/bid-board',
   tenders: (projectId: string) => `/project/${enc(projectId)}/tenders`,
   tender: (projectId: string, packageId: string) =>
