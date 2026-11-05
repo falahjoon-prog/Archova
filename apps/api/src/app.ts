@@ -12,13 +12,19 @@ import {
 } from '@archova/kernel';
 import type { ModelProvider, RasterizePage } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
+import { createEvidenceSigner } from '@archova/mod-financials';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import {
   createHttpsTransport,
   vaultFromKey,
   type WebhookTransport,
 } from '@archova/mod-integrations';
-import { DEV_ACCOUNTING_KEY, DEV_WEBHOOK_KEY, type ApiConfig } from './config';
+import {
+  DEV_ACCOUNTING_KEY,
+  DEV_EVIDENCE_SIGNING_KEY,
+  DEV_WEBHOOK_KEY,
+  type ApiConfig,
+} from './config';
 import { loadModules, type Modules } from '@archova/compose';
 import { apiRateLimiter } from './plugins/rate-limit';
 import { registerInternalOperations } from './internal';
@@ -116,6 +122,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         credentials: config.accounting,
         folders: { credentials: config.folders },
       },
+      evidenceSigner: createEvidenceSigner(
+        config.evidenceSigning?.keyId ?? 'archova-evidence-dev',
+        config.evidenceSigning?.privateKeyPem ?? DEV_EVIDENCE_SIGNING_KEY,
+      ),
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
         ...(deps.aiRasterizePage ? { rasterizePage: deps.aiRasterizePage } : {}),

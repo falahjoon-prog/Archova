@@ -9,6 +9,7 @@ import {
   type AddBudgetLine,
   type AdjustBudgetLine,
   type CreateCostCode,
+  type RecordDirectCost,
   type UpdateBudgetLine,
   type UpdateCostCode,
 } from '../data/api';
@@ -34,6 +35,38 @@ export function useCostCodes(projectId: string) {
     queryKey: queryKeys.toolList(orgId, projectId, 'budget', { costCodes: true }),
     queryFn: () => source.costCodes(projectId),
   });
+}
+
+export function useDirectCosts(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'budget', { directCosts: true }),
+    queryFn: () => source.directCosts(projectId),
+  });
+}
+
+/** Recording or voiding a cost moves a line's actual, so the budget and the forecast refresh with the list. */
+export function useDirectCostMutations(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useBudgetApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'budget') }),
+      qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'cost-forecast') }),
+    ]);
+  return {
+    record: useMutation({
+      mutationFn: (body: RecordDirectCost) => source.recordDirectCost(projectId, body),
+      onSuccess: refresh,
+    }),
+    voidCost: useMutation({
+      mutationFn: (v: { directCostId: string; note: string }) =>
+        source.voidDirectCost(projectId, v.directCostId, v.note),
+      onSuccess: refresh,
+    }),
+  };
 }
 
 export function useAdjustments(projectId: string, lineId: string) {

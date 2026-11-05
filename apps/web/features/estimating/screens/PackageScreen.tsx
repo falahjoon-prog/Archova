@@ -659,7 +659,7 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
           </p>
         ) : null}
         {!locked && candidates.length ? (
-          <fieldset className="fieldset">
+          <fieldset className="fieldset stack">
             <legend>Invite (they get one link by email and can quote without an account)</legend>
             {bidderLists.data?.length ? (
               <Select

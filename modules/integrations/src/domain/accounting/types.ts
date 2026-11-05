@@ -14,7 +14,7 @@ export interface LedgerLine {
 // One thing to push: a subcontractor payment schedule (bill, A4) or a head-contract claim (invoice, A5).
 export interface LedgerDocument {
   kind: LedgerKind;
-  // `PC-{contract}-{claim no}`: searched before every create so a retry never duplicates (integrations/02 §4).
+  // `PC-{project key}-{contract}-{claim no}` (see `ledgerReference`): searched before every create so a retry never duplicates (integrations/02 §4).
   reference: string;
   contactRemoteId: string;
   // YYYY-MM-DD; dates are never shifted silently (SOPA dates matter).
@@ -89,4 +89,18 @@ export class ProviderRequestError extends Error {
   ) {
     super(message);
   }
+}
+
+/**
+ * The reference a claim goes out under: `PC-{project key}-{contract no}-{claim no}`. Contract numbers restart in every
+ * project, so the key (the random tail of the project id, 8 hex characters) keeps references unique across the whole
+ * connection. Kept short because MYOB limits a supplier invoice number to 20 characters.
+ */
+export function ledgerReference(src: {
+  projectId: string;
+  contractNumber: number;
+  claimNumber: number;
+}): string {
+  const key = src.projectId.replace(/-/g, '').slice(-8).toLowerCase();
+  return `PC-${key}-${src.contractNumber}-${src.claimNumber}`;
 }

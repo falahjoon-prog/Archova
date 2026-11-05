@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: bim
   - name: defects
   - name: financials
   - name: quality
@@ -1368,6 +1369,157 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SpecSectionHitList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/bim-models:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBimModels
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.models.read
+      summary: The project's registered models, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BimModelList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBimModel
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.models.manage
+      summary: Register a model file. Naming the model it supersedes retires that one.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBimModelRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BimModel' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCoordinationIssues
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.read
+      summary: Coordination issues, newest first, up to 500.
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/CoordinationIssueStatus' },
+          }
+        - { name: modelId, in: query, schema: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' } }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Raise a coordination issue.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCoordinationIssueRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoordinationIssueId'
+    get:
+      operationId: getCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.read
+      summary: One issue with its comments.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Edit an issue or move it along. A change of status not allowed from the current one is refused.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCoordinationIssueRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoordinationIssueId'
+    post:
+      operationId: addCoordinationIssueComment
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Add a comment to an issue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddCoordinationCommentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/documents:
     parameters:
@@ -6721,6 +6873,203 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: Daily timesheets in a date range (up to 62 days). A subcontractor sees only its own workers.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/TimesheetStatus' } }
+        - { name: workerId, in: query, schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/generate:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: generateTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Fill draft timesheets from closed sign-ins in a date range. Safe to repeat; sheets past draft are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DateRangeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenerateTimesheetsResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: exportTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.export
+      summary: CSV of approved timesheets in a range, one row per line. The sheets are marked exported.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DateRangeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    get:
+      operationId: getTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: One timesheet with its lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: addTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Add hours that sign-in did not capture. A reason is required. Only while the sheet is draft or rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddTimesheetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+      - {
+          name: lineId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: adjustTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Change a line's minutes, break or cost code. A reason is required; a sign-in line becomes an adjusted line.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdjustTimesheetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: submitTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Submit for approval.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: approveTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: Approve and lock the timesheet.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: rejectTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: Send a submitted timesheet back with a reason; it can be edited and submitted again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectTimesheetRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/equipment:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10987,6 +11336,46 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceJson' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+    get:
+      operationId: listClaimEvidenceDeliveries
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: 'Emails of this sealed record, with delivery confirmation. Builder staff only.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceDeliveryList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: queueClaimEvidenceDelivery
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Email the sealed PDF and JSON, attached, to the address the payer gave for service. Never a link. Sent by the
+        background worker; service counts from the delivery confirmation. Serving a schedule needs
+        `financials.claims.assess`. At most five a day per record.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QueueClaimEvidenceDeliveryRequest' }
+      responses:
+        '201':
+          description: Queued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceDelivery' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -11570,6 +11959,11 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    TimesheetId:
+      name: timesheetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
     EquipmentId:
       name: equipmentId
       in: path
@@ -11690,6 +12084,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    CoordinationIssueId:
+      name: issueId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -12937,7 +13336,7 @@ components:
         viewer: { $ref: '#/components/schemas/MeetingViewer' }
     ClaimEvidenceRecord:
       type: object
-      required: [kind, sealedAt, snapshotSha256, pdfSha256, pdfBytes, intact]
+      required: [kind, sealedAt, snapshotSha256, pdfSha256, pdfBytes, intact, signature, timestamp]
       properties:
         kind: { type: string, enum: [claim, schedule] }
         sealedAt: { type: string, format: date-time }
@@ -12945,6 +13344,88 @@ components:
         pdfSha256: { type: string }
         pdfBytes: { type: integer }
         intact: { type: boolean }
+        signature:
+          description: The platform's Ed25519 signature over `message`. Null for records sealed before signing was on.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ClaimEvidenceSignature'
+        timestamp:
+          description: An outside RFC 3161 timestamp over SHA-256 of the signed message. Null until the authority has answered.
+          oneOf:
+            - type: 'null'
+            - $ref: '#/components/schemas/ClaimEvidenceTimestamp'
+    ClaimEvidenceSignature:
+      type: object
+      required: [keyId, algorithm, signatureBase64, message, publicKeyPem, valid]
+      properties:
+        keyId: { type: string }
+        algorithm: { type: string, enum: [ed25519] }
+        signatureBase64: { type: string }
+        message:
+          {
+            type: string,
+            description: 'The exact text signed; it names both hashes, the claim and the sealed time.',
+          }
+        publicKeyPem:
+          { type: [string, 'null'], description: 'Null when the server no longer holds that key.' }
+        valid:
+          {
+            type: [boolean, 'null'],
+            description: 'Null when the server cannot check (key not held).',
+          }
+    ClaimEvidenceTimestamp:
+      type: object
+      required: [authority, time, imprintSha256, serialHex, tokenBase64]
+      properties:
+        authority: { type: string }
+        time: { type: string, format: date-time }
+        imprintSha256: { type: string }
+        serialHex: { type: string }
+        tokenBase64:
+          {
+            type: string,
+            description: 'The whole RFC 3161 TimeStampToken, so the authority signature can be checked.',
+          }
+    ClaimEvidenceDelivery:
+      type: object
+      required:
+        [id, kind, recipientEmail, status, queuedAt, sentAt, deliveredAt, bouncedAt, notConfirmed]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [claim, schedule] }
+        recipientEmail: { type: string }
+        status: { type: string, enum: [queued, sending, sent, delivered, bounced, failed] }
+        queuedAt: { type: string, format: date-time }
+        sentAt: { type: [string, 'null'], format: date-time }
+        deliveredAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When the receiving mail server accepted it. Service time counts from this, never from sending.',
+          }
+        bouncedAt: { type: [string, 'null'], format: date-time }
+        notConfirmed:
+          type: boolean
+          description: True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it.
+    ClaimEvidenceDeliveryList:
+      type: object
+      required: [deliveries]
+      properties:
+        deliveries:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimEvidenceDelivery' }
+    QueueClaimEvidenceDeliveryRequest:
+      type: object
+      required: [recipientEmail]
+      additionalProperties: false
+      properties:
+        recipientEmail:
+          {
+            type: string,
+            format: email,
+            maxLength: 254,
+            description: 'The address the payer gave for service.',
+          }
     ClaimEvidenceList:
       type: object
       required: [records]
@@ -15149,6 +15630,165 @@ components:
         pageFrom: { type: integer, minimum: 1 }
         pageTo: { type: integer, minimum: 1 }
         revision: { type: [string, 'null'] }
+    BimDiscipline:
+      type: string
+      enum: [architectural, structural, mechanical, electrical, hydraulic, fire, civil, other]
+    CoordinationIssueStatus:
+      type: string
+      enum: [open, in_progress, resolved, closed]
+    CoordinationIssuePriority:
+      type: string
+      enum: [low, medium, high, critical]
+    BimModel:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          discipline,
+          versionLabel,
+          fileId,
+          status,
+          supersededById,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        discipline: { $ref: '#/components/schemas/BimDiscipline' }
+        versionLabel: { type: string }
+        fileId: { type: [string, 'null'] }
+        status: { type: string, enum: [current, superseded] }
+        supersededById: { type: [string, 'null'] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    BimModelList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BimModel' }
+    CreateBimModelRequest:
+      type: object
+      additionalProperties: false
+      required: [name, discipline]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { $ref: '#/components/schemas/BimDiscipline' }
+        versionLabel: { type: string, maxLength: 50 }
+        fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+        supersedesModelId: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' }
+    CoordinationIssue:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          status,
+          priority,
+          assigneeId,
+          dueDate,
+          modelId,
+          elementGuids,
+          location,
+          rfiId,
+          resolvedAt,
+          commentCount,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/CoordinationIssueStatus' }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        modelId: { type: [string, 'null'] }
+        elementGuids:
+          type: array
+          items: { type: string }
+        location: { type: string }
+        rfiId: { type: [string, 'null'] }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        commentCount: { type: integer }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CoordinationIssueList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CoordinationIssue' }
+    CoordinationComment:
+      type: object
+      required: [id, authorId, body, createdAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    CoordinationIssueDetail:
+      type: object
+      required: [issue, comments]
+      properties:
+        issue: { $ref: '#/components/schemas/CoordinationIssue' }
+        comments:
+          type: array
+          items: { $ref: '#/components/schemas/CoordinationComment' }
+    CreateCoordinationIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: string, format: date }
+        modelId: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' }
+        elementGuids:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 200 }
+        rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    UpdateCoordinationIssueRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        status: { $ref: '#/components/schemas/CoordinationIssueStatus' }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: [string, 'null'], format: date }
+        modelId: { type: [string, 'null'], pattern: '^bmd_[0-9A-Za-z]{26}$' }
+        elementGuids:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 200 }
+        rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    AddCoordinationCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
     SpecBookList:
       type: object
       required: [data]
@@ -18576,6 +19216,7 @@ components:
           committed,
           claimed,
           adjustments,
+          directCosts,
           forecastFinal,
           variance,
         ]
@@ -18587,6 +19228,7 @@ components:
         committed: { $ref: '#/components/schemas/FinancialsMoney' }
         claimed: { $ref: '#/components/schemas/FinancialsMoney' }
         adjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        directCosts: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         variance:
           {
@@ -18688,6 +19330,7 @@ components:
           claimedToDate,
           costToComplete,
           projectAdjustments,
+          directCosts,
           forecastFinalCost,
           pendingCostVariations,
           forecastMargin,
@@ -18703,6 +19346,7 @@ components:
         claimedToDate: { $ref: '#/components/schemas/FinancialsMoney' }
         costToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
         projectAdjustments: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        directCosts: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastFinalCost: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         pendingCostVariations: { $ref: '#/components/schemas/FinancialsMoney' }
         forecastMargin: { $ref: '#/components/schemas/FinancialsSignedMoney' }
@@ -20005,6 +20649,100 @@ components:
         status: { $ref: '#/components/schemas/ShiftAssignmentStatus' }
         notifiedAt: { type: [string, 'null'], format: date-time }
         respondedAt: { type: [string, 'null'], format: date-time }
+    TimesheetStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, exported]
+    TimesheetLine:
+      type: object
+      required: [id, minutes, breakMinutes, costCodeId, source, adjustedReason]
+      properties:
+        id: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' }
+        minutes: { type: integer }
+        breakMinutes: { type: integer }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        source: { type: string, enum: [attendance, manual, adjusted] }
+        adjustedReason: { type: [string, 'null'] }
+    Timesheet:
+      type: object
+      required:
+        [
+          id,
+          workerId,
+          companyId,
+          date,
+          status,
+          submittedAt,
+          approvedAt,
+          rejectionReason,
+          paidMinutes,
+          paidHours,
+          lines,
+        ]
+      properties:
+        id: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        date: { type: string, format: date, description: The day in the project's time zone. }
+        status: { $ref: '#/components/schemas/TimesheetStatus' }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        rejectionReason: { type: [string, 'null'] }
+        paidMinutes: { type: integer, description: Minutes worked less breaks. }
+        paidHours: { type: string, pattern: '^\\d+\\.\\d{2}$' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/TimesheetLine' }
+    TimesheetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Timesheet' }
+    DateRangeRequest:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+    GenerateTimesheetsResult:
+      type: object
+      required: [sheetsCreated, linesAdded]
+      properties:
+        sheetsCreated: { type: integer }
+        linesAdded: { type: integer }
+    TimesheetExport:
+      type: object
+      required: [filename, csv, count]
+      properties:
+        filename: { type: string }
+        csv: { type: string }
+        count: { type: integer, description: Timesheets included, now marked exported. }
+    AddTimesheetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [minutes, reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    AdjustTimesheetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    RejectTimesheetRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
     EquipmentStatus:
       type: string
       enum: [available, in_use, maintenance, retired]

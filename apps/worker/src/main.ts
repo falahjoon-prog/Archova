@@ -22,6 +22,8 @@ import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
+import { evidenceDeliveries } from './jobs/evidence-deliveries';
+import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
@@ -59,6 +61,9 @@ async function main() {
     trialExpiry,
     trialBackfill,
     trialEndingEmail(emailSender, config.email.appBaseUrl),
+    // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
+    ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
+    ...(config.evidenceTimestampUrl ? [evidenceTimestamps(config.evidenceTimestampUrl)] : []),
     templateBackfill,
     meetingReminders,
     bidReminders,

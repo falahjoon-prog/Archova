@@ -83,11 +83,20 @@ const Env = z.object({
   API_M365_CERT_THUMBPRINT: z.string().optional(),
   API_GOOGLE_CLIENT_ID: z.string().optional(),
   API_GOOGLE_CLIENT_SECRET: z.string().optional(),
+  // Signs each sealed claim or schedule record (Ed25519, PKCS#8 PEM; write line breaks as \n). Required in
+  // production; elsewhere a fixed development key is used. Never rotate by replacing the key under the same id.
+  API_EVIDENCE_SIGNING_KEY: z.string().optional(),
+  API_EVIDENCE_SIGNING_KEY_ID: z.string().min(1).max(64).default('archova-evidence-1'),
   LOG_LEVEL: z.string().default('info'),
 });
 
 /** Development and test only: production refuses to start without API_WEBHOOK_SECRET_KEY. */
 export const DEV_WEBHOOK_KEY = Buffer.alloc(32, 7).toString('base64');
+/** Development and test only: an Ed25519 key from a fixed seed, so signatures are checkable but worth nothing. */
+export const DEV_EVIDENCE_SIGNING_KEY = `-----BEGIN PRIVATE KEY-----\n${Buffer.concat([
+  Buffer.from('302e020100300506032b657004220420', 'hex'),
+  Buffer.alloc(32, 11),
+]).toString('base64')}\n-----END PRIVATE KEY-----\n`;
 export const DEV_ACCOUNTING_KEY = Buffer.alloc(32, 9).toString('base64');
 
 export type ApiConfig = ReturnType<typeof loadConfig>;
@@ -137,6 +146,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
     webhookSecretKey: e.API_WEBHOOK_SECRET_KEY ?? null,
     accountingSecretKey: e.API_ACCOUNTING_SECRET_KEY ?? null,
+    evidenceSigning: e.API_EVIDENCE_SIGNING_KEY
+      ? {
+          keyId: e.API_EVIDENCE_SIGNING_KEY_ID,
+          privateKeyPem: e.API_EVIDENCE_SIGNING_KEY.replaceAll('\\n', '\n'),
+        }
+      : null,
     accounting: {
       xero:
         e.API_XERO_CLIENT_ID && e.API_XERO_CLIENT_SECRET
@@ -219,6 +234,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
     if (!config.webhookSecretKey) missing.push('API_WEBHOOK_SECRET_KEY (32 bytes, base64)');
+    if (!config.evidenceSigning) missing.push('API_EVIDENCE_SIGNING_KEY (Ed25519 PEM)');
     if (
       (config.accounting.xero ||
         config.accounting.myob ||

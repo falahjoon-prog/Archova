@@ -268,6 +268,7 @@ describe('Xero and MYOB connections (integrations/02)', () => {
       kind: 'bill' as const,
       localType: 'payment_schedule' as const,
       localId: LOCAL_ID,
+      projectId: PROJECT_ID,
       contractNumber: 4,
       claimNumber: 2,
       counterparty: { companyId: uuidv7(), name: "O'Hara Concrete", abn: '51 824 753 556' },
@@ -286,7 +287,7 @@ describe('Xero and MYOB connections (integrations/02)', () => {
     // The company has an ABN, so a miss never falls back to the name.
     expect(contactQueries).toEqual(['TaxNumber=="51824753556"']);
     const issues = (await s.owner.browser.get(`${s.base}/sync-issues`)).json().data;
-    expect(issues[0]).toMatchObject({ kind: 'no_contact', reference: 'PC-4-2' });
+    expect(issues[0]).toMatchObject({ kind: 'no_contact', reference: 'PC-000000a1-4-2' });
 
     contacts = [{ ContactID: 'xc-1' }];
     contactQueries = [];
@@ -461,4 +462,5 @@ describe('Xero and MYOB connections (integrations/02)', () => {
   });
 });
 
+const PROJECT_ID = '018f0000-0000-7000-8000-0000000000a1';
 const LOCAL_ID = '018f0000-0000-7000-8000-000000000001';

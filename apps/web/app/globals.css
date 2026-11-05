@@ -198,6 +198,7 @@ main:focus {
   padding: 0 var(--space-3);
   color: var(--c-text-secondary);
   font-weight: 500;
+  white-space: nowrap;
   text-decoration: none;
   border-radius: var(--radius-md);
   border-bottom: 2px solid transparent;
@@ -313,6 +314,12 @@ main:focus {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+.stack--flush {
+  margin-block-start: var(--space-6);
+}
+.stack--flush > * {
+  margin-block: 0;
 }
 .stack-lg {
   display: flex;
@@ -667,6 +674,16 @@ main:focus {
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+.row-actions > .panel-heading {
+  margin: 0;
+}
+.bidder-list__item {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-4);
 }
 .row--muted > * {
   color: var(--c-text-secondary);
@@ -2432,4 +2449,36 @@ fieldset.worker-card > legend {
 }
 .u-danger {
   color: var(--c-status-danger);
+}
+
+/* Folder links (integrations/03, 04) */
+.folders__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.folders__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.folders__item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.folders__head,
+.folders__danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.folders__head {
+  justify-content: space-between;
 }

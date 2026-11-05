@@ -189,6 +189,11 @@ export function useClaimsMutations(projectId: string) {
         source.createVariation(projectId, v.contractId, v.body),
       onSuccess: refresh,
     }),
+    setVariationCostCode: useMutation({
+      mutationFn: (v: { variationId: string; costCodeId: string | null }) =>
+        source.setVariationCostCode(projectId, v.variationId, v.costCodeId),
+      onSuccess: refresh,
+    }),
     moveVariation: useMutation({
       mutationFn: (v: { variationId: string; action: VariationAction; note?: string }) =>
         source.moveVariation(projectId, v.variationId, v.action, v.note),

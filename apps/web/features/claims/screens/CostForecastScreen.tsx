@@ -129,6 +129,7 @@ function ForecastBody({ f, projectId }: { f: CostForecast; projectId: string }) 
               { label: 'Committed', value: aud(f.committed), mono: true },
               { label: 'Claimed to date', value: aud(f.claimedToDate), mono: true },
               { label: 'Cost to complete', value: aud(f.costToComplete), mono: true },
+              { label: 'Direct costs', value: aud(f.directCosts), mono: true },
               { label: 'Adjustments', value: aud(f.projectAdjustments), mono: true },
               { label: 'Forecast final cost', value: aud(f.forecastFinalCost), mono: true },
             ]}
@@ -203,6 +204,7 @@ function BudgetTable({ projectId }: { projectId: string }) {
     cmp('budget', 'Revised budget', (r) => r.revised),
     cmp('committed', 'Committed', (r) => r.committed),
     cmp('claimed', 'Claimed to date', (r) => r.claimed),
+    cmp('direct', 'Direct costs', (r) => r.directCosts),
     cmp('adjustments', 'Adjustments', (r) => r.adjustments),
     cmp('final', 'Forecast final', (r) => r.forecastFinal),
     {

@@ -1139,6 +1139,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/bim-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's registered models, newest first. */
+        get: operations["listBimModels"];
+        put?: never;
+        /** Register a model file. Naming the model it supersedes retires that one. */
+        post: operations["createBimModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Coordination issues, newest first, up to 500. */
+        get: operations["listCoordinationIssues"];
+        put?: never;
+        /** Raise a coordination issue. */
+        post: operations["createCoordinationIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        /** One issue with its comments. */
+        get: operations["getCoordinationIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an issue or move it along. A change of status not allowed from the current one is refused. */
+        patch: operations["updateCoordinationIssue"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a comment to an issue. */
+        post: operations["addCoordinationIssueComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/documents": {
         parameters: {
             query?: never;
@@ -4912,6 +4997,193 @@ export interface paths {
         patch: operations["updateDiaryStandDown"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Daily timesheets in a date range (up to 62 days). A subcontractor sees only its own workers. */
+        get: operations["listTimesheets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Fill draft timesheets from closed sign-ins in a date range. Safe to repeat; sheets past draft are left alone. */
+        post: operations["generateTimesheets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** CSV of approved timesheets in a range, one row per line. The sheets are marked exported. */
+        post: operations["exportTimesheets"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        /** One timesheet with its lines. */
+        get: operations["getTimesheet"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add hours that sign-in did not capture. A reason is required. Only while the sheet is draft or rejected. */
+        post: operations["addTimesheetLine"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a line's minutes, break or cost code. A reason is required; a sign-in line becomes an adjusted line. */
+        patch: operations["adjustTimesheetLine"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit for approval. */
+        post: operations["submitTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve and lock the timesheet. */
+        post: operations["approveTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a submitted timesheet back with a reason; it can be edited and submitted again. */
+        post: operations["rejectTimesheet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/equipment": {
         parameters: {
             query?: never;
@@ -8085,6 +8357,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** Emails of this sealed record, with delivery confirmation. Builder staff only. */
+        get: operations["listClaimEvidenceDeliveries"];
+        put?: never;
+        /** Email the sealed PDF and JSON, attached, to the address the payer gave for service. Never a link. Sent by the background worker; service counts from the delivery confirmation. Serving a schedule needs `financials.claims.assess`. At most five a day per record. */
+        post: operations["queueClaimEvidenceDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -9191,6 +9486,63 @@ export interface components {
             pdfSha256: string;
             pdfBytes: number;
             intact: boolean;
+            /** @description The platform's Ed25519 signature over `message`. Null for records sealed before signing was on. */
+            signature: null | components["schemas"]["ClaimEvidenceSignature"];
+            /** @description An outside RFC 3161 timestamp over SHA-256 of the signed message. Null until the authority has answered. */
+            timestamp: null | components["schemas"]["ClaimEvidenceTimestamp"];
+        };
+        ClaimEvidenceSignature: {
+            keyId: string;
+            /** @enum {string} */
+            algorithm: "ed25519";
+            signatureBase64: string;
+            /** @description The exact text signed; it names both hashes, the claim and the sealed time. */
+            message: string;
+            /** @description Null when the server no longer holds that key. */
+            publicKeyPem: string | null;
+            /** @description Null when the server cannot check (key not held). */
+            valid: boolean | null;
+        };
+        ClaimEvidenceTimestamp: {
+            authority: string;
+            /** Format: date-time */
+            time: string;
+            imprintSha256: string;
+            serialHex: string;
+            /** @description The whole RFC 3161 TimeStampToken, so the authority signature can be checked. */
+            tokenBase64: string;
+        };
+        ClaimEvidenceDelivery: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "claim" | "schedule";
+            recipientEmail: string;
+            /** @enum {string} */
+            status: "queued" | "sending" | "sent" | "delivered" | "bounced" | "failed";
+            /** Format: date-time */
+            queuedAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the receiving mail server accepted it. Service time counts from this, never from sending.
+             */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            bouncedAt: string | null;
+            /** @description True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it. */
+            notConfirmed: boolean;
+        };
+        ClaimEvidenceDeliveryList: {
+            deliveries: components["schemas"]["ClaimEvidenceDelivery"][];
+        };
+        QueueClaimEvidenceDeliveryRequest: {
+            /**
+             * Format: email
+             * @description The address the payer gave for service.
+             */
+            recipientEmail: string;
         };
         ClaimEvidenceList: {
             records: components["schemas"]["ClaimEvidenceRecord"][];
@@ -10619,6 +10971,102 @@ export interface components {
             pageFrom: number;
             pageTo: number;
             revision: string | null;
+        };
+        /** @enum {string} */
+        BimDiscipline: "architectural" | "structural" | "mechanical" | "electrical" | "hydraulic" | "fire" | "civil" | "other";
+        /** @enum {string} */
+        CoordinationIssueStatus: "open" | "in_progress" | "resolved" | "closed";
+        /** @enum {string} */
+        CoordinationIssuePriority: "low" | "medium" | "high" | "critical";
+        BimModel: {
+            id: string;
+            projectId: string;
+            name: string;
+            discipline: components["schemas"]["BimDiscipline"];
+            versionLabel: string;
+            fileId: string | null;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            supersededById: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BimModelList: {
+            data: components["schemas"]["BimModel"][];
+        };
+        CreateBimModelRequest: {
+            name: string;
+            discipline: components["schemas"]["BimDiscipline"];
+            versionLabel?: string;
+            fileId?: string;
+            supersedesModelId?: string;
+        };
+        CoordinationIssue: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            status: components["schemas"]["CoordinationIssueStatus"];
+            priority: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            modelId: string | null;
+            elementGuids: string[];
+            location: string;
+            rfiId: string | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            commentCount: number;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CoordinationIssueList: {
+            data: components["schemas"]["CoordinationIssue"][];
+        };
+        CoordinationComment: {
+            id: string;
+            authorId: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CoordinationIssueDetail: {
+            issue: components["schemas"]["CoordinationIssue"];
+            comments: components["schemas"]["CoordinationComment"][];
+        };
+        CreateCoordinationIssueRequest: {
+            title: string;
+            description?: string;
+            priority?: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId?: string;
+            /** Format: date */
+            dueDate?: string;
+            modelId?: string;
+            elementGuids?: string[];
+            location?: string;
+            rfiId?: string;
+        };
+        UpdateCoordinationIssueRequest: {
+            title?: string;
+            description?: string;
+            status?: components["schemas"]["CoordinationIssueStatus"];
+            priority?: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            modelId?: string | null;
+            elementGuids?: string[];
+            location?: string;
+            rfiId?: string | null;
+        };
+        AddCoordinationCommentRequest: {
+            body: string;
         };
         SpecBookList: {
             data: components["schemas"]["SpecBook"][];
@@ -12772,6 +13220,7 @@ export interface components {
             committed: components["schemas"]["FinancialsMoney"];
             claimed: components["schemas"]["FinancialsMoney"];
             adjustments: components["schemas"]["FinancialsSignedMoney"];
+            directCosts: components["schemas"]["FinancialsMoney"];
             forecastFinal: components["schemas"]["FinancialsSignedMoney"];
             /** @description Revised budget less forecast final cost. Negative is over budget. */
             variance: components["schemas"]["FinancialsSignedMoney"];
@@ -12836,6 +13285,7 @@ export interface components {
             claimedToDate: components["schemas"]["FinancialsMoney"];
             costToComplete: components["schemas"]["FinancialsMoney"];
             projectAdjustments: components["schemas"]["FinancialsSignedMoney"];
+            directCosts: components["schemas"]["FinancialsMoney"];
             forecastFinalCost: components["schemas"]["FinancialsSignedMoney"];
             pendingCostVariations: components["schemas"]["FinancialsMoney"];
             forecastMargin: components["schemas"]["FinancialsSignedMoney"];
@@ -13646,6 +14096,71 @@ export interface components {
             notifiedAt: string | null;
             /** Format: date-time */
             respondedAt: string | null;
+        };
+        /** @enum {string} */
+        TimesheetStatus: "draft" | "submitted" | "approved" | "rejected" | "exported";
+        TimesheetLine: {
+            id: string;
+            minutes: number;
+            breakMinutes: number;
+            costCodeId: string | null;
+            /** @enum {string} */
+            source: "attendance" | "manual" | "adjusted";
+            adjustedReason: string | null;
+        };
+        Timesheet: {
+            id: string;
+            workerId: string;
+            companyId: string | null;
+            /**
+             * Format: date
+             * @description The day in the project's time zone.
+             */
+            date: string;
+            status: components["schemas"]["TimesheetStatus"];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            approvedAt: string | null;
+            rejectionReason: string | null;
+            /** @description Minutes worked less breaks. */
+            paidMinutes: number;
+            paidHours: string;
+            lines: components["schemas"]["TimesheetLine"][];
+        };
+        TimesheetList: {
+            data: components["schemas"]["Timesheet"][];
+        };
+        DateRangeRequest: {
+            /** Format: date */
+            from: string;
+            /** Format: date */
+            to: string;
+        };
+        GenerateTimesheetsResult: {
+            sheetsCreated: number;
+            linesAdded: number;
+        };
+        TimesheetExport: {
+            filename: string;
+            csv: string;
+            /** @description Timesheets included */
+            count: number;
+        };
+        AddTimesheetLineRequest: {
+            minutes: number;
+            breakMinutes?: number;
+            costCodeId?: string;
+            reason: string;
+        };
+        AdjustTimesheetLineRequest: {
+            minutes?: number;
+            breakMinutes?: number;
+            costCodeId?: string | null;
+            reason: string;
+        };
+        RejectTimesheetRequest: {
+            reason: string;
         };
         /** @enum {string} */
         EquipmentStatus: "available" | "in_use" | "maintenance" | "retired";
@@ -15418,6 +15933,7 @@ export interface components {
         };
     };
     parameters: {
+        TimesheetId: string;
         EquipmentId: string;
         EquipmentBookingId: string;
         ShiftId: string;
@@ -15442,6 +15958,7 @@ export interface components {
         SubmittalId: string;
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
+        CoordinationIssueId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -17257,6 +17774,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpecSectionHitList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBimModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BimModelList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBimModel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBimModelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BimModel"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCoordinationIssues: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CoordinationIssueStatus"];
+                modelId?: string;
+                q?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCoordinationIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCoordinationIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addCoordinationIssueComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddCoordinationCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -23512,6 +24231,256 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listTimesheets: {
+        parameters: {
+            query: {
+                from: string;
+                to: string;
+                status?: components["schemas"]["TimesheetStatus"];
+                workerId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimesheetList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    generateTimesheets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DateRangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GenerateTimesheetsResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    exportTimesheets: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DateRangeRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TimesheetExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addTimesheetLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddTimesheetLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    adjustTimesheetLine: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+                lineId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdjustTimesheetLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectTimesheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                timesheetId: components["parameters"]["TimesheetId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectTimesheetRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Timesheet"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listEquipment: {
         parameters: {
             query?: never;
@@ -28794,6 +29763,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceJson"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimEvidenceDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceDeliveryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    queueClaimEvidenceDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueueClaimEvidenceDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceDelivery"];
                 };
             };
             default: components["responses"]["Problem"];

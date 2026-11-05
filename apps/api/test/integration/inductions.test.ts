@@ -344,6 +344,8 @@ describe('online inductions (product/14)', () => {
     });
     expect(card.statusCode).toBe(201);
     expect(card.json()).toMatchObject({ kind: 'white_card', status: 'recorded' });
+    // Only the last four characters are stored; the full number is never returned or kept.
+    expect(card.json().number).toBe('•••• 3456');
 
     const done = await s.sub.browser.post(`${url}/sign`, {
       ...sign,

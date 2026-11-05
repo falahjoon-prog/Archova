@@ -277,7 +277,7 @@ export const workerCredentials = workforceSchema.table('worker_credentials', {
   orgId: uuid('org_id').notNull(),
   workerId: uuid('worker_id').notNull(),
   kind: text('kind').$type<CredentialKind>().notNull(),
-  number: text('number').notNull(),
+  numberLast4: text('number_last4').notNull(),
   issuingState: text('issuing_state'),
   licenceClass: text('licence_class'),
   issuedOn: date('issued_on'),
@@ -473,6 +473,41 @@ export const equipmentLogs = workforceSchema.table('equipment_logs', {
   hours: numeric('hours', { precision: 5, scale: 2 }).notNull(),
   operator: text('operator'),
   notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'exported';
+export type TimesheetLineSource = 'attendance' | 'manual' | 'adjusted';
+
+export const timesheets = workforceSchema.table('timesheets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  companyId: uuid('company_id'),
+  localDate: date('local_date').notNull(),
+  status: text('status').$type<TimesheetStatus>().notNull().default('draft'),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  approvedBy: uuid('approved_by'),
+  approvedAt: timestamp('approved_at', { withTimezone: true }),
+  rejectionReason: text('rejection_reason'),
+  exportedAt: timestamp('exported_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});
+
+export const timesheetLines = workforceSchema.table('timesheet_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  timesheetId: uuid('timesheet_id').notNull(),
+  minutes: integer('minutes').notNull(),
+  breakMinutes: integer('break_minutes').notNull().default(0),
+  costCodeId: uuid('cost_code_id'),
+  source: text('source').$type<TimesheetLineSource>().notNull(),
+  attendanceSessionId: uuid('attendance_session_id'),
+  adjustedReason: text('adjusted_reason'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });

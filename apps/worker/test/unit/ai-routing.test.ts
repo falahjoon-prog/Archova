@@ -17,7 +17,7 @@ describe('the ai re-index route', () => {
   });
 
   it('sends every ai route to the ai queue, so the default worker never runs one', () => {
-    expect(AI_ROUTES.map((r) => r.queue)).toEqual(['ai', 'ai', 'ai', 'ai']);
+    expect(AI_ROUTES.map((r) => r.queue)).toEqual(['ai', 'ai', 'ai', 'ai', 'ai']);
     expect(new Set(AI_ROUTES.map((r) => r.name)).size).toBe(AI_ROUTES.length);
   });
 

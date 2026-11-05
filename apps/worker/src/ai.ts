@@ -51,6 +51,7 @@ async function main() {
     log: (msg, o) => log.info(o, msg),
   });
   const folderPublish = createFolderPublish({
+    documents: modules.documents.api,
     folders: modules.integrations.api.folders,
     log: (msg, o) => log.info(o, msg),
   });
@@ -59,6 +60,7 @@ async function main() {
     restamp.subscriber,
     accountingPush.subscriber,
     folderPublish.subscriber,
+    folderPublish.backfill,
   ];
 
   // Jobs here are queued with the `capped` backoff (queues.ts `ROUTED_RETRY`), which only these workers know.

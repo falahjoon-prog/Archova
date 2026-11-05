@@ -15,6 +15,8 @@ import {
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
 import type { EquipmentService } from '../application/equipment';
+import type { TimesheetService } from '../application/timesheet';
+import { toTimesheetDto } from './timesheet-mappers';
 import type { RosterService } from '../application/roster';
 import { toBookingDto, toEquipmentDto, toLogDto } from './equipment-mappers';
 import { toShiftDto } from './roster-mappers';
@@ -102,6 +104,7 @@ export function workforceRoutes(
   grants: WalletGrantService,
   roster: RosterService,
   equip: EquipmentService,
+  sheets: TimesheetService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -127,12 +130,100 @@ export function workforceRoutes(
   const assignmentId = (p: { assignmentId: string }) =>
     id('shiftAssignment', p.assignmentId, 'workforce_shift.assignment_not_found');
 
+  const sheetId = (p: { timesheetId: string }) =>
+    id('timesheet', p.timesheetId, 'workforce_timesheet.not_found');
+  const lineId = (p: { lineId: string }) =>
+    id('timesheetLine', p.lineId, 'workforce_timesheet.line_not_found');
   const equipId = (p: { equipmentId: string }) =>
     id('equipment', p.equipmentId, 'workforce_equipment.not_found');
   const bookingId = (p: { bookingId: string }) =>
     id('equipmentBooking', p.bookingId, 'workforce_equipment.booking_not_found');
 
   return defineRoutes({
+    listTimesheets: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        sheets.list(s, project(input.params), {
+          from: q.from,
+          to: q.to,
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.workerId ? { workerId: ref('worker', q.workerId, 'workerId') } : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toTimesheetDto) } };
+    },
+    generateTimesheets: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) => sheets.generate(s, project(input.params), input.body)),
+    }),
+    exportTimesheets: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) => sheets.exportCsv(s, project(input.params), input.body)),
+    }),
+    getTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await read(input, (s) => sheets.get(s, project(input.params), sheetId(input.params))),
+      ),
+    }),
+    addTimesheetLine: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) =>
+          sheets.addLine(s, project(input.params), sheetId(input.params), {
+            minutes: input.body.minutes,
+            ...(input.body.breakMinutes !== undefined
+              ? { breakMinutes: input.body.breakMinutes }
+              : {}),
+            ...(input.body.costCodeId
+              ? { costCodeId: ref('costCode', input.body.costCodeId, 'costCodeId') }
+              : {}),
+            reason: input.body.reason,
+          }),
+        ),
+      ),
+    }),
+    adjustTimesheetLine: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) =>
+          sheets.adjustLine(s, project(input.params), sheetId(input.params), lineId(input.params), {
+            ...(input.body.minutes !== undefined ? { minutes: input.body.minutes } : {}),
+            ...(input.body.breakMinutes !== undefined
+              ? { breakMinutes: input.body.breakMinutes }
+              : {}),
+            ...(input.body.costCodeId !== undefined
+              ? {
+                  costCodeId: input.body.costCodeId
+                    ? ref('costCode', input.body.costCodeId, 'costCodeId')
+                    : null,
+                }
+              : {}),
+            reason: input.body.reason,
+          }),
+        ),
+      ),
+    }),
+    submitTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) => sheets.submit(s, project(input.params), sheetId(input.params))),
+      ),
+    }),
+    approveTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) => sheets.approve(s, project(input.params), sheetId(input.params))),
+      ),
+    }),
+    rejectTimesheet: async (input) => ({
+      status: 200,
+      body: toTimesheetDto(
+        await tx(input, (s) =>
+          sheets.reject(s, project(input.params), sheetId(input.params), input.body.reason),
+        ),
+      ),
+    }),
     listEquipment: async (input) => ({
       status: 200,
       body: {

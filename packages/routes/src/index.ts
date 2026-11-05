@@ -18,6 +18,7 @@ export const webRoutes = {
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
   subcontractorWallets: (orgSlug: string) => `/${enc(orgSlug)}/settings/subcontractor-wallets`,
@@ -33,6 +34,7 @@ export const webRoutes = {
   // Project tools (frontend 03 §1). Entity segments are API ids; pages show the human number.
   documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
   drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
+  coordination: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/coordination`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
@@ -96,6 +98,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inspections/templates`,
   imports: (orgSlug: string, projectId: string, jobId?: string) =>
     `${p(orgSlug, projectId)}/imports${jobId ? `?id=${enc(jobId)}` : ''}`,
+  folderLinks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/folder-links`,
   ownerPortal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/owner-portal`,
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
@@ -109,6 +112,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/roster`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
+  attendanceTimesheets: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/timesheets`,
   attendanceSites: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>
@@ -138,6 +143,9 @@ export const mobileRoutes = {
     `/project/${enc(projectId)}/tenders/${enc(packageId)}`,
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
+  /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
+  diaryPhoto: (projectId: string, date: string, reason?: string) =>
+    `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
   incidents: (projectId: string) => `/project/${enc(projectId)}/incidents`,
   incidentPhoto: (projectId: string, incidentId: string) =>

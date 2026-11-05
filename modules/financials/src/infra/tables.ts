@@ -159,6 +159,50 @@ export const evidenceRecords = financialsSchema.table('evidence_records', {
   pdfSha256: text('pdf_sha256').notNull(),
 });
 
+export const evidenceSignatures = financialsSchema.table('evidence_signatures', {
+  evidenceId: uuid('evidence_id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  keyId: text('key_id').notNull(),
+  algorithm: text('algorithm').$type<'ed25519'>().notNull(),
+  message: text('message').notNull(),
+  signature: text('signature').notNull(),
+  signedAt: timestamp('signed_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceTimestamps = financialsSchema.table('evidence_timestamps', {
+  evidenceId: uuid('evidence_id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  authority: text('authority').notNull(),
+  imprintSha256: text('imprint_sha256').notNull(),
+  genTime: timestamp('gen_time', { withTimezone: true }).notNull(),
+  serialHex: text('serial_hex').notNull(),
+  token: bytea('token').notNull(),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceDeliveries = financialsSchema.table('evidence_deliveries', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  evidenceId: uuid('evidence_id').notNull(),
+  kind: text('kind').$type<'claim' | 'schedule'>().notNull(),
+  recipientEmail: text('recipient_email').notNull(),
+  status: text('status')
+    .$type<'queued' | 'sending' | 'sent' | 'delivered' | 'bounced' | 'failed'>()
+    .notNull()
+    .default('queued'),
+  attempts: integer('attempts').notNull().default(0),
+  queuedBy: uuid('queued_by'),
+  queuedAt: timestamp('queued_at', { withTimezone: true }).notNull().defaultNow(),
+  sendingAt: timestamp('sending_at', { withTimezone: true }),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  providerMessageId: text('provider_message_id'),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
+  bouncedAt: timestamp('bounced_at', { withTimezone: true }),
+  lastError: text('last_error'),
+});
+
 export const costCodes = financialsSchema.table('cost_codes', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

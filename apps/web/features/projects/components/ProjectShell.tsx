@@ -12,6 +12,7 @@ import {
   IncidentsIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
+  FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
@@ -28,6 +29,7 @@ import {
   InductionsIcon,
   RfisIcon,
   SubmittalsIcon,
+  CoordinationIcon,
   CorrespondenceIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -136,6 +138,11 @@ export function projectToolGroups(
       label: 'Correspondence',
       icon: CorrespondenceIcon,
     },
+    canRead('coordination') && {
+      href: webRoutes.coordination(orgSlug, projectId),
+      label: 'Coordination',
+      icon: CoordinationIcon,
+    },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),
       label: 'Site diary',
@@ -220,6 +227,11 @@ export function projectToolGroups(
       href: webRoutes.imports(orgSlug, projectId),
       label: 'Imports',
       icon: ImportsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.folderLinks(orgSlug, projectId),
+      label: 'SharePoint and Drive',
+      icon: FolderLinksIcon,
     },
   ];
   return [

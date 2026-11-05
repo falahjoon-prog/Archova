@@ -3,7 +3,12 @@ import { uuidv7 } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import { fromCents, toCents } from '../domain/money';
-import { budgetVsForecast, type BvfAdjustment, type BvfSub } from '../domain/budget-vs-forecast';
+import {
+  budgetVsForecast,
+  type BvfAdjustment,
+  type BvfDirect,
+  type BvfSub,
+} from '../domain/budget-vs-forecast';
 import { revisedOf, signedCents, totalsOf, isSignedMoney } from '../domain/budget';
 import { budgetAdjustments, budgetLines, budgets, costCodes } from '../infra/tables';
 
@@ -15,6 +20,7 @@ export type BudgetAdjustmentRow = typeof budgetAdjustments.$inferSelect;
 export interface ForecastInputs {
   subs: BvfSub[];
   adjustments: BvfAdjustment[];
+  direct: BvfDirect[];
 }
 
 export interface BudgetDeps {
@@ -367,6 +373,7 @@ export function createBudgetService(
       inputs.subs,
       inputs.adjustments,
       hidden,
+      inputs.direct,
     );
     return { budget, ...r, byId };
   }

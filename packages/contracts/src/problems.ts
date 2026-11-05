@@ -184,6 +184,10 @@ export const PROBLEM_CODES = {
   'submittal.reviewer_not_on_project': 422,
   'submittal.review_not_allowed': 403,
   'submittal_step.not_found': 404,
+  // bim
+  'bim.model_not_found': 404,
+  'bim.issue_not_found': 404,
+  'bim.invalid_transition': 409,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,
@@ -372,6 +376,9 @@ export const PROBLEM_CODES = {
   'workforce_shift.bad_state': 409,
   'workforce_shift.worker_conflict': 409,
   'workforce_shift.assignment_not_found': 404,
+  'workforce_timesheet.not_found': 404,
+  'workforce_timesheet.line_not_found': 404,
+  'workforce_timesheet.bad_state': 409,
   'workforce_equipment.not_found': 404,
   'workforce_equipment.booking_not_found': 404,
   'workforce_equipment.asset_taken': 409,
