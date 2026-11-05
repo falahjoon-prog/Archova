@@ -1,10 +1,13 @@
 import { useState } from 'react';
+import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
+import { mobileRoutes } from '@archova/routes';
 import { Button, ListItem, Screen } from '@archova/ui-native';
 import { queries } from '../../../lib/api';
 import { StateMessage, useSession } from '../../../shared';
 
 export function MeScreen() {
+  const router = useRouter();
   const { signOut } = useSession();
   const me = useQuery(queries.me());
   const [signingOut, setSigningOut] = useState(false);
@@ -31,6 +34,12 @@ export function MeScreen() {
       ) : (
         <ListItem title={me.data.user.name} subtitle={me.data.user.email} testID="me-profile" />
       )}
+      <ListItem
+        title="Offline data"
+        subtitle="Projects on this device and changes needing attention"
+        onPress={() => router.push(mobileRoutes.offline())}
+        testID="offline-data-link"
+      />
       <Button
         label="Sign out"
         variant="danger"
