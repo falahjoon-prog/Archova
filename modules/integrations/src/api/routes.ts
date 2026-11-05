@@ -13,10 +13,13 @@ import {
 } from '@archova/kernel';
 import type { ImportService } from '../application/imports';
 import type { AccountingService } from '../application/accounting';
+import type { FoldersService } from '../application/folders';
 import type { WebhookService } from '../application/webhooks';
 import { PUBLIC_EVENT_TYPES } from '../domain/webhooks/events';
 import {
   toConnectionDto,
+  toFolderConnectionDto,
+  toFolderLinkDto,
   toImportJobDto,
   toImportRowDto,
   toSyncIssueDto,
@@ -44,6 +47,8 @@ export function integrationsRoutes(
   webhooks: WebhookService,
   accounting: AccountingService,
   available: readonly ('xero' | 'myob')[],
+  folders: FoldersService,
+  availableFolders: readonly ('m365' | 'google')[],
   redis: RedisClient | null = null,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -155,6 +160,73 @@ export function integrationsRoutes(
         return { row, provider: conn!.provider };
       });
       return { status: 200, body: toSyncIssueDto(row, provider) };
+    },
+    listFolderConnections: async (input) => {
+      const rows = await read(input, (s) => folders.list(s));
+      return {
+        status: 200,
+        body: { data: rows.map(toFolderConnectionDto), available: [...availableFolders] },
+      };
+    },
+    startFolderConnection: async (input) => {
+      const t = requireTenant(input);
+      const r = await tx(input, (s) =>
+        folders.start(s, t.userId, input.params.provider, input.body ?? {}),
+      );
+      return { status: 200, body: r };
+    },
+    completeFolderConnection: async (input) => {
+      const { provider } = input.params;
+      const { state, code } = input.body;
+      const prep = await read(input, (s) => folders.prepareCallback(s, provider, state));
+      let result;
+      try {
+        result = await folders.exchange(provider, { ...(code ? { code } : {}), ...prep });
+      } catch (e) {
+        await tx(input, (s) => folders.abandonCallback(s, provider, state));
+        throw e;
+      }
+      const row = await tx(input, (s) => folders.finishCallback(s, provider, state, result));
+      return { status: 200, body: toFolderConnectionDto(row) };
+    },
+    disconnectFolders: async (input) => {
+      await tx(input, (s) => folders.disconnect(s, input.params.provider));
+      return { status: 204 };
+    },
+    listFolderLinks: async (input) => {
+      const { rows, conns } = await read(input, async (s) => ({
+        rows: await folders.links(s, project(input.params)),
+        conns: new Map((await folders.list(s)).map((c) => [c.id, c.provider] as const)),
+      }));
+      return {
+        status: 200,
+        body: {
+          data: rows.flatMap((l) => {
+            const p = conns.get(l.connectionId);
+            return p ? [toFolderLinkDto(l, p)] : [];
+          }),
+        },
+      };
+    },
+    createFolderLink: async (input) => {
+      const t = requireTenant(input);
+      const projectId = project(input.params);
+      const { provider, url } = input.body;
+      const prep = await read(input, (s) => folders.prepareLink(s, projectId, provider));
+      const remote = await folders.resolveRemote(t.orgId, prep.connection, {
+        ...(url ? { url } : {}),
+        projectName: prep.projectName,
+      });
+      const row = await tx(input, (s) =>
+        folders.createLink(s, t.userId, projectId, prep.connection, remote),
+      );
+      return { status: 201, body: toFolderLinkDto(row, provider) };
+    },
+    deleteFolderLink: async (input) => {
+      const linkId = decodeId('folderLink', input.params.linkId);
+      if (!linkId) throw new AppError('folders.link_not_found');
+      await tx(input, (s) => folders.removeLink(s, project(input.params), linkId));
+      return { status: 204 };
     },
     listWebhooks: async (input) => {
       const rows = await read(input, (s) => webhooks.list(s));

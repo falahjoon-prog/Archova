@@ -3686,6 +3686,127 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/folder-connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The org's SharePoint and Google Drive connections, and which providers this installation can offer (integrations/03, 04). */
+        get: operations["listFolderConnections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections/{provider}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Forget the connection and every project link on it. Files already published are left where they are. */
+        delete: operations["disconnectFolders"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections/{provider}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Begin sign-in. Google returns its sign-in address; Microsoft 365 returns the admin-consent address for the tenant id given. */
+        post: operations["startFolderConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/folder-connections/{provider}/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish sign-in with the state (and, for Google, the code) the provider returned. Makes the connection active. */
+        post: operations["completeFolderConnection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/folder-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The folders this project's current drawing set is published to. */
+        get: operations["listFolderLinks"];
+        put?: never;
+        /** Publish the project's drawing set, one way, to a SharePoint folder (the address is required) or a new Google Drive folder. Each drawing revision published from now on is uploaded and the revision it replaces is moved to a Superseded subfolder. */
+        post: operations["createFolderLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/folder-links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop publishing to the folder. What is already there stays. */
+        delete: operations["deleteFolderLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/import-jobs": {
         parameters: {
             query?: never;
@@ -11960,6 +12081,50 @@ export interface components {
             data: components["schemas"]["AccountingConnection"][];
             available: components["schemas"]["AccountingProviderName"][];
         };
+        /** @enum {string} */
+        FolderProviderName: "m365" | "google";
+        FolderConnection: {
+            id: string;
+            provider: components["schemas"]["FolderProviderName"];
+            /** @enum {string} */
+            status: "pending" | "active" | "error";
+            tenantId: string | null;
+            lastError: string | null;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        FolderConnectionList: {
+            data: components["schemas"]["FolderConnection"][];
+            available: components["schemas"]["FolderProviderName"][];
+        };
+        FolderConnectRequest: {
+            tenantId?: string;
+        };
+        FolderCallbackRequest: {
+            state: string;
+            code?: string;
+        };
+        FolderLink: {
+            id: string;
+            projectId: string;
+            provider: components["schemas"]["FolderProviderName"];
+            folderName: string;
+            webUrl: string | null;
+            /** @enum {string} */
+            status: "active" | "error";
+            lastError: string | null;
+            /** Format: date-time */
+            lastPublishedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        FolderLinkList: {
+            data: components["schemas"]["FolderLink"][];
+        };
+        FolderLinkCreate: {
+            provider: components["schemas"]["FolderProviderName"];
+            url?: string;
+        };
         AccountingConnectStart: {
             url: string;
         };
@@ -14793,6 +14958,7 @@ export interface components {
         ApiTokenId: string;
         NotificationId: string;
         AccountingProvider: "xero" | "myob";
+        FolderProvider: "m365" | "google";
         SyncIssueId: string;
         WebhookId: string;
         ImportJobId: string;
@@ -20549,6 +20715,182 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["WebhookDeliveryList"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFolderConnections: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderConnectionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    disconnectFolders: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    startFolderConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["FolderConnectRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountingConnectStart"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    completeFolderConnection: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                provider: components["parameters"]["FolderProvider"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderCallbackRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderConnection"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listFolderLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createFolderLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderLinkCreate"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteFolderLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Unlinked */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

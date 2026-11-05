@@ -180,3 +180,49 @@ export const accountingSyncIssues = integrationsSchema.table('accounting_sync_is
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   resolvedBy: uuid('resolved_by'),
 });
+
+export type FolderProviderKey = 'm365' | 'google';
+export const folderConnections = integrationsSchema.table('folder_connections', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  provider: text('provider').$type<FolderProviderKey>().notNull(),
+  status: text('status').$type<'pending' | 'active' | 'error'>().notNull().default('pending'),
+  oauthState: text('oauth_state'),
+  oauthStateAt: timestamp('oauth_state_at', { withTimezone: true }),
+  verifierSealed: bytea('verifier_sealed'),
+  tokensSealed: bytea('tokens_sealed'),
+  tenantRef: text('tenant_ref'),
+  lastError: text('last_error'),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const folderLinks = integrationsSchema.table('folder_links', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  connectionId: uuid('connection_id').notNull(),
+  remoteDriveId: text('remote_drive_id'),
+  remoteFolderId: text('remote_folder_id').notNull(),
+  remoteSupersededId: text('remote_superseded_id').notNull(),
+  remoteName: text('remote_name').notNull(),
+  remoteWebUrl: text('remote_web_url'),
+  status: text('status').$type<'active' | 'error'>().notNull().default('active'),
+  lastError: text('last_error'),
+  lastPublishedAt: timestamp('last_published_at', { withTimezone: true }),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const folderPublished = integrationsSchema.table('folder_published', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  linkId: uuid('link_id').notNull(),
+  sheetId: uuid('sheet_id').notNull(),
+  revisionId: uuid('revision_id').notNull(),
+  fileName: text('file_name').notNull(),
+  remoteId: text('remote_id').notNull(),
+  state: text('state').$type<'current' | 'superseded'>().notNull().default('current'),
+  publishedAt: timestamp('published_at', { withTimezone: true }).notNull().defaultNow(),
+});
