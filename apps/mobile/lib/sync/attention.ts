@@ -9,6 +9,8 @@ const COMMAND_LABEL: Record<string, string> = {
   'defects.close': 'Defect closed',
   'photos.create': 'Photo',
   'comments.add': 'Comment',
+  'quality.recordResponses': 'Inspection answer',
+  'quality.submit': 'Inspection submitted',
 };
 
 export function commandLabel(command: string): string {
