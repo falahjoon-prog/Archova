@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, lte, sql } from 'drizzle-orm';
 import { AppError, type Tx } from '@archova/kernel';
 import { orgAccounts, planVersions, plans, type SuspendCategory } from '../infra/tables';
 
@@ -6,6 +6,9 @@ const DAY_MS = 86_400_000;
 /** One extension is at most 30 days; 120 in total unless an Owner does it (Sam 12 §3). */
 export const MAX_TRIAL_EXTENSION_DAYS = 30;
 export const MAX_TRIAL_TOTAL_DAYS = 120;
+
+/** A new company starts on a 14-day trial. A default john can change; staff can extend it (Sam 12 §3). */
+export const DEFAULT_TRIAL_DAYS = 14;
 
 export type OrgAccount = typeof orgAccounts.$inferSelect;
 
@@ -62,6 +65,8 @@ export function createAccountService() {
       .set({
         trialEndsAt: new Date(base.getTime() + input.days * DAY_MS),
         trialExtendedDays: total,
+        // A trial that had already lapsed to read-only comes back to life when staff extend it.
+        state: 'trialing',
         updatedAt: sql`now()`,
       })
       .where(eq(orgAccounts.id, orgId))
@@ -138,7 +143,81 @@ export function createAccountService() {
     return row!;
   }
 
-  return { get, extendTrial, setPlan, suspend, reactivate };
+  /**
+   * Ends a trial whose end date has passed: the account goes read-only until the company picks a plan (security-licensing
+   * 04 §: "convert or the project goes read-only"). Nothing is deleted. Idempotent: returns null when there is no
+   * account row, the org is not on a trial, the trial has not ended, or it is already read-only.
+   */
+  async function expireTrial(tx: Tx, orgId: string, now: Date): Promise<OrgAccount | null> {
+    const [row] = await tx
+      .update(orgAccounts)
+      .set({ state: 'read_only', updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(orgAccounts.id, orgId),
+          eq(orgAccounts.planCode, 'trial'),
+          eq(orgAccounts.state, 'trialing'),
+          lte(orgAccounts.trialEndsAt, now),
+        ),
+      )
+      .returning();
+    return row ?? null;
+  }
+
+  /** Gives a newly created company its trial end date. Idempotent: an existing account row is left as it is. */
+  async function startTrial(tx: Tx, orgId: string, now: Date): Promise<OrgAccount> {
+    return ensure(tx, orgId, {
+      planCode: 'trial',
+      trialEndsAt: new Date(now.getTime() + DEFAULT_TRIAL_DAYS * DAY_MS),
+    });
+  }
+
+  /**
+   * One-off catch-up for a company created before new companies got a trial end date: it has no account row, or a
+   * trial row with no end date. The end is the later of signup + 14 days and now + 14 days, so a long-standing org
+   * gets a full 14 days from the backfill instead of being made read-only the moment the expiry job next runs.
+   * Idempotent: returns null (changing nothing) when the org already has a dated trial, a paid plan or a suspension.
+   */
+  async function backfillTrialEnd(
+    tx: Tx,
+    orgId: string,
+    createdAt: Date,
+    now: Date,
+  ): Promise<OrgAccount | null> {
+    const trialEndsAt = new Date(
+      Math.max(createdAt.getTime(), now.getTime()) + DEFAULT_TRIAL_DAYS * DAY_MS,
+    );
+    const [inserted] = await tx
+      .insert(orgAccounts)
+      .values({ id: orgId, planCode: 'trial', state: 'trialing', trialEndsAt })
+      .onConflictDoNothing()
+      .returning();
+    if (inserted) return inserted;
+    const [updated] = await tx
+      .update(orgAccounts)
+      .set({ trialEndsAt, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(orgAccounts.id, orgId),
+          eq(orgAccounts.planCode, 'trial'),
+          eq(orgAccounts.state, 'trialing'),
+          isNull(orgAccounts.trialEndsAt),
+        ),
+      )
+      .returning();
+    return updated ?? null;
+  }
+
+  return {
+    get,
+    startTrial,
+    backfillTrialEnd,
+    extendTrial,
+    setPlan,
+    suspend,
+    reactivate,
+    expireTrial,
+  };
 }
 
 export type AccountService = ReturnType<typeof createAccountService>;

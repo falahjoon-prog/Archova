@@ -7,10 +7,18 @@ import { webRoutes } from '@archova/routes';
 import {
   AttendanceIcon,
   ObservationsIcon,
+  InspectionsIcon,
   SwmsIcon,
+  IncidentsIcon,
+  LateSubmissionsIcon,
+  OwnerPortalIcon,
+  FolderLinksIcon,
+  ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
+  ProgrammeIcon,
   ContractsIcon,
+  BudgetIcon,
   DelaysIcon,
   DiaryIcon,
   DocumentsIcon,
@@ -21,6 +29,7 @@ import {
   InductionsIcon,
   RfisIcon,
   SubmittalsIcon,
+  CoordinationIcon,
   CorrespondenceIcon,
 } from '@archova/ui/icons';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -92,6 +101,11 @@ export function projectToolGroups(
     perms.orgRole === 'owner' ||
     perms.orgRole === 'admin' ||
     atLeast(perms.toolLevels[tool], 'read');
+  const canAdmin = (tool: Tool) =>
+    !perms ||
+    perms.orgRole === 'owner' ||
+    perms.orgRole === 'admin' ||
+    atLeast(perms.toolLevels[tool], 'admin');
   const core: Array<ProjectNavItem | false> = [
     canRead('documents') && {
       href: webRoutes.documents(orgSlug, projectId),
@@ -102,6 +116,11 @@ export function projectToolGroups(
       href: webRoutes.drawings(orgSlug, projectId),
       label: 'Drawings',
       icon: DrawingsIcon,
+    },
+    canRead('documents') && {
+      href: webRoutes.specifications(orgSlug, projectId),
+      label: 'Specifications',
+      icon: DocumentsIcon,
     },
     canRead('documents') && {
       href: webRoutes.transmittals(orgSlug, projectId),
@@ -119,6 +138,11 @@ export function projectToolGroups(
       label: 'Correspondence',
       icon: CorrespondenceIcon,
     },
+    canRead('coordination') && {
+      href: webRoutes.coordination(orgSlug, projectId),
+      label: 'Coordination',
+      icon: CoordinationIcon,
+    },
     canRead('diary') && {
       href: webRoutes.diary(orgSlug, projectId),
       label: 'Site diary',
@@ -128,6 +152,11 @@ export function projectToolGroups(
       href: webRoutes.delays(orgSlug, projectId),
       label: 'Delay register',
       icon: DelaysIcon,
+    },
+    canRead('schedule') && {
+      href: webRoutes.programme(orgSlug, projectId),
+      label: 'Programme',
+      icon: ProgrammeIcon,
     },
     canRead('defects') && {
       href: webRoutes.defects(orgSlug, projectId),
@@ -154,10 +183,20 @@ export function projectToolGroups(
       label: 'Payment claims',
       icon: ContractsIcon,
     },
+    canRead('budget') && {
+      href: webRoutes.budget(orgSlug, projectId),
+      label: 'Budget',
+      icon: BudgetIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
       icon: AttendanceIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.inspections(orgSlug, projectId),
+      label: 'Inspections',
+      icon: InspectionsIcon,
     },
     canRead('inspections') && {
       href: webRoutes.observations(orgSlug, projectId),
@@ -168,6 +207,36 @@ export function projectToolGroups(
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.incidents(orgSlug, projectId),
+      label: 'Incidents',
+      icon: IncidentsIcon,
+    },
+    canAdmin('inspections') && {
+      href: webRoutes.safetySignals(orgSlug, projectId),
+      label: 'Safety signals',
+      icon: IncidentsIcon,
+    },
+    canRead('owner_portal') && {
+      href: webRoutes.ownerPortal(orgSlug, projectId),
+      label: 'Owner portal',
+      icon: OwnerPortalIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.lateSubmissions(orgSlug, projectId),
+      label: 'Late submissions',
+      icon: LateSubmissionsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.imports(orgSlug, projectId),
+      label: 'Imports',
+      icon: ImportsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.folderLinks(orgSlug, projectId),
+      label: 'SharePoint and Drive',
+      icon: FolderLinksIcon,
     },
   ];
   return [

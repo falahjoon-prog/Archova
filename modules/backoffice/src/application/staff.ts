@@ -30,6 +30,8 @@ export interface StaffContext {
   roles: StaffRole[];
   permissions: string[];
   authTime: Date;
+  /** True when this sign-in used a hardware security key (set by the staff IdP, never by password login). */
+  hardwareKey: boolean;
 }
 
 export interface StaffDeps extends Pick<KernelServices, 'database'> {
@@ -123,6 +125,7 @@ export function createStaffService(deps: StaffDeps) {
         roles,
         permissions: permissionsFor(roles),
         authTime: row.s.authTime,
+        hardwareKey: row.s.hardwareKey,
       };
     });
   }

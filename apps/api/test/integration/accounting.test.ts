@@ -3,7 +3,7 @@ import { decodeId, uuidv7 } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
 import type { LedgerSourceInput, accounting } from '@archova/mod-integrations';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createOrg, createTestContext, signUp, type TestContext } from './helpers';
+import { createOrg, createTestContext, outboxData, signUp, type TestContext } from './helpers';
 
 const json = (body: unknown, status = 200, headers: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), { status, headers });
@@ -268,6 +268,7 @@ describe('Xero and MYOB connections (integrations/02)', () => {
       kind: 'bill' as const,
       localType: 'payment_schedule' as const,
       localId: LOCAL_ID,
+      projectId: PROJECT_ID,
       contractNumber: 4,
       claimNumber: 2,
       counterparty: { companyId: uuidv7(), name: "O'Hara Concrete", abn: '51 824 753 556' },
@@ -286,7 +287,7 @@ describe('Xero and MYOB connections (integrations/02)', () => {
     // The company has an ABN, so a miss never falls back to the name.
     expect(contactQueries).toEqual(['TaxNumber=="51824753556"']);
     const issues = (await s.owner.browser.get(`${s.base}/sync-issues`)).json().data;
-    expect(issues[0]).toMatchObject({ kind: 'no_contact', reference: 'PC-4-2' });
+    expect(issues[0]).toMatchObject({ kind: 'no_contact', reference: 'PC-000000a1-4-2' });
 
     contacts = [{ ContactID: 'xc-1' }];
     contactQueries = [];
@@ -333,6 +334,92 @@ describe('Xero and MYOB connections (integrations/02)', () => {
     }
   });
 
+  it('clears only the sign-in state it was given', async () => {
+    const s = await setup('acc-abandon');
+    const orgId = decodeId('org', s.org.id)!;
+    const begin = async () => {
+      const start = (await s.owner.browser.post(`${s.base}/connections/xero/connect`)).json();
+      return new URL(start.url).searchParams.get('state')!;
+    };
+    const older = await begin();
+    const newer = await begin();
+    // The failed callback for the older link finishes after the admin started again.
+    await run(orgId, (sc) => svc().abandonCallback(sc, 'xero', older));
+    const res = await s.owner.browser.post(`${s.base}/connections/xero/callback`, {
+      code: 'code-1',
+      state: newer,
+    });
+    expect(res.statusCode).toBe(200);
+    await run(orgId, (sc) => svc().abandonCallback(sc, 'xero', newer));
+  });
+
+  it('audits connect, push and disconnect without writing a token', async () => {
+    const s = await setup('acc-audit');
+    const types = (type: string) =>
+      outboxData<Record<string, unknown>>(t, s.org.id, s.owner.userId, type);
+    await connectXero(s);
+    await s.owner.browser.put(`${s.base}/connections/xero/field-map`, {
+      accounts: { '03.100': { accountRef: '300', taxRef: 'INPUT2' } },
+      retention: { accountRef: '820', taxRef: 'NONE' },
+    });
+    const orgId = decodeId('org', s.org.id)!;
+    await run(orgId, (sc) =>
+      svc().push(sc, 'xero', { localType: 'payment_schedule', localId: LOCAL_ID, document: doc }),
+    );
+    await s.owner.browser.del(`${s.base}/connections/xero`);
+    const all = [
+      ...(await types('integrations.accounting.connected.v1')),
+      ...(await types('integrations.accounting.pushed.v1')),
+      ...(await types('integrations.accounting.disconnected.v1')),
+    ];
+    expect(await types('integrations.accounting.connected.v1')).toHaveLength(1);
+    expect(await types('integrations.accounting.pushed.v1')).toMatchObject([
+      { provider: 'xero', reference: 'PC-SC1-1' },
+    ]);
+    expect(await types('integrations.accounting.disconnected.v1')).toHaveLength(1);
+    expect(JSON.stringify(all)).not.toMatch(/rt-\d|"at"|accessToken|refreshToken/);
+  });
+
+  it('sends a refused refresh token to reconnect, announcing it once', async () => {
+    const s = await setup('acc-revoked');
+    shortLived = true;
+    try {
+      await connectXero(s);
+      await s.owner.browser.put(`${s.base}/connections/xero/field-map`, {
+        accounts: { '03.100': { accountRef: '300', taxRef: 'INPUT2' } },
+        retention: { accountRef: '820', taxRef: 'NONE' },
+      });
+      const orgId = decodeId('org', s.org.id)!;
+      failTokens = true;
+      const push = () =>
+        run(orgId, (sc) =>
+          svc().push(sc, 'xero', {
+            localType: 'payment_schedule',
+            localId: LOCAL_ID,
+            document: doc,
+          }),
+        );
+      expect(await push()).toBe('issue');
+      expect(await push()).toBe('skipped');
+      const [conn] = (await s.owner.browser.get(`${s.base}/connections`)).json().data;
+      expect(conn).toMatchObject({ status: 'error' });
+      expect(conn.lastError).toContain('Reconnect');
+      const issues = (await s.owner.browser.get(`${s.base}/sync-issues`)).json().data;
+      expect(issues).toMatchObject([{ kind: 'auth_failed' }]);
+      expect(
+        await outboxData(
+          t,
+          s.org.id,
+          s.owner.userId,
+          'integrations.accounting.connection_error.v1',
+        ),
+      ).toHaveLength(1);
+    } finally {
+      failTokens = false;
+      shortLived = false;
+    }
+  });
+
   it('skips documents before the start date or when a flow is off', async () => {
     const s = await setup('acc-skip');
     await connectXero(s);
@@ -375,4 +462,5 @@ describe('Xero and MYOB connections (integrations/02)', () => {
   });
 });
 
+const PROJECT_ID = '018f0000-0000-7000-8000-0000000000a1';
 const LOCAL_ID = '018f0000-0000-7000-8000-000000000001';

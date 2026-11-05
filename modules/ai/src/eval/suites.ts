@@ -1,5 +1,7 @@
 // Registered eval suites, one per Nova task (ai/06 §2). Each feature PR adds its suite here.
 import type { EvalSuite } from './harness';
+import { contractAskSuite } from './suites/contract-ask';
+import { contractCompareSuite } from './suites/contract-compare';
 import { contractReviewSuite } from './suites/contract-review';
 import { defectTagSuite } from './suites/defect-tag';
 import { diarySummarySuite } from './suites/diary-summary';
@@ -7,6 +9,7 @@ import { diaryWeeklySuite } from './suites/diary-weekly';
 import { drawingCompareSuite } from './suites/drawing-compare';
 import { drawingCompareVisualSuite } from './suites/drawing-compare-visual';
 import { drawingTitleBlockSuite } from './suites/drawing-titleblock';
+import { hazardScanSuite } from './suites/hazard-scan';
 import { importMappingSuite } from './suites/import-mapping';
 import { inductionAskSuite } from './suites/induction-ask';
 import { inductionDraftSuite } from './suites/induction-draft';
@@ -41,9 +44,12 @@ export const SUITES: readonly AnySuite[] = [
   drawingCompareSuite,
   drawingCompareVisualSuite,
   defectTagSuite,
+  hazardScanSuite,
   importMappingSuite,
   quoteReadSuite,
   quoteNegotiateSuite,
   contractReviewSuite,
+  contractAskSuite,
+  contractCompareSuite,
   takeoffDetectSuite,
 ];

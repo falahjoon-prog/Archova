@@ -18,7 +18,8 @@
     "@archova/mod-access": "workspace:*",
     "@archova/mod-platform": "workspace:*",
     "@archova/time": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.2",
+    "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

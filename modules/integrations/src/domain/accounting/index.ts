@@ -8,6 +8,7 @@ export {
   createTokenVault,
   parseKeyring,
   type KeyringVault,
+  type SealPurpose,
   type TokenVault,
 } from './tokens';
 export {

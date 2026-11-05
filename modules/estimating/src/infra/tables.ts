@@ -78,6 +78,8 @@ export const packageInvites = estimatingSchema.table('package_invites', {
   invitedAt: timestamp('invited_at', { withTimezone: true }).notNull().defaultNow(),
   viewedAt: timestamp('viewed_at', { withTimezone: true }),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
+  accessLinkId: uuid('access_link_id'),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   createdBy: uuid('created_by'),
 });
 
@@ -164,6 +166,20 @@ export const takeoffMeasurements = estimatingSchema.table('takeoff_measurements'
 export type CostCategory = 'labour' | 'material' | 'plant' | 'subcontract' | 'other';
 
 /** The company's cost library: what an item is. Its prices are `costRates`, kept as history. */
+export const bidderLists = estimatingSchema.table('bidder_lists', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  trade: text('trade').notNull().default(''),
+  companyIds: uuid('company_ids').array().notNull().default([]),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
 export const costItems = estimatingSchema.table('cost_items', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

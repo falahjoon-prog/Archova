@@ -300,15 +300,15 @@ describe('delivery', () => {
     const newKey = Buffer.alloc(32, 9).toString('base64');
     const svcWith = (spec: string) =>
       createWebhookService({ vault: vaultFromKey(spec), transport, now: () => new Date() });
-    const rotated = svcWith(`1:${DEV_WEBHOOK_KEY},2:${newKey}`);
+    const rotated = svcWith(`2:${DEV_WEBHOOK_KEY},3:${newKey}`);
     const reseal = (svc: ReturnType<typeof svcWith>) =>
       t.database.withTenantTx(jobContext(orgId, 'test'), (sc) => svc.reseal(sc));
     expect(await reseal(rotated)).toBe(1);
     expect(await reseal(rotated)).toBe(0);
     // A worker that only knows the old key list does not move it back.
-    expect(await reseal(svcWith(`1:${DEV_WEBHOOK_KEY}`))).toBe(0);
+    expect(await reseal(svcWith(`2:${DEV_WEBHOOK_KEY}`))).toBe(0);
     // With the old key gone, the endpoint still gets signed notices.
-    const onlyNew = svcWith(`2:${newKey}`);
+    const onlyNew = svcWith(`3:${newKey}`);
     await t.database.withTenantTx(jobContext(orgId, 'test'), (sc) =>
       onlyNew.fanOut(sc, event(orgId, null)),
     );

@@ -8,7 +8,8 @@ import {
   requireTenant,
   type Database,
 } from '@archova/kernel';
-import type { IdentityApi } from '@archova/mod-identity';
+import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-identity';
+import type { AccountDeletionService } from '../application/account-deletion';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
 import type { MemberService } from '../application/members';
@@ -26,14 +27,18 @@ import {
 
 /** Support access lives with the console's records; the org's own admin reads and changes it through these. */
 export interface SupportAccessPort {
-  list(orgId: string): Promise<unknown>;
+  list(
+    orgId: string,
+  ): Promise<{ grants: Array<{ projectIds: string[] | null }>; sessions: unknown[] }>;
   grant(
     orgId: string,
     by: { userId: string; name: string },
-    input: { ticketRef: string; hours: number },
-  ): Promise<unknown>;
+    input: { ticketRef: string; hours: number; projectIds?: string[] },
+  ): Promise<{ projectIds: string[] | null }>;
   revoke(orgId: string, grantId: string): Promise<void>;
   banner(orgId: string): Promise<{ active: boolean; since: string | null }>;
+  listStaffActions(orgId: string): Promise<unknown[]>;
+  listReads(orgId: string): Promise<unknown[]>;
 }
 
 export interface PlatformRouteDeps {
@@ -45,7 +50,17 @@ export interface PlatformRouteDeps {
   keyDates: KeyDateService;
   companies: CompanyService;
   members: MemberService;
+  accountDeletion: AccountDeletionService;
 }
+
+/** How recently the person must have signed in to delete their account. */
+const STEP_UP_MS = 15 * 60_000;
+
+/** Customers see public project ids, never the stored uuids. */
+const withEncodedProjects = <G extends { projectIds: string[] | null }>(g: G) => ({
+  ...g,
+  projectIds: g.projectIds ? g.projectIds.map((id) => encodeId('project', id)) : null,
+});
 
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
@@ -93,6 +108,16 @@ export function platformRoutes(d: PlatformRouteDeps) {
         },
       };
     },
+    deleteMe: async (input) => {
+      const principal = requirePrincipal(input);
+      // A person deletes their own account, signed in to the app: never a token, and only after a recent sign-in.
+      if (principal.apiToken)
+        throw new AppError('api_token.not_allowed', 'Sign in as yourself to delete your account.');
+      if (Date.now() - principal.authTime.getTime() > STEP_UP_MS)
+        throw new AppError('auth.step_up_required', 'Sign in again to delete your account.');
+      await d.accountDeletion.deleteAccount(principal.userId, input.requestId, input.ip);
+      return { status: 204, clearCookies: [SESSION_COOKIE, CSRF_COOKIE] };
+    },
     createOrg: async (input) => {
       const principal = requirePrincipal(input);
       const org = await d.orgs.createOrg(principal, input.body, input.requestId);
@@ -104,17 +129,40 @@ export function platformRoutes(d: PlatformRouteDeps) {
     },
     getSupportAccess: async (input) => {
       const t = requireOrgAdmin(input);
-      return { status: 200, body: await supportPort().list(t.orgId) };
+      const view = await supportPort().list(t.orgId);
+      return { status: 200, body: { ...view, grants: view.grants.map(withEncodedProjects) } };
     },
     createSupportAccessGrant: async (input) => {
       const t = requireOrgAdmin(input);
       const user = await d.identity.getUser(t.userId);
+      // A grant may be limited to chosen projects; each must be a live project of this company.
+      const wanted = [...new Set((input.body.projectIds ?? []).map(projectUuid))];
+      if (wanted.length) {
+        const found = await d.database.withTenantTx(
+          t,
+          (s) => d.projects.existingIds(s, wanted),
+          ro,
+        );
+        if (wanted.some((id) => !found.has(id))) throw new AppError('project.not_found');
+      }
       const grant = await supportPort().grant(
         t.orgId,
         { userId: t.userId, name: user?.name ?? 'An org admin' },
-        input.body,
+        {
+          ticketRef: input.body.ticketRef,
+          hours: input.body.hours,
+          ...(wanted.length ? { projectIds: wanted } : {}),
+        },
       );
-      return { status: 201, body: grant };
+      return { status: 201, body: withEncodedProjects(grant) };
+    },
+    listStaffActions: async (input) => {
+      const t = requireOrgAdmin(input);
+      return { status: 200, body: { items: await supportPort().listStaffActions(t.orgId) } };
+    },
+    listSupportReads: async (input) => {
+      const t = requireOrgAdmin(input);
+      return { status: 200, body: { items: await supportPort().listReads(t.orgId) } };
     },
     getSupportBanner: async (input) => {
       // Any signed-in user of the company, not only admins: the banner tells everyone who is looking.

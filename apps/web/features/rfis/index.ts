@@ -6,3 +6,4 @@ export { RfiDetailScreen } from './screens/RfiDetailScreen';
 export { rfisSource as rfisPreviewSource } from './data/source';
 export { formatRfiNumber } from './lib/types';
 export { resetRfisPreview } from './data/source';
+export { useRfiList } from './hooks/useRfis';

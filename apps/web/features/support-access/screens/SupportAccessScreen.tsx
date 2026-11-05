@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Button, Card, Select, SkeletonRows, StatusPill, TextField } from '@archova/ui';
+import { Button, Card, Checkbox, Select, SkeletonRows, StatusPill, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant } from '@/shared/lib/format';
 import { serverFieldErrors } from '@/shared/lib/forms';
-import type { SupportSession } from '../data/api';
+import type { StaffAction, SupportRead, SupportSession } from '../data/api';
 import {
   useGrantSupportAccess,
   useRevokeSupportAccess,
+  useStaffActions,
   useSupportAccess,
+  useSupportReads,
+  useSupportProjectChoices,
 } from '../hooks/useSupportAccess';
 
 const HOURS = [
@@ -44,6 +47,32 @@ function SessionRow({ s }: { s: SupportSession }) {
   );
 }
 
+const PAGE_LABEL: Record<string, string> = { 'projects.list': 'Project list' };
+
+function ReadRow({ r }: { r: SupportRead }) {
+  return (
+    <li className="support-access__session">
+      <span>
+        <strong>{r.staffName}</strong> viewed {PAGE_LABEL[r.page] ?? r.page}
+      </span>
+      <span className="u-caption">
+        {when(r.at)} · {r.recordCount} {r.recordCount === 1 ? 'record' : 'records'}
+      </span>
+    </li>
+  );
+}
+
+function ActionRow({ a }: { a: StaffAction }) {
+  return (
+    <li className="support-access__session">
+      <span>{a.summary}</span>
+      <span className="u-caption">
+        {when(a.at)} · ticket {a.ticketRef}
+      </span>
+    </li>
+  );
+}
+
 /**
  * Settings → Support access (Sam 12 §4a). Off by default. An owner or admin allows Archova support to view this
  * company's data, read only, for one ticket and up to 72 hours, and can withdraw it at any time.
@@ -52,16 +81,32 @@ export function SupportAccessScreen() {
   const status = useSupportAccess();
   const grant = useGrantSupportAccess();
   const revoke = useRevokeSupportAccess();
+  const actions = useStaffActions();
+  const reads = useSupportReads();
   const [ticketRef, setTicketRef] = useState('');
   const [hours, setHours] = useState('24');
+  const [limited, setLimited] = useState(false);
+  const [chosen, setChosen] = useState<string[]>([]);
+  const choices = useSupportProjectChoices();
+  const projectList = choices.data?.data ?? [];
   const server = serverFieldErrors(grant.error);
 
   function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (ticketRef.trim().length < 2) return;
+    if (ticketRef.trim().length < 2 || (limited && chosen.length === 0)) return;
     grant.mutate(
-      { ticketRef: ticketRef.trim(), hours: Number(hours) },
-      { onSuccess: () => setTicketRef('') },
+      {
+        ticketRef: ticketRef.trim(),
+        hours: Number(hours),
+        ...(limited ? { projectIds: chosen } : {}),
+      },
+      {
+        onSuccess: () => {
+          setTicketRef('');
+          setLimited(false);
+          setChosen([]);
+        },
+      },
     );
   }
 
@@ -96,6 +141,14 @@ export function SupportAccessScreen() {
               <div>
                 <dt>Allowed by</dt>
                 <dd>{active.grantedBy}</dd>
+              </div>
+              <div>
+                <dt>Projects</dt>
+                <dd>
+                  {active.projectIds
+                    ? `${active.projectIds.length} chosen ${active.projectIds.length === 1 ? 'project' : 'projects'}`
+                    : 'All projects'}
+                </dd>
               </div>
               <div>
                 <dt>Until</dt>
@@ -135,11 +188,39 @@ export function SupportAccessScreen() {
               onChange={(e) => setHours(e.target.value)}
               options={HOURS}
             />
+            <fieldset className="stack">
+              <legend>Which projects</legend>
+              <Checkbox
+                label="Only the projects I choose"
+                hint="Otherwise support can see every project in the company."
+                checked={limited}
+                onChange={(e) => setLimited(e.target.checked)}
+              />
+              {limited
+                ? projectList.map((p) => (
+                    <Checkbox
+                      key={p.id}
+                      label={p.name}
+                      checked={chosen.includes(p.id)}
+                      onChange={(e) =>
+                        setChosen((c) =>
+                          e.target.checked ? [...c, p.id] : c.filter((id) => id !== p.id),
+                        )
+                      }
+                    />
+                  ))
+                : null}
+            </fieldset>
             {grant.isError && !Object.keys(server).length ? (
               <ErrorAlert error={grant.error} title="We couldn't allow access" />
             ) : null}
             <div>
-              <Button type="submit" disabled={grant.isPending || ticketRef.trim().length < 2}>
+              <Button
+                type="submit"
+                disabled={
+                  grant.isPending || ticketRef.trim().length < 2 || (limited && chosen.length === 0)
+                }
+              >
                 Allow support access
               </Button>
             </div>
@@ -156,6 +237,38 @@ export function SupportAccessScreen() {
           </ul>
         ) : (
           <p className="u-muted">Support has not opened any sessions.</p>
+        )}
+      </Card>
+
+      <Card title="What support looked at">
+        {reads.isPending ? (
+          <SkeletonRows rows={2} label="Loading what support looked at…" />
+        ) : reads.isError ? (
+          <ErrorAlert error={reads.error} title="We couldn't load what support looked at" />
+        ) : reads.data.length ? (
+          <ul className="support-access__list">
+            {reads.data.slice(0, 20).map((r) => (
+              <ReadRow key={r.id} r={r} />
+            ))}
+          </ul>
+        ) : (
+          <p className="u-muted">Support has not viewed any of your pages.</p>
+        )}
+      </Card>
+
+      <Card title="Account changes by Archova staff">
+        {actions.isPending ? (
+          <SkeletonRows rows={2} label="Loading account changes…" />
+        ) : actions.isError ? (
+          <ErrorAlert error={actions.error} title="We couldn't load account changes" />
+        ) : actions.data.length ? (
+          <ul className="support-access__list">
+            {actions.data.slice(0, 20).map((a) => (
+              <ActionRow key={a.id} a={a} />
+            ))}
+          </ul>
+        ) : (
+          <p className="u-muted">Archova staff have not changed your account.</p>
         )}
       </Card>
     </div>

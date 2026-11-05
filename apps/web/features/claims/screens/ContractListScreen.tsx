@@ -12,6 +12,7 @@ import {
 import { atLeast } from '@archova/domain/permissions';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { useCanReviewContracts } from '@/features/contract-review';
 import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -37,6 +38,7 @@ export function ContractListScreen() {
     perms.data?.orgRole === 'owner' ||
     perms.data?.orgRole === 'admin' ||
     atLeast(perms.data?.toolLevels.payment_claims, 'admin');
+  const canReview = useCanReviewContracts();
   const company = (id: string | null) => dir.companies.find((c) => c.id === id)?.name ?? '—';
 
   const columns: DataTableColumn<Contract>[] = [
@@ -80,11 +82,30 @@ export function ContractListScreen() {
         title="Contracts"
         description="Each contract carries its schedule of values, retention and the Security of Payment state its claims run under."
         actions={
-          canManage ? (
-            <Link className="link" href={webRoutes.newContract(org.orgSlug, project.projectId)}>
-              <Button type="button">New contract</Button>
-            </Link>
-          ) : undefined
+          <>
+            {canReview ? (
+              <Link
+                className="link"
+                href={webRoutes.contractReviews(org.orgSlug, project.projectId)}
+              >
+                <Button type="button" variant="secondary">
+                  Review with Nova
+                </Button>
+              </Link>
+            ) : null}
+            {canManage ? (
+              <Link className="link" href={webRoutes.costForecast(org.orgSlug, project.projectId)}>
+                <Button type="button" variant="secondary">
+                  Cost forecast
+                </Button>
+              </Link>
+            ) : null}
+            {canManage ? (
+              <Link className="link" href={webRoutes.newContract(org.orgSlug, project.projectId)}>
+                <Button type="button">New contract</Button>
+              </Link>
+            ) : null}
+          </>
         }
       />
       <ErrorAlert error={q.error} title="We couldn't load the contracts" />

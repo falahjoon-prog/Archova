@@ -7,6 +7,7 @@ export const queryKeys = {
   me: () => ['me'] as const,
   org: (orgId: string) => ['orgs', orgId] as const,
   entitlements: (orgId: string) => ['orgs', orgId, 'entitlements'] as const,
+  featureFlags: (orgId: string) => ['orgs', orgId, 'feature-flags'] as const,
   projects: (orgId: string) => ['orgs', orgId, 'projects'] as const,
   project: (orgId: string, projectId: string) => ['orgs', orgId, 'projects', projectId] as const,
   projectMembers: (orgId: string, projectId: string) =>
@@ -43,20 +44,33 @@ export type ProjectTool =
   | 'rfis'
   | 'submittals'
   | 'correspondence'
+  | 'coordination'
   | 'diary'
   | 'key-dates'
   | 'delays'
+  | 'programme'
   | 'defects'
   | 'meetings'
   | 'inductions'
   | 'attendance'
+  | 'roster'
+  | 'equipment'
+  | 'timesheets'
   | 'observations'
   | 'swms'
+  | 'incidents'
+  | 'inspections'
+  | 'late-submissions'
+  | 'spec-books'
+  | 'owner-portal'
+  | 'imports'
   | 'tender-packages'
   | 'takeoff-measurements'
   | 'estimates'
   | 'contracts'
-  | 'payment-claims';
+  | 'payment-claims'
+  | 'cost-forecast'
+  | 'budget';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */
 const queryOptions = <T extends { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>(
@@ -76,6 +90,14 @@ export function createQueries(api: ApiClient) {
         queryFn: async () =>
           unwrap(await api.GET('/v1/orgs/{orgId}/entitlements', { params: { path: { orgId } } })),
         staleTime: 5 * 60 * 1000,
+      }),
+    /** Flags that are on for this org; a flag launches a feature, entitlements still decide what is licensed. */
+    featureFlags: (orgId: string) =>
+      queryOptions({
+        queryKey: queryKeys.featureFlags(orgId),
+        queryFn: async () =>
+          unwrap(await api.GET('/v1/orgs/{orgId}/feature-flags', { params: { path: { orgId } } })),
+        staleTime: 60 * 1000,
       }),
     projects: (orgId: string) =>
       queryOptions({

@@ -16,5 +16,36 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
     tool: 'payment_claims',
     level: 'standard',
   },
+  { key: 'financials.forecast.read', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  { key: 'financials.forecast.manage', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  { key: 'financials.retention.manage', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  { key: 'financials.trust.manage', scope: 'project', tool: 'payment_claims', level: 'admin' },
   { key: 'financials.variations.decide', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  // Budgets are the builder's cost position (margin included), so the budget tool is admin-only by default and the
+  // client and subcontractor templates have none (permission templates).
+  { key: 'financials.budget.read', scope: 'project', tool: 'budget', level: 'standard' },
+  { key: 'financials.budget.manage', scope: 'project', tool: 'budget', level: 'admin' },
+  { key: 'financials.budget.view_margin', scope: 'project', tool: 'budget', level: 'admin' },
+  // Commitments are the builder's cost position too; staff only (the use cases also refuse outsiders).
+  {
+    key: 'financials.commitments.read',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.commitments.manage',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.commitments.decide',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'admin',
+  },
+  // Direct costs post to the budget, so they sit on the budget tool (admin-only by default).
+  { key: 'financials.direct_costs.read', scope: 'project', tool: 'budget', level: 'standard' },
+  { key: 'financials.direct_costs.manage', scope: 'project', tool: 'budget', level: 'standard' },
 ];

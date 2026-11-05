@@ -2,6 +2,11 @@ import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import { createAttendanceService, type ComplianceSource } from './application/attendance';
 import { createInductionLinkService, type InductionLinkDeps } from './application/induction-links';
+import { createTimesheetService } from './application/timesheet';
+import { createEquipmentService } from './application/equipment';
+import { createRosterService } from './application/roster';
+import { createWalletService } from './application/wallet';
+import { createWalletGrantService } from './application/wallet-grants';
 import { createInductionService, type InductionDeps } from './application/inductions';
 import { toSessionDto } from './api/mappers';
 import { workforceRoutes, type InductionHooks } from './api/routes';
@@ -20,6 +25,23 @@ export function createWorkforceModule(
   const attendance = createAttendanceService({ ...deps, complianceSources: sources });
   const inductions = createInductionService(deps, attendance);
   sources.unshift(inductions.gateSource);
+  const wallet = createWalletService({ files: deps.files, vault: deps.vault });
+  const grants = createWalletGrantService({
+    access: deps.access,
+    platform: deps.platform,
+    files: deps.files,
+  });
+  const roster = createRosterService({
+    access: deps.access,
+    attendance,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
+  const equipment = createEquipmentService({ access: deps.access });
+  const sheets = createTimesheetService({
+    access: deps.access,
+    attendance,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const links = createInductionLinkService({
     ...deps.links,
     database: services.database,
@@ -45,10 +67,21 @@ export function createWorkforceModule(
   };
   return {
     definition: defineModule({ name: 'workforce', permissions: WORKFORCE_PERMISSIONS }),
-    routes: workforceRoutes(services.database, attendance, inductions, links, {
-      logger: services.logger,
-      ...deps.hooks,
-    }),
+    routes: workforceRoutes(
+      services.database,
+      attendance,
+      inductions,
+      links,
+      wallet,
+      grants,
+      roster,
+      equipment,
+      sheets,
+      {
+        logger: services.logger,
+        ...deps.hooks,
+      },
+    ),
     api: {
       /** What the mobile pull reads (modules/sync): attendance sessions. */
       syncSource,
@@ -56,6 +89,8 @@ export function createWorkforceModule(
       closeOverdueSessions: attendance.closeOverdueSessions,
       /** For `ai` (ai/12 §3): a published version's slides and quiz (no answers), with internal ids. */
       getInductionVersion: inductions.versionForAi,
+      /** For `reporting` (tender-readiness pack): the company's own licences and insurances and how current each is. */
+      credentialSummary: wallet.readinessSummary,
     },
   };
 }

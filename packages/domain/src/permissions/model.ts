@@ -14,9 +14,11 @@ export const TOOLS = [
   'rfis',
   'submittals',
   'correspondence',
+  'coordination',
   'diary',
   'defects',
   'meetings',
+  'schedule',
   'inspections',
   'incidents',
   'budget',
@@ -26,6 +28,7 @@ export const TOOLS = [
   'directory',
   'workforce',
   'project_admin',
+  'owner_portal',
 ] as const;
 export type Tool = (typeof TOOLS)[number];
 

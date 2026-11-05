@@ -66,7 +66,12 @@ export function usePackageMutations(packageId: string) {
       onSuccess: invalidate,
     }),
     invite: useMutation({
-      mutationFn: (companyIds: string[]) => quotesSource.invite(projectId, packageId, companyIds),
+      mutationFn: (v: { companyIds: string[]; overrideReason?: string }) =>
+        quotesSource.invite(projectId, packageId, v.companyIds, v.overrideReason),
+      onSuccess: invalidate,
+    }),
+    resend: useMutation({
+      mutationFn: (companyId: string) => quotesSource.resendInvite(projectId, packageId, companyId),
       onSuccess: invalidate,
     }),
     upload: useMutation({
@@ -91,6 +96,13 @@ export function usePackageMutations(packageId: string) {
     transition: useMutation({
       mutationFn: (action: PackageAction) => quotesSource.transition(projectId, packageId, action),
       onSuccess: invalidate,
+    }),
+    subcontract: useMutation({
+      mutationFn: () => quotesSource.createSubcontract(projectId, packageId),
+    }),
+    commitment: useMutation({
+      mutationFn: (budgetLineId: string) =>
+        quotesSource.createCommitment(projectId, packageId, budgetLineId),
     }),
     allowance: useMutation({
       mutationFn: (v: { quoteId: string; scopeKey: string; cents: number | null }) =>

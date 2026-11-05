@@ -12,11 +12,18 @@ import { createDrawingService } from './application/drawings';
 import { createGeometryService } from './application/geometry';
 import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
+import { createSpecService } from './application/specs';
 import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
 import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
 import { toDocumentDto, toFolderDto } from './api/mappers';
+import {
+  createDrawingsSyncSource,
+  createMarkupCommand,
+  deleteMarkupCommand,
+  updateMarkupCommand,
+} from './api/drawings-sync';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
 
 export function createDocumentsModule(
@@ -40,6 +47,7 @@ export function createDocumentsModule(
   const documents = createDocumentService(c, folders);
   const drawings = createDrawingService(c);
   const markups = createMarkupService(c, drawings);
+  const specs = createSpecService(c);
   const geometry = createGeometryService(drawings);
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
@@ -77,6 +85,7 @@ export function createDocumentsModule(
       return out;
     },
   };
+  const drawingsSyncSource = createDrawingsSyncSource(drawings, markups);
   return {
     definition: defineModule({ name: 'documents', permissions: DOCUMENTS_PERMISSIONS }),
     routes: documentsRoutes({
@@ -86,6 +95,7 @@ export function createDocumentsModule(
       documents,
       drawings,
       markups,
+      specs,
       geometry,
       tiles,
       transmittals,
@@ -96,8 +106,18 @@ export function createDocumentsModule(
       logger: services.logger,
     }),
     api: {
+      /** For folder links (integrations/03 M2): each sheet's current revision, to publish what is already issued. */
+      currentDrawingRevisions: drawings.currentRevisions,
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
+      /** The drawing register and revisions the mobile pull reads (modules/sync). */
+      drawingsSyncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: [
+        createMarkupCommand(drawings, markups),
+        updateMarkupCommand(markups),
+        deleteMarkupCommand(markups),
+      ],
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */

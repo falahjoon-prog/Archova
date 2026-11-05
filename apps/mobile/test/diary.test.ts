@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   addDiaryLine,
+  attachDayPhoto,
+  newLineId,
   diaryToday,
   getDiaryDay,
   labourTotals,
@@ -12,6 +14,7 @@ import {
   yesterdaysCompanies,
 } from '../features/diary';
 import { migrate, SqliteSyncStore } from '../lib/db';
+import { UploadQueue, type FileTransfer, type UploadApi } from '../lib/files/upload-queue';
 import { nodeSqlDriver } from './support/node-sql';
 
 vi.mock('../features/diary/screens/DiaryScreen', () => ({}));
@@ -236,6 +239,108 @@ describe('site diary', () => {
     expect(await getDiaryDay(s, P, '2026-10-02')).toMatchObject({
       version: 3,
       entry: { id: 'dia_1', weather: { rainMm: 18 } },
+    });
+  });
+});
+
+describe('site diary ids and photos', () => {
+  it('chooses line ids in the server form', () => {
+    expect(newLineId('labour')).toMatch(/^dlb_/);
+    expect(newLineId('labour')).not.toBe(newLineId('labour'));
+  });
+
+  async function photoSetup() {
+    const db = await nodeSqlDriver().open('diary-photo.db');
+    await migrate(db);
+    const s = new SqliteSyncStore(db, { moduleOf: () => 'diary' });
+    const api: UploadApi = {
+      async createUpload(body) {
+        return {
+          id: 'upl_1',
+          status: 'pending',
+          uploadUrl: 'https://s3.example/put',
+          uploadMethod: 'PUT',
+          uploadHeaders: { 'content-type': body.mime },
+          expiresAt: new Date(Date.now() + 15 * 60_000).toISOString(),
+        };
+      },
+      async completeUpload() {
+        return {
+          id: 'fil_9',
+          projectId: P,
+          module: 'diary',
+          filename: 'p.jpg',
+          mime: 'image/jpeg',
+          sizeBytes: 1,
+          sha256: 'a'.repeat(64),
+          status: 'ready',
+          capture: null,
+          createdAt: new Date().toISOString(),
+        };
+      },
+    };
+    const transfer: FileTransfer = { put: async () => ({ status: 200 }) };
+    const uploads = new UploadQueue(db, s, api, transfer);
+    const taken = (n: number, date = '2026-10-02', amendmentReason?: string) => ({
+      projectId: P,
+      date: date as `${number}-${number}-${number}`,
+      photoId: `pho_${n}`,
+      mutationId: `mp${n}`,
+      capture: {} as never,
+      file: {
+        localUri: 'file:///p.jpg',
+        thumbnailUri: 'file:///t.jpg',
+        filename: 'p.jpg',
+        mime: 'image/jpeg',
+        sizeBytes: 1,
+        sha256: 'a'.repeat(64),
+      },
+      amendmentReason,
+      clientAt: AT,
+    });
+    return { s, uploads, deps: { db, store: s, uploads }, taken };
+  }
+
+  it('shows a photo on the day at once and holds its command until the file is stored', async () => {
+    const { s, uploads, deps, taken } = await photoSetup();
+    await addDiaryLine(s, {
+      kind: 'labour',
+      projectId: P,
+      date: '2026-10-02',
+      ...ids(),
+      line: labour('c1', 2),
+      clientAt: AT,
+    });
+    expect(await attachDayPhoto(deps, taken(1))).toEqual({ ok: true, value: null });
+    const day = await getDiaryDay(s, P, '2026-10-02');
+    expect(day.entry.localPhotos).toEqual([{ photoId: 'pho_1', thumbnailUri: 'file:///t.jpg' }]);
+    const queue = await s.listOutbox();
+    expect(queue.map((e) => e.command)).toEqual(['diary.addLabour', 'diary.attachPhoto']);
+    expect(queue[1]).toMatchObject({ status: 'held', dependsOn: [queue[0]!.mutationId] });
+    expect((await uploads.list()).map((f) => [f.id, f.module])).toEqual([['pho_1', 'diary']]);
+
+    await uploads.drain();
+    const sent = (await s.listOutbox())[1]!;
+    expect(sent).toMatchObject({
+      status: 'pending',
+      payload: { projectId: P, date: '2026-10-02', fileId: 'fil_9' },
+    });
+  });
+
+  it('is submitted after a queued photo, and refused on a submitted day without a reason', async () => {
+    const { s, deps, taken } = await photoSetup();
+    await attachDayPhoto(deps, taken(1));
+    await submitDiaryDay(s, { projectId: P, date: '2026-10-02', mutationId: 'ms', clientAt: AT });
+    const queue = await s.listOutbox();
+    expect(queue.at(-1)).toMatchObject({ command: 'diary.submit', dependsOn: ['mp1'] });
+
+    expect(await attachDayPhoto(deps, taken(2))).toEqual({
+      ok: false,
+      code: 'diary.amendment_reason_required',
+    });
+    expect(await attachDayPhoto(deps, taken(3, '2026-10-02', 'Missed one'))).toEqual({
+      ok: true,
+      value: null,
     });
   });
 });

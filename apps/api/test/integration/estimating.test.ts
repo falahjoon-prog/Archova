@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   addMember,
+  Browser,
   createOrg,
   createProject,
   createTestContext,
@@ -237,6 +238,16 @@ describe('tender packages and quotes (product/10)', () => {
     expect(
       (await s.tilerA.browser.get(`${s.base}/tender-packages/${pkg.id}`)).json().allowances,
     ).toEqual({});
+    expect(
+      (await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`)).json().code,
+    ).toBe('tender.invalid_state');
+    expect(
+      (
+        await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/commitment`, {
+          budgetLineId: 'bln_00000000000000000000000000',
+        })
+      ).json().code,
+    ).toBe('tender.invalid_state');
     const noReason = await s.pm.browser.post(
       `${s.base}/tender-packages/${pkg.id}/award`,
       { quoteId: qb.json().id },
@@ -261,6 +272,67 @@ describe('tender packages and quotes (product/10)', () => {
     expect(
       (await s.tilerA.browser.get(`${s.base}/tender-packages/${pkg.id}`)).json().award,
     ).toBeNull();
+
+    // Awarding raises the draft subcontract from the winning quote, once, for the winning company.
+    const raised = await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`);
+    expect(raised.statusCode).toBe(200);
+    expect(raised.json()).toMatchObject({ created: true });
+    expect(
+      (await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`)).statusCode,
+    ).toBeGreaterThanOrEqual(400);
+    const again = await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`);
+    expect(again.json()).toMatchObject({ created: false, contractId: raised.json().contractId });
+    const contract = await s.pm.browser.get(`${s.base}/contracts/${raised.json().contractId}`);
+    expect(contract.json().contract).toMatchObject({
+      kind: 'subcontract',
+      status: 'draft',
+      payeeCompanyId: s.coB.companyId,
+      originalValue: raised.json().originalValue,
+    });
+
+    // The same award can raise the budget commitment against a chosen budget line, once.
+    const code = (
+      await s.pm.browser.post(`${s.base}/cost-codes`, { code: '09-200', description: 'Tiling' })
+    ).json();
+    await s.pm.browser.post(`${s.base}/budget`);
+    const line = (
+      await s.pm.browser.post(`${s.base}/budget/lines`, {
+        costCodeId: code.id,
+        original: '90000.00',
+      })
+    ).json();
+    const raisedCommitment = await s.pm.browser.post(
+      `${s.base}/tender-packages/${pkg.id}/commitment`,
+      { budgetLineId: line.id },
+    );
+    expect(raisedCommitment.statusCode).toBe(200);
+    expect(raisedCommitment.json()).toMatchObject({
+      created: true,
+      total: raised.json().originalValue,
+    });
+    const repeatCommitment = await s.pm.browser.post(
+      `${s.base}/tender-packages/${pkg.id}/commitment`,
+      { budgetLineId: line.id },
+    );
+    expect(repeatCommitment.json()).toMatchObject({
+      created: false,
+      commitmentId: raisedCommitment.json().commitmentId,
+    });
+    const commitment = await s.pm.browser.get(
+      `${s.base}/commitments/${raisedCommitment.json().commitmentId}`,
+    );
+    expect(commitment.json().commitment).toMatchObject({
+      kind: 'subcontract',
+      status: 'draft',
+      vendorCompanyId: s.coB.companyId,
+    });
+    expect(
+      (
+        await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/commitment`, {
+          budgetLineId: line.id,
+        })
+      ).statusCode,
+    ).toBeGreaterThanOrEqual(400);
 
     // After the award: no more quotes, no edits, and the winning quote can't be declined.
     const late = await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/quotes`, {
@@ -371,5 +443,219 @@ describe('tender packages and quotes (product/10)', () => {
     await expect(
       uploadFile(t, s.viewer.browser, s.org.id, s.project.id, 'quote.pdf', 'estimating'),
     ).rejects.toThrow(/403/);
+  });
+  it('shows the bid board to staff only, with invitee answers and the lowest levelled price', async () => {
+    const s = await setup();
+    const make = async (name: string, trade: string, dueAt: string) => {
+      const res = await s.pm.browser.post(`${s.base}/tender-packages`, {
+        name,
+        trade,
+        dueAt,
+        scope,
+      });
+      return res.json();
+    };
+    const tiling = await make('Tiling', 'Tiling', '2031-01-15T05:00:00Z');
+    await make('Electrical', 'Electrical', '2030-01-15T05:00:00Z');
+    await s.pm.browser.post(`${s.base}/tender-packages/${tiling.id}/invites`, {
+      companyIds: [s.coA.companyId, s.coB.companyId],
+    });
+    const draft = await s.pm.browser.get(`${s.base}/tender-packages/${tiling.id}`);
+    await s.pm.browser.post(
+      `${s.base}/tender-packages/${tiling.id}/transition`,
+      { action: 'send' },
+      { 'if-match': etagOf(draft) },
+    );
+    const quoted = await s.tilerA.browser.post(`${s.base}/tender-packages/${tiling.id}/quotes`, {
+      lines: [
+        { scopeKey: 'floor', description: 'Floor', amount: '4000.00' },
+        { scopeKey: 'wall', description: 'Wall', amount: '7000.00' },
+      ],
+    });
+    await s.pm.browser.post(
+      `${s.base}/tender-packages/${tiling.id}/quotes/${quoted.json().id}/confirm`,
+      undefined,
+      { 'if-match': etagOf(quoted) },
+    );
+
+    const board = await s.pm.browser.get(`/v1/orgs/${s.org.id}/bid-board`);
+    expect(board.statusCode).toBe(200);
+    const rows = board.json().data as Array<Record<string, unknown>>;
+    expect(rows.map((r) => r.name)).toEqual(['Electrical', 'Tiling']);
+    expect(rows[1]).toMatchObject({
+      projectName: 'Tower T',
+      status: 'out_to_tender',
+      dueState: 'open',
+      quotesConfirmed: 1,
+      quotesToReview: 0,
+      lowestExGst: '11000.00',
+      invites: { submitted: 1, invited: 1, awaiting: 1 },
+    });
+    expect(rows[0]).toMatchObject({ status: 'draft', dueState: null, lowestExGst: null });
+
+    const filtered = await s.pm.browser.get(`/v1/orgs/${s.org.id}/bid-board?status=draft`);
+    expect(filtered.json().data).toHaveLength(1);
+
+    // Subcontractors and clients never reach the board.
+    for (const who of [s.tilerA, s.viewer]) {
+      expect((await who.browser.get(`/v1/orgs/${s.org.id}/bid-board`)).statusCode).toBe(403);
+    }
+  });
+  it('keeps reusable bidder lists for staff, checks companies and refuses outsiders', async () => {
+    const s = await setup();
+    const base = `/v1/orgs/${s.org.id}/bidder-lists`;
+    const made = await s.pm.browser.post(base, {
+      name: 'Usual tilers',
+      trade: 'Tiling',
+      companyIds: [s.coA.companyId, s.coB.companyId, s.coA.companyId],
+    });
+    expect(made.statusCode).toBe(201);
+    expect(made.json()).toMatchObject({ name: 'Usual tilers', trade: 'Tiling', version: 1 });
+    expect(made.json().companyIds).toEqual([s.coA.companyId, s.coB.companyId]);
+
+    const dup = await s.pm.browser.post(base, { name: 'usual TILERS' });
+    expect(dup.json().code).toBe('bidder_list.name_taken');
+    const bad = await s.pm.browser.post(base, {
+      name: 'Ghosts',
+      companyIds: ['cmp_00000000000000000000000000'],
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const renamed = await s.pm.browser.patch(
+      `${base}/${made.json().id}`,
+      { name: 'Tilers A and B', companyIds: [s.coA.companyId] },
+      { 'if-match': etagOf(made) },
+    );
+    expect(renamed.json()).toMatchObject({ name: 'Tilers A and B', version: 2 });
+    expect(renamed.json().companyIds).toEqual([s.coA.companyId]);
+    const stale = await s.pm.browser.patch(
+      `${base}/${made.json().id}`,
+      { trade: 'Floors' },
+      { 'if-match': etagOf(made) },
+    );
+    expect(stale.statusCode).toBe(412);
+
+    await s.pm.browser.post(base, { name: 'Sparkies', trade: 'Electrical' });
+    expect((await s.pm.browser.get(base)).json().data.map((l: { name: string }) => l.name)).toEqual(
+      ['Sparkies', 'Tilers A and B'],
+    );
+    expect((await s.pm.browser.get(`${base}?trade=Tiling`)).json().data).toHaveLength(1);
+
+    for (const who of [s.tilerA, s.viewer]) {
+      expect((await who.browser.get(base)).statusCode).toBe(403);
+      expect((await who.browser.post(base, { name: 'Mine' })).statusCode).toBe(403);
+    }
+    expect((await s.pm.browser.del(`${base}/${made.json().id}`)).statusCode).toBe(204);
+    expect((await s.pm.browser.get(base)).json().data).toHaveLength(1);
+  });
+});
+
+describe('tender invite links (X45)', () => {
+  const tokenIn = (to: string) => {
+    const mail = t.messages.sent.filter((m) => m.to === to).at(-1)!;
+    return /\/q\/(arl_[A-Za-z0-9_-]+)/.exec(mail.text)![1]!;
+  };
+
+  it('emails each invited company its own link once the package goes out, and lets it answer', async () => {
+    const pm = await signUp(t.app, 'inv-pm');
+    const org = await createOrg(pm.browser, 'Invite Builder');
+    const project = await createProject(pm.browser, org.id, { name: 'Tower Q', state: 'QLD' });
+    const base = `/v1/orgs/${org.id}/projects/${project.id}`;
+    const a = await signUp(t.app, 'inv-a');
+    const b = await signUp(t.app, 'inv-b');
+    const coA = await addMember(
+      pm.browser,
+      org.id,
+      project.id,
+      a.email,
+      'Subcontractor',
+      'Inv A',
+      [],
+      'bids@inv-a.example.com',
+    );
+    const coB = await addMember(pm.browser, org.id, project.id, b.email, 'Subcontractor', 'Inv B');
+
+    const draft = await pm.browser.post(`${base}/tender-packages`, {
+      name: 'Tiling',
+      trade: 'Tiling',
+      dueAt: '2031-01-15T05:00:00Z',
+      scope,
+    });
+    const pkg = draft.json();
+    await pm.browser.post(`${base}/tender-packages/${pkg.id}/invites`, {
+      companyIds: [coA.companyId, coB.companyId],
+    });
+    // Nothing goes out while the package is a draft.
+    expect(t.messages.sent.filter((m) => m.to === 'bids@inv-a.example.com')).toHaveLength(0);
+
+    const sent = await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/transition`,
+      { action: 'send' },
+      {
+        'if-match': (await pm.browser.get(`${base}/tender-packages/${pkg.id}`)).headers
+          .etag as string,
+      },
+    );
+    expect(sent.statusCode).toBe(200);
+    expect(JSON.stringify(sent.json())).not.toMatch(/arl_/);
+    const byCompany = (
+      body: { invites: Array<{ companyId: string; deliveredAt: string | null }> },
+      id: string,
+    ) => body.invites.find((i) => i.companyId === id)!;
+    expect(byCompany(sent.json(), coA.companyId).deliveredAt).toBeTruthy();
+    // No address on the company record: nothing is sent, and the invite says so.
+    expect(byCompany(sent.json(), coB.companyId).deliveredAt).toBeNull();
+    expect(t.messages.sent.filter((m) => m.to === 'bids@inv-a.example.com')).toHaveLength(1);
+
+    const guest = new Browser(t.app);
+    const first = tokenIn('bids@inv-a.example.com');
+    const opened = await guest.post('/v1/tender-access', { token: first });
+    expect(opened.statusCode).toBe(200);
+    expect(opened.headers['referrer-policy']).toBe('no-referrer');
+    expect(opened.json()).toMatchObject({
+      package: { number: 'TP-001', name: 'Tiling', fromOrg: 'Invite Builder' },
+      invite: { status: 'viewed' },
+    });
+    // The guest sees the scope wording only: no quantities, no other bidders.
+    expect(JSON.stringify(opened.json())).not.toMatch(/quantity|Inv B/);
+
+    const intends = await guest.post('/v1/tender-access/respond', { response: 'intends_to_quote' });
+    expect(intends.json().invite.status).toBe('intends_to_quote');
+    const seen = (await pm.browser.get(`${base}/tender-packages/${pkg.id}`)).json();
+    expect(byCompany(seen, coA.companyId)).toMatchObject({ status: 'intends_to_quote' });
+
+    // The builder cannot resend to a company with no address.
+    const none = await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/invites/${coB.companyId}/resend`,
+    );
+    expect(none.json().code).toBe('tender.no_contact_email');
+
+    // A lost email: resend replaces the link, and the old one stops working at once.
+    const resent = await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/invites/${coA.companyId}/resend`,
+    );
+    expect(resent.statusCode).toBe(200);
+    expect(tokenIn('bids@inv-a.example.com')).not.toBe(first);
+    expect((await guest.get('/v1/tender-access')).json().code).toBe('access_link.invalid');
+    expect((await new Browser(t.app).post('/v1/tender-access', { token: first })).json().code).toBe(
+      'access_link.invalid',
+    );
+
+    // No cookie, no access; and a link ends with the tender.
+    expect((await new Browser(t.app).get('/v1/tender-access')).json().code).toBe(
+      'access_link.session_required',
+    );
+    const fresh = new Browser(t.app);
+    expect(
+      (await fresh.post('/v1/tender-access', { token: tokenIn('bids@inv-a.example.com') }))
+        .statusCode,
+    ).toBe(200);
+    const latest = await pm.browser.get(`${base}/tender-packages/${pkg.id}`);
+    await pm.browser.post(
+      `${base}/tender-packages/${pkg.id}/transition`,
+      { action: 'close' },
+      { 'if-match': latest.headers.etag as string },
+    );
+    expect((await fresh.get('/v1/tender-access')).json().code).toBe('access_link.invalid');
   });
 });

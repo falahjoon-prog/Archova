@@ -16,6 +16,7 @@ import {
   Textarea,
 } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
+import { OnProgramme } from '@/features/schedule';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -23,11 +24,13 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useSheetPicker } from '@/features/drawings';
+import { RelatedMeetings } from '@/features/meetings';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
 import { RespondForm } from '../components/RespondForm';
+import { RfiPhotos } from '../components/RfiPhotos';
 import { ImpactChip, RfiDue, RfiStatusPill, ballInCourtLabel } from '../components/RfiChips';
 import { RfiForm } from '../forms/RfiForm';
 import { useRfi, useRfiMutations } from '../hooks/useRfis';
@@ -97,6 +100,7 @@ function DraftView({ rfi }: { rfi: Rfi }) {
           m.update.mutate({ id: rfi.id, input }, { onSuccess: () => m.submit.mutate(rfi.id) })
         }
       />
+      <RfiPhotos rfi={rfi} />
     </div>
   );
 }
@@ -109,7 +113,14 @@ function RfiView({ rfi }: { rfi: Rfi }) {
   const m = useRfiMutations(project.projectId);
   const today = todayIn(project.timezone);
   const [params, setParams] = useUrlState(['tab'] as const);
-  const tab = ['details', 'responses', 'activity'].includes(params.tab) ? params.tab : 'details';
+  const tab = [
+    'details',
+    'responses',
+    'activity',
+    ...(previewDataOnly ? [] : ['related']),
+  ].includes(params.tab)
+    ? params.tab
+    : 'details';
   const respondRef = useRef<HTMLTextAreaElement>(null);
   const [closing, setClosing] = useState(false);
   const [official, setOfficial] = useState<string>('');
@@ -216,6 +227,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
           { id: 'details', label: 'Details' },
           { id: 'responses', label: 'Responses', count: rfi.responses.length },
           { id: 'activity', label: 'Activity' },
+          ...(previewDataOnly ? [] : [{ id: 'related', label: 'Related' }]),
         ]}
       >
         {tab === 'details' ? <Details rfi={rfi} /> : null}
@@ -227,6 +239,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
             ) : null}
           </div>
         ) : null}
+        {tab === 'related' ? <RelatedMeetings type="rfi" id={rfi.id} /> : null}
         {tab === 'activity' ? (
           <ActivityTimeline
             entries={rfi.activity.map((a) => ({
@@ -335,6 +348,13 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 }
 
 function Details({ rfi }: { rfi: Rfi }) {
+  const [{ photo }] = useUrlState(['photo'] as const);
+  // A photo open for marking takes the whole tab, so the canvas isn't pushed below the fold.
+  if (photo) return <RfiPhotos rfi={rfi} />;
+  return <DetailsBody rfi={rfi} />;
+}
+
+function DetailsBody({ rfi }: { rfi: Rfi }) {
   const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
@@ -407,6 +427,8 @@ function Details({ rfi }: { rfi: Rfi }) {
           ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
         ]}
       />
+      <RfiPhotos rfi={rfi} />
+      <OnProgramme kind="rfi" itemId={rfi.id} />
     </div>
   );
 }

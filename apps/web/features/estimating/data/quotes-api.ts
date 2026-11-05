@@ -89,6 +89,7 @@ export function createQuotesApi(orgId: string): QuotesSource {
       companyId: i.companyId,
       status: i.status,
       invitedAt: i.invitedAt,
+      deliveredAt: i.deliveredAt,
     })),
     allowances: Object.fromEntries(Object.entries(p.allowances).map(([k, v]) => [k, toCents(v)])),
     award: p.award
@@ -222,12 +223,22 @@ export function createQuotesApi(orgId: string): QuotesSource {
       return toPackage(updated, await names(projectId));
     },
 
-    async invite(projectId, packageId, companyIds) {
+    async invite(projectId, packageId, companyIds, overrideReason) {
       await ensureCsrfToken();
       const updated = unwrap(
         await api.POST(`${PKG}/invites`, {
           params: { path: { orgId, projectId, packageId }, header: idempotencyKey() },
-          body: { companyIds },
+          body: overrideReason ? { companyIds, overrideReason } : { companyIds },
+        }),
+      );
+      return toPackage(updated, await names(projectId));
+    },
+
+    async resendInvite(projectId, packageId, companyId) {
+      await ensureCsrfToken();
+      const updated = unwrap(
+        await api.POST(`${PKG}/invites/{companyId}/resend`, {
+          params: { path: { orgId, projectId, packageId, companyId } },
         }),
       );
       return toPackage(updated, await names(projectId));
@@ -398,6 +409,27 @@ export function createQuotesApi(orgId: string): QuotesSource {
         }),
       );
       return toPackage(awarded, await names(projectId));
+    },
+
+    async createSubcontract(projectId, packageId) {
+      await ensureCsrfToken();
+      const r = unwrap(
+        await api.POST(`${PKG}/subcontract`, {
+          params: { path: { orgId, projectId, packageId } },
+        }),
+      );
+      return { contractId: r.contractId, number: r.number, created: r.created };
+    },
+
+    async createCommitment(projectId, packageId, budgetLineId) {
+      await ensureCsrfToken();
+      const r = unwrap(
+        await api.POST(`${PKG}/commitment`, {
+          params: { path: { orgId, projectId, packageId } },
+          body: { budgetLineId },
+        }),
+      );
+      return { commitmentId: r.commitmentId, number: r.number, total: r.total, created: r.created };
     },
 
     async askNova(projectId, packageId, { quoteId, targetCents, topic, question }) {

@@ -1,5 +1,7 @@
 import { encodeId } from '@archova/domain';
 import type {
+  BidBoardEntry,
+  BidderList,
   CostItem,
   CostRate,
   Estimate,
@@ -12,6 +14,8 @@ import type {
 } from '@archova/contracts';
 import type { QuoteNote as NoteRow } from '../infra/tables';
 import type { PackageView, QuoteView } from '../application/tender';
+import type { BidderListRow } from '../application/bidders';
+import type { BoardRow } from '../application/board';
 import type { MeasurementRow } from '../application/takeoff';
 import type { CostItemView, CostRateRow } from '../application/library';
 import type { EstimateRow, EstimateView } from '../application/estimate';
@@ -21,11 +25,10 @@ import {
   OUTLIER_PERCENT,
   type Comparison,
 } from '../domain/comparison';
-import { fromCents } from '../domain/tender';
+import { formatPackageNumber, fromCents } from '../domain/tender';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const userOrNull = (id: string | null) => (id ? encodeId('user', id) : null);
-export const formatPackageNumber = (n: number) => `TP-${String(n).padStart(3, '0')}`;
 
 /** Allowance keys are `quoteId:scopeKey`; the quote id is public on the wire and internal in storage. */
 const allowanceKeysOut = (a: Record<string, string>) =>
@@ -56,6 +59,7 @@ export const toPackageDto = (p: PackageView): TenderPackage => ({
     invitedAt: i.invitedAt.toISOString(),
     viewedAt: iso(i.viewedAt),
     respondedAt: iso(i.respondedAt),
+    deliveredAt: iso(i.deliveredAt),
   })),
   allowances: allowanceKeysOut(p.allowances),
   award:
@@ -245,4 +249,31 @@ export const toEstimateDto = ({ estimate: e, lines, totals }: EstimateView): Est
   createdAt: e.createdAt.toISOString(),
   updatedAt: e.updatedAt.toISOString(),
   version: e.version,
+});
+
+export const toBoardEntryDto = (r: BoardRow): BidBoardEntry => ({
+  id: encodeId('tenderPackage', r.id),
+  projectId: encodeId('project', r.projectId),
+  projectName: r.projectName,
+  numberLabel: formatPackageNumber(r.number),
+  name: r.name,
+  trade: r.trade,
+  status: r.status,
+  dueAt: iso(r.dueAt),
+  dueState: r.dueState,
+  invites: r.invites,
+  quotesConfirmed: r.quotesConfirmed,
+  quotesToReview: r.quotesToReview,
+  lowestExGst: r.lowestExGst,
+  awarded: r.awarded,
+});
+
+export const toBidderListDto = (r: BidderListRow): BidderList => ({
+  id: encodeId('bidderList', r.id),
+  name: r.name,
+  trade: r.trade,
+  companyIds: r.companyIds.map((c) => encodeId('company', c)),
+  createdAt: r.createdAt.toISOString(),
+  updatedAt: r.updatedAt.toISOString(),
+  version: r.version,
 });

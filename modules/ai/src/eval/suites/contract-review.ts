@@ -62,7 +62,17 @@ export const heuristicContractReview: FakeResponder = (req) => {
       .map((r) => r.trim())
       .filter(Boolean),
   }));
-  const output: ContractReviewOutput = { summary: [], timeBars: [], departures: [] };
+  const rules = [
+    ...req.text.matchAll(
+      /<rule key="([^"]+)"><name>([\s\S]*?)<\/name><detect>[\s\S]*?<\/detect><\/rule>/g,
+    ),
+  ].map((m) => ({ key: m[1]!, name: unescape(m[2]!).toLowerCase() }));
+  const output: ContractReviewOutput = {
+    summary: [],
+    timeBars: [],
+    departures: [],
+    statutory: [],
+  };
 
   for (const p of pages)
     for (const row of p.rows) {
@@ -90,6 +100,16 @@ export const heuristicContractReview: FakeResponder = (req) => {
           clause,
           quote: row.slice(0, 400),
         });
+
+      // A statutory rule matches a clause that holds its whole name; the stand-in only finds, it never judges.
+      for (const r of rules)
+        if (body.toLowerCase().includes(r.name))
+          output.statutory!.push({
+            ruleKey: r.key,
+            page: p.page,
+            clause,
+            quote: row.slice(0, 400),
+          });
 
       for (const t of topics) {
         const limit = numberIn(t.limit);

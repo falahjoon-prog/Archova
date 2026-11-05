@@ -20,8 +20,10 @@ import {
 import { EstimatingIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { listsFor, listCandidates, useBidderLists } from '@/features/bid-board';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
+import { toErrorView } from '@/shared/lib/errors';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatInstant, todayIn } from '@/shared/lib/format';
@@ -29,6 +31,7 @@ import { mockId } from '@/shared/mocks/runtime';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { useBudget } from '@/features/budget';
 import { usePackage, usePackageMutations, useQuotes, useQuotesSource } from '../hooks/useQuotes';
 import { comparableQuotes, levelQuotes, lowestQuoteId, parseScopeCsv } from '../lib/levelling';
 import {
@@ -185,6 +188,7 @@ function Comparison({
 }) {
   const project = useCurrentProject();
   const { companyName } = useProjectDirectory();
+  const org = useCurrentOrg();
   const m = usePackageMutations(pkg.id);
   const today = todayIn(project.timezone);
   const comparable = comparableQuotes(quotes);
@@ -202,6 +206,38 @@ function Comparison({
         <Alert tone="success" title={`Selected ${companyName(awarded.companyId)}`}>
           {pkg.award.by} selected this quote on {formatInstant(pkg.award.at, project.timezone)}.
           {pkg.award.reason ? ` Reason: ${pkg.award.reason}` : ''}
+          <div className="row">
+            {m.subcontract.data ? (
+              <Link
+                className="link"
+                href={webRoutes.contract(
+                  org.orgSlug,
+                  project.projectId,
+                  m.subcontract.data.contractId,
+                )}
+              >
+                {m.subcontract.data.created
+                  ? 'Draft subcontract created'
+                  : 'Subcontract already created'}
+                : open subcontract {m.subcontract.data.number}
+              </Link>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled={m.subcontract.isPending}
+                onClick={() => m.subcontract.mutate()}
+              >
+                Create subcontract from this quote
+              </Button>
+            )}
+          </div>
+          <ErrorAlert error={m.subcontract.error} title="We couldn't create the subcontract" />
+          <CommitmentRaiser
+            raise={(budgetLineId) => m.commitment.mutate(budgetLineId)}
+            pending={m.commitment.isPending}
+            result={m.commitment.data ?? null}
+            error={m.commitment.error}
+          />
         </Alert>
       ) : null}
       {toReview ? (
@@ -461,10 +497,14 @@ function Quotes({
 
 function Scope({ pkg }: { pkg: TenderPackage }) {
   const { companies, companyName, onProject } = useProjectDirectory();
+  const project = useCurrentProject();
   const m = usePackageMutations(pkg.id);
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
   const [invite, setInvite] = useState<string[]>([]);
+  const [overrideReason, setOverrideReason] = useState('');
+  const notQualified = toErrorView(m.invite.error).code === 'tender.company_not_qualified';
+  const bidderLists = useBidderLists({ enabled: !previewDataOnly });
   const locked = pkg.status === 'awarded';
   const invited = new Set(pkg.invites.map((i) => i.companyId));
   const candidates = companies
@@ -595,7 +635,34 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
           <ul className="plain-list">
             {pkg.invites.map((i) => (
               <li key={i.companyId} className="row-actions">
-                <span>{companyName(i.companyId)}</span>
+                <span>
+                  {companyName(i.companyId)}
+                  {pkg.status === 'draft' ? (
+                    <span className="u-caption u-block">
+                      Gets a link by email when you send it.
+                    </span>
+                  ) : i.deliveredAt ? (
+                    <span className="u-caption u-block">
+                      Link emailed {formatInstant(i.deliveredAt, project.timezone)}
+                    </span>
+                  ) : (
+                    <span className="u-caption u-block">
+                      Not emailed yet. Check the company has an email address, then resend.
+                    </span>
+                  )}
+                </span>
+                {pkg.status === 'out_to_tender' &&
+                ['invited', 'viewed', 'intends_to_quote'].includes(i.status) ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={m.resend.isPending && m.resend.variables === i.companyId}
+                    aria-label={`Resend link to ${companyName(i.companyId)}`}
+                    onClick={() => m.resend.mutate(i.companyId)}
+                  >
+                    Resend link
+                  </Button>
+                ) : null}
                 <StatusPill
                   tone={
                     i.status === 'declined'
@@ -620,8 +687,35 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
           </p>
         ) : null}
         {!locked && candidates.length ? (
-          <fieldset className="fieldset">
-            <legend>Invite (they get one link by email and can quote without an account)</legend>
+          <fieldset className="fieldset stack">
+            <legend>
+              Invite (each gets a link by email to see the scope and say if they will quote)
+            </legend>
+            {bidderLists.data?.length ? (
+              <Select
+                label="Tick a bidder list"
+                value=""
+                placeholder="Choose a list"
+                hint="Ticks the list's subcontractors who are on this project and not yet invited."
+                options={listsFor(bidderLists.data, pkg.trade).map((l) => ({
+                  value: l.id,
+                  label: l.trade ? `${l.name} · ${l.trade}` : l.name,
+                }))}
+                onChange={(e) => {
+                  const list = bidderLists.data?.find((l) => l.id === e.target.value);
+                  if (list)
+                    setInvite([
+                      ...new Set([
+                        ...invite,
+                        ...listCandidates(
+                          list,
+                          candidates.map((c) => c.id),
+                        ),
+                      ]),
+                    ]);
+                }}
+              />
+            ) : null}
             <div className="check-grid">
               {candidates.map((c) => (
                 <Checkbox
@@ -636,10 +730,29 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
                 />
               ))}
             </div>
+            {notQualified ? (
+              <TextField
+                label="Override reason (admins only)"
+                value={overrideReason}
+                maxLength={500}
+                hint="These companies aren't prequalified. To invite them anyway, an admin can record why."
+                onChange={(e) => setOverrideReason(e.target.value)}
+              />
+            ) : null}
             <div className="u-m-0">
               <Button
                 disabled={!invite.length || m.invite.isPending}
-                onClick={() => m.invite.mutate(invite, { onSuccess: () => setInvite([]) })}
+                onClick={() =>
+                  m.invite.mutate(
+                    { companyIds: invite, overrideReason: overrideReason.trim() || undefined },
+                    {
+                      onSuccess: () => {
+                        setInvite([]);
+                        setOverrideReason('');
+                      },
+                    },
+                  )
+                }
               >
                 Send {invite.length || ''} {invite.length === 1 ? 'invite' : 'invites'}
               </Button>
@@ -647,7 +760,63 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
           </fieldset>
         ) : null}
         <ErrorAlert error={m.invite.error} title="We couldn't send the invites" />
+        <ErrorAlert error={m.resend.error} title="We couldn't resend that link" />
       </section>
+    </div>
+  );
+}
+
+/** Picks the budget line the awarded price counts against, then raises the draft commitment. */
+function CommitmentRaiser({
+  raise,
+  pending,
+  result,
+  error,
+}: {
+  raise: (budgetLineId: string) => void;
+  pending: boolean;
+  result: { number: number; created: boolean } | null;
+  error: unknown;
+}) {
+  const project = useCurrentProject();
+  const budget = useBudget(project.projectId);
+  const lines = (budget.data?.lines ?? []).filter((l) => !l.isMargin);
+  const [lineId, setLineId] = useState('');
+  if (result)
+    return (
+      <p className="u-m-0">
+        {result.created ? 'Draft commitment created' : 'Commitment already created'}: commitment{' '}
+        {result.number}. Submit it for approval from the project's commitments.
+      </p>
+    );
+  if (budget.isPending || lines.length === 0)
+    return (
+      <p className="u-caption u-m-0">
+        {budget.isPending
+          ? 'Checking the budget…'
+          : 'Add a budget line to raise a commitment from this award.'}
+      </p>
+    );
+  return (
+    <div className="stack">
+      <Select
+        label="Budget line for the commitment"
+        value={lineId}
+        options={[
+          { value: '', label: 'Choose a budget line' },
+          ...lines.map((l) => ({
+            value: l.id,
+            label: `${l.code} ${l.description || l.codeDescription}`,
+          })),
+        ]}
+        onChange={(e) => setLineId(e.target.value)}
+      />
+      <div className="row">
+        <Button variant="secondary" disabled={!lineId || pending} onClick={() => raise(lineId)}>
+          Create budget commitment
+        </Button>
+      </div>
+      <ErrorAlert error={error} title="We couldn't create the commitment" />
     </div>
   );
 }

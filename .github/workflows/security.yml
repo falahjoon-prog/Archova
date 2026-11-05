@@ -14,8 +14,9 @@ on:
     - cron: '30 18 * * 1' # Tuesday 4:30am Sydney: catch new advisories on unchanged code
 
 concurrency:
-  group: security-${{ github.ref }}
-  cancel-in-progress: true
+  group: security-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  # Never cancel a run on main: each push to main must finish its own full run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -32,7 +33,7 @@ jobs:
       - name: gitleaks
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.28.0 \
-            git --redact --no-banner --exit-code 1 .
+            git --redact --verbose --no-banner --exit-code 1 .
 
   audit:
     name: Dependency audit (high and critical)

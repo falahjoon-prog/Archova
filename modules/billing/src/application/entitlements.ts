@@ -1,7 +1,7 @@
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, isNull } from 'drizzle-orm';
 import { CORE_MODULES } from '@archova/domain';
 import type { Entitlements, KernelServices } from '@archova/kernel';
-import { orgAccounts, planVersions } from '../infra/tables';
+import { orgAccounts, orgOverrides, planVersions } from '../infra/tables';
 
 /**
  * What an org with no account row gets: a trial with the core modules and the phase 1 feature modules, no limits
@@ -25,6 +25,10 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'correspondence',
     'workforce',
     'estimating',
+    // Owner and client portal (phase 5).
+    'ownerportal',
+    // Design coordination (phase 5): models and coordination issues.
+    'bim',
     // Contracts, claims and SOPA schedules (phase 2). Paid plans list this as 'claims'; until the catalogue is
     // reconciled the trial (pilots) is the only way in, and every date shows "rules not yet legally reviewed".
     'financials',
@@ -49,6 +53,23 @@ export const trialEntitlementProvider: EntitlementProvider = {
   forOrg: async () => TRIAL_ENTITLEMENTS,
 };
 
+type Override = typeof orgOverrides.$inferSelect;
+
+/**
+ * Staff overrides on top of the plan: a module added, or a limit replaced, while the override is live.
+ * Only live rows are passed in; an override never removes a module or lifts read-only/suspension.
+ */
+export function applyOverrides(base: Entitlements, overrides: readonly Override[]): Entitlements {
+  if (!overrides.length) return base;
+  const modules = new Set<string>(base.modules);
+  const limits = { ...base.limits };
+  for (const o of overrides) {
+    if (o.kind === 'module') modules.add(o.key);
+    else if (o.limitValue !== null) limits[o.key] = o.limitValue;
+  }
+  return { ...base, modules: [...modules], limits };
+}
+
 /**
  * Entitlements from the org's account row and the published plan version: the plan's modules on top of the core
  * ones, the plan's Nova allowance, and `read_only` while the company is suspended. No row means a trial.
@@ -56,8 +77,8 @@ export const trialEntitlementProvider: EntitlementProvider = {
 export function createDbEntitlementProvider(
   services: Pick<KernelServices, 'database'>,
 ): EntitlementProvider {
-  return {
-    async forOrg(orgId) {
+  async function baseEntitlements(orgId: string): Promise<Entitlements> {
+    {
       const found = await services.database.withGlobalTx('billing', async (tx) => {
         const [acct] = await tx.select().from(orgAccounts).where(eq(orgAccounts.id, orgId));
         if (!acct) return null;
@@ -102,6 +123,27 @@ export function createDbEntitlementProvider(
         modules: [...CORE_MODULES, 'billing', ...plan.modules],
         limits: { ...TRIAL_ENTITLEMENTS.limits, 'limit.ai_credits': plan.aiCreditsMonthly },
       };
+    }
+  }
+
+  return {
+    async forOrg(orgId) {
+      const [base, overrides] = await Promise.all([
+        baseEntitlements(orgId),
+        services.database.withGlobalTx('billing', (tx) =>
+          tx
+            .select()
+            .from(orgOverrides)
+            .where(
+              and(
+                eq(orgOverrides.targetOrgId, orgId),
+                isNull(orgOverrides.revokedAt),
+                gt(orgOverrides.expiresAt, new Date()),
+              ),
+            ),
+        ),
+      ]);
+      return applyOverrides(base, overrides);
     },
   };
 }

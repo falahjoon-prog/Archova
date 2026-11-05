@@ -16,6 +16,9 @@ export type CreateItem = S['CreateMeetingItemRequest'];
 export type UpdateItem = S['UpdateMeetingItemRequest'];
 export type Issue = S['IssueMeetingRequest'];
 export type Attendance = S['MeetingAttendance'];
+export type LiveSource = S['MeetingLiveSource'];
+export type LiveList = S['MeetingLiveList'];
+export type LinkedItem = S['MeetingLinkedItem'];
 
 /** One item Nova proposes from typed notes (F7): ids are public ids, `quote` is the notes' own words. */
 export interface DraftedItem {
@@ -44,6 +47,17 @@ export function createMeetingsApi(orgId: string) {
     async series(projectId: string): Promise<MeetingSeries[]> {
       return unwrap(await api.GET(`${P}/meeting-series`, { params: { path: path(projectId) } }))
         .data;
+    },
+    /** Minute items linked to one RFI, defect or variation, for its Related tab (MTG-AC5). */
+    async linkedItems(
+      projectId: string,
+      link: { type: 'rfi' | 'defect' | 'variation'; id: string },
+    ): Promise<LinkedItem[]> {
+      return unwrap(
+        await api.GET(`${P}/meeting-links`, {
+          params: { path: path(projectId), query: link },
+        }),
+      ).data;
     },
     async createSeries(
       projectId: string,
@@ -129,6 +143,20 @@ export function createMeetingsApi(orgId: string) {
         await api.POST(`${P}/ai/suggestions/{suggestionId}/decision`, {
           params: { path: { ...path(projectId), suggestionId } },
           body: { decision },
+        }),
+      );
+    },
+    /** MTG-US5: a section for notes, or a live list from a register when `liveSource` is given. */
+    async addSection(
+      projectId: string,
+      meetingId: string,
+      body: S['AddMeetingSectionRequest'],
+    ): Promise<MeetingDetail> {
+      await ensureCsrfToken();
+      return unwrap(
+        await api.POST(`${P}/meetings/{meetingId}/sections`, {
+          params: { path: { ...path(projectId), meetingId } },
+          body,
         }),
       );
     },

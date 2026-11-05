@@ -10,7 +10,8 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { HeaderPatch, DiaryService, LineValues } from '../application/diary';
-import { ID_FIELDS, type LineKind } from '../domain/diary';
+import type { LineKind } from '../domain/diary';
+import { decodeIds } from './decode';
 import { LINE_ID_KIND, toDetailDto, toEntryDto, toLineDto } from './mappers';
 
 type Tenant = { tenant: TenantContext | null };
@@ -29,26 +30,6 @@ const project = (p: { projectId: string }) => {
   if (!id) throw new AppError('project.not_found');
   return id;
 };
-
-/** Decodes the id-bearing fields of a request body to UUIDs; everything else passes through. */
-function decodeIds(body: Record<string, unknown>): Record<string, unknown> {
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(body)) {
-    const kind = ID_FIELDS[k as keyof typeof ID_FIELDS];
-    if (!kind || v === null || v === undefined) {
-      out[k] = v;
-      continue;
-    }
-    const one = (x: string, path: string) => {
-      const id = decodeId(kind, x);
-      if (!id)
-        throw new AppError('validation_failed', 'Invalid id', [{ path, message: 'Invalid id' }]);
-      return id;
-    };
-    out[k] = Array.isArray(v) ? v.map((x: string, i) => one(x, `${k}/${i}`)) : one(v as string, k);
-  }
-  return out;
-}
 
 export function diaryRoutes(database: Database, diary: DiaryService) {
   const tx = <T>(input: Tenant, fn: (s: TenantScope) => Promise<T>) =>

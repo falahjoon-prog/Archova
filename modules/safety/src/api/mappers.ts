@@ -1,5 +1,14 @@
 import { encodeId } from '@archova/domain';
-import type { Swms, SwmsDetail } from '@archova/contracts';
+import type {
+  Incident,
+  IncidentAction,
+  IncidentActionFromSource,
+  IncidentDetail,
+  Swms,
+  SwmsDetail,
+} from '@archova/contracts';
+import { incidentLabel } from '../domain/incident';
+import type { IncidentService } from '../application/incidents';
 import { swmsLabel, type HrcwCategory } from '../domain/swms';
 import type { SwmsService, SwmsView } from '../application/swms';
 
@@ -50,4 +59,132 @@ export const toSwmsDetail = (d: Awaited<ReturnType<SwmsService['detail']>>): Swm
   gaps: d.gaps,
   advisories: d.advisories,
   availableActions: [...d.availableActions],
+});
+
+// ---- incidents ----
+
+type IncidentDetailData = Awaited<ReturnType<IncidentService['detail']>>;
+type IncidentListRow = Awaited<ReturnType<IncidentService['list']>>['data'][number];
+
+const iso = (d: Date | null) => (d ? d.toISOString() : null);
+
+export const toIncidentDto = (
+  r: IncidentListRow | IncidentDetailData['incident'],
+  openActions: number,
+): Incident => ({
+  id: encodeId('incident', r.id),
+  projectId: encodeId('project', r.projectId),
+  number: r.number,
+  numberLabel: incidentLabel(r.number),
+  title: r.title,
+  type: r.type,
+  severity: r.severity,
+  occurredAt: r.occurredAt.toISOString(),
+  location: r.location,
+  description: r.description,
+  immediateActions: r.immediateActions,
+  isNotifiable: r.isNotifiable,
+  notifiableClass: r.notifiableClass,
+  regulatorNotifiedAt: iso(r.regulatorNotifiedAt),
+  writtenNoticeRequestedAt: iso(r.writtenNoticeRequestedAt),
+  writtenNoticeDueAt: iso(r.writtenNoticeDueAt),
+  keepUntil: iso(r.keepUntil),
+  rootCause: r.rootCause,
+  status: r.status,
+  closedAt: iso(r.closedAt),
+  openActions,
+  createdBy: userOrNull(r.createdBy),
+  createdAt: r.createdAt.toISOString(),
+  updatedAt: r.updatedAt.toISOString(),
+  version: r.version,
+});
+
+export const toIncidentListDto = (r: IncidentListRow): Incident => toIncidentDto(r, r.openActions);
+
+type ActionData = IncidentDetailData['actions'][number];
+
+export const toActionDto = (a: ActionData): IncidentAction => ({
+  id: encodeId('incidentAction', a.id),
+  incidentId: encodeId('incident', a.incidentId),
+  number: a.number,
+  title: a.title,
+  description: a.description,
+  assigneeCompanyId: a.assigneeCompanyId ? encodeId('company', a.assigneeCompanyId) : null,
+  assigneeUserId: userOrNull(a.assigneeUserId),
+  dueDate: a.dueDate,
+  source:
+    a.sourceType && a.sourceId
+      ? a.sourceType === 'inspection'
+        ? { type: 'inspection', id: encodeId('inspection', a.sourceId) }
+        : { type: 'observation', id: encodeId('observation', a.sourceId) }
+      : null,
+  status: a.status,
+  isOverdue: a.isOverdue,
+  completedAt: iso(a.completedAt),
+  verifiedAt: iso(a.verifiedAt),
+  version: a.version,
+});
+
+export const toActionFromSource = (
+  r: Awaited<ReturnType<IncidentService['actionsFromSource']>>[number],
+): IncidentActionFromSource => ({
+  action: toActionDto(r),
+  incidentId: encodeId('incident', r.incidentId),
+  incidentNumberLabel: incidentLabel(r.incidentNumber),
+  incidentTitle: r.incidentTitle,
+});
+
+export const toIncidentDetail = (d: IncidentDetailData): IncidentDetail => ({
+  incident: toIncidentDto(d.incident, d.actions.filter((a) => a.status !== 'verified').length),
+  people: d.people.map((p) => ({
+    id: encodeId('incidentPerson', p.id),
+    personName: p.personName,
+    companyId: p.companyId ? encodeId('company', p.companyId) : null,
+    role: p.role,
+    injury: p.injury,
+  })),
+  injuryHidden: d.injuryHidden,
+  actions: d.actions.map(toActionDto),
+  events: d.events.map((e) => ({
+    id: encodeId('incidentEvent', e.id),
+    action: e.action,
+    fromStatus: e.fromStatus,
+    toStatus: e.toStatus,
+    note: e.note,
+    actorId: userOrNull(e.actorId),
+    at: e.at.toISOString(),
+  })),
+  closeBlockers: d.closeBlockers,
+  canManage: d.canManage,
+  photoFileIds: d.photoFileIds.map((f) => encodeId('file', f)),
+});
+
+/**
+ * What a phone keeps of an incident (modules/sync pull). A superset of what the phone writes when it reports one, so
+ * the server's copy replaces the local one once it arrives. Injury details are already withheld in `people` unless the
+ * caller holds `view_medical`.
+ */
+export const toIncidentSyncDto = (
+  r: Awaited<ReturnType<IncidentService['visibleAmong']>>['rows'][number],
+  people: Awaited<ReturnType<IncidentService['visibleAmong']>>['people'] extends Map<
+    string,
+    infer P
+  >
+    ? P
+    : never,
+  photoCount: number,
+) => ({
+  id: encodeId('incident', r.id),
+  projectId: encodeId('project', r.projectId),
+  number: r.number,
+  numberLabel: incidentLabel(r.number),
+  title: r.title,
+  type: r.type,
+  status: r.status,
+  occurredAt: r.occurredAt.toISOString(),
+  location: r.location,
+  description: r.description,
+  immediateActions: r.immediateActions,
+  people: people.map((p) => ({ personName: p.personName, role: p.role, injury: p.injury })),
+  photoCount,
 });

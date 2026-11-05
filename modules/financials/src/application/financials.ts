@@ -8,18 +8,43 @@ import {
   type SopaState,
 } from '@archova/domain';
 import { localDateOf } from '@archova/time';
-import { AppError, nextNumber, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  nextNumber,
+  recordRetention,
+  recordRetentionBatch,
+  type TenantScope,
+} from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { ledgerLines } from '../domain/ledger';
 import { claimTotals, describeClaimError, isClaimError } from '../domain/claim';
 import { PUBLIC_HOLIDAYS } from '../domain/holidays';
 import { fromCents, toCents } from '../domain/money';
+import { sealMessage, type EvidenceSigner } from '../domain/seal-proof';
 import {
+  canonicalJson,
+  renderEvidencePdf,
+  sha256Hex,
+  type EvidenceKind,
+  type EvidenceSnapshot,
+} from '../domain/evidence';
+import {
+  claimStatements,
   contracts,
+  costCodes,
+  evidenceDeliveries,
+  evidenceRecords,
+  evidenceSendProofs,
+  evidenceSendTimestamps,
+  evidenceServiceRecords,
+  evidenceServiceVoids,
+  evidenceSignatures,
+  evidenceTimestamps,
   paymentClaimLines,
   paymentClaims,
   paymentSchedules,
+  payments,
   sovItems,
   variations,
 } from '../infra/tables';
@@ -30,12 +55,32 @@ export type ClaimRow = typeof paymentClaims.$inferSelect;
 export type ClaimLineRow = typeof paymentClaimLines.$inferSelect;
 export type ScheduleRow = typeof paymentSchedules.$inferSelect;
 export type VariationRow = typeof variations.$inferSelect;
+export type EvidenceRow = typeof evidenceRecords.$inferSelect;
+export type ClaimStatementRow = typeof claimStatements.$inferSelect;
+
+export interface RecordStatementInput {
+  periodEnd: string;
+  receivedOn: string;
+  signedOn?: string;
+  note?: string;
+}
+
+/** The only claim warning so far. It warns; it never suggests withholding (compliance/05 §6, lawyer question open). */
+export type ClaimWarning = 'subcontractor_statement_missing';
 
 export interface FinancialsDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'companyIdentity'>;
   now?: () => Date;
+  /** Signs each sealed record. Without one, records are sealed by hash only (marked unsigned). */
+  signer?: EvidenceSigner;
 }
+
+/** Largest PDF plus JSON attached to a service email; larger is blocked, never sent as a link (compliance/01 §4). */
+export const MAX_EVIDENCE_EMAIL_BYTES = 10 * 1024 * 1024;
+const DELIVERIES_PER_DAY = 5;
+const CONFIRM_WITHIN_MS = 60 * 60 * 1000;
+const EMAIL = /^[^\s@<>"',;]+@[^\s@<>"',;]+\.[^\s@<>"',;]+$/;
 
 export interface CreateContractInput {
   kind: ContractKind;
@@ -48,7 +93,9 @@ export interface CreateContractInput {
   sopaState?: ContractRow['sopaState'];
   scheduleDays?: number | null;
   paymentDays?: number | null;
-  sov: { code: string; description: string; value: string }[];
+  sov: { code: string; description: string; value: string; costCodeId?: string }[];
+  /** Set when the contract is raised from an awarded tender quote; one quote raises at most one contract. */
+  source?: { packageId: string; quoteId: string };
 }
 
 /** What an accounting system needs to record a claim, in cents and neutral of any provider (integrations/02 §2). */
@@ -56,6 +103,8 @@ export interface LedgerSource {
   kind: 'bill' | 'invoice';
   localType: 'payment_schedule' | 'claim';
   localId: string;
+  /** Contract numbers restart in every project, so the project is part of what names a document in the ledger. */
+  projectId: string;
   contractNumber: number;
   claimNumber: number;
   /** The subcontractor for a bill, the client for an invoice. */
@@ -64,6 +113,20 @@ export interface LedgerSource {
   dueDate: string;
   lines: { code: string; description: string; amountCents: number; gstCents: number }[];
   retentionCents: number;
+}
+
+/** A payment reported by a connector (Xero or MYOB), in cents, against the record it was pushed from. */
+export interface PaymentInput {
+  localType: 'payment_schedule' | 'claim';
+  localId: string;
+  paidOn: string;
+  /** Negative for a reversal. */
+  amountCents: number;
+  source: 'xero' | 'myob';
+  externalRef: string;
+  reference: string;
+  /** Set on a reversal: the `externalRef` of the payment it undoes. */
+  reversesExternalRef?: string;
 }
 
 export interface SubmitClaimInput {
@@ -78,6 +141,7 @@ export interface CreateVariationInput {
   description?: string;
   amount: string;
   timeImpactDays?: number;
+  costCodeId?: string;
 }
 
 export interface IssueScheduleInput {
@@ -179,6 +243,18 @@ export function createFinancialsService(deps: FinancialsDeps) {
         `The schedule of values adds to ${fromCents(total)}, not the contract value ${input.originalValue}.`,
         [{ path: 'sov', message: 'Must add up to the contract value' }],
       );
+    const tagged = [...new Set(input.sov.flatMap((s) => (s.costCodeId ? [s.costCodeId] : [])))];
+    if (tagged.length > 0) {
+      const found = await scope.tx
+        .select({ id: costCodes.id })
+        .from(costCodes)
+        .where(and(eq(costCodes.projectId, projectId), inArray(costCodes.id, tagged)));
+      if (found.length !== tagged.length)
+        throw new AppError(
+          'financials.cost_code.not_found',
+          'A cost code on the schedule is not on this project.',
+        );
+    }
     const id = uuidv7();
     const number = await nextNumber(scope, projectId, 'contract');
     const [row] = await scope.tx
@@ -198,24 +274,50 @@ export function createFinancialsService(deps: FinancialsDeps) {
         sopaState,
         scheduleDays: input.scheduleDays ?? null,
         paymentDays: input.paymentDays ?? null,
+        sourcePackageId: input.source?.packageId ?? null,
+        sourceQuoteId: input.source?.quoteId ?? null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
       .returning();
-    if (input.sov.length > 0)
-      await scope.tx.insert(sovItems).values(
-        input.sov.map((s, sort) => ({
-          id: uuidv7(),
-          orgId: scope.ctx.orgId,
-          projectId,
-          contractId: id,
-          code: s.code,
-          description: s.description,
-          value: s.value,
-          sort,
-        })),
-      );
+    const sovValues = input.sov.map((s, sort) => ({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      contractId: id,
+      code: s.code,
+      description: s.description,
+      value: s.value,
+      sort,
+      costCodeId: s.costCodeId ?? null,
+    }));
+    if (sovValues.length > 0) await scope.tx.insert(sovItems).values(sovValues);
+    // Project records, kept 10 years (compliance/07 §3); a legal hold overrides.
+    await recordRetention(scope, {
+      recordType: 'financials.contracts',
+      recordId: id,
+      projectId,
+      category: 'project_records_10y',
+      anchor: row!.createdAt,
+    });
+    await recordRetentionBatch(
+      scope,
+      'financials.sov_items',
+      'project_records_10y',
+      row!.createdAt,
+      sovValues.map((v) => ({ recordId: v.id, projectId })),
+    );
     return { contract: row!, sov: await sovFor(scope, id) };
+  }
+
+  /** The contract already raised from this quote, if any (read by the award flow to stay idempotent). */
+  async function contractForQuote(scope: TenantScope, projectId: string, quoteId: string) {
+    await need(scope, 'financials.contracts.read', projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(and(eq(contracts.projectId, projectId), eq(contracts.sourceQuoteId, quoteId)));
+    return row ?? null;
   }
 
   async function listContracts(scope: TenantScope, projectId: string) {
@@ -378,18 +480,32 @@ export function createFinancialsService(deps: FinancialsDeps) {
         createdBy: scope.ctx.userId,
       })
       .returning();
-    await scope.tx.insert(paymentClaimLines).values(
-      totals.lines.map((l) => ({
-        id: uuidv7(),
-        orgId: scope.ctx.orgId,
-        projectId,
-        claimId: id,
-        sovItemId: l.sovItemId ?? null,
-        variationId: l.variationId ?? null,
-        previous: fromCents(l.previous),
-        thisClaim: fromCents(l.thisClaim),
-        toDate: fromCents(l.toDate),
-      })),
+    const lineValues = totals.lines.map((l) => ({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      claimId: id,
+      sovItemId: l.sovItemId ?? null,
+      variationId: l.variationId ?? null,
+      previous: fromCents(l.previous),
+      thisClaim: fromCents(l.thisClaim),
+      toDate: fromCents(l.toDate),
+    }));
+    await scope.tx.insert(paymentClaimLines).values(lineValues);
+    // Claims are SOPA evidence: 10 years (compliance/07 §3), or longer while a hold applies.
+    await recordRetention(scope, {
+      recordType: 'financials.payment_claims',
+      recordId: id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: row!.createdAt,
+    });
+    await recordRetentionBatch(
+      scope,
+      'financials.payment_claim_lines',
+      'sopa_evidence_10y',
+      row!.createdAt,
+      lineValues.map((v) => ({ recordId: v.id, projectId })),
     );
     scope.events.add({
       type: 'financials.claim.submitted.v1',
@@ -399,6 +515,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       entityVersion: 1,
       data: { claimId: id, contractId, number, scheduleDueOn: row!.scheduleDueOn },
     });
+    await seal(scope, projectId, id, 'claim');
     return claimDetail(scope, projectId, id, false);
   }
 
@@ -454,8 +571,677 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .from(paymentSchedules)
       .where(eq(paymentSchedules.claimId, claimId))
       .limit(1);
+    const [statement] = await scope.tx
+      .select()
+      .from(claimStatements)
+      .where(eq(claimStatements.claimId, claimId))
+      .limit(1);
+    const [contract] = await scope.tx
+      .select({ kind: contracts.kind, sopaState: contracts.sopaState })
+      .from(contracts)
+      .where(eq(contracts.id, claim.contractId))
+      .limit(1);
+    const warnings: ClaimWarning[] =
+      statementExpected(contract) && !statement ? ['subcontractor_statement_missing'] : [];
     const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
-    return { claim, lines, schedule: schedule ?? null, today };
+    return {
+      claim,
+      lines,
+      schedule: schedule ?? null,
+      statement: statement ?? null,
+      warnings,
+      today,
+    };
+  }
+
+  /** NSW asks for a subcontractor's statement with each payment claim a subcontractor makes. */
+  const statementExpected = (c?: { kind: string; sopaState: string }) =>
+    c?.kind === 'subcontract' && c.sopaState === 'NSW';
+
+  /**
+   * Link the subcontractor's statement to a claim (compliance/05 §6): the period it covers, when it arrived and the
+   * day it was signed. One per claim; recording again replaces it. Staff work, like recording the claim itself.
+   */
+  async function recordStatement(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    input: RecordStatementInput,
+  ) {
+    await need(scope, 'financials.claims.record', projectId);
+    await requireStaff(scope, projectId, 'record a subcontractor’s statement');
+    const { claim } = await claimDetail(scope, projectId, claimId, false);
+    const contract = await getContractRow(scope, projectId, claim.contractId);
+    if (!statementExpected(contract))
+      throw new AppError(
+        'validation_failed',
+        'A subcontractor’s statement applies to NSW subcontract claims.',
+      );
+    const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
+    if (input.receivedOn > today)
+      throw new AppError(
+        'validation_failed',
+        'The statement can’t have been received in the future.',
+        [{ path: 'receivedOn', message: 'Must not be in the future' }],
+      );
+    if (input.signedOn && input.signedOn > input.receivedOn)
+      throw new AppError('validation_failed', 'The statement was signed after it was received.', [
+        { path: 'signedOn', message: 'Must not be after receivedOn' },
+      ]);
+    const values = {
+      periodEnd: input.periodEnd,
+      receivedOn: input.receivedOn,
+      signedOn: input.signedOn ?? null,
+      note: input.note?.trim() || null,
+    };
+    const [cur] = await scope.tx
+      .select()
+      .from(claimStatements)
+      .where(eq(claimStatements.claimId, claimId))
+      .limit(1);
+    const at = new Date();
+    const [row] = cur
+      ? await scope.tx
+          .update(claimStatements)
+          .set({
+            ...values,
+            recordedBy: scope.ctx.userId,
+            updatedAt: at,
+            version: cur.version + 1,
+          })
+          .where(eq(claimStatements.id, cur.id))
+          .returning()
+      : await scope.tx
+          .insert(claimStatements)
+          .values({
+            id: uuidv7(),
+            orgId: scope.ctx.orgId,
+            projectId,
+            claimId,
+            ...values,
+            recordedBy: scope.ctx.userId,
+          })
+          .returning();
+    scope.events.add({
+      type: 'financials.claim_statement.recorded.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: row!.version,
+      data: { claimId, periodEnd: values.periodEnd, receivedOn: values.receivedOn },
+    });
+    await recordRetention(scope, {
+      recordType: 'financials.claim_statements',
+      recordId: row!.id,
+      projectId,
+      category: 'financial_7y',
+      anchor: at,
+    });
+    return claimDetail(scope, projectId, claimId, false);
+  }
+
+  /**
+   * Sealed evidence (compliance/01 §4): in the transaction that records a claim or issues its schedule, take a
+   * snapshot of everything it rests on, hash it, and render the PDF from that snapshot. The row is immutable.
+   */
+  async function seal(scope: TenantScope, projectId: string, claimId: string, kind: EvidenceKind) {
+    const { claim, lines, schedule } = await claimDetail(scope, projectId, claimId, false);
+    const contract = await getContractRow(scope, projectId, claim.contractId, false);
+    const project = await deps.platform.getProject(scope, projectId);
+    const sov = new Map((await sovFor(scope, contract.id)).map((i) => [i.id, i]));
+    const vars = new Map(
+      (await scope.tx.select().from(variations).where(eq(variations.contractId, contract.id))).map(
+        (v) => [v.id, v],
+      ),
+    );
+    const refOf = (l: { sovItemId: string | null; variationId: string | null }) => {
+      const i = l.sovItemId ? sov.get(l.sovItemId) : undefined;
+      if (i) return { ref: i.code, description: i.description };
+      const v = l.variationId ? vars.get(l.variationId) : undefined;
+      return { ref: v ? `V${v.number}` : 'unknown', description: v?.title ?? '' };
+    };
+    const sealedAt = now();
+    const head = {
+      sealedAt: sealedAt.toISOString(),
+      timeZone: project.timezone,
+      contract: {
+        number: contract.number,
+        title: contract.title,
+        kind: contract.kind,
+        sopaState: contract.sopaState,
+      },
+    };
+    let snapshot: EvidenceSnapshot;
+    if (kind === 'claim') {
+      snapshot = {
+        kind,
+        ...head,
+        claim: {
+          id: claim.id,
+          number: claim.number,
+          periodEnd: claim.periodEnd,
+          receivedAt: claim.receivedAt.toISOString(),
+          statesAct: claim.statesAct,
+          isValid: claim.isValid,
+          invalidReason: claim.invalidReason,
+          claimedGross: claim.claimedGross,
+          lessPrevious: claim.lessPrevious,
+          retention: claim.retention,
+          claimedNet: claim.claimedNet,
+          gst: claim.gst,
+          claimedTotal: claim.claimedTotal,
+          servedOn: claim.servedOn,
+          scheduleDueOn: claim.scheduleDueOn,
+          paymentDueOn: claim.paymentDueOn,
+          paymentReadDown: claim.paymentReadDown,
+          ruleState: claim.ruleState,
+          rulesReviewed: claim.rulesReviewed,
+        },
+        lines: lines.map((l) => ({
+          ...refOf(l),
+          previous: l.previous,
+          thisClaim: l.thisClaim,
+          toDate: l.toDate,
+        })),
+      };
+    } else {
+      if (!schedule) throw new AppError('financials.claim.not_found');
+      const [claimEvidence] = await scope.tx
+        .select({ sha: evidenceRecords.snapshotSha256 })
+        .from(evidenceRecords)
+        .where(and(eq(evidenceRecords.claimId, claimId), eq(evidenceRecords.kind, 'claim')))
+        .limit(1);
+      snapshot = {
+        kind,
+        ...head,
+        claim: {
+          id: claim.id,
+          number: claim.number,
+          claimedNet: claim.claimedNet,
+          scheduleDueOn: claim.scheduleDueOn,
+        },
+        claimEvidenceSha256: claimEvidence?.sha ?? null,
+        schedule: {
+          id: schedule.id,
+          scheduledAmount: schedule.scheduledAmount,
+          withheldAmount: schedule.withheldAmount,
+          overallReason: schedule.overallReason,
+          lineReasons: schedule.lineReasons.map((r) => ({
+            ref: refOf({ sovItemId: r.sovItemId, variationId: null }).ref,
+            reason: r.reason,
+          })),
+          issuedAt: schedule.issuedAt.toISOString(),
+          issuedWithinTime: schedule.issuedWithinTime,
+        },
+      };
+    }
+    const snapshotText = canonicalJson(snapshot);
+    const snapshotSha256 = sha256Hex(snapshotText);
+    const pdf = Buffer.from(await renderEvidencePdf(snapshot, snapshotSha256));
+    const evidenceId = uuidv7();
+    const pdfSha256 = sha256Hex(pdf);
+    await scope.tx.insert(evidenceRecords).values({
+      id: evidenceId,
+      orgId: scope.ctx.orgId,
+      projectId,
+      claimId,
+      kind,
+      sealedAt,
+      snapshot: JSON.parse(snapshotText),
+      snapshotText,
+      snapshotSha256,
+      pdf,
+      pdfSha256,
+    });
+    if (deps.signer) {
+      const message = sealMessage({
+        kind,
+        claimId,
+        sealedAt: sealedAt.toISOString(),
+        snapshotSha256,
+        pdfSha256,
+      });
+      await scope.tx.insert(evidenceSignatures).values({
+        evidenceId,
+        orgId: scope.ctx.orgId,
+        keyId: deps.signer.keyId,
+        algorithm: 'ed25519',
+        message,
+        signature: deps.signer.sign(message),
+      });
+    }
+  }
+
+  /** Evidence for a claim the viewer may see, each record re-hashed so a changed row shows as not intact. */
+  async function listEvidence(scope: TenantScope, projectId: string, claimId: string) {
+    await claimDetail(scope, projectId, claimId, true);
+    const rows = await scope.tx
+      .select()
+      .from(evidenceRecords)
+      .where(eq(evidenceRecords.claimId, claimId))
+      .orderBy(asc(evidenceRecords.sealedAt));
+    const ids = rows.map((r) => r.id);
+    const sigs = ids.length
+      ? await scope.tx
+          .select()
+          .from(evidenceSignatures)
+          .where(inArray(evidenceSignatures.evidenceId, ids))
+      : [];
+    const stamps = ids.length
+      ? await scope.tx
+          .select()
+          .from(evidenceTimestamps)
+          .where(inArray(evidenceTimestamps.evidenceId, ids))
+      : [];
+    return rows.map((r) => {
+      const intact =
+        sha256Hex(r.snapshotText) === r.snapshotSha256 && sha256Hex(r.pdf) === r.pdfSha256;
+      const sig = sigs.find((x) => x.evidenceId === r.id);
+      // A timestamp with no pinned chain was never verified in-app, so it is not shown as one.
+      const stamp = stamps.find((x) => x.evidenceId === r.id && x.caChainPem !== '');
+      const message = sealMessage({
+        kind: r.kind,
+        claimId: r.claimId,
+        sealedAt: r.sealedAt.toISOString(),
+        snapshotSha256: r.snapshotSha256,
+        pdfSha256: r.pdfSha256,
+      });
+      return {
+        kind: r.kind,
+        sealedAt: r.sealedAt,
+        snapshotSha256: r.snapshotSha256,
+        pdfSha256: r.pdfSha256,
+        pdfBytes: r.pdf.length,
+        intact,
+        signature: sig
+          ? {
+              keyId: sig.keyId,
+              algorithm: sig.algorithm,
+              signatureBase64: sig.signature,
+              message: sig.message,
+              publicKeyPem: deps.signer?.publicKeyFor(sig.keyId) ?? null,
+              // null when this server no longer holds that key, so it cannot say either way
+              valid: deps.signer?.publicKeyFor(sig.keyId)
+                ? sig.message === message &&
+                  deps.signer.verify(sig.message, sig.signature, sig.keyId)
+                : null,
+            }
+          : null,
+        timestamp: stamp
+          ? {
+              authority: stamp.authority,
+              time: stamp.genTime,
+              imprintSha256: stamp.imprintSha256,
+              serialHex: stamp.serialHex,
+              tokenBase64: stamp.token.toString('base64'),
+              caChainPem: stamp.caChainPem,
+            }
+          : null,
+      };
+    });
+  }
+
+  /**
+   * Queue the sealed record for email to an address the payer gave for service. The PDF and the JSON go as
+   * attachments, never as a link (compliance/01 §4). The worker sends it; service time is the receiving server's
+   * delivery confirmation, not this request.
+   */
+  async function queueEvidenceDelivery(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+    recipientEmail: string,
+    addressBasis?: string | null,
+  ) {
+    await need(
+      scope,
+      kind === 'schedule' ? 'financials.claims.assess' : 'financials.claims.record',
+      projectId,
+    );
+    await requireStaff(scope, projectId, 'serve a claim by email');
+    const email = recipientEmail.trim();
+    if (!EMAIL.test(email) || email.length > 254)
+      throw new AppError('validation_failed', 'Enter a valid email address.', [
+        { path: 'recipientEmail', message: 'Not a valid email address' },
+      ]);
+    // Serialise per claim so two requests cannot both pass the daily cap.
+    await scope.tx
+      .select({ id: paymentClaims.id })
+      .from(paymentClaims)
+      .where(eq(paymentClaims.id, claimId))
+      .for('update');
+    const { row } = await evidenceFile(scope, projectId, claimId, kind);
+    if (row.pdf.length + Buffer.byteLength(row.snapshotText) > MAX_EVIDENCE_EMAIL_BYTES)
+      throw new AppError(
+        'conflict',
+        'This record is too large to attach to an email. Serve it another way; Archova does not send a link instead.',
+      );
+    const recent = await scope.tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(evidenceDeliveries)
+      .where(
+        and(
+          eq(evidenceDeliveries.claimId, claimId),
+          eq(evidenceDeliveries.kind, kind),
+          sql`${evidenceDeliveries.queuedAt} > ${now()}::timestamptz - interval '1 day'`,
+        ),
+      );
+    if ((recent[0]?.n ?? 0) >= DELIVERIES_PER_DAY)
+      throw new AppError('conflict', 'This record has already been emailed several times today.');
+    const [created] = await scope.tx
+      .insert(evidenceDeliveries)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        claimId,
+        evidenceId: row.id,
+        kind,
+        recipientEmail: email,
+        addressBasis: addressBasis?.trim().slice(0, 500) || null,
+        queuedBy: scope.ctx.userId,
+        queuedAt: now(),
+      })
+      .returning();
+    return deliveryView(created!);
+  }
+
+  type SendProofSummary = {
+    recordedAt: Date;
+    messageSha256: string;
+    signed: boolean;
+    timestampedAt: Date | null;
+  };
+
+  function deliveryView(
+    d: typeof evidenceDeliveries.$inferSelect,
+    proof: SendProofSummary | null = null,
+  ) {
+    const open = d.status === 'queued' || d.status === 'sending' || d.status === 'sent';
+    return {
+      id: d.id,
+      kind: d.kind,
+      recipientEmail: d.recipientEmail,
+      addressBasis: d.addressBasis,
+      status: d.status,
+      queuedAt: d.queuedAt,
+      sentAt: d.sentAt,
+      deliveredAt: d.deliveredAt,
+      bouncedAt: d.bouncedAt,
+      // `sentAt` is when our relay took the message; it is not delivery. `deliveredAt` is the recipient side only.
+      // `confirmed_delivery` is the only basis that shows service by email. A send proof is our own record of
+      // dispatch: it says what we sent and when, never that it arrived.
+      serviceBasis: (d.deliveredAt !== null ? 'confirmed_delivery' : 'dispatch_only') as
+        'confirmed_delivery' | 'dispatch_only',
+      sendProof: proof,
+      // Service counts from delivery confirmation only. Anything else after an hour must be served another way.
+      notConfirmed:
+        d.status === 'bounced' ||
+        d.status === 'failed' ||
+        (open &&
+          d.deliveredAt === null &&
+          now().getTime() - d.queuedAt.getTime() > CONFIRM_WITHIN_MS),
+    };
+  }
+
+  async function listEvidenceDeliveries(scope: TenantScope, projectId: string, claimId: string) {
+    await claimDetail(scope, projectId, claimId, true);
+    await requireStaff(scope, projectId, 'see email deliveries');
+    const rows = await scope.tx
+      .select()
+      .from(evidenceDeliveries)
+      .where(eq(evidenceDeliveries.claimId, claimId))
+      .orderBy(desc(evidenceDeliveries.queuedAt));
+    const proofs = await scope.tx
+      .select({
+        deliveryId: evidenceSendProofs.deliveryId,
+        recordedAt: evidenceSendProofs.recordedAt,
+        messageSha256: evidenceSendProofs.messageSha256,
+        signature: evidenceSendProofs.signature,
+        stamped: evidenceSendTimestamps.genTime,
+      })
+      .from(evidenceSendProofs)
+      .leftJoin(
+        evidenceSendTimestamps,
+        eq(evidenceSendTimestamps.deliveryId, evidenceSendProofs.deliveryId),
+      )
+      .where(
+        inArray(
+          evidenceSendProofs.deliveryId,
+          rows.map((r) => r.id),
+        ),
+      );
+    const byId = new Map(proofs.map((p) => [p.deliveryId, p]));
+    return rows.map((d) => {
+      const p = byId.get(d.id);
+      return deliveryView(
+        d,
+        p
+          ? {
+              recordedAt: p.recordedAt,
+              messageSha256: p.messageSha256,
+              signed: p.signature !== null,
+              timestampedAt: p.stamped,
+            }
+          : null,
+      );
+    });
+  }
+
+  const SERVICE_METHODS = ['hand', 'courier', 'post', 'recipient_reply', 'other'] as const;
+  type ServiceMethod = (typeof SERVICE_METHODS)[number];
+
+  /**
+   * A record that the sealed claim or schedule was served by other means (by hand, courier, post, or the recipient's
+   * own reply), made by a person who knows when it reached the recipient. It is kept apart from email deliveries so
+   * it is never mistaken for a confirmed delivery, and it cannot be edited or removed.
+   */
+  async function recordEvidenceService(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+    input: { method: string; servedAt: Date; servedTo: string; note?: string | null },
+  ) {
+    await need(
+      scope,
+      kind === 'schedule' ? 'financials.claims.assess' : 'financials.claims.record',
+      projectId,
+    );
+    await requireStaff(scope, projectId, 'record service');
+    const { row } = await evidenceFile(scope, projectId, claimId, kind);
+    if (!(SERVICE_METHODS as readonly string[]).includes(input.method))
+      throw new AppError('validation_failed', 'Choose how it was served.', [
+        { path: 'method', message: 'Not a service method' },
+      ]);
+    const servedTo = input.servedTo.trim();
+    if (servedTo.length < 1 || servedTo.length > 200)
+      throw new AppError('validation_failed', 'Say who it was served on.', [
+        { path: 'servedTo', message: 'Required, up to 200 characters' },
+      ]);
+    if (
+      Number.isNaN(input.servedAt.getTime()) ||
+      input.servedAt.getTime() > now().getTime() + 5 * 60 * 1000 ||
+      input.servedAt.getTime() < row.sealedAt.getTime()
+    )
+      throw new AppError(
+        'validation_failed',
+        'The time served must be after the record was sealed and not in the future.',
+        [{ path: 'servedAt', message: 'Out of range' }],
+      );
+    const note = input.note?.trim() || null;
+    if (note && note.length > 2000)
+      throw new AppError('validation_failed', 'The note is too long.', [
+        { path: 'note', message: 'Up to 2000 characters' },
+      ]);
+    const [created] = await scope.tx
+      .insert(evidenceServiceRecords)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        claimId,
+        evidenceId: row.id,
+        kind,
+        method: input.method as ServiceMethod,
+        servedAt: input.servedAt,
+        servedTo,
+        note,
+        basis: 'self_reported' as const,
+        recordedBy: scope.ctx.userId,
+        recordedAt: now(),
+      })
+      .returning();
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_service_records',
+      recordId: created!.id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: created!.recordedAt,
+    });
+    // The note text is left out of the event: it is free text that may name people.
+    scope.events.add({
+      type: 'financials.evidence_service.recorded.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: 1,
+      data: {
+        claimId,
+        kind,
+        serviceRecordId: created!.id,
+        method: created!.method,
+        servedAt: created!.servedAt.toISOString(),
+        selfReported: true,
+      },
+    });
+    return created!;
+  }
+
+  /** Corrects a mistaken service record by voiding it with a reason. The record itself is never changed. */
+  async function voidEvidenceService(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    recordId: string,
+    reason: string,
+  ) {
+    await requireStaff(scope, projectId, 'void a service record');
+    const [rec] = await scope.tx
+      .select()
+      .from(evidenceServiceRecords)
+      .where(
+        and(eq(evidenceServiceRecords.id, recordId), eq(evidenceServiceRecords.claimId, claimId)),
+      );
+    if (!rec) throw new AppError('not_found', 'Service record not found.');
+    await need(
+      scope,
+      rec.kind === 'schedule' ? 'financials.claims.assess' : 'financials.claims.record',
+      projectId,
+    );
+    const why = reason.trim();
+    if (why.length < 1 || why.length > 1000)
+      throw new AppError('validation_failed', 'Give the reason it is being voided.', [
+        { path: 'reason', message: 'Required, up to 1000 characters' },
+      ]);
+    const [v] = await scope.tx
+      .insert(evidenceServiceVoids)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        recordId,
+        reason: why,
+        voidedBy: scope.ctx.userId,
+        voidedAt: now(),
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!v) throw new AppError('conflict', 'This service record is already void.');
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_service_voids',
+      recordId: v.id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: v.voidedAt,
+    });
+    scope.events.add({
+      type: 'financials.evidence_service.voided.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: 1,
+      data: { claimId, serviceRecordId: recordId },
+    });
+    return { ...rec, voidedAt: v.voidedAt, voidReason: why };
+  }
+
+  async function listEvidenceServiceRecords(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+  ) {
+    await claimDetail(scope, projectId, claimId, true);
+    await requireStaff(scope, projectId, 'see service records');
+    const rows = await scope.tx
+      .select({
+        r: evidenceServiceRecords,
+        voidedAt: evidenceServiceVoids.voidedAt,
+        voidReason: evidenceServiceVoids.reason,
+      })
+      .from(evidenceServiceRecords)
+      .leftJoin(evidenceServiceVoids, eq(evidenceServiceVoids.recordId, evidenceServiceRecords.id))
+      .where(eq(evidenceServiceRecords.claimId, claimId))
+      .orderBy(desc(evidenceServiceRecords.servedAt));
+    return rows.map((x) => ({ ...x.r, voidedAt: x.voidedAt, voidReason: x.voidReason }));
+  }
+
+  async function evidenceFile(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+  ) {
+    const { claim } = await claimDetail(scope, projectId, claimId, true);
+    const [r] = await scope.tx
+      .select()
+      .from(evidenceRecords)
+      .where(and(eq(evidenceRecords.claimId, claimId), eq(evidenceRecords.kind, kind)))
+      .limit(1);
+    if (!r) throw new AppError('financials.evidence.not_found');
+    if (sha256Hex(r.snapshotText) !== r.snapshotSha256 || sha256Hex(r.pdf) !== r.pdfSha256)
+      throw new AppError('conflict', 'This evidence record no longer matches its seal.');
+    return { row: r, stem: `claim-${claim.number}-${kind}-evidence` };
+  }
+
+  async function evidencePdf(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+  ) {
+    const { row, stem } = await evidenceFile(scope, projectId, claimId, kind);
+    return {
+      filename: `${stem}.pdf`,
+      contentType: 'application/pdf' as const,
+      dataBase64: row.pdf.toString('base64'),
+    };
+  }
+
+  async function evidenceJson(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+  ) {
+    const { row, stem } = await evidenceFile(scope, projectId, claimId, kind);
+    return {
+      filename: `${stem}.json`,
+      contentType: 'application/json' as const,
+      snapshotSha256: row.snapshotSha256,
+      dataText: row.snapshotText,
+    };
   }
 
   /**
@@ -537,6 +1323,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         claimed: claimed,
       },
     });
+    await seal(scope, projectId, claimId, 'schedule');
     return claimDetail(scope, projectId, claimId, false);
   }
 
@@ -602,6 +1389,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       kind: isBill ? 'bill' : 'invoice',
       localType: isBill ? 'payment_schedule' : 'claim',
       localId: isBill ? schedule!.id : claim.id,
+      projectId: claim.projectId,
       contractNumber: contract.number,
       claimNumber: claim.number,
       counterparty:
@@ -640,6 +1428,56 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return row;
   }
 
+  async function requireCostCode(scope: TenantScope, projectId: string, costCodeId: string) {
+    const [found] = await scope.tx
+      .select({ id: costCodes.id, archived: costCodes.archived })
+      .from(costCodes)
+      .where(and(eq(costCodes.projectId, projectId), eq(costCodes.id, costCodeId)));
+    if (!found)
+      throw new AppError(
+        'financials.cost_code.not_found',
+        'That cost code is not on this project.',
+      );
+    if (found.archived)
+      throw new AppError('validation_failed', 'That cost code is archived.', [
+        { path: 'costCodeId', message: 'Archived' },
+      ]);
+  }
+
+  /** Tags (or clears) a variation's cost code. Money does not change, so any state but withdrawn/rejected will do. */
+  async function setVariationCostCode(
+    scope: TenantScope,
+    projectId: string,
+    variationId: string,
+    costCodeId: string | null,
+  ) {
+    await need(scope, 'financials.variations.manage', projectId);
+    await requireStaff(scope, projectId, 'code a variation');
+    const row = await variationRow(scope, projectId, variationId);
+    if (row.status === 'withdrawn' || row.status === 'rejected')
+      throw new AppError(
+        'financials.variation.bad_state',
+        `A variation that is ${row.status} can't be coded.`,
+      );
+    if (costCodeId) await requireCostCode(scope, projectId, costCodeId);
+    const [updated] = await scope.tx
+      .update(variations)
+      .set({ costCodeId, version: row.version + 1 })
+      .where(and(eq(variations.id, variationId), eq(variations.version, row.version)))
+      .returning();
+    if (!updated)
+      throw new AppError('conflict', 'This variation just changed. Reload and try again.');
+    scope.events.add({
+      type: 'financials.variation.coded.v1',
+      projectId,
+      entityType: 'variation',
+      entityId: variationId,
+      entityVersion: updated.version,
+      data: { variationId, contractId: row.contractId, costCodeId },
+    });
+    return withClaimed(scope, updated);
+  }
+
   async function createVariation(
     scope: TenantScope,
     projectId: string,
@@ -654,6 +1492,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       throw new AppError('validation_failed', 'A variation must be for more than zero.', [
         { path: 'amount', message: 'Must be more than zero' },
       ]);
+    if (input.costCodeId) await requireCostCode(scope, projectId, input.costCodeId);
     const [n] = await scope.tx
       .select({ n: sql<number>`coalesce(max(${variations.number}), 0) + 1` })
       .from(variations)
@@ -671,9 +1510,17 @@ export function createFinancialsService(deps: FinancialsDeps) {
         description: input.description?.trim() || null,
         amount: input.amount,
         timeImpactDays: input.timeImpactDays ?? 0,
+        costCodeId: input.costCodeId ?? null,
         createdBy: scope.ctx.userId,
       })
       .returning();
+    await recordRetention(scope, {
+      recordType: 'financials.variations',
+      recordId: id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: row!.createdAt,
+    });
     return withClaimed(scope, row!);
   }
 
@@ -769,19 +1616,115 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return withClaimed(scope, updated);
   }
 
+  /**
+   * Records a payment a connector pulled from the accounting system (integrations/02 A7). Payments are append-only
+   * facts: a reversal is a negative row pointing at the original. Safe to repeat (the same source and external
+   * reference lands once). Internal: no permission check, called from jobs. Returns `unknown` when the record it names
+   * is gone or, for a reversal, the original was never recorded here.
+   */
+  async function recordPayment(
+    scope: TenantScope,
+    input: PaymentInput,
+  ): Promise<'recorded' | 'duplicate' | 'unknown'> {
+    const claimId =
+      input.localType === 'claim'
+        ? input.localId
+        : (
+            await scope.tx
+              .select({ claimId: paymentSchedules.claimId })
+              .from(paymentSchedules)
+              .where(eq(paymentSchedules.id, input.localId))
+              .limit(1)
+          )[0]?.claimId;
+    if (!claimId || input.amountCents === 0) return 'unknown';
+    const [claim] = await scope.tx
+      .select({ id: paymentClaims.id, projectId: paymentClaims.projectId })
+      .from(paymentClaims)
+      .where(eq(paymentClaims.id, claimId))
+      .limit(1);
+    if (!claim) return 'unknown';
+    let reversesPaymentId: string | null = null;
+    if (input.amountCents < 0) {
+      const [original] = input.reversesExternalRef
+        ? await scope.tx
+            .select({ id: payments.id })
+            .from(payments)
+            .where(
+              and(
+                eq(payments.source, input.source),
+                eq(payments.externalRef, input.reversesExternalRef),
+                eq(payments.claimId, claim.id),
+              ),
+            )
+            .limit(1)
+        : [];
+      if (!original) return 'unknown';
+      reversesPaymentId = original.id;
+    }
+    const id = uuidv7();
+    const inserted = await scope.tx
+      .insert(payments)
+      .values({
+        id,
+        orgId: scope.ctx.orgId,
+        projectId: claim.projectId,
+        claimId: claim.id,
+        paidOn: input.paidOn,
+        amount: fromCents(input.amountCents),
+        reference: input.reference,
+        source: input.source,
+        externalRef: input.externalRef,
+        reversesPaymentId,
+      })
+      .onConflictDoNothing()
+      .returning({ id: payments.id });
+    if (!inserted.length) return 'duplicate';
+    scope.events.add({
+      type: 'financials.payment.recorded.v1',
+      projectId: claim.projectId,
+      entityType: 'payment',
+      entityId: id,
+      entityVersion: 1,
+      data: {
+        paymentId: id,
+        claimId: claim.id,
+        paidOn: input.paidOn,
+        amount: fromCents(input.amountCents),
+        source: input.source,
+        externalRef: input.externalRef,
+        reversesPaymentId,
+      },
+    });
+    return 'recorded';
+  }
+
   return {
+    contractFor: getContractRow,
+    requireStaff,
     ledgerSource,
+    recordPayment,
     createVariation,
+    setVariationCostCode,
     listVariations,
     getVariation,
     moveVariation,
     createContract,
+    contractForQuote,
     listContracts,
     getContract,
     submitClaim,
     listClaims,
     claimDetail,
+    recordStatement,
     issueSchedule,
+    listEvidence,
+    queueEvidenceDelivery,
+    listEvidenceDeliveries,
+    recordEvidenceService,
+    voidEvidenceService,
+    listEvidenceServiceRecords,
+    evidencePdf,
+    evidenceJson,
   };
 }
 

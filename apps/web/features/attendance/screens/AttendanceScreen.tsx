@@ -148,6 +148,24 @@ export function AttendanceScreen() {
             </Link>
             <Link
               className={buttonClassName('secondary')}
+              href={webRoutes.attendanceRoster(org.orgSlug, project.projectId)}
+            >
+              Roster
+            </Link>
+            <Link
+              className={buttonClassName('secondary')}
+              href={webRoutes.attendanceEquipment(org.orgSlug, project.projectId)}
+            >
+              Equipment
+            </Link>
+            <Link
+              className={buttonClassName('secondary')}
+              href={webRoutes.attendanceTimesheets(org.orgSlug, project.projectId)}
+            >
+              Timesheets
+            </Link>
+            <Link
+              className={buttonClassName('secondary')}
               href={webRoutes.attendanceSites(org.orgSlug, project.projectId)}
             >
               Sites and gates

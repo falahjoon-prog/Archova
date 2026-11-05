@@ -10,6 +10,7 @@ import {
   createTokenSession,
   createTokenVault,
   createXeroProvider,
+  ledgerReference,
   newPkce,
   xeroDate,
   type FetchLike,
@@ -152,6 +153,14 @@ describe('xero', () => {
         documentReference: 'PC-SC12-3',
         paidOn: '2023-10-17',
         amountCents: 125_050,
+      },
+      // A payment removed in Xero is a reversal of the one recorded, not a silent drop.
+      {
+        remoteId: 'p3:reversed',
+        documentReference: 'PC-X-1',
+        paidOn: '2026-10-01',
+        amountCents: -500,
+        reverses: 'p3',
       },
     ]);
     expect(xeroDate('2026-10-01T00:00:00')).toBe('2026-10-01');
@@ -303,9 +312,24 @@ describe('rate limiter', () => {
 describe('tokens', () => {
   const vault = createTokenVault(Buffer.alloc(32, 7));
   it('round-trips and binds to the org', () => {
-    const sealed = vault.seal('org-a', 'refresh-1');
-    expect(vault.open('org-a', sealed)).toBe('refresh-1');
-    expect(() => vault.open('org-b', sealed)).toThrow();
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    expect(vault.open('org-a', 'oauth-tokens', sealed)).toBe('refresh-1');
+    expect(() => vault.open('org-b', 'oauth-tokens', sealed)).toThrow();
+  });
+  it('fails closed on an unknown version, including the old org-only layout', () => {
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    for (const v of [0, 1, 3]) {
+      const bad = Buffer.from(sealed);
+      bad[0] = v;
+      expect(() => vault.open('org-a', 'oauth-tokens', bad)).toThrow('unknown token seal version');
+    }
+  });
+  it('binds the purpose and the key', () => {
+    const sealed = vault.seal('org-a', 'oauth-tokens', 'refresh-1');
+    expect(() => vault.open('org-a', 'webhook-secret', sealed)).toThrow();
+    expect(() =>
+      createTokenVault(Buffer.alloc(32, 8)).open('org-a', 'oauth-tokens', sealed),
+    ).toThrow();
   });
   it('builds a PKCE authorize url', () => {
     const { verifier, challenge } = newPkce();
@@ -333,5 +357,23 @@ describe('tokens', () => {
     expect(await Promise.all([get(), get()])).toEqual(['a1', 'a1']);
     expect(refreshes).toBe(1);
     expect(saved).toEqual(['r0+']);
+  });
+});
+
+describe('ledgerReference', () => {
+  it('differs for the same contract and claim number in two projects, and fits MYOB limits', () => {
+    const a = ledgerReference({
+      projectId: '018f0000-0000-7000-8000-0000000000a1',
+      contractNumber: 1,
+      claimNumber: 1,
+    });
+    const b = ledgerReference({
+      projectId: '018f0000-0000-7000-8000-0000000000b2',
+      contractNumber: 1,
+      claimNumber: 1,
+    });
+    expect(a).toBe('PC-000000a1-1-1');
+    expect(a).not.toBe(b);
+    expect(a.length).toBeLessThanOrEqual(20);
   });
 });

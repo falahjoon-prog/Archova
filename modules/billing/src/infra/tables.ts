@@ -1,4 +1,13 @@
-import { bigint, boolean, integer, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import {
+  bigint,
+  boolean,
+  integer,
+  pgSchema,
+  primaryKey,
+  text,
+  timestamp,
+  uuid,
+} from 'drizzle-orm/pg-core';
 
 export const billingSchema = pgSchema('billing');
 
@@ -67,3 +76,62 @@ export const orgAccounts = billingSchema.table('org_accounts', {
 });
 
 export type SuspendCategory = 'abuse' | 'fraud' | 'security' | 'legal_order';
+
+export const orgDiscounts = billingSchema.table('org_discounts', {
+  id: uuid('id').primaryKey(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  percent: integer('percent').notNull(),
+  startsOn: text('starts_on').notNull(),
+  endsOn: text('ends_on').notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  revokedBy: uuid('revoked_by'),
+});
+
+export const orgOverrides = billingSchema.table('org_overrides', {
+  id: uuid('id').primaryKey(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  kind: text('kind').$type<'module' | 'limit'>().notNull(),
+  key: text('key').notNull(),
+  limitValue: integer('limit_value'),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  createdBy: uuid('created_by').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  revokedBy: uuid('revoked_by'),
+});
+
+export type RefundStatus = 'pending_approval' | 'approved' | 'cancelled';
+
+export const orgRefunds = billingSchema.table('org_refunds', {
+  id: uuid('id').primaryKey(),
+  targetOrgId: uuid('target_org_id').notNull(),
+  invoiceRef: text('invoice_ref').notNull(),
+  amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+  paidCents: bigint('paid_cents', { mode: 'number' }).notNull(),
+  reason: text('reason').notNull(),
+  ticketRef: text('ticket_ref').notNull(),
+  status: text('status').$type<RefundStatus>().notNull(),
+  requestedBy: uuid('requested_by').notNull(),
+  approvedBy: uuid('approved_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** A trial-ending email claimed for an account; see migration 20261104170500. */
+export const trialNotices = billingSchema.table(
+  'trial_notices',
+  {
+    accountId: uuid('account_id').notNull(),
+    trialEndsAt: timestamp('trial_ends_at', { withTimezone: true }).notNull(),
+    daysBefore: integer('days_before').notNull(),
+    recipients: integer('recipients').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.accountId, t.trialEndsAt, t.daysBefore] })],
+);

@@ -252,6 +252,19 @@ function settleReading(s: Store) {
   }
 }
 
+export interface RaisedSubcontract {
+  contractId: string;
+  number: number;
+  created: boolean;
+}
+
+export interface RaisedCommitment {
+  commitmentId: string;
+  number: number;
+  total: string;
+  created: boolean;
+}
+
 export interface QuotesSource {
   /** The API (true) or the in-browser preview store (false): the preview reads an uploaded file by name only. */
   live: boolean;
@@ -262,7 +275,14 @@ export interface QuotesSource {
     input: { name: string; trade: string; dueAt: string },
   ): Promise<TenderPackage>;
   addScopeLines(projectId: string, packageId: string, lines: ScopeLine[]): Promise<TenderPackage>;
-  invite(projectId: string, packageId: string, companyIds: string[]): Promise<TenderPackage>;
+  invite(
+    projectId: string,
+    packageId: string,
+    companyIds: string[],
+    overrideReason?: string,
+  ): Promise<TenderPackage>;
+  /** Email an invited company a new link; the earlier one stops working. */
+  resendInvite(projectId: string, packageId: string, companyId: string): Promise<TenderPackage>;
   /** Send a draft out to tender, or close, reopen or cancel it. */
   transition(projectId: string, packageId: string, action: PackageAction): Promise<TenderPackage>;
   listQuotes(projectId: string, packageId: string): Promise<Quote[]>;
@@ -300,6 +320,14 @@ export interface QuotesSource {
     actor: { name: string },
     today: string,
   ): Promise<TenderPackage>;
+  /** Raise the draft subcontract from the awarded quote (`POST …/subcontract`); repeating it returns the same one. */
+  createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract>;
+  /** Raise the draft budget commitment from the awarded quote against a budget line (`POST …/commitment`). */
+  createCommitment(
+    projectId: string,
+    packageId: string,
+    budgetLineId: string,
+  ): Promise<RaisedCommitment>;
   /** Nova on one confirmed quote (`POST …/ai/quote-negotiations`); nothing is saved or sent. */
   askNova(
     projectId: string,
@@ -428,7 +456,12 @@ export const quotesSource: QuotesSource & {
     );
   },
 
-  async invite(projectId: string, packageId: string, companyIds: string[]): Promise<TenderPackage> {
+  async invite(
+    projectId: string,
+    packageId: string,
+    companyIds: string[],
+    _overrideReason?: string,
+  ): Promise<TenderPackage> {
     const pkg = findPackage(projectId, packageId);
     if (!pkg.scope.length)
       problem(422, 'package.no_scope', 'Add scope lines before inviting subcontractors.');
@@ -437,6 +470,17 @@ export const quotesSource: QuotesSource & {
         pkg.invites.push({ companyId, status: 'invited', invitedAt: nowIso() });
     }
     if (pkg.status === 'draft') pkg.status = 'out_to_tender';
+    return delay(pkg);
+  },
+
+  async resendInvite(
+    projectId: string,
+    packageId: string,
+    companyId: string,
+  ): Promise<TenderPackage> {
+    const pkg = findPackage(projectId, packageId);
+    const invite = pkg.invites.find((i) => i.companyId === companyId);
+    if (invite) invite.deliveredAt = nowIso();
     return delay(pkg);
   },
 
@@ -582,6 +626,24 @@ export const quotesSource: QuotesSource & {
     pkg.status = 'awarded';
     pkg.award = { quoteId, by: actor.name, at: nowIso(), reason: reason.trim() || null, notLowest };
     return delay(pkg);
+  },
+
+  async createCommitment(
+    projectId: string,
+    packageId: string,
+    _budgetLineId: string,
+  ): Promise<RaisedCommitment> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status !== 'awarded')
+      problem(409, 'tender.invalid_state', 'Award the package before raising a commitment.');
+    return delay({ commitmentId: mockId('cmt'), number: 1, total: '0.00', created: true });
+  },
+
+  async createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status !== 'awarded')
+      problem(409, 'tender.invalid_state', 'Award the package before raising a subcontract.');
+    return delay({ contractId: mockId('cnt'), number: 1, created: true });
   },
 };
 

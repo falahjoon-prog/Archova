@@ -12,13 +12,22 @@ import {
 } from '@archova/kernel';
 import type { ModelProvider, RasterizePage } from '@archova/mod-ai';
 import type { EntitlementProvider } from '@archova/mod-billing';
+import { createEvidenceSigner } from '@archova/mod-financials';
 import type { MalwareScanner, ObjectStore, TileUrls } from '@archova/mod-files';
 import {
   createHttpsTransport,
   vaultFromKey,
   type WebhookTransport,
 } from '@archova/mod-integrations';
-import { DEV_WEBHOOK_KEY, type ApiConfig } from './config';
+import { numberVaultFromKey } from '@archova/mod-workforce';
+import {
+  DEV_ACCOUNTING_KEY,
+  DEV_EVIDENCE_KEY_ID,
+  DEV_EVIDENCE_SIGNING_KEY,
+  DEV_WALLET_KEY,
+  DEV_WEBHOOK_KEY,
+  type ApiConfig,
+} from './config';
 import { loadModules, type Modules } from '@archova/compose';
 import { apiRateLimiter } from './plugins/rate-limit';
 import { registerInternalOperations } from './internal';
@@ -100,18 +109,28 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       backoffice: {
         localLogin: config.internal.localLogin,
         soloCoolingOffHours: config.internal.soloCoolingOffHours,
+        ...(config.internal.requireSupportHardwareKey === undefined
+          ? {}
+          : { requireSupportHardwareKey: config.internal.requireSupportHardwareKey }),
       },
       webhooks: {
         vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
         transport: deps.webhookTransport ?? createHttpsTransport(),
       },
       accounting: {
-        // Same sealing key as webhook secrets; both are org-bound AES-GCM blobs.
-        vault: vaultFromKey(config.webhookSecretKey ?? DEV_WEBHOOK_KEY),
+        // Its own key, separate from the webhook key; each sealed blob also carries its purpose (tokens.ts).
+        vault: vaultFromKey(config.accountingSecretKey ?? DEV_ACCOUNTING_KEY),
         fetch: deps.accountingFetch ?? ((url, init) => fetch(url, init)),
         redirectBase: `${config.linkBaseUrl}/orgs/accounting`,
         credentials: config.accounting,
+        folders: { credentials: config.folders },
       },
+      walletVault: numberVaultFromKey(config.walletSecretKey ?? DEV_WALLET_KEY),
+      evidenceSigner: createEvidenceSigner(
+        config.evidenceSigning?.keyId ?? DEV_EVIDENCE_KEY_ID,
+        config.evidenceSigning?.privateKeyPem ?? DEV_EVIDENCE_SIGNING_KEY,
+        config.evidenceSigning?.retired ?? {},
+      ),
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {
         ...(deps.aiRasterizePage ? { rasterizePage: deps.aiRasterizePage } : {}),

@@ -4,6 +4,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { migratorUrl } from './env';
 import { COMPOSED_DIR } from './sources';
@@ -72,7 +73,7 @@ export async function migrate(connectionString: string, log = console.log): Prom
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]!).href) {
   const dbIdx = process.argv.indexOf('--db');
   const url = dbIdx >= 0 ? migratorUrl(process.argv[dbIdx + 1]) : migratorUrl();
   const n = await migrate(url);

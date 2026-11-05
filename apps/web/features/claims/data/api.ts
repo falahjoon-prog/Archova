@@ -16,9 +16,24 @@ export type VariationList = S['VariationList'];
 export type VariationStatus = S['VariationStatus'];
 export type CreateVariation = S['CreateVariationRequest'];
 export type VariationAction = 'submit' | 'approve' | 'reject' | 'withdraw';
+export type CostForecast = S['CostForecast'];
+export type ForecastAdjustment = S['ForecastAdjustment'];
+export type BudgetVsForecast = S['BudgetVsForecast'];
+export type BudgetVsForecastRow = S['BudgetVsForecastRow'];
+export type CreateForecastAdjustment = S['CreateForecastAdjustmentRequest'];
+export type ContractPaymentSummary = S['ContractPaymentSummary'];
+export type ContractTrust = S['ContractTrust'];
+export type TrustMovement = S['TrustMovement'];
+export type TrustStatus = S['TrustStatus'];
+export type SaveContractTrust = S['SaveContractTrustRequest'];
+export type RecordTrustMovement = S['RecordTrustMovementRequest'];
+export type RetentionRelease = S['RetentionRelease'];
+export type SaveRetentionTerms = S['SaveRetentionTermsRequest'];
+export type RecordRetentionRelease = S['RecordRetentionReleaseRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
+export type RecordClaimStatement = S['RecordClaimStatementRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -44,6 +59,96 @@ export function createClaimsApi(orgId: string) {
         }),
       );
     },
+    async paymentSummary(projectId: string, contractId: string): Promise<ContractPaymentSummary> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/payment-summary`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      );
+    },
+    async saveTrust(
+      projectId: string,
+      contractId: string,
+      body: SaveContractTrust,
+    ): Promise<ContractTrust> {
+      return unwrap(
+        await api.PUT(`${P}/contracts/{contractId}/trust`, {
+          params: { path: { orgId, projectId, contractId } },
+          body,
+        }),
+      );
+    },
+    async recordTrustMovement(
+      projectId: string,
+      contractId: string,
+      body: RecordTrustMovement,
+    ): Promise<ContractTrust> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/trust/movements`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async retentionRelease(projectId: string, contractId: string): Promise<RetentionRelease> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/retention-release`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      );
+    },
+    async saveRetentionTerms(
+      projectId: string,
+      contractId: string,
+      body: SaveRetentionTerms,
+    ): Promise<RetentionRelease> {
+      return unwrap(
+        await api.PUT(`${P}/contracts/{contractId}/retention-release`, {
+          params: { path: { orgId, projectId, contractId } },
+          body,
+        }),
+      );
+    },
+    async recordRetentionRelease(
+      projectId: string,
+      contractId: string,
+      body: RecordRetentionRelease,
+    ): Promise<RetentionRelease> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/retention-release/releases`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async costForecast(projectId: string): Promise<CostForecast> {
+      return unwrap(
+        await api.GET(`${P}/cost-forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async budgetVsForecast(projectId: string): Promise<BudgetVsForecast> {
+      return unwrap(
+        await api.GET(`${P}/budget/vs-forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async createAdjustment(
+      projectId: string,
+      body: CreateForecastAdjustment,
+    ): Promise<ForecastAdjustment> {
+      return unwrap(
+        await api.POST(`${P}/cost-forecast/adjustments`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async deleteAdjustment(projectId: string, adjustmentId: string): Promise<void> {
+      unwrap(
+        await api.DELETE(`${P}/cost-forecast/adjustments/{adjustmentId}`, {
+          params: { path: { orgId, projectId, adjustmentId } },
+        }),
+      );
+    },
     async variations(projectId: string, contractId: string): Promise<VariationList> {
       return unwrap(
         await api.GET(`${P}/contracts/{contractId}/variations`, {
@@ -60,6 +165,18 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/contracts/{contractId}/variations`, {
           params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async setVariationCostCode(
+      projectId: string,
+      variationId: string,
+      costCodeId: string | null,
+    ): Promise<Variation> {
+      return unwrap(
+        await api.PUT(`${P}/variations/{variationId}/cost-code`, {
+          params: { path: { orgId, projectId, variationId }, header: idempotencyKey() },
+          body: { costCodeId },
         }),
       );
     },
@@ -104,6 +221,18 @@ export function createClaimsApi(orgId: string) {
       return unwrap(
         await api.POST(`${P}/contracts/{contractId}/claims`, {
           params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async recordStatement(
+      projectId: string,
+      claimId: string,
+      body: RecordClaimStatement,
+    ): Promise<PaymentClaimDetail> {
+      return unwrap(
+        await api.PUT(`${P}/payment-claims/{claimId}/subcontractor-statement`, {
+          params: { path: { orgId, projectId, claimId } },
           body,
         }),
       );

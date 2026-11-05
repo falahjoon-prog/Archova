@@ -1,5 +1,11 @@
 // Composition root: the list of modules this app loads (backend 01 §2). Adding a module means adding it here.
-import type { Database, KernelServices, MessageSender, RouteTable } from '@archova/kernel';
+import {
+  AppError,
+  type Database,
+  type KernelServices,
+  type MessageSender,
+  type RouteTable,
+} from '@archova/kernel';
 import {
   AI_PERMISSIONS,
   createAiModule,
@@ -16,8 +22,13 @@ import {
 } from '@archova/mod-billing';
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
-import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
-import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
+import {
+  FINANCIALS_PERMISSIONS,
+  createFinancialsModule,
+  type EvidenceSigner,
+} from '@archova/mod-financials';
+import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
+import { QUALITY_PERMISSIONS, createQualityModule, type QualityApi } from '@archova/mod-quality';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
 import {
@@ -37,10 +48,19 @@ import {
 } from '@archova/mod-files';
 import { createIdentityModule, type IdentityConfig } from '@archova/mod-identity';
 import { MEETINGS_PERMISSIONS, createMeetingsModule } from '@archova/mod-meetings';
+import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
+import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
+import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
-import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
+import {
+  WORKFORCE_PERMISSIONS,
+  createWorkforceModule,
+  type NumberVault,
+} from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
-import { createSchedulingModule } from '@archova/mod-scheduling';
+import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
+import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
+import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import {
   CORRESPONDENCE_PERMISSIONS,
@@ -57,8 +77,14 @@ export const MODULE_PERMISSIONS = [
   CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
+  OWNERPORTAL_PERMISSIONS,
+  BIM_PERMISSIONS,
+  SCHEDULING_PERMISSIONS,
+  REPORTING_PERMISSIONS,
+  EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
+  PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
@@ -81,6 +107,10 @@ export interface ModuleOptions {
   webhooks: WebhooksDeps;
   /** Xero and MYOB sign-in, token sealing and the fetch used for provider calls (integrations/02). */
   accounting: AccountingDeps;
+  /** Seals full wallet and worker credential numbers (compliance/05 §7). */
+  walletVault: NumberVault;
+  /** Signs sealed claim evidence (compliance/01 §4). */
+  evidenceSigner?: EvidenceSigner;
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
@@ -95,10 +125,43 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
+    adjustments: billing.api.adjustments,
     credits: () => ({ grantCredits: aiApi!.grantCredits }),
     supportReads: () => ({
-      projects: (orgId, staffId) => platformApi!.listProjectsForSupport(orgId, staffId),
+      projects: (orgId, staffId, projectIds) =>
+        platformApi!.listProjectsForSupport(orgId, staffId, projectIds),
     }),
+    projectInOrg: () => (orgId, projectId) => platformApi!.projectInOrg(orgId, projectId),
+    notifyStaff: async (emails, subject, text) => {
+      await Promise.all(emails.map((e) => opts.messages.email(e, { subject, text })));
+    },
+    notifySupportSession: async (notice) => {
+      const admins = await platformApi!.orgAdminContacts(notice.orgId);
+      // No one to tell means no session: the company must always be able to learn who is looking.
+      if (admins.length === 0)
+        throw new AppError(
+          'backoffice.support_notify_failed',
+          'This company has no active admin to tell.',
+        );
+      const scope = notice.projectIds ? 'only the projects you chose' : 'your whole company';
+      // Every admin must be told; one failed send fails the lot so the session does not stand.
+      await Promise.all(
+        admins.map((a) =>
+          opts.messages.email(a.email, {
+            subject: 'Archova support has opened a session on your account',
+            text: [
+              `Hi ${a.name},`,
+              '',
+              `${notice.staffName} from Archova support opened a view-only session on your company for ticket ${notice.ticketRef}.`,
+              `It can see ${scope}, and ends at ${notice.expiresAt.toISOString()}.`,
+              'Every page they view is listed under Settings, Support access, where you can withdraw access at any time.',
+              '',
+              'If you did not expect this, withdraw access now and tell us.',
+            ].join('\n'),
+          }),
+        ),
+      );
+    },
     config: opts.backoffice,
   });
   // access ↔ platform reference each other's public interfaces; resolve lazily.
@@ -109,14 +172,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     defaultEntitlements: TRIAL_ENTITLEMENTS,
     supportAccess: backoffice.api.support,
     hasOpenSupportSession: backoffice.api.support.hasOpenSession,
-    onOrgCreated: (scope, org, entitlements) =>
-      backoffice.api.directory.upsert(scope.tx, {
+    onOrgCreated: async (scope, org, entitlements) => {
+      // Every new company starts on a trial with an end date; the trial-expiry job moves it to read-only after that.
+      const account = await billing.api.accounts.startTrial(scope.tx, org.id, new Date());
+      await backoffice.api.directory.upsert(scope.tx, {
         id: org.id,
         name: org.name,
         slug: org.slug,
         planCode: entitlements.plan,
         state: entitlements.state,
-      }),
+        trialEndsAt: account.trialEndsAt,
+      });
+    },
   });
   platformApi = platform.api;
   access = createAccessModule(services, {
@@ -189,21 +256,50 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
 
   const meetings = createMeetingsModule(services, {
     access: access.api,
+    live: {
+      rfisOverdue: (scope, projectId, opts) => rfis.api.overdueForMeeting(scope, projectId, opts),
+      submittalsDue: (scope, projectId, opts) =>
+        submittals.api.dueForMeeting(scope, projectId, opts),
+      defectsOpen: (scope, projectId, opts) => defects.api.openForMeeting(scope, projectId, opts),
+      delayLines: (scope, projectId, opts) => diaryApi!.delayLines(scope, projectId, opts),
+    },
     platform: platform.api,
     messages: opts.messages,
     baseUrl: opts.linkBaseUrl,
     logger: services.logger,
   });
 
-  const financials = createFinancialsModule(services, {
+  const bim = createBimModule(services, {
+    access: access.api,
+    platform: platform.api,
+    files: files.api,
+    rfis: rfis.api,
+  });
+
+  const ownerportal = createOwnerPortalModule(services, {
     access: access.api,
     platform: platform.api,
   });
 
+  const notifications = createNotificationsModule(services);
+
+  const financials = createFinancialsModule(services, {
+    access: access.api,
+    platform: platform.api,
+    ...(opts.evidenceSigner ? { signer: opts.evidenceSigner } : {}),
+  });
+
+  // quality needs safety (stop-work on a SWMS) and safety needs quality (an incident action may link to an
+  // inspection or observation), so safety asks for it lazily.
+  let qualityApi: QualityApi | null = null;
   const safety = createSafetyModule(services, {
     access: access.api,
     platform: platform.api,
     files: files.api,
+    sources: {
+      exists: (scope, projectId, type, sourceId) =>
+        qualityApi!.sourceExists(scope, projectId, type, sourceId),
+    },
   });
 
   const quality = createQualityModule(services, {
@@ -212,14 +308,28 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     files: files.api,
     safety: safety.api,
   });
+  qualityApi = quality.api;
 
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
+  const precon = createPreconModule(services, { platform: platform.api });
+
   const estimating = createEstimatingModule(services, {
     access: access.api,
+    prequal: precon.api,
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+    financials: financials.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const integrations = createIntegrationsModule(services, {
@@ -281,9 +391,14 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     database: services.database as Database,
     diary: diary.api,
     rfis: rfis.api,
+    submittals: submittals.api,
+    platform: platform.api,
   });
 
+  const exportsModule = createExportsModule(services, { store: opts.files.store });
+
   const workforce = createWorkforceModule(services, {
+    vault: opts.walletVault,
     access: access.api,
     platform: platform.api,
     identity: identity.api,
@@ -307,6 +422,22 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     },
   });
 
+  // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
+  const reporting = createReportingModule({
+    database: services.database as Database,
+    platform: platform.api,
+    access: access.api,
+    rfis: rfis.api,
+    defects: defects.api,
+    submittals: submittals.api,
+    claims: financials.api.reporting.claims,
+    variations: financials.api.reporting.variations,
+    precon: precon.api,
+    workforce: workforce.api,
+    safety: safety.api,
+    financials: financials.api,
+  });
+
   const sync = createSyncModule(services, {
     access: access.api,
     sources: [
@@ -314,9 +445,18 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       diary.api.syncSource,
       rfis.api.syncSource,
       documents.api.syncSource,
+      documents.api.drawingsSyncSource,
       workforce.api.syncSource,
+      quality.api.syncSource,
+      safety.api.syncSource,
     ],
-    commands: [...defects.api.syncCommands],
+    commands: [
+      ...defects.api.syncCommands,
+      ...diary.api.syncCommands,
+      ...quality.api.syncCommands,
+      ...safety.api.syncCommands,
+      ...documents.api.syncCommands,
+    ],
     accessState: platform.api.getProjectAccessState,
   });
 
@@ -334,13 +474,19 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     correspondence,
     defects,
     meetings,
+    ownerportal,
+    bim,
+    notifications,
     financials,
     quality,
+    precon,
     safety,
     estimating,
     integrations,
     diary,
     scheduling,
+    reporting,
+    exportsModule,
     workforce,
     sync,
   ];
@@ -366,14 +512,20 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     correspondence,
     defects,
     meetings,
+    ownerportal,
+    bim,
+    notifications,
     financials,
     quality,
+    precon,
     safety,
     estimating,
     integrations,
     sync,
     diary,
     scheduling,
+    reporting,
+    exportsModule,
     workforce,
     routes,
   };

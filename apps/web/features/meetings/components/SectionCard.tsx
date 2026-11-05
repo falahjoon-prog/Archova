@@ -5,12 +5,13 @@ import { useState, type FormEvent } from 'react';
 import { Button, Select, StatusPill, TextField, Textarea } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
-import { formatLocalDate } from '@/shared/lib/format';
+import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
-import type { MeetingDetail, MeetingItem } from '../data/api';
+import type { LiveList, MeetingDetail, MeetingItem } from '../data/api';
 import { useMeetingMutations } from '../hooks/useMeetings';
+import { LinkPicker, type PickedLink } from './LinkPicker';
 import { KIND_LABELS, carriedLabel } from '../lib/labels';
 
 type Section = MeetingDetail['sections'][number];
@@ -22,6 +23,58 @@ function linkHref(orgSlug: string, projectId: string, link: NonNullable<MeetingI
   if (link.type === 'rfi') return webRoutes.rfi(orgSlug, projectId, link.id);
   if (link.type === 'defect') return webRoutes.defect(orgSlug, projectId, link.id);
   return null;
+}
+
+/** The register list of a live section (MTG-US5): each row links to its record. */
+function LiveRows({ live }: { live: LiveList }) {
+  const org = useCurrentOrg();
+  const project = useCurrentProject();
+  const href = (link: NonNullable<LiveList['rows'][number]['link']>) =>
+    link.type === 'rfi'
+      ? webRoutes.rfi(org.orgSlug, project.projectId, link.id)
+      : link.type === 'defect'
+        ? webRoutes.defect(org.orgSlug, project.projectId, link.id)
+        : webRoutes.submittal(org.orgSlug, project.projectId, link.id);
+  if (live.restricted)
+    return (
+      <p className="u-muted">
+        You can&apos;t see this register, so its list is not shown. Someone who can must issue these
+        minutes.
+      </p>
+    );
+  return (
+    <div className="stack">
+      <p className="u-caption u-m-0">
+        List as at {formatInstant(live.asOf, project.timezone)}. Issuing the minutes freezes it.
+      </p>
+      {live.rows.length === 0 ? (
+        <p className="u-muted">Nothing on this list.</p>
+      ) : (
+        <ul className="minutes-items" aria-label="Live list">
+          {live.rows.map((r, i) => (
+            <li key={`${r.ref}-${i}`} className="minutes-item">
+              <p className="minutes-item__body">
+                <span className="u-mono">{r.ref}</span>{' '}
+                {r.link ? (
+                  <Link className="link" href={href(r.link)}>
+                    {r.title}
+                  </Link>
+                ) : (
+                  r.title
+                )}
+              </p>
+              {r.detail ? <p className="u-caption u-m-0">{r.detail}</p> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {live.truncated ? (
+        <p className="u-caption u-m-0">
+          The list is longer than this; open the register for the rest.
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function ItemRow({
@@ -37,6 +90,8 @@ function ItemRow({
   const project = useCurrentProject();
   const { updateItem, deleteItem } = useMeetingMutations(meetingId);
   const error = updateItem.error ?? deleteItem.error;
+  const [picking, setPicking] = useState(false);
+  const [picked, setPicked] = useState<PickedLink | null>(null);
   const href = item.link ? linkHref(org.orgSlug, project.projectId, item.link) : null;
   const carried = item.history.length > 0;
   return (
@@ -100,6 +155,42 @@ function ItemRow({
               {item.status === 'open' ? 'Close action' : 'Reopen'}
             </Button>
           ) : null}
+          {picking ? (
+            <div className="form-row">
+              <LinkPicker onChange={setPicked} />
+              <Button
+                size="sm"
+                loading={updateItem.isPending}
+                disabled={!picked}
+                onClick={() =>
+                  picked &&
+                  updateItem.mutate(
+                    { item, body: { link: picked } },
+                    { onSuccess: () => setPicking(false) },
+                  )
+                }
+              >
+                Save link
+              </Button>
+              <Button variant="tertiary" size="sm" onClick={() => setPicking(false)}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button variant="tertiary" size="sm" onClick={() => setPicking(true)}>
+              {item.link ? 'Change link' : 'Attach a record'}
+            </Button>
+          )}
+          {item.link ? (
+            <Button
+              variant="tertiary"
+              size="sm"
+              loading={updateItem.isPending}
+              onClick={() => updateItem.mutate({ item, body: { link: null } })}
+            >
+              Remove link
+            </Button>
+          ) : null}
           {!carried && item.carriedCount === 0 ? (
             <Button
               variant="tertiary"
@@ -123,6 +214,8 @@ function AddItemForm({ section, meetingId }: { section: Section; meetingId: stri
   const [body, setBody] = useState('');
   const [companyId, setCompanyId] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [link, setLink] = useState<PickedLink | null>(null);
+  const [pickerKey, setPickerKey] = useState(0);
   const [problem, setProblem] = useState<string | null>(null);
 
   function submit(e: FormEvent) {
@@ -136,11 +229,14 @@ function AddItemForm({ section, meetingId }: { section: Section; meetingId: stri
         body: body.trim(),
         ...(kind === 'action' && companyId ? { ownerCompanyId: companyId } : {}),
         ...(kind === 'action' && dueDate ? { dueDate } : {}),
+        ...(link ? { link } : {}),
       },
       {
         onSuccess: () => {
           setBody('');
           setDueDate('');
+          setLink(null);
+          setPickerKey((k) => k + 1);
         },
       },
     );
@@ -181,6 +277,9 @@ function AddItemForm({ section, meetingId }: { section: Section; meetingId: stri
           </>
         ) : null}
       </div>
+      <div className="form-row">
+        <LinkPicker key={pickerKey} onChange={setLink} />
+      </div>
       <Textarea
         label={`New ${KIND_LABELS[kind].toLowerCase()} in ${section.title}`}
         rows={2}
@@ -214,9 +313,13 @@ export function SectionCard({
       <h2 id={`sec-${section.id}`} className="panel-heading">
         {section.position}. {section.title}{' '}
         {section.internalOnly ? <StatusPill tone="neutral">Builder only</StatusPill> : null}
+        {section.live ? <StatusPill tone="info">Live list</StatusPill> : null}
       </h2>
+      {section.live ? <LiveRows live={section.live} /> : null}
       {section.items.length === 0 ? (
-        <p className="u-muted">Nothing recorded.</p>
+        section.live ? null : (
+          <p className="u-muted">Nothing recorded.</p>
+        )
       ) : (
         <ul className="minutes-items">
           {section.items.map((i) => (

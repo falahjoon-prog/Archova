@@ -40,6 +40,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,
   'defect.tag': 0.1,
+  // F35: one site photo at the standard tier, a short list of signals out. Priya to confirm.
+  'safety.hazard_scan': 0.25,
   // F31: one suggestion per import file, however many columns. Priya to confirm.
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.
@@ -48,6 +50,10 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'quote.negotiate': 0.5,
   // F34: a whole contract read at the advanced tier; the design's estimate (design/09 CR1). Priya to confirm.
   'contract.review': 40,
+  // F34 Ask the contract: the pages and one question at the standard tier, a short cited answer out. Priya to confirm.
+  'contract.ask': 2,
+  // F34 Compare contracts: two contracts' pages and a list of cited differences out, standard tier. Priya to confirm.
+  'contract.compare': 5,
   // Nova listening: one short spoken question turned into text. Priya to confirm.
   'speech.transcribe': 0.1,
   'minutes.extract': 1.5,

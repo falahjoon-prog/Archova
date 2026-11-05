@@ -14,7 +14,11 @@ import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diar
 import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
 import type { ContractPlaybookService } from '../application/contract-playbook';
-import type { ContractReviewPayload, ContractReviewService } from '../application/contract-review';
+import type {
+  ContractReviewPayload,
+  ContractReviewRow,
+  ContractReviewService,
+} from '../application/contract-review';
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
@@ -37,6 +41,7 @@ import type { ProjectIndexService } from '../application/project-index';
 import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answer';
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
@@ -210,6 +215,20 @@ export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestio
   decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
 });
 
+/** A saved review as the API shows it: ids public, decisions with the person's public user id. */
+function toContractReviewDto(r: ContractReviewRow) {
+  return {
+    ...payloadDto('contract.review', r.payload),
+    decisions: (r.payload.decisions ?? []).map((d) => ({
+      ...d,
+      decidedBy: encodeId('user', d.decidedBy),
+    })),
+    runId: encodeId('aiRun', r.runId),
+    suggestionId: encodeId('aiSuggestion', r.id),
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
 const toSourceDto = (s: AnswerSource) => ({
   sourceType: s.sourceType,
   ...sourceIds(s),
@@ -217,6 +236,19 @@ const toSourceDto = (s: AnswerSource) => ({
   title: s.title,
   reference: s.reference,
   page: s.page,
+});
+
+const toHazardSignalDto = (s: HazardSignalView) => ({
+  id: encodeId('aiHazardSignal', s.id),
+  fileId: encodeId('file', s.fileId),
+  category: s.category,
+  categoryLabel: s.categoryLabel,
+  observation: s.observation,
+  confidence: s.confidence,
+  status: s.status,
+  reviewNote: s.reviewNote,
+  reviewedAt: s.reviewedAt?.toISOString() ?? null,
+  createdAt: s.createdAt.toISOString(),
 });
 
 const projectUuid = (id: string) => {
@@ -258,6 +290,7 @@ export function aiRoutes(
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
+  hazardScans: HazardScanService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -495,14 +528,80 @@ export function aiRoutes(
           ourSide: input.body.ourSide,
           baseForm: input.body.baseForm ?? null,
           multiState: input.body.multiState ?? false,
+          state: input.body.state ?? null,
         },
       );
       return {
         status: 200,
         body: {
           ...payloadDto('contract.review', payload),
+          decisions: [],
+          createdAt: new Date().toISOString(),
           runId: encodeId('aiRun', runId),
           suggestionId: encodeId('aiSuggestion', suggestionId),
+        },
+      };
+    },
+    listContractReviews: async (input) => {
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.list(scope, projectUuid(input.params.projectId)),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toContractReviewDto) } };
+    },
+    getContractReview: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.get(scope, projectUuid(input.params.projectId), id),
+        ro,
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    decideContractFlag: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        contractReviews.decideFlag(
+          scope,
+          projectUuid(input.params.projectId),
+          id,
+          Number(input.params.flagIndex),
+          { decision: input.body.decision, note: input.body.note ?? null },
+        ),
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    askContract: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const a = await contractReviews.ask(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        id,
+        input.body.question,
+      );
+      return { status: 200, body: { ...a, runId: encodeId('aiRun', a.runId) } };
+    },
+    compareContracts: async (input) => {
+      const baseId = decodeId('aiSuggestion', input.body.baseReviewId);
+      const otherId = decodeId('aiSuggestion', input.body.otherReviewId);
+      if (!baseId || !otherId) throw new AppError('ai.suggestion.not_found');
+      const c = await contractReviews.compare(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        baseId,
+        otherId,
+      );
+      return {
+        status: 200,
+        body: {
+          ...c,
+          runId: encodeId('aiRun', c.runId),
+          base: { ...c.base, suggestionId: encodeId('aiSuggestion', c.base.suggestionId) },
+          other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
         },
       };
     },
@@ -599,6 +698,62 @@ export function aiRoutes(
           },
         },
       };
+    },
+    scanSitePhotoForHazardsWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const photoFileId = decodeId('file', input.body.photo.fileId);
+      if (!photoFileId) throw new AppError('file.not_found');
+      const r = await hazardScans.scan(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        photoFileId,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          scanId: encodeId('aiHazardScan', r.scanId),
+          signals: r.signals.map(toHazardSignalDto),
+          photoUnclear: r.photoUnclear,
+          dropped: r.dropped,
+          unsupportedNumbers: r.unsupportedNumbers,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    listHazardSignals: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) =>
+          hazardScans.list(scope, projectId, {
+            limit: input.query.limit ?? 50,
+            ...(input.query.status ? { status: input.query.status } : {}),
+          }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toHazardSignalDto) } };
+    },
+    reviewHazardSignal: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const id = decodeId('aiHazardSignal', input.params.signalId);
+      if (!id) throw new AppError('ai.hazard_signal.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        hazardScans.review(scope, projectId, id, {
+          decision: input.body.decision,
+          ...(input.body.note ? { note: input.body.note } : {}),
+        }),
+      );
+      return { status: 200, body: toHazardSignalDto(row) };
+    },
+    getHazardPatterns: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const days = input.query.days ?? 30;
+      const data = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => hazardScans.patterns(scope, projectId, days),
+        ro,
+      );
+      return { status: 200, body: { days, data } };
     },
     summariseDiaryDayWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);

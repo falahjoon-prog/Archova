@@ -42,6 +42,16 @@ export function useMyActions(scope: 'mine' | 'all') {
   });
 }
 
+export function useLinkedMeetingItems(type: 'rfi' | 'defect' | 'variation', id: string) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'meetings', { linked: `${type}:${id}` }),
+    queryFn: () => source.linkedItems(projectId, { type, id }),
+  });
+}
+
 export function useMeeting(meetingId: string) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
@@ -86,6 +96,11 @@ export function useMeetingMutations(meetingId: string | null) {
     setAttendees: useMutation({
       mutationFn: (attendees: Parameters<typeof source.setAttendees>[2]) =>
         source.setAttendees(projectId, id(), attendees),
+      onSuccess: settle,
+    }),
+    addSection: useMutation({
+      mutationFn: (body: Parameters<typeof source.addSection>[2]) =>
+        source.addSection(projectId, id(), body),
       onSuccess: settle,
     }),
     createItem: useMutation({

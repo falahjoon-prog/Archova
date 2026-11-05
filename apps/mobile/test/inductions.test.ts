@@ -172,6 +172,17 @@ describe('image and document blocks', () => {
     expect(unviewedFiles(withFiles, new Set(['fil_a', 'fil_b', 'fil_c', 'doc_d']))).toEqual([]);
   });
 
+  it('shows animations and keeps the section locked until the last scene has played', () => {
+    const withAnimation = {
+      key: 'ppe',
+      title: 'PPE',
+      blocks: [{ type: 'animation', title: null, scenes: [{ id: 'sc1' }, { id: 'sc2' }] }],
+    } as never;
+    expect(unsupportedBlockKinds(withAnimation)).toEqual([]);
+    expect(unviewedFiles(withAnimation, new Set())).toEqual(['animation:sc1,sc2']);
+    expect(unviewedFiles(withAnimation, new Set(['animation:sc1,sc2']))).toEqual([]);
+  });
+
   it('fetches a download link for a SWMS by document id', async () => {
     const GET = vi.fn(async () => ({
       data: {

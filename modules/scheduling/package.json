@@ -16,8 +16,10 @@
     "@archova/domain": "workspace:*",
     "@archova/kernel": "workspace:*",
     "@archova/mod-diary": "workspace:*",
+    "@archova/mod-platform": "workspace:*",
     "@archova/mod-rfis": "workspace:*",
-    "@archova/time": "workspace:*"
+    "@archova/time": "workspace:*",
+    "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

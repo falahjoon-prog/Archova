@@ -2,3 +2,4 @@
 export { SubmittalListScreen } from './screens/SubmittalListScreen';
 export { SubmittalNewScreen } from './screens/SubmittalNewScreen';
 export { SubmittalDetailScreen } from './screens/SubmittalDetailScreen';
+export { useSubmittalList } from './hooks/useSubmittals';
