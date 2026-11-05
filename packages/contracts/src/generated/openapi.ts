@@ -8934,7 +8934,11 @@ export interface components {
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
-            /** @description Overdue RFIs, defects and submittals together. */
+            /** @description Payment claims not yet paid or withdrawn; overdue means the SOPA schedule or payment date has passed. */
+            claims: components["schemas"]["PortfolioTool"];
+            /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
+            variations: components["schemas"]["PortfolioTool"];
+            /** @description Overdue RFIs, defects, submittals and claims together. */
             attention: number;
         };
         PortfolioTotals: {
@@ -8945,6 +8949,10 @@ export interface components {
             defectsOverdue: number;
             submittalsOpen: number;
             submittalsOverdue: number;
+            claimsOpen: number;
+            claimsOverdue: number;
+            variationsOpen: number;
+            variationsOverdue: number;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -8954,7 +8962,7 @@ export interface components {
         };
         ReportConfig: {
             /** @enum {string} */
-            source: "rfis" | "defects" | "submittals";
+            source: "rfis" | "defects" | "submittals" | "claims" | "variations";
             /**
              * @description Open is what is still waiting on someone; closed is answered, approved or closed.
              * @enum {string}

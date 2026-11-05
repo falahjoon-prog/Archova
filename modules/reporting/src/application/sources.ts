@@ -19,6 +19,8 @@ export interface ReportingDeps {
   rfis: Tool;
   defects: Tool;
   submittals: Tool;
+  claims: Tool;
+  variations: Tool;
 }
 
 interface Tool {
