@@ -9085,6 +9085,88 @@ paths:
       responses:
         '204': { description: Deleted }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/payment-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractPaymentSummary
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: What has been claimed, scheduled, paid and is still owing on a contract, with the retention held for the payee.
+      description: >-
+        The subcontractor payment view. A subcontractor only reaches a contract where their company is the payee
+        (CLM-AC11); anything else is a 404. Amounts due include GST at 10% of the scheduled amount.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractPaymentSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractTrust
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Retention and project trust record for a contract, visible to the payee.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractTrust' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveContractTrust
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.trust.manage
+      summary: Record which account holds the retention trust for the contract (builder staff).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveContractTrustRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractTrust' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust/movements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: recordTrustMovement
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.trust.manage
+      summary: Record money paid into or out of the trust account (append-only; undo with a reversal).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordTrustMovementRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractTrust' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -16919,6 +17001,125 @@ components:
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+    TrustStatus:
+      type: string
+      enum: [not_required, not_set_up, ok, shortfall]
+    TrustMovementKind:
+      type: string
+      enum: [deposit, interest, release, reversal]
+    TrustMovement:
+      type: object
+      required: [id, kind, amount, movedOn, reference, note, reversesMovementId, recordedAt]
+      properties:
+        id: { type: string, pattern: '^tmv_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/TrustMovementKind' }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        movedOn: { type: string, format: date }
+        reference: { type: string }
+        note: { type: [string, 'null'] }
+        reversesMovementId: { type: [string, 'null'], pattern: '^tmv_[0-9A-Za-z]{26}$' }
+        recordedAt: { type: string, format: date-time }
+    ContractTrust:
+      type: object
+      required: [contractId, requirement, account, position, movements]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        requirement:
+          type: object
+          required: [required, basis, rulesReviewed]
+          properties:
+            required: { type: boolean }
+            basis: { type: string }
+            rulesReviewed:
+              type: boolean
+              description: False until a lawyer has signed off the thresholds (compliance/01 §7).
+        account:
+          type: [object, 'null']
+          required: [governmentClient, institution, accountName, accountLast4, openedOn]
+          properties:
+            governmentClient: { type: boolean }
+            institution: { type: [string, 'null'] }
+            accountName: { type: [string, 'null'] }
+            accountLast4: { type: [string, 'null'] }
+            openedOn: { type: [string, 'null'], format: date }
+        position:
+          type: object
+          required:
+            [status, retentionWithheld, released, requiredInTrust, balance, shortfall, interest]
+          properties:
+            status: { $ref: '#/components/schemas/TrustStatus' }
+            retentionWithheld: { $ref: '#/components/schemas/FinancialsMoney' }
+            released: { $ref: '#/components/schemas/FinancialsMoney' }
+            requiredInTrust: { $ref: '#/components/schemas/FinancialsMoney' }
+            balance: { $ref: '#/components/schemas/FinancialsMoney' }
+            shortfall: { $ref: '#/components/schemas/FinancialsMoney' }
+            interest: { $ref: '#/components/schemas/FinancialsMoney' }
+        movements:
+          type: array
+          items: { $ref: '#/components/schemas/TrustMovement' }
+    SaveContractTrustRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        governmentClient: { type: boolean }
+        institution: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        accountName: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        accountLast4: { type: [string, 'null'], pattern: '^[0-9]{4}$' }
+        openedOn: { type: [string, 'null'], format: date }
+    RecordTrustMovementRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, amount, movedOn, reference]
+      properties:
+        kind: { $ref: '#/components/schemas/TrustMovementKind' }
+        amount:
+          $ref: '#/components/schemas/FinancialsMoney'
+        movedOn: { type: string, format: date }
+        reference: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        reversesMovementId: { type: string, pattern: '^tmv_[0-9A-Za-z]{26}$' }
+    PaymentSummaryClaim:
+      type: object
+      required:
+        [
+          claimId,
+          number,
+          periodEnd,
+          status,
+          claimedTotal,
+          scheduledAmount,
+          amountDue,
+          paid,
+          lastPaidOn,
+          outstanding,
+          paymentDueOn,
+          overdue,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        status: { type: string }
+        claimedTotal: { $ref: '#/components/schemas/FinancialsMoney' }
+        scheduledAmount: { type: [string, 'null'] }
+        amountDue: { type: [string, 'null'] }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        lastPaidOn: { type: [string, 'null'], format: date }
+        outstanding: { type: [string, 'null'] }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        overdue: { type: boolean }
+    ContractPaymentSummary:
+      type: object
+      required: [contractId, title, claims, totalDue, totalPaid, trust]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentSummaryClaim' }
+        totalDue: { $ref: '#/components/schemas/FinancialsMoney' }
+        totalPaid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        trust: { $ref: '#/components/schemas/ContractTrust' }
     VariationList:
       type: object
       required: [data, approvedTotal]

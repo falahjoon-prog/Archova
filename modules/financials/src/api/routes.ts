@@ -7,6 +7,8 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { TrustService } from '../application/trust';
+import { toPaymentSummaryDto, toTrustDto } from './trust-mappers';
 import type { ForecastService } from '../application/forecast';
 import { toAdjustmentDto, toForecastDto } from './forecast-mappers';
 import type { FinancialsService } from '../application/financials';
@@ -43,6 +45,7 @@ export function financialsRoutes(
   database: Database,
   financials: FinancialsService,
   forecast: ForecastService,
+  trust: TrustService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -214,6 +217,74 @@ export function financialsRoutes(
         ),
       );
       return { status: 204 };
+    },
+    getContractPaymentSummary: async (input) => ({
+      status: 200,
+      body: toPaymentSummaryDto(
+        await read(input, (s) =>
+          trust.paymentSummary(
+            s,
+            project(input.params),
+            ref('contract', input.params.contractId, 'contractId'),
+          ),
+        ),
+      ),
+    }),
+    getContractTrust: async (input) => ({
+      status: 200,
+      body: toTrustDto(
+        await read(input, (s) =>
+          trust.getTrust(
+            s,
+            project(input.params),
+            ref('contract', input.params.contractId, 'contractId'),
+          ),
+        ),
+      ),
+    }),
+    saveContractTrust: async (input) => ({
+      status: 200,
+      body: toTrustDto(
+        await tx(input, (s) =>
+          trust.saveProfile(
+            s,
+            project(input.params),
+            ref('contract', input.params.contractId, 'contractId'),
+            input.body,
+          ),
+        ),
+      ),
+    }),
+    recordTrustMovement: async (input) => {
+      const b = input.body;
+      return {
+        status: 201,
+        body: toTrustDto(
+          await tx(input, (s) =>
+            trust.recordMovement(
+              s,
+              project(input.params),
+              ref('contract', input.params.contractId, 'contractId'),
+              {
+                kind: b.kind,
+                amount: money(b.amount, 'amount'),
+                movedOn: b.movedOn,
+                reference: b.reference,
+                ...(b.note ? { note: b.note } : {}),
+                ...(b.reversesMovementId
+                  ? {
+                      reversesMovementId: ref(
+                        'trustMovement',
+                        b.reversesMovementId,
+                        'reversesMovementId',
+                      ),
+                    }
+                  : {}),
+              },
+            ),
+          ),
+        ),
+      };
     },
     submitVariation: async (input) => move(input, 'submitted'),
     approveVariation: async (input) => move(input, 'approved', input.body?.note),

@@ -771,6 +771,77 @@ export const ContractListSchema = z.object({
 });
 export type ContractList = z.infer<typeof ContractListSchema>;
 
+export const PaymentSummaryClaimSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "status": z.string(),
+  "claimedTotal": FinancialsMoneySchema,
+  "scheduledAmount": z.string().nullable(),
+  "amountDue": z.string().nullable(),
+  "paid": FinancialsSignedMoneySchema,
+  "lastPaidOn": z.string().date().nullable(),
+  "outstanding": z.string().nullable(),
+  "paymentDueOn": z.string().date().nullable(),
+  "overdue": z.boolean(),
+});
+export type PaymentSummaryClaim = z.infer<typeof PaymentSummaryClaimSchema>;
+
+export const TrustStatusSchema = z.enum(["not_required", "not_set_up", "ok", "shortfall"]);
+export type TrustStatus = z.infer<typeof TrustStatusSchema>;
+
+export const TrustMovementKindSchema = z.enum(["deposit", "interest", "release", "reversal"]);
+export type TrustMovementKind = z.infer<typeof TrustMovementKindSchema>;
+
+export const TrustMovementSchema = z.object({
+  "id": z.string().regex(new RegExp("^tmv_[0-9A-Za-z]{26}$")),
+  "kind": TrustMovementKindSchema,
+  "amount": FinancialsSignedMoneySchema,
+  "movedOn": z.string().date(),
+  "reference": z.string(),
+  "note": z.string().nullable(),
+  "reversesMovementId": z.string().regex(new RegExp("^tmv_[0-9A-Za-z]{26}$")).nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type TrustMovement = z.infer<typeof TrustMovementSchema>;
+
+export const ContractTrustSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "requirement": z.object({
+  "required": z.boolean(),
+  "basis": z.string(),
+  "rulesReviewed": z.boolean(),
+}),
+  "account": z.object({
+  "governmentClient": z.boolean(),
+  "institution": z.string().nullable(),
+  "accountName": z.string().nullable(),
+  "accountLast4": z.string().nullable(),
+  "openedOn": z.string().date().nullable(),
+}).nullable(),
+  "position": z.object({
+  "status": TrustStatusSchema,
+  "retentionWithheld": FinancialsMoneySchema,
+  "released": FinancialsMoneySchema,
+  "requiredInTrust": FinancialsMoneySchema,
+  "balance": FinancialsMoneySchema,
+  "shortfall": FinancialsMoneySchema,
+  "interest": FinancialsMoneySchema,
+}),
+  "movements": z.array(TrustMovementSchema),
+});
+export type ContractTrust = z.infer<typeof ContractTrustSchema>;
+
+export const ContractPaymentSummarySchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "claims": z.array(PaymentSummaryClaimSchema),
+  "totalDue": FinancialsMoneySchema,
+  "totalPaid": FinancialsSignedMoneySchema,
+  "trust": ContractTrustSchema,
+});
+export type ContractPaymentSummary = z.infer<typeof ContractPaymentSummarySchema>;
+
 export const ContractTypeSchema = z.enum(["head_contract", "subcontract", "consultant_agreement"]);
 export type ContractType = z.infer<typeof ContractTypeSchema>;
 
@@ -4524,6 +4595,16 @@ export const RecordInspectionResponsesRequestSchema = z.object({
 }).strict();
 export type RecordInspectionResponsesRequest = z.infer<typeof RecordInspectionResponsesRequestSchema>;
 
+export const RecordTrustMovementRequestSchema = z.object({
+  "kind": TrustMovementKindSchema,
+  "amount": FinancialsMoneySchema,
+  "movedOn": z.string().date(),
+  "reference": z.string().min(1).max(200),
+  "note": z.string().min(1).max(2000).optional(),
+  "reversesMovementId": z.string().regex(new RegExp("^tmv_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type RecordTrustMovementRequest = z.infer<typeof RecordTrustMovementRequestSchema>;
+
 export const RejectPrequalificationRequestSchema = z.object({
   "note": z.string().min(1).max(2000),
 }).strict();
@@ -4706,6 +4787,15 @@ export const RollCallListSchema = z.object({
   "data": z.array(RollCallSchema),
 });
 export type RollCallList = z.infer<typeof RollCallListSchema>;
+
+export const SaveContractTrustRequestSchema = z.object({
+  "governmentClient": z.boolean().optional(),
+  "institution": z.string().min(1).max(200).nullable().optional(),
+  "accountName": z.string().min(1).max(200).nullable().optional(),
+  "accountLast4": z.string().regex(new RegExp("^[0-9]{4}$")).nullable().optional(),
+  "openedOn": z.string().date().nullable().optional(),
+}).strict();
+export type SaveContractTrustRequest = z.infer<typeof SaveContractTrustRequestSchema>;
 
 export const SaveDiaryEntryRequestSchema = z.object({
   "weatherOverride": z.union([DiaryWeatherSchema, z.null()]).optional(),
