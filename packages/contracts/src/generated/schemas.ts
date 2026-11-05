@@ -167,7 +167,7 @@ export const AdjustTimesheetLineRequestSchema = z.object({
 }).strict();
 export type AdjustTimesheetLineRequest = z.infer<typeof AdjustTimesheetLineRequestSchema>;
 
-export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating", "contract_review"]);
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "safety_hazards", "minutes", "estimating", "contract_review"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
 export const AiFeedbackRequestSchema = z.object({
@@ -3105,6 +3105,38 @@ export const GrantedWalletListSchema = z.object({
 });
 export type GrantedWalletList = z.infer<typeof GrantedWalletListSchema>;
 
+export const HazardConfidenceSchema = z.enum(["low", "medium", "high"]);
+export type HazardConfidence = z.infer<typeof HazardConfidenceSchema>;
+
+export const HazardPatternSchema = z.object({
+  "category": z.string(),
+  "label": z.string(),
+  "open": z.number().int(),
+  "confirmed": z.number().int(),
+  "dismissed": z.number().int(),
+  "photos": z.number().int(),
+  "isPattern": z.boolean(),
+  "trend": z.enum(["rising", "steady", "falling"]),
+});
+export type HazardPattern = z.infer<typeof HazardPatternSchema>;
+
+export const HazardSignalStatusSchema = z.enum(["open", "confirmed", "dismissed"]);
+export type HazardSignalStatus = z.infer<typeof HazardSignalStatusSchema>;
+
+export const HazardSignalSchema = z.object({
+  "id": z.string(),
+  "fileId": z.string(),
+  "category": z.string(),
+  "categoryLabel": z.string(),
+  "observation": z.string(),
+  "confidence": HazardConfidenceSchema,
+  "status": HazardSignalStatusSchema,
+  "reviewNote": z.string().nullable(),
+  "reviewedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type HazardSignal = z.infer<typeof HazardSignalSchema>;
+
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
 
@@ -4493,6 +4525,17 @@ export const NovaDrawingCompareSchema = z.object({
 })),
 });
 export type NovaDrawingCompare = z.infer<typeof NovaDrawingCompareSchema>;
+
+export const NovaHazardScanSchema = z.object({
+  "runId": z.string(),
+  "scanId": z.string(),
+  "signals": z.array(HazardSignalSchema),
+  "photoUnclear": z.boolean(),
+  "dropped": z.number().int(),
+  "unsupportedNumbers": z.array(z.string()),
+  "disclaimer": z.string(),
+});
+export type NovaHazardScan = z.infer<typeof NovaHazardScanSchema>;
 
 export const NovaImportMappingSchema = z.object({
   "runId": z.string(),

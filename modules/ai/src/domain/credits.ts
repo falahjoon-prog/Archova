@@ -40,6 +40,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   // F4: a week's worth of facts in, a longer report out: about two daily summaries. Priya to confirm.
   'diary.weekly': 1,
   'defect.tag': 0.1,
+  // F35: one site photo at the standard tier, a short list of signals out. Priya to confirm.
+  'safety.hazard_scan': 0.25,
   // F31: one suggestion per import file, however many columns. Priya to confirm.
   'import.mapping': 0.25,
   // F22: one quote PDF read into lines and notes; about a meeting minutes run (ai/10 §5). Priya to confirm.

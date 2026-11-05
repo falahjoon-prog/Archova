@@ -169,6 +169,8 @@ export const PROBLEM_CODES = {
   'ai.cancelled': 408,
   'ai.run.not_found': 404,
   'ai.suggestion.not_found': 404,
+  'ai.hazard_signal.not_found': 404,
+  'ai.hazard_signal.already_reviewed': 409,
   // rfis
   'rfi.not_found': 404,
   'rfi.invalid_transition': 409,
