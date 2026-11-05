@@ -40,6 +40,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-secure-store',
     'expo-web-browser',
     'expo-video',
+    // Hands-free voice (mobile F14): the phone's own speech recognition, on device where the OS supports it.
+    [
+      'expo-speech-recognition',
+      {
+        microphonePermission:
+          'Archova listens while you hold the voice button so you can log diary notes hands-free on site.',
+        speechRecognitionPermission:
+          'Archova turns your spoken diary notes and commands into text on your phone.',
+        androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'],
+      },
+    ],
     // SQLCipher for the per-organisation device database (mobile 02 §2.3); lib/db refuses to open without it.
     ['expo-sqlite', { useSQLCipher: true }],
     [

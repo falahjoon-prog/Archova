@@ -50,7 +50,7 @@ function matchPrefix(text: string, prefixes: RegExp[]): string | null {
   return null;
 }
 
-/** "2 hours", "two hours", "half an hour", "one and a half hours" → hours, at most one decimal. */
+/** "2 hours", "two hours", "half an hour", "one and a half hours" → hours, in quarter hours, as the diary takes them. */
 export function spokenHours(s: string): number | null {
   const t = s.toLowerCase();
   if (/half an? hour/.test(t)) return 0.5;
@@ -60,7 +60,7 @@ export function spokenHours(s: string): number | null {
   const base = /^\d/.test(raw) ? Number(raw) : WORD_NUMBERS[raw];
   if (base === undefined || Number.isNaN(base)) return null;
   const n = base + (/and a half/.test(m[0]) ? 0.5 : 0);
-  return n > 0 && n <= 24 ? Math.round(n * 10) / 10 : null;
+  return n > 0 && n <= 24 ? Math.round(n * 4) / 4 : null;
 }
 
 const CONFIRM = /^(yes|yep|yeah|confirm|correct|that'?s right|send it|save it|do it)\b/i;

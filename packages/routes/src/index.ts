@@ -143,6 +143,8 @@ export const mobileRoutes = {
     `/project/${enc(projectId)}/tenders/${enc(packageId)}`,
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
+  /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
+  voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,
