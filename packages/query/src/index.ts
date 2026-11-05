@@ -59,7 +59,8 @@ export type ProjectTool =
   | 'takeoff-measurements'
   | 'estimates'
   | 'contracts'
-  | 'payment-claims';
+  | 'payment-claims'
+  | 'cost-forecast';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */
 const queryOptions = <T extends { queryKey: readonly unknown[]; queryFn: () => Promise<unknown> }>(
