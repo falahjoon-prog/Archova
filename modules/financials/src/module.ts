@@ -32,7 +32,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     requireStaff: service.requireStaff,
   };
   const trust = createTrustService(trustDeps);
-  const retention = createRetentionService(trustDeps);
+  const retention = createRetentionService(trustDeps, trust);
   return {
     definition: defineModule({ name: 'financials', permissions: FINANCIALS_PERMISSIONS }),
     routes: {

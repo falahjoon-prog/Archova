@@ -18021,6 +18021,11 @@ components:
         releasedOn: { type: string, format: date }
         reference: { type: string, minLength: 1, maxLength: 200 }
         note: { type: string, minLength: 1, maxLength: 2000 }
+        fromTrust:
+          type: boolean
+          description: >-
+            Take the release out of the contract's trust account too. Default: yes when a trust account is
+            recorded. The release is refused if the account holds less than the amount.
     VariationList:
       type: object
       required: [data, approvedTotal]

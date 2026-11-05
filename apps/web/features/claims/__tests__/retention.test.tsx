@@ -73,6 +73,21 @@ describe('RetentionReleasePanel', () => {
     });
   });
 
+  it('can record a release without taking it out of the trust account', async () => {
+    fake.on('GET', P, () => release());
+    fake.on('POST', `${P}/releases`, () => release());
+    const user = userEvent.setup();
+    renderInProject(<RetentionReleasePanel contractId="cnt_1" canManage />);
+    await screen.findByText('Retention held');
+    await enterText(user, screen.getByLabelText('Amount'), '500.00');
+    await enterText(user, screen.getByLabelText('Date released'), '2026-11-01');
+    await enterText(user, screen.getByLabelText('Reference'), 'R-2');
+    await user.click(screen.getByLabelText(/Don.t take this out of the trust account/));
+    await user.click(screen.getByRole('button', { name: 'Record release' }));
+    await waitFor(() => expect(fake.callsTo('POST', `${P}/releases`)).toHaveLength(1));
+    expect(fake.callsTo('POST', `${P}/releases`)[0]!.init.body).toMatchObject({ fromTrust: false });
+  });
+
   it('saves the release terms', async () => {
     fake.on('GET', P, () => release());
     fake.on('PUT', P, () => release());
