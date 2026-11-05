@@ -154,17 +154,14 @@ export function createTrustService(deps: TrustDeps) {
     return summary(scope, contract);
   }
 
-  async function recordMovement(
+  /** Writes one movement after the caller has checked permission. Serialised per trust account. */
+  async function insertMovement(
     scope: TenantScope,
     projectId: string,
     contractId: string,
+    acct: TrustAccountRow,
     input: RecordMovementInput,
   ) {
-    await deps.access.assert(scope, 'financials.trust.manage', { projectId });
-    await deps.requireStaff(scope, projectId, 'record trust account movements');
-    const contract = await deps.contractFor(scope, projectId, contractId, true);
-    const acct = await account(scope, contractId);
-    if (!acct) throw new AppError('financials.trust.not_set_up');
     // Two people recording at once must see each other's rows before the balance check below.
     await scope.tx
       .select({ id: trustAccounts.id })
@@ -221,7 +218,38 @@ export function createTrustService(deps: TrustDeps) {
       entityVersion: 1,
       data: { contractId, kind: input.kind, amount: fromSigned(signedCents) },
     });
+  }
+
+  async function recordMovement(
+    scope: TenantScope,
+    projectId: string,
+    contractId: string,
+    input: RecordMovementInput,
+  ) {
+    await deps.access.assert(scope, 'financials.trust.manage', { projectId });
+    await deps.requireStaff(scope, projectId, 'record trust account movements');
+    const contract = await deps.contractFor(scope, projectId, contractId, true);
+    const acct = await account(scope, contractId);
+    if (!acct) throw new AppError('financials.trust.not_set_up');
+    await insertMovement(scope, projectId, contractId, acct, input);
     return summary(scope, contract);
+  }
+
+  /**
+   * Takes retention that has been released out of the trust account too. Internal: the retention service has already
+   * checked permission. Returns `skipped` when no trust account has been recorded for the contract, so contracts with
+   * no trust keep working; throws `financials.trust.insufficient` when the account holds less than is being released.
+   */
+  async function releaseFromTrust(
+    scope: TenantScope,
+    projectId: string,
+    contractId: string,
+    input: { amount: string; movedOn: string; reference: string; note?: string },
+  ): Promise<'moved' | 'skipped'> {
+    const acct = await account(scope, contractId);
+    if (!acct || acct.institution === null) return 'skipped';
+    await insertMovement(scope, projectId, contractId, acct, { kind: 'release', ...input });
+    return 'moved';
   }
 
   /**
@@ -287,7 +315,7 @@ export function createTrustService(deps: TrustDeps) {
     return { contract, rows, dueTotal, paidTotal, trust };
   }
 
-  return { getTrust, saveProfile, recordMovement, paymentSummary };
+  return { getTrust, saveProfile, recordMovement, releaseFromTrust, paymentSummary };
 }
 
 export type TrustService = ReturnType<typeof createTrustService>;

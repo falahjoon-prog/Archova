@@ -4909,6 +4909,7 @@ export const RecordRetentionReleaseRequestSchema = z.object({
   "releasedOn": z.string().date(),
   "reference": z.string().min(1).max(200),
   "note": z.string().min(1).max(2000).optional(),
+  "fromTrust": z.boolean().optional(),
 }).strict();
 export type RecordRetentionReleaseRequest = z.infer<typeof RecordRetentionReleaseRequestSchema>;
 

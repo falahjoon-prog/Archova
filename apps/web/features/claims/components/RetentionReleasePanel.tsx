@@ -202,6 +202,7 @@ function ReleaseForm({ contractId, r }: { contractId: string; r: RetentionReleas
   const [amount, setAmount] = useState('');
   const [releasedOn, setReleasedOn] = useState('');
   const [reference, setReference] = useState('');
+  const [keepInTrust, setKeepInTrust] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const current = r.stages.find((s) => s.stage === stage);
   function save(e: FormEvent) {
@@ -219,7 +220,13 @@ function ReleaseForm({ contractId, r }: { contractId: string; r: RetentionReleas
     if (!releasedOn) return setError('Enter the date the retention was released.');
     if (!reference.trim()) return setError('Enter a reference, like the payment number.');
     recordRelease.mutate(
-      { stage, amount: amount.trim(), releasedOn, reference: reference.trim() },
+      {
+        stage,
+        amount: amount.trim(),
+        releasedOn,
+        reference: reference.trim(),
+        ...(keepInTrust ? { fromTrust: false } : {}),
+      },
       {
         onSuccess: () => {
           setAmount('');
@@ -254,6 +261,17 @@ function ReleaseForm({ contractId, r }: { contractId: string; r: RetentionReleas
         value={reference}
         onChange={(e) => setReference(e.target.value)}
       />
+      <label className="row-actions">
+        <input
+          type="checkbox"
+          checked={keepInTrust}
+          onChange={(e) => setKeepInTrust(e.target.checked)}
+        />
+        Don&apos;t take this out of the trust account
+      </label>
+      <p className="u-m-0">
+        If a trust account is recorded for this contract, the release is also taken out of it.
+      </p>
       {error ? <Alert tone="danger">{error}</Alert> : null}
       <ErrorAlert error={recordRelease.error} title="We couldn't record this release" />
       <div className="row-actions">

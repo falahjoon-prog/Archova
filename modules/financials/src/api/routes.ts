@@ -425,6 +425,7 @@ export function financialsRoutes(
                 releasedOn: b.releasedOn,
                 reference: b.reference,
                 ...(b.note ? { note: b.note } : {}),
+                ...(b.fromTrust !== undefined ? { fromTrust: b.fromTrust } : {}),
               },
             ),
           ),

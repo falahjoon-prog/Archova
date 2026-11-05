@@ -12269,6 +12269,8 @@ export interface components {
             releasedOn: string;
             reference: string;
             note?: string;
+            /** @description Take the release out of the contract's trust account too. Default: yes when a trust account is recorded. The release is refused if the account holds less than the amount. */
+            fromTrust?: boolean;
         };
         VariationList: {
             data: components["schemas"]["Variation"][];
