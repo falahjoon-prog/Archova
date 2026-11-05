@@ -25,4 +25,23 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'financials.budget.read', scope: 'project', tool: 'budget', level: 'standard' },
   { key: 'financials.budget.manage', scope: 'project', tool: 'budget', level: 'admin' },
   { key: 'financials.budget.view_margin', scope: 'project', tool: 'budget', level: 'admin' },
+  // Commitments are the builder's cost position too; staff only (the use cases also refuse outsiders).
+  {
+    key: 'financials.commitments.read',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.commitments.manage',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'standard',
+  },
+  {
+    key: 'financials.commitments.decide',
+    scope: 'project',
+    tool: 'payment_claims',
+    level: 'admin',
+  },
 ];

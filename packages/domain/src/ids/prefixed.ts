@@ -111,6 +111,7 @@ export const ID_PREFIXES = {
   costCode: 'ccd',
   budget: 'bud',
   budgetLine: 'bln',
+  commitment: 'cmt',
   budgetAdjustment: 'bad',
   prequalTemplate: 'pqt',
   prequalification: 'pqf',

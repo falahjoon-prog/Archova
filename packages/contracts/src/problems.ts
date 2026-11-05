@@ -301,6 +301,10 @@ export const PROBLEM_CODES = {
   'financials.budget.line_not_found': 404,
   'financials.budget.duplicate_line': 409,
   'financials.budget.below_zero': 422,
+  'financials.commitment.not_found': 404,
+  'financials.commitment.bad_state': 409,
+  'financials.commitment.reason_required': 422,
+  'financials.commitment.over_budget': 422,
   // quality: inspections and observations
   'inspection_template.not_found': 404,
   'inspection_template.published': 409,
