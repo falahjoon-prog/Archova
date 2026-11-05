@@ -154,4 +154,36 @@ describe('OwnerPortalScreen', () => {
     expect(within(totals).getByText('All years')).toBeTruthy();
     expect(within(table).getAllByText('$1,000,000.00').length).toBeGreaterThan(0);
   });
+
+  it('lets the team change and remove a capital line', async () => {
+    const user = userEvent.setup();
+    nav.search = 'tab=capital';
+    fake.on('GET', PERMS, () =>
+      perms({ toolLevels: { owner_portal: 'standard' }, granular: [], isExternal: false }),
+    );
+    fake.on('PATCH', `${B}/capital-plan/{itemId}`, () => ({}));
+    fake.on('DELETE', `${B}/capital-plan/{itemId}`, () => undefined);
+    renderInProject(<OwnerPortalScreen />);
+    await user.click(await screen.findByRole('button', { name: 'Edit Construction FY2027' }));
+    const dialog = await screen.findByRole('dialog');
+    const forecast = within(dialog).getByLabelText('Forecast (AUD)');
+    expect((forecast as HTMLInputElement).value).toBe('1050000.00');
+    await user.clear(forecast);
+    await enterText(user, forecast, '1100000');
+    await user.click(within(dialog).getByRole('button', { name: 'Save line' }));
+    await waitFor(() =>
+      expect(fake.callsTo('PATCH', `${B}/capital-plan/{itemId}`)).toHaveLength(1),
+    );
+    const call = fake.callsTo('PATCH', `${B}/capital-plan/{itemId}`)[0]!.init;
+    expect(call.params?.header).toEqual({ 'If-Match': '"1"' });
+    expect(call.body).toMatchObject({ forecastCents: 110_000_000 });
+
+    await user.click(await screen.findByRole('button', { name: 'Remove Construction FY2027' }));
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', { name: 'Remove line' }),
+    );
+    await waitFor(() =>
+      expect(fake.callsTo('DELETE', `${B}/capital-plan/{itemId}`)).toHaveLength(1),
+    );
+  });
 });
