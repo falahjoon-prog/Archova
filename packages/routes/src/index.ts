@@ -13,9 +13,11 @@ export const webRoutes = {
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
@@ -51,6 +53,7 @@ export const webRoutes = {
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
   delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
+  programme: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/programme`,
   contracts: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts`,
   newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
   contract: (orgSlug: string, projectId: string, contractId: string) =>
@@ -82,6 +85,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inspections/templates`,
+  imports: (orgSlug: string, projectId: string, jobId?: string) =>
+    `${p(orgSlug, projectId)}/imports${jobId ? `?id=${enc(jobId)}` : ''}`,
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
@@ -116,6 +121,9 @@ export const mobileRoutes = {
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
+  inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
+  inspection: (projectId: string, inspectionId: string) =>
+    `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,

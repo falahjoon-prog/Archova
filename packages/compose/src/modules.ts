@@ -23,6 +23,7 @@ import {
 import { createBackofficeModule, type BackofficeConfig } from '@archova/mod-backoffice';
 import { DEFECTS_PERMISSIONS, createDefectsModule } from '@archova/mod-defects';
 import { FINANCIALS_PERMISSIONS, createFinancialsModule } from '@archova/mod-financials';
+import { PRECON_PERMISSIONS, createPreconModule } from '@archova/mod-precon';
 import { QUALITY_PERMISSIONS, createQualityModule } from '@archova/mod-quality';
 import { SAFETY_PERMISSIONS, createSafetyModule } from '@archova/mod-safety';
 import { ESTIMATING_PERMISSIONS, createEstimatingModule } from '@archova/mod-estimating';
@@ -47,7 +48,7 @@ import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
-import { createSchedulingModule } from '@archova/mod-scheduling';
+import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import {
   CORRESPONDENCE_PERMISSIONS,
@@ -64,8 +65,10 @@ export const MODULE_PERMISSIONS = [
   CORRESPONDENCE_PERMISSIONS,
   DEFECTS_PERMISSIONS,
   MEETINGS_PERMISSIONS,
+  SCHEDULING_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
+  PRECON_PERMISSIONS,
   SAFETY_PERMISSIONS,
   ESTIMATING_PERMISSIONS,
   INTEGRATIONS_PERMISSIONS,
@@ -266,6 +269,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     safety: safety.api,
   });
 
+  const precon = createPreconModule(services, { platform: platform.api });
+
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
   const estimating = createEstimatingModule(services, {
@@ -334,6 +339,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     database: services.database as Database,
     diary: diary.api,
     rfis: rfis.api,
+    platform: platform.api,
   });
 
   const workforce = createWorkforceModule(services, {
@@ -367,9 +373,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       diary.api.syncSource,
       rfis.api.syncSource,
       documents.api.syncSource,
+      documents.api.drawingsSyncSource,
       workforce.api.syncSource,
+      quality.api.syncSource,
     ],
-    commands: [...defects.api.syncCommands],
+    commands: [...defects.api.syncCommands, ...quality.api.syncCommands],
     accessState: platform.api.getProjectAccessState,
   });
 
@@ -390,6 +398,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     notifications,
     financials,
     quality,
+    precon,
     safety,
     estimating,
     integrations,
@@ -423,6 +432,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     notifications,
     financials,
     quality,
+    precon,
     safety,
     estimating,
     integrations,

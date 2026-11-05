@@ -10,8 +10,10 @@ import {
   InspectionsIcon,
   SwmsIcon,
   LateSubmissionsIcon,
+  ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
+  ProgrammeIcon,
   ContractsIcon,
   DelaysIcon,
   DiaryIcon,
@@ -136,6 +138,11 @@ export function projectToolGroups(
       label: 'Delay register',
       icon: DelaysIcon,
     },
+    canRead('schedule') && {
+      href: webRoutes.programme(orgSlug, projectId),
+      label: 'Programme',
+      icon: ProgrammeIcon,
+    },
     canRead('defects') && {
       href: webRoutes.defects(orgSlug, projectId),
       label: 'Defects',
@@ -185,6 +192,11 @@ export function projectToolGroups(
       href: webRoutes.lateSubmissions(orgSlug, projectId),
       label: 'Late submissions',
       icon: LateSubmissionsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.imports(orgSlug, projectId),
+      label: 'Imports',
+      icon: ImportsIcon,
     },
   ];
   return [

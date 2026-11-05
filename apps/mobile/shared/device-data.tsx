@@ -15,6 +15,8 @@ import { UploadQueue } from '../lib/files/upload-queue';
 import { backgroundFileTransfer } from '../lib/platform/file-transfer';
 import { randomBytes } from '../lib/platform/crypto';
 import { createDeviceSync } from '../lib/sync/device-sync';
+import { SheetCache } from '../lib/files/sheet-cache';
+import { sheetFiles } from '../lib/platform/sheet-files';
 import { OfflineProjects } from '../lib/sync/offline-projects';
 import { deviceScopes } from '../lib/sync/scopes';
 import { createSyncTransport } from '../lib/sync/transport';
@@ -31,6 +33,9 @@ const MODULE_OF: Record<string, string> = {
   diary_plant: 'diary',
   diary_delivery: 'diary',
   diary_delay: 'diary',
+  inspection: 'quality',
+  drawing_sheet: 'drawings',
+  drawing_revision: 'drawings',
 };
 const moduleOf = (entityType: string) => MODULE_OF[entityType] ?? entityType;
 
@@ -41,6 +46,7 @@ export interface DeviceData {
   uploads: UploadQueue;
   signIns: SignInQueue;
   offline: OfflineProjects;
+  sheets: SheetCache;
   requestSync: (trigger: SyncTrigger) => void;
 }
 
@@ -84,7 +90,8 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
           backgroundFileTransfer,
         );
         const signIns = new SignInQueue(db, createSignInSender(api, orgId));
-        const offline = new OfflineProjects(db, store);
+        const sheets = new SheetCache(db, sheetFiles);
+        const offline = new OfflineProjects(db, store, sheets);
         const engine = new SyncEngine({
           store,
           transport: createSyncTransport(api, orgId),
@@ -126,6 +133,7 @@ export function DeviceDataProvider({ children }: { children: ReactNode }) {
             uploads,
             signIns,
             offline,
+            sheets,
             requestSync: (t) => scheduler.request(t),
           },
         });

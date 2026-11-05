@@ -18,6 +18,9 @@ export const ESTIMATING_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'estimating.estimates.read', scope: 'project', tool: 'commitments', level: 'standard' },
   { key: 'estimating.estimates.manage', scope: 'project', tool: 'commitments', level: 'standard' },
   { key: 'estimating.estimates.issue', scope: 'project', tool: 'commitments', level: 'admin' },
+  // The bid board spans projects, so it is an org permission for staff; each project on it is then filtered by
+  // `estimating.quotes.review`, so a project the caller cannot review quotes on never shows prices.
+  { key: 'estimating.board.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
   // The cost library belongs to the company, not a project. Staff (members) read and keep it; external users never
   // hold an org role, so subcontractors cannot see the builder's rates.
   { key: 'estimating.library.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
