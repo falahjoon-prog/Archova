@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { atLeast } from '@archova/domain/permissions';
 import {
   Button,
@@ -26,7 +26,13 @@ import { GanttChart } from '../components/GanttChart';
 import { ImportProgrammeDialog } from '../components/ImportProgrammeDialog';
 import { LookaheadView } from '../components/LookaheadView';
 import type { ScheduleActivity } from '../data/programme';
-import { useProgrammeMutations, useSchedule, useSchedules } from '../hooks/useProgramme';
+import {
+  useProgrammeMutations,
+  useSchedule,
+  useScheduleLinks,
+  useSchedules,
+} from '../hooks/useProgramme';
+import { openItemsByActivity } from '../lib/links';
 import { SOURCE_NAMES } from '../lib/labels';
 import type { Zoom } from '../lib/gantt';
 
@@ -65,6 +71,16 @@ export function ProgrammeScreen() {
   const [newName, setNewName] = useState<string | null>(null);
   const today = todayIn(project.timezone);
   const d = detail.data;
+  const links = useScheduleLinks(d ? d.schedule.id : null);
+  const openItems = useMemo(
+    () =>
+      openItemsByActivity(
+        links.data ?? [],
+        new Map((d?.activities ?? []).map((a) => [a.id, a.start])),
+        today,
+      ),
+    [links.data, d, today],
+  );
 
   const open = (id: string) => {
     const a = d?.activities.find((x) => x.id === id);
@@ -196,6 +212,7 @@ export function ProgrammeScreen() {
                     detail={d}
                     today={today}
                     zoom={zoom}
+                    openItems={openItems}
                     {...(canWrite ? { onSelect: setEditing } : {})}
                   />
                 ) : null}

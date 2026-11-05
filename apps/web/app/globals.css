@@ -2184,6 +2184,31 @@ fieldset.worker-card > legend {
   white-space: nowrap;
   color: var(--c-text-secondary);
 }
+.gantt__open[data-risk] {
+  font-weight: 600;
+  color: var(--c-text);
+}
+.gantt__flag {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  transform: translateY(-50%);
+  border-radius: 9px;
+  border: 1px solid var(--c-border-strong, var(--c-text-secondary));
+  background: var(--c-surface);
+  font-size: var(--font-xs);
+  font-weight: 600;
+  color: var(--c-text);
+}
+.gantt__flag[data-risk] {
+  border-color: var(--c-status-warning);
+  background: color-mix(in srgb, var(--c-status-warning) 25%, var(--c-surface));
+}
 .gantt__lane {
   position: relative;
   flex: none;
@@ -2314,6 +2339,13 @@ fieldset.worker-card > legend {
   border-left: 2px solid var(--c-action-primary);
   border-radius: 0;
   background: none;
+}
+.gantt__swatch--flag {
+  width: 18px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--c-surface);
+  border: 1px solid var(--c-text-secondary);
 }
 @media (min-width: 768px) {
   .gantt {

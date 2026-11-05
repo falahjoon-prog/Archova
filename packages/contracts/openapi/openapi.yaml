@@ -11399,10 +11399,10 @@ components:
         id: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
         kind:
           type: string
-          description: What happened, e.g. `meeting.action_due_soon` or `meeting.action_overdue`.
+          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`.
         title: { type: string }
         body: { type: string }
-        entityType: { type: string, enum: [meeting] }
+        entityType: { type: string, enum: [meeting, tender_package] }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
         readAt: { type: [string, 'null'], format: date-time }

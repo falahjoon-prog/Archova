@@ -8051,12 +8051,12 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon` or `meeting.action_overdue`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`. */
             kind: string;
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting";
+            entityType: "meeting" | "tender_package";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
