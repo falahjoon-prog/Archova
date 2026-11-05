@@ -4912,6 +4912,133 @@ export interface paths {
         patch: operations["updateDiaryStandDown"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's equipment register. */
+        get: operations["listEquipment"];
+        put?: never;
+        /** Add a machine to the register. */
+        post: operations["createEquipment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Rename a machine or change its status (available, in use, maintenance, retired). */
+        patch: operations["updateEquipment"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment-bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Bookings across the project's equipment that touch a date range. */
+        get: operations["listEquipmentBookings"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Book a machine for a date range. Refused when it overlaps another active booking. */
+        post: operations["createEquipmentBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings/{bookingId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+                bookingId: components["parameters"]["EquipmentBookingId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a booking. */
+        post: operations["cancelEquipmentBooking"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        /** Hours a machine has run, newest first. */
+        get: operations["listEquipmentLogs"];
+        put?: never;
+        /** Log hours a machine ran on a day. */
+        post: operations["logEquipmentHours"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/shifts": {
         parameters: {
             query?: never;
@@ -13520,6 +13647,72 @@ export interface components {
             /** Format: date-time */
             respondedAt: string | null;
         };
+        /** @enum {string} */
+        EquipmentStatus: "available" | "in_use" | "maintenance" | "retired";
+        Equipment: {
+            id: string;
+            name: string;
+            assetNumber: string;
+            type: string;
+            status: components["schemas"]["EquipmentStatus"];
+            version: number;
+        };
+        EquipmentList: {
+            data: components["schemas"]["Equipment"][];
+        };
+        CreateEquipmentRequest: {
+            name: string;
+            assetNumber: string;
+            type: string;
+        };
+        UpdateEquipmentRequest: {
+            name?: string;
+            type?: string;
+            status?: components["schemas"]["EquipmentStatus"];
+        };
+        EquipmentBooking: {
+            id: string;
+            equipmentId: string;
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            bookedFor: string;
+            note: string | null;
+            /** @enum {string} */
+            status: "active" | "cancelled";
+        };
+        EquipmentBookingList: {
+            data: components["schemas"]["EquipmentBooking"][];
+        };
+        CreateEquipmentBookingRequest: {
+            /** Format: date */
+            startsOn: string;
+            /** Format: date */
+            endsOn: string;
+            bookedFor: string;
+            note?: string;
+        };
+        EquipmentLog: {
+            id: string;
+            equipmentId: string;
+            /** Format: date */
+            date: string;
+            hours: string;
+            operator: string | null;
+            notes: string | null;
+        };
+        EquipmentLogList: {
+            data: components["schemas"]["EquipmentLog"][];
+        };
+        LogEquipmentHoursRequest: {
+            /** Format: date */
+            date: string;
+            /** @description In quarter hours */
+            hours: string;
+            operator?: string;
+            notes?: string;
+        };
         Shift: {
             id: string;
             siteId: string;
@@ -15223,6 +15416,8 @@ export interface components {
         };
     };
     parameters: {
+        EquipmentId: string;
+        EquipmentBookingId: string;
         ShiftId: string;
         ShiftAssignmentId: string;
         InspectionTemplateId: string;
@@ -23310,6 +23505,229 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaryStandDown"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEquipment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEquipmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEquipment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEquipmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipmentBookings: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentBookingList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEquipmentBooking: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEquipmentBookingRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentBooking"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelEquipmentBooking: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+                bookingId: components["parameters"]["EquipmentBookingId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentBooking"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipmentLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentLogList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logEquipmentHours: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                equipmentId: components["parameters"]["EquipmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogEquipmentHoursRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentLog"];
                 };
             };
             default: components["responses"]["Problem"];

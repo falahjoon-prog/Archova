@@ -16,6 +16,10 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   // Rosters (ATT-US11): site managers build and publish shifts; a subcontractor sees and answers for its own workers.
   { key: 'workforce.rosters.view', scope: 'project', tool: 'workforce', level: 'standard' },
   { key: 'workforce.rosters.manage', scope: 'project', tool: 'workforce', level: 'admin' },
+  // Equipment: site managers keep the register and bookings; anyone on site logs the hours a machine ran.
+  { key: 'workforce.equipment.view', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.equipment.log', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.equipment.manage', scope: 'project', tool: 'workforce', level: 'admin' },
   // Subcontractor compliance wallet (compliance/05, E5): an org's own insurance, licence and card evidence.
   // Org-level because the documents belong to the company, not to a project.
   { key: 'workforce.wallet.view', scope: 'org', tool: null, level: 'standard' },

@@ -6,6 +6,7 @@ import {
   doublePrecision,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   real,
   text,
@@ -430,6 +431,48 @@ export const shiftAssignments = workforceSchema.table('shift_assignments', {
   status: text('status').$type<AssignmentStatus>().notNull().default('offered'),
   notifiedAt: timestamp('notified_at', { withTimezone: true }),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'retired';
+
+export const equipment = workforceSchema.table('equipment', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  assetNumber: text('asset_number').notNull(),
+  type: text('type').notNull(),
+  status: text('status').$type<EquipmentStatus>().notNull().default('available'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const equipmentBookings = workforceSchema.table('equipment_bookings', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  equipmentId: uuid('equipment_id').notNull(),
+  startsOn: date('starts_on').notNull(),
+  endsOn: date('ends_on').notNull(),
+  bookedFor: text('booked_for').notNull(),
+  note: text('note'),
+  status: text('status').$type<'active' | 'cancelled'>().notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const equipmentLogs = workforceSchema.table('equipment_logs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  equipmentId: uuid('equipment_id').notNull(),
+  logDate: date('log_date').notNull(),
+  hours: numeric('hours', { precision: 5, scale: 2 }).notNull(),
+  operator: text('operator'),
+  notes: text('notes'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
