@@ -82,9 +82,14 @@ export function webhookDelivery(
   const sweep: TenantJob = {
     name: WEBHOOK_SWEEP,
     cron: '20 * * * *',
-    async run(_db, orgId) {
+    async run(db, orgId) {
       const { nextAt: _nextAt, ...counts } = await run(orgId);
-      return counts;
+      // Housekeeping: move signing secrets onto the current key version so an old key can be retired.
+      const resealed = await db.withTenantTx(
+        jobContext(orgId, `webhooks.reseal:${orgId}`),
+        (scope) => service.reseal(scope),
+      );
+      return { ...counts, resealed };
     },
   };
 
