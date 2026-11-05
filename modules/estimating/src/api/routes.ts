@@ -1,11 +1,15 @@
 import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
+  ACCESS_LINK_COOKIE,
+  ACCESS_LINK_SESSION_MS,
   defineRoutes,
   etag,
   parseIfMatch,
   requireTenant,
   type Database,
+  type Logger,
+  type MessageSender,
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
@@ -18,6 +22,7 @@ import type {
 } from '../application/tender';
 import type { MeasurementFields, TakeoffService } from '../application/takeoff';
 import type { EstimateService, LineInput as EstimateLineInput } from '../application/estimate';
+import type { IssueResult, TenderLinkService } from '../application/tender-links';
 import type { BiddersService } from '../application/bidders';
 import type { BoardService } from '../application/board';
 import type { LibraryService } from '../application/library';
@@ -190,6 +195,21 @@ function lineFields(b: LineBody): EstimateLineInput {
   };
 }
 
+export interface TenderMail {
+  messages: MessageSender;
+  /** The public web origin the invite links point at, e.g. `https://app.archova.com.au`. */
+  baseUrl: string;
+  /** "Name (email)" of the signed-in member, for the "Sent by" line (Sam 11 §7). */
+  senderName(userId: string): Promise<string>;
+  logger?: Pick<Logger, 'warn'>;
+}
+
+const LINK_HEADERS = {
+  'referrer-policy': 'no-referrer',
+  'x-robots-tag': 'noindex, nofollow',
+  'cache-control': 'no-store',
+};
+
 export function estimatingRoutes(
   database: Database,
   svc: TenderService,
@@ -198,11 +218,70 @@ export function estimatingRoutes(
   estimates: EstimateService,
   board: BoardService,
   bidders: BiddersService,
+  tenderLinks: TenderLinkService,
+  mail: TenderMail,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn, { readOnly: true });
+  const facts = (input: { ip: string; userAgent: string | null; requestId: string }) => ({
+    ip: input.ip,
+    userAgent: input.userAgent,
+    requestId: input.requestId,
+  });
+  const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
+    input.cookies[ACCESS_LINK_COOKIE];
+
+  /**
+   * Emails each invite link after the transaction commits, then records when it went out. A failed email leaves
+   * the invite at "not delivered" so the sender can resend; it never undoes the invite.
+   */
+  async function deliver(
+    input: { tenant: TenantContext | null },
+    projectId: string,
+    packageId: string,
+    result: IssueResult,
+  ) {
+    if (result.noEmail.length)
+      mail.logger?.warn(
+        { packageId, companies: result.noEmail.length },
+        'tender invite has no email',
+      );
+    if (!result.issued.length) return;
+    const tenant = requireTenant(input);
+    const info = await tx(input, async (s) => {
+      const names = await tenderLinks.names(s, projectId);
+      return { p: await svc.get(s, projectId, packageId), ...names };
+    });
+    const sentBy = await mail.senderName(tenant.userId);
+    const delivered: string[] = [];
+    for (const l of result.issued) {
+      const due = info.p.dueAt
+        ? `Quotes are due ${info.p.dueAt.toISOString().slice(0, 10)}.`
+        : null;
+      const lines = [
+        `${info.org} invited ${l.companyName} to quote on ${info.project}.`,
+        `Sent by ${sentBy}.`,
+        `${info.p.name} (${info.p.trade})`,
+        ...(due ? [due] : []),
+        '',
+        `See the scope and tell them if you will quote: ${mail.baseUrl}/q/${l.token}`,
+        `This link is for ${l.email} and works until ${l.expiresAt.toISOString().slice(0, 10)}. You don't need an account.`,
+      ];
+      try {
+        await mail.messages.email(l.email, {
+          subject: `${info.org}: invitation to quote ${info.p.name}`,
+          text: lines.join('\n'),
+        });
+        delivered.push(l.inviteId);
+      } catch (e) {
+        mail.logger?.warn({ err: e, inviteId: l.inviteId }, 'tender invite email failed');
+      }
+    }
+    if (delivered.length) await tx(input, (s) => tenderLinks.markDelivered(s, delivered));
+  }
+
   const pkg = (status: number, x: Awaited<ReturnType<TenderService['get']>>) => ({
     status,
     body: toPackageDto(x),
@@ -595,32 +674,76 @@ export function estimatingRoutes(
           ),
         ),
       ),
-    transitionTenderPackage: async (input) =>
-      pkg(
-        200,
-        await tx(input, (s) =>
-          svc.transition(
-            s,
-            project(input.params),
-            pkgId(input.params),
-            parseIfMatch(input.headers['if-match']),
-            input.body.action,
-          ),
+    transitionTenderPackage: async (input) => {
+      const p = project(input.params);
+      const id = pkgId(input.params);
+      // Sending (or reopening) puts the package out to tender, so every invited company gets its link.
+      const r = await tx(input, async (s) => ({
+        x: await svc.transition(
+          s,
+          p,
+          id,
+          parseIfMatch(input.headers['if-match']),
+          input.body.action,
         ),
-      ),
-    inviteToTenderPackage: async (input) =>
-      pkg(
-        200,
-        await tx(input, (s) =>
-          svc.invite(
-            s,
-            project(input.params),
-            pkgId(input.params),
-            input.body.companyIds.map((c, i) => ref('company', c, `companyIds/${i}`)),
-            input.body.overrideReason,
-          ),
+        links: await tenderLinks.issue(s, p, id),
+      }));
+      await deliver(input, p, id, r.links);
+      return pkg(200, await read(input, (s) => svc.get(s, p, id)));
+    },
+    inviteToTenderPackage: async (input) => {
+      const p = project(input.params);
+      const id = pkgId(input.params);
+      const r = await tx(input, async (s) => ({
+        x: await svc.invite(
+          s,
+          p,
+          id,
+          input.body.companyIds.map((c, i) => ref('company', c, `companyIds/${i}`)),
+          input.body.overrideReason,
         ),
-      ),
+        links: await tenderLinks.issue(s, p, id),
+      }));
+      await deliver(input, p, id, r.links);
+      return pkg(200, await read(input, (s) => svc.get(s, p, id)));
+    },
+    resendTenderInvite: async (input) => {
+      const p = project(input.params);
+      const id = pkgId(input.params);
+      const companyId = ref('company', input.params.companyId, 'companyId');
+      const links = await tx(input, async (s) => {
+        await svc.get(s, p, id);
+        return tenderLinks.resend(s, p, id, companyId);
+      });
+      await deliver(input, p, id, links);
+      return pkg(200, await read(input, (s) => svc.get(s, p, id)));
+    },
+    openTenderAccess: async (input) => {
+      const r = await tenderLinks.open(input.body.token, facts(input));
+      return {
+        status: 200,
+        body: r.body,
+        headers: LINK_HEADERS,
+        setCookies: [
+          {
+            name: ACCESS_LINK_COOKIE,
+            value: r.cookie,
+            httpOnly: true,
+            maxAgeSeconds: Math.floor(ACCESS_LINK_SESSION_MS / 1000),
+          },
+        ],
+      };
+    },
+    getTenderAccess: async (input) => ({
+      status: 200,
+      body: await tenderLinks.view(linkCookie(input), facts(input)),
+      headers: LINK_HEADERS,
+    }),
+    respondTenderAccess: async (input) => ({
+      status: 200,
+      body: await tenderLinks.respond(linkCookie(input), input.body.response, facts(input)),
+      headers: LINK_HEADERS,
+    }),
     setTenderPackageAllowances: async (input) => {
       const allowances: Record<string, string> = {};
       for (const [k, v] of Object.entries(input.body.allowances)) {

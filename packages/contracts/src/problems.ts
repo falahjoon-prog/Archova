@@ -22,6 +22,9 @@ export const PROBLEM_CODES = {
   'auth.step_up_required': 403,
   'auth.email_taken': 409,
   'auth.weak_password': 422,
+  // deleting your own account
+  'account.sole_owner': 409,
+  'account.org_on_hold': 409,
   // personal access tokens (public API)
   'api_token.not_found': 404,
   'api_token.invalid_scope': 422,
@@ -169,6 +172,8 @@ export const PROBLEM_CODES = {
   'ai.cancelled': 408,
   'ai.run.not_found': 404,
   'ai.suggestion.not_found': 404,
+  'ai.hazard_signal.not_found': 404,
+  'ai.hazard_signal.already_reviewed': 409,
   // rfis
   'rfi.not_found': 404,
   'rfi.invalid_transition': 409,
@@ -176,6 +181,7 @@ export const PROBLEM_CODES = {
   'rfi.assignee_not_on_project': 422,
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
+  'rfi.photo_not_markable': 422,
   // submittals
   'submittal.not_found': 404,
   'submittal.invalid_transition': 409,
@@ -216,6 +222,8 @@ export const PROBLEM_CODES = {
   'tender.company_not_on_project': 422,
   'tender.company_not_qualified': 422,
   'tender.reason_required': 422,
+  'tender.invite_not_found': 404,
+  'tender.no_contact_email': 422,
   'quote.not_found': 404,
   'quote.invalid_state': 409,
   'quote.company_not_invited': 422,
@@ -285,6 +293,11 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  // data export (one-click full export)
+  'data_export.not_found': 404,
+  'data_export.in_progress': 409,
+  'data_export.not_ready': 409,
+  'data_export.expired': 410,
   'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,

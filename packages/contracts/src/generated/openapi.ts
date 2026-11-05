@@ -191,7 +191,19 @@ export interface paths {
         get: operations["getMe"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete my account (the in-app deletion both app stores require).
+         * @description Needs a sign-in in the last 15 minutes (`403 auth.step_up_required` otherwise) and `confirm: DELETE`.
+         *     Clears the profile, credentials, sessions and API tokens, and ends the person's seat in every organisation and
+         *     project (their phone is told to wipe). Records they made or signed stay, as retention rules require, and read
+         *     "Deleted user". The email can be used to sign up again.
+         *
+         *     `409 account.sole_owner` (with `orgs`) means an organisation others still use has no other owner: make
+         *     someone else an owner first. `409 account.org_on_hold` means the person's own empty organisation can't be
+         *     closed because of a platform hold: contact support. An owner who is alone in an organisation closes it with
+         *     the account. Returns 204; the session ends, so the client signs the person out locally.
+         */
+        delete: operations["deleteMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2029,6 +2041,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova flags visual hazard signals in a site photo (F35).
+         * @description Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+         *     the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+         *     an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+         *     confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+         *     does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+         *     (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+         *     `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+         *     a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+         *     is a 422.
+         */
+        post: operations["scanSitePhotoForHazardsWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Hazard signals Nova flagged in this project's photos, newest first. */
+        get: operations["listHazardSignals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss a hazard signal.
+         * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+         *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+         *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+         *     the manager reports one from the incidents screen if it warrants it.
+         */
+        post: operations["reviewHazardSignal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Hazard categories that keep showing up in this project's photos.
+         * @description Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+         *     least three signals in it across at least two different photos, the early warning that a near miss may follow.
+         *     `trend` compares the later half of the window with the earlier half.
+         */
+        get: operations["getHazardPatterns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings": {
         parameters: {
             query?: never;
@@ -2802,6 +2917,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/readiness-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+         * @description One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+         *     caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+         *     safety and trust cover only the projects where the caller can read them (the rest are counted in
+         *     `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+         */
+        get: operations["getReadinessPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/readiness-pack/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The tender-readiness pack as a PDF. */
+        get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/reports": {
         parameters: {
             query?: never;
@@ -2886,6 +3045,80 @@ export interface paths {
         get: operations["runReport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's recent full exports, newest first.
+         * @description Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+         */
+        get: operations["listDataExports"];
+        put?: never;
+        /**
+         * Start a full export of everything the organisation holds in Archova.
+         * @description Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+         *     original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+         *     sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+         *     a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+         *     hours later, depending on how many files there are, and kept for 7 days.
+         */
+        post: operations["createDataExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        /** One export and how far it has got. */
+        get: operations["getDataExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A short-lived link to download a finished export.
+         * @description The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+         *     still being built or if it failed; 410 once it has expired.
+         */
+        post: operations["createDataExportDownload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2998,6 +3231,66 @@ export interface paths {
         put?: never;
         /** Invite companies on the project to quote. Already-invited companies are left as they are (EST-US2). */
         post: operations["inviteToTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email an invited company a new link to the package. The earlier link stops working (X45). */
+        post: operations["resendTenderInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The package behind the current link session. */
+        get: operations["getTenderAccess"];
+        put?: never;
+        /**
+         * Exchange a tender link token for a session on that link (web `/q/[token]`, X45). Marks the invite viewed.
+         * @description Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, or a package no longer out to tender, returns `access_link.invalid` with no detail about the record.
+         */
+        post: operations["openTenderAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The invited company says it intends to quote or declines. It can change its answer until a quote is submitted. */
+        post: operations["respondTenderAccess"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3705,6 +3998,25 @@ export interface paths {
         put?: never;
         /** Mark an issue as dealt with. */
         post: operations["resolveAccountingSyncIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/integrations/catalogue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Every connector the org can set up, with its live status (integrations/06 §4). */
+        get: operations["getIntegrationsCatalogue"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -4492,6 +4804,54 @@ export interface paths {
         /** What happened to the RFI and when (RFI-AC10), for the activity feed. */
         get: operations["getRfiActivity"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** Everyone's marks on the RFI's photos, for anyone who can see the RFI. */
+        get: operations["listRfiAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+         * @description Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+         *     The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+         *     closed or void. The original photo is never changed.
+         */
+        put: operations["putRfiFileAnnotation"];
         post?: never;
         delete?: never;
         options?: never;
@@ -8380,6 +8740,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** Records that this sealed record was served by other means. Builder staff only. */
+        get: operations["listClaimEvidenceServiceRecords"];
+        put?: never;
+        /** Record that the sealed claim or schedule was served by hand, courier, post or the recipient's own reply, and when. Append-only; it is a person's statement, kept apart from email deliveries. Recording service of a schedule needs `financials.claims.assess`. */
+        post: operations["recordClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate append-only row. Voiding service of a schedule needs `financials.claims.assess`. */
+        post: operations["voidClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -8934,7 +9340,11 @@ export interface components {
             rfis: components["schemas"]["PortfolioTool"];
             defects: components["schemas"]["PortfolioTool"];
             submittals: components["schemas"]["PortfolioTool"];
-            /** @description Overdue RFIs, defects and submittals together. */
+            /** @description Payment claims not yet paid or withdrawn; overdue means the SOPA schedule or payment date has passed. */
+            claims: components["schemas"]["PortfolioTool"];
+            /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
+            variations: components["schemas"]["PortfolioTool"];
+            /** @description Overdue RFIs, defects, submittals and claims together. */
             attention: number;
         };
         PortfolioTotals: {
@@ -8945,6 +9355,10 @@ export interface components {
             defectsOverdue: number;
             submittalsOpen: number;
             submittalsOverdue: number;
+            claimsOpen: number;
+            claimsOverdue: number;
+            variationsOpen: number;
+            variationsOverdue: number;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -8952,9 +9366,80 @@ export interface components {
             /** @description True when more than 200 projects matched and the rest were left out. */
             truncated: boolean;
         };
+        ReadinessPackPdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        ReadinessPack: {
+            /** @description Local date the pack was built. */
+            generatedOn: string;
+            timeZone: string;
+            prequal: {
+                restricted: boolean;
+                companies: number;
+                qualified: number;
+                expiring: number;
+                pending: number;
+                expired: number;
+                notQualified: number;
+                requiredForTenders: boolean;
+            };
+            credentials: {
+                restricted: boolean;
+                current: number;
+                expiring: number;
+                expired: number;
+                noExpiry: number;
+                items: {
+                    itemType: string;
+                    title: string;
+                    insurer: string | null;
+                    expiresOn: string | null;
+                    /** @enum {string} */
+                    evidence: "recorded" | "sighted" | "self_declared";
+                    /** @enum {string} */
+                    state: "current" | "expiring" | "expired" | "no_expiry";
+                }[];
+            };
+            safety: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                incidents: {
+                    total: number;
+                    notifiable: number;
+                    notClosed: number;
+                    high: number;
+                    critical: number;
+                };
+                swms: {
+                    accepted: number;
+                    expired: number;
+                    awaitingReview: number;
+                    rejected: number;
+                };
+            };
+            trust: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                subcontracts: number;
+                ok: number;
+                shortfall: number;
+                notSetUp: number;
+                notRequired: number;
+                shortfallCents: number;
+            };
+            attention: {
+                /** @enum {string} */
+                area: "prequal" | "credentials" | "safety" | "trust";
+                text: string;
+            }[];
+            truncated: boolean;
+        };
         ReportConfig: {
             /** @enum {string} */
-            source: "rfis" | "defects" | "submittals";
+            source: "rfis" | "defects" | "submittals" | "claims" | "variations";
             /**
              * @description Open is what is still waiting on someone; closed is answered, approved or closed.
              * @enum {string}
@@ -8982,6 +9467,38 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        DataExport: {
+            id: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "ready" | "failed" | "expired";
+            requestedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            sizeBytes: number | null;
+            /** @description SHA-256 of the zip */
+            sha256: string | null;
+            tableCount: number | null;
+            fileCount: number | null;
+            /** @description Files that could not be included (infected */
+            skippedFileCount: number | null;
+            /** @description Why a failed export failed */
+            error: string | null;
+        };
+        DataExportList: {
+            data: components["schemas"]["DataExport"][];
+        };
+        DataExportDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            filename: string;
         };
         ReportList: {
             data: components["schemas"]["Report"][];
@@ -9515,16 +10032,38 @@ export interface components {
             caChainPem: string;
         };
         ClaimEvidenceDelivery: {
+            /**
+             * @description `confirmed_delivery` only when the receiving mail server confirmed it. `dispatch_only` means we sent it and have a record of that, which is not proof it arrived. Never show dispatch_only as served.
+             * @enum {string}
+             */
+            serviceBasis: "confirmed_delivery" | "dispatch_only";
+            /** @description Our signed record of what was sent, to whom and when. Null until the message has been sent. */
+            sendProof: {
+                /** Format: date-time */
+                recordedAt: string;
+                messageSha256: string;
+                signed: boolean;
+                /**
+                 * Format: date-time
+                 * @description Time the outside authority stamped the send proof, once taken.
+                 */
+                timestampedAt: string | null;
+            } | null;
             /** Format: uuid */
             id: string;
             /** @enum {string} */
             kind: "claim" | "schedule";
             recipientEmail: string;
+            /** @description Where the address came from, e.g. the contract clause that nominates it, as typed at send time. */
+            addressBasis: string | null;
             /** @enum {string} */
             status: "queued" | "sending" | "sent" | "delivered" | "bounced" | "failed";
             /** Format: date-time */
             queuedAt: string;
-            /** Format: date-time */
+            /**
+             * Format: date-time
+             * @description When our mail relay accepted it. Not delivery to the recipient.
+             */
             sentAt: string | null;
             /**
              * Format: date-time
@@ -9536,6 +10075,45 @@ export interface components {
             /** @description True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it. */
             notConfirmed: boolean;
         };
+        ClaimEvidenceServiceRecord: {
+            /**
+             * Format: date-time
+             * @description Set when the record was voided as mistaken. A voided record stays on file.
+             */
+            voidedAt: string | null;
+            voidReason: string | null;
+            /**
+             * @description The recording user's own statement; Archova has not checked it. Never show as verified.
+             * @enum {string}
+             */
+            basis: "self_reported";
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "claim" | "schedule";
+            /** @enum {string} */
+            method: "hand" | "courier" | "post" | "recipient_reply" | "other";
+            /**
+             * Format: date-time
+             * @description When it reached the recipient, as stated by the person recording.
+             */
+            servedAt: string;
+            servedTo: string;
+            note: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ClaimEvidenceServiceRecordList: {
+            records: components["schemas"]["ClaimEvidenceServiceRecord"][];
+        };
+        RecordClaimEvidenceServiceRequest: {
+            /** @enum {string} */
+            method: "hand" | "courier" | "post" | "recipient_reply" | "other";
+            /** Format: date-time */
+            servedAt: string;
+            servedTo: string;
+            note?: string | null;
+        };
         ClaimEvidenceDeliveryList: {
             deliveries: components["schemas"]["ClaimEvidenceDelivery"][];
         };
@@ -9545,6 +10123,8 @@ export interface components {
              * @description The address the payer gave for service.
              */
             recipientEmail: string;
+            /** @description Where the address came from, e.g. the contract clause that nominates it. Kept in the signed send record. */
+            addressBasis?: string | null;
         };
         ClaimEvidenceList: {
             records: components["schemas"]["ClaimEvidenceRecord"][];
@@ -10155,7 +10735,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -10732,6 +11312,52 @@ export interface components {
             /** @enum {string|null} */
             warning: "source_not_found" | null;
         }[];
+        /** @enum {string} */
+        HazardSignalStatus: "open" | "confirmed" | "dismissed";
+        /** @enum {string} */
+        HazardConfidence: "low" | "medium" | "high";
+        HazardSignal: {
+            /** @description The signal (`ahs_`) */
+            id: string;
+            /** @description The photo it was flagged in (`fil_`) */
+            fileId: string;
+            category: string;
+            categoryLabel: string;
+            /** @description What the photo shows */
+            observation: string;
+            confidence: components["schemas"]["HazardConfidence"];
+            status: components["schemas"]["HazardSignalStatus"];
+            reviewNote: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NovaHazardScan: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The scan (`ahn_`); its signals share it */
+            scanId: string;
+            signals: components["schemas"]["HazardSignal"][];
+            /** @description The photo was too dark */
+            photoUnclear: boolean;
+            /** @description Signals left out because their wording judged instead of observing. */
+            dropped: number;
+            unsupportedNumbers: string[];
+            disclaimer: string;
+        };
+        HazardPattern: {
+            category: string;
+            label: string;
+            open: number;
+            confirmed: number;
+            dismissed: number;
+            /** @description Photos with a confirmed signal in this category. */
+            photos: number;
+            isPattern: boolean;
+            /** @enum {string} */
+            trend: "rising" | "steady" | "falling";
+        };
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -12035,6 +12661,8 @@ export interface components {
             /** @description As written on the form. */
             location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
+            /** @description Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`). */
+            fileIds: string[];
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -12085,6 +12713,7 @@ export interface components {
             /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
             location?: string;
             pin?: components["schemas"]["RfiPinInput"];
+            fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
         };
@@ -12106,12 +12735,34 @@ export interface components {
             specSection?: string | null;
             location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
+            /** @description The files attached to the question; replaces the list. */
+            fileIds?: components["schemas"]["FileRef"][];
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.answer` suggestion this response was drafted from. */
             aiSuggestionId?: string;
+        };
+        RfiAnnotation: {
+            id: string;
+            rfiId: string;
+            fileId: string;
+            authorId: string | null;
+            shapes: components["schemas"]["MarkupShape"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RfiAnnotationList: {
+            data: components["schemas"]["RfiAnnotation"][];
+        };
+        RfiAnnotationResult: {
+            annotation: components["schemas"]["RfiAnnotation"] | null;
+        };
+        PutRfiAnnotationRequest: {
+            shapes: components["schemas"]["MarkupShape"][];
         };
         RfiActivityItem: {
             id: string;
@@ -12237,6 +12888,41 @@ export interface components {
             viewedAt: string | null;
             /** Format: date-time */
             respondedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the invite email last went out; null if it has not (no contact email, or the send failed)
+             */
+            deliveredAt: string | null;
+        };
+        RespondTenderAccessRequest: {
+            /** @enum {string} */
+            response: "intends_to_quote" | "declined";
+        };
+        TenderAccess: {
+            package: {
+                number: string;
+                name: string;
+                trade: string;
+                /** Format: date-time */
+                dueAt: string | null;
+                scope: {
+                    description: string;
+                }[];
+                fromOrg: string;
+                projectName: string;
+            };
+            invite: {
+                companyId: string;
+                email: string | null;
+                status: components["schemas"]["PackageInviteStatus"];
+                /** Format: date-time */
+                viewedAt: string | null;
+                /** Format: date-time */
+                respondedAt: string | null;
+            };
+            actions: ("view" | "respond")[];
+            /** Format: date-time */
+            expiresAt: string;
         };
         PackageAward: {
             quoteId: string;
@@ -12846,6 +13532,24 @@ export interface components {
             disabledReason: string | null;
             /** Format: date-time */
             createdAt: string;
+        };
+        IntegrationCatalogueEntry: {
+            key: string;
+            name: string;
+            /** @enum {string} */
+            category: "accounting" | "files" | "developer";
+            summary: string;
+            /** @enum {string} */
+            status: "connected" | "available" | "needs_attention" | "not_configured" | "coming_soon";
+            detail: string | null;
+            /**
+             * @description Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+             * @enum {string|null}
+             */
+            manage: "accounting" | "folders" | "api" | null;
+        };
+        IntegrationCatalogue: {
+            data: components["schemas"]["IntegrationCatalogueEntry"][];
         };
         /** @enum {string} */
         AccountingProviderName: "xero" | "myob";
@@ -14546,7 +15250,50 @@ export interface components {
             /** @description Filled in from the document register; ignored on input. */
             title?: string | null;
         };
-        InductionBlock: components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
+        /** @description One drawn thing on a scene. Positions and sizes are percentages of the scene (0 to 100). */
+        InductionAnimationElement: {
+            id: string;
+            /** @enum {string} */
+            kind: "text" | "icon" | "arrow" | "box";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            text?: string | null;
+            /** @enum {string|null} */
+            icon?: "hazard" | "helmet" | "vest" | "boots" | "glasses" | "gloves" | "hearing" | "fire" | "exit" | "first_aid" | "stop" | "forklift" | "person" | "tick" | "cross" | null;
+            /** @enum {string} */
+            tone: "neutral" | "info" | "warning" | "danger" | "safe";
+            /** @description Degrees; arrows only. */
+            rotation?: number;
+            motion: {
+                /** @enum {string} */
+                preset: "none" | "fade_in" | "slide_up" | "slide_left" | "pop" | "pulse" | "draw_on";
+                startMs: number;
+                durationMs: number;
+            };
+        };
+        InductionAnimationScene: {
+            id: string;
+            /**
+             * @description The starting layout the editor used; the player only draws the elements.
+             * @enum {string}
+             */
+            template: "blank" | "hazard_callout" | "steps" | "site_walkthrough" | "ppe_checklist" | "emergency_route";
+            title: string;
+            /** @description Read aloud when voiceover is on, and shown as the caption otherwise. */
+            narration?: string | null;
+            durationMs: number;
+            elements: components["schemas"]["InductionAnimationElement"][];
+        };
+        /** @description A scene-based motion lesson, played to the end like a video (the worker cannot skip ahead). */
+        InductionAnimationBlock: {
+            /** @enum {string} */
+            type: "animation";
+            title?: string | null;
+            scenes: components["schemas"]["InductionAnimationScene"][];
+        };
+        InductionBlock: components["schemas"]["InductionAnimationBlock"] | components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
         InductionSection: {
             key: components["schemas"]["InductionSectionKey"];
             title: string;
@@ -15341,6 +16088,10 @@ export interface components {
         TranslateInductionRequest: {
             lang: string;
         };
+        DeleteMeRequest: {
+            /** @enum {string} */
+            confirm: "DELETE";
+        };
         AskInductionRequest: {
             question: string;
         };
@@ -16019,6 +16770,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -16204,6 +16956,8 @@ export interface operations {
                 code_challenge: string;
                 code_challenge_method: "S256";
                 state: string;
+                /** @description `login` forces a fresh sign-in: a session whose sign-in is older than five minutes is sent back to the sign-in page, and the code carries the new sign-in time (so step-up checks such as account deletion pass). */
+                prompt?: "login";
             };
             header?: never;
             path?: never;
@@ -16306,6 +17060,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Me"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteMeRequest"];
+            };
+        };
+        responses: {
+            /** @description Account deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -19267,6 +20044,131 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    scanSitePhotoForHazardsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    /** @description What the person said or typed about the photo. May be empty. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaHazardScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listHazardSignals: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HazardSignalStatus"];
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HazardSignal"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewHazardSignal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "confirmed" | "dismissed";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The decided signal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HazardSignal"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHazardPatterns: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The categories, patterns first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        days: number;
+                        data: components["schemas"]["HazardPattern"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     suggestImportMappingWithNova: {
         parameters: {
             query?: never;
@@ -20188,6 +21090,52 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getReadinessPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReadinessPackPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF, base64 encoded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listReports: {
         parameters: {
             query?: never;
@@ -20360,6 +21308,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDataExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted; poll the export until it is ready. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExportDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportDownload"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -20570,6 +21613,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    resendTenderInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The package; the invite's `deliveredAt` shows when the email went out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The package behind the link; `__Host-lnk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondTenderAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -21868,6 +23008,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AccountingSyncIssue"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getIntegrationsCatalogue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntegrationCatalogue"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -23306,6 +24469,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiActivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRfiAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putRfiFileAnnotation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutRfiAnnotationRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's layer after the change; `null` when it was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationResult"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -29844,6 +31064,95 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceDelivery"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimEvidenceServiceRecords: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecordList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimEvidenceServiceRequest"];
+            };
+        };
+        responses: {
+            /** @description Recorded */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Voided */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
                 };
             };
             default: components["responses"]["Problem"];

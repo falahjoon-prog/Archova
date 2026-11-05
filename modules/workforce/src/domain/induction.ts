@@ -14,7 +14,57 @@ export type InductionBlock =
     }
   | { type: 'text'; body: string }
   | { type: 'video' | 'document' | 'image'; fileId: string; title: string | null }
-  | { type: 'swms'; documentId: string; title: string | null };
+  | { type: 'swms'; documentId: string; title: string | null }
+  | InductionAnimationBlock;
+
+/** A scene-based motion lesson (no files: everything is drawn from these numbers). Mirrors the API schema. */
+export interface InductionAnimationBlock {
+  type: 'animation';
+  title?: string | null | undefined;
+  scenes: InductionAnimationScene[];
+}
+export interface InductionAnimationScene {
+  id: string;
+  template:
+    'blank' | 'hazard_callout' | 'steps' | 'site_walkthrough' | 'ppe_checklist' | 'emergency_route';
+  title: string;
+  narration?: string | null | undefined;
+  durationMs: number;
+  elements: Array<{
+    id: string;
+    kind: 'text' | 'icon' | 'arrow' | 'box';
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+    text?: string | null | undefined;
+    icon?:
+      | 'hazard'
+      | 'helmet'
+      | 'vest'
+      | 'boots'
+      | 'glasses'
+      | 'gloves'
+      | 'hearing'
+      | 'fire'
+      | 'exit'
+      | 'first_aid'
+      | 'stop'
+      | 'forklift'
+      | 'person'
+      | 'tick'
+      | 'cross'
+      | null
+      | undefined;
+    tone: 'neutral' | 'info' | 'warning' | 'danger' | 'safe';
+    rotation?: number | undefined;
+    motion: {
+      preset: 'none' | 'fade_in' | 'slide_up' | 'slide_left' | 'pop' | 'pulse' | 'draw_on';
+      startMs: number;
+      durationMs: number;
+    };
+  }>;
+}
 
 export interface InductionSectionContent {
   key: SectionKey;

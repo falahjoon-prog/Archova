@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).createFakeApi());
 vi.mock('@/shared/lib/api', () => fake.module);
 const uploadFile = vi.hoisted(() => vi.fn());
-vi.mock('@/shared/lib/uploads', () => ({ uploadFile, fileDownloadUrl: vi.fn() }));
+vi.mock('@/shared/lib/uploads', () => ({
+  uploadFile,
+  fileDownloadUrl: async (_org: string, id: string) => `https://files.test/${id}`,
+}));
 vi.mock('@/shared/lib/compress-photo', () => ({ compressPhoto: async (f: Blob) => f }));
 
 const { createRfisApi } = await import('../data/api');
@@ -43,6 +46,7 @@ const apiRfi = (over: Record<string, unknown> = {}) => ({
   specSection: '03 30 00 Concrete',
   location: 'Level 2, gridline C',
   pin: { drawingRevisionId: 'drv_e301a', x: 0.4, y: 0.6 },
+  fileIds: [],
   officialResponseId: null,
   createdBy: 'usr_pm',
   createdAt: '2026-10-01T00:00:00Z',
@@ -472,5 +476,162 @@ describe('RFIs API source', () => {
     expect(
       fake.callsTo('POST', '/v1/orgs/{orgId}/projects/{projectId}/ai/rfi-drafts'),
     ).toHaveLength(0);
+  });
+
+  it('lists only the ready images on the question and responses, each with a download link', async () => {
+    fake.on('GET', `${P}/{rfiId}`, () => ({
+      rfi: apiRfi({ fileIds: ['fil_photo', 'fil_pdf'] }),
+      responses: [
+        {
+          id: 'rfr_1',
+          rfiId: 'rfi_1',
+          authorId: 'usr_elec',
+          body: 'See photo.',
+          fileIds: ['fil_reply', 'fil_scanning'],
+          isOfficial: false,
+          aiSuggestionId: null,
+          createdAt: '2026-10-02T00:00:00Z',
+        },
+      ],
+    }));
+    const file = (id: string, mime: string, status = 'ready') => ({
+      id,
+      projectId: 'prj_1',
+      module: 'rfis',
+      filename: `${id}.x`,
+      mime,
+      sizeBytes: 1,
+      sha256: 'x',
+      status,
+      capture: null,
+      createdAt: '2026-10-01T00:00:00Z',
+    });
+    const files: Record<string, ReturnType<typeof file>> = {
+      fil_photo: file('fil_photo', 'image/jpeg'),
+      fil_pdf: file('fil_pdf', 'application/pdf'),
+      fil_reply: file('fil_reply', 'image/png'),
+      fil_scanning: file('fil_scanning', 'image/png', 'scanning'),
+    };
+    fake.on('GET', '/v1/orgs/{orgId}/files/{fileId}', (init) => files[init.params!.path!.fileId!]);
+    const source = createRfisApi('org_1');
+    const rfi = await source.get('prj_1', 'rfi_1');
+    expect(await source.photos('prj_1', rfi)).toEqual([
+      {
+        fileId: 'fil_photo',
+        name: 'fil_photo.x',
+        url: 'https://files.test/fil_photo',
+        origin: 'question',
+      },
+      {
+        fileId: 'fil_reply',
+        name: 'fil_reply.x',
+        url: 'https://files.test/fil_reply',
+        origin: 'response',
+      },
+    ]);
+  });
+
+  it('adds a photo by uploading it and sending the new list with the version seen', async () => {
+    fake.on('GET', `${P}/{rfiId}`, () => ({
+      rfi: apiRfi({ fileIds: ['fil_old'] }),
+      responses: [],
+    }));
+    fake.on('PATCH', `${P}/{rfiId}`, () => ({
+      rfi: apiRfi({ fileIds: ['fil_old', 'fil_new'], version: 4 }),
+      responses: [],
+    }));
+    uploadFile.mockResolvedValue({ id: 'fil_new' });
+    const photo = new File(['x'], 'crack.jpg', { type: 'image/jpeg' });
+    const rfi = await createRfisApi('org_1').addPhoto('prj_1', 'rfi_1', photo);
+    expect(uploadFile).toHaveBeenCalledWith('org_1', {
+      file: photo,
+      projectId: 'prj_1',
+      module: 'rfis',
+    });
+    const call = fake.callsTo('PATCH', `${P}/{rfiId}`)[0]!;
+    expect(call.init.params?.header).toEqual({ 'If-Match': '"3"' });
+    expect(call.init.body).toEqual({ fileIds: ['fil_old', 'fil_new'] });
+    expect(rfi.fileIds).toEqual(['fil_old', 'fil_new']);
+  });
+
+  it("saves the caller's marks with ids, colour and width, and names each layer's author", async () => {
+    fake.on('PUT', `${P}/{rfiId}/files/{fileId}/annotation`, () => ({
+      annotation: {
+        id: 'rfa_1',
+        rfiId: 'rfi_1',
+        fileId: 'fil_photo',
+        authorId: 'usr_pm',
+        shapes: [],
+        createdAt: '2026-10-02T00:00:00Z',
+        updatedAt: '2026-10-02T00:00:00Z',
+      },
+    }));
+    fake.on('GET', `${P}/{rfiId}/annotations`, () => ({
+      data: [
+        {
+          id: 'rfa_2',
+          rfiId: 'rfi_1',
+          fileId: 'fil_photo',
+          authorId: 'usr_elec',
+          shapes: [
+            {
+              id: 's1',
+              kind: 'arrow',
+              from: { x: 0.1, y: 0.1 },
+              to: { x: 0.5, y: 0.5 },
+              color: '#D92D20',
+              strokeWidth: 2,
+            },
+            { id: 's2', kind: 'pin', at: { x: 0.2, y: 0.2 }, entityType: 'rfi', entityId: 'x' },
+          ],
+          createdAt: '2026-10-02T00:00:00Z',
+          updatedAt: '2026-10-02T00:00:00Z',
+        },
+      ],
+    }));
+    const source = createRfisApi('org_1');
+    const saved = await source.saveAnnotation(
+      'prj_1',
+      'rfi_1',
+      'fil_photo',
+      [
+        {
+          kind: 'rect',
+          from: { x: 0.1, y: 0.1 },
+          to: { x: 0.3, y: 0.3 },
+          color: '#1D4ED8',
+          strokeWidth: 4,
+        },
+      ],
+      actor,
+    );
+    const call = fake.callsTo('PUT', `${P}/{rfiId}/files/{fileId}/annotation`)[0]!;
+    expect(call.init.body).toEqual({
+      shapes: [
+        {
+          id: 's1',
+          kind: 'rect',
+          from: { x: 0.1, y: 0.1 },
+          to: { x: 0.3, y: 0.3 },
+          color: '#1D4ED8',
+          strokeWidth: 4,
+        },
+      ],
+    });
+    expect(saved).toMatchObject({ authorName: 'Dana Okafor', fileId: 'fil_photo' });
+
+    const layers = await source.annotations('prj_1', 'rfi_1');
+    expect(layers).toHaveLength(1);
+    expect(layers[0]).toMatchObject({ authorName: 'Sam Patel' });
+    // Pins belong on drawings; a stray one is not drawn on a photo.
+    expect(layers[0]!.shapes).toEqual([
+      {
+        kind: 'arrow',
+        from: { x: 0.1, y: 0.1 },
+        to: { x: 0.5, y: 0.5 },
+        color: '#D92D20',
+        strokeWidth: 2,
+      },
+    ]);
   });
 });

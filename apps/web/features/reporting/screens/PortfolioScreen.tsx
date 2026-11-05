@@ -74,6 +74,18 @@ export function PortfolioScreen() {
       cell: (r) => <ToolCell tool={r.submittals} />,
     },
     {
+      id: 'claims',
+      header: 'Claims unpaid',
+      sortValue: (r) => r.claims.open,
+      cell: (r) => <ToolCell tool={r.claims} />,
+    },
+    {
+      id: 'variations',
+      header: 'Variations to decide',
+      sortValue: (r) => r.variations.open,
+      cell: (r) => <ToolCell tool={r.variations} />,
+    },
+    {
       id: 'attention',
       header: 'Overdue',
       align: 'end',
@@ -105,6 +117,14 @@ export function PortfolioScreen() {
             {
               label: 'Submittals with reviewers',
               value: `${data.totals.submittalsOpen} (${data.totals.submittalsOverdue} overdue)`,
+            },
+            {
+              label: 'Claims unpaid',
+              value: `${data.totals.claimsOpen} (${data.totals.claimsOverdue} overdue)`,
+            },
+            {
+              label: 'Variations to decide',
+              value: String(data.totals.variationsOpen),
             },
           ]}
         />

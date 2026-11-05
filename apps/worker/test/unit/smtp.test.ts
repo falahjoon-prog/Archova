@@ -93,7 +93,7 @@ describe('smtp sender', () => {
   it('authenticates, sends the envelope and the message, and dot-stuffs the body', async () => {
     const s = await server();
     closers.push(s.close);
-    await sender(s.port).send({
+    const res = await sender(s.port).send({
       to: 'Pat <pat@example.com>',
       subject: 'Trial ending',
       text: 'Hello\n.dot line',
@@ -109,6 +109,11 @@ describe('smtp sender', () => {
     expect(s.data()).toMatch(/^Date: .*\r\nMessage-ID: <.+@archova\.com\.au>\r\nFrom: /);
     expect(s.data()).toContain('Subject: Trial ending');
     expect(s.data()).toContain('filename="a.pdf"');
+    // The send record: our own Message-ID, the exact bytes handed over, and the relay's reply.
+    expect(res).toBeTruthy();
+    const sent = res as { messageId: string; raw: Uint8Array; serverResponse: string };
+    expect(Buffer.from(sent.raw).toString('utf8')).toContain(`Message-ID: ${sent.messageId}`);
+    expect(sent.serverResponse).toMatch(/^250/);
   });
 
   it('fails when the server refuses the login, without leaking the password', async () => {

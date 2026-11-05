@@ -23,9 +23,11 @@ export const OauthAuthorizeQuery = z.object({
   "code_challenge": z.string().min(43).max(128),
   "code_challenge_method": z.enum(["S256"]),
   "state": z.string().max(512),
+  "prompt": z.enum(["login"]).optional(),
 });
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
+export const DeleteMeBody = s.DeleteMeRequestSchema;
 export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -597,6 +599,40 @@ export const TagDefectWithNovaBody = z.object({
   "note": z.string().max(1000).optional(),
   "pin": s.DrawingPinSchema.optional(),
 }).strict();
+export const ScanSitePhotoForHazardsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ScanSitePhotoForHazardsWithNovaBody = z.object({
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ListHazardSignalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListHazardSignalsQuery = z.object({
+  "status": s.HazardSignalStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(50),
+});
+export const ReviewHazardSignalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "signalId": z.string().regex(new RegExp("^ahs_[0-9A-Za-z]{26}$")),
+});
+export const ReviewHazardSignalBody = z.object({
+  "decision": z.enum(["confirmed", "dismissed"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const GetHazardPatternsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetHazardPatternsQuery = z.object({
+  "days": z.coerce.number().int().min(7).max(180).default(30),
+});
 export const SuggestImportMappingWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -814,6 +850,12 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetReadinessPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetReadinessPackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -841,6 +883,20 @@ export const DeleteReportParams = z.object({
 export const RunReportParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const ListDataExportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportDownloadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -887,6 +943,14 @@ export const InviteToTenderPackageParams = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
 });
 export const InviteToTenderPackageBody = s.InvitePackageRequestSchema;
+export const ResendTenderInviteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "companyId": z.string(),
+});
+export const OpenTenderAccessBody = s.OpenInductionAccessRequestSchema;
+export const RespondTenderAccessBody = s.RespondTenderAccessRequestSchema;
 export const SetTenderPackageAllowancesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1148,6 +1212,9 @@ export const ListAccountingSyncIssuesParams = z.object({
 export const ResolveAccountingSyncIssueParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
+});
+export const GetIntegrationsCatalogueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const ListWebhooksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1441,6 +1508,18 @@ export const GetRfiActivityParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
 });
+export const ListRfiAnnotationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationBody = s.PutRfiAnnotationRequestSchema;
 export const CloseRfiParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2694,6 +2773,29 @@ export const QueueClaimEvidenceDeliveryParams = z.object({
   "kind": z.enum(["claim", "schedule"]),
 });
 export const QueueClaimEvidenceDeliveryBody = s.QueueClaimEvidenceDeliveryRequestSchema;
+export const ListClaimEvidenceServiceRecordsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const RecordClaimEvidenceServiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const RecordClaimEvidenceServiceBody = s.RecordClaimEvidenceServiceRequestSchema;
+export const VoidClaimEvidenceServiceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+  "recordId": z.string(),
+});
+export const VoidClaimEvidenceServiceBody = z.object({
+  "reason": z.string().min(1).max(1000),
+}).strict();
 export const ListMeetingSeriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3011,6 +3113,18 @@ export const operations = {
     params: null,
     query: null,
     body: null,
+  },
+  deleteMe: {
+    method: 'DELETE',
+    path: '/v1/me',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DeleteMeBody,
   },
   createOrg: {
     method: 'POST',
@@ -4296,6 +4410,54 @@ export const operations = {
     query: null,
     body: TagDefectWithNovaBody,
   },
+  scanSitePhotoForHazardsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.scan",
+    internal: false,
+    contentType: "application/json",
+    params: ScanSitePhotoForHazardsWithNovaParams,
+    query: null,
+    body: ScanSitePhotoForHazardsWithNovaBody,
+  },
+  listHazardSignals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: ListHazardSignalsParams,
+    query: ListHazardSignalsQuery,
+    body: null,
+  },
+  reviewHazardSignal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewHazardSignalParams,
+    query: null,
+    body: ReviewHazardSignalBody,
+  },
+  getHazardPatterns: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: GetHazardPatternsParams,
+    query: GetHazardPatternsQuery,
+    body: null,
+  },
   suggestImportMappingWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings',
@@ -4669,6 +4831,30 @@ export const operations = {
     query: GetPortfolioQuery,
     body: null,
   },
+  getReadinessPack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackParams,
+    query: null,
+    body: null,
+  },
+  getReadinessPackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackPdfParams,
+    query: null,
+    body: null,
+  },
   listReports: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/reports',
@@ -4750,6 +4936,56 @@ export const operations = {
     internal: false,
     contentType: null,
     params: RunReportParams,
+    query: null,
+    body: null,
+  },
+  listDataExports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: ListDataExportsParams,
+    query: null,
+    body: null,
+  },
+  createDataExport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 10,
+    contentType: null,
+    params: CreateDataExportParams,
+    query: null,
+    body: null,
+  },
+  getDataExport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: GetDataExportParams,
+    query: null,
+    body: null,
+  },
+  createDataExportDownload: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}/download',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 30,
+    contentType: null,
+    params: CreateDataExportDownloadParams,
     query: null,
     body: null,
   },
@@ -4836,6 +5072,54 @@ export const operations = {
     params: InviteToTenderPackageParams,
     query: null,
     body: InviteToTenderPackageBody,
+  },
+  resendTenderInvite: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: null,
+    params: ResendTenderInviteParams,
+    query: null,
+    body: null,
+  },
+  getTenderAccess: {
+    method: 'GET',
+    path: '/v1/tender-access',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openTenderAccess: {
+    method: 'POST',
+    path: '/v1/tender-access',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenTenderAccessBody,
+  },
+  respondTenderAccess: {
+    method: 'POST',
+    path: '/v1/tender-access/respond',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: RespondTenderAccessBody,
   },
   setTenderPackageAllowances: {
     method: 'PUT',
@@ -5387,6 +5671,18 @@ export const operations = {
     internal: true,
     contentType: null,
     params: ResolveAccountingSyncIssueParams,
+    query: null,
+    body: null,
+  },
+  getIntegrationsCatalogue: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/integrations/catalogue',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.marketplace.read",
+    internal: true,
+    contentType: null,
+    params: GetIntegrationsCatalogueParams,
     query: null,
     body: null,
   },
@@ -5989,6 +6285,30 @@ export const operations = {
     params: GetRfiActivityParams,
     query: null,
     body: null,
+  },
+  listRfiAnnotations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: ListRfiAnnotationsParams,
+    query: null,
+    body: null,
+  },
+  putRfiFileAnnotation: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.create",
+    internal: false,
+    contentType: "application/json",
+    params: PutRfiFileAnnotationParams,
+    query: null,
+    body: PutRfiFileAnnotationBody,
   },
   closeRfi: {
     method: 'POST',
@@ -8789,6 +9109,42 @@ export const operations = {
     params: QueueClaimEvidenceDeliveryParams,
     query: null,
     body: QueueClaimEvidenceDeliveryBody,
+  },
+  listClaimEvidenceServiceRecords: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceServiceRecordsParams,
+    query: null,
+    body: null,
+  },
+  recordClaimEvidenceService: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimEvidenceServiceParams,
+    query: null,
+    body: RecordClaimEvidenceServiceBody,
+  },
+  voidClaimEvidenceService: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: VoidClaimEvidenceServiceParams,
+    query: null,
+    body: VoidClaimEvidenceServiceBody,
   },
   listMeetingSeries: {
     method: 'GET',

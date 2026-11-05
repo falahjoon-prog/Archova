@@ -15,6 +15,7 @@ import type { ImportService } from '../application/imports';
 import type { AccountingService } from '../application/accounting';
 import type { FoldersService } from '../application/folders';
 import type { WebhookService } from '../application/webhooks';
+import { buildCatalogue, type ConnectionState } from '../domain/catalogue';
 import { PUBLIC_EVENT_TYPES } from '../domain/webhooks/events';
 import {
   toConnectionDto,
@@ -83,6 +84,27 @@ export function integrationsRoutes(
   }
 
   return defineRoutes({
+    getIntegrationsCatalogue: async (input) => {
+      const { acc, fol, hooks } = await read(input, async (s) => ({
+        acc: await accounting.list(s),
+        fol: await folders.list(s),
+        hooks: await webhooks.list(s),
+      }));
+      const state = (c: { provider: string } & ConnectionState) =>
+        [c.provider, { status: c.status, lastError: c.lastError }] as const;
+      return {
+        status: 200,
+        body: {
+          data: buildCatalogue({
+            accountingAvailable: available,
+            folderAvailable: availableFolders,
+            accounting: new Map(acc.map(state)),
+            folders: new Map(fol.map(state)),
+            activeWebhooks: hooks.filter((h) => h.status === 'active').length,
+          }),
+        },
+      };
+    },
     listAccountingConnections: async (input) => {
       const rows = await read(input, (s) => accounting.list(s));
       return { status: 200, body: { data: rows.map(toConnectionDto), available: [...available] } };

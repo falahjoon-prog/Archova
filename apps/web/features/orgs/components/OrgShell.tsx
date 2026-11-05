@@ -62,6 +62,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
               ? [
                   { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                   { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                  { href: webRoutes.readiness(orgSlug), label: 'Tender readiness' },
                   { href: webRoutes.bidBoard(orgSlug), label: 'Bid board' },
                   { href: webRoutes.prequalification(orgSlug), label: 'Prequalification' },
                 ]
@@ -72,6 +73,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
             ...(membership.role === 'owner' || membership.role === 'admin'
               ? [
+                  { href: webRoutes.integrations(orgSlug), label: 'Integrations' },
                   { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
                   { href: webRoutes.folders(orgSlug), label: 'SharePoint and Drive' },
                   { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
@@ -79,6 +81,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                   { href: webRoutes.plan(orgSlug), label: 'Plan and limits' },
                   { href: webRoutes.permissionTemplates(orgSlug), label: 'Permission templates' },
                   { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
+                  { href: webRoutes.dataExport(orgSlug), label: 'Export your data' },
                 ]
               : []),
           ]}

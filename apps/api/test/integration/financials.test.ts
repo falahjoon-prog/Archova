@@ -4,6 +4,7 @@ import type { TenantContext } from '@archova/kernel';
 import {
   findUntimestamped,
   markDeliverySent,
+  recordSendProof,
   recordDeliveryEvent,
   recordTimestamp,
   takeDueDeliveries,
@@ -159,7 +160,7 @@ describe('Contracts and payment claims (product/09)', () => {
     // Serve the schedule by email: queued, shown as not yet confirmed service, capped per day.
     const served = await s.pm.browser.post(
       `${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`,
-      { recipientEmail: 'accounts@owner.example' },
+      { recipientEmail: 'accounts@owner.example', addressBasis: 'Contract cl 12.3 notice address' },
     );
     expect(served.statusCode).toBe(201);
     expect(served.json()).toMatchObject({
@@ -196,13 +197,81 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(taken).toHaveLength(1);
     expect(taken[0]!.pdf.subarray(0, 5).toString()).toBe('%PDF-');
     expect(await t.database.withTenantTx(wctx, (sc) => takeDueDeliveries(sc, at))).toHaveLength(0);
-    await t.database.withTenantTx(wctx, (sc) =>
-      markDeliverySent(sc, taken[0]!.id, at, 'ses-msg-1'),
-    );
+    expect(taken[0]!.addressBasis).toBe('Contract cl 12.3 notice address');
+    const rawBytes = Buffer.from('From: a\r\n\r\nraw message bytes');
+    await t.database.withTenantTx(wctx, async (sc) => {
+      await markDeliverySent(sc, taken[0]!.id, at, 'ses-msg-1');
+      await recordSendProof(
+        sc,
+        taken[0]!,
+        at,
+        {
+          provider: 'ses',
+          providerMessageId: 'ses-msg-1',
+          contentSha256: 'c'.repeat(64),
+          raw: rawBytes,
+        },
+        null,
+      );
+    });
     let after = (
       await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`)
     ).json().deliveries[0];
-    expect(after).toMatchObject({ status: 'sent', deliveredAt: null });
+    // Sent and recorded, but only dispatch: not confirmed, never service.
+    expect(after).toMatchObject({
+      status: 'sent',
+      deliveredAt: null,
+      serviceBasis: 'dispatch_only',
+      addressBasis: 'Contract cl 12.3 notice address',
+      sendProof: { signed: false, timestampedAt: null },
+    });
+    expect(after.sendProof.messageSha256).toMatch(/^[0-9a-f]{64}$/);
+    // The send proof is append-only and keeps the raw bytes.
+    await expect(
+      t.database.withTenantTx(wctx, (sc) =>
+        sc.tx.execute(
+          sql`update financials.evidence_send_proofs set recipient_email = 'x@y.example'`,
+        ),
+      ),
+    ).rejects.toThrow();
+    // Service by other means is a self-reported record, kept apart from deliveries.
+    const manual = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
+      { method: 'hand', servedAt: new Date().toISOString(), servedTo: 'Owner reception' },
+    );
+    expect(manual.statusCode).toBe(201);
+    expect(manual.json()).toMatchObject({ basis: 'self_reported', method: 'hand' });
+    const future = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
+      {
+        method: 'hand',
+        servedAt: new Date(Date.now() + 86_400_000).toISOString(),
+        servedTo: 'Owner reception',
+      },
+    );
+    expect(future.statusCode).toBe(422);
+    const records = await s.pm.browser.get(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
+    );
+    expect(records.json().records).toHaveLength(1);
+    // A mistaken record is voided with a reason, never edited; it stays listed as void.
+    const recId = records.json().records[0].id;
+    const voided = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records/${recId}/void`,
+      { reason: 'Entered against the wrong claim' },
+    );
+    expect(voided.statusCode).toBe(200);
+    expect(voided.json().voidReason).toBe('Entered against the wrong claim');
+    const voidedTwice = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records/${recId}/void`,
+      { reason: 'again' },
+    );
+    expect(voidedTwice.statusCode).toBe(409);
+    const subManual = await s.sub.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/claim/service-records`,
+      { method: 'hand', servedAt: new Date().toISOString(), servedTo: 'x' },
+    );
+    expect(subManual.statusCode).toBeGreaterThanOrEqual(403);
     expect(
       await t.database.withTenantTx(wctx, (sc) =>
         recordDeliveryEvent(sc, 'ses-msg-1', 'delivered', new Date()),
@@ -211,7 +280,11 @@ describe('Contracts and payment claims (product/09)', () => {
     after = (
       await s.pm.browser.get(`${s.base}/payment-claims/${c.id}/evidence/schedule/deliveries`)
     ).json().deliveries[0];
-    expect(after).toMatchObject({ status: 'delivered', notConfirmed: false });
+    expect(after).toMatchObject({
+      status: 'delivered',
+      notConfirmed: false,
+      serviceBasis: 'confirmed_delivery',
+    });
     expect(after.deliveredAt).not.toBeNull();
     // A later bounce report does not undo a delivery.
     expect(

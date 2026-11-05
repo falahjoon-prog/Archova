@@ -25,5 +25,9 @@ export const AI_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'ai.import_mapping.suggest', scope: 'project', tool: 'project_admin', level: 'standard' },
   // F34: the commercial team (commitments admin on the project) reads contract reviews and decides their flags. The
   // playbook is kept by org admins with `ai.settings.manage`.
+  // F35: anyone who can report an incident can ask Nova to look at a site photo; reviewing the signals and reading the
+  // patterns is the builder's safety admin (same level as managing incidents).
+  { key: 'ai.safety.scan', scope: 'project', tool: 'inspections', level: 'standard' },
+  { key: 'ai.safety.review', scope: 'project', tool: 'inspections', level: 'admin' },
   { key: 'ai.contracts.review', scope: 'project', tool: 'commitments', level: 'admin' },
 ];

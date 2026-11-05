@@ -27,7 +27,11 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
   };
   const invalid = (path: string) =>
     new AppError('validation_failed', 'Invalid id', [{ path, message: 'Invalid id' }]);
-  const id = (kind: 'defect' | 'file' | 'company', value: unknown, path: string) => {
+  const id = (
+    kind: 'defect' | 'file' | 'company' | 'project' | 'drawingRevision',
+    value: unknown,
+    path: string,
+  ) => {
     const uuid = typeof value === 'string' ? decodeId(kind, value) : null;
     if (!uuid) throw invalid(path);
     return uuid;
@@ -104,6 +108,79 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
   const transitionCommand = makeTransition('defects.transition');
   /** `defects.markReadyForReview`, `defects.close`, ...: the phone queues one command per action (mobile 02 §2.4). */
   const actionCommands = DEFECT_ACTIONS.map((a) => makeTransition(`defects.${a}`, a));
+  /**
+   * `defects.create`: a defect raised on site, under the id the phone chose. It starts as a draft, as on the web; the
+   * phone queues "issue" after it. The project is the phone's claim: the service checks the person holds create there.
+   */
+  const createCommand: SyncCommand = {
+    name: 'defects.create',
+    module: 'defects',
+    async run(scope, m) {
+      const defectId = id('defect', m.entityId, 'entityId');
+      const p = m.payload;
+      const projectId = id('project', p.projectId, 'payload/projectId');
+      const title = textField(p.title, 'payload/title');
+      if (!title?.trim())
+        throw new AppError('validation_failed', 'Give the defect a title.', [
+          { path: 'payload/title', message: 'Required' },
+        ]);
+      const description = textField(p.description, 'payload/description');
+      const priority = textField(p.priority, 'payload/priority');
+      const stage = textField(p.stage, 'payload/stage');
+      const trade = textField(p.trade, 'payload/trade');
+      const dueDate = textField(p.dueDate, 'payload/dueDate');
+      const input: Parameters<typeof service.create>[2] = { id: defectId, title };
+      if (description !== undefined) input.description = description;
+      if (priority) input.priority = priority as never;
+      if (stage) input.stage = stage as never;
+      if (trade) input.trade = trade;
+      if (dueDate) input.dueDate = dueDate;
+      if (p.assigneeCompanyId)
+        input.assigneeCompanyId = id('company', p.assigneeCompanyId, 'payload/assigneeCompanyId');
+      if (p.drawingRevisionId) {
+        const x = p.pinX;
+        const y = p.pinY;
+        if (typeof x !== 'number' || typeof y !== 'number') throw invalid('payload/pinX');
+        input.pin = {
+          drawingRevisionId: id(
+            'drawingRevision',
+            p.drawingRevisionId,
+            'payload/drawingRevisionId',
+          ),
+          x,
+          y,
+        };
+      }
+      const created = await service.create(scope, projectId, input);
+      return { version: created.defect.version };
+    },
+    current: transitionCommand.current,
+  };
+  /**
+   * `defects.attachPhoto`: a photo taken on site for a defect. The phone queues it held until the upload has
+   * finished, then fills in `fileId`; the step that needs the photo ("after" for ready for review) depends on it.
+   */
+  const attachPhotoCommand: SyncCommand = {
+    name: 'defects.attachPhoto',
+    module: 'defects',
+    async projectOf(scope, entityId) {
+      const defectId = typeof entityId === 'string' ? decodeId('defect', entityId) : null;
+      return defectId ? service.projectOf(scope, defectId) : null;
+    },
+    async run(scope, m) {
+      const defectId = id('defect', m.entityId, 'entityId');
+      const fileId = id('file', m.payload.fileId, 'payload/fileId');
+      const purpose = m.payload.purpose;
+      if (purpose !== 'before' && purpose !== 'after')
+        throw new AppError('validation_failed', 'Say whether it is a before or after photo.', [
+          { path: 'payload/purpose', message: 'Expected before or after' },
+        ]);
+      const projectId = await service.projectOf(scope, defectId);
+      if (!projectId) throw new AppError('defect.not_found');
+      return service.attachPhoto(scope, projectId, defectId, fileId, purpose);
+    },
+    current: transitionCommand.current,
+  };
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
     routes: defectsRoutes(services.database, service),
@@ -122,7 +199,7 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       /** What the mobile pull reads (modules/sync). */
       syncSource,
       /** What a device may queue offline and push (modules/sync). */
-      syncCommands: [transitionCommand, ...actionCommands],
+      syncCommands: [createCommand, transitionCommand, ...actionCommands, attachPhotoCommand],
     },
   };
 }
