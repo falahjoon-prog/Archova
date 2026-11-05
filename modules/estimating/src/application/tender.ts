@@ -52,7 +52,10 @@ export interface EstimatingDeps {
   documents: Pick<DocumentsApi, 'getDrawingRevision' | 'getDocumentRef'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   /** Raising a subcontract from the awarded quote. */
-  financials: Pick<FinancialsModule['api'], 'createContract' | 'contractForQuote'>;
+  financials: Pick<
+    FinancialsModule['api'],
+    'createContract' | 'contractForQuote' | 'createCommitment' | 'commitmentForQuote'
+  >;
   /** Prequalification (precon): which companies a tender invite must refuse when the org requires it. */
   prequal: {
     tenderGate(
@@ -586,6 +589,55 @@ export function createTenderService(deps: EstimatingDeps) {
     return { contract: made.contract, created: true };
   }
 
+  /**
+   * Raise the draft budget commitment for an awarded package: the winning company, one line for the quote total ex
+   * GST against the budget line the builder chose. Safe to repeat. Needs `financials.commitments.manage` as well.
+   */
+  async function createCommitment(
+    scope: TenantScope,
+    projectId: string,
+    packageId: string,
+    budgetLineId: string,
+  ) {
+    const { row } = await load(scope, projectId, packageId);
+    await scope.tx
+      .select({ id: tenderPackages.id })
+      .from(tenderPackages)
+      .where(eq(tenderPackages.id, packageId))
+      .for('update');
+    if (row.status !== 'awarded' || !row.awardedQuoteId)
+      throw new AppError(
+        'tender.invalid_state',
+        'Award the package before raising a commitment.',
+        undefined,
+        {
+          status: row.status,
+        },
+      );
+    const existing = await deps.financials.commitmentForQuote(scope, projectId, row.awardedQuoteId);
+    if (existing) return { commitment: existing, created: false };
+    const [quote] = await scope.tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.id, row.awardedQuoteId), eq(quotes.packageId, packageId)))
+      .limit(1);
+    if (!quote) throw new AppError('quote.not_found');
+    const made = await deps.financials.createCommitment(scope, projectId, {
+      kind: 'subcontract',
+      title: row.name.slice(0, 300),
+      vendorCompanyId: quote.companyId,
+      lines: [
+        {
+          budgetLineId,
+          description: row.name.slice(0, 300),
+          amount: fromCents(toCents(quote.totalExGst)),
+        },
+      ],
+      source: { packageId, quoteId: quote.id },
+    });
+    return { commitment: made.commitment, created: true };
+  }
+
   // ---- quotes ----
 
   async function withLines(scope: TenantScope, rows: QuoteRow[]): Promise<QuoteView[]> {
@@ -1025,6 +1077,7 @@ export function createTenderService(deps: EstimatingDeps) {
     setAllowances,
     award,
     createSubcontract,
+    createCommitment,
     listQuotes,
     getQuote,
     createQuote,

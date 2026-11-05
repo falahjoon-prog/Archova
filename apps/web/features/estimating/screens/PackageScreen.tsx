@@ -31,6 +31,7 @@ import { mockId } from '@/shared/mocks/runtime';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { useBudget } from '@/features/budget';
 import { usePackage, usePackageMutations, useQuotes, useQuotesSource } from '../hooks/useQuotes';
 import { comparableQuotes, levelQuotes, lowestQuoteId, parseScopeCsv } from '../lib/levelling';
 import {
@@ -231,6 +232,12 @@ function Comparison({
             )}
           </div>
           <ErrorAlert error={m.subcontract.error} title="We couldn't create the subcontract" />
+          <CommitmentRaiser
+            raise={(budgetLineId) => m.commitment.mutate(budgetLineId)}
+            pending={m.commitment.isPending}
+            result={m.commitment.data ?? null}
+            error={m.commitment.error}
+          />
         </Alert>
       ) : null}
       {toReview ? (
@@ -724,6 +731,61 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
         ) : null}
         <ErrorAlert error={m.invite.error} title="We couldn't send the invites" />
       </section>
+    </div>
+  );
+}
+
+/** Picks the budget line the awarded price counts against, then raises the draft commitment. */
+function CommitmentRaiser({
+  raise,
+  pending,
+  result,
+  error,
+}: {
+  raise: (budgetLineId: string) => void;
+  pending: boolean;
+  result: { number: number; created: boolean } | null;
+  error: unknown;
+}) {
+  const project = useCurrentProject();
+  const budget = useBudget(project.projectId);
+  const lines = (budget.data?.lines ?? []).filter((l) => !l.isMargin);
+  const [lineId, setLineId] = useState('');
+  if (result)
+    return (
+      <p className="u-m-0">
+        {result.created ? 'Draft commitment created' : 'Commitment already created'}: commitment{' '}
+        {result.number}. Submit it for approval from the project's commitments.
+      </p>
+    );
+  if (budget.isPending || lines.length === 0)
+    return (
+      <p className="u-caption u-m-0">
+        {budget.isPending
+          ? 'Checking the budget…'
+          : 'Add a budget line to raise a commitment from this award.'}
+      </p>
+    );
+  return (
+    <div className="stack">
+      <Select
+        label="Budget line for the commitment"
+        value={lineId}
+        options={[
+          { value: '', label: 'Choose a budget line' },
+          ...lines.map((l) => ({
+            value: l.id,
+            label: `${l.code} ${l.description || l.codeDescription}`,
+          })),
+        ]}
+        onChange={(e) => setLineId(e.target.value)}
+      />
+      <div className="row">
+        <Button variant="secondary" disabled={!lineId || pending} onClick={() => raise(lineId)}>
+          Create budget commitment
+        </Button>
+      </div>
+      <ErrorAlert error={error} title="We couldn't create the commitment" />
     </div>
   );
 }

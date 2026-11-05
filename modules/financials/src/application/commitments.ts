@@ -18,6 +18,8 @@ export interface CreateCommitmentInput {
   title: string;
   vendorCompanyId?: string | null;
   lines: { budgetLineId: string; description: string; amount: string }[];
+  /** Set when raised from an awarded tender quote; one quote raises at most one commitment. */
+  source?: { packageId: string; quoteId: string };
 }
 
 export type CommitmentMove = 'submitted' | 'approved' | 'rejected' | 'void';
@@ -108,6 +110,8 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
         title: input.title.trim(),
         vendorCompanyId: input.vendorCompanyId ?? null,
         total: fromCents(total),
+        sourcePackageId: input.source?.packageId ?? null,
+        sourceQuoteId: input.source?.quoteId ?? null,
         createdBy: scope.ctx.userId,
       })
       .returning();
@@ -137,6 +141,17 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
       inserted.map((l) => ({ recordId: l.id, projectId })),
     );
     return { commitment: created!, lines: inserted };
+  }
+
+  /** The commitment already raised from this quote, if any (read by the award flow to stay idempotent). */
+  async function commitmentForQuote(scope: TenantScope, projectId: string, quoteId: string) {
+    await need(scope, 'financials.commitments.read', projectId);
+    const [r] = await scope.tx
+      .select()
+      .from(commitments)
+      .where(and(eq(commitments.projectId, projectId), eq(commitments.sourceQuoteId, quoteId)))
+      .limit(1);
+    return r ?? null;
   }
 
   async function listCommitments(scope: TenantScope, projectId: string) {
@@ -258,6 +273,7 @@ export function createCommitmentsService(deps: CommitmentsDeps) {
 
   return {
     createCommitment,
+    commitmentForQuote,
     listCommitments,
     getCommitment,
     moveCommitment,

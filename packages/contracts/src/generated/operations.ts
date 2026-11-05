@@ -760,12 +760,12 @@ export const CreateBidderListParams = z.object({
 export const CreateBidderListBody = s.CreateBidderListRequestSchema;
 export const UpdateBidderListParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-  "bidderListId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
 });
 export const UpdateBidderListBody = s.UpdateBidderListRequestSchema;
 export const DeleteBidderListParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-  "bidderListId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
 });
 export const GetPortfolioParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -863,6 +863,12 @@ export const CreateSubcontractFromAwardParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
 });
+export const CreateCommitmentFromAwardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentFromAwardBody = s.CreateCommitmentFromAwardRequestSchema;
 export const GetQuoteComparisonParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4520,6 +4526,18 @@ export const operations = {
     params: CreateSubcontractFromAwardParams,
     query: null,
     body: null,
+  },
+  createCommitmentFromAward: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/commitment',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCommitmentFromAwardParams,
+    query: null,
+    body: CreateCommitmentFromAwardBody,
   },
   getQuoteComparison: {
     method: 'GET',
