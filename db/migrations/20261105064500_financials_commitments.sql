@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261105050000_financials_commitments.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261105064500_financials_commitments.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- financials: budget lines and commitments (subcontracts and purchase orders the builder places against the budget).
 -- A commitment is internal cost control: draft -> submitted -> approved. Only approved commitments count as
 -- committed cost on a budget line. Amounts are positive, numeric(18,2) ex GST. Financial records: 7 years.
