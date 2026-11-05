@@ -62,6 +62,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
               ? [{ href: webRoutes.bidBoard(orgSlug), label: 'Bid board' }]
               : []),
             { href: webRoutes.wallet(orgSlug), label: 'Compliance wallet' },
+            { href: webRoutes.subcontractorWallets(orgSlug), label: 'Subcontractor wallets' },
             { href: webRoutes.apiAccess(orgSlug), label: 'API access' },
             // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
             ...(membership.role === 'owner' || membership.role === 'admin'
