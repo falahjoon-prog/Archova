@@ -5003,6 +5003,25 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/webhooks/{webhookId}/deliveries/{deliveryId}/replay:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/WebhookId'
+      - $ref: '#/components/parameters/WebhookDeliveryId'
+    post:
+      operationId: replayWebhookDelivery
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.webhooks.manage
+      x-internal: true
+      summary: "Send a finished delivery again, signed with the endpoint's current secret. It keeps the same event id, so a receiver that de-duplicates on it can tell it is a repeat. The 72 hour retry window starts again."
+      responses:
+        '200':
+          description: The delivery, queued to be sent again.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WebhookDelivery' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/folder-connections:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -12218,6 +12237,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^whk_[0-9A-Za-z]{26}$' }
+    WebhookDeliveryId:
+      name: deliveryId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^whd_[0-9A-Za-z]{26}$' }
     ImportJobId:
       name: importJobId
       in: path

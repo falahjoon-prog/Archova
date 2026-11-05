@@ -15,6 +15,7 @@ import {
   useCreateApiToken,
   useCreateWebhook,
   useDeleteWebhook,
+  useReplayDelivery,
   useRevokeApiToken,
   useWebhookDeliveries,
   useWebhooks,
@@ -202,6 +203,7 @@ function TokensCard() {
 
 function Deliveries({ id }: { id: string }) {
   const q = useWebhookDeliveries(id);
+  const replay = useReplayDelivery(id);
   if (q.isPending) return <p className="u-caption">Loading deliveries…</p>;
   if (q.isError) return <ErrorAlert error={q.error} title="We couldn't load deliveries" />;
   if (!q.data.length) return <p className="u-caption">Nothing has been sent yet.</p>;
@@ -216,8 +218,23 @@ function Deliveries({ id }: { id: string }) {
             {d.lastError ? ` · ${d.lastError}` : ''} · {d.attempts}{' '}
             {d.attempts === 1 ? 'try' : 'tries'}
           </span>
+          {d.status !== 'pending' ? (
+            <Button
+              variant="secondary"
+              onClick={() => replay.mutate(d.id)}
+              disabled={replay.isPending}
+              aria-label={`Send ${d.eventType} again`}
+            >
+              Send again
+            </Button>
+          ) : null}
         </li>
       ))}
+      {replay.isError ? (
+        <li>
+          <ErrorAlert error={replay.error} title="We couldn't send it again" />
+        </li>
+      ) : null}
     </ul>
   );
 }

@@ -67,6 +67,12 @@ export function integrationsRoutes(
     return id;
   };
 
+  const deliveryIdOf = (p: { deliveryId: string }) => {
+    const id = decodeId('webhookDelivery', p.deliveryId);
+    if (!id) throw new AppError('webhook.delivery_not_found');
+    return id;
+  };
+
   const issueIdOf = (p: { syncIssueId: string }) => {
     const id = decodeId('syncIssue', p.syncIssueId);
     if (!id) throw new AppError('sync_issue.not_found');
@@ -259,6 +265,12 @@ export function integrationsRoutes(
     listWebhookDeliveries: async (input) => {
       const rows = await read(input, (s) => webhooks.deliveries(s, webhookIdOf(input.params)));
       return { status: 200, body: { data: rows.map(toWebhookDeliveryDto) } };
+    },
+    replayWebhookDelivery: async (input) => {
+      const row = await tx(input, (s) =>
+        webhooks.replay(s, webhookIdOf(input.params), deliveryIdOf(input.params)),
+      );
+      return { status: 200, body: toWebhookDeliveryDto(row) };
     },
     listImportJobs: async (input) => {
       const page = await read(input, (s) =>

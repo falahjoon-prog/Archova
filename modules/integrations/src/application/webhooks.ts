@@ -172,6 +172,37 @@ export function createWebhookService(deps: WebhooksDeps) {
       .limit(limit);
   }
 
+  /** Puts a finished delivery back in the queue (same event id, fresh attempts and 72h window). */
+  async function replay(scope: TenantScope, id: string, deliveryId: string) {
+    const [sub] = await scope.tx
+      .select({ id: webhookSubscriptions.id, status: webhookSubscriptions.status })
+      .from(webhookSubscriptions)
+      .where(eq(webhookSubscriptions.id, id));
+    if (!sub) throw new AppError('webhook.not_found');
+    if (sub.status !== 'active') throw new AppError('webhook.disabled');
+    const [d] = await scope.tx
+      .select()
+      .from(webhookDeliveries)
+      .where(and(eq(webhookDeliveries.id, deliveryId), eq(webhookDeliveries.subscriptionId, id)));
+    if (!d) throw new AppError('webhook.delivery_not_found');
+    if (d.status === 'pending') throw new AppError('webhook.delivery_pending');
+    const at = now();
+    const [row] = await scope.tx
+      .update(webhookDeliveries)
+      .set({
+        status: 'pending',
+        attempts: 0,
+        nextAttemptAt: at,
+        lastStatus: null,
+        lastError: null,
+        deliveredAt: null,
+        createdAt: at,
+      })
+      .where(eq(webhookDeliveries.id, deliveryId))
+      .returning();
+    return row!;
+  }
+
   /** Records a delivery for every active subscription the event matches. Idempotent on (subscription, event). */
   async function fanOut(scope: TenantScope, event: WebhookPayload): Promise<number> {
     if (!isPublicEventType(event.type)) return 0;
@@ -368,7 +399,18 @@ export function createWebhookService(deps: WebhooksDeps) {
     return database.withTenantTx(ctx, (scope) => record(scope, results));
   }
 
-  return { prepare, create, list, remove, deliveries, fanOut, claimDue, record, attemptDue };
+  return {
+    prepare,
+    create,
+    list,
+    remove,
+    deliveries,
+    replay,
+    fanOut,
+    claimDue,
+    record,
+    attemptDue,
+  };
 }
 
 export type WebhookService = ReturnType<typeof createWebhookService>;
