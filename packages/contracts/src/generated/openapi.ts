@@ -4912,6 +4912,155 @@ export interface paths {
         patch: operations["updateDiaryStandDown"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Shifts in a date range, with the assigned workers. Drafts show only to site managers; a subcontractor sees only its own workers. */
+        get: operations["listShifts"];
+        put?: never;
+        /** Draft a shift at a site. */
+        post: operations["createShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        /** One shift with its assigned workers. */
+        get: operations["getShift"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Offer a draft shift to the workers assigned to it. */
+        post: operations["publishShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel a shift. */
+        post: operations["cancelShift"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add workers to a shift. A worker already on an overlapping shift is refused. */
+        post: operations["assignShiftWorkers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Take a worker off a shift. */
+        delete: operations["removeShiftAssignment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept or decline an offer, or (site managers, once the shift has begun) record attended or no show. */
+        post: operations["respondToShiftAssignment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/attendance/sites": {
         parameters: {
             query?: never;
@@ -9415,7 +9564,7 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention` or `financials.retention_release_due`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due` or `financials.payment_overdue`. */
             kind: string;
             title: string;
             body: string;
@@ -13253,6 +13402,60 @@ export interface components {
             /** @description The secret printed on the gate poster as a QR. Shown only once; reissue to get a new one. */
             code: string;
         };
+        /** @enum {string} */
+        ShiftStatus: "draft" | "published" | "cancelled";
+        /** @enum {string} */
+        ShiftAssignmentStatus: "offered" | "accepted" | "declined" | "no_show" | "attended";
+        ShiftAssignment: {
+            id: string;
+            shiftId: string;
+            workerId: string;
+            companyId: string | null;
+            status: components["schemas"]["ShiftAssignmentStatus"];
+            /** Format: date-time */
+            notifiedAt: string | null;
+            /** Format: date-time */
+            respondedAt: string | null;
+        };
+        Shift: {
+            id: string;
+            siteId: string;
+            crew: string | null;
+            trade: string;
+            note: string | null;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            requiredHeadcount: number;
+            /** @description Workers assigned who have not declined, across all companies. */
+            filled: number;
+            status: components["schemas"]["ShiftStatus"];
+            /** Format: date-time */
+            publishedAt: string | null;
+            assignments: components["schemas"]["ShiftAssignment"][];
+        };
+        ShiftList: {
+            data: components["schemas"]["Shift"][];
+        };
+        CreateShiftRequest: {
+            siteId: string;
+            crew?: string;
+            trade: string;
+            note?: string;
+            /** Format: date-time */
+            startsAt: string;
+            /** Format: date-time */
+            endsAt: string;
+            requiredHeadcount: number;
+        };
+        AssignShiftWorkersRequest: {
+            workerIds: string[];
+        };
+        RespondToShiftRequest: {
+            /** @enum {string} */
+            status: "accepted" | "declined" | "attended" | "no_show";
+        };
         AttendanceSite: {
             id: string;
             projectId: string;
@@ -14917,6 +15120,8 @@ export interface components {
         };
     };
     parameters: {
+        ShiftId: string;
+        ShiftAssignmentId: string;
         InspectionTemplateId: string;
         InspectionId: string;
         ObservationId: string;
@@ -23001,6 +23206,233 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiaryStandDown"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listShifts: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+                siteId?: string;
+                status?: components["schemas"]["ShiftStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShiftList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createShift: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getShift: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishShift: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    cancelShift: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    assignShiftWorkers: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignShiftWorkersRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    removeShiftAssignment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondToShiftAssignment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                shiftId: components["parameters"]["ShiftId"];
+                assignmentId: components["parameters"]["ShiftAssignmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondToShiftRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Shift"];
                 };
             };
             default: components["responses"]["Problem"];

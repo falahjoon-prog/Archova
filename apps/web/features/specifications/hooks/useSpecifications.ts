@@ -53,3 +53,18 @@ export function useSpecMutations() {
     }),
   };
 }
+
+/** Suggestions for a spec reference as the person types. Quiet when there is no book or no access. */
+export function useSpecSectionSuggestions(text: string) {
+  const api = useApi();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const q = text.trim();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'spec-books', { suggest: q }),
+    queryFn: () => api.searchSections(projectId, q),
+    enabled: q.length > 0,
+    retry: false,
+    staleTime: 60_000,
+  });
+}

@@ -365,6 +365,10 @@ export const PROBLEM_CODES = {
   'diary.edit_reason_required': 422,
   // workforce
   'workforce_site.not_found': 404,
+  'workforce_shift.not_found': 404,
+  'workforce_shift.bad_state': 409,
+  'workforce_shift.worker_conflict': 409,
+  'workforce_shift.assignment_not_found': 404,
   'workforce_site.name_taken': 409,
   'workforce_site.inactive': 409,
   'gate.not_found': 404,

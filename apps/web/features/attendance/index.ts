@@ -3,3 +3,4 @@ export { AttendanceScreen } from './screens/AttendanceScreen';
 export { SitesScreen } from './screens/SitesScreen';
 export { RollCallScreen } from './screens/RollCallScreen';
 export { WorkersScreen } from './screens/WorkersScreen';
+export { useSites, useWorkers } from './hooks/useAttendance';

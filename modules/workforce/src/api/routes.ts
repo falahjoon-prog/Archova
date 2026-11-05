@@ -14,6 +14,8 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { RosterService } from '../application/roster';
+import { toShiftDto } from './roster-mappers';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
 import {
@@ -96,6 +98,7 @@ export function workforceRoutes(
   links: InductionLinkService,
   wallet: WalletService,
   grants: WalletGrantService,
+  roster: RosterService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -117,7 +120,98 @@ export function workforceRoutes(
   const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
     input.cookies[ACCESS_LINK_COOKIE];
 
+  const shiftId = (p: { shiftId: string }) => id('shift', p.shiftId, 'workforce_shift.not_found');
+  const assignmentId = (p: { assignmentId: string }) =>
+    id('shiftAssignment', p.assignmentId, 'workforce_shift.assignment_not_found');
+
   return defineRoutes({
+    listShifts: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        roster.listShifts(s, project(input.params), {
+          ...(q.from ? { from: new Date(q.from) } : {}),
+          ...(q.to ? { to: new Date(q.to) } : {}),
+          ...(q.siteId ? { siteId: ref('workforceSite', q.siteId, 'siteId') } : {}),
+          ...(q.status ? { status: q.status } : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toShiftDto) } };
+    },
+    createShift: async (input) => {
+      const b = input.body;
+      const d = await tx(input, (s) =>
+        roster.createShift(s, project(input.params), {
+          siteId: ref('workforceSite', b.siteId, 'siteId'),
+          ...(b.crew ? { crew: b.crew } : {}),
+          trade: b.trade,
+          ...(b.note ? { note: b.note } : {}),
+          startsAt: new Date(b.startsAt),
+          endsAt: new Date(b.endsAt),
+          requiredHeadcount: b.requiredHeadcount,
+        }),
+      );
+      return { status: 201, body: toShiftDto(d) };
+    },
+    getShift: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await read(input, (s) => roster.getShift(s, project(input.params), shiftId(input.params))),
+      ),
+    }),
+    publishShift: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.publishShift(s, project(input.params), shiftId(input.params)),
+        ),
+      ),
+    }),
+    cancelShift: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) => roster.cancelShift(s, project(input.params), shiftId(input.params))),
+      ),
+    }),
+    assignShiftWorkers: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.assign(
+            s,
+            project(input.params),
+            shiftId(input.params),
+            input.body.workerIds.map((w, i) => ref('worker', w, `workerIds/${i}`)),
+          ),
+        ),
+      ),
+    }),
+    removeShiftAssignment: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.unassign(
+            s,
+            project(input.params),
+            shiftId(input.params),
+            assignmentId(input.params),
+          ),
+        ),
+      ),
+    }),
+    respondToShiftAssignment: async (input) => ({
+      status: 200,
+      body: toShiftDto(
+        await tx(input, (s) =>
+          roster.respond(
+            s,
+            project(input.params),
+            shiftId(input.params),
+            assignmentId(input.params),
+            input.body.status,
+          ),
+        ),
+      ),
+    }),
     listAttendanceSites: async (input) => {
       const rows = await read(input, (s) => svc.listSites(s, project(input.params)));
       return { status: 200, body: { data: rows.map((r) => toSiteDto(r.site, r.gates)) } };

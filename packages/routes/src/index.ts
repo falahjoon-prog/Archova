@@ -107,6 +107,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/workers`,
   attendanceRollCall: (orgSlug: string, projectId: string, rollCallId?: string) =>
     `${p(orgSlug, projectId)}/attendance/roll-call${rollCallId ? `?id=${enc(rollCallId)}` : ''}`,
+  attendanceRoster: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/roster`,
   attendanceSites: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>
@@ -137,6 +139,7 @@ export const mobileRoutes = {
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
+  incidents: (projectId: string) => `/project/${enc(projectId)}/incidents`,
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
     `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
