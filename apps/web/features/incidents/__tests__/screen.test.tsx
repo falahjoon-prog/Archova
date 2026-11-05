@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enterText, nav, renderInProject } from '@/test/render';
 import { incidentsPreview, resetIncidentsPreview } from '../data/source';
+import { LinkedIncidentActions } from '../components/LinkedIncidentActions';
 import { IncidentsScreen } from '../screens/IncidentsScreen';
 
 vi.mock('next/navigation', async () => (await import('@/test/render')).navigationMock);
@@ -68,5 +69,21 @@ describe('IncidentsScreen', () => {
       ),
     );
     expect(await screen.findByText('Verified')).toBeTruthy();
+  });
+
+  it('shows the corrective actions an incident raised from an inspection, and nothing otherwise', async () => {
+    const detail = await incidentsPreview.get('prj_test', 'inx_0001');
+    await incidentsPreview.addAction('prj_test', detail, {
+      title: 'Re-inspect the scaffold',
+      source: { type: 'inspection', id: 'ins_0001' },
+    });
+    const none = renderInProject(
+      <LinkedIncidentActions source={{ type: 'inspection', id: 'ins_other' }} />,
+    );
+    await waitFor(() => expect(none.container.textContent).toBe(''));
+    none.unmount();
+    renderInProject(<LinkedIncidentActions source={{ type: 'inspection', id: 'ins_0001' }} />);
+    expect(await screen.findByText(/Re-inspect the scaffold/)).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'INC-0001' })).toBeTruthy();
   });
 });

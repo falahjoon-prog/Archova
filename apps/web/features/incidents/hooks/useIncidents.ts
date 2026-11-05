@@ -10,6 +10,7 @@ import { createIncidentsApi } from '../data/api';
 import { incidentsPreview, type IncidentSource } from '../data/source';
 import type {
   ActionInput,
+  ActionSource,
   ClassifyInput,
   CorrectiveStatus,
   IncidentAction,
@@ -41,6 +42,17 @@ export function useIncidentDetail(id: string) {
     queryKey: queryKeys.toolItem(orgId, projectId, 'incidents', id),
     queryFn: () => source.get(projectId, id),
     enabled: id !== '',
+  });
+}
+
+/** The corrective actions raised from one inspection or observation. Nothing is fetched until it is shown. */
+export function useActionsFromSource(source: ActionSource) {
+  const src = useSource();
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'incidents', { fromSource: source }),
+    queryFn: () => src.fromSource(projectId, source),
   });
 }
 

@@ -199,6 +199,18 @@ export function IncidentDetailView({ id }: { id: string }) {
                 <div className="u-caption">
                   {a.assigneeCompanyId ? dir.companyName(a.assigneeCompanyId) : 'Not assigned'}
                   {a.dueDate ? ` · due ${formatLocalDate(a.dueDate)}` : ''}
+                  {a.source?.type === 'inspection' ? (
+                    <>
+                      {' · '}
+                      <Link
+                        href={webRoutes.inspections(org.orgSlug, project.projectId, a.source.id)}
+                      >
+                        From an inspection
+                      </Link>
+                    </>
+                  ) : a.source ? (
+                    ' · From an observation'
+                  ) : null}
                 </div>
                 {a.description ? <p>{a.description}</p> : null}
                 {i.status !== 'closed' ? (

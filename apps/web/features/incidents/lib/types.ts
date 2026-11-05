@@ -148,8 +148,21 @@ export interface ClassifyInput {
   rootCause: RootCause | null;
 }
 
+export interface ActionSource {
+  type: 'inspection' | 'observation';
+  id: string;
+}
+
+export interface SourcedAction {
+  action: CorrectiveAction;
+  incidentId: string;
+  incidentNumberLabel: string;
+  incidentTitle: string;
+}
+
 export interface ActionInput {
   title: string;
+  source?: ActionSource;
   description?: string;
   assigneeCompanyId?: string;
   dueDate?: string;

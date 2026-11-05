@@ -114,4 +114,29 @@ describe('incidents api', () => {
     expect(call.init.body).toEqual({ status: 'done' });
     expect(fake.callsTo('GET', `${P}/{incidentId}`)).toHaveLength(2);
   });
+
+  it('reads the actions raised from an inspection or observation', async () => {
+    const path = '/v1/orgs/{orgId}/projects/{projectId}/incident-actions';
+    fake.on('GET', path, () => ({
+      data: [
+        {
+          action: action({ source: { type: 'observation', id: 'obs_1' } }),
+          incidentId: 'inx_1',
+          incidentNumberLabel: 'INC-0001',
+          incidentTitle: 'Cut hand',
+        },
+      ],
+    }));
+    const rows = await createIncidentsApi('org_1').fromSource('prj_1', {
+      type: 'observation',
+      id: 'obs_1',
+    });
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ incidentNumberLabel: 'INC-0001' });
+    expect(rows[0]!.action.source).toEqual({ type: 'observation', id: 'obs_1' });
+    expect(fake.callsTo('GET', path)[0]!.init.params!.query).toEqual({
+      sourceType: 'observation',
+      sourceId: 'obs_1',
+    });
+  });
 });

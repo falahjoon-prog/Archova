@@ -32,6 +32,15 @@ export interface SafetyDeps {
   access: AccessService;
   platform: Pick<PlatformApi, 'getProject' | 'projectCompanies'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  /** Whether an inspection or observation is on the project; provided by `quality`, which is built after `safety`. */
+  sources?: {
+    exists(
+      scope: TenantScope,
+      projectId: string,
+      type: 'inspection' | 'observation',
+      sourceId: string,
+    ): Promise<boolean>;
+  };
   now?: () => Date;
 }
 
