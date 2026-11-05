@@ -429,4 +429,51 @@ describe('tender packages and quotes (product/10)', () => {
       expect((await who.browser.get(`/v1/orgs/${s.org.id}/bid-board`)).statusCode).toBe(403);
     }
   });
+  it('keeps reusable bidder lists for staff, checks companies and refuses outsiders', async () => {
+    const s = await setup();
+    const base = `/v1/orgs/${s.org.id}/bidder-lists`;
+    const made = await s.pm.browser.post(base, {
+      name: 'Usual tilers',
+      trade: 'Tiling',
+      companyIds: [s.coA.companyId, s.coB.companyId, s.coA.companyId],
+    });
+    expect(made.statusCode).toBe(201);
+    expect(made.json()).toMatchObject({ name: 'Usual tilers', trade: 'Tiling', version: 1 });
+    expect(made.json().companyIds).toEqual([s.coA.companyId, s.coB.companyId]);
+
+    const dup = await s.pm.browser.post(base, { name: 'usual TILERS' });
+    expect(dup.json().code).toBe('bidder_list.name_taken');
+    const bad = await s.pm.browser.post(base, {
+      name: 'Ghosts',
+      companyIds: ['cmp_00000000000000000000000000'],
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const renamed = await s.pm.browser.patch(
+      `${base}/${made.json().id}`,
+      { name: 'Tilers A and B', companyIds: [s.coA.companyId] },
+      { 'if-match': etagOf(made) },
+    );
+    expect(renamed.json()).toMatchObject({ name: 'Tilers A and B', version: 2 });
+    expect(renamed.json().companyIds).toEqual([s.coA.companyId]);
+    const stale = await s.pm.browser.patch(
+      `${base}/${made.json().id}`,
+      { trade: 'Floors' },
+      { 'if-match': etagOf(made) },
+    );
+    expect(stale.statusCode).toBe(412);
+
+    await s.pm.browser.post(base, { name: 'Sparkies', trade: 'Electrical' });
+    expect((await s.pm.browser.get(base)).json().data.map((l: { name: string }) => l.name)).toEqual(
+      ['Sparkies', 'Tilers A and B'],
+    );
+    expect((await s.pm.browser.get(`${base}?trade=Tiling`)).json().data).toHaveLength(1);
+
+    for (const who of [s.tilerA, s.viewer]) {
+      expect((await who.browser.get(base)).statusCode).toBe(403);
+      expect((await who.browser.post(base, { name: 'Mine' })).statusCode).toBe(403);
+    }
+    expect((await s.pm.browser.del(`${base}/${made.json().id}`)).statusCode).toBe(204);
+    expect((await s.pm.browser.get(base)).json().data).toHaveLength(1);
+  });
 });

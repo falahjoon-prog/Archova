@@ -2543,6 +2543,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/bidder-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The company's reusable bidder lists, by name.
+         * @description A bidder list names the companies an estimator usually invites for a trade. Using one on a package still goes
+         *     through the package's invites, so only companies on the project can be invited. Staff only.
+         */
+        get: operations["listBidderLists"];
+        put?: never;
+        /** Save a bidder list. */
+        post: operations["createBidderList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bidder-lists/{bidderListId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bidderListId: components["parameters"]["BidderListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a bidder list. Invites already sent are unaffected. */
+        delete: operations["deleteBidderList"];
+        options?: never;
+        head?: never;
+        /** Rename a bidder list, change its trade or replace its companies. */
+        patch: operations["updateBidderList"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bid-board": {
         parameters: {
             query?: never;
@@ -9852,6 +9897,31 @@ export interface components {
         RfiReasonRequest: {
             reason: string;
         };
+        BidderList: {
+            id: string;
+            name: string;
+            /** @description Empty when the list is not tied to a trade. */
+            trade: string;
+            companyIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        BidderListList: {
+            data: components["schemas"]["BidderList"][];
+        };
+        CreateBidderListRequest: {
+            name: string;
+            trade?: string;
+            companyIds?: string[];
+        };
+        UpdateBidderListRequest: {
+            name?: string;
+            trade?: string;
+            companyIds?: string[];
+        };
         BidBoard: {
             data: components["schemas"]["BidBoardEntry"][];
             /** Format: date-time */
@@ -12805,6 +12875,7 @@ export interface components {
         TenderPackageId: string;
         QuoteId: string;
         TakeoffMeasurementId: string;
+        BidderListId: string;
         CostItemId: string;
         EstimateId: string;
         EstimateLineId: string;
@@ -16479,6 +16550,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LateSubmission"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBidderLists: {
+        parameters: {
+            query?: {
+                trade?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidderListList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBidderList: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBidderListRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidderList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteBidderList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bidderListId: components["parameters"]["BidderListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateBidderList: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bidderListId: components["parameters"]["BidderListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBidderListRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidderList"];
                 };
             };
             default: components["responses"]["Problem"];

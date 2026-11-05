@@ -3199,6 +3199,85 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bidder-lists:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listBidderLists
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.read
+      summary: The company's reusable bidder lists, by name.
+      description: |
+        A bidder list names the companies an estimator usually invites for a trade. Using one on a package still goes
+        through the package's invites, so only companies on the project can be invited. Staff only.
+      parameters:
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderListList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Save a bidder list.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBidderListRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bidder-lists/{bidderListId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/BidderListId'
+    patch:
+      operationId: updateBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Rename a bidder list, change its trade or replace its companies.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBidderListRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderList' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Delete a bidder list. Invites already sent are unaffected.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9704,6 +9783,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    BidderListId:
+      name: bidderListId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
     CostItemId:
       name: costItemId
       in: path
@@ -14291,6 +14375,48 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BidderList:
+      type: object
+      required: [id, name, trade, companyIds, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        trade: { type: string, description: Empty when the list is not tied to a trade. }
+        companyIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    BidderListList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BidderList' }
+    CreateBidderListRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, maxLength: 100 }
+        companyIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
+    UpdateBidderListRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, maxLength: 100 }
+        companyIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
     BidBoard:
       type: object
       required: [data, asOf, truncated]
