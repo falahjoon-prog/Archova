@@ -2595,6 +2595,11 @@ fieldset.worker-card > legend {
   padding-bottom: 0;
 }
 /* Integration cards: one column on a phone, two from tablet, three on desktop. */
+.consent__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
 .marketplace__grid {
   display: grid;
   grid-template-columns: 1fr;

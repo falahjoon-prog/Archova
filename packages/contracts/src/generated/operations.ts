@@ -25,6 +25,32 @@ export const OauthAuthorizeQuery = z.object({
   "state": z.string().max(512),
   "prompt": z.enum(["login"]).optional(),
 });
+export const GetOauthConsentQuery = z.object({
+  "client_id": z.string().max(100),
+  "redirect_uri": z.string().max(2000),
+});
+export const ListOauthAppsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateOauthAppParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateOauthAppBody = s.CreateOauthAppRequestSchema;
+export const RotateOauthAppSecretParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "clientId": z.string().regex(new RegExp("^app_[0-9a-f]{24}$")),
+});
+export const ListAppInstallsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const InstallAppParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const InstallAppBody = s.InstallAppRequestSchema;
+export const RevokeAppInstallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "appInstallId": z.string().regex(new RegExp("^ain_[0-9A-Za-z]{26}$")),
+});
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
 export const DeleteMeBody = s.DeleteMeRequestSchema;
@@ -3095,6 +3121,90 @@ export const operations = {
     contentType: null,
     params: null,
     query: OauthAuthorizeQuery,
+    body: null,
+  },
+  getOauthConsent: {
+    method: 'GET',
+    path: '/v1/oauth/consent',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: null,
+    query: GetOauthConsentQuery,
+    body: null,
+  },
+  listOauthApps: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/oauth-apps',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListOauthAppsParams,
+    query: null,
+    body: null,
+  },
+  createOauthApp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/oauth-apps',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: CreateOauthAppParams,
+    query: null,
+    body: CreateOauthAppBody,
+  },
+  rotateOauthAppSecret: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RotateOauthAppSecretParams,
+    query: null,
+    body: null,
+  },
+  listAppInstalls: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/app-installs',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListAppInstallsParams,
+    query: null,
+    body: null,
+  },
+  installApp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/app-installs',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: InstallAppParams,
+    query: null,
+    body: InstallAppBody,
+  },
+  revokeAppInstall: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/app-installs/{appInstallId}',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RevokeAppInstallParams,
+    query: null,
     body: null,
   },
   oauthToken: {
