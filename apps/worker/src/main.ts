@@ -14,6 +14,7 @@ import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
+import { inviteeReminders } from './jobs/invitee-reminders';
 import { trustReminders } from './jobs/trust-reminders';
 import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
@@ -113,6 +114,7 @@ async function main() {
     templateBackfill,
     meetingReminders,
     bidReminders,
+    inviteeReminders(emailSender, config.email.appBaseUrl),
     trustReminders,
     incidentActionNotices,
     incidentActionEmails(emailSender, config.email.appBaseUrl),
