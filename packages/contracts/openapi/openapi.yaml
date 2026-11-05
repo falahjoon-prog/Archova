@@ -3600,6 +3600,43 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/readiness-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getReadinessPack
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.readiness.read
+      summary: The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+      description: |
+        One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+        caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+        safety and trust cover only the projects where the caller can read them (the rest are counted in
+        `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+      responses:
+        '200':
+          description: The pack
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/readiness-pack/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getReadinessPackPdf
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.readiness.read
+      summary: The tender-readiness pack as a PDF.
+      responses:
+        '200':
+          description: The PDF, base64 encoded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/reports:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -12508,6 +12545,116 @@ components:
             type: boolean,
             description: 'True when more than 200 projects matched and the rest were left out.',
           }
+    ReadinessPackPdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    ReadinessPack:
+      type: object
+      required: [generatedOn, timeZone, prequal, credentials, safety, trust, attention, truncated]
+      properties:
+        generatedOn: { type: string, description: 'Local date the pack was built.' }
+        timeZone: { type: string }
+        prequal:
+          type: object
+          required:
+            [
+              restricted,
+              companies,
+              qualified,
+              expiring,
+              pending,
+              expired,
+              notQualified,
+              requiredForTenders,
+            ]
+          properties:
+            restricted: { type: boolean }
+            companies: { type: integer }
+            qualified: { type: integer }
+            expiring: { type: integer }
+            pending: { type: integer }
+            expired: { type: integer }
+            notQualified: { type: integer }
+            requiredForTenders: { type: boolean }
+        credentials:
+          type: object
+          required: [restricted, current, expiring, expired, noExpiry, items]
+          properties:
+            restricted: { type: boolean }
+            current: { type: integer }
+            expiring: { type: integer }
+            expired: { type: integer }
+            noExpiry: { type: integer }
+            items:
+              type: array
+              items:
+                type: object
+                required: [itemType, title, insurer, expiresOn, evidence, state]
+                properties:
+                  itemType: { type: string }
+                  title: { type: string }
+                  insurer: { type: [string, 'null'] }
+                  expiresOn: { type: [string, 'null'] }
+                  evidence: { type: string, enum: [recorded, sighted, self_declared] }
+                  state: { type: string, enum: [current, expiring, expired, no_expiry] }
+        safety:
+          type: object
+          required: [projectsCovered, projectsRestricted, incidents, swms]
+          properties:
+            projectsCovered: { type: integer }
+            projectsRestricted: { type: integer }
+            incidents:
+              type: object
+              required: [total, notifiable, notClosed, high, critical]
+              properties:
+                total: { type: integer }
+                notifiable: { type: integer }
+                notClosed: { type: integer }
+                high: { type: integer }
+                critical: { type: integer }
+            swms:
+              type: object
+              required: [accepted, expired, awaitingReview, rejected]
+              properties:
+                accepted: { type: integer }
+                expired: { type: integer }
+                awaitingReview: { type: integer }
+                rejected: { type: integer }
+        trust:
+          type: object
+          required:
+            [
+              projectsCovered,
+              projectsRestricted,
+              subcontracts,
+              ok,
+              shortfall,
+              notSetUp,
+              notRequired,
+              shortfallCents,
+            ]
+          properties:
+            projectsCovered: { type: integer }
+            projectsRestricted: { type: integer }
+            subcontracts: { type: integer }
+            ok: { type: integer }
+            shortfall: { type: integer }
+            notSetUp: { type: integer }
+            notRequired: { type: integer }
+            shortfallCents: { type: integer }
+        attention:
+          type: array
+          items:
+            type: object
+            required: [area, text]
+            properties:
+              area: { type: string, enum: [prequal, credentials, safety, trust] }
+              text: { type: string }
+        truncated: { type: boolean }
     ReportConfig:
       type: object
       additionalProperties: false

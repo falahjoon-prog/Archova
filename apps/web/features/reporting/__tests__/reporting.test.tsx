@@ -12,6 +12,7 @@ vi.mock('@/shared/lib/api', async () => {
 
 const { PortfolioScreen } = await import('../screens/PortfolioScreen');
 const { ReportsScreen } = await import('../screens/ReportsScreen');
+const { ReadinessScreen } = await import('../screens/ReadinessScreen');
 const { toCsv, orderColumns } = await import('../lib/types');
 
 const tool = (open: number, overdue: number, restricted = false) => ({
@@ -180,5 +181,69 @@ describe('toCsv', () => {
 
   it('keeps columns in display order', () => {
     expect(orderColumns(['overdue', 'ref', 'project'])).toEqual(['project', 'ref', 'overdue']);
+  });
+});
+
+const READINESS = '/v1/orgs/{orgId}/readiness-pack';
+
+describe('ReadinessScreen', () => {
+  it('shows each section, what needs attention, and a restricted section as not shown', async () => {
+    fake.on('GET', READINESS, () => ({
+      generatedOn: '2026-11-05',
+      timeZone: 'Australia/Sydney',
+      prequal: {
+        restricted: true,
+        companies: 0,
+        qualified: 0,
+        expiring: 0,
+        pending: 0,
+        expired: 0,
+        notQualified: 0,
+        requiredForTenders: false,
+      },
+      credentials: {
+        restricted: false,
+        current: 0,
+        expiring: 0,
+        expired: 1,
+        noExpiry: 0,
+        items: [
+          {
+            itemType: 'public_liability',
+            title: 'PL policy',
+            insurer: 'Acme',
+            expiresOn: '2026-10-01',
+            evidence: 'sighted',
+            state: 'expired',
+          },
+        ],
+      },
+      safety: {
+        projectsCovered: 2,
+        projectsRestricted: 1,
+        incidents: { total: 3, notifiable: 0, notClosed: 1, high: 0, critical: 0 },
+        swms: { accepted: 4, expired: 0, awaitingReview: 0, rejected: 0 },
+      },
+      trust: {
+        projectsCovered: 3,
+        projectsRestricted: 0,
+        subcontracts: 2,
+        ok: 1,
+        shortfall: 1,
+        notSetUp: 0,
+        notRequired: 0,
+        shortfallCents: 12_500,
+      },
+      attention: [{ area: 'credentials', text: '1 licence or insurance past expiry.' }],
+      truncated: false,
+    }));
+    renderInProject(<ReadinessScreen />);
+    expect(await screen.findByText('1 licence or insurance past expiry.')).toBeTruthy();
+    const table = screen.getByRole('table', { name: 'Licences and insurance' });
+    expect(within(table).getByText('Public liability')).toBeTruthy();
+    expect(within(table).getByText('Expired')).toBeTruthy();
+    expect(screen.getByText(/You don't have access to prequalification/)).toBeTruthy();
+    expect(screen.getByText(/1 left out because you can't open them/)).toBeTruthy();
+    expect(screen.getByText('1 ($125.00)')).toBeTruthy();
   });
 });

@@ -384,14 +384,6 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
   });
 
-  const reporting = createReportingModule({
-    database: services.database as Database,
-    platform: platform.api,
-    rfis: rfis.api,
-    defects: defects.api,
-    submittals: submittals.api,
-  });
-
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
     access: access.api,
@@ -415,6 +407,20 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       redis: services.redis,
       logger: services.logger,
     },
+  });
+
+  // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
+  const reporting = createReportingModule({
+    database: services.database as Database,
+    platform: platform.api,
+    access: access.api,
+    rfis: rfis.api,
+    defects: defects.api,
+    submittals: submittals.api,
+    precon: precon.api,
+    workforce: workforce.api,
+    safety: safety.api,
+    financials: financials.api,
   });
 
   const sync = createSyncModule(services, {
