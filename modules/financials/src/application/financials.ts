@@ -38,6 +38,7 @@ import {
   evidenceSendProofs,
   evidenceSendTimestamps,
   evidenceServiceRecords,
+  evidenceServiceVoids,
   evidenceSignatures,
   evidenceTimestamps,
   paymentClaimLines,
@@ -1092,7 +1093,88 @@ export function createFinancialsService(deps: FinancialsDeps) {
         recordedAt: now(),
       })
       .returning();
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_service_records',
+      recordId: created!.id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: created!.recordedAt,
+    });
+    // The note text is left out of the event: it is free text that may name people.
+    scope.events.add({
+      type: 'financials.evidence_service.recorded.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: 1,
+      data: {
+        claimId,
+        kind,
+        serviceRecordId: created!.id,
+        method: created!.method,
+        servedAt: created!.servedAt.toISOString(),
+        selfReported: true,
+      },
+    });
     return created!;
+  }
+
+  /** Corrects a mistaken service record by voiding it with a reason. The record itself is never changed. */
+  async function voidEvidenceService(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    recordId: string,
+    reason: string,
+  ) {
+    await requireStaff(scope, projectId, 'void a service record');
+    const [rec] = await scope.tx
+      .select()
+      .from(evidenceServiceRecords)
+      .where(
+        and(eq(evidenceServiceRecords.id, recordId), eq(evidenceServiceRecords.claimId, claimId)),
+      );
+    if (!rec) throw new AppError('not_found', 'Service record not found.');
+    await need(
+      scope,
+      rec.kind === 'schedule' ? 'financials.claims.assess' : 'financials.claims.record',
+      projectId,
+    );
+    const why = reason.trim();
+    if (why.length < 1 || why.length > 1000)
+      throw new AppError('validation_failed', 'Give the reason it is being voided.', [
+        { path: 'reason', message: 'Required, up to 1000 characters' },
+      ]);
+    const [v] = await scope.tx
+      .insert(evidenceServiceVoids)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        recordId,
+        reason: why,
+        voidedBy: scope.ctx.userId,
+        voidedAt: now(),
+      })
+      .onConflictDoNothing()
+      .returning();
+    if (!v) throw new AppError('conflict', 'This service record is already void.');
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_service_voids',
+      recordId: v.id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: v.voidedAt,
+    });
+    scope.events.add({
+      type: 'financials.evidence_service.voided.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: 1,
+      data: { claimId, serviceRecordId: recordId },
+    });
+    return { ...rec, voidedAt: v.voidedAt, voidReason: why };
   }
 
   async function listEvidenceServiceRecords(
@@ -1102,11 +1184,17 @@ export function createFinancialsService(deps: FinancialsDeps) {
   ) {
     await claimDetail(scope, projectId, claimId, true);
     await requireStaff(scope, projectId, 'see service records');
-    return scope.tx
-      .select()
+    const rows = await scope.tx
+      .select({
+        r: evidenceServiceRecords,
+        voidedAt: evidenceServiceVoids.voidedAt,
+        voidReason: evidenceServiceVoids.reason,
+      })
       .from(evidenceServiceRecords)
+      .leftJoin(evidenceServiceVoids, eq(evidenceServiceVoids.recordId, evidenceServiceRecords.id))
       .where(eq(evidenceServiceRecords.claimId, claimId))
       .orderBy(desc(evidenceServiceRecords.servedAt));
+    return rows.map((x) => ({ ...x.r, voidedAt: x.voidedAt, voidReason: x.voidReason }));
   }
 
   async function evidenceFile(
@@ -1633,6 +1721,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     queueEvidenceDelivery,
     listEvidenceDeliveries,
     recordEvidenceService,
+    voidEvidenceService,
     listEvidenceServiceRecords,
     evidencePdf,
     evidenceJson,

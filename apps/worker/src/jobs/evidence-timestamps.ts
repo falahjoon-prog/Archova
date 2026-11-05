@@ -59,7 +59,7 @@ export function evidenceTimestamps(
         try {
           const t = await requestTimestamp(authorityUrl, r.message, post, verify, now);
           await database.withTenantTx(ctx, (s) =>
-            recordSendTimestamp(s, r.deliveryId, host, t, caChainPem),
+            recordSendTimestamp(s, r.deliveryId, r.projectId, host, t, caChainPem),
           );
           stamped += 1;
         } catch (e) {

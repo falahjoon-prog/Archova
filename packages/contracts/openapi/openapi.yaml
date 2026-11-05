@@ -11420,6 +11420,38 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+      - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: voidClaimEvidenceService
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate
+        append-only row. Voiding service of a schedule needs `financials.claims.assess`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              additionalProperties: false
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '200':
+          description: Voided
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -13502,8 +13534,16 @@ components:
           description: True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it.
     ClaimEvidenceServiceRecord:
       type: object
-      required: [id, kind, method, basis, servedAt, servedTo, note, recordedAt]
+      required:
+        [id, kind, method, basis, servedAt, servedTo, note, recordedAt, voidedAt, voidReason]
       properties:
+        voidedAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'Set when the record was voided as mistaken. A voided record stays on file.',
+          }
+        voidReason: { type: [string, 'null'] }
         basis:
           {
             type: string,

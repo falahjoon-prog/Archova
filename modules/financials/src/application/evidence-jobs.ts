@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
-import { type TenantScope } from '@archova/kernel';
+import { recordRetention, type TenantScope } from '@archova/kernel';
 import {
   sealMessage,
   sendProofMessage,
@@ -34,6 +34,7 @@ export interface DeliveryJob {
   snapshotText: string;
   signatureKeyId: string | null;
   evidenceId: string;
+  projectId: string;
   addressBasis: string | null;
 }
 
@@ -89,6 +90,7 @@ export async function takeDueDeliveries(scope: TenantScope, now: Date, limit = 1
       snapshotText: rec.snapshotText,
       signatureKeyId: sig.rows[0]?.key_id ?? null,
       evidenceId: d.evidenceId,
+      projectId: d.projectId,
       addressBasis: d.addressBasis,
     });
   }
@@ -232,6 +234,7 @@ export async function recordSendProof(
   report: SendReport,
   signer: EvidenceSigner | null,
 ) {
+  const rawSha256 = report.raw ? sha256Bytes(report.raw).toString('hex') : null;
   const message = sendProofMessage({
     evidenceId: job.evidenceId,
     deliveryId: job.id,
@@ -240,14 +243,16 @@ export async function recordSendProof(
     sentAt: sentAt.toISOString(),
     providerMessageId: report.providerMessageId,
     contentSha256: report.contentSha256,
+    rawSha256,
     snapshotSha256: job.snapshotSha256,
     pdfSha256: job.pdfSha256,
   });
-  await scope.tx
+  const [created] = await scope.tx
     .insert(evidenceSendProofs)
     .values({
       deliveryId: job.id,
       orgId: scope.ctx.orgId,
+      projectId: job.projectId,
       evidenceId: job.evidenceId,
       provider: report.provider,
       recipientEmail: job.recipientEmail,
@@ -258,16 +263,27 @@ export async function recordSendProof(
       contentSha256: report.contentSha256,
       addressBasis: job.addressBasis,
       rawMessage: report.raw ? Buffer.from(report.raw) : null,
-      rawSha256: report.raw ? sha256Bytes(report.raw).toString('hex') : null,
+      rawSha256,
       serverResponse: report.serverResponse?.slice(0, 500) ?? null,
       keyId: signer?.keyId ?? null,
       signature: signer ? signer.sign(message) : null,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: evidenceSendProofs.id });
+  // Sealed claim evidence is kept for 10 years, or longer under a hold (compliance/07 §3).
+  if (created)
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_send_proofs',
+      recordId: created.id,
+      projectId: job.projectId,
+      category: 'sopa_evidence_10y',
+      anchor: sentAt,
+    });
 }
 
 export interface UntimestampedSend {
   deliveryId: string;
+  projectId: string;
   /** The send-proof message; its SHA-256 is what the authority timestamps. */
   message: string;
 }
@@ -278,7 +294,11 @@ export async function findUntimestampedSends(
   limit = 20,
 ): Promise<UntimestampedSend[]> {
   const rows = await scope.tx
-    .select({ id: evidenceSendProofs.deliveryId, message: evidenceSendProofs.message })
+    .select({
+      id: evidenceSendProofs.deliveryId,
+      projectId: evidenceSendProofs.projectId,
+      message: evidenceSendProofs.message,
+    })
     .from(evidenceSendProofs)
     .leftJoin(
       evidenceSendTimestamps,
@@ -287,21 +307,23 @@ export async function findUntimestampedSends(
     .where(isNull(evidenceSendTimestamps.deliveryId))
     .orderBy(asc(evidenceSendProofs.sentAt))
     .limit(limit);
-  return rows.map((r) => ({ deliveryId: r.id, message: r.message }));
+  return rows.map((r) => ({ deliveryId: r.id, projectId: r.projectId, message: r.message }));
 }
 
 export async function recordSendTimestamp(
   scope: TenantScope,
   deliveryId: string,
+  projectId: string,
   authority: string,
   t: TimestampResult,
   caChainPem: string,
 ) {
-  await scope.tx
+  const [created] = await scope.tx
     .insert(evidenceSendTimestamps)
     .values({
       deliveryId,
       orgId: scope.ctx.orgId,
+      projectId,
       authority,
       imprintSha256: t.imprintHex,
       genTime: t.genTime,
@@ -309,5 +331,14 @@ export async function recordSendTimestamp(
       token: t.token,
       caChainPem,
     })
-    .onConflictDoNothing();
+    .onConflictDoNothing()
+    .returning({ id: evidenceSendTimestamps.id });
+  if (created)
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_send_timestamps',
+      recordId: created.id,
+      projectId,
+      category: 'sopa_evidence_10y',
+      anchor: t.genTime,
+    });
 }

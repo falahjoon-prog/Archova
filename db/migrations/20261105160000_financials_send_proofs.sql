@@ -5,7 +5,9 @@
 
 create table financials.evidence_send_proofs (
   delivery_id     uuid primary key references financials.evidence_deliveries (id),
+  id              uuid not null unique default gen_random_uuid(),
   org_id          uuid not null,
+  project_id      uuid not null,
   evidence_id     uuid not null references financials.evidence_records (id),
   provider        text not null check (provider in ('ses', 'smtp', 'log')),
   recipient_email text not null,
@@ -33,7 +35,9 @@ select kernel.enable_tenant_rls('financials.evidence_send_proofs');
 
 create table financials.evidence_send_timestamps (
   delivery_id    uuid primary key references financials.evidence_deliveries (id),
+  id             uuid not null unique default gen_random_uuid(),
   org_id         uuid not null,
+  project_id     uuid not null,
   authority      text not null,
   imprint_sha256 text not null check (imprint_sha256 ~ '^[0-9a-f]{64}$'),
   gen_time       timestamptz not null,
@@ -69,6 +73,26 @@ create table financials.evidence_service_records (
 create index evidence_service_records_claim_idx on financials.evidence_service_records (claim_id, kind, served_at);
 select kernel.enable_tenant_rls('financials.evidence_service_records');
 
+-- A mistaken service record is corrected by voiding it with a reason, never by editing or deleting it.
+create table financials.evidence_service_voids (
+  id          uuid primary key,
+  org_id      uuid not null,
+  project_id  uuid not null,
+  record_id   uuid not null unique references financials.evidence_service_records (id),
+  reason      text not null check (length(reason) between 1 and 1000),
+  voided_by   uuid,
+  voided_at   timestamptz not null default now()
+);
+select kernel.enable_tenant_rls('financials.evidence_service_voids');
+
+-- Sealed claim evidence is kept 10 years (compliance/07 §3) and for as long as a hold applies.
+select kernel.enable_retention_guard('financials.evidence_send_proofs');
+select kernel.enable_retention_guard('financials.evidence_send_timestamps');
+select kernel.enable_retention_guard('financials.evidence_service_records');
+select kernel.enable_retention_guard('financials.evidence_service_voids');
+
+create trigger evidence_service_voids_immutable before update or delete on financials.evidence_service_voids
+  for each row execute function financials.evidence_proof_immutable();
 create trigger evidence_send_proofs_immutable before update or delete on financials.evidence_send_proofs
   for each row execute function financials.evidence_proof_immutable();
 create trigger evidence_send_timestamps_immutable before update or delete on financials.evidence_send_timestamps

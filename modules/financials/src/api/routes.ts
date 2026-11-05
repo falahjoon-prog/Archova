@@ -75,7 +75,14 @@ export function financialsRoutes(
         }
       : null,
   });
-  const serviceDto = (r: Awaited<ReturnType<FinancialsService['recordEvidenceService']>>) => ({
+  const serviceDto = (
+    r: Awaited<ReturnType<FinancialsService['recordEvidenceService']>> & {
+      voidedAt?: Date | null;
+      voidReason?: string | null;
+    },
+  ) => ({
+    voidedAt: r.voidedAt?.toISOString() ?? null,
+    voidReason: r.voidReason ?? null,
     id: r.id,
     kind: r.kind,
     method: r.method,
@@ -605,6 +612,20 @@ export function financialsRoutes(
             ref('paymentClaim', input.params.claimId, 'claimId'),
             input.params.kind,
             { ...input.body, servedAt: new Date(input.body.servedAt) },
+          ),
+        ),
+      ),
+    }),
+    voidClaimEvidenceService: async (input) => ({
+      status: 200,
+      body: serviceDto(
+        await tx(input, (s) =>
+          financials.voidEvidenceService(
+            s,
+            project(input.params),
+            ref('paymentClaim', input.params.claimId, 'claimId'),
+            input.params.recordId,
+            input.body.reason,
           ),
         ),
       ),

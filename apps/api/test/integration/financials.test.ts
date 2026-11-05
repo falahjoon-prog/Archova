@@ -254,6 +254,19 @@ describe('Contracts and payment claims (product/09)', () => {
       `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records`,
     );
     expect(records.json().records).toHaveLength(1);
+    // A mistaken record is voided with a reason, never edited; it stays listed as void.
+    const recId = records.json().records[0].id;
+    const voided = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records/${recId}/void`,
+      { reason: 'Entered against the wrong claim' },
+    );
+    expect(voided.statusCode).toBe(200);
+    expect(voided.json().voidReason).toBe('Entered against the wrong claim');
+    const voidedTwice = await s.pm.browser.post(
+      `${s.base}/payment-claims/${c.id}/evidence/schedule/service-records/${recId}/void`,
+      { reason: 'again' },
+    );
+    expect(voidedTwice.statusCode).toBe(409);
     const subManual = await s.sub.browser.post(
       `${s.base}/payment-claims/${c.id}/evidence/claim/service-records`,
       { method: 'hand', servedAt: new Date().toISOString(), servedTo: 'x' },

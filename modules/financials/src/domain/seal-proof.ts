@@ -45,11 +45,13 @@ export function sendProofMessage(i: {
   sentAt: string;
   providerMessageId: string | null;
   contentSha256: string;
+  /** SHA-256 of the raw message bytes handed to the relay; empty when the sender does not report them. */
+  rawSha256: string | null;
   snapshotSha256: string;
   pdfSha256: string;
 }): string {
   return [
-    'archova-send-proof-v1',
+    'archova-send-proof-v2',
     `evidence:${i.evidenceId}`,
     `delivery:${i.deliveryId}`,
     `to:${i.recipient.toLowerCase()}`,
@@ -57,6 +59,7 @@ export function sendProofMessage(i: {
     `sent:${i.sentAt}`,
     `message-id:${i.providerMessageId ?? ''}`,
     `content-sha256:${i.contentSha256}`,
+    `raw-sha256:${i.rawSha256 ?? ''}`,
     `snapshot-sha256:${i.snapshotSha256}`,
     `pdf-sha256:${i.pdfSha256}`,
   ].join('\n');

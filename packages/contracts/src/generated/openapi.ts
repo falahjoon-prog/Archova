@@ -8403,6 +8403,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate append-only row. Voiding service of a schedule needs `financials.claims.assess`. */
+        post: operations["voidClaimEvidenceService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -9582,6 +9605,12 @@ export interface components {
             notConfirmed: boolean;
         };
         ClaimEvidenceServiceRecord: {
+            /**
+             * Format: date-time
+             * @description Set when the record was voided as mistaken. A voided record stays on file.
+             */
+            voidedAt: string | null;
+            voidReason: string | null;
             /**
              * @description The recording user's own statement; Archova has not checked it. Never show as verified.
              * @enum {string}
@@ -29975,6 +30004,39 @@ export interface operations {
         responses: {
             /** @description Recorded */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceServiceRecord"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidClaimEvidenceService: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+                recordId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Voided */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -153,6 +153,7 @@ describe('send proof', () => {
     sentAt: '2026-11-05T09:00:00.000Z',
     providerMessageId: 'm1',
     contentSha256: 'c'.repeat(64),
+    rawSha256: 'd'.repeat(64),
     snapshotSha256: 'a'.repeat(64),
     pdfSha256: 'b'.repeat(64),
   };
@@ -162,6 +163,8 @@ describe('send proof', () => {
     expect(m).toContain('address-basis:cl 12.3');
     expect(m).toContain('sent:2026-11-05T09:00:00.000Z');
     expect(m).toContain(`content-sha256:${'c'.repeat(64)}`);
+    expect(m).toContain(`raw-sha256:${'d'.repeat(64)}`);
+    expect(sendProofMessage({ ...base, rawSha256: 'e'.repeat(64) })).not.toBe(m);
     expect(m).not.toMatch(/served|delivered|verified/i);
     expect(sendProofMessage({ ...base, sentAt: '2026-11-05T09:00:01.000Z' })).not.toBe(m);
   });

@@ -63,6 +63,11 @@ async function main() {
           replyTo: config.email.replyTo,
         })
       : createLogSender((msg, o) => log.info(o, msg));
+  if (process.env.NODE_ENV === 'production' && !config.evidenceSigning)
+    log.warn(
+      {},
+      'WORKER_EVIDENCE_SIGNING_KEY is not set: sealed claim send proofs will be hashed and timestamped but not signed',
+    );
   /** Nightly and hourly per-org jobs (backend 05 §3). */
   const jobs: TenantJob[] = [
     accessLinkPurge,

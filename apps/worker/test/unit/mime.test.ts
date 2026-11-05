@@ -50,6 +50,7 @@ describe('service email', () => {
         snapshotText: '{"a":1}',
         signatureKeyId: 'k1',
         evidenceId: 'e',
+        projectId: 'p',
         addressBasis: null,
       },
       'Harbour Build',

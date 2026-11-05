@@ -644,6 +644,8 @@ export const ClaimEvidencePdfSchema = z.object({
 export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
 
 export const ClaimEvidenceServiceRecordSchema = z.object({
+  "voidedAt": z.string().datetime({ offset: true }).nullable(),
+  "voidReason": z.string().nullable(),
   "basis": z.enum(["self_reported"]),
   "id": z.string(),
   "kind": z.enum(["claim", "schedule"]),
