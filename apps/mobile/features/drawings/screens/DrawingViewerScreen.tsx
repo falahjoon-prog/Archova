@@ -1,7 +1,15 @@
 // Drawing viewer (docs/mobile/03 §3.3): overview image at once, sharp tiles on top, pan and pinch.
 // While the server has not built tiles for a sheet, say so rather than show a blank.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Image, PanResponder, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
+import {
+  Image,
+  PanResponder,
+  Pressable,
+  Text,
+  TextInput,
+  View,
+  type LayoutChangeEvent,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useQuery } from '@tanstack/react-query';
@@ -24,7 +32,7 @@ import {
 } from '../commands';
 import { MyMarkups } from './MyMarkups';
 import { useMe } from '../../platform';
-import { createInk, type Ink } from '../ink';
+import { createInk, INK_TOOLS, MAX_TEXT_LENGTH, type Ink } from '../ink';
 import { needsLocationCheck } from '../markup';
 import { drawingPdfUrl } from '../pdf';
 import { pinsOnRevision, type SheetPin } from '../pins';
@@ -253,6 +261,7 @@ function SheetCanvas({
                   ...(ink.live.length > 1
                     ? [{ id: 'live', kind: 'pen' as const, points: [...ink.live], strokeWidth: 3 }]
                     : []),
+                  ...(ink.liveShape ? [ink.liveShape] : []),
                 ],
               },
             ]}
@@ -382,6 +391,7 @@ export function DrawingViewerScreen({
   const [, setInkVersion] = useState(0);
   const [inking, setInking] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [noteText, setNoteText] = useState('');
   const [saveError, setSaveError] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [pdfError, setPdfError] = useState(false);
@@ -570,6 +580,65 @@ export function DrawingViewerScreen({
                 setInking((on) => !on);
               }}
             />
+            {inking ? (
+              <View style={{ gap: t.space[2] }}>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[1] }}>
+                  {INK_TOOLS.map((o) => (
+                    <Button
+                      key={o.tool}
+                      label={o.label}
+                      variant={ink.tool === o.tool ? 'primary' : 'secondary'}
+                      accessibilityLabel={`${o.label} tool`}
+                      onPress={() => {
+                        ink.tool = o.tool;
+                        setInkVersion((n) => n + 1);
+                      }}
+                    />
+                  ))}
+                </View>
+                {ink.tool === 'text' && !ink.textAt ? (
+                  <Text style={{ color: t.color.textSecondary }}>
+                    Tap the sheet where the note goes.
+                  </Text>
+                ) : null}
+                {ink.textAt ? (
+                  <View style={{ gap: t.space[1] }}>
+                    <TextInput
+                      value={noteText}
+                      onChangeText={setNoteText}
+                      placeholder="Type the note"
+                      placeholderTextColor={t.color.textSecondary}
+                      maxLength={MAX_TEXT_LENGTH}
+                      accessibilityLabel="Note text"
+                      style={{
+                        color: t.color.text,
+                        borderColor: t.color.textSecondary,
+                        borderWidth: 1,
+                        borderRadius: t.radius.md,
+                        padding: t.space[2],
+                      }}
+                    />
+                    <Button
+                      label="Add note"
+                      disabled={noteText.trim().length === 0}
+                      onPress={() => {
+                        if (ink.addText(noteText)) setNoteText('');
+                        setInkVersion((n) => n + 1);
+                      }}
+                    />
+                    <Button
+                      label="Cancel note"
+                      variant="secondary"
+                      onPress={() => {
+                        ink.cancelText();
+                        setNoteText('');
+                        setInkVersion((n) => n + 1);
+                      }}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
             {ink.strokes.length > 0 ? (
               <View style={{ gap: t.space[2] }}>
                 <Button
@@ -598,7 +667,7 @@ export function DrawingViewerScreen({
                   }}
                 />
                 <Button
-                  label="Undo last stroke"
+                  label="Undo last mark"
                   variant="secondary"
                   disabled={saving}
                   onPress={() => {

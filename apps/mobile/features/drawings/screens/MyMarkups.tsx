@@ -27,7 +27,7 @@ export function MyMarkups({
       {markups.map((m, i) => (
         <View key={m.id} style={{ gap: t.space[1] }}>
           <Text style={{ color: t.color.textSecondary }}>
-            {`Markup ${i + 1}: ${m.shapes.length} ${m.shapes.length === 1 ? 'stroke' : 'strokes'}, ${
+            {`Markup ${i + 1}: ${m.shapes.length} ${m.shapes.length === 1 ? 'mark' : 'marks'}, ${
               m.visibility === 'private' ? 'only you can see it' : 'shared with your company'
             }`}
           </Text>
@@ -51,7 +51,7 @@ export function MyMarkups({
             <>
               {m.shapes.length > 1 ? (
                 <Button
-                  label="Remove last stroke"
+                  label="Remove last mark"
                   variant="secondary"
                   disabled={busy}
                   onPress={() => onRemoveLastStroke(m)}
