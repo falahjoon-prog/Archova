@@ -14,6 +14,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { TimesheetService } from '../application/timesheets';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
 import {
@@ -44,6 +45,7 @@ import {
   toSessionDto,
   toSignInDto,
   toSiteDto,
+  toTimesheetDto,
   toWorkerDto,
 } from './mappers';
 
@@ -60,6 +62,10 @@ const ref = (kind: IdKind, value: string, path: string) => {
 };
 const project = (p: { projectId: string }) => id('project', p.projectId, 'project.not_found');
 const date = (v: string | undefined) => (v ? new Date(v) : undefined);
+const timesheetId = (p: { timesheetId: string }) =>
+  id('timesheet', p.timesheetId, 'timesheet.not_found');
+const timesheetLineId = (p: { lineId: string }) =>
+  id('timesheetLine', p.lineId, 'timesheet_line.not_found');
 const induction = (p: { inductionId: string }) =>
   id('induction', p.inductionId, 'induction.not_found');
 const completion = (p: { completionId: string }) =>
@@ -96,6 +102,7 @@ export function workforceRoutes(
   links: InductionLinkService,
   wallet: WalletService,
   grants: WalletGrantService,
+  timesheets: TimesheetService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -118,6 +125,98 @@ export function workforceRoutes(
     input.cookies[ACCESS_LINK_COOKIE];
 
   return defineRoutes({
+    listTimesheets: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        timesheets.list(s, project(input.params), {
+          ...(q.from ? { from: q.from } : {}),
+          ...(q.to ? { to: q.to } : {}),
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.workerId ? { workerId: ref('worker', q.workerId, 'workerId') } : {}),
+          ...(q.companyId ? { companyId: ref('company', q.companyId, 'companyId') } : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toTimesheetDto) } };
+    },
+    generateTimesheets: async (input) => {
+      const rows = await tx(input, (s) =>
+        timesheets.generate(s, project(input.params), input.body.date),
+      );
+      return { status: 200, body: { data: rows.map(toTimesheetDto) } };
+    },
+    getTimesheet: async (input) => {
+      const row = await read(input, (s) =>
+        timesheets.get(s, project(input.params), timesheetId(input.params)),
+      );
+      return { status: 200, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
+    addTimesheetLine: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        timesheets.addLine(
+          s,
+          project(input.params),
+          timesheetId(input.params),
+          expected,
+          input.body,
+        ),
+      );
+      return { status: 201, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
+    updateTimesheetLine: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        timesheets.updateLine(
+          s,
+          project(input.params),
+          timesheetId(input.params),
+          timesheetLineId(input.params),
+          expected,
+          input.body,
+        ),
+      );
+      return { status: 200, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
+    deleteTimesheetLine: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        timesheets.deleteLine(
+          s,
+          project(input.params),
+          timesheetId(input.params),
+          timesheetLineId(input.params),
+          expected,
+        ),
+      );
+      return { status: 200, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
+    submitTimesheet: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        timesheets.submit(s, project(input.params), timesheetId(input.params), expected),
+      );
+      return { status: 200, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
+    approveTimesheet: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        timesheets.approve(s, project(input.params), timesheetId(input.params), expected),
+      );
+      return { status: 200, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
+    rejectTimesheet: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const row = await tx(input, (s) =>
+        timesheets.reject(
+          s,
+          project(input.params),
+          timesheetId(input.params),
+          expected,
+          input.body.reason,
+        ),
+      );
+      return { status: 200, body: toTimesheetDto(row), headers: { etag: etag(row.sheet.version) } };
+    },
     listAttendanceSites: async (input) => {
       const rows = await read(input, (s) => svc.listSites(s, project(input.params)));
       return { status: 200, body: { data: rows.map((r) => toSiteDto(r.site, r.gates)) } };

@@ -2614,6 +2614,11 @@ export const GateWithCodeSchema = z.object({
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
 
+export const GenerateTimesheetsRequestSchema = z.object({
+  "date": z.string().date(),
+}).strict();
+export type GenerateTimesheetsRequest = z.infer<typeof GenerateTimesheetsRequestSchema>;
+
 export const GrantedWalletSchema = z.object({
   "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
   "subbieName": z.string(),
@@ -4646,6 +4651,11 @@ export const RejectPrequalificationRequestSchema = z.object({
 }).strict();
 export type RejectPrequalificationRequest = z.infer<typeof RejectPrequalificationRequestSchema>;
 
+export const RejectTimesheetRequestSchema = z.object({
+  "reason": z.string().min(1).max(500),
+}).strict();
+export type RejectTimesheetRequest = z.infer<typeof RejectTimesheetRequestSchema>;
+
 export const RemoveProjectMemberRequestSchema = z.object({
   "kind": z.enum(["ordinary", "for_cause", "wipe_now"]),
   "reason": z.string().max(500).optional(),
@@ -5376,6 +5386,50 @@ export const TenderPackagePageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type TenderPackagePage = z.infer<typeof TenderPackagePageSchema>;
+
+export const TimesheetStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "exported"]);
+export type TimesheetStatus = z.infer<typeof TimesheetStatusSchema>;
+
+export const TimesheetLineSchema = z.object({
+  "id": z.string().regex(new RegExp("^tsl_[0-9A-Za-z]{26}$")),
+  "minutes": z.number().int().min(0).max(1440),
+  "breakMinutes": z.number().int().min(0).max(720),
+  "source": z.enum(["attendance", "manual", "adjusted"]),
+  "attendanceSessionId": z.string().nullable(),
+  "adjustedReason": z.string().nullable(),
+});
+export type TimesheetLine = z.infer<typeof TimesheetLineSchema>;
+
+export const TimesheetSchema = z.object({
+  "id": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+  "projectId": z.string(),
+  "workerId": z.string(),
+  "workerName": z.string(),
+  "companyId": z.union([CompanyRefSchema, z.null()]),
+  "localDate": z.string().date(),
+  "status": TimesheetStatusSchema,
+  "totalMinutes": z.number().int(),
+  "breakMinutes": z.number().int(),
+  "lines": z.array(TimesheetLineSchema),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedBy": z.union([UserRefSchema, z.null()]),
+  "rejectionReason": z.string().nullable(),
+  "version": z.number().int(),
+});
+export type Timesheet = z.infer<typeof TimesheetSchema>;
+
+export const TimesheetLineInputSchema = z.object({
+  "minutes": z.number().int().min(0).max(1440),
+  "breakMinutes": z.number().int().min(0).max(720).optional(),
+  "reason": z.string().min(1).max(500),
+}).strict();
+export type TimesheetLineInput = z.infer<typeof TimesheetLineInputSchema>;
+
+export const TimesheetListSchema = z.object({
+  "data": z.array(TimesheetSchema),
+});
+export type TimesheetList = z.infer<typeof TimesheetListSchema>;
 
 export const TokenRequestSchema = z.object({
   "grant_type": z.enum(["authorization_code", "refresh_token"]),

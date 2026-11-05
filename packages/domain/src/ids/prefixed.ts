@@ -66,6 +66,8 @@ export const ID_PREFIXES = {
   attendanceSession: 'ats',
   attendanceEvent: 'ate',
   rollCall: 'rlc',
+  timesheet: 'tsh',
+  timesheetLine: 'tsl',
   eligibilityCheck: 'elc',
   induction: 'ind',
   inductionVersion: 'inv',

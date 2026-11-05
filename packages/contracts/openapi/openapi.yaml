@@ -3152,6 +3152,249 @@ paths:
               schema: { $ref: '#/components/schemas/SyncPushResponse' }
         '426': { $ref: '#/components/responses/Problem' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: "Daily timesheets, newest day first (at most 200). A subcontractor sees their own company's."
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/TimesheetStatus' } }
+        - { name: workerId, in: query, schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' } }
+        - { name: companyId, in: query, schema: { $ref: '#/components/schemas/CompanyRef' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/generate:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: generateTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: 'Build draft timesheets for a day from closed sign-in sessions. Safe to repeat: existing timesheets and sessions already on one are left as they are.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/GenerateTimesheetsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: timesheetId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: 'One timesheet with its lines.'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: timesheetId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: addTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: 'Add hours that are not from a sign-in. A draft or rejected timesheet only, and a reason is required.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TimesheetLineInput' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: timesheetId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: lineId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: updateTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: 'Change a line. The change is marked as adjusted and needs a reason.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TimesheetLineInput' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: 'Remove a line that was added by hand. Lines from a sign-in are adjusted, not removed.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: timesheetId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: submitTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: 'Send a timesheet for approval. It needs at least one line.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: timesheetId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: approveTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: 'Approve a submitted timesheet and lock it. You cannot approve your own.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - {
+          name: timesheetId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: rejectTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: 'Send a submitted or approved timesheet back with a reason so it can be corrected.'
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectTimesheetRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/late-submissions:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -18314,6 +18557,83 @@ components:
         status: { type: string, enum: [unmarked, accounted_for, missing, not_on_site] }
         markedAt: { type: [string, 'null'], format: date-time }
         markedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+    TimesheetStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, exported]
+    TimesheetLine:
+      type: object
+      required: [id, minutes, breakMinutes, source, attendanceSessionId, adjustedReason]
+      properties:
+        id: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' }
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 720 }
+        source: { type: string, enum: [attendance, manual, adjusted] }
+        attendanceSessionId: { type: [string, 'null'] }
+        adjustedReason: { type: [string, 'null'] }
+    TimesheetLineInput:
+      type: object
+      additionalProperties: false
+      required: [minutes, reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 720, default: 0 }
+        reason: { type: string, minLength: 1, maxLength: 500 }
+    Timesheet:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          workerId,
+          workerName,
+          companyId,
+          localDate,
+          status,
+          totalMinutes,
+          breakMinutes,
+          lines,
+          submittedAt,
+          decidedAt,
+          decidedBy,
+          rejectionReason,
+          version,
+        ]
+      description: "One worker's hours for one day on one project. Hours only; awards and pay stay in payroll."
+      properties:
+        id: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
+        projectId: { type: string }
+        workerId: { type: string }
+        workerName: { type: string }
+        companyId: { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        localDate:
+          { type: string, format: date, description: "The day in the project's time zone." }
+        status: { $ref: '#/components/schemas/TimesheetStatus' }
+        totalMinutes:
+          { type: integer, description: 'Worked minutes across the lines, before breaks.' }
+        breakMinutes: { type: integer }
+        lines: { type: array, items: { $ref: '#/components/schemas/TimesheetLine' } }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decidedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        rejectionReason: { type: [string, 'null'] }
+        version: { type: integer }
+    TimesheetList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Timesheet' } }
+    GenerateTimesheetsRequest:
+      type: object
+      additionalProperties: false
+      required: [date]
+      properties:
+        date: { type: string, format: date }
+    RejectTimesheetRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 500 }
     RollCall:
       type: object
       required: [id, projectId, siteId, reason, startedAt, startedBy, endedAt, counts, people]

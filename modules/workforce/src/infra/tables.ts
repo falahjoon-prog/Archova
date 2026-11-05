@@ -398,3 +398,37 @@ export const complianceExpiryAlerts = workforceSchema.table('compliance_expiry_a
   raisedOn: date('raised_on').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected' | 'exported';
+
+/** One worker's hours for one day on one project (ATT-US9). Hours only; pay stays in payroll. */
+export const timesheets = workforceSchema.table('timesheets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  workerId: uuid('worker_id').notNull(),
+  companyId: uuid('company_id'),
+  localDate: date('local_date').notNull(),
+  status: text('status').$type<TimesheetStatus>().notNull().default('draft'),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  submittedBy: uuid('submitted_by'),
+  decidedAt: timestamp('decided_at', { withTimezone: true }),
+  decidedBy: uuid('decided_by'),
+  rejectionReason: text('rejection_reason'),
+  ...audit,
+});
+
+export const timesheetLines = workforceSchema.table('timesheet_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  timesheetId: uuid('timesheet_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  minutes: integer('minutes').notNull(),
+  breakMinutes: integer('break_minutes').notNull().default(0),
+  source: text('source').$type<'attendance' | 'manual' | 'adjusted'>().notNull(),
+  attendanceSessionId: uuid('attendance_session_id'),
+  adjustedReason: text('adjusted_reason'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});

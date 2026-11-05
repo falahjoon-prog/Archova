@@ -7,6 +7,7 @@ import type {
   Gate,
   RollCall,
   SignInResult,
+  Timesheet,
   Worker,
 } from '@archova/contracts';
 import type {
@@ -20,6 +21,8 @@ import type {
   Viewer,
   WorkerRow,
 } from '../application/attendance';
+import type { TimesheetEntry } from '../application/timesheets';
+import { totals } from '../domain/timesheet';
 
 const iso = (d: Date | null) => (d ? d.toISOString() : null);
 const company = (id: string | null) => (id ? encodeId('company', id) : null);
@@ -167,3 +170,29 @@ export function toRollCallDto(call: RollCallRow, marks: MarkRow[]): RollCall {
     people: out,
   };
 }
+
+export const toTimesheetDto = (e: TimesheetEntry): Timesheet => ({
+  id: encodeId('timesheet', e.sheet.id),
+  projectId: encodeId('project', e.sheet.projectId),
+  workerId: encodeId('worker', e.sheet.workerId),
+  workerName: e.workerName,
+  companyId: company(e.sheet.companyId),
+  localDate: e.sheet.localDate,
+  status: e.sheet.status,
+  ...totals(e.lines),
+  lines: e.lines.map((l) => ({
+    id: encodeId('timesheetLine', l.id),
+    minutes: l.minutes,
+    breakMinutes: l.breakMinutes,
+    source: l.source,
+    attendanceSessionId: l.attendanceSessionId
+      ? encodeId('attendanceSession', l.attendanceSessionId)
+      : null,
+    adjustedReason: l.adjustedReason,
+  })),
+  submittedAt: iso(e.sheet.submittedAt),
+  decidedAt: iso(e.sheet.decidedAt),
+  decidedBy: user(e.sheet.decidedBy),
+  rejectionReason: e.sheet.rejectionReason,
+  version: e.sheet.version,
+});

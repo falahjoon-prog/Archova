@@ -11,6 +11,10 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'workforce.attendance.manage', scope: 'project', tool: 'workforce', level: 'admin' },
   { key: 'workforce.attendance.override', scope: 'project', tool: 'workforce', level: 'admin' },
   { key: 'workforce.workers.view_personal', scope: 'project', tool: 'workforce', level: 'admin' },
+  // Timesheets (ATT-US9): subcontractors see and edit their own company's; site managers generate and approve.
+  { key: 'workforce.timesheets.view', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.timesheets.edit', scope: 'project', tool: 'workforce', level: 'standard' },
+  { key: 'workforce.timesheets.approve', scope: 'project', tool: 'workforce', level: 'admin' },
   // Site managers build and publish the site induction (product/14 I1, I7).
   { key: 'workforce.inductions.manage', scope: 'project', tool: 'workforce', level: 'admin' },
   // Subcontractor compliance wallet (compliance/05, E5): an org's own insurance, licence and card evidence.
