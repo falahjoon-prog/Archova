@@ -2258,6 +2258,35 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const DataExportSchema = z.object({
+  "id": z.string(),
+  "status": z.enum(["queued", "running", "ready", "failed", "expired"]),
+  "requestedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "startedAt": z.string().datetime({ offset: true }).nullable(),
+  "finishedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresAt": z.string().datetime({ offset: true }).nullable(),
+  "sizeBytes": z.number().int().nullable(),
+  "sha256": z.string().nullable(),
+  "tableCount": z.number().int().nullable(),
+  "fileCount": z.number().int().nullable(),
+  "skippedFileCount": z.number().int().nullable(),
+  "error": z.string().nullable(),
+});
+export type DataExport = z.infer<typeof DataExportSchema>;
+
+export const DataExportDownloadSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "filename": z.string(),
+});
+export type DataExportDownload = z.infer<typeof DataExportDownloadSchema>;
+
+export const DataExportListSchema = z.object({
+  "data": z.array(DataExportSchema),
+});
+export type DataExportList = z.infer<typeof DataExportListSchema>;
+
 export const DateRangeRequestSchema = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
