@@ -11659,6 +11659,78 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceDelivery' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+    get:
+      operationId: listClaimEvidenceServiceRecords
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: 'Records that this sealed record was served by other means. Builder staff only.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecordList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordClaimEvidenceService
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Record that the sealed claim or schedule was served by hand, courier, post or the recipient's own reply, and
+        when. Append-only; it is a person's statement, kept apart from email deliveries. Recording service of a
+        schedule needs `financials.claims.assess`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimEvidenceServiceRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+      - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: voidClaimEvidenceService
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate
+        append-only row. Voiding service of a schedule needs `financials.claims.assess`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              additionalProperties: false
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '200':
+          description: Voided
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -13851,14 +13923,55 @@ components:
     ClaimEvidenceDelivery:
       type: object
       required:
-        [id, kind, recipientEmail, status, queuedAt, sentAt, deliveredAt, bouncedAt, notConfirmed]
+        [
+          id,
+          kind,
+          recipientEmail,
+          status,
+          queuedAt,
+          sentAt,
+          deliveredAt,
+          bouncedAt,
+          notConfirmed,
+          serviceBasis,
+          sendProof,
+          addressBasis,
+        ]
       properties:
+        serviceBasis:
+          type: string
+          enum: [confirmed_delivery, dispatch_only]
+          description: '`confirmed_delivery` only when the receiving mail server confirmed it. `dispatch_only` means we sent it and have a record of that, which is not proof it arrived. Never show dispatch_only as served.'
+        sendProof:
+          type: [object, 'null']
+          description: Our signed record of what was sent, to whom and when. Null until the message has been sent.
+          required: [recordedAt, messageSha256, signed, timestampedAt]
+          properties:
+            recordedAt: { type: string, format: date-time }
+            messageSha256: { type: string }
+            signed: { type: boolean }
+            timestampedAt:
+              {
+                type: [string, 'null'],
+                format: date-time,
+                description: 'Time the outside authority stamped the send proof, once taken.',
+              }
         id: { type: string, format: uuid }
         kind: { type: string, enum: [claim, schedule] }
         recipientEmail: { type: string }
+        addressBasis:
+          {
+            type: [string, 'null'],
+            description: 'Where the address came from, e.g. the contract clause that nominates it, as typed at send time.',
+          }
         status: { type: string, enum: [queued, sending, sent, delivered, bounced, failed] }
         queuedAt: { type: string, format: date-time }
-        sentAt: { type: [string, 'null'], format: date-time }
+        sentAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When our mail relay accepted it. Not delivery to the recipient.',
+          }
         deliveredAt:
           {
             type: [string, 'null'],
@@ -13869,6 +13982,52 @@ components:
         notConfirmed:
           type: boolean
           description: True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it.
+    ClaimEvidenceServiceRecord:
+      type: object
+      required:
+        [id, kind, method, basis, servedAt, servedTo, note, recordedAt, voidedAt, voidReason]
+      properties:
+        voidedAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'Set when the record was voided as mistaken. A voided record stays on file.',
+          }
+        voidReason: { type: [string, 'null'] }
+        basis:
+          {
+            type: string,
+            enum: [self_reported],
+            description: "The recording user's own statement; Archova has not checked it. Never show as verified.",
+          }
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [claim, schedule] }
+        method: { type: string, enum: [hand, courier, post, recipient_reply, other] }
+        servedAt:
+          {
+            type: string,
+            format: date-time,
+            description: 'When it reached the recipient, as stated by the person recording.',
+          }
+        servedTo: { type: string, maxLength: 200 }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        recordedAt: { type: string, format: date-time }
+    ClaimEvidenceServiceRecordList:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+    RecordClaimEvidenceServiceRequest:
+      type: object
+      required: [method, servedAt, servedTo]
+      additionalProperties: false
+      properties:
+        method: { type: string, enum: [hand, courier, post, recipient_reply, other] }
+        servedAt: { type: string, format: date-time }
+        servedTo: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: [string, 'null'], maxLength: 2000 }
     ClaimEvidenceDeliveryList:
       type: object
       required: [deliveries]
@@ -13887,6 +14046,12 @@ components:
             format: email,
             maxLength: 254,
             description: 'The address the payer gave for service.',
+          }
+        addressBasis:
+          {
+            type: [string, 'null'],
+            maxLength: 500,
+            description: 'Where the address came from, e.g. the contract clause that nominates it. Kept in the signed send record.',
           }
     ClaimEvidenceList:
       type: object

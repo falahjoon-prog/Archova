@@ -566,9 +566,17 @@ export const CaptureSchema = z.object({
 export type Capture = z.infer<typeof CaptureSchema>;
 
 export const ClaimEvidenceDeliverySchema = z.object({
+  "serviceBasis": z.enum(["confirmed_delivery", "dispatch_only"]),
+  "sendProof": z.object({
+  "recordedAt": z.string().datetime({ offset: true }),
+  "messageSha256": z.string(),
+  "signed": z.boolean(),
+  "timestampedAt": z.string().datetime({ offset: true }).nullable(),
+}).nullable(),
   "id": z.string(),
   "kind": z.enum(["claim", "schedule"]),
   "recipientEmail": z.string(),
+  "addressBasis": z.string().nullable(),
   "status": z.enum(["queued", "sending", "sent", "delivered", "bounced", "failed"]),
   "queuedAt": z.string().datetime({ offset: true }),
   "sentAt": z.string().datetime({ offset: true }).nullable(),
@@ -634,6 +642,25 @@ export const ClaimEvidencePdfSchema = z.object({
   "dataBase64": z.string(),
 });
 export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
+
+export const ClaimEvidenceServiceRecordSchema = z.object({
+  "voidedAt": z.string().datetime({ offset: true }).nullable(),
+  "voidReason": z.string().nullable(),
+  "basis": z.enum(["self_reported"]),
+  "id": z.string(),
+  "kind": z.enum(["claim", "schedule"]),
+  "method": z.enum(["hand", "courier", "post", "recipient_reply", "other"]),
+  "servedAt": z.string().datetime({ offset: true }),
+  "servedTo": z.string().max(200),
+  "note": z.string().max(2000).nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type ClaimEvidenceServiceRecord = z.infer<typeof ClaimEvidenceServiceRecordSchema>;
+
+export const ClaimEvidenceServiceRecordListSchema = z.object({
+  "records": z.array(ClaimEvidenceServiceRecordSchema),
+});
+export type ClaimEvidenceServiceRecordList = z.infer<typeof ClaimEvidenceServiceRecordListSchema>;
 
 export const ClaimStatementSchema = z.object({
   "periodEnd": z.string().date(),
@@ -5209,6 +5236,7 @@ export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSche
 
 export const QueueClaimEvidenceDeliveryRequestSchema = z.object({
   "recipientEmail": z.string().email().max(254),
+  "addressBasis": z.string().max(500).nullable().optional(),
 }).strict();
 export type QueueClaimEvidenceDeliveryRequest = z.infer<typeof QueueClaimEvidenceDeliveryRequestSchema>;
 
@@ -5435,6 +5463,14 @@ export const RecordAttendanceRequestSchema = z.object({
   "overrideReason": z.string().min(1).max(500).optional(),
 }).strict();
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
+
+export const RecordClaimEvidenceServiceRequestSchema = z.object({
+  "method": z.enum(["hand", "courier", "post", "recipient_reply", "other"]),
+  "servedAt": z.string().datetime({ offset: true }),
+  "servedTo": z.string().min(1).max(200),
+  "note": z.string().max(2000).nullable().optional(),
+}).strict();
+export type RecordClaimEvidenceServiceRequest = z.infer<typeof RecordClaimEvidenceServiceRequestSchema>;
 
 export const RecordClaimStatementRequestSchema = z.object({
   "periodEnd": z.string().date(),
