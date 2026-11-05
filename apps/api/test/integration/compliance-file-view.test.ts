@@ -180,4 +180,41 @@ describe('wallet file view', () => {
       }),
     ).toEqual([]);
   });
+
+  it('keeps per-worker items out of reach even if the grant row names their type', async () => {
+    const s = await setup('worker');
+    const gid = decodeId('complianceGrant', s.grant.id)!;
+    const fileId = await uploadOrgFile(s.sub.browser, s.subOrg.id);
+    const card = await s.sub.browser.post(`/v1/orgs/${s.subOrg.id}/compliance-documents`, {
+      itemType: 'white_card',
+      title: 'White card',
+      holderName: 'Sam Hand',
+      fileIds: [fileId],
+    });
+    expect(card.statusCode, card.body).toBe(201);
+    // Past the API (which refuses the type), put it into the grant directly: the database must still hold.
+    await t.adminDb.withTenantTx(ctxFor(s.subOrg.id, s.sub.userId), ({ tx }) =>
+      tx.execute(
+        sql`update workforce.compliance_grants set item_types = array['workers_comp', 'white_card'] where id = ${gid}`,
+      ),
+    );
+    const read = (query: ReturnType<typeof sql>, settings: Record<string, string>) =>
+      t.database.withTenantTx(ctxFor(s.bldOrg.id, s.bld.userId), async ({ tx }) => {
+        for (const [k, v] of Object.entries(settings))
+          await tx.execute(sql`select set_config(${k}, ${v}, true)`);
+        return (await tx.execute(query)).rows as Array<Record<string, string>>;
+      });
+    const docs = await read(
+      sql`select item_type from workforce.compliance_documents order by item_type`,
+      { 'app.wallet_grant': gid },
+    );
+    expect(docs).toEqual([{ item_type: 'workers_comp' }]);
+    const files = await read(sql`select id from files.file_objects`, {
+      'app.wallet_grant': gid,
+      'app.wallet_file': decodeId('file', fileId)!,
+    });
+    expect(files).toEqual([]);
+    // And the route gives no link for it.
+    expect((await s.link(card.json().id)).statusCode).toBe(404);
+  });
 });
