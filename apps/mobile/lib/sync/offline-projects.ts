@@ -3,6 +3,7 @@
 
 import type { SyncStore } from '@archova/sync-core';
 import type { SqlDatabase } from '../db';
+import type { SheetCache } from '../files/sheet-cache';
 
 export type RemoveResult = { ok: true } | { ok: false; unsynced: number };
 
@@ -12,6 +13,7 @@ export class OfflineProjects {
     private readonly store: SyncStore & {
       purgeScope: SyncStore['purgeScope'];
     },
+    private readonly sheets: Pick<SheetCache, 'bytesFor' | 'removeProject'> | null = null,
     private readonly now: () => Date = () => new Date(),
   ) {}
 
@@ -59,7 +61,7 @@ export class OfflineProjects {
       'SELECT SUM(size_bytes) AS n FROM file_queue WHERE project_id = ?',
       [projectId],
     );
-    return (rec?.n ?? 0) + (files?.n ?? 0);
+    return (rec?.n ?? 0) + (files?.n ?? 0) + ((await this.sheets?.bytesFor(projectId)) ?? 0);
   }
 
   /** Stop keeping a project offline and delete its local data. Refused while it has unsynced work. */
@@ -71,6 +73,7 @@ export class OfflineProjects {
       [projectId, this.now().toISOString()],
     );
     await this.store.purgeScope({ projectId, module: null });
+    await this.sheets?.removeProject(projectId);
     return { ok: true };
   }
 
