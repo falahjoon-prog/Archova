@@ -41,6 +41,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       recordPayment: service.recordPayment,
       createContract: service.createContract,
       contractForQuote: service.contractForQuote,
+      createCommitment: commitments.createCommitment,
     },
   };
 }
