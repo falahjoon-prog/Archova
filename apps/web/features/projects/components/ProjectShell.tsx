@@ -16,6 +16,7 @@ import {
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
+  BudgetIcon,
   DelaysIcon,
   DiaryIcon,
   DocumentsIcon,
@@ -168,6 +169,11 @@ export function projectToolGroups(
       href: webRoutes.paymentClaims(orgSlug, projectId),
       label: 'Payment claims',
       icon: ContractsIcon,
+    },
+    canRead('budget') && {
+      href: webRoutes.budget(orgSlug, projectId),
+      label: 'Budget',
+      icon: BudgetIcon,
     },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),

@@ -72,6 +72,7 @@ export {
   Hourglass as DelaysIcon,
   ChartGantt as ProgrammeIcon,
   Handshake as ContractsIcon,
+  PiggyBank as BudgetIcon,
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,
   PackageCheck as SubmittalsIcon,
