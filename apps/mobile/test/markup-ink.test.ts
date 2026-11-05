@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { Markup } from '@archova/contracts';
 import {
+  canChangeMarkup,
+  changeMarkup,
   createInk,
   listRevisionMarkups,
   MAX_POINTS_PER_STROKE,
@@ -125,5 +128,130 @@ describe('savePenMarkup', () => {
         clientAt: '2026-11-05T01:00:00.000Z',
       }),
     ).rejects.toThrow();
+  });
+});
+
+describe('changeMarkup', () => {
+  async function saved(strokes = 2) {
+    const db = await nodeSqlDriver().open('markup-change.db');
+    await migrate(db);
+    const store = new SqliteSyncStore(db, { moduleOf: () => 'drawings' });
+    const ink = createInk(counter());
+    for (let i = 0; i < strokes; i++) {
+      ink.begin({ x: 0.1, y: 0.1 + i * 0.1 });
+      ink.move({ x: 0.4, y: 0.4 });
+      ink.end();
+    }
+    const { markupId } = await savePenMarkup(store, {
+      projectId: 'prj_1',
+      revisionId: 'drv_1',
+      shapes: ink.strokes,
+      mutationId: 'm1',
+      clientAt: '2026-11-05T01:00:00.000Z',
+    });
+    return { store, markupId, ink };
+  }
+  const at = '2026-11-05T02:00:00.000Z';
+
+  it('queues an edit behind the markup still waiting to be created', async () => {
+    const { store, markupId, ink } = await saved();
+    const r = await changeMarkup(store, {
+      markupId,
+      change: { kind: 'shapes', shapes: ink.strokes.slice(0, 1) },
+      mutationId: 'm2',
+      clientAt: at,
+    });
+    expect(r).toEqual({ ok: true });
+    const [mine] = await listRevisionMarkups(store, 'prj_1', 'drv_1');
+    expect(mine!.shapes).toHaveLength(1);
+    const queue = await store.listOutbox();
+    expect(queue.map((e) => e.command)).toEqual(['drawings.createMarkup', 'drawings.updateMarkup']);
+    expect(queue[1]).toMatchObject({ baseVersion: null, dependsOn: ['m1'] });
+  });
+
+  it('sends the version the device last saw once the markup is confirmed', async () => {
+    const { store, markupId } = await saved();
+    await store.recordPushResults([{ mutationId: 'm1', status: 'applied', version: 1 }]);
+    await changeMarkup(store, {
+      markupId,
+      change: { kind: 'publish' },
+      mutationId: 'm2',
+      clientAt: at,
+    });
+    const [queued] = await store.listOutbox();
+    expect(queued).toMatchObject({
+      command: 'drawings.updateMarkup',
+      baseVersion: 1,
+      payload: { visibility: 'project' },
+      dependsOn: [],
+    });
+    const [mine] = await listRevisionMarkups(store, 'prj_1', 'drv_1');
+    expect(mine).toMatchObject({ visibility: 'project', publishedAt: at });
+    // Published is the record: no further changes.
+    expect(
+      await changeMarkup(store, {
+        markupId,
+        change: { kind: 'delete' },
+        mutationId: 'm3',
+        clientAt: at,
+      }),
+    ).toEqual({ ok: false, reason: 'published' });
+  });
+
+  it('hides a deleted markup at once and queues the delete', async () => {
+    const { store, markupId } = await saved();
+    await store.recordPushResults([{ mutationId: 'm1', status: 'applied', version: 1 }]);
+    expect(
+      await changeMarkup(store, {
+        markupId,
+        change: { kind: 'delete' },
+        mutationId: 'm2',
+        clientAt: at,
+      }),
+    ).toEqual({ ok: true });
+    expect(await listRevisionMarkups(store, 'prj_1', 'drv_1')).toEqual([]);
+    expect((await store.listOutbox())[0]).toMatchObject({
+      command: 'drawings.deleteMarkup',
+      baseVersion: 1,
+    });
+    expect(
+      await changeMarkup(store, {
+        markupId,
+        change: { kind: 'delete' },
+        mutationId: 'm3',
+        clientAt: at,
+      }),
+    ).toEqual({ ok: false, reason: 'not_found' });
+  });
+
+  it('refuses an empty edit and an unknown markup', async () => {
+    const { store, markupId } = await saved();
+    expect(
+      await changeMarkup(store, {
+        markupId,
+        change: { kind: 'shapes', shapes: [] },
+        mutationId: 'm2',
+        clientAt: at,
+      }),
+    ).toEqual({ ok: false, reason: 'no_shapes' });
+    expect(
+      await changeMarkup(store, {
+        markupId: 'nope',
+        change: { kind: 'delete' },
+        mutationId: 'm3',
+        clientAt: at,
+      }),
+    ).toEqual({ ok: false, reason: 'not_found' });
+  });
+});
+
+describe('canChangeMarkup', () => {
+  const base = { ownerId: 'usr_1', visibility: 'company' } as unknown as Markup;
+  it('allows the author until it is published, never others or published ones', () => {
+    expect(canChangeMarkup({ ...base, visibility: 'private' }, null)).toBe(true);
+    expect(canChangeMarkup({ ...base, ownerId: '' }, null)).toBe(true);
+    expect(canChangeMarkup(base, 'usr_1')).toBe(true);
+    expect(canChangeMarkup(base, 'usr_2')).toBe(false);
+    expect(canChangeMarkup({ ...base, visibility: 'project' }, 'usr_1')).toBe(false);
   });
 });
