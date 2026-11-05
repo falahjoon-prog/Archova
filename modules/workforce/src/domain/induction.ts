@@ -25,7 +25,8 @@ export interface InductionAnimationBlock {
 }
 export interface InductionAnimationScene {
   id: string;
-  template: string;
+  template:
+    'blank' | 'hazard_callout' | 'steps' | 'site_walkthrough' | 'ppe_checklist' | 'emergency_route';
   title: string;
   narration?: string | null | undefined;
   durationMs: number;
@@ -37,10 +38,31 @@ export interface InductionAnimationScene {
     w: number;
     h: number;
     text?: string | null | undefined;
-    icon?: string | null | undefined;
-    tone: string;
+    icon?:
+      | 'hazard'
+      | 'helmet'
+      | 'vest'
+      | 'boots'
+      | 'glasses'
+      | 'gloves'
+      | 'hearing'
+      | 'fire'
+      | 'exit'
+      | 'first_aid'
+      | 'stop'
+      | 'forklift'
+      | 'person'
+      | 'tick'
+      | 'cross'
+      | null
+      | undefined;
+    tone: 'neutral' | 'info' | 'warning' | 'danger' | 'safe';
     rotation?: number | undefined;
-    motion: { preset: string; startMs: number; durationMs: number };
+    motion: {
+      preset: 'none' | 'fade_in' | 'slide_up' | 'slide_left' | 'pop' | 'pulse' | 'draw_on';
+      startMs: number;
+      durationMs: number;
+    };
   }>;
 }
 

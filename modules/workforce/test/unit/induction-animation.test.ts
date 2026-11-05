@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { fromContentDto, toContentDto } from '../../src/api/induction-mappers';
 import { contentProblems } from '../../src/domain/induction';
 
-const scene = {
+import type { InductionAnimationScene } from '../../src/domain/induction';
+
+const scene: InductionAnimationScene = {
   id: 'sc1',
   template: 'hazard_callout',
   title: 'Overhead cranes',
@@ -11,7 +13,7 @@ const scene = {
   elements: [
     {
       id: 'e1',
-      kind: 'icon' as const,
+      kind: 'icon',
       x: 10,
       y: 10,
       w: 20,
