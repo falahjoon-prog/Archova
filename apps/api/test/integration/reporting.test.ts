@@ -19,7 +19,7 @@ afterAll(() => t.close());
 
 type Tool = { restricted: boolean; open: number; overdue: number };
 type Portfolio = {
-  totals: Record<string, number>;
+  totals: Record<string, number | string>;
   projects: Array<{
     id: string;
     name: string;
@@ -27,6 +27,7 @@ type Portfolio = {
     rfis: Tool;
     defects: Tool;
     submittals: Tool;
+    budget: Record<string, unknown>;
   }>;
   truncated: boolean;
 };
