@@ -465,3 +465,61 @@ describe('Contracts and payment claims (product/09)', () => {
     expect((await s.sub.browser.post(`${one}/approve`, {})).statusCode).toBe(403);
   });
 });
+
+describe('Cost forecast', () => {
+  it('projects cost to complete from contracts, claims and adjustments, for staff only', async () => {
+    const s = await setup('NSW');
+    const head = await s.pm.browser.post(`${s.base}/contracts`, {
+      kind: 'head',
+      title: 'Head contract',
+      originalValue: '500000.00',
+      sov: [{ code: 'H1', description: 'All works', value: '500000.00' }],
+    });
+    expect(head.statusCode).toBe(201);
+    const created = await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId));
+    const { contract, sov } = created.json();
+    const claim = await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: sov[0].id, thisClaim: '30000.00' }],
+    });
+    expect(claim.statusCode).toBe(201);
+
+    const adj = await s.pm.browser.post(`${s.base}/cost-forecast/adjustments`, {
+      category: 'unawarded_work',
+      label: 'Landscaping not yet awarded',
+      amount: '25000.00',
+    });
+    expect(adj.statusCode).toBe(201);
+    const bad = await s.pm.browser.post(`${s.base}/cost-forecast/adjustments`, {
+      category: 'risk',
+      label: 'Zero',
+      amount: '0.00',
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const f = await s.pm.browser.get(`${s.base}/cost-forecast`);
+    expect(f.statusCode).toBe(200);
+    expect(f.json()).toMatchObject({
+      revenue: '500000.00',
+      committed: '100000.00',
+      claimedToDate: '30000.00',
+      costToComplete: '70000.00',
+      projectAdjustments: '25000.00',
+      forecastFinalCost: '125000.00',
+      forecastMargin: '375000.00',
+      forecastMarginPct: '75.00',
+    });
+    expect(f.json().commitments).toHaveLength(1);
+
+    // The subcontractor never sees the builder's margin.
+    expect((await s.sub.browser.get(`${s.base}/cost-forecast`)).statusCode).toBe(403);
+
+    const del = await s.pm.browser.del(`${s.base}/cost-forecast/adjustments/${adj.json().id}`);
+    expect(del.statusCode).toBe(204);
+    expect((await s.pm.browser.get(`${s.base}/cost-forecast`)).json().forecastFinalCost).toBe(
+      '100000.00',
+    );
+  });
+});
