@@ -12,6 +12,7 @@ import {
   IncidentsIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
+  FolderLinksIcon,
   ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
@@ -220,6 +221,11 @@ export function projectToolGroups(
       href: webRoutes.imports(orgSlug, projectId),
       label: 'Imports',
       icon: ImportsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.folderLinks(orgSlug, projectId),
+      label: 'SharePoint and Drive',
+      icon: FolderLinksIcon,
     },
   ];
   return [

@@ -603,6 +603,9 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../../modules/financials
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
