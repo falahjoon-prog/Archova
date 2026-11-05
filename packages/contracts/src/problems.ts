@@ -31,6 +31,7 @@ export const PROBLEM_CODES = {
   'org.read_only': 403,
   'entitlement-required': 403,
   'access.denied': 403,
+  'access.revoked': 401,
   'project.not_found': 404,
   'project.number_taken': 409,
   'project_member.already_exists': 409,

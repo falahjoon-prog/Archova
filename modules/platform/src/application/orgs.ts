@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { slugify, uuidv7 } from '@archova/domain';
 import type { CreateOrgRequest } from '@archova/contracts';
 import {
@@ -159,6 +159,53 @@ export function createOrgService({ database, access, defaultEntitlements, onOrgC
     );
   }
 
+  /**
+   * For someone with no access now: the project they were most recently removed from in the ordinary way since
+   * `since`, if they hold no other access (X38). Null otherwise, so the API keeps answering 404 and never hints
+   * at an org to someone removed for cause or long ago.
+   */
+  async function findRecentOrdinaryRemoval(
+    orgId: string,
+    userId: string,
+    requestId: string,
+    since: Date,
+  ) {
+    const probe: TenantContext = {
+      orgId,
+      userId,
+      principalType: 'member',
+      orgRole: null,
+      entitlements: defaultEntitlements,
+      requestId,
+    };
+    return database.withTenantTx(
+      probe,
+      async ({ tx }) => {
+        const rows = await tx
+          .select({
+            projectId: projectMembers.projectId,
+            removedAt: projectMembers.removedAt,
+            episode: projectMembers.accessEpisode,
+            kind: projectMembers.removalKind,
+            status: projectMembers.status,
+          })
+          .from(projectMembers)
+          .where(eq(projectMembers.userId, userId))
+          .orderBy(desc(projectMembers.removedAt));
+        const latest = rows.find((r) => r.status === 'removed' && r.removedAt);
+        if (!latest?.removedAt || latest.removedAt < since) return null;
+        // Anything but an ordinary removal gives no grant and no hint (for_cause, wipe_now).
+        if (latest.kind !== 'ordinary') return null;
+        return {
+          projectId: latest.projectId,
+          removedAt: latest.removedAt,
+          episode: latest.episode,
+        };
+      },
+      { readOnly: true },
+    );
+  }
+
   /** Every org the user can open: memberships plus orgs where they are an external project member (ADR-0007). */
   async function listMyOrgs(userId: string) {
     return database.withSelfTx(userId, async (tx) => {
@@ -182,7 +229,7 @@ export function createOrgService({ database, access, defaultEntitlements, onOrgC
     });
   }
 
-  return { createOrg, getOrg, resolveTenantAccess, listMyOrgs };
+  return { createOrg, getOrg, resolveTenantAccess, findRecentOrdinaryRemoval, listMyOrgs };
 }
 
 export type OrgService = ReturnType<typeof createOrgService>;
