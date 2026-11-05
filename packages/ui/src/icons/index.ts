@@ -67,6 +67,7 @@ export {
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
   FileUp as ImportsIcon,
+  FolderSync as FolderLinksIcon,
   ClipboardCheck as DefectsIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,

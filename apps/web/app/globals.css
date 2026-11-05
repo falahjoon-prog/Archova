@@ -2433,3 +2433,35 @@ fieldset.worker-card > legend {
 .u-danger {
   color: var(--c-status-danger);
 }
+
+/* Folder links (integrations/03, 04) */
+.folders__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.folders__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--c-border-divider);
+  overflow-wrap: anywhere;
+}
+.folders__item:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.folders__head,
+.folders__danger {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+.folders__head {
+  justify-content: space-between;
+}

@@ -6,14 +6,18 @@
 import type { Modules } from '@archova/compose';
 import type { Subscriber } from '../subscribers';
 import { jobContext } from '../subscribers';
-import { FOLDER_PUBLISH_ROUTE } from './declaration';
+import { FOLDER_BACKFILL_ROUTE, FOLDER_PUBLISH_ROUTE } from './declaration';
 
 export interface FolderPublishDeps {
+  documents: Pick<Modules['documents']['api'], 'currentDrawingRevisions'>;
   folders: Pick<Modules['integrations']['api']['folders'], 'publishRevision'>;
   log: (msg: string, o: object) => void;
 }
 
-export function createFolderPublish(deps: FolderPublishDeps): { subscriber: Subscriber } {
+export function createFolderPublish(deps: FolderPublishDeps): {
+  subscriber: Subscriber;
+  backfill: Subscriber;
+} {
   const subscriber: Subscriber = {
     ...FOLDER_PUBLISH_ROUTE,
     async handle(event, { database }) {
@@ -41,5 +45,35 @@ export function createFolderPublish(deps: FolderPublishDeps): { subscriber: Subs
       if (out.published) deps.log('folder publish', { orgId: event.orgId, revisionId, ...out });
     },
   };
-  return { subscriber };
+  // Safe to repeat: a revision already published to a link is skipped. Each revision runs in its own transactions, so a
+  // large set never holds a connection while it uploads, and a retry resumes where the last attempt stopped.
+  const backfill: Subscriber = {
+    ...FOLDER_BACKFILL_ROUTE,
+    async handle(event, { database }) {
+      if (!event.projectId) return;
+      const projectId = event.projectId;
+      const ctx = jobContext(event.orgId, `folders.backfill:${event.id}`);
+      const current = await database.withTenantTx(
+        ctx,
+        (scope) => deps.documents.currentDrawingRevisions(scope, projectId),
+        { readOnly: true },
+      );
+      let published = 0;
+      for (const r of current) {
+        const out = await deps.folders.publishRevision(database, ctx, {
+          projectId,
+          ...r,
+          previousRevisionId: null,
+        });
+        published += out.published;
+      }
+      deps.log('folder backfill', {
+        orgId: event.orgId,
+        projectId,
+        sheets: current.length,
+        published,
+      });
+    },
+  };
+  return { subscriber, backfill };
 }

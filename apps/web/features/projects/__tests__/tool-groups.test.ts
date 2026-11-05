@@ -32,6 +32,7 @@ describe('projectToolGroups', () => {
       'Owner portal',
       'Late submissions',
       'Imports',
+      'SharePoint and Drive',
       'Tender packages',
       'Estimates',
       'Cost library',

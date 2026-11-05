@@ -246,6 +246,38 @@ describe('SharePoint and Drive folder links (integrations/03, 04)', () => {
     expect(audit).toHaveLength(2);
   });
 
+  it('lists the revisions already current so a new link can publish them (backfill)', async () => {
+    const s = await setup('fld-backfill');
+    const set = (await s.owner.browser.post(`${s.base}/drawing-sets`, { name: 'IFC' })).json();
+    await publishDrawing(s, set.id, 'A');
+    await connectGoogle(s);
+    const link = await s.owner.browser.post(`${s.base}/folder-links`, { provider: 'google' });
+    expect(link.statusCode).toBe(201);
+    // The worker runs this when it sees integrations.folders.linked.v1.
+    const ctx = jobContext(decodeId('org', s.org.id)!);
+    const projectId = decodeId('project', s.project.id)!;
+    const current = await t.database.withTenantTx(ctx, (scope) =>
+      t.modules.documents.api.currentDrawingRevisions(scope, projectId),
+    );
+    expect(current.map((r) => `${r.sheetNumber}/${r.rev}`)).toEqual(['A-101/A']);
+    for (const r of current)
+      expect(
+        await t.modules.integrations.api.folders.publishRevision(t.database, ctx, {
+          projectId,
+          ...r,
+          previousRevisionId: null,
+        }),
+      ).toEqual({ published: 1 });
+    expect(await published(s)).toEqual([{ file_name: 'A-101_Rev-A.pdf', state: 'current' }]);
+    const linked = await outboxData<{ connectionId?: string }>(
+      t,
+      s.org.id,
+      s.owner.userId,
+      'integrations.folders.linked.v1',
+    );
+    expect(linked).toHaveLength(1);
+  });
+
   it('marks the connection for reconnecting when Google refuses, and leaves nothing half recorded', async () => {
     const s = await setup('fld-refused');
     await connectGoogle(s);

@@ -50,6 +50,15 @@ export const FOLDER_PUBLISH_ROUTE: SubscriberRoute = {
   queue: 'ai',
 };
 
+export const FOLDER_BACKFILL_SUBSCRIBER = 'folders.backfill';
+
+/** A new folder link: publish the revisions already current on the project, so the folder starts complete. */
+export const FOLDER_BACKFILL_ROUTE: SubscriberRoute = {
+  name: FOLDER_BACKFILL_SUBSCRIBER,
+  types: ['integrations.folders.linked.v1'],
+  queue: 'ai',
+};
+
 export const ACCOUNTING_PULL_JOB = 'accounting.pull';
 
 /**
@@ -68,6 +77,7 @@ export const AI_ROUTES: readonly SubscriberRoute[] = [
   AI_RESTAMP_ROUTE,
   ACCOUNTING_PUSH_ROUTE,
   FOLDER_PUBLISH_ROUTE,
+  FOLDER_BACKFILL_ROUTE,
 ];
 
 export const AI_SWEEP_JOB = 'ai.sweep';

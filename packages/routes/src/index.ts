@@ -18,6 +18,7 @@ export const webRoutes = {
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
   subcontractorWallets: (orgSlug: string) => `/${enc(orgSlug)}/settings/subcontractor-wallets`,
@@ -96,6 +97,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inspections/templates`,
   imports: (orgSlug: string, projectId: string, jobId?: string) =>
     `${p(orgSlug, projectId)}/imports${jobId ? `?id=${enc(jobId)}` : ''}`,
+  folderLinks: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/folder-links`,
   ownerPortal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/owner-portal`,
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
