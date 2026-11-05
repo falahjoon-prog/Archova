@@ -94,6 +94,13 @@ export function ContractListScreen() {
               </Link>
             ) : null}
             {canManage ? (
+              <Link className="link" href={webRoutes.costForecast(org.orgSlug, project.projectId)}>
+                <Button type="button" variant="secondary">
+                  Cost forecast
+                </Button>
+              </Link>
+            ) : null}
+            {canManage ? (
               <Link className="link" href={webRoutes.newContract(org.orgSlug, project.projectId)}>
                 <Button type="button">New contract</Button>
               </Link>
