@@ -4290,6 +4290,43 @@ export const PermissionTemplateSchema = z.object({
 });
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
 
+export const PortfolioTotalsSchema = z.object({
+  "projects": z.number().int(),
+  "rfisOpen": z.number().int(),
+  "rfisOverdue": z.number().int(),
+  "defectsOpen": z.number().int(),
+  "defectsOverdue": z.number().int(),
+  "submittalsOpen": z.number().int(),
+  "submittalsOverdue": z.number().int(),
+});
+export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
+
+export const PortfolioToolSchema = z.object({
+  "restricted": z.boolean(),
+  "open": z.number().int(),
+  "overdue": z.number().int(),
+});
+export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
+
+export const PortfolioProjectSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "number": z.string().nullable(),
+  "status": z.string(),
+  "rfis": PortfolioToolSchema,
+  "defects": PortfolioToolSchema,
+  "submittals": PortfolioToolSchema,
+  "attention": z.number().int(),
+});
+export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
+
+export const PortfolioSchema = z.object({
+  "totals": PortfolioTotalsSchema,
+  "projects": z.array(PortfolioProjectSchema),
+  "truncated": z.boolean(),
+});
+export type Portfolio = z.infer<typeof PortfolioSchema>;
+
 export const PrequalAnswersSchema = z.record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean(), z.null()]));
 export type PrequalAnswers = z.infer<typeof PrequalAnswersSchema>;
 
@@ -4651,6 +4688,59 @@ export const RemoveProjectMemberRequestSchema = z.object({
   "reason": z.string().max(500).optional(),
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
+
+export const ReportConfigSchema = z.object({
+  "source": z.enum(["rfis", "defects", "submittals"]),
+  "state": z.enum(["open", "closed", "all"]),
+  "projectIds": z.array(z.string()).max(200),
+  "columns": z.array(z.enum(["project", "ref", "title", "status", "dueDate", "overdue", "createdAt"])).min(1).max(7),
+  "overdueOnly": z.boolean(),
+}).strict();
+export type ReportConfig = z.infer<typeof ReportConfigSchema>;
+
+export const ReportSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "shared": z.boolean(),
+  "config": ReportConfigSchema,
+  "mine": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type Report = z.infer<typeof ReportSchema>;
+
+export const ReportInputSchema = z.object({
+  "name": z.string().min(1).max(120),
+  "shared": z.boolean(),
+  "config": ReportConfigSchema,
+}).strict();
+export type ReportInput = z.infer<typeof ReportInputSchema>;
+
+export const ReportListSchema = z.object({
+  "data": z.array(ReportSchema),
+});
+export type ReportList = z.infer<typeof ReportListSchema>;
+
+export const ReportRowSchema = z.object({
+  "projectId": z.string(),
+  "project": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "dueDate": z.string().date().nullable(),
+  "overdue": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ReportRow = z.infer<typeof ReportRowSchema>;
+
+export const ReportResultSchema = z.object({
+  "columns": z.array(z.enum(["project", "ref", "title", "status", "dueDate", "overdue", "createdAt"])),
+  "rows": z.array(ReportRowSchema),
+  "restrictedProjects": z.number().int(),
+  "truncated": z.boolean(),
+  "generatedAt": z.string().datetime({ offset: true }),
+});
+export type ReportResult = z.infer<typeof ReportResultSchema>;
 
 export const RespondCorrespondenceRequestSchema = z.object({
   "body": z.string().min(1).max(50000),

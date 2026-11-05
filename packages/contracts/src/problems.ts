@@ -267,6 +267,9 @@ export const PROBLEM_CODES = {
   'schedule.link_exists': 409,
   'schedule.item_link_not_found': 404,
   'schedule.item_link_exists': 409,
+  // reporting (portfolio dashboard, report builder)
+  'report.not_found': 404,
+  'report.not_owner': 403,
   'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,

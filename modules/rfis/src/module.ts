@@ -41,6 +41,9 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
       summariesByIds: service.summariesByIds,
       /** Meeting agenda (`meetings`): open RFIs past their due date that the caller can see. */
       overdueForMeeting: service.overdueForMeeting,
+      /** Portfolio dashboard and report builder (`reporting`): counts and flat rows of the RFIs the caller can see. */
+      portfolioCounts: service.portfolioCounts,
+      reportRows: service.reportRows,
       /** Nova F21: open RFIs the caller can see pinned to these drawing revisions. Called by `ai` only. */
       openOnDrawing: service.openOnDrawing,
       /** Nova F3: an RFI and its responses for drafting a response, if the caller could send one. Called by `ai` only. */
