@@ -10,6 +10,9 @@ export const PACKAGE_STATUSES = [
 ] as const;
 export type PackageStatus = (typeof PACKAGE_STATUSES)[number];
 
+/** TP-001 */
+export const formatPackageNumber = (n: number) => `TP-${String(n).padStart(3, '0')}`;
+
 export type PackageAction = 'send' | 'close' | 'cancel' | 'reopen';
 
 const NEXT: Record<PackageAction, { from: readonly PackageStatus[]; to: PackageStatus }> = {
