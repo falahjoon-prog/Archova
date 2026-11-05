@@ -5,7 +5,7 @@ import { AppError, type TenantScope } from '@archova/kernel';
 import { fromCents, toCents } from '../domain/money';
 import { releaseStages, type ReleaseStage } from '../domain/release';
 import { paymentClaims, retentionReleases, retentionTerms } from '../infra/tables';
-import type { TrustDeps } from './trust';
+import type { TrustDeps, TrustService } from './trust';
 
 export type RetentionReleaseRow = typeof retentionReleases.$inferSelect;
 
@@ -21,11 +21,16 @@ export interface RecordReleaseInput {
   releasedOn: string;
   reference: string;
   note?: string;
+  /** False to record the release without taking it out of the trust account. Default: take it out when one is set up. */
+  fromTrust?: boolean;
 }
 
 const hundredths = (pct: string) => Math.round(Number(pct) * 100);
 
-export function createRetentionService(deps: TrustDeps) {
+export function createRetentionService(
+  deps: TrustDeps,
+  trust: Pick<TrustService, 'releaseFromTrust'>,
+) {
   const now = deps.now ?? (() => new Date());
 
   async function view(scope: TenantScope, projectId: string, contractId: string, seeAll: boolean) {
@@ -122,6 +127,14 @@ export function createRetentionService(deps: TrustDeps) {
     const cents = toCents(input.amount);
     if (cents === 0) throw new AppError('validation_failed', 'Amount must be more than zero');
     if (cents > stage.remainingCents) throw new AppError('financials.retention.over_entitlement');
+    // Money leaves the trust account in the same transaction, or the release is refused.
+    if (input.fromTrust !== false)
+      await trust.releaseFromTrust(scope, projectId, contractId, {
+        amount: fromCents(cents),
+        movedOn: input.releasedOn,
+        reference: input.reference,
+        ...(input.note ? { note: input.note } : {}),
+      });
     const id = uuidv7();
     await scope.tx.insert(retentionReleases).values({
       id,

@@ -1259,6 +1259,116 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Folder' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-books:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSpecBooks
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: The project's specification books, newest first, with how many sections each has been split into.
+      responses:
+        '200':
+          description: Books
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSpecBook
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Register an issued specification book. Naming the book it replaces marks that one superseded.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSpecBookRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SpecBookId'
+    get:
+      operationId: getSpecBook
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: One book with its sections in page order.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/SpecBookId'
+    put:
+      operationId: replaceSpecSections
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.manage
+      summary: Split the book into sections by page range, replacing the list. Numbers must be unique within the book.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReplaceSpecSectionsRequest' }
+      responses:
+        '200':
+          description: Updated
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecBookDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/spec-sections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: searchSpecSections
+      tags: [documents]
+      x-module: documents
+      x-permission: documents.documents.read
+      summary: Sections of current books whose number starts with, or title contains, the text. For picking a spec reference.
+      parameters:
+        - { name: q, in: query, schema: { type: string, maxLength: 100 } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 50, default: 20 },
+          }
+      responses:
+        '200':
+          description: Sections
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SpecSectionHitList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/documents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9272,6 +9382,36 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/IncidentAction' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incident-actions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listIncidentActionsFromSource
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: The corrective actions that came from one inspection or observation, with the incident each belongs to.
+      parameters:
+        - {
+            name: sourceType,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [inspection, observation] },
+          }
+        - {
+            name: sourceId,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^(ins|obs)_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentActionFromSourceList' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/swms:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10237,6 +10377,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    put:
+      operationId: setVariationCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Code a variation to a cost code, or clear it with null. Allowed after approval; not for rejected or withdrawn ones.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetVariationCostCodeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11010,6 +11175,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+    SpecBookId:
+      name: bookId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^spb_[0-9A-Za-z]{26}$' }
     FolderId:
       name: folderId
       in: path
@@ -14488,6 +14658,89 @@ components:
           type: array
           items: { type: string }
         version: { type: integer }
+    SpecBook:
+      type: object
+      required:
+        [id, projectId, name, issuedDate, fileId, status, supersededById, sectionCount, version]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        issuedDate: { type: [string, 'null'], format: date }
+        fileId: { type: [string, 'null'] }
+        status: { type: string, enum: [current, superseded] }
+        supersededById: { type: [string, 'null'] }
+        sectionCount: { type: integer }
+        version: { type: integer }
+    SpecSection:
+      type: object
+      required: [id, bookId, sectionNumber, title, division, pageFrom, pageTo, revision]
+      properties:
+        id: { type: string }
+        bookId: { type: string }
+        sectionNumber: { type: string, description: 'As the book numbers it, e.g. 03 30 00' }
+        title: { type: string }
+        division: { type: [string, 'null'] }
+        pageFrom: { type: integer, minimum: 1 }
+        pageTo: { type: integer, minimum: 1 }
+        revision: { type: [string, 'null'] }
+    SpecBookList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SpecBook' }
+    SpecBookDetail:
+      type: object
+      required: [book, sections]
+      properties:
+        book: { $ref: '#/components/schemas/SpecBook' }
+        sections:
+          type: array
+          items: { $ref: '#/components/schemas/SpecSection' }
+    SpecSectionHit:
+      type: object
+      required: [section, bookId, bookName]
+      properties:
+        section: { $ref: '#/components/schemas/SpecSection' }
+        bookId: { type: string }
+        bookName: { type: string }
+    SpecSectionHitList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/SpecSectionHit' }
+    CreateSpecBookRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        issuedDate: { type: [string, 'null'], format: date }
+        fileId: { type: [string, 'null'], pattern: '^fil_[0-9A-Za-z]{26}$' }
+        supersedesBookId: { type: [string, 'null'], pattern: '^spb_[0-9A-Za-z]{26}$' }
+    ReplaceSpecSectionsRequest:
+      type: object
+      additionalProperties: false
+      required: [sections]
+      properties:
+        sections:
+          type: array
+          maxItems: 500
+          items:
+            type: object
+            additionalProperties: false
+            required: [sectionNumber, title, pageFrom, pageTo]
+            properties:
+              sectionNumber: { type: string, minLength: 1, maxLength: 20 }
+              title: { type: string, minLength: 1, maxLength: 300 }
+              division: { type: [string, 'null'], maxLength: 100 }
+              pageFrom: { type: integer, minimum: 1 }
+              pageTo: { type: integer, minimum: 1 }
+              revision: { type: [string, 'null'], maxLength: 20 }
     FolderList:
       type: object
       required: [data]
@@ -17998,6 +18251,7 @@ components:
           submittedAt,
           decidedAt,
           decisionNote,
+          costCodeId,
         ]
       properties:
         id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
@@ -18013,6 +18267,13 @@ components:
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    SetVariationCostCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [costCodeId]
+      properties:
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
     TrustStatus:
       type: string
       enum: [not_required, not_set_up, ok, shortfall]
@@ -18192,6 +18453,11 @@ components:
         releasedOn: { type: string, format: date }
         reference: { type: string, minLength: 1, maxLength: 200 }
         note: { type: string, minLength: 1, maxLength: 2000 }
+        fromTrust:
+          type: boolean
+          description: >-
+            Take the release out of the contract's trust account too. Default: yes when a trust account is
+            recorded. The release is refused if the account holds less than the amount.
     VariationList:
       type: object
       required: [data, approvedTotal]
@@ -18210,6 +18476,7 @@ components:
         description: { type: string, maxLength: 5000 }
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
         timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
     VariationDecisionRequest:
       type: object
       additionalProperties: false
@@ -21467,6 +21734,21 @@ components:
           description: What stops the incident closing now. Empty when it can close.
           items: { $ref: '#/components/schemas/IncidentCloseBlocker' }
         canManage: { type: boolean }
+    IncidentActionFromSource:
+      type: object
+      required: [action, incidentId, incidentNumberLabel, incidentTitle]
+      properties:
+        action: { $ref: '#/components/schemas/IncidentAction' }
+        incidentId: { type: string }
+        incidentNumberLabel: { type: string }
+        incidentTitle: { type: string }
+    IncidentActionFromSourceList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentActionFromSource' }
     IncidentPage:
       type: object
       required: [data, nextCursor]

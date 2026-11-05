@@ -271,6 +271,34 @@ export const UpdateFolderParams = z.object({
   "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")),
 });
 export const UpdateFolderBody = s.UpdateFolderRequestSchema;
+export const ListSpecBooksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSpecBookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSpecBookBody = s.CreateSpecBookRequestSchema;
+export const GetSpecBookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "bookId": z.string().regex(new RegExp("^spb_[0-9A-Za-z]{26}$")),
+});
+export const ReplaceSpecSectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "bookId": z.string().regex(new RegExp("^spb_[0-9A-Za-z]{26}$")),
+});
+export const ReplaceSpecSectionsBody = s.ReplaceSpecSectionsRequestSchema;
+export const SearchSpecSectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SearchSpecSectionsQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "limit": z.coerce.number().int().min(1).max(50).default(20),
+});
 export const ListDocumentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2131,6 +2159,14 @@ export const UpdateIncidentActionParams = z.object({
   "actionId": z.string().regex(new RegExp("^iac_[0-9A-Za-z]{26}$")),
 });
 export const UpdateIncidentActionBody = s.UpdateIncidentActionRequestSchema;
+export const ListIncidentActionsFromSourceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListIncidentActionsFromSourceQuery = z.object({
+  "sourceType": z.enum(["inspection", "observation"]),
+  "sourceId": z.string().regex(new RegExp("^(ins|obs)_[0-9A-Za-z]{26}$")),
+});
 export const ListSwmsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2382,6 +2418,12 @@ export const VoidCommitmentParams = z.object({
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
 export const VoidCommitmentBody = s.CommitmentDecisionRequestSchema;
+export const SetVariationCostCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const SetVariationCostCodeBody = s.SetVariationCostCodeRequestSchema;
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3352,6 +3394,66 @@ export const operations = {
     params: UpdateFolderParams,
     query: null,
     body: UpdateFolderBody,
+  },
+  listSpecBooks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: ListSpecBooksParams,
+    query: null,
+    body: null,
+  },
+  createSpecBook: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSpecBookParams,
+    query: null,
+    body: CreateSpecBookBody,
+  },
+  getSpecBook: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: GetSpecBookParams,
+    query: null,
+    body: null,
+  },
+  replaceSpecSections: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReplaceSpecSectionsParams,
+    query: null,
+    body: ReplaceSpecSectionsBody,
+  },
+  searchSpecSections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-sections',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: SearchSpecSectionsParams,
+    query: SearchSpecSectionsQuery,
+    body: null,
   },
   listDocuments: {
     method: 'GET',
@@ -7319,6 +7421,18 @@ export const operations = {
     query: null,
     body: UpdateIncidentActionBody,
   },
+  listIncidentActionsFromSource: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incident-actions',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: null,
+    params: ListIncidentActionsFromSourceParams,
+    query: ListIncidentActionsFromSourceQuery,
+    body: null,
+  },
   listSwms: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/swms',
@@ -7882,6 +7996,18 @@ export const operations = {
     params: VoidCommitmentParams,
     query: null,
     body: VoidCommitmentBody,
+  },
+  setVariationCostCode: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetVariationCostCodeParams,
+    query: null,
+    body: SetVariationCostCodeBody,
   },
   listPaymentClaims: {
     method: 'GET',

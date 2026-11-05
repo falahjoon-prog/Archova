@@ -40,6 +40,8 @@ export const ID_PREFIXES = {
   claim: 'clm',
   event: 'evt',
   folder: 'fld',
+  specBook: 'spb',
+  specSection: 'sps',
   drawingSet: 'dst',
   drawingSheet: 'dsh',
   drawingRevision: 'drv',

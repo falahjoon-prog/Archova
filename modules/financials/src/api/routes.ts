@@ -264,6 +264,9 @@ export function financialsRoutes(
                 ...(b.description ? { description: b.description } : {}),
                 amount: money(b.amount, 'amount'),
                 ...(b.timeImpactDays !== undefined ? { timeImpactDays: b.timeImpactDays } : {}),
+                ...(b.costCodeId
+                  ? { costCodeId: ref('costCode', b.costCodeId, 'costCodeId') }
+                  : {}),
               },
             ),
           ),
@@ -425,6 +428,7 @@ export function financialsRoutes(
                 releasedOn: b.releasedOn,
                 reference: b.reference,
                 ...(b.note ? { note: b.note } : {}),
+                ...(b.fromTrust !== undefined ? { fromTrust: b.fromTrust } : {}),
               },
             ),
           ),
@@ -435,6 +439,19 @@ export function financialsRoutes(
     approveVariation: async (input) => move(input, 'approved', input.body?.note),
     rejectVariation: async (input) => move(input, 'rejected', input.body?.note),
     withdrawVariation: async (input) => move(input, 'withdrawn'),
+    setVariationCostCode: async (input) => ({
+      status: 200,
+      body: toVariationDto(
+        await tx(input, (s) =>
+          financials.setVariationCostCode(
+            s,
+            project(input.params),
+            ref('variation', input.params.variationId, 'variationId'),
+            input.body.costCodeId ? ref('costCode', input.body.costCodeId, 'costCodeId') : null,
+          ),
+        ),
+      ),
+    }),
     submitPaymentClaim: async (input) => {
       const b = input.body;
       return {

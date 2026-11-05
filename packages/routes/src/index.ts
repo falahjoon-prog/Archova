@@ -33,6 +33,7 @@ export const webRoutes = {
   // Project tools (frontend 03 §1). Entity segments are API ids; pages show the human number.
   documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
   drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
+  specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
     `${p(orgSlug, projectId)}/drawings/${enc(sheetId)}${revisionId ? `?rev=${enc(revisionId)}` : ''}`,
@@ -87,6 +88,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/register`,
   swms: (orgSlug: string, projectId: string, swmsId?: string) =>
     `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
+  incidents: (orgSlug: string, projectId: string, incidentId?: string) =>
+    `${p(orgSlug, projectId)}/incidents${incidentId ? `?id=${enc(incidentId)}` : ''}`,
   inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
