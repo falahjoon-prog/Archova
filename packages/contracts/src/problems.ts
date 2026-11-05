@@ -53,6 +53,7 @@ export const PROBLEM_CODES = {
   'entitlement-required': 403,
   'feature-unavailable': 404,
   'access.denied': 403,
+  'access.revoked': 401,
   'project.not_found': 404,
   'project.number_taken': 409,
   'project_member.already_exists': 409,
