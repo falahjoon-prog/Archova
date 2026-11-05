@@ -6,9 +6,11 @@ import { computeForecast, type HeadInput } from '../domain/forecast';
 import { toCents } from '../domain/money';
 import {
   contracts,
+  costCodes,
   forecastAdjustments,
   paymentClaimLines,
   paymentClaims,
+  sovItems,
   variations,
 } from '../infra/tables';
 
@@ -18,6 +20,7 @@ export interface CreateAdjustmentInput {
   contractId?: string | null;
   category: AdjustmentRow['category'];
   label: string;
+  costCodeId?: string | null;
   note?: string;
   /** Signed, ex GST, not zero. */
   amount: string;
@@ -106,6 +109,73 @@ export function createForecastService(deps: { access: AccessService }) {
     return { result, subs, adjustments: adj };
   }
 
+  /** Subcontract commitments with their schedule items, and adjustments, for the budget-vs-forecast comparison. */
+  async function inputsByCode(scope: TenantScope, projectId: string) {
+    const subs = await scope.tx
+      .select()
+      .from(contracts)
+      .where(
+        and(
+          eq(contracts.projectId, projectId),
+          eq(contracts.kind, 'subcontract'),
+          ne(contracts.status, 'terminated'),
+        ),
+      );
+    const ids = subs.map((c) => c.id);
+    const [vars, claims, items] = ids.length
+      ? await Promise.all([
+          scope.tx
+            .select({
+              contractId: variations.contractId,
+              total: sql<string>`coalesce(sum(${variations.amount}), 0)`,
+            })
+            .from(variations)
+            .where(and(inArray(variations.contractId, ids), eq(variations.status, 'approved')))
+            .groupBy(variations.contractId),
+          scope.tx
+            .select({
+              contractId: paymentClaims.contractId,
+              sovItemId: paymentClaimLines.sovItemId,
+              total: sql<string>`coalesce(sum(${paymentClaimLines.thisClaim}), 0)`,
+            })
+            .from(paymentClaimLines)
+            .innerJoin(paymentClaims, eq(paymentClaims.id, paymentClaimLines.claimId))
+            .where(
+              and(
+                inArray(paymentClaims.contractId, ids),
+                eq(paymentClaims.isValid, true),
+                ne(paymentClaims.status, 'withdrawn'),
+              ),
+            )
+            .groupBy(paymentClaims.contractId, paymentClaimLines.sovItemId),
+          scope.tx.select().from(sovItems).where(inArray(sovItems.contractId, ids)),
+        ])
+      : [[], [], []];
+    const adj = await adjustments(scope, projectId);
+    return {
+      subs: subs.map((c) => {
+        const mine = claims.filter((r) => r.contractId === c.id);
+        return {
+          committedCents:
+            toCents(c.originalValue) +
+            toCents(vars.find((v) => v.contractId === c.id)?.total ?? '0'),
+          claimedCents: mine.reduce((n, r) => n + toCents(r.total), 0),
+          items: items
+            .filter((i) => i.contractId === c.id)
+            .map((i) => ({
+              costCodeId: i.costCodeId,
+              valueCents: toCents(i.value),
+              claimedCents: toCents(mine.find((r) => r.sovItemId === i.id)?.total ?? '0'),
+            })),
+        };
+      }),
+      adjustments: adj.map((a) => ({
+        costCodeId: a.costCodeId,
+        amountCents: signedCents(a.amount),
+      })),
+    };
+  }
+
   async function createAdjustment(
     scope: TenantScope,
     projectId: string,
@@ -126,6 +196,17 @@ export function createForecastService(deps: { access: AccessService }) {
           { path: 'contractId', message: 'Must be a subcontract on this project' },
         ]);
     }
+    if (input.costCodeId) {
+      const [cc] = await scope.tx
+        .select({ id: costCodes.id })
+        .from(costCodes)
+        .where(and(eq(costCodes.id, input.costCodeId), eq(costCodes.projectId, projectId)));
+      if (!cc)
+        throw new AppError(
+          'financials.cost_code.not_found',
+          'That cost code is not on this project.',
+        );
+    }
     const [row] = await scope.tx
       .insert(forecastAdjustments)
       .values({
@@ -133,6 +214,7 @@ export function createForecastService(deps: { access: AccessService }) {
         orgId: scope.ctx.orgId,
         projectId,
         contractId: input.contractId ?? null,
+        costCodeId: input.costCodeId ?? null,
         category: input.category,
         label: input.label,
         note: input.note ?? null,
@@ -152,7 +234,7 @@ export function createForecastService(deps: { access: AccessService }) {
     if (gone.length === 0) throw new AppError('financials.forecast_adjustment.not_found');
   }
 
-  return { costForecast, createAdjustment, deleteAdjustment };
+  return { costForecast, inputsByCode, createAdjustment, deleteAdjustment };
 }
 
 export type ForecastService = ReturnType<typeof createForecastService>;

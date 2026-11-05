@@ -60,7 +60,7 @@ export function CostCodesPanel({ canManage }: { canManage: boolean }) {
       header: 'Code',
       rowHeader: true,
       sortValue: (c) => c.code,
-      cell: (c) => <span className="u-mono">{c.code}</span>,
+      cell: (c) => <span className="u-mono u-nowrap">{c.code}</span>,
     },
     {
       id: 'description',

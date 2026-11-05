@@ -2171,6 +2171,10 @@ export const DeleteBudgetLineParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
 });
+export const GetBudgetVsForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const LockBudgetParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7213,6 +7217,18 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteBudgetLineParams,
+    query: null,
+    body: null,
+  },
+  getBudgetVsForecast: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/vs-forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetVsForecastParams,
     query: null,
     body: null,
   },

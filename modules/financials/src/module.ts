@@ -14,11 +14,12 @@ import { FINANCIALS_PERMISSIONS } from './permissions';
  */
 export function createFinancialsModule(services: KernelServices, deps: FinancialsDeps) {
   const service = createFinancialsService(deps);
+  const forecast = createForecastService(deps);
   const budget = createBudgetService({
     access: deps.access,
+    forecastInputs: forecast.inputsByCode,
     ...(deps.now ? { now: deps.now } : {}),
   });
-  const forecast = createForecastService(deps);
   const trust = createTrustService({
     ...deps,
     contractFor: service.contractFor,

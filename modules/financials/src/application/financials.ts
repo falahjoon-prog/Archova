@@ -30,6 +30,7 @@ import {
 } from '../domain/evidence';
 import {
   contracts,
+  costCodes,
   evidenceRecords,
   paymentClaimLines,
   paymentClaims,
@@ -64,7 +65,7 @@ export interface CreateContractInput {
   sopaState?: ContractRow['sopaState'];
   scheduleDays?: number | null;
   paymentDays?: number | null;
-  sov: { code: string; description: string; value: string }[];
+  sov: { code: string; description: string; value: string; costCodeId?: string }[];
   /** Set when the contract is raised from an awarded tender quote; one quote raises at most one contract. */
   source?: { packageId: string; quoteId: string };
 }
@@ -211,6 +212,18 @@ export function createFinancialsService(deps: FinancialsDeps) {
         `The schedule of values adds to ${fromCents(total)}, not the contract value ${input.originalValue}.`,
         [{ path: 'sov', message: 'Must add up to the contract value' }],
       );
+    const tagged = [...new Set(input.sov.flatMap((s) => (s.costCodeId ? [s.costCodeId] : [])))];
+    if (tagged.length > 0) {
+      const found = await scope.tx
+        .select({ id: costCodes.id })
+        .from(costCodes)
+        .where(and(eq(costCodes.projectId, projectId), inArray(costCodes.id, tagged)));
+      if (found.length !== tagged.length)
+        throw new AppError(
+          'financials.cost_code.not_found',
+          'A cost code on the schedule is not on this project.',
+        );
+    }
     const id = uuidv7();
     const number = await nextNumber(scope, projectId, 'contract');
     const [row] = await scope.tx
@@ -245,6 +258,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       description: s.description,
       value: s.value,
       sort,
+      costCodeId: s.costCodeId ?? null,
     }));
     if (sovValues.length > 0) await scope.tx.insert(sovItems).values(sovValues);
     // Project records, kept 10 years (compliance/07 §3); a legal hold overrides.

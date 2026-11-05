@@ -52,6 +52,7 @@ export const sovItems = financialsSchema.table('sov_items', {
   description: text('description').notNull(),
   value: money('value').notNull(),
   sort: integer('sort').notNull(),
+  costCodeId: uuid('cost_code_id'),
 });
 
 export const variations = financialsSchema.table('variations', {
@@ -219,6 +220,7 @@ export const forecastAdjustments = financialsSchema.table('forecast_adjustments'
   label: text('label').notNull(),
   note: text('note'),
   amount: money('amount').notNull(),
+  costCodeId: uuid('cost_code_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
