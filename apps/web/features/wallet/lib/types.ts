@@ -24,6 +24,8 @@ export const ITEM_TYPE_LABELS: Record<ItemType, string> = {
   wwcc: 'Working with children check',
   modern_slavery: 'Modern slavery statement',
   abn: 'ABN',
+  white_card: 'White card (a worker)',
+  hrw_licence: 'High-risk work licence (a worker)',
   other: 'Other',
 };
 export const ITEM_TYPES = Object.keys(ITEM_TYPE_LABELS) as ItemType[];
@@ -36,7 +38,24 @@ export const INSURANCE_TYPES: readonly ItemType[] = [
   'personal_accident',
   'home_warranty',
 ];
-export const LICENCE_TYPES: readonly ItemType[] = ['contractor_licence', 'trade_licence', 'wwcc'];
+export const LICENCE_TYPES: readonly ItemType[] = [
+  'contractor_licence',
+  'trade_licence',
+  'wwcc',
+  'hrw_licence',
+];
+/** Cards that belong to a named worker, not the company (compliance/05 §3.4). */
+export const WORKER_TYPES: readonly ItemType[] = ['white_card', 'hrw_licence'];
+
+export type WhiteCardState = NonNullable<ComplianceDocument['whiteCard']>['state'];
+/** "May have lapsed", never "lapsed": no record of work is not a record of no work, and states differ. */
+export const WHITE_CARD_LABELS: Record<WhiteCardState, string> = {
+  no_work_recorded: 'No recent work recorded',
+  recent_work: 'Worked in the last 2 years',
+  may_have_lapsed: 'May have lapsed',
+};
+export const WHITE_CARD_HINT =
+  'A white card has no expiry date but lapses after 2 years without construction work. Check with the holder before they start.';
 
 export const STATES: readonly AuState[] = ['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'];
 
@@ -65,6 +84,10 @@ export interface DocumentForm {
   limit: string;
   startsOn: string;
   expiresOn: string;
+  /** Per-worker items: whose card it is. */
+  holderName: string;
+  /** White card: the day the holder last did construction work. */
+  lastWorkOn: string;
   selfDeclared: boolean;
 }
 
@@ -78,6 +101,8 @@ export const emptyForm: DocumentForm = {
   limit: '',
   startsOn: '',
   expiresOn: '',
+  holderName: '',
+  lastWorkOn: '',
   selfDeclared: false,
 };
 

@@ -12639,7 +12639,7 @@ export interface components {
             createdAt: string;
         };
         /** @enum {string} */
-        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "other";
+        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "white_card" | "hrw_licence" | "other";
         PrequalSettings: {
             /** @description When on, a tender invite refuses any company that is not currently prequalified (an approved form still in date), unless a person with decision rights overrides it with a reason. */
             requireForTenders: boolean;
@@ -12807,6 +12807,23 @@ export interface components {
              * @enum {string}
              */
             expiry: "no_expiry" | "current" | "expiring" | "expired";
+            /** @description The holder's entry on this org's worker list, when linked; null otherwise. Per-worker items are never shared with a builder. */
+            workerId: string | null;
+            /** @description Whose card it is */
+            holderName: string | null;
+            whiteCard: {
+                /**
+                 * @description A white card has no expiry date but lapses after 2 years without construction work. `may_have_lapsed` is a prompt to check, not a finding: no record of work is not a record of no work, and states differ (VIC unconfirmed).
+                 * @enum {string}
+                 */
+                state: "no_work_recorded" | "recent_work" | "may_have_lapsed";
+                /** Format: date */
+                lastWorkOn: string | null;
+                /** @description Whether the date is the last Archova sign-in or the holder's own declaration (the later of the two). */
+                source: ("sign_in" | "declared") | null;
+            } | null;
+            /** Format: date */
+            lastWorkDeclaredOn: string | null;
             sightedBy: components["schemas"]["UserRef"] | null;
             /** Format: date-time */
             sightedAt: string | null;
@@ -12850,6 +12867,15 @@ export interface components {
             expiresOn?: string;
             /** @description Ready files in this org. Required unless `selfDeclared`. */
             fileIds?: components["schemas"]["FileRef"][];
+            /** @description Required for a white card or high-risk licence (whose card it is); not allowed for a company item. */
+            holderName?: string;
+            /** @description Optional, per-worker items only: the holder's entry on this org's worker list, so their sign-ins count towards the white card 2-year rule. */
+            workerId?: string;
+            /**
+             * Format: date
+             * @description White card only: the day the holder says they last did construction work. Used for the 2-year rule.
+             */
+            lastWorkOn?: string;
             /**
              * @description A declaration with no document, such as "no employees".
              * @default false
@@ -12868,6 +12894,8 @@ export interface components {
             /** Format: date */
             expiresOn?: string | null;
             fileIds?: components["schemas"]["FileRef"][];
+            /** Format: date */
+            lastWorkOn?: string | null;
             archived?: boolean;
         };
         ComplianceShareCodeRequest: {

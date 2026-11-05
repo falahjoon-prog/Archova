@@ -307,6 +307,12 @@ export const complianceDocuments = workforceSchema.table('compliance_documents',
   sightedBy: uuid('sighted_by'),
   sightedAt: timestamp('sighted_at', { withTimezone: true }),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
+  /** Per-worker items (white card, high-risk licence): who holds it; null for the company's own. */
+  holderName: text('holder_name'),
+  /** Set when the holder is on this org's own worker list, so their sign-ins count towards the 2-year rule. */
+  workerId: uuid('worker_id'),
+  /** White card only: the day the holder says they last did construction work. */
+  lastWorkDeclaredOn: date('last_work_declared_on'),
   ...audit,
 });
 

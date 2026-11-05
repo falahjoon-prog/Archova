@@ -558,7 +558,7 @@ export const ComparedContractSchema = z.object({
 });
 export type ComparedContract = z.infer<typeof ComparedContractSchema>;
 
-export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "abn", "other"]);
+export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "abn", "white_card", "hrw_licence", "other"]);
 export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
 
 export const ComplianceAccessLogEntrySchema = z.object({
@@ -629,6 +629,14 @@ export const ComplianceDocumentSchema = z.object({
   "fileIds": z.array(FileRefSchema),
   "evidence": z.enum(["recorded", "sighted", "self_declared"]),
   "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
+  "workerId": z.union([z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")), z.null()]),
+  "holderName": z.string().nullable(),
+  "whiteCard": z.union([z.object({
+  "state": z.enum(["no_work_recorded", "recent_work", "may_have_lapsed"]),
+  "lastWorkOn": z.string().date().nullable(),
+  "source": z.union([z.enum(["sign_in", "declared"]), z.null()]),
+}), z.null()]),
+  "lastWorkDeclaredOn": z.string().date().nullable(),
   "sightedBy": z.union([UserRefSchema, z.null()]),
   "sightedAt": z.string().datetime({ offset: true }).nullable(),
   "archivedAt": z.string().datetime({ offset: true }).nullable(),
@@ -1131,6 +1139,9 @@ export const CreateComplianceDocumentRequestSchema = z.object({
   "startsOn": z.string().date().optional(),
   "expiresOn": z.string().date().optional(),
   "fileIds": z.array(FileRefSchema).max(4).optional(),
+  "holderName": z.string().min(1).max(200).optional(),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")).optional(),
+  "lastWorkOn": z.string().date().optional(),
   "selfDeclared": z.boolean().optional(),
 }).strict();
 export type CreateComplianceDocumentRequest = z.infer<typeof CreateComplianceDocumentRequestSchema>;
@@ -5491,6 +5502,7 @@ export const UpdateComplianceDocumentRequestSchema = z.object({
   "startsOn": z.string().date().nullable().optional(),
   "expiresOn": z.string().date().nullable().optional(),
   "fileIds": z.array(FileRefSchema).max(4).optional(),
+  "lastWorkOn": z.string().date().nullable().optional(),
   "archived": z.boolean().optional(),
 }).strict();
 export type UpdateComplianceDocumentRequest = z.infer<typeof UpdateComplianceDocumentRequestSchema>;
