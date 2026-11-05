@@ -70,6 +70,7 @@ export const variations = financialsSchema.table('variations', {
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   decidedBy: uuid('decided_by'),
   decisionNote: text('decision_note'),
+  costCodeId: uuid('cost_code_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),
@@ -301,4 +302,30 @@ export const claimStatements = financialsSchema.table('claim_statements', {
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   version: integer('version').notNull().default(1),
+});
+
+export const retentionTerms = financialsSchema.table('retention_terms', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  practicalCompletionOn: date('practical_completion_on'),
+  defectsPeriodDays: integer('defects_period_days'),
+  firstReleasePct: numeric('first_release_pct', { precision: 5, scale: 2 }).notNull().default('50'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const retentionReleases = financialsSchema.table('retention_releases', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  stage: text('stage').$type<'practical_completion' | 'defects_end'>().notNull(),
+  amount: money('amount').notNull(),
+  releasedOn: date('released_on').notNull(),
+  reference: text('reference').notNull(),
+  note: text('note'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  recordedBy: uuid('recorded_by'),
 });

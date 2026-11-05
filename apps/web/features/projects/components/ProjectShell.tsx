@@ -9,6 +9,7 @@ import {
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
+  IncidentsIcon,
   LateSubmissionsIcon,
   OwnerPortalIcon,
   ImportsIcon,
@@ -199,6 +200,11 @@ export function projectToolGroups(
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
+    },
+    canRead('inspections') && {
+      href: webRoutes.incidents(orgSlug, projectId),
+      label: 'Incidents',
+      icon: IncidentsIcon,
     },
     canRead('owner_portal') && {
       href: webRoutes.ownerPortal(orgSlug, projectId),

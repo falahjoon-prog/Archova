@@ -2229,6 +2229,23 @@ export const RecordTrustMovementParams = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
 });
 export const RecordTrustMovementBody = s.RecordTrustMovementRequestSchema;
+export const GetContractRetentionReleaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractRetentionTermsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractRetentionTermsBody = s.SaveRetentionTermsRequestSchema;
+export const RecordRetentionReleaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const RecordRetentionReleaseBody = s.RecordRetentionReleaseRequestSchema;
 export const ListVariationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2362,6 +2379,12 @@ export const VoidCommitmentParams = z.object({
   "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
 });
 export const VoidCommitmentBody = s.CommitmentDecisionRequestSchema;
+export const SetVariationCostCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const SetVariationCostCodeBody = s.SetVariationCostCodeRequestSchema;
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7491,6 +7514,42 @@ export const operations = {
     query: null,
     body: RecordTrustMovementBody,
   },
+  getContractRetentionRelease: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetContractRetentionReleaseParams,
+    query: null,
+    body: null,
+  },
+  saveContractRetentionTerms: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release',
+    module: "financials",
+    auth: "required",
+    permission: "financials.retention.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveContractRetentionTermsParams,
+    query: null,
+    body: SaveContractRetentionTermsBody,
+  },
+  recordRetentionRelease: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases',
+    module: "financials",
+    auth: "required",
+    permission: "financials.retention.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordRetentionReleaseParams,
+    query: null,
+    body: RecordRetentionReleaseBody,
+  },
   listVariations: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations',
@@ -7802,6 +7861,18 @@ export const operations = {
     params: VoidCommitmentParams,
     query: null,
     body: VoidCommitmentBody,
+  },
+  setVariationCostCode: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetVariationCostCodeParams,
+    query: null,
+    body: SetVariationCostCodeBody,
   },
   listPaymentClaims: {
     method: 'GET',

@@ -126,16 +126,18 @@ export function createForecastService(deps: { access: AccessService }) {
       ? await Promise.all([
           scope.tx
             .select({
+              id: variations.id,
               contractId: variations.contractId,
-              total: sql<string>`coalesce(sum(${variations.amount}), 0)`,
+              costCodeId: variations.costCodeId,
+              amount: variations.amount,
             })
             .from(variations)
-            .where(and(inArray(variations.contractId, ids), eq(variations.status, 'approved')))
-            .groupBy(variations.contractId),
+            .where(and(inArray(variations.contractId, ids), eq(variations.status, 'approved'))),
           scope.tx
             .select({
               contractId: paymentClaims.contractId,
               sovItemId: paymentClaimLines.sovItemId,
+              variationId: paymentClaimLines.variationId,
               total: sql<string>`coalesce(sum(${paymentClaimLines.thisClaim}), 0)`,
             })
             .from(paymentClaimLines)
@@ -147,7 +149,11 @@ export function createForecastService(deps: { access: AccessService }) {
                 ne(paymentClaims.status, 'withdrawn'),
               ),
             )
-            .groupBy(paymentClaims.contractId, paymentClaimLines.sovItemId),
+            .groupBy(
+              paymentClaims.contractId,
+              paymentClaimLines.sovItemId,
+              paymentClaimLines.variationId,
+            ),
           scope.tx.select().from(sovItems).where(inArray(sovItems.contractId, ids)),
         ])
       : [[], [], []];
@@ -155,10 +161,10 @@ export function createForecastService(deps: { access: AccessService }) {
     return {
       subs: subs.map((c) => {
         const mine = claims.filter((r) => r.contractId === c.id);
+        const myVars = vars.filter((v) => v.contractId === c.id);
         return {
           committedCents:
-            toCents(c.originalValue) +
-            toCents(vars.find((v) => v.contractId === c.id)?.total ?? '0'),
+            toCents(c.originalValue) + myVars.reduce((n, v) => n + toCents(v.amount), 0),
           claimedCents: mine.reduce((n, r) => n + toCents(r.total), 0),
           items: items
             .filter((i) => i.contractId === c.id)
@@ -166,7 +172,17 @@ export function createForecastService(deps: { access: AccessService }) {
               costCodeId: i.costCodeId,
               valueCents: toCents(i.value),
               claimedCents: toCents(mine.find((r) => r.sovItemId === i.id)?.total ?? '0'),
-            })),
+            }))
+            // An approved variation coded to a cost code counts as committed work on that code.
+            .concat(
+              myVars
+                .filter((v) => v.costCodeId !== null)
+                .map((v) => ({
+                  costCodeId: v.costCodeId,
+                  valueCents: toCents(v.amount),
+                  claimedCents: toCents(mine.find((r) => r.variationId === v.id)?.total ?? '0'),
+                })),
+            ),
         };
       }),
       adjustments: adj.map((a) => ({

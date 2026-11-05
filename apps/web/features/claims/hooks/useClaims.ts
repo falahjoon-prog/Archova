@@ -12,7 +12,9 @@ import {
   type IssuePaymentSchedule,
   type RecordClaimStatement,
   type PaymentClaimStatus,
+  type RecordRetentionRelease,
   type RecordTrustMovement,
+  type SaveRetentionTerms,
   type SaveContractTrust,
   type SubmitPaymentClaim,
   type VariationAction,
@@ -66,6 +68,35 @@ export function useTrustMutations(projectId: string, contractId: string) {
     recordMovement: useMutation({
       mutationFn: (body: RecordTrustMovement) =>
         source.recordTrustMovement(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+export function useRetentionRelease(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'contracts', { retentionRelease: contractId }),
+    queryFn: () => source.retentionRelease(projectId, contractId),
+  });
+}
+
+export function useRetentionMutations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') });
+  return {
+    saveTerms: useMutation({
+      mutationFn: (body: SaveRetentionTerms) =>
+        source.saveRetentionTerms(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+    recordRelease: useMutation({
+      mutationFn: (body: RecordRetentionRelease) =>
+        source.recordRetentionRelease(projectId, contractId, body),
       onSuccess: refresh,
     }),
   };

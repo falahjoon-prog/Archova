@@ -9623,6 +9623,67 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ContractTrust' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractRetentionRelease
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Retention held, the contract's release terms and what has been released, visible to the payee.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveContractRetentionTerms
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.retention.manage
+      summary: Set practical completion, the defects period and the share released at practical completion (builder staff).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveRetentionTermsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: recordRetentionRelease
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.retention.manage
+      summary: Record retention released to the payee, up to what the stage entitles (append-only).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordRetentionReleaseRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10146,6 +10207,31 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    put:
+      operationId: setVariationCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Code a variation to a cost code, or clear it with null. Allowed after approval; not for rejected or withdrawn ones.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetVariationCostCodeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
     parameters:
@@ -17931,6 +18017,7 @@ components:
           submittedAt,
           decidedAt,
           decisionNote,
+          costCodeId,
         ]
       properties:
         id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
@@ -17946,6 +18033,13 @@ components:
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    SetVariationCostCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [costCodeId]
+      properties:
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
     TrustStatus:
       type: string
       enum: [not_required, not_set_up, ok, shortfall]
@@ -18065,6 +18159,66 @@ components:
         totalDue: { $ref: '#/components/schemas/FinancialsMoney' }
         totalPaid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         trust: { $ref: '#/components/schemas/ContractTrust' }
+    RetentionStage:
+      type: string
+      enum: [practical_completion, defects_end]
+    RetentionStageStatus:
+      type: string
+      enum: [awaiting_date, upcoming, due, released]
+    RetentionRelease:
+      type: object
+      required: [contractId, terms, retentionHeld, stages, releases]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        terms:
+          type: object
+          required: [practicalCompletionOn, defectsPeriodDays, firstReleasePct]
+          properties:
+            practicalCompletionOn: { type: [string, 'null'], format: date }
+            defectsPeriodDays: { type: [integer, 'null'] }
+            firstReleasePct: { type: string }
+        retentionHeld: { $ref: '#/components/schemas/FinancialsMoney' }
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage, dueOn, entitled, released, remaining, status]
+            properties:
+              stage: { $ref: '#/components/schemas/RetentionStage' }
+              dueOn: { type: [string, 'null'], format: date }
+              entitled: { $ref: '#/components/schemas/FinancialsMoney' }
+              released: { $ref: '#/components/schemas/FinancialsMoney' }
+              remaining: { $ref: '#/components/schemas/FinancialsMoney' }
+              status: { $ref: '#/components/schemas/RetentionStageStatus' }
+        releases:
+          type: array
+          items:
+            type: object
+            required: [stage, amount, releasedOn, reference, note, recordedAt]
+            properties:
+              stage: { $ref: '#/components/schemas/RetentionStage' }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+              releasedOn: { type: string, format: date }
+              reference: { type: string }
+              note: { type: [string, 'null'] }
+              recordedAt: { type: string, format: date-time }
+    SaveRetentionTermsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        practicalCompletionOn: { type: [string, 'null'], format: date }
+        defectsPeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        firstReleasePct: { type: string, pattern: '^\d{1,3}(\.\d{1,2})?$' }
+    RecordRetentionReleaseRequest:
+      type: object
+      additionalProperties: false
+      required: [stage, amount, releasedOn, reference]
+      properties:
+        stage: { $ref: '#/components/schemas/RetentionStage' }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        releasedOn: { type: string, format: date }
+        reference: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
     VariationList:
       type: object
       required: [data, approvedTotal]
@@ -18083,6 +18237,7 @@ components:
         description: { type: string, maxLength: 5000 }
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
         timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
     VariationDecisionRequest:
       type: object
       additionalProperties: false

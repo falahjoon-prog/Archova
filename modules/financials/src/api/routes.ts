@@ -7,6 +7,8 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { RetentionService } from '../application/retention';
+import { toRetentionDto } from './retention-mappers';
 import type { CommitmentsService, CommitmentMove } from '../application/commitments';
 import type { TrustService } from '../application/trust';
 import { toPaymentSummaryDto, toTrustDto } from './trust-mappers';
@@ -51,6 +53,7 @@ export function financialsRoutes(
   forecast: ForecastService,
   commitments: CommitmentsService,
   trust: TrustService,
+  retention: RetentionService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -261,6 +264,9 @@ export function financialsRoutes(
                 ...(b.description ? { description: b.description } : {}),
                 amount: money(b.amount, 'amount'),
                 ...(b.timeImpactDays !== undefined ? { timeImpactDays: b.timeImpactDays } : {}),
+                ...(b.costCodeId
+                  ? { costCodeId: ref('costCode', b.costCodeId, 'costCodeId') }
+                  : {}),
               },
             ),
           ),
@@ -381,10 +387,70 @@ export function financialsRoutes(
         ),
       };
     },
+    getContractRetentionRelease: async (input) => ({
+      status: 200,
+      body: toRetentionDto(
+        await read(input, (s) =>
+          retention.get(
+            s,
+            project(input.params),
+            ref('contract', input.params.contractId, 'contractId'),
+          ),
+        ),
+      ),
+    }),
+    saveContractRetentionTerms: async (input) => ({
+      status: 200,
+      body: toRetentionDto(
+        await tx(input, (s) =>
+          retention.saveTerms(
+            s,
+            project(input.params),
+            ref('contract', input.params.contractId, 'contractId'),
+            input.body,
+          ),
+        ),
+      ),
+    }),
+    recordRetentionRelease: async (input) => {
+      const b = input.body;
+      return {
+        status: 201,
+        body: toRetentionDto(
+          await tx(input, (s) =>
+            retention.recordRelease(
+              s,
+              project(input.params),
+              ref('contract', input.params.contractId, 'contractId'),
+              {
+                stage: b.stage,
+                amount: money(b.amount, 'amount'),
+                releasedOn: b.releasedOn,
+                reference: b.reference,
+                ...(b.note ? { note: b.note } : {}),
+              },
+            ),
+          ),
+        ),
+      };
+    },
     submitVariation: async (input) => move(input, 'submitted'),
     approveVariation: async (input) => move(input, 'approved', input.body?.note),
     rejectVariation: async (input) => move(input, 'rejected', input.body?.note),
     withdrawVariation: async (input) => move(input, 'withdrawn'),
+    setVariationCostCode: async (input) => ({
+      status: 200,
+      body: toVariationDto(
+        await tx(input, (s) =>
+          financials.setVariationCostCode(
+            s,
+            project(input.params),
+            ref('variation', input.params.variationId, 'variationId'),
+            input.body.costCodeId ? ref('costCode', input.body.costCodeId, 'costCodeId') : null,
+          ),
+        ),
+      ),
+    }),
     submitPaymentClaim: async (input) => {
       const b = input.body;
       return {
