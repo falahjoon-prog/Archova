@@ -277,7 +277,12 @@ export function createWalletGrantService(deps: {
     await scope.tx.execute(sql`select set_config('app.wallet_file', ${fileId}, true)`);
     await logView(scope, g, 'file', doc, fileId);
     const link = await deps.files
-      .downloadUrl(scope, fileId, { authorised: true, expiresInS: FILE_URL_TTL_S })
+      .downloadUrl(scope, fileId, {
+        authorised: true,
+        expiresInS: FILE_URL_TTL_S,
+        // With the attachment disposition this stops a browser sniffing the bytes into something it would render.
+        contentType: 'application/octet-stream',
+      })
       .catch(() => {
         throw new AppError('compliance_document.not_found');
       });

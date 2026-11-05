@@ -318,7 +318,7 @@ export function createFilesService({
   async function downloadUrl(
     scope: TenantScope,
     fileId: string,
-    opts: { authorised?: boolean; expiresInS?: number } = {},
+    opts: { authorised?: boolean; expiresInS?: number; contentType?: string } = {},
   ) {
     const f = await get(scope, fileId, opts);
     assertFileReady(f);
@@ -327,6 +327,7 @@ export function createFilesService({
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
       expiresInS: ttl,
+      contentType: opts.contentType,
     });
     return { url, expiresAt: new Date(Date.now() + ttl * 1000) };
   }

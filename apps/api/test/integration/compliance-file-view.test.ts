@@ -101,6 +101,9 @@ describe('wallet file view', () => {
     expect(ok.statusCode, ok.body).toBe(200);
     const body = ok.json() as { url: string; expiresAt: string };
     expect(body.url).toBeTruthy();
+    // The link forces a download and a neutral type, so a browser can't sniff and render the bytes.
+    expect(body.url).toContain('disposition=attachment');
+    expect(body.url).toContain('type=application%2Foctet-stream');
     expect(Date.parse(body.expiresAt) - Date.now()).toBeLessThanOrEqual(61_000);
     expect(ok.headers['cache-control']).toBe('no-store');
     expect(JSON.stringify(body)).not.toContain('storage');
