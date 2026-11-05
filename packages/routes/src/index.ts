@@ -131,6 +131,9 @@ export const mobileRoutes = {
     `/project/${enc(projectId)}/tenders/${enc(packageId)}`,
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
+  /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
+  diaryPhoto: (projectId: string, date: string, reason?: string) =>
+    `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
