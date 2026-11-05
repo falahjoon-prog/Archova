@@ -9,6 +9,7 @@ import { Button, Screen, useTheme } from '@archova/ui-native';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
 import { buildCapture, deviceTimeZone, type DevicePosition } from '../../../lib/capture/capture';
 import { preparePhoto } from '../../../lib/platform/photo-files';
+import type { Capture } from '@archova/contracts';
 import { capturePhoto, type LocalPhoto, type PhotoPurpose } from '../commands';
 
 const FIX_TIMEOUT_MS = 4_000;
@@ -42,8 +43,22 @@ export interface CaptureScreenProps {
   purpose?: PhotoPurpose;
   /** Commands the photo's command must follow (an unsent `defects.create`). */
   dependsOn?: () => Promise<string[]>;
+  /**
+   * Keeps the shot somewhere other than the photo library, such as an inspection item. Replaces the normal save,
+   * which files a `photos.create`; throw to show "could not be saved".
+   */
+  keep?: (shot: TakenPhoto) => Promise<void>;
   /** Called after each saved photo, e.g. to go back to the defect. */
-  onSaved?: (photo: LocalPhoto) => void;
+  onSaved?: (photo: Pick<LocalPhoto, 'thumbnailUri'>) => void;
+}
+
+/** A shot taken and prepared for upload, with the capture details the record keeps (AC21). */
+export interface TakenPhoto {
+  photoId: string;
+  mutationId: string;
+  capture: Capture;
+  clientAt: string;
+  file: Awaited<ReturnType<typeof preparePhoto>>;
 }
 
 export function CaptureScreen(props: CaptureScreenProps = {}) {
@@ -58,7 +73,7 @@ export function CaptureScreen(props: CaptureScreenProps = {}) {
 
   const data = device.status === 'ready' ? device.data : null;
   const waiting = useLocalQuery(data ? () => data.uploads.waitingCount() : null, [data]);
-  const [last, setLast] = useState<LocalPhoto | null>(null);
+  const [last, setLast] = useState<Pick<LocalPhoto, 'thumbnailUri'> | null>(null);
 
   if (device.status === 'error') {
     return (
@@ -114,17 +129,25 @@ export function CaptureScreen(props: CaptureScreenProps = {}) {
         compassHeading: heading,
       });
       const file = await preparePhoto(photoId, shot.uri);
-      const photo = await capturePhoto(data, {
-        photoId,
-        mutationId: uuidv7(),
-        projectId,
-        defectId: props.defectId ?? null,
-        purpose: props.purpose ?? null,
-        dependsOn: props.dependsOn ? await props.dependsOn() : [],
-        capture,
-        clientAt: takenAt.toISOString(),
-        file,
-      });
+      const mutationId = uuidv7();
+      const clientAt = takenAt.toISOString();
+      let photo: Pick<LocalPhoto, 'thumbnailUri'>;
+      if (props.keep) {
+        await props.keep({ photoId, mutationId, capture, clientAt, file });
+        photo = { thumbnailUri: file.thumbnailUri };
+      } else {
+        photo = await capturePhoto(data, {
+          photoId,
+          mutationId,
+          projectId,
+          defectId: props.defectId ?? null,
+          purpose: props.purpose ?? null,
+          dependsOn: props.dependsOn ? await props.dependsOn() : [],
+          capture,
+          clientAt,
+          file,
+        });
+      }
       setLast(photo);
       props.onSaved?.(photo);
       waiting.refresh();

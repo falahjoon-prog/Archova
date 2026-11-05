@@ -48,7 +48,27 @@ describe('quality sync commands', () => {
     );
     expect(result).toEqual({ version: 5 });
     expect(service.recordResponses).toHaveBeenCalledWith(scope, projId, insId, [
-      { templateItemId: itemId, result: 'fail', note: 'Crack' },
+      { templateItemId: itemId, result: 'fail', note: 'Crack', fileIds: [] },
+    ]);
+  });
+
+  it("keeps an item's photos when the answer does not mention them", async () => {
+    const { service, pieces } = fake();
+    service.detail.mockResolvedValue({
+      inspection: { id: insId, version: 4 },
+      items: [],
+      responses: [{ templateItemId: itemId, fileIds: ['f1'] }],
+    } as never);
+    await command(pieces, 'quality.recordResponses').run(
+      scope,
+      mutation({
+        payload: {
+          responses: [{ templateItemId: encodeId('inspectionItem', itemId), result: 'pass' }],
+        },
+      }),
+    );
+    expect(service.recordResponses).toHaveBeenCalledWith(scope, projId, insId, [
+      { templateItemId: itemId, result: 'pass', fileIds: ['f1'] },
     ]);
   });
 
@@ -211,5 +231,67 @@ describe('quality sync source: templates', () => {
     expect(pieces.syncSource.publicId('inspection_template', tplId)).toBe(
       encodeId('inspectionTemplate', tplId),
     );
+  });
+});
+
+describe('quality.attachItemPhoto', () => {
+  const fileId = '0191a5b0-0000-7000-8000-000000000005';
+  const photo = (over: object = {}) =>
+    mutation({
+      payload: {
+        templateItemId: encodeId('inspectionItem', itemId),
+        fileId: encodeId('file', fileId),
+        ...over,
+      },
+    });
+  const withResponse = (service: ReturnType<typeof fake>['service'], r: object | null) =>
+    service.detail.mockResolvedValue({
+      inspection: { id: insId, version: 4 },
+      items: [],
+      responses: r ? [{ templateItemId: itemId, ...r }] : [],
+    } as never);
+
+  it('adds the file to the item and keeps the rest of the answer', async () => {
+    const { service, pieces } = fake();
+    withResponse(service, { value: null, result: 'fail', note: 'Crack', fileIds: ['other'] });
+    const result = await command(pieces, 'quality.attachItemPhoto').run(scope, photo());
+    expect(result).toEqual({ version: 5 });
+    expect(service.recordResponses).toHaveBeenCalledWith(scope, projId, insId, [
+      { templateItemId: itemId, result: 'fail', note: 'Crack', fileIds: ['other', fileId] },
+    ]);
+  });
+
+  it('starts a photo item with just the file', async () => {
+    const { service, pieces } = fake();
+    withResponse(service, null);
+    await command(pieces, 'quality.attachItemPhoto').run(scope, photo());
+    expect(service.recordResponses).toHaveBeenCalledWith(scope, projId, insId, [
+      { templateItemId: itemId, fileIds: [fileId] },
+    ]);
+  });
+
+  it('does nothing when a retry finds the file already attached', async () => {
+    const { service, pieces } = fake();
+    withResponse(service, { value: null, result: null, note: null, fileIds: [fileId] });
+    expect(await command(pieces, 'quality.attachItemPhoto').run(scope, photo())).toEqual({
+      version: 4,
+    });
+    expect(service.recordResponses).not.toHaveBeenCalled();
+  });
+
+  it('rejects bad ids and a full item before touching the answer', async () => {
+    const { service, pieces } = fake();
+    const run = command(pieces, 'quality.attachItemPhoto').run;
+    withResponse(service, null);
+    await expect(run(scope, photo({ fileId: 'x' }))).rejects.toBeInstanceOf(AppError);
+    await expect(run(scope, photo({ templateItemId: 'x' }))).rejects.toBeInstanceOf(AppError);
+    withResponse(service, {
+      value: null,
+      result: null,
+      note: null,
+      fileIds: Array.from({ length: 20 }, (_, i) => `f${i}`),
+    });
+    await expect(run(scope, photo())).rejects.toBeInstanceOf(AppError);
+    expect(service.recordResponses).not.toHaveBeenCalled();
   });
 });
