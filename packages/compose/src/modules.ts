@@ -114,14 +114,28 @@ export interface ModuleOptions {
 }
 
 export async function loadModules(services: KernelServices, opts: ModuleOptions) {
-  const identity = await createIdentityModule(services, opts.identity);
+  // The identity module is built first; it tells an org's admins about partner app changes through platform, built later.
+  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
+  const identity = await createIdentityModule(services, {
+    ...opts.identity,
+    partnerApps: {
+      ...opts.identity.partnerApps,
+      notifyAdmins: async (orgId, subject, text) => {
+        const admins = await platformApi!.orgAdminContacts(orgId);
+        await Promise.all(
+          admins.map((a) =>
+            opts.messages.email(a.email, { subject, text: `Hi ${a.name},\n\n${text}` }),
+          ),
+        );
+      },
+    },
+  });
   const billing = createBillingModule(
     services,
     opts.entitlements ? { entitlements: opts.entitlements } : {},
   );
   // backoffice grants Nova credits through `ai` and its support view reads through platform; both are built after it.
   let aiApi: AiApi | null = null;
-  let platformApi: ReturnType<typeof createPlatformModule>['api'] | null = null;
   const backoffice = createBackofficeModule(services, {
     catalogue: billing.api.catalogue,
     accounts: billing.api.accounts,
@@ -393,6 +407,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     submittals: submittals.api,
     platform: platform.api,
+    access: access.api,
   });
 
   const exportsModule = createExportsModule(services, { store: opts.files.store });
@@ -432,10 +447,12 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals: submittals.api,
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
+    incidents: safety.api.reporting,
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,
     financials: financials.api,
+    scheduling: scheduling.api,
   });
 
   const sync = createSyncModule(services, {

@@ -4,6 +4,8 @@ import type { TenantContext } from '@archova/kernel';
 import {
   findUntimestamped,
   markDeliverySent,
+  findUnarchivedSends,
+  recordArchive,
   recordSendProof,
   recordDeliveryEvent,
   recordTimestamp,
@@ -226,6 +228,29 @@ describe('Contracts and payment claims (product/09)', () => {
       sendProof: { signed: false, timestampedAt: null },
     });
     expect(after.sendProof.messageSha256).toMatch(/^[0-9a-f]{64}$/);
+    // The raw bytes are archived once: found until a copy is recorded, then not again, and the record cannot change.
+    const unarchived = await t.database.withTenantTx(wctx, (sc) => findUnarchivedSends(sc));
+    expect(unarchived).toHaveLength(1);
+    expect(unarchived[0]!.raw.equals(rawBytes)).toBe(true);
+    await t.database.withTenantTx(wctx, (sc) =>
+      recordArchive(
+        sc,
+        {
+          deliveryId: unarchived[0]!.deliveryId,
+          projectId: unarchived[0]!.projectId,
+          objectKey: 'claims-evidence/x.eml',
+          rawSha256: unarchived[0]!.rawSha256,
+          storedSha256: unarchived[0]!.rawSha256,
+        },
+        new Date(),
+      ),
+    );
+    expect(await t.database.withTenantTx(wctx, (sc) => findUnarchivedSends(sc))).toHaveLength(0);
+    await expect(
+      t.database.withTenantTx(wctx, (sc) =>
+        sc.tx.execute(sql`update financials.evidence_archive set object_key = 'other'`),
+      ),
+    ).rejects.toThrow();
     // The send proof is append-only and keeps the raw bytes.
     await expect(
       t.database.withTenantTx(wctx, (sc) =>

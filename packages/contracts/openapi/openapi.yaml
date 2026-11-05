@@ -200,6 +200,137 @@ paths:
       responses:
         '302': { description: Redirect to the client with an authorisation code }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/oauth/consent:
+    get:
+      operationId: getOauthConsent
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: What the consent page shows for a partner app. Needs a signed-in web session.
+      parameters:
+        - { name: client_id, in: query, required: true, schema: { type: string, maxLength: 100 } }
+        - {
+            name: redirect_uri,
+            in: query,
+            required: true,
+            schema: { type: string, maxLength: 2000 },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthConsent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/oauth-apps:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listOauthApps
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Partner apps this organisation has registered. Owners and admins only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthAppList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOauthApp
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Register a private partner app for this organisation (integrations/06 §4). Needs a recent sign-in. The client
+        secret is in the response once. A private app can be installed only into this organisation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOauthAppRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthAppCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: clientId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^app_[0-9a-f]{24}$' }
+    post:
+      operationId: rotateOauthAppSecret
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Replace an app's client secret. The old one stops working at once. Needs a recent sign-in.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthAppSecret' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/app-installs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAppInstalls
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Apps installed in this organisation, with their approved scopes and last use. Owners and admins only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppInstallList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: installApp
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Approve a partner app for this organisation and the scopes it asked for. Needs a recent sign-in. Returns the
+        address to send the browser to, carrying a single-use 60-second code. Other owners and admins are emailed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstallAppRequest' }
+      responses:
+        '201':
+          description: Installed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstallAppResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/app-installs/{appInstallId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: appInstallId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ain_[0-9A-Za-z]{26}$' }
+    delete:
+      operationId: revokeAppInstall
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Remove an app. Every token it holds stops working on its next request.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/oauth/token:
     post:
       operationId: oauthToken
@@ -847,6 +978,37 @@ paths:
       x-module: diary
       x-permission: scheduling.schedule.write
       summary: 'Remove an activity and its links. Returns the whole programme.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    put:
+      operationId: setScheduleBaseline
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Save the current dates as the baseline, replacing any earlier one. Returns the whole programme.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: clearScheduleBaseline
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Remove the baseline. Returns the whole programme.'
       responses:
         '200':
           description: OK
@@ -3444,6 +3606,76 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftSwms
+      tags: [ai]
+      x-module: ai
+      x-permission: safety.swms.submit
+      summary: Nova drafts a first version of a Safe Work Method Statement for high-risk work (F20).
+      description: |
+        Nova drafts hazards, controls (highest level of the hierarchy first), how they are put in place and what is
+        particular to this site, for the high-risk work codes given and nothing else (compliance/08 §3). It will not
+        draft without the site, the activity, at least one high-risk code, the work area, the access, the plant and the
+        adjacent trades (an empty list means none). It reads site rules and a WHS management plan the caller can open.
+        Controls too general to follow, claims that the SWMS is compliant or safe, and anything outside the chosen codes
+        are removed and listed in `warnings`; a number nobody supplied, a code without a hazard or control, and
+        a site section that fits any site are flagged, not fixed. The result is a pending suggestion (task
+        `swms.draft`) for the caller alone, shaped like the SWMS content so they can edit it and submit it to the SWMS
+        register: it is never a SWMS until a person submits it, and a competent person must review it on site and accept
+        it before work starts. Costs 3 Nova credits. Returns `ai.swms.not_enabled` (403) until the feature is switched
+        on for pilots.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                [
+                  siteAddress,
+                  activity,
+                  highRiskWorkCategories,
+                  workArea,
+                  access,
+                  plant,
+                  adjacentTrades,
+                ]
+              properties:
+                siteAddress: { type: string, minLength: 1, maxLength: 300 }
+                activity: { type: string, minLength: 1, maxLength: 500 }
+                highRiskWorkCategories:
+                  type: array
+                  minItems: 1
+                  maxItems: 19
+                  items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+                workArea: { type: string, minLength: 1, maxLength: 500 }
+                access: { type: string, minLength: 1, maxLength: 500 }
+                plant:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, minLength: 1, maxLength: 200 }
+                adjacentTrades:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, minLength: 1, maxLength: 200 }
+                whsPlanApplies:
+                  {
+                    type: boolean,
+                    description: 'True on projects of $250,000 or more (Vic $350,000).',
+                  }
+                notes: { type: string, maxLength: 2000 }
+      responses:
+        '201':
+          description: The draft, as a pending suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3778,6 +4010,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/risk/late-sopa-claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getLateSopaClaimRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Projects at risk of a late SOPA payment schedule, with the schedule and insurance signals behind each.
+      description: |
+        Nova project risk. Lists the projects the caller can see that have a valid subcontract claim still waiting for a
+        payment schedule that is due within 5 days or already past due. Each project is ranked high, medium or low:
+        both aggravators (an expired insurance, or one expiring on or before the payment due date, for a claiming
+        subcontractor; and programme tasks past their planned finish) make it high, one makes it medium, none makes it
+        low, raised to medium when a schedule is already overdue. Every figure comes from the tool modules, each read
+        as the caller: projects where the caller cannot read claims are counted in `unreadableProjects` and left out;
+        a subcontractor's insurance is read only through a live compliance wallet grant, otherwise it is `not_visible`;
+        a programme the caller cannot read is listed under `unknown`. All sentences come from fixed rules, not a model.
+        Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The projects at risk
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LateSopaClaimRisk' }
+
   /v1/orgs/{orgId}/readiness-pack:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -6443,6 +6708,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RfiActivity' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    get:
+      operationId: listRfiAnnotations
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      summary: Everyone's marks on the RFI's photos, for anyone who can see the RFI.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiAnnotationList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: putRfiFileAnnotation
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.create
+      summary: Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+      description: |
+        Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+        The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+        closed or void. The original photo is never changed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutRfiAnnotationRequest' }
+      responses:
+        '200':
+          description: The caller's layer after the change; `null` when it was removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiAnnotationResult' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close:
     parameters:
@@ -12784,13 +13097,25 @@ components:
     ScheduleSummary:
       type: object
       required:
-        [id, projectId, name, source, dataDate, activityCount, startDate, finishDate, createdAt]
+        [
+          id,
+          projectId,
+          name,
+          source,
+          dataDate,
+          baselineSetAt,
+          activityCount,
+          startDate,
+          finishDate,
+          createdAt,
+        ]
       properties:
         id: { type: string }
         projectId: { type: string }
         name: { type: string }
         source: { $ref: '#/components/schemas/ScheduleSource' }
         dataDate: { type: [string, 'null'], format: date }
+        baselineSetAt: { type: [string, 'null'], format: date-time }
         activityCount: { type: integer }
         startDate: { type: [string, 'null'], format: date }
         finishDate: { type: [string, 'null'], format: date }
@@ -12818,6 +13143,9 @@ components:
           externalId,
           floatDays,
           critical,
+          baselineStart,
+          baselineFinish,
+          varianceDays,
         ]
       properties:
         id: { type: string }
@@ -12837,6 +13165,13 @@ components:
             description: 'Total float in working days, from the dates on the programme.',
           }
         critical: { type: boolean }
+        baselineStart: { type: [string, 'null'], format: date }
+        baselineFinish: { type: [string, 'null'], format: date }
+        varianceDays:
+          {
+            type: [integer, 'null'],
+            description: 'Working days the finish is after the baseline finish (negative = ahead); null without a baseline.',
+          }
     ScheduleDependency:
       type: object
       required: [id, predecessorId, successorId, type, lagDays, slackDays, violated]
@@ -12922,7 +13257,20 @@ components:
         overdue: { type: integer }
     PortfolioProject:
       type: object
-      required: [id, name, number, status, rfis, defects, submittals, claims, variations, attention]
+      required:
+        [
+          id,
+          name,
+          number,
+          status,
+          rfis,
+          defects,
+          submittals,
+          claims,
+          variations,
+          incidents,
+          attention,
+        ]
       properties:
         id: { type: string }
         name: { type: string }
@@ -12958,6 +13306,8 @@ components:
           claimsOverdue,
           variationsOpen,
           variationsOverdue,
+          incidentsOpen,
+          incidentsOverdue,
         ]
       properties:
         projects: { type: integer }
@@ -12971,6 +13321,95 @@ components:
         claimsOverdue: { type: integer }
         variationsOpen: { type: integer }
         variationsOverdue: { type: integer }
+        incidentsOpen: { type: integer }
+        incidentsOverdue: { type: integer }
+    LateSopaClaimRisk:
+      type: object
+      required: [projects, unreadableProjects, truncated]
+      properties:
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/LateSopaClaimRiskProject' }
+        unreadableProjects:
+          type: integer
+          description: 'Projects left out because the caller cannot read their claims.'
+        truncated: { type: boolean }
+    LateSopaClaimRiskProject:
+      type: object
+      required:
+        [
+          projectId,
+          projectName,
+          number,
+          level,
+          claims,
+          insuranceProblem,
+          scheduleSlip,
+          unknown,
+          slip,
+        ]
+      properties:
+        projectId: { type: string }
+        projectName: { type: string }
+        number: { type: [string, 'null'] }
+        level: { type: string, enum: [high, medium, low] }
+        insuranceProblem: { type: boolean }
+        scheduleSlip: { type: boolean }
+        unknown:
+          type: array
+          items: { type: string }
+          description: 'Signals Nova could not read, so a gap is never shown as no risk.'
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/LateSopaClaimRiskClaim' }
+        slip:
+          type: object
+          required: [lateCount, worst]
+          properties:
+            lateCount: { type: integer }
+            worst:
+              type: array
+              items:
+                type: object
+                required: [id, wbs, name, finish, daysLate]
+                properties:
+                  id: { type: string }
+                  wbs: { type: string }
+                  name: { type: string }
+                  finish: { type: string, format: date }
+                  daysLate: { type: integer }
+    LateSopaClaimRiskClaim:
+      type: object
+      required:
+        [
+          claimId,
+          claimNumber,
+          contractNumber,
+          contractTitle,
+          subbieName,
+          claimedTotal,
+          scheduleDueOn,
+          paymentDueOn,
+          deadline,
+          daysToScheduleDue,
+          insurance,
+          summary,
+        ]
+      properties:
+        claimId: { type: string }
+        claimNumber: { type: integer }
+        contractNumber: { type: integer }
+        contractTitle: { type: string }
+        subbieName: { type: [string, 'null'] }
+        claimedTotal: { type: string }
+        scheduleDueOn: { type: string, format: date }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        deadline: { type: string, enum: [overdue, due_soon] }
+        daysToScheduleDue: { type: integer }
+        insurance:
+          type: string
+          enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
+        summary: { type: string }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -13099,7 +13538,7 @@ components:
       additionalProperties: false
       required: [source, state, projectIds, columns, overdueOnly]
       properties:
-        source: { type: string, enum: [rfis, defects, submittals, claims, variations] }
+        source: { type: string, enum: [rfis, defects, submittals, claims, variations, incidents] }
         state:
           {
             type: string,
@@ -13291,6 +13730,11 @@ components:
         finish: { type: string, format: date }
         pctComplete: { type: integer, minimum: 0, maximum: 100 }
         assignee: { type: string, maxLength: 200 }
+        cascade:
+          {
+            type: boolean,
+            description: 'Push successors later where the move breaks a link, keeping their durations (drag-to-reschedule).',
+          }
     CreateScheduleDependencyRequest:
       type: object
       additionalProperties: false
@@ -14335,6 +14779,7 @@ components:
         redirect_uri: { type: string }
         code_verifier: { type: string, minLength: 43, maxLength: 128 }
         refresh_token: { type: string }
+        client_secret: { type: string, description: Required for partner apps. }
     TokenResponse:
       type: object
       required: [access_token, token_type, expires_in, refresh_token]
@@ -14343,6 +14788,12 @@ components:
         token_type: { type: string, enum: [Bearer] }
         expires_in: { type: integer }
         refresh_token: { type: string }
+        scope:
+          {
+            type: string,
+            description: Partner apps only. The scopes approved,
+            separated by spaces.,
+          }
     RevokeRequest:
       type: object
       required: [token, client_id]
@@ -15819,6 +16270,22 @@ components:
               period: { type: string, description: The contract's own words. }
               days: { type: [integer, 'null'] }
               dayType: { type: string, enum: [business, calendar, unclear] }
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
+        obligations:
+          type: array
+          description: Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed.
+          items:
+            type: object
+            required: [party, category, action, timing, source]
+            properties:
+              party: { type: string, enum: [builder, other_party, both, unclear] }
+              category:
+                type: string
+                enum: [payment, notice, insurance, security, reporting, programme, quality, other]
+              action: { type: string }
+              timing:
+                type: [string, 'null']
+                description: The contract's own words for when. Nova works out no dates.
               source: { $ref: '#/components/schemas/ContractSourceRef' }
         flags:
           type: array
@@ -18060,6 +18527,7 @@ components:
           ballInCourt,
           distributionUserIds,
           distributionCompanyIds,
+          fileIds,
           dueDate,
           isOverdue,
           openedAt,
@@ -18116,6 +18584,10 @@ components:
         specSection: { type: [string, 'null'], description: 'As written on the form.' }
         location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
+        fileIds:
+          description: Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`).
+          type: array
+          items: { type: string }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
@@ -18199,6 +18671,10 @@ components:
             description: 'Where on the project, as written (e.g. `Level 2, gridline C`).',
           }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
         aiSuggestionId:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
@@ -18232,6 +18708,11 @@ components:
         specSection: { type: [string, 'null'], maxLength: 200 }
         location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
+        fileIds:
+          description: The files attached to the question; replaces the list.
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
     CreateRfiResponseRequest:
       type: object
       additionalProperties: false
@@ -18246,6 +18727,41 @@ components:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
           description: The Nova `rfi.answer` suggestion this response was drafted from.
+    RfiAnnotation:
+      type: object
+      required: [id, rfiId, fileId, authorId, shapes, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        rfiId: { type: string }
+        fileId: { type: string }
+        authorId: { type: [string, 'null'] }
+        shapes:
+          type: array
+          items: { $ref: '#/components/schemas/MarkupShape' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RfiAnnotationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RfiAnnotation' }
+    RfiAnnotationResult:
+      type: object
+      required: [annotation]
+      properties:
+        annotation:
+          oneOf: [{ $ref: '#/components/schemas/RfiAnnotation' }, { type: 'null' }]
+    PutRfiAnnotationRequest:
+      type: object
+      additionalProperties: false
+      required: [shapes]
+      properties:
+        shapes:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/MarkupShape' }
     RfiActivityItem:
       type: object
       required: [id, kind, at, actorId, details]
@@ -19402,6 +19918,88 @@ components:
         updatedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
+    OauthConsent:
+      type: object
+      required: [clientId, name, description, ownerOrgId, scopes]
+      properties:
+        clientId: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        ownerOrgId:
+          { type: string, description: The only organisation this app can be installed into. }
+        scopes: { type: array, items: { type: string } }
+    OauthApp:
+      type: object
+      required: [clientId, name, description, redirectUris, scopes, disabled]
+      properties:
+        clientId: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        redirectUris: { type: array, items: { type: string } }
+        scopes: { type: array, items: { type: string } }
+        disabled: { type: boolean }
+    OauthAppList:
+      type: object
+      required: [data, availableScopes]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/OauthApp' } }
+        availableScopes: { type: array, items: { type: string } }
+    CreateOauthAppRequest:
+      type: object
+      required: [name, redirectUris, scopes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 500 }
+        redirectUris:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items: { type: string, maxLength: 2000 }
+        scopes: { type: array, minItems: 1, items: { type: string } }
+    OauthAppCreated:
+      allOf:
+        - $ref: '#/components/schemas/OauthApp'
+        - type: object
+          required: [clientSecret]
+          properties:
+            clientSecret: { type: string, description: Shown once. }
+    OauthAppSecret:
+      type: object
+      required: [clientId, clientSecret]
+      properties:
+        clientId: { type: string }
+        clientSecret: { type: string, description: Shown once. }
+    InstallAppRequest:
+      type: object
+      required: [clientId, redirectUri, codeChallenge, state, scopes]
+      properties:
+        clientId: { type: string, maxLength: 100 }
+        redirectUri: { type: string, maxLength: 2000 }
+        codeChallenge: { type: string, minLength: 43, maxLength: 128 }
+        state: { type: string, minLength: 1, maxLength: 512 }
+        scopes: { type: array, minItems: 1, items: { type: string } }
+    InstallAppResponse:
+      type: object
+      required: [redirectUrl]
+      properties:
+        redirectUrl: { type: string }
+    AppInstall:
+      type: object
+      required: [id, clientId, appName, scopes, installedBy, createdAt, lastUsedAt, revokedAt]
+      properties:
+        id: { type: string }
+        clientId: { type: string }
+        appName: { type: string }
+        scopes: { type: array, items: { type: string } }
+        installedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    AppInstallList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AppInstall' } }
     ApiToken:
       type: object
       required: [id, userId, name, prefix, scopes, expiresAt, lastUsedAt, revokedAt, createdAt]

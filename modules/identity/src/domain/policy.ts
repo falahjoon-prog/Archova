@@ -35,3 +35,8 @@ export function passwordProblems(password: string, email: string): string[] {
     problems.push("Don't include your email in your password.");
   return problems;
 }
+
+/** Third-party app tokens (Sam's review, 2026-11-05): a short access token, a refresh token that dies when idle. */
+export const APP_ACCESS_TTL_S = 60 * 60;
+export const APP_REFRESH_IDLE_MS = 30 * 24 * 60 * 60 * 1000;
+export const APP_REFRESH_ABSOLUTE_MS = 90 * 24 * 60 * 60 * 1000;

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lt, sql } from 'drizzle-orm';
 import { recordRetention, type TenantScope } from '@archova/kernel';
 import {
   sealMessage,
@@ -8,6 +8,7 @@ import {
   type TimestampResult,
 } from '../domain/seal-proof';
 import {
+  evidenceArchive,
   evidenceDeliveries,
   evidenceRecords,
   evidenceSendProofs,
@@ -340,5 +341,82 @@ export async function recordSendTimestamp(
       projectId,
       category: 'sopa_evidence_10y',
       anchor: t.genTime,
+    });
+}
+
+export interface UnarchivedSend {
+  deliveryId: string;
+  evidenceId: string;
+  projectId: string;
+  /** Hex SHA-256 of `raw`. */
+  rawSha256: string;
+  raw: Buffer;
+}
+
+/** Send proofs whose raw bytes have no write-once copy yet, oldest first. Read only by the archive job. */
+export async function findUnarchivedSends(
+  scope: TenantScope,
+  limit = 10,
+): Promise<UnarchivedSend[]> {
+  const rows = await scope.tx
+    .select({
+      deliveryId: evidenceSendProofs.deliveryId,
+      evidenceId: evidenceSendProofs.evidenceId,
+      projectId: evidenceSendProofs.projectId,
+      rawSha256: evidenceSendProofs.rawSha256,
+      raw: evidenceSendProofs.rawMessage,
+    })
+    .from(evidenceSendProofs)
+    .leftJoin(evidenceArchive, eq(evidenceArchive.deliveryId, evidenceSendProofs.deliveryId))
+    .where(and(isNull(evidenceArchive.deliveryId), isNotNull(evidenceSendProofs.rawMessage)))
+    .orderBy(asc(evidenceSendProofs.sentAt))
+    .limit(limit);
+  return rows.flatMap((r) =>
+    r.raw && r.rawSha256
+      ? [
+          {
+            deliveryId: r.deliveryId,
+            evidenceId: r.evidenceId,
+            projectId: r.projectId,
+            rawSha256: r.rawSha256,
+            raw: r.raw,
+          },
+        ]
+      : [],
+  );
+}
+
+/** Records that the write-once copy exists. Only the first record for a delivery counts. */
+export async function recordArchive(
+  scope: TenantScope,
+  a: {
+    deliveryId: string;
+    projectId: string;
+    objectKey: string;
+    rawSha256: string;
+    storedSha256: string | null;
+  },
+  at: Date,
+) {
+  const [created] = await scope.tx
+    .insert(evidenceArchive)
+    .values({
+      deliveryId: a.deliveryId,
+      orgId: scope.ctx.orgId,
+      projectId: a.projectId,
+      objectKey: a.objectKey,
+      rawSha256: a.rawSha256,
+      storedSha256: a.storedSha256,
+      archivedAt: at,
+    })
+    .onConflictDoNothing()
+    .returning({ id: evidenceArchive.id });
+  if (created)
+    await recordRetention(scope, {
+      recordType: 'financials.evidence_archive',
+      recordId: created.id,
+      projectId: a.projectId,
+      category: 'sopa_evidence_10y',
+      anchor: at,
     });
 }

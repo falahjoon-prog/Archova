@@ -25,6 +25,32 @@ export const OauthAuthorizeQuery = z.object({
   "state": z.string().max(512),
   "prompt": z.enum(["login"]).optional(),
 });
+export const GetOauthConsentQuery = z.object({
+  "client_id": z.string().max(100),
+  "redirect_uri": z.string().max(2000),
+});
+export const ListOauthAppsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateOauthAppParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateOauthAppBody = s.CreateOauthAppRequestSchema;
+export const RotateOauthAppSecretParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "clientId": z.string().regex(new RegExp("^app_[0-9a-f]{24}$")),
+});
+export const ListAppInstallsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const InstallAppParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const InstallAppBody = s.InstallAppRequestSchema;
+export const RevokeAppInstallParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "appInstallId": z.string().regex(new RegExp("^ain_[0-9A-Za-z]{26}$")),
+});
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
 export const DeleteMeBody = s.DeleteMeRequestSchema;
@@ -157,6 +183,16 @@ export const DeleteScheduleActivityParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
   "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const SetScheduleBaselineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const ClearScheduleBaselineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
 });
 export const CreateScheduleDependencyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -778,6 +814,21 @@ export const DraftInductionParams = z.object({
 export const DraftInductionBody = z.object({
   "siteName": z.string().min(1).max(200),
 }).strict();
+export const DraftSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftSwmsBody = z.object({
+  "siteAddress": z.string().min(1).max(300),
+  "activity": z.string().min(1).max(500),
+  "highRiskWorkCategories": z.array(s.HighRiskWorkCategorySchema).min(1).max(19),
+  "workArea": z.string().min(1).max(500),
+  "access": z.string().min(1).max(500),
+  "plant": z.array(z.string().min(1).max(200)).max(20),
+  "adjacentTrades": z.array(z.string().min(1).max(200)).max(20),
+  "whsPlanApplies": z.boolean().optional(),
+  "notes": z.string().max(2000).optional(),
+}).strict();
 export const GetInductionDraftCurrencyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -848,6 +899,12 @@ export const GetPortfolioParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const GetPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const GetLateSopaClaimRiskParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetLateSopaClaimRiskQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
 export const GetReadinessPackParams = z.object({
@@ -1508,6 +1565,18 @@ export const GetRfiActivityParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
 });
+export const ListRfiAnnotationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationBody = s.PutRfiAnnotationRequestSchema;
 export const CloseRfiParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3054,6 +3123,90 @@ export const operations = {
     query: OauthAuthorizeQuery,
     body: null,
   },
+  getOauthConsent: {
+    method: 'GET',
+    path: '/v1/oauth/consent',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: null,
+    query: GetOauthConsentQuery,
+    body: null,
+  },
+  listOauthApps: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/oauth-apps',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListOauthAppsParams,
+    query: null,
+    body: null,
+  },
+  createOauthApp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/oauth-apps',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: CreateOauthAppParams,
+    query: null,
+    body: CreateOauthAppBody,
+  },
+  rotateOauthAppSecret: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RotateOauthAppSecretParams,
+    query: null,
+    body: null,
+  },
+  listAppInstalls: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/app-installs',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListAppInstallsParams,
+    query: null,
+    body: null,
+  },
+  installApp: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/app-installs',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: InstallAppParams,
+    query: null,
+    body: InstallAppBody,
+  },
+  revokeAppInstall: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/app-installs/{appInstallId}',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RevokeAppInstallParams,
+    query: null,
+    body: null,
+  },
   oauthToken: {
     method: 'POST',
     path: '/v1/oauth/token',
@@ -3471,6 +3624,30 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteScheduleActivityParams,
+    query: null,
+    body: null,
+  },
+  setScheduleBaseline: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: SetScheduleBaselineParams,
+    query: null,
+    body: null,
+  },
+  clearScheduleBaseline: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: ClearScheduleBaselineParams,
     query: null,
     body: null,
   },
@@ -4663,6 +4840,18 @@ export const operations = {
     query: null,
     body: DraftInductionBody,
   },
+  draftSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: DraftSwmsParams,
+    query: null,
+    body: DraftSwmsBody,
+  },
   getInductionDraftCurrency: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency',
@@ -4817,6 +5006,18 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  getLateSopaClaimRisk: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/risk/late-sopa-claims',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetLateSopaClaimRiskParams,
+    query: GetLateSopaClaimRiskQuery,
     body: null,
   },
   getReadinessPack: {
@@ -6273,6 +6474,30 @@ export const operations = {
     params: GetRfiActivityParams,
     query: null,
     body: null,
+  },
+  listRfiAnnotations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: ListRfiAnnotationsParams,
+    query: null,
+    body: null,
+  },
+  putRfiFileAnnotation: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.create",
+    internal: false,
+    contentType: "application/json",
+    params: PutRfiFileAnnotationParams,
+    query: null,
+    body: PutRfiFileAnnotationBody,
   },
   closeRfi: {
     method: 'POST',

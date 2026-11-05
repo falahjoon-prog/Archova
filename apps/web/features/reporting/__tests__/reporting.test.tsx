@@ -30,6 +30,7 @@ const project = (id: string, name: string, over: Record<string, unknown> = {}) =
   submittals: tool(0, 0),
   claims: tool(0, 0),
   variations: tool(0, 0),
+  incidents: tool(0, 0),
   attention: 0,
   ...over,
 });
@@ -56,6 +57,8 @@ describe('PortfolioScreen', () => {
         claimsOverdue: 0,
         variationsOpen: 0,
         variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
       },
       projects: [
         project('prj_a', 'Alpha Tower', { rfis: tool(5, 2), attention: 2 }),
@@ -85,6 +88,8 @@ describe('PortfolioScreen', () => {
         claimsOverdue: 0,
         variationsOpen: 0,
         variationsOverdue: 0,
+        incidentsOpen: 0,
+        incidentsOverdue: 0,
       },
       projects: [],
       truncated: false,

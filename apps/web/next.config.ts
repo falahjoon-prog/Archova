@@ -42,15 +42,22 @@ const nextConfig: NextConfig = {
    * the page links to (Sam 11 §3). Their rule comes last so it wins on the shared header.
    */
   async headers() {
-    const scriptSrc = isDev ? "'self' 'unsafe-inline' 'unsafe-eval'" : "'self' 'unsafe-inline'";
+    // `wasm-unsafe-eval` lets the IFC reader (WebAssembly) start; it does not allow eval of text.
+    const scriptSrc = isDev
+      ? "'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'"
+      : "'self' 'unsafe-inline' 'wasm-unsafe-eval'";
     const connectSrc = isDev
       ? "'self' https: http://localhost:* ws://localhost:*"
       : "'self' https:";
+    // Photos come from presigned object-store URLs; in dev that is a local store over http.
+    const imgSrc = isDev
+      ? "'self' data: blob: https: http://localhost:*"
+      : "'self' data: blob: https:";
     const csp = [
       "default-src 'self'",
       `script-src ${scriptSrc}`,
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
+      `img-src ${imgSrc}`,
       "font-src 'self' data:",
       `connect-src ${connectSrc}`,
       "worker-src 'self' blob:",

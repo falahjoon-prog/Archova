@@ -8,6 +8,9 @@ const fake = await vi.hoisted(async () => (await import('@/test/fake-api')).crea
 vi.mock('@/shared/lib/api', () => fake.module);
 vi.mock('next/navigation', async () => (await import('@/test/render')).navigationMock);
 
+const upload = vi.hoisted(() => vi.fn(async () => ({ id: 'fil_00000000000000000000000001' })));
+vi.mock('@/shared/lib/uploads', () => ({ uploadFile: upload, fileDownloadUrl: vi.fn() }));
+
 const { CoordinationScreen } = await import('../screens/CoordinationScreen');
 const { nextStatuses, parseGuids } = await import('../lib/issues');
 
@@ -83,5 +86,30 @@ describe('CoordinationScreen', () => {
     await user.type(screen.getByLabelText('Title'), 'New clash');
     await user.click(screen.getByRole('button', { name: 'Raise issue' }));
     await waitFor(() => expect(post).toHaveBeenCalled());
+  });
+
+  it('stores a picked IFC file before registering the model with it', async () => {
+    const post = vi.fn(() => ({ id: 'bmd_1' }));
+    fake.on('POST', '/v1/orgs/{orgId}/projects/{projectId}/bim-models', post);
+    renderInProject(<CoordinationScreen />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Register a model' }));
+    await user.type(screen.getByLabelText('Name'), 'Arch');
+    await user.upload(
+      screen.getByLabelText('IFC file (optional)'),
+      new File(['ISO-10303-21;'], 'arch.ifc'),
+    );
+    await user.click(screen.getByRole('button', { name: 'Register model' }));
+    await waitFor(() => expect(post).toHaveBeenCalled());
+    expect(upload).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        module: 'bim',
+        file: expect.objectContaining({ type: 'model/ifc' }),
+      }),
+    );
+    const body = (post.mock.calls[0] as unknown as [{ body: Record<string, unknown> }])[0].body;
+    expect(body).toMatchObject({ name: 'Arch', fileId: 'fil_00000000000000000000000001' });
+    expect(body).not.toHaveProperty('file');
   });
 });

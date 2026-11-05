@@ -20,8 +20,9 @@ on:
     - cron: '30 19 * * 1' # Tuesday 5:30am Sydney: rescan main with the latest ZAP rules
 
 concurrency:
-  group: dast-${{ github.ref }}
-  cancel-in-progress: true
+  group: dast-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  # Never cancel a run on main: each push to main must finish its own full run.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
