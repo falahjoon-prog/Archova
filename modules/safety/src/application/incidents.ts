@@ -5,6 +5,7 @@ import {
   AppError,
   decodeCursor,
   nextNumber,
+  recordRetention,
   toPage,
   versionConflict,
   type TenantScope,
@@ -128,6 +129,25 @@ export function createIncidentService(deps: SafetyDeps) {
       actorId: scope.ctx.userId,
       at: now(),
     });
+  }
+
+  /**
+   * Incident records are kept at least 5 years from notification (WHS Act s38(7)). Until the regulator is notified,
+   * or when it never needs to be, the period counts from the day it happened, which is never shorter. The period
+   * only ever lengthens, so re-tagging after notification or at a later action is safe.
+   */
+  async function keep(scope: TenantScope, r: IncidentRow, actionIds: string[] = []) {
+    const anchor = r.regulatorNotifiedAt ?? r.occurredAt;
+    const tag = (recordType: string, recordId: string) =>
+      recordRetention(scope, {
+        recordType,
+        recordId,
+        projectId: r.projectId,
+        category: 'whs_incident_5y',
+        anchor,
+      });
+    await tag('safety.incidents', r.id);
+    for (const id of actionIds) await tag('safety.incident_actions', id);
   }
 
   async function changed(scope: TenantScope, r: IncidentRow) {
@@ -330,6 +350,7 @@ export function createIncidentService(deps: SafetyDeps) {
       })
       .returning();
     await replacePeople(scope, row!, f.people ?? []);
+    await keep(scope, row!);
     await record(scope, row!, { action: 'report', from: null });
     await changed(scope, row!);
     scope.events.add({
@@ -388,6 +409,17 @@ export function createIncidentService(deps: SafetyDeps) {
       .returning();
     if (!next) throw versionConflict();
     if (patch.people) await replacePeople(scope, next, patch.people);
+    if (next.regulatorNotifiedAt) {
+      const actions = await scope.tx
+        .select({ id: incidentActions.id })
+        .from(incidentActions)
+        .where(eq(incidentActions.incidentId, id));
+      await keep(
+        scope,
+        next,
+        actions.map((a) => a.id),
+      );
+    } else await keep(scope, next);
     await record(scope, next, { action: 'update', from: row.status });
     await changed(scope, next);
     if (!wasNotified && next.regulatorNotifiedAt)
@@ -510,6 +542,7 @@ export function createIncidentService(deps: SafetyDeps) {
         updatedBy: scope.ctx.userId,
       })
       .returning();
+    await keep(scope, row, [action!.id]);
     await record(scope, row, { action: 'action_added', from: row.status, note: action!.title });
     scope.events.add({
       type: 'safety.incident.action_added.v1',
