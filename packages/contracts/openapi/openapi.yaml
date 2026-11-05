@@ -44,6 +44,7 @@ tags:
   - name: scheduling
   - name: meetings
   - name: notifications
+  - name: reporting
 paths:
   /v1/auth/signup:
     post:
@@ -3198,6 +3199,159 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/portfolio:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPortfolio
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: One row per project with what is open and overdue, and company totals.
+      description: |
+        The portfolio dashboard. Covers the projects the caller can see (org owners and admins: every project), tender,
+        active and on-hold projects unless `includeClosed` is true, at most 200. For each project the open and overdue
+        counts of RFIs, defects and submittals, counted only from what the caller may read on that project: a tool the
+        caller cannot read shows `restricted` and counts nothing, and is left out of the company totals. `attention`
+        is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The portfolio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Portfolio' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listReports
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Saved reports the caller made, and those shared with the company.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Save a report definition.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/preview:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: previewReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Run a report definition without saving it.
+      description: A read-only POST so the builder can show rows while the definition is being edited. Nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportConfig' }
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/{reportId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: getReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: One saved report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Replace a saved report. Only its maker, or an org owner or admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Delete a saved report. Only its maker, or an org owner or admin.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/{reportId}/run:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: runReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Run a saved report now.
+      description: |
+        One row per RFI, defect or submittal across the report's projects (or every project the caller can see), counted
+        only from what the caller may read. Projects where the caller cannot read the tool are counted in
+        `restrictedProjects` and add no rows. At most 500 rows per project and 5000 in all; `truncated` says when the
+        answer was cut short.
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResult' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -9793,6 +9947,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^slk_[0-9A-Za-z]{26}$' }
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -9940,6 +10099,144 @@ components:
       properties:
         kind: { type: string, enum: [rfi, submittal] }
         targetId: { type: string }
+    PortfolioTool:
+      type: object
+      required: [restricted, open, overdue]
+      properties:
+        restricted:
+          {
+            type: boolean,
+            description: 'True when the caller cannot read this tool on the project; counts are then zero.',
+          }
+        open: { type: integer }
+        overdue: { type: integer }
+    PortfolioProject:
+      type: object
+      required: [id, name, number, status, rfis, defects, submittals, attention]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        number: { type: [string, 'null'] }
+        status: { type: string }
+        rfis: { $ref: '#/components/schemas/PortfolioTool' }
+        defects: { $ref: '#/components/schemas/PortfolioTool' }
+        submittals: { $ref: '#/components/schemas/PortfolioTool' }
+        attention: { type: integer, description: 'Overdue RFIs, defects and submittals together.' }
+    PortfolioTotals:
+      type: object
+      required:
+        [
+          projects,
+          rfisOpen,
+          rfisOverdue,
+          defectsOpen,
+          defectsOverdue,
+          submittalsOpen,
+          submittalsOverdue,
+        ]
+      properties:
+        projects: { type: integer }
+        rfisOpen: { type: integer }
+        rfisOverdue: { type: integer }
+        defectsOpen: { type: integer }
+        defectsOverdue: { type: integer }
+        submittalsOpen: { type: integer }
+        submittalsOverdue: { type: integer }
+    Portfolio:
+      type: object
+      required: [totals, projects, truncated]
+      properties:
+        totals: { $ref: '#/components/schemas/PortfolioTotals' }
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/PortfolioProject' }
+        truncated:
+          {
+            type: boolean,
+            description: 'True when more than 200 projects matched and the rest were left out.',
+          }
+    ReportConfig:
+      type: object
+      additionalProperties: false
+      required: [source, state, projectIds, columns, overdueOnly]
+      properties:
+        source: { type: string, enum: [rfis, defects, submittals] }
+        state:
+          {
+            type: string,
+            enum: [open, closed, all],
+            description: 'Open is what is still waiting on someone; closed is answered, approved or closed.',
+          }
+        projectIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
+          description: 'Projects to cover; empty means every project the caller can see.'
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items: { type: string, enum: [project, ref, title, status, dueDate, overdue, createdAt] }
+        overdueOnly: { type: boolean }
+    ReportInput:
+      type: object
+      additionalProperties: false
+      required: [name, shared, config]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        shared:
+          {
+            type: boolean,
+            description: 'True lets everyone in the company run it; false keeps it to its maker.',
+          }
+        config: { $ref: '#/components/schemas/ReportConfig' }
+    Report:
+      type: object
+      required: [id, name, shared, config, mine, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        shared: { type: boolean }
+        config: { $ref: '#/components/schemas/ReportConfig' }
+        mine:
+          {
+            type: boolean,
+            description: 'True when the caller made it, or is an org owner or admin, so may change it.',
+          }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ReportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Report' }
+    ReportRow:
+      type: object
+      required: [projectId, project, ref, title, status, dueDate, overdue, createdAt]
+      properties:
+        projectId: { type: string }
+        project: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        overdue: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ReportResult:
+      type: object
+      required: [columns, rows, restrictedProjects, truncated, generatedAt]
+      properties:
+        columns:
+          type: array
+          items: { type: string, enum: [project, ref, title, status, dueDate, overdue, createdAt] }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
+        generatedAt: { type: string, format: date-time }
     ScheduleDetail:
       type: object
       required: [schedule, activities, dependencies, criticalCount, violationCount]

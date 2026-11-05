@@ -712,6 +712,40 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const GetPortfolioParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const ListReportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateReportBody = s.ReportInputSchema;
+export const PreviewReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const PreviewReportBody = s.ReportConfigSchema;
+export const GetReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateReportBody = s.ReportInputSchema;
+export const DeleteReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const RunReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -3831,6 +3865,102 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  getPortfolio: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/portfolio',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetPortfolioParams,
+    query: GetPortfolioQuery,
+    body: null,
+  },
+  listReports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: ListReportsParams,
+    query: null,
+    body: null,
+  },
+  createReport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/reports',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateReportParams,
+    query: null,
+    body: CreateReportBody,
+  },
+  previewReport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/reports/preview',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: "application/json",
+    params: PreviewReportParams,
+    query: null,
+    body: PreviewReportBody,
+  },
+  getReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: GetReportParams,
+    query: null,
+    body: null,
+  },
+  updateReport: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateReportParams,
+    query: null,
+    body: UpdateReportBody,
+  },
+  deleteReport: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteReportParams,
+    query: null,
+    body: null,
+  },
+  runReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/{reportId}/run',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: RunReportParams,
+    query: null,
+    body: null,
   },
   getBidBoard: {
     method: 'GET',
