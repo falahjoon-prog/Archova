@@ -3009,6 +3009,7 @@ export type InspectionTemplateList = z.infer<typeof InspectionTemplateListSchema
 
 export const InvitePackageRequestSchema = z.object({
   "companyIds": z.array(CompanyRefSchema).min(1).max(50),
+  "overrideReason": z.string().min(1).max(500).optional(),
 }).strict();
 export type InvitePackageRequest = z.infer<typeof InvitePackageRequestSchema>;
 
@@ -4011,6 +4012,11 @@ export const PrequalRegisterSchema = z.object({
   "data": z.array(PrequalificationSummarySchema),
 });
 export type PrequalRegister = z.infer<typeof PrequalRegisterSchema>;
+
+export const PrequalSettingsSchema = z.object({
+  "requireForTenders": z.boolean(),
+}).strict();
+export type PrequalSettings = z.infer<typeof PrequalSettingsSchema>;
 
 export const PrequalTemplateSchema = z.object({
   "id": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),

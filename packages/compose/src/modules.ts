@@ -269,12 +269,13 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     safety: safety.api,
   });
 
-  const precon = createPreconModule(services, { platform: platform.api });
-
   // diary is created after ai (it doesn't need ai); the summary route reads the day through it lazily.
   let diaryApi: DiaryApi | null = null;
+  const precon = createPreconModule(services, { platform: platform.api });
+
   const estimating = createEstimatingModule(services, {
     access: access.api,
+    prequal: precon.api,
     platform: platform.api,
     documents: documents.api,
     files: files.api,

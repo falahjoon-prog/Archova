@@ -1808,6 +1808,13 @@ export const CreatePrequalificationParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const CreatePrequalificationBody = s.CreatePrequalificationRequestSchema;
+export const GetPrequalSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalSettingsBody = s.PrequalSettingsSchema;
 export const GetPrequalificationRegisterParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -6131,6 +6138,32 @@ export const operations = {
     params: CreatePrequalificationParams,
     query: null,
     body: CreatePrequalificationBody,
+  },
+  getPrequalSettings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalification-settings',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalSettingsParams,
+    query: null,
+    body: null,
+  },
+  updatePrequalSettings: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/prequalification-settings',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: UpdatePrequalSettingsParams,
+    query: null,
+    body: UpdatePrequalSettingsBody,
   },
   getPrequalificationRegister: {
     method: 'GET',
