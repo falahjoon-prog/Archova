@@ -313,21 +313,22 @@ export function createTimesheetService(deps: TimesheetDeps) {
     await need(scope, 'workforce.timesheets.export', projectId);
     checkRange(range.from, range.to);
     const v = await deps.attendance.viewer(scope, projectId);
+    const inRange = and(
+      eq(timesheets.projectId, projectId),
+      eq(timesheets.status, 'approved'),
+      gte(timesheets.localDate, range.from),
+      lte(timesheets.localDate, range.to),
+      v.scopedCompanyId ? eq(timesheets.companyId, v.scopedCompanyId) : undefined,
+    );
+    // Lock the rows being exported. FOR UPDATE ... OF needs an unqualified name, which a schema-qualified drizzle
+    // table does not give, so the lock is taken on its own and the join is read afterwards.
+    await scope.tx.select({ id: timesheets.id }).from(timesheets).where(inRange).for('update');
     const sheets = await scope.tx
       .select({ sheet: timesheets, workerName: workers.fullName })
       .from(timesheets)
       .innerJoin(workers, eq(workers.id, timesheets.workerId))
-      .where(
-        and(
-          eq(timesheets.projectId, projectId),
-          eq(timesheets.status, 'approved'),
-          gte(timesheets.localDate, range.from),
-          lte(timesheets.localDate, range.to),
-          v.scopedCompanyId ? eq(timesheets.companyId, v.scopedCompanyId) : undefined,
-        ),
-      )
-      .orderBy(asc(timesheets.localDate), asc(workers.fullName))
-      .for('update', { of: timesheets });
+      .where(inRange)
+      .orderBy(asc(timesheets.localDate), asc(workers.fullName));
     const lines = await linesFor(
       scope,
       sheets.map((s) => s.sheet.id),
