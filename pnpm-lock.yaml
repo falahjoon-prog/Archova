@@ -1688,6 +1688,9 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@archova/markup':
+        specifier: workspace:*
+        version: link:../../packages/markup
       '@archova/mod-access':
         specifier: workspace:*
         version: link:../access

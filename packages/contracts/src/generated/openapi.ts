@@ -4811,6 +4811,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** Everyone's marks on the RFI's photos, for anyone who can see the RFI. */
+        get: operations["listRfiAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+         * @description Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+         *     The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+         *     closed or void. The original photo is never changed.
+         */
+        put: operations["putRfiFileAnnotation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close": {
         parameters: {
             query?: never;
@@ -12613,6 +12661,8 @@ export interface components {
             /** @description As written on the form. */
             location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
+            /** @description Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`). */
+            fileIds: string[];
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -12663,6 +12713,7 @@ export interface components {
             /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
             location?: string;
             pin?: components["schemas"]["RfiPinInput"];
+            fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
         };
@@ -12684,12 +12735,34 @@ export interface components {
             specSection?: string | null;
             location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
+            /** @description The files attached to the question; replaces the list. */
+            fileIds?: components["schemas"]["FileRef"][];
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.answer` suggestion this response was drafted from. */
             aiSuggestionId?: string;
+        };
+        RfiAnnotation: {
+            id: string;
+            rfiId: string;
+            fileId: string;
+            authorId: string | null;
+            shapes: components["schemas"]["MarkupShape"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RfiAnnotationList: {
+            data: components["schemas"]["RfiAnnotation"][];
+        };
+        RfiAnnotationResult: {
+            annotation: components["schemas"]["RfiAnnotation"] | null;
+        };
+        PutRfiAnnotationRequest: {
+            shapes: components["schemas"]["MarkupShape"][];
         };
         RfiActivityItem: {
             id: string;
@@ -24396,6 +24469,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiActivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRfiAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putRfiFileAnnotation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutRfiAnnotationRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's layer after the change; `null` when it was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationResult"];
                 };
             };
             default: components["responses"]["Problem"];

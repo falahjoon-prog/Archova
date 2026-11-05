@@ -181,6 +181,7 @@ export const PROBLEM_CODES = {
   'rfi.assignee_not_on_project': 422,
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
+  'rfi.photo_not_markable': 422,
   // submittals
   'submittal.not_found': 404,
   'submittal.invalid_transition': 409,

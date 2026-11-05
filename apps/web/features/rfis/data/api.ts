@@ -9,7 +9,7 @@ import { compressPhoto } from '@/shared/lib/compress-photo';
 import { allPages } from '@/shared/lib/data-mode';
 import { formatLocalDate } from '@/shared/lib/format';
 import { projectMembers, type ProjectPerson } from '@/shared/lib/people';
-import { uploadFile } from '@/shared/lib/uploads';
+import { fileDownloadUrl, uploadFile } from '@/shared/lib/uploads';
 import type {
   CostImpact,
   NovaDraft,
@@ -17,9 +17,13 @@ import type {
   NovaRfiDraft,
   Rfi,
   RfiActivity,
+  RfiAnnotation,
   RfiInput,
+  RfiPhoto,
   RfiResponse,
 } from '../lib/types';
+import { MARKABLE_IMAGE_TYPES } from '../lib/types';
+import { fromApiShape, toApiShape } from '@/shared/markup/api-shape';
 import { rfisSource, type RfiFilters, type RfisSource } from './source';
 
 type ApiRfi = components['schemas']['Rfi'];
@@ -41,6 +45,7 @@ function toResponse(r: ApiResponse, members: readonly ProjectPerson[]): RfiRespo
     body: r.body,
     isOfficial: r.isOfficial,
     aiSuggestionId: r.aiSuggestionId,
+    fileIds: r.fileIds,
     createdAt: r.createdAt,
   };
 }
@@ -108,6 +113,7 @@ export function toRfi(
     drawing: r.pin ? { sheetId: '', revisionId: r.pin.drawingRevisionId, label: 'Drawing' } : null,
     specSection: r.specSection,
     location: r.location,
+    fileIds: r.fileIds,
     responses: responses.map((x) => toResponse(x, members)),
     officialResponseId: r.officialResponseId,
     activity: [],
@@ -396,6 +402,96 @@ export function createRfisApi(orgId: string): RfisSource {
         projectId,
         unwrap(await api.POST(`${P}/{rfiId}/void`, { params, body: { reason: reason.trim() } })),
       );
+    },
+
+    async photos(projectId, rfi): Promise<RfiPhoto[]> {
+      const origins = new Map<string, RfiPhoto['origin']>();
+      for (const id of rfi.fileIds) origins.set(id, 'question');
+      for (const r of rfi.responses)
+        for (const id of r.fileIds) origins.set(id, origins.get(id) ?? 'response');
+      const found = await Promise.all(
+        [...origins].map(async ([fileId, origin]): Promise<RfiPhoto | null> => {
+          // A file the person can't open (or that is still being checked) is left out rather than failing the list.
+          try {
+            const file = unwrap(
+              await api.GET('/v1/orgs/{orgId}/files/{fileId}', {
+                params: { path: { orgId, fileId } },
+              }),
+            );
+            if (file.status !== 'ready') return null;
+            if (!(MARKABLE_IMAGE_TYPES as readonly string[]).includes(file.mime)) return null;
+            return {
+              fileId,
+              name: file.filename,
+              url: await fileDownloadUrl(orgId, fileId),
+              origin,
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+      return found.filter((x): x is RfiPhoto => x !== null);
+    },
+
+    async addPhoto(projectId, rfiId, photo) {
+      // A phone photo is shrunk first (and loses its EXIF location); the original is not kept.
+      const small = await compressPhoto(photo);
+      const file =
+        small === photo
+          ? photo
+          : new File([small], `${photo.name.replace(/\.\w+$/, '')}.jpg`, { type: small.type });
+      const stored = await uploadFile(orgId, { file, projectId, module: 'rfis' });
+      const params = await current(projectId, rfiId);
+      const was = await get(projectId, rfiId);
+      return detail(
+        projectId,
+        unwrap(
+          await api.PATCH(`${P}/{rfiId}`, {
+            params,
+            body: { fileIds: [...was.fileIds, stored.id] },
+          }),
+        ),
+      );
+    },
+
+    async annotations(projectId, rfiId): Promise<RfiAnnotation[]> {
+      const [rows, people] = await Promise.all([
+        api.GET(`${P}/{rfiId}/annotations`, { params: { path: { orgId, projectId, rfiId } } }),
+        members(projectId),
+      ]);
+      return unwrap(rows).data.map((a) => ({
+        id: a.id,
+        fileId: a.fileId,
+        authorId: a.authorId ?? '',
+        authorName: people.find((m) => m.id === a.authorId)?.name ?? 'Project member',
+        shapes: a.shapes.flatMap((x) => {
+          const shape = fromApiShape(x);
+          return shape && shape.kind !== 'pin' ? [shape] : [];
+        }),
+        updatedAt: a.updatedAt,
+      }));
+    },
+
+    async saveAnnotation(projectId, rfiId, fileId, shapes, actor): Promise<RfiAnnotation | null> {
+      await ensureCsrfToken();
+      const res = unwrap(
+        await api.PUT(`${P}/{rfiId}/files/{fileId}/annotation`, {
+          params: { path: { orgId, projectId, rfiId, fileId }, header: idempotencyKey() },
+          body: { shapes: shapes.map((x, i) => toApiShape(x, `s${i + 1}`)) },
+        }),
+      );
+      const a = res.annotation;
+      return a
+        ? {
+            id: a.id,
+            fileId: a.fileId,
+            authorId: actor.id,
+            authorName: actor.name,
+            shapes: [...shapes],
+            updatedAt: a.updatedAt,
+          }
+        : null;
     },
 
     async novaDraftResponse(projectId, rfiId, direction): Promise<NovaDraft> {

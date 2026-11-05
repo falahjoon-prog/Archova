@@ -749,6 +749,45 @@ main:focus {
   align-items: center;
   gap: var(--space-3);
 }
+/* Colour and line width for the markup tools, shared by the sheet viewer and the RFI photo annotator. */
+.markup-style {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.markup-style__colors {
+  display: flex;
+  gap: var(--space-2);
+}
+.markup-style__swatch {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 2px solid var(--c-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--c-text-secondary);
+  cursor: pointer;
+}
+.markup-style__swatch[aria-checked='true'] {
+  box-shadow:
+    0 0 0 2px var(--c-bg),
+    0 0 0 4px var(--c-text);
+}
+@media (pointer: coarse) {
+  .markup-style__swatch {
+    width: 44px;
+    height: 44px;
+  }
+}
+.drawing-viewer__toolbar .ac-toggle-group {
+  /* Eight tools don't fit a phone: the group scrolls sideways inside its own box, not the page. */
+  max-width: 100%;
+  overflow-x: auto;
+}
+.drawing-viewer__toolbar .ac-toggle-group__item {
+  flex-shrink: 0;
+}
 .drawing-viewer__visibility {
   display: flex;
   align-items: center;
@@ -2534,4 +2573,87 @@ fieldset.worker-card > legend {
 }
 .folders__head {
   justify-content: space-between;
+}
+
+/* RFI photos and the photo annotator. */
+.rfi-photos__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.rfi-photos__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rfi-photos__tile {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+  color: inherit;
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.rfi-photos__img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  background: color-mix(in srgb, var(--c-text) 6%, var(--c-bg));
+}
+.rfi-photos__caption {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+}
+.rfi-photos__name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.photo-annotator__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.photo-annotator__name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.photo-annotator__img {
+  object-fit: fill;
+  pointer-events: none;
+  user-select: none;
+}
+.photo-annotator__text {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+.photo-annotator__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.photo-annotator__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
