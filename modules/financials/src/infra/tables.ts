@@ -177,6 +177,7 @@ export const evidenceTimestamps = financialsSchema.table('evidence_timestamps', 
   genTime: timestamp('gen_time', { withTimezone: true }).notNull(),
   serialHex: text('serial_hex').notNull(),
   token: bytea('token').notNull(),
+  caChainPem: text('ca_chain_pem').notNull(),
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

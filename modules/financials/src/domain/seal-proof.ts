@@ -36,26 +36,51 @@ export const sha256Bytes = (data: string | Uint8Array) =>
   createHash('sha256').update(data).digest();
 
 export interface EvidenceSigner {
+  /** The key used to sign new records. */
   keyId: string;
   publicKeyPem: string;
   sign(message: string): string;
-  /** True only when the signature is by this signer's key over exactly this message. */
+  /** The public key for an id this signer holds (current or retired), else null. */
+  publicKeyFor(keyId: string): string | null;
+  /** True only when the signature is by the held key with that id over exactly this message. */
   verify(message: string, signatureBase64: string, keyId: string): boolean;
 }
 
-/** `privateKeyPem` is an Ed25519 PKCS#8 PEM. */
-export function createEvidenceSigner(keyId: string, privateKeyPem: string): EvidenceSigner {
+/**
+ * `privateKeyPem` is an Ed25519 PKCS#8 PEM. `retired` holds the public keys (id to SPKI PEM) of earlier signing keys,
+ * so records signed before a rotation still verify. Never reuse an id for a different key.
+ */
+export function createEvidenceSigner(
+  keyId: string,
+  privateKeyPem: string,
+  retired: Record<string, string> = {},
+): EvidenceSigner {
   const priv: KeyObject = createPrivateKey(privateKeyPem);
   if (priv.asymmetricKeyType !== 'ed25519')
     throw new Error('The evidence signing key must be Ed25519');
   const pub = createPublicKey(priv);
+  const keys = new Map<string, KeyObject>();
+  for (const [id, pem] of Object.entries(retired)) {
+    const k = createPublicKey(pem);
+    if (k.asymmetricKeyType !== 'ed25519') throw new Error(`Retired key ${id} is not Ed25519`);
+    keys.set(id, k);
+  }
+  if (keys.has(keyId)) throw new Error(`Key id ${keyId} is both current and retired`);
+  keys.set(keyId, pub);
+  const pems = (id: string) =>
+    keys.get(id)?.export({ type: 'spki', format: 'pem' }).toString() ?? null;
   return {
     keyId,
-    publicKeyPem: pub.export({ type: 'spki', format: 'pem' }).toString(),
+    publicKeyPem: pems(keyId)!,
     sign: (message) => edSign(null, Buffer.from(message, 'utf8'), priv).toString('base64'),
-    verify: (message, signatureBase64, id) =>
-      id === keyId &&
-      edVerify(null, Buffer.from(message, 'utf8'), pub, Buffer.from(signatureBase64, 'base64')),
+    publicKeyFor: pems,
+    verify: (message, signatureBase64, id) => {
+      const k = keys.get(id);
+      return (
+        !!k &&
+        edVerify(null, Buffer.from(message, 'utf8'), k, Buffer.from(signatureBase64, 'base64'))
+      );
+    },
   };
 }
 
@@ -189,12 +214,33 @@ export function parseTimestampResponse(
   };
 }
 
-/** Posts a request to an RFC 3161 authority over HTTPS and returns the checked result. */
+/** Checks the authority's own signature and chain over the response; throws if it does not hold. */
+export type TimestampVerifier = (check: {
+  request: Buffer;
+  response: Buffer;
+  /** The exact bytes that were timestamped (the seal message); the verifier checks them against the token. */
+  message: Buffer;
+}) => Promise<void>;
+
+/**
+ * Asks an RFC 3161 authority and accepts the answer only if the verifier (pinned certificates) passes and the time
+ * is within `maxSkewMs` of `now` (a token dated far from now could back-date evidence).
+ */
 export async function requestTimestamp(
   url: string,
-  imprint: Uint8Array,
+  messageText: string,
   post: (url: string, body: Buffer) => Promise<Uint8Array>,
+  verify: TimestampVerifier,
+  now: Date,
+  maxSkewMs = 10 * 60 * 1000,
 ): Promise<TimestampResult> {
+  const message = Buffer.from(messageText, 'utf8');
+  const imprint = sha256Bytes(message);
   const { request, nonceHex } = buildTimestampRequest(imprint);
-  return parseTimestampResponse(await post(url, request), { imprint, nonceHex });
+  const response = Buffer.from(await post(url, request));
+  const result = parseTimestampResponse(response, { imprint, nonceHex });
+  if (Math.abs(result.genTime.getTime() - now.getTime()) > maxSkewMs)
+    throw new Error('The timestamp is dated too far from now');
+  await verify({ request, response, message });
+  return result;
 }

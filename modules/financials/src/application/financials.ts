@@ -833,7 +833,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
       const intact =
         sha256Hex(r.snapshotText) === r.snapshotSha256 && sha256Hex(r.pdf) === r.pdfSha256;
       const sig = sigs.find((x) => x.evidenceId === r.id);
-      const stamp = stamps.find((x) => x.evidenceId === r.id);
+      // A timestamp with no pinned chain was never verified in-app, so it is not shown as one.
+      const stamp = stamps.find((x) => x.evidenceId === r.id && x.caChainPem !== '');
       const message = sealMessage({
         kind: r.kind,
         claimId: r.claimId,
@@ -854,13 +855,12 @@ export function createFinancialsService(deps: FinancialsDeps) {
               algorithm: sig.algorithm,
               signatureBase64: sig.signature,
               message: sig.message,
-              publicKeyPem: deps.signer?.keyId === sig.keyId ? deps.signer.publicKeyPem : null,
+              publicKeyPem: deps.signer?.publicKeyFor(sig.keyId) ?? null,
               // null when this server no longer holds that key, so it cannot say either way
-              valid:
-                deps.signer?.keyId === sig.keyId
-                  ? sig.message === message &&
-                    deps.signer.verify(sig.message, sig.signature, sig.keyId)
-                  : null,
+              valid: deps.signer?.publicKeyFor(sig.keyId)
+                ? sig.message === message &&
+                  deps.signer.verify(sig.message, sig.signature, sig.keyId)
+                : null,
             }
           : null,
         timestamp: stamp
@@ -870,6 +870,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
               imprintSha256: stamp.imprintSha256,
               serialHex: stamp.serialHex,
               tokenBase64: stamp.token.toString('base64'),
+              caChainPem: stamp.caChainPem,
             }
           : null,
       };

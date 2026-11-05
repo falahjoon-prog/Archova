@@ -9498,7 +9498,7 @@ export interface components {
             signatureBase64: string;
             /** @description The exact text signed; it names both hashes, the claim and the sealed time. */
             message: string;
-            /** @description Null when the server no longer holds that key. */
+            /** @description Null when the server holds no key with that id (current or retired). */
             publicKeyPem: string | null;
             /** @description Null when the server cannot check (key not held). */
             valid: boolean | null;
@@ -9509,8 +9509,10 @@ export interface components {
             time: string;
             imprintSha256: string;
             serialHex: string;
-            /** @description The whole RFC 3161 TimeStampToken, so the authority signature can be checked. */
+            /** @description The whole RFC 3161 TimeStampResp, so the authority signature can be checked. */
             tokenBase64: string;
+            /** @description The pinned certificates the response was verified against when it was taken. */
+            caChainPem: string;
         };
         ClaimEvidenceDelivery: {
             /** Format: uuid */
