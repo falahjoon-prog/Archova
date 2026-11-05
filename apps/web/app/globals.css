@@ -2346,6 +2346,52 @@ fieldset.worker-card > legend {
   background: color-mix(in srgb, var(--c-status-danger) 35%, var(--c-surface));
   outline-color: var(--c-status-danger);
 }
+.gantt__bar[data-editable] {
+  cursor: grab;
+  overflow: visible;
+  touch-action: none;
+}
+.gantt__bar[data-editable] .gantt__progress {
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+}
+.gantt__bar[data-dragging],
+.gantt__milestone[data-dragging] {
+  cursor: grabbing;
+  opacity: 0.8;
+}
+.gantt__bar[data-editable]:focus-visible,
+.gantt__milestone[data-editable]:focus-visible {
+  outline: 2px solid var(--c-focus-ring, var(--c-action-primary));
+  outline-offset: 2px;
+}
+.gantt__milestone[data-editable] {
+  cursor: grab;
+  touch-action: none;
+}
+.gantt__handle {
+  position: absolute;
+  top: 0;
+  right: -4px;
+  bottom: 0;
+  width: 10px;
+  cursor: ew-resize;
+}
+.gantt__baseline {
+  position: absolute;
+  top: calc(50% + 14px);
+  height: 4px;
+  min-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--c-text-secondary);
+  opacity: 0.6;
+}
+.gantt__variance[data-late] {
+  color: var(--c-status-danger);
+}
+.gantt__swatch--baseline {
+  height: 4px;
+  background: var(--c-text-secondary);
+}
 .gantt__progress {
   display: block;
   height: 100%;

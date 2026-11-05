@@ -854,6 +854,37 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ScheduleDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    put:
+      operationId: setScheduleBaseline
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Save the current dates as the baseline, replacing any earlier one. Returns the whole programme.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: clearScheduleBaseline
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Remove the baseline. Returns the whole programme.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -12832,13 +12863,25 @@ components:
     ScheduleSummary:
       type: object
       required:
-        [id, projectId, name, source, dataDate, activityCount, startDate, finishDate, createdAt]
+        [
+          id,
+          projectId,
+          name,
+          source,
+          dataDate,
+          baselineSetAt,
+          activityCount,
+          startDate,
+          finishDate,
+          createdAt,
+        ]
       properties:
         id: { type: string }
         projectId: { type: string }
         name: { type: string }
         source: { $ref: '#/components/schemas/ScheduleSource' }
         dataDate: { type: [string, 'null'], format: date }
+        baselineSetAt: { type: [string, 'null'], format: date-time }
         activityCount: { type: integer }
         startDate: { type: [string, 'null'], format: date }
         finishDate: { type: [string, 'null'], format: date }
@@ -12866,6 +12909,9 @@ components:
           externalId,
           floatDays,
           critical,
+          baselineStart,
+          baselineFinish,
+          varianceDays,
         ]
       properties:
         id: { type: string }
@@ -12885,6 +12931,13 @@ components:
             description: 'Total float in working days, from the dates on the programme.',
           }
         critical: { type: boolean }
+        baselineStart: { type: [string, 'null'], format: date }
+        baselineFinish: { type: [string, 'null'], format: date }
+        varianceDays:
+          {
+            type: [integer, 'null'],
+            description: 'Working days the finish is after the baseline finish (negative = ahead); null without a baseline.',
+          }
     ScheduleDependency:
       type: object
       required: [id, predecessorId, successorId, type, lagDays, slackDays, violated]
@@ -13339,6 +13392,11 @@ components:
         finish: { type: string, format: date }
         pctComplete: { type: integer, minimum: 0, maximum: 100 }
         assignee: { type: string, maxLength: 200 }
+        cascade:
+          {
+            type: boolean,
+            description: 'Push successors later where the move breaks a link, keeping their durations (drag-to-reschedule).',
+          }
     CreateScheduleDependencyRequest:
       type: object
       additionalProperties: false
