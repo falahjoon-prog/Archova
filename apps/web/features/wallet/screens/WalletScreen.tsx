@@ -24,6 +24,7 @@ import { serverFieldErrors } from '@/shared/lib/forms';
 import { fileDownloadUrl } from '@/shared/lib/uploads';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useDocuments, useExpiryAlerts, useWalletMutations } from '../hooks/useWallet';
+import { SharingSection } from './SharingSection';
 import {
   centsToDollars,
   dollarsToCents,
@@ -498,6 +499,7 @@ export function WalletScreen() {
           ) : null}
         </div>
       </Card>
+      <SharingSection />
       {dialog ? <DocumentDialog doc={dialog.doc} onClose={() => setDialog(null)} /> : null}
     </>
   );
