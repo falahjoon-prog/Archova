@@ -271,6 +271,34 @@ export const UpdateFolderParams = z.object({
   "folderId": z.string().regex(new RegExp("^fld_[0-9A-Za-z]{26}$")),
 });
 export const UpdateFolderBody = s.UpdateFolderRequestSchema;
+export const ListSpecBooksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSpecBookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSpecBookBody = s.CreateSpecBookRequestSchema;
+export const GetSpecBookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "bookId": z.string().regex(new RegExp("^spb_[0-9A-Za-z]{26}$")),
+});
+export const ReplaceSpecSectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "bookId": z.string().regex(new RegExp("^spb_[0-9A-Za-z]{26}$")),
+});
+export const ReplaceSpecSectionsBody = s.ReplaceSpecSectionsRequestSchema;
+export const SearchSpecSectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const SearchSpecSectionsQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "limit": z.coerce.number().int().min(1).max(50).default(20),
+});
 export const ListDocumentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3327,6 +3355,66 @@ export const operations = {
     params: UpdateFolderParams,
     query: null,
     body: UpdateFolderBody,
+  },
+  listSpecBooks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: ListSpecBooksParams,
+    query: null,
+    body: null,
+  },
+  createSpecBook: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSpecBookParams,
+    query: null,
+    body: CreateSpecBookBody,
+  },
+  getSpecBook: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: GetSpecBookParams,
+    query: null,
+    body: null,
+  },
+  replaceSpecSections: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReplaceSpecSectionsParams,
+    query: null,
+    body: ReplaceSpecSectionsBody,
+  },
+  searchSpecSections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/spec-sections',
+    module: "documents",
+    auth: "required",
+    permission: "documents.documents.read",
+    internal: false,
+    contentType: null,
+    params: SearchSpecSectionsParams,
+    query: SearchSpecSectionsQuery,
+    body: null,
   },
   listDocuments: {
     method: 'GET',

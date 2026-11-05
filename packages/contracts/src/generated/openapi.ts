@@ -1056,6 +1056,89 @@ export interface paths {
         patch: operations["updateFolder"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's specification books, newest first, with how many sections each has been split into. */
+        get: operations["listSpecBooks"];
+        put?: never;
+        /** Register an issued specification book. Naming the book it replaces marks that one superseded. */
+        post: operations["createSpecBook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        /** One book with its sections in page order. */
+        get: operations["getSpecBook"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-books/{bookId}/sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Split the book into sections by page range, replacing the list. Numbers must be unique within the book. */
+        put: operations["replaceSpecSections"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/spec-sections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Sections of current books whose number starts with, or title contains, the text. For picking a spec reference. */
+        get: operations["searchSpecSections"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/documents": {
         parameters: {
             query?: never;
@@ -10006,6 +10089,62 @@ export interface components {
             allowedCompanyIds: string[];
             version: number;
         };
+        SpecBook: {
+            id: string;
+            projectId: string;
+            name: string;
+            /** Format: date */
+            issuedDate: string | null;
+            fileId: string | null;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            supersededById: string | null;
+            sectionCount: number;
+            version: number;
+        };
+        SpecSection: {
+            id: string;
+            bookId: string;
+            /** @description As the book numbers it, e.g. 03 30 00 */
+            sectionNumber: string;
+            title: string;
+            division: string | null;
+            pageFrom: number;
+            pageTo: number;
+            revision: string | null;
+        };
+        SpecBookList: {
+            data: components["schemas"]["SpecBook"][];
+        };
+        SpecBookDetail: {
+            book: components["schemas"]["SpecBook"];
+            sections: components["schemas"]["SpecSection"][];
+        };
+        SpecSectionHit: {
+            section: components["schemas"]["SpecSection"];
+            bookId: string;
+            bookName: string;
+        };
+        SpecSectionHitList: {
+            data: components["schemas"]["SpecSectionHit"][];
+        };
+        CreateSpecBookRequest: {
+            name: string;
+            /** Format: date */
+            issuedDate?: string | null;
+            fileId?: string | null;
+            supersedesBookId?: string | null;
+        };
+        ReplaceSpecSectionsRequest: {
+            sections: {
+                sectionNumber: string;
+                title: string;
+                division?: string | null;
+                pageFrom: number;
+                pageTo: number;
+                revision?: string | null;
+            }[];
+        };
         FolderList: {
             data: components["schemas"]["Folder"][];
         };
@@ -14554,6 +14693,7 @@ export interface components {
         OrgId: string;
         ProjectId: string;
         FileId: string;
+        SpecBookId: string;
         FolderId: string;
         DocumentId: string;
         DrawingSetId: string;
@@ -16236,6 +16376,147 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Folder"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSpecBooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Books */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSpecBook: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpecBookRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSpecBook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    replaceSpecSections: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                bookId: components["parameters"]["SpecBookId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceSpecSectionsRequest"];
+            };
+        };
+        responses: {
+            /** @description Updated */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecBookDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    searchSpecSections: {
+        parameters: {
+            query?: {
+                q?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Sections */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpecSectionHitList"];
                 };
             };
             default: components["responses"]["Problem"];

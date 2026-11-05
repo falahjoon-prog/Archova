@@ -44,6 +44,32 @@ export const folders = documents.table('folders', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
+export const specBooks = documents.table('spec_books', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  name: text('name').notNull(),
+  issuedDate: date('issued_date'),
+  fileId: uuid('file_id'),
+  status: text('status').$type<'current' | 'superseded'>().notNull().default('current'),
+  supersededById: uuid('superseded_by_id'),
+  ...audit,
+});
+
+export const specSections = documents.table('spec_sections', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  bookId: uuid('book_id').notNull(),
+  sectionNumber: text('section_number').notNull(),
+  title: text('title').notNull(),
+  division: text('division'),
+  pageFrom: integer('page_from').notNull(),
+  pageTo: integer('page_to').notNull(),
+  revision: text('revision'),
+  sort: integer('sort').notNull(),
+});
+
 export const documentsTable = documents.table('documents', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

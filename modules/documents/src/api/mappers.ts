@@ -22,6 +22,8 @@ import type {
   drawingSets,
   drawingSheets,
   folders,
+  specBooks,
+  specSections,
   transmittalRecipients,
   transmittals,
 } from '../infra/tables';
@@ -195,4 +197,27 @@ export const toSheetGeometryDto = (
   scaleConfirmedAt: g?.scaleConfirmedAt ? g.scaleConfirmedAt.toISOString() : null,
   extractedAt: g?.extractedAt ? g.extractedAt.toISOString() : null,
   version: g?.version ?? 0,
+});
+
+export const toSpecBookDto = (b: typeof specBooks.$inferSelect, sectionCount: number) => ({
+  id: encodeId('specBook', b.id),
+  projectId: encodeId('project', b.projectId),
+  name: b.name,
+  issuedDate: b.issuedDate,
+  fileId: b.fileId ? encodeId('file', b.fileId) : null,
+  status: b.status,
+  supersededById: b.supersededById ? encodeId('specBook', b.supersededById) : null,
+  sectionCount,
+  version: b.version,
+});
+
+export const toSpecSectionDto = (s: typeof specSections.$inferSelect) => ({
+  id: encodeId('specSection', s.id),
+  bookId: encodeId('specBook', s.bookId),
+  sectionNumber: s.sectionNumber,
+  title: s.title,
+  division: s.division,
+  pageFrom: s.pageFrom,
+  pageTo: s.pageTo,
+  revision: s.revision,
 });
