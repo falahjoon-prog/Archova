@@ -35,6 +35,9 @@ export const webRoutes = {
   documents: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/documents`,
   drawings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/drawings`,
   coordination: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/coordination`,
+  /** The 3D viewer for the project's IFC models, with clash checking. */
+  coordinationModels: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/coordination/models`,
   specifications: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/specifications`,
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
