@@ -891,7 +891,7 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
         orgId: scope.ctx.orgId,
         workerId,
         kind: input.kind,
-        number: input.number.trim(),
+        numberLast4: input.number.trim().slice(-4),
         issuingState: input.issuingState ?? null,
         licenceClass: input.licenceClass?.trim() || null,
         issuedOn: input.issuedOn ?? null,
