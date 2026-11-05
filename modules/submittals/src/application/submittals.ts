@@ -709,6 +709,41 @@ export function createSubmittalService(deps: SubmittalsDeps) {
   }
 
   /**
+   * Programme links (`scheduling`): headline details of the submittals among `ids` the caller may see, by the same rule
+   * as `list`. Empty when the caller can't read submittals.
+   */
+  async function summariesByIds(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'submittals.submittals.read', { projectId })))
+      return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(submittals.projectId, projectId),
+      isNull(submittals.deletedAt),
+      inArray(submittals.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: submittals.id,
+        numberLabel: submittals.numberLabel,
+        title: submittals.title,
+        status: submittals.status,
+        requiredOnSite: submittals.requiredOnSite,
+      })
+      .from(submittals)
+      .where(and(...conditions));
+    return rows.map((r) => ({
+      id: r.id,
+      ref: r.numberLabel,
+      title: r.title,
+      status: r.status as string,
+      dueDate: r.requiredOnSite,
+      scheduleImpactDays: null as number | null,
+    }));
+  }
+
+  /**
    * Meeting agenda (`meetings`, MTG-US5): submittals the caller can see that still need something and are due soon -
    * not yet approved, rejected or closed, with a required-on-site date within the next 14 days (or already past) or a
    * draft with a submit-by date within the next 7. Soonest first. `restricted` is true when the caller can't read
@@ -769,6 +804,7 @@ export function createSubmittalService(deps: SubmittalsDeps) {
     close,
     returnNotice,
     dueForMeeting,
+    summariesByIds,
   };
 }
 

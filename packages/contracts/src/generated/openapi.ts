@@ -730,6 +730,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        /** Every RFI and submittal tied to an activity on this programme (SCH-US10). Items the caller cannot see come back as `visible: false` with no details. */
+        get: operations["listScheduleLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tie an RFI or submittal to this activity. The caller must be able to see the item. */
+        post: operations["createScheduleLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                linkId: components["parameters"]["ScheduleLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Untie an RFI or submittal from its activity. */
+        delete: operations["deleteScheduleLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead": {
         parameters: {
             query?: never;
@@ -6950,6 +7015,35 @@ export interface components {
             /** @description The dates break this link (the successor is too early). */
             violated: boolean;
         };
+        ScheduleLink: {
+            id: string;
+            activityId: string;
+            /** @enum {string} */
+            kind: "rfi" | "submittal";
+            /** @description Public id of the RFI or submittal. */
+            targetId: string;
+            /** @description False when the caller cannot see the item (or it is gone); the details are null. */
+            visible: boolean;
+            /** @description RFI-012 or the submittal number label. */
+            ref: string | null;
+            title: string | null;
+            status: string | null;
+            /**
+             * Format: date
+             * @description RFI due date, or the submittal required-on-site date.
+             */
+            dueDate: string | null;
+            /** @description RFI schedule impact in days; null for submittals. */
+            scheduleImpactDays: number | null;
+        };
+        ScheduleLinkList: {
+            data: components["schemas"]["ScheduleLink"][];
+        };
+        CreateScheduleLinkRequest: {
+            /** @enum {string} */
+            kind: "rfi" | "submittal";
+            targetId: string;
+        };
         ScheduleDetail: {
             schedule: components["schemas"]["ScheduleSummary"];
             activities: components["schemas"]["ScheduleActivity"][];
@@ -12696,6 +12790,7 @@ export interface components {
         ScheduleId: string;
         ScheduleActivityId: string;
         ScheduleDependencyId: string;
+        ScheduleLinkId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -13816,6 +13911,85 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ScheduleDetail"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listScheduleLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createScheduleLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteScheduleLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                linkId: components["parameters"]["ScheduleLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
