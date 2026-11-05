@@ -333,6 +333,44 @@ export const BallInCourtSchema = z.object({
 });
 export type BallInCourt = z.infer<typeof BallInCourtSchema>;
 
+export const PackageStatusSchema = z.enum(["draft", "out_to_tender", "closed", "awarded", "cancelled"]);
+export type PackageStatus = z.infer<typeof PackageStatusSchema>;
+
+export const BidBoardInviteTallySchema = z.object({
+  "invited": z.number().int(),
+  "viewed": z.number().int(),
+  "declined": z.number().int(),
+  "intendsToQuote": z.number().int(),
+  "submitted": z.number().int(),
+  "awaiting": z.number().int(),
+});
+export type BidBoardInviteTally = z.infer<typeof BidBoardInviteTallySchema>;
+
+export const BidBoardEntrySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "numberLabel": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "status": PackageStatusSchema,
+  "dueAt": z.string().datetime({ offset: true }).nullable(),
+  "dueState": z.enum(["overdue", "closing_soon", "open"]).nullable(),
+  "invites": BidBoardInviteTallySchema,
+  "quotesConfirmed": z.number().int(),
+  "quotesToReview": z.number().int(),
+  "lowestExGst": z.string().nullable(),
+  "awarded": z.boolean(),
+});
+export type BidBoardEntry = z.infer<typeof BidBoardEntrySchema>;
+
+export const BidBoardSchema = z.object({
+  "data": z.array(BidBoardEntrySchema),
+  "asOf": z.string().datetime({ offset: true }),
+  "truncated": z.boolean(),
+});
+export type BidBoard = z.infer<typeof BidBoardSchema>;
+
 export const GeoFixSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -3646,9 +3684,6 @@ export const PackageInviteSchema = z.object({
   "respondedAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type PackageInvite = z.infer<typeof PackageInviteSchema>;
-
-export const PackageStatusSchema = z.enum(["draft", "out_to_tender", "closed", "awarded", "cancelled"]);
-export type PackageStatus = z.infer<typeof PackageStatusSchema>;
 
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;

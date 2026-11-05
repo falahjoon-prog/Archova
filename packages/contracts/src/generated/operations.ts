@@ -630,6 +630,14 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const GetBidBoardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetBidBoardQuery = z.object({
+  "status": s.PackageStatusSchema.optional(),
+  "trade": z.string().max(100).optional(),
+  "projectId": z.string().optional(),
+});
 export const ListTenderPackagesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -3483,6 +3491,18 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  getBidBoard: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bid-board',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.board.read",
+    internal: false,
+    contentType: null,
+    params: GetBidBoardParams,
+    query: GetBidBoardQuery,
+    body: null,
   },
   listTenderPackages: {
     method: 'GET',

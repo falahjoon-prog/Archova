@@ -2920,6 +2920,33 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bid-board:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getBidBoard
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.board.read
+      summary: Tender packages across the company's projects, with how invitees have answered and where the price stands.
+      description: |
+        The bid board. One entry per tender package on projects where the caller holds `estimating.quotes.review`
+        (other projects are left out, since the board shows prices). Each entry carries a tally of invitee answers,
+        quotes confirmed and waiting for review, the lowest levelled total ex GST (allowances included), and a due state
+        for packages still out to tender: `overdue`, `closing_soon` (within 72 hours) or `open`. Ordered by due date,
+        soonest first. At most 500 packages; `truncated` says when there are more. Builder staff only; a subcontractor
+        never reaches it.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PackageStatus' } }
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: projectId, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidBoard' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13285,6 +13312,64 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BidBoard:
+      type: object
+      required: [data, asOf, truncated]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BidBoardEntry' }
+        asOf: { type: string, format: date-time }
+        truncated: { type: boolean }
+    BidBoardEntry:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          projectName,
+          numberLabel,
+          name,
+          trade,
+          status,
+          dueAt,
+          dueState,
+          invites,
+          quotesConfirmed,
+          quotesToReview,
+          lowestExGst,
+          awarded,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        numberLabel: { type: string, description: 'TP-001' }
+        name: { type: string }
+        trade: { type: string }
+        status: { $ref: '#/components/schemas/PackageStatus' }
+        dueAt: { type: [string, 'null'], format: date-time }
+        dueState:
+          type: [string, 'null']
+          enum: [overdue, closing_soon, open, null]
+          description: Null unless the package is out to tender with a due date.
+        invites: { $ref: '#/components/schemas/BidBoardInviteTally' }
+        quotesConfirmed: { type: integer }
+        quotesToReview: { type: integer }
+        lowestExGst:
+          type: [string, 'null']
+          description: Lowest levelled total ex GST across confirmed quotes, decimal AUD. Null with none confirmed.
+        awarded: { type: boolean }
+    BidBoardInviteTally:
+      type: object
+      required: [invited, viewed, declined, intendsToQuote, submitted, awaiting]
+      properties:
+        invited: { type: integer }
+        viewed: { type: integer }
+        declined: { type: integer }
+        intendsToQuote: { type: integer }
+        submitted: { type: integer }
+        awaiting: { type: integer, description: Invited or only viewed, with no answer yet. }
     PackageStatus:
       type: string
       enum: [draft, out_to_tender, closed, awarded, cancelled]
