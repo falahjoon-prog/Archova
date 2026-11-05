@@ -218,6 +218,71 @@ describe('ClaimDetailScreen', () => {
   });
 });
 
+describe('ClaimDetailScreen payments', () => {
+  const pay = `${P}/payment-claims/{claimId}/payments`;
+  const scheduled = () => ({
+    ...detail({ status: 'scheduled' }),
+    schedule: {
+      id: 'psc_1',
+      scheduledAmount: '28500.00',
+      withheldAmount: '0.00',
+      overallReason: null,
+      lineReasons: [],
+      issuedAt: '2026-10-20T01:00:00Z',
+      issuedWithinTime: true,
+    },
+  });
+  const summary = (payments: object[]) => ({
+    claimId: 'pcl_1',
+    payments,
+    amountDue: '31350.00',
+    paid: payments.length ? '10000.00' : '0.00',
+    outstanding: payments.length ? '21350.00' : '31350.00',
+  });
+  const one = {
+    id: 'pay_1',
+    paidOn: '2026-10-22',
+    amount: '10000.00',
+    reference: 'REM-9',
+    source: 'manual',
+    reversesPaymentId: null,
+    recordedAt: '2026-10-22T01:00:00Z',
+  };
+
+  it('checks the form, records a payment and reverses one', async () => {
+    fake.on('GET', `${P}/payment-claims/{claimId}`, scheduled);
+    fake.on('GET', pay, () => summary([one]));
+    fake.on('POST', pay, () => summary([one]));
+    fake.on('POST', `${pay}/{paymentId}/reverse`, () => summary([]));
+    const user = userEvent.setup();
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    expect(await screen.findByText('REM-9')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Record payment' }));
+    expect(await screen.findByText(/Enter the amount paid/)).toBeTruthy();
+    expect(fake.callsTo('POST', pay)).toHaveLength(0);
+    await enterText(user, screen.getByLabelText(/Amount paid/), '10000.00');
+    await user.click(screen.getByRole('button', { name: 'Record payment' }));
+    expect(await screen.findByText(/Enter a reference/)).toBeTruthy();
+    await enterText(user, screen.getByLabelText('Reference'), 'REM-9');
+    await user.click(screen.getByRole('button', { name: 'Record payment' }));
+    await waitFor(() => expect(fake.callsTo('POST', pay)).toHaveLength(1));
+    expect(fake.callsTo('POST', pay)[0]!.init.body).toEqual({
+      paidOn: '2026-10-23',
+      amount: '10000.00',
+      reference: 'REM-9',
+    });
+    await user.click(screen.getByRole('button', { name: 'Reverse payment REM-9' }));
+    await waitFor(() => expect(fake.callsTo('POST', `${pay}/{paymentId}/reverse`)).toHaveLength(1));
+  });
+
+  it('shows no payments before a schedule is issued', async () => {
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => detail());
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    await screen.findByText('Rules not yet legally reviewed');
+    expect(screen.queryByRole('button', { name: 'Record payment' })).toBeNull();
+  });
+});
+
 describe('ContractDetailScreen variations', () => {
   it('approves a submitted variation and needs a reason to reject one', async () => {
     fake.on('POST', `${P}/variations/{variationId}/approve`, () =>

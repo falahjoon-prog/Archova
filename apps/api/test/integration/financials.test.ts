@@ -1425,3 +1425,76 @@ describe('Direct costs', () => {
     expect((await s.sub.browser.post(`${s.base}/direct-costs`, body)).statusCode).toBe(403);
   });
 });
+
+describe('Payments recorded by hand', () => {
+  it('records and reverses payments against a claim, and marks it paid once the amount due is met', async () => {
+    const s = await setup('NSW');
+    const made = await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId));
+    const { contract, sov } = made.json();
+    const claim = await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: sov[0].id, thisClaim: '30000.00' }],
+    });
+    const claimId = claim.json().claim.id as string;
+    const url = `${s.base}/payment-claims/${claimId}/payments`;
+    const pay = { paidOn: '2026-11-03', amount: '10000.00', reference: 'EFT 1' };
+
+    // No schedule yet: nothing to pay against.
+    const early = await s.pm.browser.post(url, pay);
+    expect(early.statusCode).toBe(409);
+    expect(early.json().code).toBe('financials.payment.no_schedule');
+
+    const scheduled = await s.pm.browser.post(`${s.base}/payment-claims/${claimId}/schedule`, {
+      scheduledAmount: '28500.00',
+      overallReason: 'Retention held.',
+    });
+    expect(scheduled.statusCode).toBe(201);
+
+    // 28,500 scheduled plus 10% GST is 31,350 due.
+    const first = await s.pm.browser.post(url, pay);
+    expect(first.statusCode).toBe(201);
+    expect(first.json()).toMatchObject({
+      amountDue: '31350.00',
+      paid: '10000.00',
+      outstanding: '21350.00',
+    });
+    expect(
+      (await s.pm.browser.get(`${s.base}/payment-claims/${claimId}`)).json().claim.status,
+    ).toBe('scheduled');
+
+    // Bad input is refused.
+    expect((await s.pm.browser.post(url, { ...pay, amount: '0.00' })).statusCode).toBe(422);
+    expect((await s.pm.browser.post(url, { ...pay, paidOn: '2099-01-01' })).statusCode).toBe(422);
+    expect((await s.pm.browser.post(url, { ...pay, reference: '  ' })).statusCode).toBe(422);
+
+    const rest = await s.pm.browser.post(url, { ...pay, amount: '21350.00', reference: 'EFT 2' });
+    expect(rest.json()).toMatchObject({ paid: '31350.00', outstanding: '0.00' });
+    expect(
+      (await s.pm.browser.get(`${s.base}/payment-claims/${claimId}`)).json().claim.status,
+    ).toBe('paid');
+
+    // Reversing the second payment reopens the claim; a payment reverses once, and a reversal does not.
+    const second = rest.json().payments[1] as { id: string };
+    const reversed = await s.pm.browser.post(`${url}/${second.id}/reverse`, {});
+    expect(reversed.statusCode).toBe(200);
+    expect(reversed.json()).toMatchObject({ paid: '10000.00', outstanding: '21350.00' });
+    expect(
+      (await s.pm.browser.get(`${s.base}/payment-claims/${claimId}`)).json().claim.status,
+    ).toBe('scheduled');
+    const twice = await s.pm.browser.post(`${url}/${second.id}/reverse`, {});
+    expect(twice.json().code).toBe('financials.payment.not_reversible');
+    const reversal = reversed.json().payments[2] as { id: string; amount: string };
+    expect(reversal.amount).toBe('-21350.00');
+    expect((await s.pm.browser.post(`${url}/${reversal.id}/reverse`, {})).statusCode).toBe(409);
+
+    // The payee sees the payments on their own claim and cannot record any.
+    const seen = await s.sub.browser.get(url);
+    expect(seen.statusCode).toBe(200);
+    expect(seen.json().payments).toHaveLength(3);
+    expect((await s.sub.browser.post(url, pay)).statusCode).toBe(403);
+    const summary = await s.sub.browser.get(`${s.base}/contracts/${contract.id}/payment-summary`);
+    expect(summary.json()).toMatchObject({ totalPaid: '10000.00' });
+  });
+});

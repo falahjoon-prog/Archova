@@ -34,6 +34,9 @@ export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
 export type RecordClaimStatement = S['RecordClaimStatementRequest'];
+export type ClaimPayments = S['ClaimPayments'];
+export type ClaimPayment = S['ClaimPayment'];
+export type RecordClaimPayment = S['RecordClaimPaymentRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -246,6 +249,37 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/payment-claims/{claimId}/schedule`, {
           params: { path: { orgId, projectId, claimId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async payments(projectId: string, claimId: string): Promise<ClaimPayments> {
+      return unwrap(
+        await api.GET(`${P}/payment-claims/{claimId}/payments`, {
+          params: { path: { orgId, projectId, claimId } },
+        }),
+      );
+    },
+    async recordPayment(
+      projectId: string,
+      claimId: string,
+      body: RecordClaimPayment,
+    ): Promise<ClaimPayments> {
+      return unwrap(
+        await api.POST(`${P}/payment-claims/{claimId}/payments`, {
+          params: { path: { orgId, projectId, claimId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async reversePayment(
+      projectId: string,
+      claimId: string,
+      paymentId: string,
+    ): Promise<ClaimPayments> {
+      return unwrap(
+        await api.POST(`${P}/payment-claims/{claimId}/payments/{paymentId}/reverse`, {
+          params: { path: { orgId, projectId, claimId, paymentId } },
+          body: {},
         }),
       );
     },
