@@ -37,7 +37,7 @@ async function seed() {
       [companyB, 'Painters'],
     ] as const)
       await s.tx.execute(
-        sql`insert into platform.companies (id, org_id, name) values (${id}, ${orgId}, ${name})`,
+        sql`insert into platform.companies (id, org_id, name, type) values (${id}, ${orgId}, ${name}, 'subcontractor')`,
       );
     for (const [u, c] of [
       [a1, companyA],
@@ -54,14 +54,29 @@ async function seed() {
           values (${incidentId}, ${orgId}, ${projectId}, 3, 'Fall', 'injury', now())`,
     );
   });
-  const action = (o: { n: number; company?: string; user?: string; createdBy?: string }) =>
-    database.withTenantTx(jobContext(orgId, 'seed'), (s) =>
+  const action = async (o: {
+    n: number;
+    company?: string;
+    user?: string;
+    createdBy?: string;
+    dueDate?: string;
+  }) => {
+    const id = uuidv7();
+    await database.withTenantTx(jobContext(orgId, 'seed'), (s) =>
       s.tx.execute(
-        sql`insert into safety.incident_actions (id, org_id, project_id, incident_id, number, title, assignee_company_id, assignee_user_id, created_by)
-            values (${uuidv7()}, ${orgId}, ${projectId}, ${incidentId}, ${o.n}, ${'Action ' + o.n}, ${o.company ?? null}, ${o.user ?? null}, ${o.createdBy ?? null})`,
+        sql`insert into safety.incident_actions (id, org_id, project_id, incident_id, number, title, assignee_company_id, assignee_user_id, created_by, due_date)
+            values (${id}, ${orgId}, ${projectId}, ${incidentId}, ${o.n}, ${'Action ' + o.n}, ${o.company ?? null}, ${o.user ?? null}, ${o.createdBy ?? null}, ${o.dueDate ?? null})`,
       ),
     );
-  return { orgId, incidentId, companyA, a1, a2, b1, raiser, action };
+    return id;
+  };
+  const reassign = (actionId: string, user: string) =>
+    database.withTenantTx(jobContext(orgId, 'seed'), (s) =>
+      s.tx.execute(
+        sql`update safety.incident_actions set assignee_user_id = ${user}, assignee_company_id = null, updated_at = now() where id = ${actionId}`,
+      ),
+    );
+  return { orgId, incidentId, companyA, a1, a2, b1, raiser, action, reassign };
 }
 
 const run = (orgId: string) =>
@@ -97,6 +112,45 @@ describe('safety.incident-action-notices', () => {
     expect(await inbox(t.orgId, t.a2)).toHaveLength(1);
     expect(await inbox(t.orgId, t.b1)).toHaveLength(1);
     expect(await inbox(t.orgId, t.raiser)).toHaveLength(0);
+
+    expect((await run(t.orgId)).created).toBe(0);
+  });
+
+  it('tells the new holder when an action is handed on, and not the old one again', async () => {
+    const t = await seed();
+    const id = await t.action({ n: 1, user: t.a1 });
+    expect((await run(t.orgId)).created).toBe(1);
+    await t.reassign(id, t.b1);
+
+    expect((await run(t.orgId)).created).toBe(1);
+    expect(await inbox(t.orgId, t.b1)).toEqual([
+      {
+        title: 'INC-0003: corrective action reassigned to you',
+        body: 'Action 1.',
+        entity_type: 'incident',
+      },
+    ]);
+    expect(await inbox(t.orgId, t.a1)).toHaveLength(1);
+    expect((await run(t.orgId)).created).toBe(0);
+  });
+
+  it('flags an open action past its due date to its holder and its raiser, once per due date', async () => {
+    const t = await seed();
+    const daysAgo = (n: number) =>
+      new Date(NOW.getTime() - n * 86_400_000).toISOString().slice(0, 10);
+    await t.action({ n: 1, user: t.a1, createdBy: t.raiser, dueDate: daysAgo(3) });
+    // Not due yet, and long past: neither is flagged as overdue.
+    await t.action({ n: 2, user: t.b1, createdBy: t.raiser, dueDate: daysAgo(-5) });
+    await t.action({ n: 3, user: t.b1, createdBy: t.raiser, dueDate: daysAgo(60) });
+
+    await run(t.orgId);
+    const mine = (u: string) => inbox(t.orgId, u).then((r) => r.map((x) => x.title));
+    expect(await mine(t.a1)).toEqual([
+      'INC-0003: corrective action assigned to you',
+      'INC-0003: corrective action overdue',
+    ]);
+    expect(await mine(t.raiser)).toEqual(['INC-0003: corrective action overdue']);
+    expect((await mine(t.b1)).filter((x) => x.includes('overdue'))).toHaveLength(0);
 
     expect((await run(t.orgId)).created).toBe(0);
   });

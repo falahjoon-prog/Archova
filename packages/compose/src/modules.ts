@@ -404,6 +404,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       documents.api.drawingsSyncSource,
       workforce.api.syncSource,
       quality.api.syncSource,
+      safety.api.syncSource,
     ],
     commands: [
       ...defects.api.syncCommands,

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button, Dialog, Select, TextField, Textarea } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import type { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { useSourceOptions } from '../hooks/useIncidents';
 import { isoToProjectLocal, nowProjectLocal, projectLocalToIso } from '../lib/time';
 import {
   ACTION_LABELS,
@@ -370,6 +371,11 @@ export function ActionDialog({
   const [description, setDescription] = useState('');
   const [company, setCompany] = useState('');
   const [due, setDue] = useState('');
+  const [sourceType, setSourceType] = useState<'' | 'inspection' | 'observation'>('');
+  const [sourceId, setSourceId] = useState('');
+  const options = useSourceOptions(sourceType !== '');
+  const choices = (options.data ?? []).filter((o) => o.type === sourceType);
+  const source = sourceType && sourceId ? { type: sourceType, id: sourceId } : undefined;
   return (
     <Dialog
       open
@@ -388,6 +394,7 @@ export function ActionDialog({
                 description: description.trim() || undefined,
                 assigneeCompanyId: company || undefined,
                 dueDate: due || undefined,
+                ...(source ? { source } : {}),
               })
             }
           >
@@ -418,6 +425,29 @@ export function ActionDialog({
           value={due}
           onChange={(e) => setDue(e.target.value)}
         />
+        <Select
+          label="Raised from"
+          value={sourceType}
+          placeholder="Not linked"
+          options={[
+            { value: 'inspection', label: 'An inspection' },
+            { value: 'observation', label: 'An observation' },
+          ]}
+          onChange={(e) => {
+            setSourceType(e.target.value as '' | 'inspection' | 'observation');
+            setSourceId('');
+          }}
+        />
+        {sourceType ? (
+          <Select
+            label={sourceType === 'inspection' ? 'Inspection' : 'Observation'}
+            value={sourceId}
+            placeholder={options.isPending ? 'Loading…' : 'Choose one'}
+            options={choices.map((o) => ({ value: o.id, label: o.label }))}
+            onChange={(e) => setSourceId(e.target.value)}
+          />
+        ) : null}
+        <ErrorAlert error={options.error} title="We couldn't load the list" />
         <ErrorAlert error={error} title="We couldn't add the action" />
       </div>
     </Dialog>

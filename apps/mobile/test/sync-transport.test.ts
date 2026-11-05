@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { ApiClient } from '@archova/api-client';
 import { classifyFailure, SyncHttpError, projectScope, ORG_SCOPE } from '@archova/sync-core';
 import { createSyncTransport } from '../lib/sync/transport';
-import { deviceScopes } from '../lib/sync/scopes';
+import { OFFLINE_MODULES, deviceScopes } from '../lib/sync/scopes';
 
 type Call = { method: 'GET' | 'POST'; path: string; init: unknown };
 
@@ -160,7 +160,7 @@ describe('deviceScopes', () => {
     const scopes = await deviceScopes(api, 'org1');
     expect(scopes).toContainEqual(ORG_SCOPE);
     expect(scopes).toContainEqual(projectScope('p2', 'diary'));
-    expect(scopes).toHaveLength(1 + 2 * 5);
+    expect(scopes).toHaveLength(1 + 2 * OFFLINE_MODULES.length);
   });
 
   it('leaves out projects removed from the device', async () => {
@@ -169,6 +169,6 @@ describe('deviceScopes', () => {
     );
     const scopes = await deviceScopes(api, 'org1', async () => new Set(['p1']));
     expect(scopes).not.toContainEqual(projectScope('p1', 'diary'));
-    expect(scopes).toHaveLength(1 + 5);
+    expect(scopes).toHaveLength(1 + OFFLINE_MODULES.length);
   });
 });

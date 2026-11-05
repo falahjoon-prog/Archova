@@ -3151,6 +3151,7 @@ export type IncidentEvent = z.infer<typeof IncidentEventSchema>;
 
 export const IncidentDetailSchema = z.object({
   "incident": IncidentSchema,
+  "photoFileIds": z.array(z.string()),
   "people": z.array(IncidentPersonSchema),
   "injuryHidden": z.boolean(),
   "actions": z.array(IncidentActionSchema),

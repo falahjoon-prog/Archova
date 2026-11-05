@@ -88,6 +88,10 @@ function RootNavigator() {
           options={{ headerShown: true, title: 'Photo' }}
         />
         <Stack.Screen
+          name="project/[projectId]/incidents/[incidentId]/photo"
+          options={{ headerShown: true, title: 'Incident photo' }}
+        />
+        <Stack.Screen
           name="assistant"
           options={{ presentation: 'modal', headerShown: true, title: 'Ask Nova' }}
         />

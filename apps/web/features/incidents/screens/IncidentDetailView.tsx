@@ -148,10 +148,25 @@ export function IncidentDetailView({ id }: { id: string }) {
               <li key={p.id}>
                 {p.personName} · {ROLE_LABELS[p.role]}
                 {p.companyId ? ` · ${dir.companyName(p.companyId)}` : ''}
+                {p.injury ? (
+                  <span className="u-caption">
+                    {' '}
+                    ·{' '}
+                    {Object.values(p.injury)
+                      .filter((v) => typeof v === 'string' && v)
+                      .join(' · ')}
+                  </span>
+                ) : null}
               </li>
             ))}
           </ul>
         )}
+        {d.photoFileIds.length > 0 ? (
+          <p className="u-caption">
+            {d.photoFileIds.length} {d.photoFileIds.length === 1 ? 'photo' : 'photos'} taken at the
+            scene on a phone.
+          </p>
+        ) : null}
         {d.injuryHidden ? (
           <p className="u-muted">
             Injury details are only shown to people who may see health information.

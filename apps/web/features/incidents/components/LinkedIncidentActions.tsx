@@ -13,12 +13,23 @@ import { CORRECTIVE_TONE } from '../screens/tones';
  * The corrective actions an incident raised from this inspection or observation. Shows nothing when there are
  * none, or when the caller can't read incidents, so it can sit on any record screen.
  */
-export function LinkedIncidentActions({ source }: { source: ActionSource }) {
+export function LinkedIncidentActions({
+  source,
+  showEmpty = false,
+}: {
+  source: ActionSource;
+  /** Say so when there are none, for a dialog that would otherwise open blank. */
+  showEmpty?: boolean;
+}) {
   const org = useCurrentOrg();
   const project = useCurrentProject();
   const q = useActionsFromSource(source);
   const rows = q.data ?? [];
-  if (rows.length === 0) return null;
+  if (q.isPending && showEmpty) return <p className="u-muted">Loading…</p>;
+  if (rows.length === 0)
+    return showEmpty ? (
+      <p className="u-muted">No incident corrective actions were raised from this.</p>
+    ) : null;
   return (
     <section aria-labelledby="linked-incident-actions" className="stack">
       <h2 id="linked-incident-actions">Corrective actions from incidents</h2>

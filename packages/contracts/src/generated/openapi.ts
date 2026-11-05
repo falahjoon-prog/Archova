@@ -15185,6 +15185,8 @@ export interface components {
         };
         IncidentDetail: {
             incident: components["schemas"]["Incident"];
+            /** @description Photos taken at the scene (uploaded from the phone), oldest first. */
+            photoFileIds: string[];
             people: components["schemas"]["IncidentPerson"][];
             /** @description True when injury details are withheld from the caller. */
             injuryHidden: boolean;

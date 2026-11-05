@@ -22442,9 +22442,14 @@ components:
         message: { type: string }
     IncidentDetail:
       type: object
-      required: [incident, people, injuryHidden, actions, events, closeBlockers, canManage]
+      required:
+        [incident, people, injuryHidden, actions, events, closeBlockers, canManage, photoFileIds]
       properties:
         incident: { $ref: '#/components/schemas/Incident' }
+        photoFileIds:
+          type: array
+          description: Photos taken at the scene (uploaded from the phone), oldest first.
+          items: { type: string }
         people:
           type: array
           items: { $ref: '#/components/schemas/IncidentPerson' }

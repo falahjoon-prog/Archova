@@ -18,6 +18,7 @@ import {
 } from '@archova/ui';
 import { ObservationsIcon, Plus } from '@archova/ui/icons';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { LinkedIncidentActions } from '@/features/incidents';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
@@ -49,7 +50,10 @@ const STATUS_TONE: Record<ObservationStatus, StatusTone> = {
 };
 
 type Dialogs =
-  { kind: 'new' } | { kind: 'act'; observation: Observation; action: ObservationAction } | null;
+  | { kind: 'new' }
+  | { kind: 'act'; observation: Observation; action: ObservationAction }
+  | { kind: 'linked'; observation: Observation }
+  | null;
 
 /** The observation register: safety, quality, environmental and commercial observations raised on site. */
 export function ObservationsScreen() {
@@ -150,6 +154,13 @@ export function ObservationsScreen() {
                 {ACTION_LABELS[a]}
               </Button>
             ))}
+          <Button
+            variant="tertiary"
+            aria-label={`Corrective actions from ${o.numberLabel}`}
+            onClick={() => setDialog({ kind: 'linked', observation: o })}
+          >
+            Linked actions
+          </Button>
         </span>
       ),
     },
@@ -228,6 +239,23 @@ export function ObservationsScreen() {
           onClose={() => setDialog(null)}
           onSave={(input) => m.create.mutate(input, { onSuccess: () => setDialog(null) })}
         />
+      ) : null}
+      {dialog?.kind === 'linked' ? (
+        <Dialog
+          open
+          onClose={() => setDialog(null)}
+          title={`Corrective actions from ${dialog.observation.numberLabel}`}
+          footer={
+            <Button variant="secondary" onClick={() => setDialog(null)}>
+              Close
+            </Button>
+          }
+        >
+          <LinkedIncidentActions
+            showEmpty
+            source={{ type: 'observation', id: dialog.observation.id }}
+          />
+        </Dialog>
       ) : null}
       {dialog?.kind === 'act' ? (
         <ActionDialog
