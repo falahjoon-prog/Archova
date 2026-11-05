@@ -34,6 +34,7 @@ const MODULE_OF: Record<string, string> = {
   diary_delivery: 'diary',
   diary_delay: 'diary',
   inspection: 'quality',
+  inspection_template: 'quality',
   drawing_sheet: 'drawings',
   drawing_revision: 'drawings',
   drawing_markup: 'drawings',

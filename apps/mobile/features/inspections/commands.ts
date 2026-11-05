@@ -12,9 +12,11 @@ import {
   type ItemSpec,
   type ResponseState,
 } from '@archova/domain';
+import { encodeId, uuidv7 } from '@archova/domain';
 import type { SqliteSyncStore } from '../../lib/db/sync-store';
 
 export const INSPECTION_ENTITY = 'inspection';
+export const TEMPLATE_ENTITY = 'inspection_template';
 
 export interface LocalItem extends ItemSpec {
   section: string;
@@ -152,7 +154,7 @@ export async function saveAnswer(
           },
         ],
       },
-      dependsOn: [],
+      dependsOn: await waitingFor(store, inspection.id),
     },
   );
   return { ok: true, value: next };
@@ -192,7 +194,7 @@ export async function submitInspection(
       baseVersion: input.version,
       clientAt: input.clientAt,
       payload: { signedByName: name },
-      dependsOn: [],
+      dependsOn: await waitingFor(store, inspection.id),
     },
   );
   return { ok: true, value: next };
@@ -204,3 +206,97 @@ export const statusLabel: Record<InspectionStatus, string> = {
   submitted: 'Submitted',
   closed: 'Closed',
 };
+
+/** A published checklist as pulled: the template's fields with its items alongside. */
+export interface LocalTemplate {
+  id: string;
+  projectId: string;
+  name: string;
+  type: string;
+  version: number;
+  published: boolean;
+  items: LocalItem[];
+}
+
+/** The checklists an inspector can start from: published only, and only the latest version of each name. */
+export function latestTemplates<T extends { name: string; version: number; published: boolean }>(
+  templates: readonly T[],
+): T[] {
+  const best = new Map<string, T>();
+  for (const t of templates) {
+    if (!t.published) continue;
+    const key = t.name.trim().toLowerCase();
+    const have = best.get(key);
+    if (!have || t.version > have.version) best.set(key, t);
+  }
+  return [...best.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function listTemplates(store: SqliteSyncStore, projectId: string) {
+  const rows = await store.listRecords<LocalTemplate>(TEMPLATE_ENTITY, projectId);
+  return latestTemplates(rows.map((r) => ({ ...r.data, id: r.id })));
+}
+
+export interface StartInspectionInput {
+  template: LocalTemplate;
+  title?: string;
+  location?: string;
+  mutationId: string;
+  clientAt: string;
+}
+
+/**
+ * Starts an inspection from a published checklist with no signal: it is on the device at once, ready to answer, and
+ * `quality.startInspection` creates it on the server under the same id (the server gives the number later).
+ */
+export async function startInspection(
+  store: SqliteSyncStore,
+  input: StartInspectionInput,
+): Promise<InspectionResult<LocalInspection>> {
+  const { template } = input;
+  if (!template.published || template.items.length === 0)
+    return { ok: false, code: 'inspection.not_editable', message: 'This checklist has no items.' };
+  const title = input.title?.trim() || template.name;
+  const location = input.location?.trim() || null;
+  const inspection: LocalInspection = withDerived(
+    {
+      id: encodeId('inspection', uuidv7()),
+      projectId: template.projectId,
+      numberLabel: 'New',
+      title,
+      location,
+      status: 'scheduled',
+      completedAt: null,
+      signedBy: null,
+      items: template.items,
+      responses: [],
+      missingRequiredItemIds: [],
+      failedItemIds: [],
+    },
+    [],
+  );
+  await store.write(
+    { entityType: INSPECTION_ENTITY, id: inspection.id, data: inspection },
+    {
+      mutationId: input.mutationId,
+      command: 'quality.startInspection',
+      projectId: inspection.projectId,
+      baseVersion: null,
+      clientAt: input.clientAt,
+      payload: {
+        templateId: template.id,
+        title,
+        ...(location ? { location } : {}),
+      },
+      dependsOn: [],
+    },
+  );
+  return { ok: true, value: inspection };
+}
+
+/** Commands for this inspection still waiting to be sent, so a later answer is applied after them. */
+async function waitingFor(store: SqliteSyncStore, inspectionId: string): Promise<string[]> {
+  return (await store.listOutbox())
+    .filter((e) => e.entityType === INSPECTION_ENTITY && e.entityId === inspectionId)
+    .map((e) => e.mutationId);
+}
