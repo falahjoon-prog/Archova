@@ -41,6 +41,7 @@ type Operation = {
   'x-permission'?: string;
   'x-internal'?: boolean;
   'x-flag'?: string;
+  'x-rate-limit'?: number;
 };
 type Doc = {
   paths: Record<string, Record<string, Operation | Parameter[]>>;
@@ -226,6 +227,7 @@ async function main() {
           `    permission: ${JSON.stringify(op['x-permission'] ?? null)},\n` +
           `    internal: ${op['x-internal'] ? 'true' : 'false'},\n` +
           (op['x-flag'] ? `    flag: ${JSON.stringify(op['x-flag'])},\n` : '') +
+          (op['x-rate-limit'] ? `    rateLimit: ${Number(op['x-rate-limit'])},\n` : '') +
           `    contentType: ${JSON.stringify(contentType)},\n` +
           `    params: ${pathZ ? `${P}Params` : 'null'},\n` +
           `    query: ${queryZ ? `${P}Query` : 'null'},\n` +
@@ -245,6 +247,8 @@ async function main() {
     '  internal: boolean;',
     '  /** Feature flag that must be on for the org (x-flag); absent for ungated operations. */',
     '  flag?: string;',
+    '  /** Requests per minute for one user in one org (x-rate-limit), counted for every caller; absent when unlimited. */',
+    '  rateLimit?: number;',
     '  contentType: string | null;',
     '  params: z.ZodTypeAny | null;',
     '  query: z.ZodTypeAny | null;',

@@ -2060,6 +2060,8 @@ export interface OperationDef {
   internal: boolean;
   /** Feature flag that must be on for the org (x-flag); absent for ungated operations. */
   flag?: string;
+  /** Requests per minute for one user in one org (x-rate-limit), counted for every caller; absent when unlimited. */
+  rateLimit?: number;
   contentType: string | null;
   params: z.ZodTypeAny | null;
   query: z.ZodTypeAny | null;
@@ -5515,6 +5517,7 @@ export const operations = {
     permission: "workforce.wallet.request",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 20,
     contentType: "application/json",
     params: CreateComplianceAccessRequestParams,
     query: null,
@@ -5541,6 +5544,7 @@ export const operations = {
     permission: "workforce.wallet.manage",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 10,
     contentType: "application/json",
     params: PreviewComplianceShareCodeParams,
     query: null,
@@ -5567,6 +5571,7 @@ export const operations = {
     permission: "workforce.wallet.manage",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 10,
     contentType: "application/json",
     params: AcceptComplianceGrantParams,
     query: null,
@@ -5606,6 +5611,7 @@ export const operations = {
     permission: "workforce.wallet.read_granted",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 30,
     contentType: null,
     params: ListGrantedWalletsParams,
     query: null,
@@ -5619,6 +5625,7 @@ export const operations = {
     permission: "workforce.wallet.read_granted",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 30,
     contentType: null,
     params: ListGrantedWalletDocumentsParams,
     query: ListGrantedWalletDocumentsQuery,
@@ -5632,6 +5639,7 @@ export const operations = {
     permission: "workforce.wallet.read_granted",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 30,
     contentType: "application/json",
     params: CreateComplianceSnapshotParams,
     query: null,
