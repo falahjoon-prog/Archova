@@ -3878,6 +3878,22 @@ export const InspectionTemplateListSchema = z.object({
 });
 export type InspectionTemplateList = z.infer<typeof InspectionTemplateListSchema>;
 
+export const IntegrationCatalogueEntrySchema = z.object({
+  "key": z.string(),
+  "name": z.string(),
+  "category": z.enum(["accounting", "files", "developer"]),
+  "summary": z.string(),
+  "status": z.enum(["connected", "available", "needs_attention", "not_configured", "coming_soon"]),
+  "detail": z.string().nullable(),
+  "manage": z.enum(["accounting", "folders", "api"]).nullable(),
+});
+export type IntegrationCatalogueEntry = z.infer<typeof IntegrationCatalogueEntrySchema>;
+
+export const IntegrationCatalogueSchema = z.object({
+  "data": z.array(IntegrationCatalogueEntrySchema),
+});
+export type IntegrationCatalogue = z.infer<typeof IntegrationCatalogueSchema>;
+
 export const InvitePackageRequestSchema = z.object({
   "companyIds": z.array(CompanyRefSchema).min(1).max(50),
   "overrideReason": z.string().min(1).max(500).optional(),

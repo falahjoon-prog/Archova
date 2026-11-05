@@ -1203,6 +1203,9 @@ export const ResolveAccountingSyncIssueParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
 });
+export const GetIntegrationsCatalogueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListWebhooksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5563,6 +5566,18 @@ export const operations = {
     internal: true,
     contentType: null,
     params: ResolveAccountingSyncIssueParams,
+    query: null,
+    body: null,
+  },
+  getIntegrationsCatalogue: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/integrations/catalogue',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.marketplace.read",
+    internal: true,
+    contentType: null,
+    params: GetIntegrationsCatalogueParams,
     query: null,
     body: null,
   },
