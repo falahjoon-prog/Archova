@@ -15084,6 +15084,22 @@ components:
               days: { type: [integer, 'null'] }
               dayType: { type: string, enum: [business, calendar, unclear] }
               source: { $ref: '#/components/schemas/ContractSourceRef' }
+        obligations:
+          type: array
+          description: Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed.
+          items:
+            type: object
+            required: [party, category, action, timing, source]
+            properties:
+              party: { type: string, enum: [builder, other_party, both, unclear] }
+              category:
+                type: string
+                enum: [payment, notice, insurance, security, reporting, programme, quality, other]
+              action: { type: string }
+              timing:
+                type: [string, 'null']
+                description: The contract's own words for when. Nova works out no dates.
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
         flags:
           type: array
           description: Highest severity first. Each cites its clause.
