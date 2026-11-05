@@ -466,6 +466,165 @@ describe('Contracts and payment claims (product/09)', () => {
   });
 });
 
+describe('Subcontractor payments and retention trust (D5)', () => {
+  it('shows the payee what is owed and paid, and records the trust account for staff only', async () => {
+    const s = await setup('QLD');
+    // $12M non-government QLD contract: over the $10M trust threshold.
+    const made = await s.pm.browser.post(`${s.base}/contracts`, {
+      kind: 'subcontract',
+      title: 'Services package',
+      payeeCompanyId: s.subCo.companyId,
+      originalValue: '12000000.00',
+      retentionPct: '5.00',
+      sov: [{ code: 'S1', description: 'Services', value: '12000000.00' }],
+    });
+    expect(made.statusCode).toBe(201);
+    const { contract, sov } = made.json();
+    const other = (await s.pm.browser.post(`${s.base}/contracts`, contractBody())).json();
+    const trustUrl = `${s.base}/contracts/${contract.id}/trust`;
+
+    expect((await s.pm.browser.get(trustUrl)).json()).toMatchObject({
+      requirement: { required: true, rulesReviewed: false },
+      account: null,
+      position: { status: 'not_set_up', balance: '0.00' },
+    });
+
+    const claim = await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-01T00:00:00Z',
+      statesAct: false,
+      lines: [{ sovItemId: sov[0].id, thisClaim: '1000000.00' }],
+    });
+    expect(claim.json().claim.retention).toBe('50000.00');
+    const claimId = claim.json().claim.id as string;
+    await s.pm.browser.post(`${s.base}/payment-claims/${claimId}/schedule`, {
+      scheduledAmount: '900000.00',
+      overallReason: 'Services are 90% complete.',
+    });
+
+    // Staff say where the trust sits; the retention taken by the claim is not yet in it.
+    const saved = await s.pm.browser.put(trustUrl, {
+      institution: 'Example Bank',
+      accountName: 'Services package retention trust',
+      accountLast4: '4321',
+      openedOn: '2026-10-01',
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().position).toMatchObject({
+      status: 'shortfall',
+      retentionWithheld: '50000.00',
+      shortfall: '50000.00',
+    });
+    expect((await s.pm.browser.put(trustUrl, { accountLast4: '12345' })).statusCode).toBe(422);
+
+    const move = (body: Record<string, unknown>) =>
+      s.pm.browser.post(`${trustUrl}/movements`, {
+        movedOn: '2026-10-20',
+        reference: 'TT-1',
+        ...body,
+      });
+    const dep = await move({ kind: 'deposit', amount: '50000.00' });
+    expect(dep.statusCode).toBe(201);
+    expect(dep.json().position).toMatchObject({
+      status: 'ok',
+      balance: '50000.00',
+      shortfall: '0.00',
+    });
+    const over = await move({ kind: 'release', amount: '60000.00' });
+    expect(over.statusCode).toBe(422);
+    expect(over.json().code).toBe('financials.trust.insufficient');
+    const rel = await move({ kind: 'release', amount: '20000.00', reference: 'TT-2' });
+    expect(rel.json().position).toMatchObject({
+      balance: '30000.00',
+      released: '20000.00',
+      requiredInTrust: '30000.00',
+    });
+
+    // An undo is a reversal of the release, and only once.
+    const releaseId = rel.json().movements.find((m: { kind: string }) => m.kind === 'release').id;
+    const undo = await move({
+      kind: 'reversal',
+      amount: '20000.00',
+      reversesMovementId: releaseId,
+    });
+    expect(undo.json().position).toMatchObject({ balance: '50000.00', released: '0.00' });
+    const twice = await move({
+      kind: 'reversal',
+      amount: '20000.00',
+      reversesMovementId: releaseId,
+    });
+    expect(twice.json().code).toBe('financials.trust.already_reversed');
+
+    // The payee sees the payment position and the trust, but cannot change either, or see another contract's.
+    expect((await s.sub.browser.get(trustUrl)).json().position.balance).toBe('50000.00');
+    expect((await s.sub.browser.put(trustUrl, { institution: 'Mine' })).statusCode).toBe(403);
+    expect(
+      (
+        await s.sub.browser.post(`${trustUrl}/movements`, {
+          kind: 'deposit',
+          amount: '1.00',
+          movedOn: '2026-10-20',
+          reference: 'x',
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect(
+      (await s.sub.browser.get(`${s.base}/contracts/${other.contract.id}/payment-summary`))
+        .statusCode,
+    ).toBe(404);
+    expect(
+      (await s.sub.browser.get(`${s.base}/contracts/${other.contract.id}/trust`)).statusCode,
+    ).toBe(404);
+
+    const before = await s.sub.browser.get(`${s.base}/contracts/${contract.id}/payment-summary`);
+    expect(before.statusCode).toBe(200);
+    // 900,000 scheduled plus 10% GST.
+    expect(before.json()).toMatchObject({
+      totalDue: '990000.00',
+      totalPaid: '0.00',
+      claims: [
+        {
+          number: 1,
+          scheduledAmount: '900000.00',
+          amountDue: '990000.00',
+          paid: '0.00',
+          outstanding: '990000.00',
+        },
+      ],
+      trust: { position: { status: 'ok' } },
+    });
+
+    // A payment pulled from the accounting system moves the position.
+    const ctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    const bill = await t.database.withTenantTx(ctx, (sc) =>
+      t.modules.financials.api.ledgerSource(sc, decodeId('paymentClaim', claimId)!),
+    );
+    await t.database.withTenantTx(ctx, (sc) =>
+      t.modules.financials.api.recordPayment(sc, {
+        localType: 'payment_schedule',
+        localId: bill!.localId,
+        paidOn: '2026-11-03',
+        amountCents: 40_000_000,
+        source: 'xero',
+        externalRef: 'pay-t1',
+        reference: 'PC-1-1',
+      }),
+    );
+    const after = await s.sub.browser.get(`${s.base}/contracts/${contract.id}/payment-summary`);
+    expect(after.json()).toMatchObject({
+      totalPaid: '400000.00',
+      claims: [{ paid: '400000.00', lastPaidOn: '2026-11-03', outstanding: '590000.00' }],
+    });
+  });
+});
+
 describe('Cost forecast', () => {
   it('projects cost to complete from contracts, claims and adjustments, for staff only', async () => {
     const s = await setup('NSW');

@@ -102,6 +102,7 @@ export const ID_PREFIXES = {
   prequalTemplate: 'pqt',
   prequalification: 'pqf',
   forecastAdjustment: 'fca',
+  trustMovement: 'tmv',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

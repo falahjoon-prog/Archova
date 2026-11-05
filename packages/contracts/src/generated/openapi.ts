@@ -6460,6 +6460,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/payment-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What has been claimed, scheduled, paid and is still owing on a contract, with the retention held for the payee.
+         * @description The subcontractor payment view. A subcontractor only reaches a contract where their company is the payee (CLM-AC11); anything else is a 404. Amounts due include GST at 10% of the scheduled amount.
+         */
+        get: operations["getContractPaymentSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Retention and project trust record for a contract, visible to the payee. */
+        get: operations["getContractTrust"];
+        /** Record which account holds the retention trust for the contract (builder staff). */
+        put: operations["saveContractTrust"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record money paid into or out of the trust account (append-only; undo with a reversal). */
+        post: operations["recordTrustMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations": {
         parameters: {
             query?: never;
@@ -10840,6 +10907,91 @@ export interface components {
             /** Format: date-time */
             decidedAt: string | null;
             decisionNote: string | null;
+        };
+        /** @enum {string} */
+        TrustStatus: "not_required" | "not_set_up" | "ok" | "shortfall";
+        /** @enum {string} */
+        TrustMovementKind: "deposit" | "interest" | "release" | "reversal";
+        TrustMovement: {
+            id: string;
+            kind: components["schemas"]["TrustMovementKind"];
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            /** Format: date */
+            movedOn: string;
+            reference: string;
+            note: string | null;
+            reversesMovementId: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ContractTrust: {
+            contractId: string;
+            requirement: {
+                required: boolean;
+                basis: string;
+                /** @description False until a lawyer has signed off the thresholds (compliance/01 §7). */
+                rulesReviewed: boolean;
+            };
+            account: {
+                governmentClient: boolean;
+                institution: string | null;
+                accountName: string | null;
+                accountLast4: string | null;
+                /** Format: date */
+                openedOn: string | null;
+            } | null;
+            position: {
+                status: components["schemas"]["TrustStatus"];
+                retentionWithheld: components["schemas"]["FinancialsMoney"];
+                released: components["schemas"]["FinancialsMoney"];
+                requiredInTrust: components["schemas"]["FinancialsMoney"];
+                balance: components["schemas"]["FinancialsMoney"];
+                shortfall: components["schemas"]["FinancialsMoney"];
+                interest: components["schemas"]["FinancialsMoney"];
+            };
+            movements: components["schemas"]["TrustMovement"][];
+        };
+        SaveContractTrustRequest: {
+            governmentClient?: boolean;
+            institution?: string | null;
+            accountName?: string | null;
+            accountLast4?: string | null;
+            /** Format: date */
+            openedOn?: string | null;
+        };
+        RecordTrustMovementRequest: {
+            kind: components["schemas"]["TrustMovementKind"];
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            movedOn: string;
+            reference: string;
+            note?: string;
+            reversesMovementId?: string;
+        };
+        PaymentSummaryClaim: {
+            claimId: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            status: string;
+            claimedTotal: components["schemas"]["FinancialsMoney"];
+            scheduledAmount: string | null;
+            amountDue: string | null;
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            /** Format: date */
+            lastPaidOn: string | null;
+            outstanding: string | null;
+            /** Format: date */
+            paymentDueOn: string | null;
+            overdue: boolean;
+        };
+        ContractPaymentSummary: {
+            contractId: string;
+            title: string;
+            claims: components["schemas"]["PaymentSummaryClaim"][];
+            totalDue: components["schemas"]["FinancialsMoney"];
+            totalPaid: components["schemas"]["FinancialsSignedMoney"];
+            trust: components["schemas"]["ContractTrust"];
         };
         VariationList: {
             data: components["schemas"]["Variation"][];
@@ -23435,6 +23587,116 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractPaymentSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractPaymentSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractTrust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveContractTrust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveContractTrustRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordTrustMovement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordTrustMovementRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractTrust"];
+                };
             };
             default: components["responses"]["Problem"];
         };

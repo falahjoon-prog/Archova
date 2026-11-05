@@ -2060,6 +2060,28 @@ export const DeleteForecastAdjustmentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "adjustmentId": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
 });
+export const GetContractPaymentSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const GetContractTrustParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractTrustParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractTrustBody = s.SaveContractTrustRequestSchema;
+export const RecordTrustMovementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const RecordTrustMovementBody = s.RecordTrustMovementRequestSchema;
 export const ListVariationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6774,6 +6796,54 @@ export const operations = {
     params: DeleteForecastAdjustmentParams,
     query: null,
     body: null,
+  },
+  getContractPaymentSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/payment-summary',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetContractPaymentSummaryParams,
+    query: null,
+    body: null,
+  },
+  getContractTrust: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetContractTrustParams,
+    query: null,
+    body: null,
+  },
+  saveContractTrust: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust',
+    module: "financials",
+    auth: "required",
+    permission: "financials.trust.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveContractTrustParams,
+    query: null,
+    body: SaveContractTrustBody,
+  },
+  recordTrustMovement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust/movements',
+    module: "financials",
+    auth: "required",
+    permission: "financials.trust.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordTrustMovementParams,
+    query: null,
+    body: RecordTrustMovementBody,
   },
   listVariations: {
     method: 'GET',
