@@ -59,7 +59,10 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
             ...(membership.kind === 'member'
-              ? [{ href: webRoutes.bidBoard(orgSlug), label: 'Bid board' }]
+              ? [
+                  { href: webRoutes.bidBoard(orgSlug), label: 'Bid board' },
+                  { href: webRoutes.prequalification(orgSlug), label: 'Prequalification' },
+                ]
               : []),
             { href: webRoutes.wallet(orgSlug), label: 'Compliance wallet' },
             { href: webRoutes.subcontractorWallets(orgSlug), label: 'Subcontractor wallets' },
