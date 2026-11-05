@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261105103000_workforce_wallet_evidence_retention_floor.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261105131500_workforce_wallet_evidence_retention_floor.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Sam's review of #316. (1) retain_until was whatever the inserting code said, and the access log row is inserted in
 -- the builder's transaction, so an insert with retain_until = now() would have made the evidence deletable at once.
 -- A BEFORE INSERT trigger now sets a floor (7 years for the access log, 10 for snapshots) that an insert can lengthen

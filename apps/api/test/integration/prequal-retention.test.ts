@@ -104,7 +104,7 @@ describe('prequalification retention', () => {
       sc.tx.execute(
         sql`select record_type, count(*)::int as n, bool_and(retain_until > now() + interval '6 years') as long_enough
             from shared.retention_ledger where category = 'prequalification_7y'
-            group by record_type order by record_type`,
+            group by record_type order by record_type collate "C"`,
       ),
     );
     expect(rows.rows).toEqual([
