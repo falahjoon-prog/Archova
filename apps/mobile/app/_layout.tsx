@@ -38,6 +38,7 @@ function RootNavigator() {
           name="project/[projectId]/index"
           options={{ headerShown: true, title: 'Project' }}
         />
+        <Stack.Screen name="offline" options={{ headerShown: true, title: 'Offline data' }} />
         <Stack.Screen
           name="project/[projectId]/diary"
           options={{ headerShown: true, title: 'Site diary' }}
@@ -61,6 +62,14 @@ function RootNavigator() {
         <Stack.Screen
           name="project/[projectId]/drawings/[revisionId]/index"
           options={{ headerShown: true, title: 'Drawing' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/inspections/index"
+          options={{ headerShown: true, title: 'Inspections' }}
+        />
+        <Stack.Screen
+          name="project/[projectId]/inspections/[inspectionId]/index"
+          options={{ headerShown: true, title: 'Inspection' }}
         />
         <Stack.Screen
           name="project/[projectId]/defects/index"

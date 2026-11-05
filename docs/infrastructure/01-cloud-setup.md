@@ -146,6 +146,7 @@ Edge rules that make the ADR hold:
 - **Separate WAF web ACLs**: the app ACL rate-limits per IP and session; the api ACL rate-limits per IP and per API key, with stricter body-size limits.
 - The mobile realtime path (`api.<domain>/realtime`) is my assumption from X3 (mobile sends its token in the first message); Ava to confirm.
 
+- **HSTS** is set at CloudFront, not in the app: `max-age=63072000; includeSubDomains; preload` on the app and api distributions (the tiles CDN uses 31536000). The header preloads nothing by itself. **Manual step, owned by john (Sam):** submitting `archova.com.au` to hstspreload.org is hard to undo, so it is never automated and waits for john's word, and only once every subdomain (staging and `console.` included) is confirmed HTTPS-only, because `includeSubDomains` covers them all.
 - Static web assets (`/_next/static`) are served from S3 through CloudFront with long cache lifetimes; only SSR and API traffic reaches the ALB.
 - Shield Standard is on by default; Shield Advanced is not needed before enterprise customers ask for it (~USD 3,000/month).
 - Custom domains for customers (e.g. `projects.bigbuilder.com.au`) are a later feature; CloudFront supports it with per-tenant ACM certificates.

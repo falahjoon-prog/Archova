@@ -8,10 +8,13 @@ import { Queue, Worker } from 'bullmq';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { loadAiWorkerConfig } from './ai/config';
 import { loadAiWorkerModules, reindexDepsFrom } from './ai/modules';
+import { createAccountingPush } from './ai/accounting';
+import { createAccountingPull } from './ai/accounting-pull';
 import { createReindex, REINDEX_QUEUE, type ReindexJob } from './ai/reindex';
 import { watchQueueAge } from './ai/queue-age';
 import { createRestamp } from './ai/restamp';
 import { createSweep, type SweepJob } from './ai/sweep';
+import { ACCOUNTING_PULL_JOB } from './ai/declaration';
 import {
   AI_MAINTENANCE_QUEUE,
   AI_SUBSCRIBERS_QUEUE,
@@ -36,7 +39,17 @@ async function main() {
   });
 
   const restamp = createRestamp({ ai: modules.ai.api, log: (msg, o) => log.info(o, msg) });
-  const subscribers = [reindex.subscriber, restamp.subscriber];
+  const accountingPush = createAccountingPush({
+    financials: modules.financials.api,
+    accounting: modules.integrations.api.accounting,
+    log: (msg, o) => log.info(o, msg),
+  });
+  const accountingPull = createAccountingPull({
+    financials: modules.financials.api,
+    accounting: modules.integrations.api.accounting,
+    log: (msg, o) => log.info(o, msg),
+  });
+  const subscribers = [reindex.subscriber, restamp.subscriber, accountingPush.subscriber];
 
   // Jobs here are queued with the `capped` backoff (queues.ts `ROUTED_RETRY`), which only these workers know.
   const settings = { backoffStrategy: cappedBackoff };
@@ -56,11 +69,12 @@ async function main() {
   });
   // The nightly backstop (the default worker fans it out per org): a project at a time, no model call.
   const sweep = createSweep({ ai: modules.ai.api, log: (msg, o) => log.info(o, msg) });
-  const sweeper = new Worker<SweepJob>(AI_MAINTENANCE_QUEUE, (job) => sweep(job.data), {
-    connection,
-    concurrency: 2,
-    settings,
-  });
+  const sweeper = new Worker<SweepJob>(
+    AI_MAINTENANCE_QUEUE,
+    (job) =>
+      job.data.job === ACCOUNTING_PULL_JOB ? accountingPull(job.data, database) : sweep(job.data),
+    { connection, concurrency: 2, settings },
+  );
   // Jeff alerts on this line: a re-stamp or drop that waits is stale access still searchable.
   const eventsQueue = new Queue(AI_SUBSCRIBERS_QUEUE, { connection });
   const stopWatching = watchQueueAge(eventsQueue, log);

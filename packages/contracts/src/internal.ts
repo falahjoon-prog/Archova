@@ -21,6 +21,8 @@ export const PLAN_MODULE_KEYS = [
   'submittals',
   'diary',
   'defects',
+  'quality',
+  'safety',
   'photos',
   'meetings',
   'correspondence',
@@ -33,7 +35,7 @@ export const PLAN_MODULE_KEYS = [
 ] as const;
 export type PlanModuleKey = (typeof PLAN_MODULE_KEYS)[number];
 
-export const REQUEST_KINDS = ['pricebook.publish', 'plan.publish'] as const;
+export const REQUEST_KINDS = ['pricebook.publish', 'plan.publish', 'refund'] as const;
 export type RequestKind = (typeof REQUEST_KINDS)[number];
 export const REQUEST_STATUSES = [
   'pending',
@@ -85,6 +87,18 @@ export const PlanDraftInput = z.object({
 export type PlanDraftInput = z.infer<typeof PlanDraftInput>;
 
 const orgRef = z.string().min(1).max(40);
+const ticketRef = z.string().trim().min(2).max(60);
+const orgOnly = z.object({ orgId: orgRef });
+const withTicket = { reason, ticketRef };
+
+/** A change to one flag. Orgs and cohorts take effect at once; all-orgs and percentage rollouts are Owner-only. */
+export const FlagChangeInput = z.discriminatedUnion('scope', [
+  z.object({ scope: z.literal('org'), orgId: orgRef, on: z.boolean(), reason }),
+  z.object({ scope: z.literal('cohort'), cohortId: uuid, on: z.boolean(), reason }),
+  z.object({ scope: z.literal('all'), on: z.boolean(), reason }),
+  z.object({ scope: z.literal('percent'), percent: z.number().int().min(0).max(100), reason }),
+]);
+export type FlagChangeInput = z.infer<typeof FlagChangeInput>;
 
 export type StaffDto = {
   id: string;
@@ -172,6 +186,153 @@ export type OrgListItemDto = {
   createdAt: string;
 };
 
+export const SUSPEND_CATEGORIES = ['abuse', 'fraud', 'security', 'legal_order'] as const;
+export type SuspendCategory = (typeof SUSPEND_CATEGORIES)[number];
+
+export const CREDIT_GRANT_KINDS = ['top_up', 'goodwill', 'promo'] as const;
+export type CreditGrantKind = (typeof CREDIT_GRANT_KINDS)[number];
+
+export type OrgAccountDto = {
+  plan: string;
+  state: string;
+  trialEndsAt: string | null;
+  trialExtendedDays: number;
+  suspended: { category: SuspendCategory; at: string } | null;
+};
+export type OrgActionKind =
+  | 'trial.extend'
+  | 'plan.change'
+  | 'suspend'
+  | 'reactivate'
+  | 'credits.grant'
+  | 'discount.add'
+  | 'discount.revoke'
+  | 'override.grant'
+  | 'override.revoke'
+  | 'refund';
+
+/** `limit.*` keys an override can replace. */
+export const OVERRIDE_LIMIT_KEYS = [
+  'limit.ai_credits',
+  'limit.seats',
+  'limit.active_projects',
+  'limit.storage_gb',
+] as const;
+
+export type OrgDiscountDto = {
+  id: string;
+  percent: number;
+  startsOn: string;
+  endsOn: string;
+  reason: string;
+  ticketRef: string;
+  /** Live while not revoked and not past `endsOn`. */
+  status: 'active' | 'ended' | 'revoked';
+};
+export type OrgOverrideDto = {
+  id: string;
+  kind: 'module' | 'limit';
+  key: string;
+  limitValue: number | null;
+  expiresAt: string;
+  reason: string;
+  ticketRef: string;
+  status: 'live' | 'expired' | 'revoked';
+};
+export type OrgRefundDto = {
+  id: string;
+  invoiceRef: string;
+  amountCents: number;
+  paidCents: number;
+  reason: string;
+  ticketRef: string;
+  status: 'pending_approval' | 'approved' | 'cancelled';
+  at: string;
+};
+
+export type OrgActionDto = {
+  id: string;
+  kind: OrgActionKind;
+  summary: string;
+  reason: string;
+  ticketRef: string;
+  by: string;
+  at: string;
+};
+/** What a customer's own admins see of a staff account action; no reason, no staff name. */
+export type StaffActionDto = {
+  id: string;
+  kind: OrgActionDto['kind'];
+  summary: string;
+  ticketRef: string;
+  at: string;
+};
+export type OrgDetailDto = OrgListItemDto & {
+  history: RequestDto[];
+  account: OrgAccountDto | null;
+  actions: OrgActionDto[];
+  discounts: OrgDiscountDto[];
+  overrides: OrgOverrideDto[];
+  refunds: OrgRefundDto[];
+};
+
+export type SupportGrantDto = {
+  id: string;
+  ticketRef: string;
+  level: 'view';
+  /** Null = the whole company; otherwise support can only see these projects. */
+  projectIds: string[] | null;
+  grantedBy: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  status: 'active' | 'expired' | 'revoked';
+};
+export type SupportSessionDto = {
+  id: string;
+  grantId: string;
+  staffName: string;
+  ticketRef: string;
+  startedAt: string;
+  expiresAt: string;
+  endedAt: string | null;
+  status: 'open' | 'ended' | 'expired' | 'revoked';
+};
+/** Names and status only; a support session never sees documents, files or claims. */
+/** A platform legal hold as staff see it. Customers never see these. */
+export type OrgHoldDto = {
+  id: string;
+  projectId: string | null;
+  reason: string;
+  ticketRef: string;
+  placedBy: string;
+  placedAt: string;
+  releasedBy: string | null;
+  releasedAt: string | null;
+  releaseReason: string | null;
+};
+export type SupportProjectDto = { id: string; name: string; number: string | null; status: string };
+export type SupportAccessDto = { grants: SupportGrantDto[]; sessions: SupportSessionDto[] };
+
+export type FlagOrgRef = { orgId: string; name: string };
+export type FlagDto = {
+  key: string;
+  description: string;
+  owner: string;
+  removeBy: string;
+  enabledForAll: boolean;
+  percent: number;
+  orgs: FlagOrgRef[];
+  cohorts: Array<{ id: string; name: string }>;
+  lastChange: { summary: string; reason: string; by: string; at: string } | null;
+};
+export type CohortDto = {
+  id: string;
+  name: string;
+  description: string;
+  members: FlagOrgRef[];
+};
+
 export type Page<T> = { items: T[]; nextCursor: string | null };
 
 const noParams = null;
@@ -244,6 +405,190 @@ export const internalOperations = {
     auth: 'staff',
     permission: 'backoffice.customers.read',
     params: z.object({ orgId: orgRef }),
+    query: noParams,
+    body: null,
+  }),
+  trialExtendOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/trial-extend',
+    auth: 'staff',
+    permission: 'backoffice.accounts.trial',
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ days: z.number().int().min(1).max(30), ...withTicket }),
+  }),
+  changeOrgPlan: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/change-plan',
+    auth: 'staff',
+    permission: 'backoffice.accounts.plan',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ planCode: z.string().min(1).max(30), ...withTicket }),
+  }),
+  suspendOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/suspend',
+    auth: 'staff',
+    permission: 'backoffice.accounts.suspend',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ category: z.enum(SUSPEND_CATEGORIES), ...withTicket }),
+  }),
+  reactivateOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/reactivate',
+    auth: 'staff',
+    permission: 'backoffice.accounts.suspend',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  grantOrgCredits: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/grant-credits',
+    auth: 'staff',
+    permission: 'backoffice.accounts.credits',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      credits: z.number().positive().max(1000),
+      kind: z.enum(CREDIT_GRANT_KINDS),
+      ...withTicket,
+    }),
+  }),
+  addOrgDiscount: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/discounts',
+    auth: 'staff',
+    permission: 'backoffice.accounts.discount',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      percent: z.number().int().min(1).max(100),
+      months: z.number().int().min(1).max(12),
+      ...withTicket,
+    }),
+  }),
+  revokeOrgDiscount: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/discounts/{discountId}/revoke',
+    auth: 'staff',
+    permission: 'backoffice.accounts.discount',
+    stepUp: true,
+    params: z.object({ orgId: orgRef, discountId: uuid }),
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  grantOrgOverride: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/overrides',
+    auth: 'staff',
+    permission: 'backoffice.accounts.override',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      kind: z.enum(['module', 'limit']),
+      key: z.string().trim().min(1).max(60),
+      limitValue: z.number().int().min(0).max(1_000_000_000).nullable().default(null),
+      days: z.number().int().min(1).max(365),
+      ...withTicket,
+    }),
+  }),
+  revokeOrgOverride: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/overrides/{overrideId}/revoke',
+    auth: 'staff',
+    permission: 'backoffice.accounts.override',
+    stepUp: true,
+    params: z.object({ orgId: orgRef, overrideId: uuid }),
+    query: noParams,
+    body: z.object(withTicket),
+  }),
+  refundOrg: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/actions/refunds',
+    auth: 'staff',
+    permission: 'backoffice.accounts.refund',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({
+      invoiceRef: z.string().trim().min(1).max(60),
+      /** Cents. Over 500000 (A$5,000) the refund waits for a second person. */
+      amountCents: z.number().int().min(1).max(100_000_000),
+      paidCents: z.number().int().min(1).max(100_000_000),
+      ...withTicket,
+    }),
+  }),
+  listOrgHolds: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/legal-holds',
+    auth: 'staff',
+    permission: 'backoffice.holds.manage',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  placeOrgHold: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/legal-holds',
+    auth: 'staff',
+    permission: 'backoffice.holds.manage',
+    params: orgOnly,
+    query: noParams,
+    // Omit projectId to hold the whole org. `ticketRef` is the request that asked for the hold.
+    body: z.object({ projectId: z.string().min(1).max(40).optional(), ...withTicket }),
+  }),
+  releaseOrgHold: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/legal-holds/{holdId}/release',
+    auth: 'staff',
+    permission: 'backoffice.holds.manage',
+    params: z.object({ orgId: orgRef, holdId: uuid }),
+    query: noParams,
+    body: z.object({ reason }),
+  }),
+  getOrgSupportAccess: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access',
+    auth: 'staff',
+    permission: 'backoffice.customers.read',
+    params: orgOnly,
+    query: noParams,
+    body: null,
+  }),
+  startSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    stepUp: true,
+    params: orgOnly,
+    query: noParams,
+    body: z.object({ ticketRef }),
+  }),
+  endSupportSession: op({
+    method: 'POST',
+    path: '/internal/v1/orgs/{orgId}/support-access/sessions/{sessionId}/end',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: z.object({ orgId: orgRef, sessionId: uuid }),
+    query: noParams,
+    body: null,
+  }),
+  listSupportProjects: op({
+    method: 'GET',
+    path: '/internal/v1/orgs/{orgId}/support-access/projects',
+    auth: 'staff',
+    permission: 'backoffice.support.access',
+    params: orgOnly,
     query: noParams,
     body: null,
   }),
@@ -396,6 +741,72 @@ export const internalOperations = {
     auth: 'staff',
     permission: 'backoffice.requests.read',
     params: id,
+    query: noParams,
+    body: null,
+  }),
+  listFlags: op({
+    method: 'GET',
+    path: '/internal/v1/flags',
+    auth: 'staff',
+    permission: 'backoffice.flags.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  updateFlag: op({
+    method: 'PUT',
+    path: '/internal/v1/flags/{key}',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: z.object({ key: slug }),
+    query: noParams,
+    body: FlagChangeInput,
+  }),
+  killFlag: op({
+    method: 'POST',
+    path: '/internal/v1/flags/{key}/kill',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: z.object({ key: slug }),
+    query: noParams,
+    body: z.object({ reason }),
+  }),
+  listCohorts: op({
+    method: 'GET',
+    path: '/internal/v1/cohorts',
+    auth: 'staff',
+    permission: 'backoffice.flags.read',
+    params: noParams,
+    query: noParams,
+    body: null,
+  }),
+  createCohort: op({
+    method: 'POST',
+    path: '/internal/v1/cohorts',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: noParams,
+    query: noParams,
+    body: z.object({
+      name: z.string().trim().min(2).max(60),
+      description: z.string().trim().max(200).default(''),
+    }),
+  }),
+  addCohortMember: op({
+    method: 'POST',
+    path: '/internal/v1/cohorts/{id}/members',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: id,
+    query: noParams,
+    body: z.object({ orgId: orgRef }),
+  }),
+  removeCohortMember: op({
+    method: 'DELETE',
+    path: '/internal/v1/cohorts/{id}/members/{orgId}',
+    auth: 'staff',
+    permission: 'backoffice.flags.edit',
+    params: z.object({ id: uuid, orgId: orgRef }),
     query: noParams,
     body: null,
   }),

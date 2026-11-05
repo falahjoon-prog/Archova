@@ -10,25 +10,52 @@ import {
 } from '@archova/kernel';
 import type { IdentityApi } from '@archova/mod-identity';
 import type { CompanyService } from '../application/companies';
+import type { KeyDateService } from '../application/key-dates';
 import type { MemberService } from '../application/members';
 import type { OrgService } from '../application/orgs';
 import type { ProjectService } from '../application/projects';
 import {
   toCompanyDto,
+  toKeyDateChangeDto,
+  toKeyDatesDto,
   toMembershipSummary,
   toOrgDto,
   toProjectDto,
   toProjectMemberDto,
 } from './mappers';
 
+/** Support access lives with the console's records; the org's own admin reads and changes it through these. */
+export interface SupportAccessPort {
+  list(
+    orgId: string,
+  ): Promise<{ grants: Array<{ projectIds: string[] | null }>; sessions: unknown[] }>;
+  grant(
+    orgId: string,
+    by: { userId: string; name: string },
+    input: { ticketRef: string; hours: number; projectIds?: string[] },
+  ): Promise<{ projectIds: string[] | null }>;
+  revoke(orgId: string, grantId: string): Promise<void>;
+  banner(orgId: string): Promise<{ active: boolean; since: string | null }>;
+  listStaffActions(orgId: string): Promise<unknown[]>;
+  listReads(orgId: string): Promise<unknown[]>;
+}
+
 export interface PlatformRouteDeps {
+  supportAccess?: SupportAccessPort;
   database: Database;
-  identity: Pick<IdentityApi, 'getUser'>;
+  identity: Pick<IdentityApi, 'getUser' | 'getUsers'>;
   orgs: OrgService;
   projects: ProjectService;
+  keyDates: KeyDateService;
   companies: CompanyService;
   members: MemberService;
 }
+
+/** Customers see public project ids, never the stored uuids. */
+const withEncodedProjects = <G extends { projectIds: string[] | null }>(g: G) => ({
+  ...g,
+  projectIds: g.projectIds ? g.projectIds.map((id) => encodeId('project', id)) : null,
+});
 
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
@@ -45,6 +72,17 @@ const decodeRef = (kind: 'company' | 'permissionTemplate', id: string) => {
 
 export function platformRoutes(d: PlatformRouteDeps) {
   const ro = { readOnly: true } as const;
+  const supportPort = () => {
+    if (!d.supportAccess) throw new AppError('not_implemented', 'Support access is not set up.');
+    return d.supportAccess;
+  };
+  /** Only an org owner or admin can see or change support access. */
+  const requireOrgAdmin = (input: { tenant: Parameters<typeof requireTenant>[0]['tenant'] }) => {
+    const t = requireTenant(input);
+    if (t.orgRole !== 'owner' && t.orgRole !== 'admin')
+      throw new AppError('access.denied', 'Only an org owner or admin can manage support access.');
+    return t;
+  };
   return defineRoutes({
     getMe: async (input) => {
       const principal = requirePrincipal(input);
@@ -73,6 +111,53 @@ export function platformRoutes(d: PlatformRouteDeps) {
     getOrg: async (input) => {
       const org = await d.database.withTenantTx(requireTenant(input), (s) => d.orgs.getOrg(s), ro);
       return { status: 200, body: toOrgDto(org), headers: { etag: etag(org.version) } };
+    },
+    getSupportAccess: async (input) => {
+      const t = requireOrgAdmin(input);
+      const view = await supportPort().list(t.orgId);
+      return { status: 200, body: { ...view, grants: view.grants.map(withEncodedProjects) } };
+    },
+    createSupportAccessGrant: async (input) => {
+      const t = requireOrgAdmin(input);
+      const user = await d.identity.getUser(t.userId);
+      // A grant may be limited to chosen projects; each must be a live project of this company.
+      const wanted = [...new Set((input.body.projectIds ?? []).map(projectUuid))];
+      if (wanted.length) {
+        const found = await d.database.withTenantTx(
+          t,
+          (s) => d.projects.existingIds(s, wanted),
+          ro,
+        );
+        if (wanted.some((id) => !found.has(id))) throw new AppError('project.not_found');
+      }
+      const grant = await supportPort().grant(
+        t.orgId,
+        { userId: t.userId, name: user?.name ?? 'An org admin' },
+        {
+          ticketRef: input.body.ticketRef,
+          hours: input.body.hours,
+          ...(wanted.length ? { projectIds: wanted } : {}),
+        },
+      );
+      return { status: 201, body: withEncodedProjects(grant) };
+    },
+    listStaffActions: async (input) => {
+      const t = requireOrgAdmin(input);
+      return { status: 200, body: { items: await supportPort().listStaffActions(t.orgId) } };
+    },
+    listSupportReads: async (input) => {
+      const t = requireOrgAdmin(input);
+      return { status: 200, body: { items: await supportPort().listReads(t.orgId) } };
+    },
+    getSupportBanner: async (input) => {
+      // Any signed-in user of the company, not only admins: the banner tells everyone who is looking.
+      const t = requireTenant(input);
+      return { status: 200, body: await supportPort().banner(t.orgId) };
+    },
+    revokeSupportAccessGrant: async (input) => {
+      const t = requireOrgAdmin(input);
+      await supportPort().revoke(t.orgId, input.params.grantId);
+      return { status: 204 };
     },
     listProjects: async (input) => {
       const page = await d.database.withTenantTx(
@@ -107,6 +192,37 @@ export function platformRoutes(d: PlatformRouteDeps) {
         d.projects.update(s, id, expected, input.body),
       );
       return { status: 200, body: toProjectDto(row), headers: { etag: etag(row.version) } };
+    },
+    getKeyDates: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const k = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.keyDates.get(s, id),
+        ro,
+      );
+      return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
+    },
+    updateKeyDates: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const expected = parseIfMatch(input.headers['if-match']);
+      const { sections, ...rest } = input.body;
+      const k = await d.database.withTenantTx(requireTenant(input), (s) =>
+        d.keyDates.update(s, id, expected, { ...rest, ...(sections ? { sections } : {}) }),
+      );
+      return { status: 200, body: toKeyDatesDto(k), headers: { etag: etag(k.version) } };
+    },
+    listKeyDateChanges: async (input) => {
+      const id = projectUuid(input.params.projectId);
+      const rows = await d.database.withTenantTx(
+        requireTenant(input),
+        (s) => d.keyDates.changes(s, id),
+        ro,
+      );
+      const users = await d.identity.getUsers(
+        rows.map((r) => r.changedBy).filter((u): u is string => !!u),
+      );
+      const names = new Map([...users].map(([uid, u]) => [uid, u.name]));
+      return { status: 200, body: { data: rows.map((r) => toKeyDateChangeDto(r, names)) } };
     },
     listProjectMembers: async (input) => {
       const id = projectUuid(input.params.projectId);

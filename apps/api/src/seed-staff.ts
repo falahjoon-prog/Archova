@@ -21,8 +21,26 @@ if (password.length < 12) throw new Error('STAFF_PASSWORD needs at least 12 char
 
 const database = createDatabase(need('API_DATABASE_URL'), { max: 2 });
 const services = { database, redis: null, logger: createLogger('staff-seed', 'warn') };
+const billing = createBillingModule(services);
 const backoffice = createBackofficeModule(services, {
-  catalogue: createBillingModule(services).api.catalogue,
+  catalogue: billing.api.catalogue,
+  accounts: billing.api.accounts,
+  adjustments: billing.api.adjustments,
+  credits: () => {
+    throw new Error('Granting credits is not available from the seed command');
+  },
+  supportReads: () => {
+    throw new Error('The seed command does not read customer data');
+  },
+  notifyStaff: () => {
+    throw new Error('The seed command does not send email');
+  },
+  projectInOrg: () => {
+    throw new Error('The seed command does not manage legal holds');
+  },
+  notifySupportSession: () => {
+    throw new Error('The seed command does not open support sessions');
+  },
   config: { localLogin: true, soloCoolingOffHours: 24 },
 });
 const id = await backoffice.api.upsertLocalStaff({

@@ -18,12 +18,21 @@ import {
 import { Alert, Button, Dialog, Select, StatusPill, TextField, ToggleGroup } from '@archova/ui';
 import { Download } from '@archova/ui/icons';
 import type { ViewerExtensionProps, ViewerToolBinding } from '@/shared/drawing-viewer/extension';
+import { useFeatureFlag } from '@/shared/hooks/useFeatureFlag';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { measurementsToCsv } from '../data/takeoff-source';
 import { usePackages } from '../hooks/useQuotes';
 import { useMeasurements, useTakeoffMutations } from '../hooks/useTakeoff';
-import { TRADES, type NewMeasurement, type TakeoffMeasurement } from '../lib/takeoff-types';
+import { formatPackageNumber } from '../lib/quote-types';
+import {
+  NOVA_SURE,
+  TRADES,
+  type NewMeasurement,
+  type TakeoffMeasurement,
+} from '../lib/takeoff-types';
+import { NovaTakeoffSection } from './NovaTakeoffSection';
+import { SendToEstimateSection } from './SendToEstimateSection';
 import { ScaleSection } from './ScaleSection';
 import { CursorLayer, GeometrySvg } from './TakeoffLayer';
 import { geometryOf, useTakeoffTool, type TakeoffTool } from './useTakeoffTool';
@@ -61,7 +70,11 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
     .map((r) => r.id);
   const measurements = useMeasurements(project.projectId, [sheet.revisionId, ...olderRevisionIds]);
   const mutations = useTakeoffMutations(project.projectId);
-  const saved = (measurements.data ?? []).filter((m) => m.revisionId === sheet.revisionId);
+  const novaOn = useFeatureFlag('nova_estimating');
+  const onSheet = (measurements.data ?? []).filter((m) => m.revisionId === sheet.revisionId);
+  // Only accepted marks count: Nova's pending and rejected ones are shown on the sheet, never totalled or sent on.
+  const saved = onSheet.filter((m) => m.confirmed);
+  const [selectedMark, setSelectedMark] = useState<string | null>(null);
   const packages = usePackages();
   const [packageId, setPackageId] = useState('');
   const unsent = saved.filter((m) => !m.packageId && m.scaleConfirmed);
@@ -222,13 +235,19 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
             />
           ))
         : null}
-      {saved.map((m) => (
+      {onSheet.map((m) => (
         <GeometrySvg
           key={m.id}
           geometry={m.geometry}
           aspect={aspect}
-          tone="saved"
-          label={`${m.label}: ${formatQuantity(m.quantity, m.unit)}`}
+          tone={markTone(m)}
+          label={
+            m.confirmed
+              ? `${m.label}: ${formatQuantity(m.quantity, m.unit)}`
+              : m.id === selectedMark && m.confidence !== null
+                ? `${m.label} ${Math.round(m.confidence * 100)}%`
+                : undefined
+          }
         />
       ))}
       {drafts.map((d, i) => (
@@ -346,6 +365,24 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
       />
       {!canMeasure && sheet.isCurrent ? (
         <p className="u-caption u-m-0">Confirm the scale to start measuring.</p>
+      ) : null}
+
+      {sheet.isCurrent && g && novaOn ? (
+        <NovaTakeoffSection
+          rows={onSheet}
+          canFind={canMeasure}
+          mutations={mutations}
+          selectedId={selectedMark}
+          onSelect={setSelectedMark}
+          sheetElement={overlayTarget}
+          context={{
+            revisionId: sheet.revisionId,
+            trade,
+            scale: scaleText ?? '',
+            scaleConfirmed: Boolean(scaleText),
+            size: sheet.size,
+          }}
+        />
       ) : null}
 
       <div className="form-row">
@@ -484,7 +521,10 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
                 placeholder="Choose a package"
                 options={(packages.data ?? [])
                   .filter((p) => p.status !== 'awarded' && p.status !== 'cancelled')
-                  .map((p) => ({ value: p.id, label: `${p.name} (${p.trade})` }))}
+                  .map((p) => ({
+                    value: p.id,
+                    label: `${formatPackageNumber(p.number)} ${p.name} (${p.trade})`,
+                  }))}
                 onChange={(e) => setPackageId(e.target.value)}
               />
               <div>
@@ -507,6 +547,13 @@ export function TakeoffPanel({ sheet, bindTool, overlayTarget }: ViewerExtension
               <ErrorAlert
                 error={mutations.sendToPackage.error}
                 title="We couldn't send the quantities"
+              />
+              <SendToEstimateSection
+                accepted={saved.map((m) => ({
+                  id: m.id,
+                  label: m.trade ? `${m.trade}: ${m.label}` : m.label,
+                  unit: m.unit,
+                }))}
               />
             </div>
           </>
@@ -564,13 +611,22 @@ export function totalsByTag(
 ): Array<{ tag: string; unit: TakeoffUnit; quantity: number }> {
   const map = new Map<string, { tag: string; unit: TakeoffUnit; quantity: number }>();
   for (const m of rows) {
-    const tag = m.trade ? `${m.trade}: ${m.label}` : m.label;
+    // Nova's marks carry the room after a dot ("Power point · Living"); the totals add up per item.
+    const name = m.source === 'manual' ? m.label : (m.label.split(' · ')[0] ?? m.label);
+    const tag = m.trade ? `${m.trade}: ${name}` : name;
     const key = `${tag}|${m.unit}`;
     const t = map.get(key) ?? { tag, unit: m.unit, quantity: 0 };
     t.quantity += m.quantity;
     map.set(key, t);
   }
   return [...map.values()].sort((a, b) => a.tag.localeCompare(b.tag));
+}
+
+/** How a mark is drawn: accepted and hand-drawn are solid; Nova's waiting marks are dashed, teal when sure. */
+function markTone(m: TakeoffMeasurement) {
+  if (m.confirmed) return 'saved' as const;
+  if (m.rejected) return 'rejected' as const;
+  return (m.confidence ?? 0) >= NOVA_SURE ? ('nova' as const) : ('nova-low' as const);
 }
 
 function defaultLabel(kind: 'length' | 'area' | 'count', n: number): string {

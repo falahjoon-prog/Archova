@@ -1,0 +1,4 @@
+# OWASP ZAP baseline rules (docs/infrastructure/03-ci-cd.md §3 "DAST baseline").
+# Columns are tab-separated: rule id, IGNORE or WARN or FAIL, then a reason. The default for a rule not listed
+# is WARN; the dast workflow itself fails on any high-risk alert, so list a rule here only to suppress a reviewed
+# false positive, and Sam signs off every line in the pull request that adds it.

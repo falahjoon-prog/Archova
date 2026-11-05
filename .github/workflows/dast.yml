@@ -1,0 +1,85 @@
+# DAST baseline gate (infrastructure/03 §3): an OWASP ZAP baseline scan of the running web app and api, for pull
+# requests that touch apps/api or apps/web. It runs the whole stack on the CI runner from docker-compose.demo.yml
+# (sample data, fake Nova, no cloud), so it costs no AWS or Linode spend and does not depend on the hosting choice.
+# A per-PR deployed preview can replace the stack step later without changing the scan or the gate.
+# The scan fails on any high-risk alert; reviewed false positives go in .zap/rules.tsv.
+name: DAST
+
+on:
+  pull_request:
+    paths:
+      [
+        'apps/api/**',
+        'apps/web/**',
+        'packages/contracts/**',
+        '.zap/**',
+        'docker-compose.demo.yml',
+        '.github/workflows/dast.yml',
+      ]
+  schedule:
+    - cron: '30 19 * * 1' # Tuesday 5:30am Sydney: rescan main with the latest ZAP rules
+
+concurrency:
+  group: dast-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  baseline:
+    name: DAST baseline (ZAP, high-risk alerts fail)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      ORIGIN: http://demo.localhost:8080
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start the stack
+        run: docker compose -f docker-compose.demo.yml up -d --build
+
+      - name: Wait for the web app and api
+        run: |
+          for i in $(seq 1 90); do
+            if curl -fsS --max-time 3 --resolve demo.localhost:8080:127.0.0.1 "$ORIGIN/" >/dev/null \
+              && curl -fsS --max-time 3 --resolve demo.localhost:8080:127.0.0.1 "$ORIGIN/health/ready" >/dev/null; then
+              echo "up after ${i} tries"; exit 0
+            fi
+            sleep 5
+          done
+          echo "stack did not come up" >&2
+          docker compose -f docker-compose.demo.yml ps
+          docker compose -f docker-compose.demo.yml logs --tail 80
+          exit 1
+
+      - name: ZAP baseline scan
+        run: |
+          mkdir -p zap-out && chmod 777 zap-out
+          # -I: do not fail on warnings here; the next step fails on high-risk alerts only.
+          docker run --rm --network host --add-host demo.localhost:127.0.0.1 \
+            -v "$PWD/zap-out:/zap/wrk" -v "$PWD/.zap/rules.tsv:/zap/wrk/rules.tsv:ro" \
+            ghcr.io/zaproxy/zaproxy:2.16.1 \
+            zap-baseline.py -t "$ORIGIN" -c rules.tsv -J report.json -r report.html -I
+
+      - name: Fail on high-risk alerts
+        run: |
+          high=$(jq '[.site[].alerts[] | select(.riskcode == "3")] | length' zap-out/report.json)
+          jq -r '.site[].alerts[] | select(.riskcode != "0") | "\(.riskdesc)  \(.name)  (\(.instances | length) urls)"' \
+            zap-out/report.json | sort | uniq -c | sort -rn
+          if [ "$high" -gt 0 ]; then
+            echo "::error::$high high-risk ZAP alert(s); see the dast-report artifact"
+            exit 1
+          fi
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dast-report
+          path: zap-out/report.*
+          retention-days: 14
+
+      - name: Stop the stack
+        if: always()
+        run: docker compose -f docker-compose.demo.yml down -v

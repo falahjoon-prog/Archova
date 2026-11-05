@@ -11,13 +11,16 @@ import {
 } from '../domain/policy';
 import { newToken, sha256 } from './crypto';
 
+/** How a session was opened; personal access tokens have no session. */
+export type SessionAuthMethod = Exclude<Principal['authMethod'], 'api_token'>;
+
 export const REVOCATION_CHANNEL = 'identity:session-revoked';
 
 interface CachedSession {
   sessionId: string;
   userId: string;
   client: Principal['client'];
-  authMethod: Principal['authMethod'];
+  authMethod: SessionAuthMethod;
   authTime: string;
   idleExpiresAt: string;
   absoluteExpiresAt: string;
@@ -27,7 +30,7 @@ interface CachedSession {
 export interface NewSessionInput {
   userId: string;
   client: Principal['client'];
-  authMethod: Principal['authMethod'];
+  authMethod: SessionAuthMethod;
   authTime?: Date;
   ip: string | null;
   userAgent: string | null;

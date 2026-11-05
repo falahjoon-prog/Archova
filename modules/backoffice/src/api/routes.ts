@@ -1,9 +1,18 @@
 import type { z } from 'zod';
-import type { internalOperations, InternalOperationId, PlanDraftInput } from '@archova/contracts';
+import type {
+  internalOperations,
+  InternalOperationId,
+  OrgDetailDto,
+  PlanDraftInput,
+} from '@archova/contracts';
 import { decodeId } from '@archova/domain';
-import { AppError } from '@archova/kernel';
+import { AppError, defineRoutes, requireTenant } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
+import type { FlagService } from '../application/flags';
+import type { SupportAccessService } from '../application/support-access';
+import type { HoldService } from '../application/holds';
+import type { OrgActionService } from '../application/org-actions';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
 
@@ -36,6 +45,10 @@ export interface InternalDeps {
   requests: RequestService;
   customers: CustomerService;
   catalogue: CatalogueService;
+  flags: FlagService;
+  orgActions: OrgActionService;
+  support: SupportAccessService;
+  holds: HoldService;
 }
 
 const me = (input: { staff: StaffContext | null }) => {
@@ -46,6 +59,21 @@ const me = (input: { staff: StaffContext | null }) => {
 /** Operations the owner console calls (backend 09 §6). Framework-free: apps/api mounts them under /internal/v1. */
 export function internalRoutes(d: InternalDeps): InternalHandlers {
   const ok = (body: unknown, status = 200): InternalResult => ({ status, body });
+  const orgId = (ref: string) => {
+    const id = decodeId('org', ref);
+    if (!id) throw new AppError('org.not_found');
+    return id;
+  };
+  const orgDetail = async (id: string): Promise<OrgDetailDto> => {
+    const [org, history, account, actions, adjustments] = await Promise.all([
+      d.customers.get(id),
+      d.requests.list({ orgId: id, limit: 20 }),
+      d.orgActions.account(id),
+      d.orgActions.list(id),
+      d.orgActions.adjustments(id),
+    ]);
+    return { ...org, history, account, actions, ...adjustments };
+  };
   return {
     login: async (i) => {
       const { token, maxAgeSeconds } = await d.staff.login(i.body.email, i.body.password, {
@@ -69,11 +97,77 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     getOrg: async (i) => {
       const id = decodeId('org', i.params.orgId);
       if (!id) throw new AppError('org.not_found');
-      const [org, history] = await Promise.all([
-        d.customers.get(id),
-        d.requests.list({ orgId: id, limit: 20 }),
-      ]);
-      return ok({ ...org, history });
+      return ok(await orgDetail(id));
+    },
+    listOrgHolds: async (i) => ok({ items: await d.holds.list(me(i), orgId(i.params.orgId)) }),
+    placeOrgHold: async (i) =>
+      ok({ items: await d.holds.place(me(i), orgId(i.params.orgId), i.body) }, 201),
+    releaseOrgHold: async (i) =>
+      ok({
+        items: await d.holds.release(me(i), orgId(i.params.orgId), i.params.holdId, i.body),
+      }),
+    getOrgSupportAccess: async (i) => ok(await d.support.list(orgId(i.params.orgId))),
+    startSupportSession: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.support.start(me(i), id, i.body.ticketRef);
+      return ok(await d.support.list(id), 201);
+    },
+    listSupportProjects: async (i) =>
+      ok({ items: await d.support.viewProjects(me(i), orgId(i.params.orgId)) }),
+    endSupportSession: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.support.end(me(i), id, i.params.sessionId);
+      return ok(await d.support.list(id));
+    },
+    trialExtendOrg: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.extendTrial(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    changeOrgPlan: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.changePlan(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    suspendOrg: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.suspend(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    reactivateOrg: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.reactivate(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    grantOrgCredits: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.grantCredits(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    addOrgDiscount: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.addDiscount(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    revokeOrgDiscount: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.revokeDiscount(me(i), id, i.params.discountId, i.body);
+      return ok(await orgDetail(id));
+    },
+    grantOrgOverride: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.grantOverride(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    revokeOrgOverride: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.revokeOverride(me(i), id, i.params.overrideId, i.body);
+      return ok(await orgDetail(id));
+    },
+    refundOrg: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.refund(me(i), id, i.body);
+      return ok(await orgDetail(id));
     },
     listPlans: async () => ok({ items: await d.catalogue.listPlans() }),
     createPlan: async (i) => {
@@ -158,6 +252,39 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     approveRequest: async (i) => ok(await d.requests.approve(me(i), i.params.id)),
     rejectRequest: async (i) => ok(await d.requests.reject(me(i), i.params.id, i.body.reason)),
     cancelRequest: async (i) => ok(await d.requests.cancel(me(i), i.params.id)),
+    listFlags: async () => ok({ items: await d.flags.list() }),
+    updateFlag: async (i) => {
+      await d.flags.update(me(i), i.params.key, i.body);
+      return ok({ items: await d.flags.list() });
+    },
+    killFlag: async (i) => {
+      await d.flags.kill(me(i), i.params.key, i.body.reason);
+      return ok({ items: await d.flags.list() });
+    },
+    listCohorts: async () => ok({ items: await d.flags.listCohorts() }),
+    createCohort: async (i) => ok(await d.flags.createCohort(me(i), i.body), 201),
+    addCohortMember: async (i) => {
+      await d.flags.addMember(me(i), i.params.id, i.body.orgId);
+      return ok({ items: await d.flags.listCohorts() });
+    },
+    removeCohortMember: async (i) => {
+      await d.flags.removeMember(me(i), i.params.id, i.params.orgId);
+      return { status: 204 };
+    },
     listStaff: async () => ok({ items: await d.staff.list() }),
   };
+}
+
+/** What the org's own signed-in members may ask: which flags are on for them (never the rules behind them). */
+export function customerRoutes(deps: { flags: FlagService }) {
+  return defineRoutes({
+    getFeatureFlags: async (input) => {
+      const tenant = requireTenant(input);
+      return {
+        status: 200,
+        body: { orgId: input.params.orgId, flags: await deps.flags.forOrg(tenant.orgId) },
+        headers: { 'cache-control': 'private, no-store' },
+      };
+    },
+  });
 }

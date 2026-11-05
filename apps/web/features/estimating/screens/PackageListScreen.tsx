@@ -20,6 +20,7 @@ import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { dueInBusinessDays, formatInstant, todayIn } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
@@ -80,8 +81,8 @@ export function PackageListScreen() {
     {
       id: 'due',
       header: 'Due',
-      sortValue: (p) => p.dueAt,
-      cell: (p) => formatInstant(p.dueAt, project.timezone),
+      sortValue: (p) => p.dueAt ?? '',
+      cell: (p) => (p.dueAt ? formatInstant(p.dueAt, project.timezone) : '—'),
     },
   ];
 
@@ -102,7 +103,7 @@ export function PackageListScreen() {
           </Button>
         }
       />
-      <PreviewDataNotice tool="Estimating" />
+      {previewDataOnly ? <PreviewDataNotice tool="Estimating" /> : null}
       <ErrorAlert error={packages.error} title="We couldn't load tender packages" />
       {packages.isPending ? (
         <SkeletonRows label="Loading packages…" />

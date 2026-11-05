@@ -20,26 +20,30 @@ import {
 import { EstimatingIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { listsFor, listCandidates, useBidderLists } from '@/features/bid-board';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
+import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatInstant, todayIn } from '@/shared/lib/format';
-import { MOCK_COMPANIES, companyName } from '@/shared/mocks/directory';
 import { mockId } from '@/shared/mocks/runtime';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
-import { usePackage, usePackageMutations, useQuotes } from '../hooks/useQuotes';
+import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
+import { usePackage, usePackageMutations, useQuotes, useQuotesSource } from '../hooks/useQuotes';
 import { comparableQuotes, levelQuotes, lowestQuoteId, parseScopeCsv } from '../lib/levelling';
 import {
   INVITE_STATUS_LABELS,
   PACKAGE_STATUS_LABELS,
   QUOTE_STATUS_LABELS,
   formatPackageNumber,
+  type PackageAction,
   type Quote,
   type TenderPackage,
 } from '../lib/quote-types';
 import { ComparisonTable } from '../quotes/ComparisonTable';
 import { money } from '../quotes/money';
+import { NegotiatePanel } from '../quotes/NegotiatePanel';
 import { QuoteReview } from '../quotes/QuoteReview';
 import { SourceDialog, type SourceTarget } from '../quotes/SourceDialog';
 
@@ -82,11 +86,14 @@ export function PackageScreen({ packageId }: { packageId: string }) {
               {PACKAGE_STATUS_LABELS[p.status]}
             </StatusPill>
             <span>{p.trade}</span>
-            <span>Due {formatInstant(p.dueAt, project.timezone)}</span>
+            <span>
+              {p.dueAt ? `Due ${formatInstant(p.dueAt, project.timezone)}` : 'No due date'}
+            </span>
           </span>
         }
       />
-      <PreviewDataNotice tool="Estimating" />
+      {previewDataOnly ? <PreviewDataNotice tool="Estimating" /> : null}
+      <PackageActions pkg={p} />
       <Tabs
         label="Package sections"
         value={tab}
@@ -118,6 +125,48 @@ export function PackageScreen({ packageId }: { packageId: string }) {
   );
 }
 
+/** Where the package is in its life: draft, out to tender, closed or cancelled. Awarding is on the Comparison tab. */
+function PackageActions({ pkg }: { pkg: TenderPackage }) {
+  const m = usePackageMutations(pkg.id);
+  const ready = pkg.scope.length > 0 && pkg.invites.length > 0 && Boolean(pkg.dueAt);
+  const go = (action: PackageAction) => m.transition.mutate(action);
+  if (pkg.status === 'awarded' || pkg.status === 'cancelled') return null;
+  return (
+    <div className="stack">
+      <div className="row-actions">
+        {pkg.status === 'draft' ? (
+          <Button disabled={!ready || m.transition.isPending} onClick={() => go('send')}>
+            Send out to tender
+          </Button>
+        ) : null}
+        {pkg.status === 'out_to_tender' ? (
+          <Button variant="secondary" disabled={m.transition.isPending} onClick={() => go('close')}>
+            Close tender
+          </Button>
+        ) : null}
+        {pkg.status === 'closed' ? (
+          <Button
+            variant="secondary"
+            disabled={m.transition.isPending}
+            onClick={() => go('reopen')}
+          >
+            Reopen tender
+          </Button>
+        ) : null}
+        <Button variant="secondary" disabled={m.transition.isPending} onClick={() => go('cancel')}>
+          Cancel package
+        </Button>
+      </div>
+      {pkg.status === 'draft' && !ready ? (
+        <p className="u-caption u-m-0">
+          Add scope lines and invite at least one subcontractor to send this out to tender.
+        </p>
+      ) : null}
+      <ErrorAlert error={m.transition.error} title="We couldn't change the package" />
+    </div>
+  );
+}
+
 function Comparison({
   pkg,
   quotes,
@@ -136,6 +185,7 @@ function Comparison({
   onSource: (t: SourceTarget) => void;
 }) {
   const project = useCurrentProject();
+  const { companyName } = useProjectDirectory();
   const m = usePackageMutations(pkg.id);
   const today = todayIn(project.timezone);
   const comparable = comparableQuotes(quotes);
@@ -194,6 +244,7 @@ function Comparison({
             onSource={onSource}
           />
           <p className="u-caption u-m-0">Amounts are ex GST. GST is shown separately.</p>
+          <NegotiatePanel packageId={pkg.id} quotes={comparable} />
         </>
       )}
       <ErrorAlert error={m.allowance.error} title="We couldn't save the allowance" />
@@ -259,16 +310,27 @@ function Quotes({
   onSource: (t: SourceTarget) => void;
 }) {
   const project = useCurrentProject();
+  const { companies, companyName, onProject } = useProjectDirectory();
+  const { live } = useQuotesSource();
   const m = usePackageMutations(pkg.id);
   const [companyId, setCompanyId] = useState('');
-  const [fileName, setFileName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
   const [fileKey, setFileKey] = useState(0);
   const current = quotes.filter((q) => q.status !== 'superseded');
   const earlier = quotes.filter((q) => q.status === 'superseded');
-  const tradeFirst = MOCK_COMPANIES.filter((c) => c.role === 'subcontractor').sort(
-    (a, b) =>
-      Number(b.trade === pkg.trade) - Number(a.trade === pkg.trade) || a.name.localeCompare(b.name),
-  );
+  const tradeFirst = companies
+    .filter(
+      (c) =>
+        c.isSubcontractor &&
+        onProject(c.id) &&
+        // The API takes quotes only from invited companies; the preview adds the invite itself.
+        (!live || pkg.invites.some((i) => i.companyId === c.id)),
+    )
+    .sort(
+      (a, b) =>
+        Number(b.trades.includes(pkg.trade)) - Number(a.trades.includes(pkg.trade)) ||
+        a.name.localeCompare(b.name),
+    );
 
   if (loading) return <SkeletonRows label="Loading quotes…" />;
   return (
@@ -278,15 +340,24 @@ function Quotes({
           Upload a quote
         </h2>
         <p className="u-m-0 u-caption">
-          PDF or Excel. Nova reads the lines, exclusions and qualifications; you check them before
-          they count. A new quote from the same company replaces its earlier one, and both are kept.
+          {live ? 'PDF.' : 'PDF or Excel.'} Nova reads the lines, exclusions and qualifications; you
+          check them before they count. A new quote from the same company replaces its earlier one,
+          and both are kept.
         </p>
+        {live && tradeFirst.length === 0 ? (
+          <Alert tone="info">
+            Invite a subcontractor on the Scope and invites tab before uploading their quote.
+          </Alert>
+        ) : null}
         <div className="form-row">
           <Select
             label="Subcontractor"
             value={companyId}
             placeholder="Choose a company"
-            options={tradeFirst.map((c) => ({ value: c.id, label: `${c.name} · ${c.trade}` }))}
+            options={tradeFirst.map((c) => ({
+              value: c.id,
+              label: `${c.name} · ${c.trades.join(', ')}`,
+            }))}
             onChange={(e) => setCompanyId(e.target.value)}
           />
           <div className="stack">
@@ -298,20 +369,20 @@ function Quotes({
               id="quote-file"
               className="file-input"
               type="file"
-              accept=".pdf,.xlsx,.xls,.csv"
-              onChange={(e) => setFileName(e.target.files?.[0]?.name ?? '')}
+              accept={live ? '.pdf' : '.pdf,.xlsx,.xls,.csv'}
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             />
           </div>
         </div>
         <div>
           <Button
-            disabled={!companyId || !fileName || m.upload.isPending || pkg.status === 'awarded'}
+            disabled={!companyId || !file || m.upload.isPending || pkg.status !== 'out_to_tender'}
             onClick={() =>
               m.upload.mutate(
-                { companyId, fileName },
+                { companyId, file: file! },
                 {
                   onSuccess: () => {
-                    setFileName('');
+                    setFile(null);
                     setFileKey((k) => k + 1);
                   },
                 },
@@ -357,18 +428,22 @@ function Quotes({
               <QuoteReview
                 quote={q}
                 scope={pkg.scope}
-                busy={m.confirm.isPending}
+                busy={m.confirm.isPending || m.decline.isPending}
                 onCorrect={(lineId, amountCents) =>
                   m.correct.mutate({ quoteId: q.id, lineId, amountCents })
                 }
                 onConfirm={() => m.confirm.mutate(q.id)}
+                onDecline={() => m.decline.mutate(q.id)}
                 onSource={onSource}
               />
             )}
           </section>
         ))
       )}
-      <ErrorAlert error={m.correct.error ?? m.confirm.error} title="That didn't save" />
+      <ErrorAlert
+        error={m.correct.error ?? m.confirm.error ?? m.decline.error}
+        title="That didn't save"
+      />
       {earlier.length ? (
         <details>
           <summary>Earlier versions ({earlier.length})</summary>
@@ -386,18 +461,21 @@ function Quotes({
 }
 
 function Scope({ pkg }: { pkg: TenderPackage }) {
+  const { companies, companyName, onProject } = useProjectDirectory();
   const m = usePackageMutations(pkg.id);
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
   const [invite, setInvite] = useState<string[]>([]);
+  const bidderLists = useBidderLists({ enabled: !previewDataOnly });
   const locked = pkg.status === 'awarded';
   const invited = new Set(pkg.invites.map((i) => i.companyId));
-  const candidates = MOCK_COMPANIES.filter(
-    (c) => c.role === 'subcontractor' && !invited.has(c.id),
-  ).sort(
-    (a, b) =>
-      Number(b.trade === pkg.trade) - Number(a.trade === pkg.trade) || a.name.localeCompare(b.name),
-  );
+  const candidates = companies
+    .filter((c) => c.isSubcontractor && onProject(c.id) && !invited.has(c.id))
+    .sort(
+      (a, b) =>
+        Number(b.trades.includes(pkg.trade)) - Number(a.trades.includes(pkg.trade)) ||
+        a.name.localeCompare(b.name),
+    );
 
   return (
     <div className="stack-lg">
@@ -537,14 +615,45 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
         ) : (
           <p className="u-muted u-m-0">No one invited yet.</p>
         )}
+        {!locked && candidates.length === 0 && pkg.invites.length === 0 ? (
+          <p className="u-caption u-m-0">
+            No subcontractors are on this project yet. Add them to the project first, then invite
+            them here.
+          </p>
+        ) : null}
         {!locked && candidates.length ? (
           <fieldset className="fieldset">
             <legend>Invite (they get one link by email and can quote without an account)</legend>
+            {bidderLists.data?.length ? (
+              <Select
+                label="Tick a bidder list"
+                value=""
+                placeholder="Choose a list"
+                hint="Ticks the list's subcontractors who are on this project and not yet invited."
+                options={listsFor(bidderLists.data, pkg.trade).map((l) => ({
+                  value: l.id,
+                  label: l.trade ? `${l.name} · ${l.trade}` : l.name,
+                }))}
+                onChange={(e) => {
+                  const list = bidderLists.data?.find((l) => l.id === e.target.value);
+                  if (list)
+                    setInvite([
+                      ...new Set([
+                        ...invite,
+                        ...listCandidates(
+                          list,
+                          candidates.map((c) => c.id),
+                        ),
+                      ]),
+                    ]);
+                }}
+              />
+            ) : null}
             <div className="check-grid">
               {candidates.map((c) => (
                 <Checkbox
                   key={c.id}
-                  label={`${c.name} · ${c.trade}`}
+                  label={`${c.name} · ${c.trades.join(', ')}`}
                   checked={invite.includes(c.id)}
                   onChange={(e) =>
                     setInvite(

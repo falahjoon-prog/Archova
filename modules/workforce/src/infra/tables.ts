@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   customType,
   date,
@@ -285,4 +286,109 @@ export const workerCredentials = workforceSchema.table('worker_credentials', {
   sightedBy: uuid('sighted_by'),
   sightedAt: timestamp('sighted_at', { withTimezone: true }),
   ...audit,
+});
+
+/** The company's own compliance documents (compliance/05). Org-level: no project. */
+export const complianceDocuments = workforceSchema.table('compliance_documents', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  itemType: text('item_type').notNull(),
+  title: text('title').notNull(),
+  numberLast4: text('number_last4'),
+  numberCheck: text('number_check').$type<'format_ok'>(),
+  issuingState: text('issuing_state'),
+  licenceClass: text('licence_class'),
+  insurer: text('insurer'),
+  limitCents: bigint('limit_cents', { mode: 'number' }),
+  startsOn: date('starts_on'),
+  expiresOn: date('expires_on'),
+  fileIds: uuid('file_ids').array().notNull(),
+  evidence: text('evidence').$type<'recorded' | 'sighted' | 'self_declared'>().notNull(),
+  sightedBy: uuid('sighted_by'),
+  sightedAt: timestamp('sighted_at', { withTimezone: true }),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  ...audit,
+});
+
+/** A builder's request for read access to a subcontractor's wallet, redeemed with a share code (hash only). */
+export const complianceAccessRequests = workforceSchema.table('compliance_access_requests', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  requesterName: text('requester_name').notNull(),
+  projectId: uuid('project_id'),
+  projectName: text('project_name'),
+  allProjects: boolean('all_projects').notNull(),
+  itemTypes: text('item_types').array().notNull(),
+  grantExpiresOn: date('grant_expires_on').notNull(),
+  codeHash: text('code_hash').notNull(),
+  codeExpiresAt: timestamp('code_expires_at', { withTimezone: true }).notNull(),
+  status: text('status').$type<'requested' | 'accepted' | 'cancelled'>().notNull(),
+  acceptedOrgId: uuid('accepted_org_id'),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});
+
+/** Read access a subcontractor has given a builder. Lives in the subbie's org. */
+export const complianceGrants = workforceSchema.table('compliance_grants', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  granteeOrgId: uuid('grantee_org_id').notNull(),
+  granteeName: text('grantee_name').notNull(),
+  grantorName: text('grantor_name').notNull(),
+  requestId: uuid('request_id').notNull(),
+  itemTypes: text('item_types').array().notNull(),
+  projectId: uuid('project_id'),
+  projectName: text('project_name'),
+  allProjects: boolean('all_projects').notNull(),
+  expiresOn: date('expires_on').notNull(),
+  acceptedBy: uuid('accepted_by').notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }).notNull().defaultNow(),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  revokedBy: uuid('revoked_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});
+
+export const complianceAccessLog = workforceSchema.table('compliance_access_log', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  grantId: uuid('grant_id').notNull(),
+  granteeOrgId: uuid('grantee_org_id').notNull(),
+  granteeName: text('grantee_name').notNull(),
+  documentId: uuid('document_id'),
+  itemType: text('item_type'),
+  fileId: uuid('file_id'),
+  kind: text('kind').$type<'list' | 'document' | 'file'>().notNull(),
+  at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const complianceRelianceSnapshots = workforceSchema.table('compliance_reliance_snapshots', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  grantId: uuid('grant_id').notNull(),
+  subbieOrgId: uuid('subbie_org_id').notNull(),
+  subbieName: text('subbie_name').notNull(),
+  documentId: uuid('document_id').notNull(),
+  itemType: text('item_type').notNull(),
+  projectId: uuid('project_id'),
+  reason: text('reason').$type<'site_entry' | 'claim_assessment' | 'other'>().notNull(),
+  dto: jsonb('dto').$type<Record<string, unknown>>().notNull(),
+  sha256: text('sha256').notNull(),
+  createdBy: uuid('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+/** Expiry alerts raised by the daily wallet job (compliance/05 §6). The job inserts these with raw SQL. */
+export const complianceExpiryAlerts = workforceSchema.table('compliance_expiry_alerts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  documentId: uuid('document_id').notNull(),
+  threshold: integer('threshold').notNull().$type<number>(),
+  expiresOn: date('expires_on').notNull(),
+  raisedOn: date('raised_on').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });

@@ -957,7 +957,119 @@ export function createRfiService(deps: RfisDeps) {
     return withAssignees(scope, rows, date);
   }
 
+  /**
+   * Programme links (`scheduling`): headline details of the RFIs among `ids` the caller may see, by the same rule as
+   * `list`. Ids not returned are missing, drafts the caller can't see, or hidden; empty when the caller can't read RFIs.
+   */
+  async function summariesByIds(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'rfis.rfis.read', { projectId }))) return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      inArray(rfis.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: rfis.id,
+        number: rfis.number,
+        subject: rfis.subject,
+        status: rfis.status,
+        dueDate: rfis.dueDate,
+        scheduleImpactDays: rfis.scheduleImpactDays,
+      })
+      .from(rfis)
+      .where(and(...conditions));
+    return rows.map((r) => ({
+      id: r.id,
+      ref: r.number === null ? 'Draft' : formatRfiNumber(r.number),
+      title: r.subject,
+      status: r.status as string,
+      dueDate: r.dueDate,
+      scheduleImpactDays: r.scheduleImpactDays,
+    }));
+  }
+
+  /**
+   * The delay register (`scheduling`): RFIs the caller can see that cost time - a schedule impact above zero, an answer
+   * that came after the due date, or an open RFI past it. `today` and `timeZone` are the project's, so the caller can
+   * turn the instants into local days. Drafts and voided RFIs are left out; empty when the caller can't read RFIs.
+   */
+  async function timeImpacts(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    const project = await deps.platform.getProject(scope, projectId);
+    const today = localDateOf(now(), project.timezone);
+    const base = { today, timeZone: project.timezone };
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { ...base, rows: [], truncated: false };
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} not in ('draft', 'void')`,
+      sql`(coalesce(${rfis.scheduleImpactDays}, 0) > 0
+          or (${rfis.dueDate} is not null
+              and ((${rfis.status} = 'open' and ${rfis.dueDate} < ${today}::date)
+                or (${rfis.answeredAt} is not null
+                    and (${rfis.answeredAt} at time zone ${project.timezone})::date > ${rfis.dueDate}))))`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: rfis.id,
+        number: rfis.number,
+        subject: rfis.subject,
+        status: rfis.status,
+        dueDate: rfis.dueDate,
+        openedAt: rfis.openedAt,
+        answeredAt: rfis.answeredAt,
+        scheduleImpactDays: rfis.scheduleImpactDays,
+      })
+      .from(rfis)
+      .where(and(...conditions))
+      .orderBy(desc(rfis.id))
+      .limit(opts.limit + 1);
+    return { ...base, rows: rows.slice(0, opts.limit), truncated: rows.length > opts.limit };
+  }
+
+  /**
+   * Meeting agenda (`meetings`, MTG-US5): open RFIs the caller can see that are past their due date, oldest due first.
+   * `restricted` is true when the caller can't read RFIs at all, so the agenda says so rather than showing an empty list.
+   */
+  async function overdueForMeeting(scope: TenantScope, projectId: string, opts: { limit: number }) {
+    if (!(await deps.access.can(scope, 'rfis.rfis.read', { projectId })))
+      return { rows: [], truncated: false, restricted: true };
+    const { date } = await today(scope, projectId);
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      sql`${rfis.status} = 'open' and ${rfis.dueDate} < ${date}::date`,
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const found = await scope.tx
+      .select({ id: rfis.id, number: rfis.number, subject: rfis.subject, dueDate: rfis.dueDate })
+      .from(rfis)
+      .where(and(...conditions))
+      .orderBy(asc(rfis.dueDate), asc(rfis.number))
+      .limit(opts.limit + 1);
+    return {
+      rows: found.slice(0, opts.limit).map((r) => ({
+        id: r.id,
+        ref: r.number === null ? 'RFI' : formatRfiNumber(r.number),
+        title: r.subject,
+        detail: `Due ${r.dueDate}`,
+      })),
+      truncated: found.length > opts.limit,
+      restricted: false,
+    };
+  }
+
   return {
+    overdueForMeeting,
     list,
     detail,
     activity,
@@ -972,6 +1084,8 @@ export function createRfiService(deps: RfisDeps) {
     findSimilar,
     aiSources,
     aiAccessScopes,
+    timeImpacts,
+    summariesByIds,
     openOnDrawing,
     forAnswerDraft,
     ballInCourt,

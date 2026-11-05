@@ -278,9 +278,15 @@ export function createDocumentService(c: DocumentsContext, folders: FolderServic
   }
 
   /** Revisions by id, for transmittals. Only revisions in this project and in folders the caller can open. */
-  async function revisionsByIds(scope: TenantScope, projectId: string, ids: string[]) {
+  /** `authorised`: the caller has already decided the reader may see these (a transmittal's issuer chose them). */
+  async function revisionsByIds(
+    scope: TenantScope,
+    projectId: string,
+    ids: string[],
+    opts: { authorised?: boolean } = {},
+  ) {
     if (!ids.length) return [];
-    const hidden = await folders.hiddenIds(scope, projectId);
+    const hidden = opts.authorised ? new Set<string>() : await folders.hiddenIds(scope, projectId);
     const rows = await scope.tx
       .select({ revision: documentRevisions, document: documentsTable })
       .from(documentRevisions)

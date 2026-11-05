@@ -10,11 +10,27 @@ describe('projectToolGroups', () => {
       'Project home',
       'Documents',
       'Drawings',
+      'Transmittals',
       'RFIs',
+      'Submittals',
+      'Correspondence',
       'Site diary',
+      'Delay register',
+      'Programme',
       'Defects',
+      'Meetings',
       'Inductions',
+      'Contracts',
+      'Payment claims',
+      'Attendance',
+      'Inspections',
+      'Observations',
+      'SWMS',
+      'Late submissions',
+      'Imports',
       'Tender packages',
+      'Estimates',
+      'Cost library',
     ]);
   });
 
@@ -27,8 +43,11 @@ describe('projectToolGroups', () => {
       'Project home',
       'Documents',
       'Drawings',
+      'Transmittals',
       'Defects',
       'Tender packages',
+      'Estimates',
+      'Cost library',
     ]);
   });
 

@@ -9,6 +9,8 @@ import {
   useAssistantPanelState,
 } from '@/features/assistant';
 import { SignOutButton } from '@/features/auth';
+import { InboxLink } from '@/features/notifications';
+import { SupportBanner } from '@/features/support-access';
 import { AppShell, CentredShell } from '@/shared/layout/AppShell';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { Loading } from '@/shared/layout/Loading';
@@ -54,14 +56,35 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
       <AssistantScopeProvider>
         <OrgAppShell
           orgName={membership.orgName}
-          nav={[{ href: webRoutes.projects(orgSlug), label: 'Projects' }]}
+          nav={[
+            { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            ...(membership.kind === 'member'
+              ? [{ href: webRoutes.bidBoard(orgSlug), label: 'Bid board' }]
+              : []),
+            { href: webRoutes.wallet(orgSlug), label: 'Compliance wallet' },
+            { href: webRoutes.subcontractorWallets(orgSlug), label: 'Subcontractor wallets' },
+            { href: webRoutes.apiAccess(orgSlug), label: 'API access' },
+            // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
+            ...(membership.role === 'owner' || membership.role === 'admin'
+              ? [
+                  { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
+                  { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
+                  { href: webRoutes.novaSettings(orgSlug), label: 'Nova settings' },
+                  { href: webRoutes.plan(orgSlug), label: 'Plan and limits' },
+                  { href: webRoutes.permissionTemplates(orgSlug), label: 'Permission templates' },
+                  { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
+                ]
+              : []),
+          ]}
           actions={
             <>
+              <InboxLink />
               <span className="app-shell__user">{me.data.user.name}</span>
               <SignOutButton />
             </>
           }
         >
+          <SupportBanner />
           {children}
         </OrgAppShell>
       </AssistantScopeProvider>

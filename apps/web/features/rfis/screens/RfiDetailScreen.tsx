@@ -23,6 +23,7 @@ import { previewDataOnly } from '@/shared/lib/data-mode';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { formatInstant, formatLocalDate, todayIn } from '@/shared/lib/format';
 import { useSheetPicker } from '@/features/drawings';
+import { RelatedMeetings } from '@/features/meetings';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
@@ -109,7 +110,14 @@ function RfiView({ rfi }: { rfi: Rfi }) {
   const m = useRfiMutations(project.projectId);
   const today = todayIn(project.timezone);
   const [params, setParams] = useUrlState(['tab'] as const);
-  const tab = ['details', 'responses', 'activity'].includes(params.tab) ? params.tab : 'details';
+  const tab = [
+    'details',
+    'responses',
+    'activity',
+    ...(previewDataOnly ? [] : ['related']),
+  ].includes(params.tab)
+    ? params.tab
+    : 'details';
   const respondRef = useRef<HTMLTextAreaElement>(null);
   const [closing, setClosing] = useState(false);
   const [official, setOfficial] = useState<string>('');
@@ -216,6 +224,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
           { id: 'details', label: 'Details' },
           { id: 'responses', label: 'Responses', count: rfi.responses.length },
           { id: 'activity', label: 'Activity' },
+          ...(previewDataOnly ? [] : [{ id: 'related', label: 'Related' }]),
         ]}
       >
         {tab === 'details' ? <Details rfi={rfi} /> : null}
@@ -227,6 +236,7 @@ function RfiView({ rfi }: { rfi: Rfi }) {
             ) : null}
           </div>
         ) : null}
+        {tab === 'related' ? <RelatedMeetings type="rfi" id={rfi.id} /> : null}
         {tab === 'activity' ? (
           <ActivityTimeline
             entries={rfi.activity.map((a) => ({

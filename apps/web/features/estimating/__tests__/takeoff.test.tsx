@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { nav, renderInProject, enterText } from '@/test/render';
@@ -121,5 +121,45 @@ describe('Measure in the drawing viewer (journey 11)', () => {
     const quantities = await screen.findByRole('table', { name: 'Totals by tag and unit' });
     expect(within(quantities).getByText('8.41 m')).toBeTruthy();
     vi.restoreAllMocks();
+  });
+
+  it('has Nova find items, keeps them out of the totals until accepted, and counts only accepted ones', async () => {
+    const user = userEvent.setup();
+    renderInProject(
+      <DrawingViewerScreen sheetId="sht_a101" extensions={[takeoffViewerExtension]} />,
+    );
+    await user.click(await screen.findByRole('button', { name: 'Measure' }));
+    // The sample sheet's scale may already be confirmed by an earlier test.
+    const confirm = screen.queryByRole('button', { name: 'Confirm 1:100' });
+    if (confirm) await user.click(confirm);
+    await screen.findByText(/confirmed by Test User/);
+
+    await enterText(user, screen.getByLabelText('What should Nova find?'), 'power points');
+    await user.click(screen.getByRole('button', { name: 'Find with Nova' }));
+
+    // Five marks wait; nothing is counted yet.
+    await screen.findByRole('button', { name: 'Accept 90% and over (3)' });
+    const tally = screen.getByLabelText("Nova's marks on this sheet");
+    expect(within(tally).getByText('Waiting').nextSibling?.textContent).toBe('5');
+    expect(screen.queryByRole('table', { name: 'Totals by tag and unit' })).toBeNull();
+    expect(screen.getByText(/52% · low, review/)).toBeTruthy();
+
+    // "Accept 90% and over" takes the three sure marks and leaves the other two.
+    await user.click(screen.getByRole('button', { name: 'Accept 90% and over (3)' }));
+    const totals = await screen.findByRole('table', { name: 'Totals by tag and unit' });
+    expect(within(totals).getByText('power points')).toBeTruthy();
+    expect(within(totals).getByText('3 ea')).toBeTruthy();
+
+    // Reject the lowest mark: it stays listed, struck through, and the count stays at three.
+    await user.click(screen.getByRole('button', { name: /^Reject power points · Study/ }));
+    await waitFor(() =>
+      expect(within(tally).getByText('Rejected').nextSibling?.textContent).toBe('1'),
+    );
+    expect(within(tally).getByText('Rejected').nextSibling?.textContent).toBe('1');
+    expect(within(totals).getByText('3 ea')).toBeTruthy();
+
+    // Accepting the amber one by hand counts it.
+    await user.click(screen.getByRole('button', { name: /^Accept power points · Bed 1/ }));
+    expect(await within(totals).findByText('4 ea')).toBeTruthy();
   });
 });

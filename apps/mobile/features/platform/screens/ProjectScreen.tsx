@@ -71,6 +71,11 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.defects(projectId))}
       />
       <ListItem
+        title="Inspections"
+        subtitle="Run checklists and submit them, offline"
+        onPress={() => router.push(mobileRoutes.inspections(projectId))}
+      />
+      <ListItem
         title="Site sign-in"
         subtitle="Scan the gate code to sign in or out"
         onPress={() => router.push(mobileRoutes.siteSignIn(projectId))}
@@ -84,6 +89,11 @@ export function ProjectScreen({
         title="Roll call"
         subtitle="Account for everyone on site in an evacuation"
         onPress={() => router.push(mobileRoutes.rollCall(projectId))}
+      />
+      <ListItem
+        title="Meetings"
+        subtitle="Your open actions and the minutes"
+        onPress={() => router.push(mobileRoutes.meetings(projectId))}
       />
       <ListItem
         title="Drawings"

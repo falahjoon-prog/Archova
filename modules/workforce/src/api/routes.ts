@@ -14,6 +14,19 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { WalletService } from '../application/wallet';
+import type { WalletGrantService } from '../application/wallet-grants';
+import {
+  toAccessLogDto,
+  toAccessRequestDto,
+  toAccessRequestPreviewDto,
+  toComplianceDocumentDto,
+  toExpiryAlertDto,
+  toGrantDto,
+  toGrantedWalletDto,
+  toSharedDocumentDto,
+  toSnapshotDto,
+} from './wallet-mappers';
 import type { InductionLinkService } from '../application/induction-links';
 import { aiContent, type InductionService } from '../application/inductions';
 import {
@@ -81,6 +94,8 @@ export function workforceRoutes(
   svc: AttendanceService,
   ind: InductionService,
   links: InductionLinkService,
+  wallet: WalletService,
+  grants: WalletGrantService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -616,6 +631,194 @@ export function workforceRoutes(
         ),
       );
       return { status: 200, body: toCredentialDto(row), headers: { etag: etag(row.version) } };
+    },
+    // -------------------------------------------------------------------- compliance wallet (compliance/05)
+
+    listComplianceDocuments: async (input) => {
+      const { rows, today } = await read(input, (s) =>
+        wallet.list(s, {
+          ...(input.query.itemType ? { itemType: input.query.itemType } : {}),
+          includeArchived: input.query.includeArchived === 'true',
+        }),
+      );
+      return { status: 200, body: { data: rows.map((r) => toComplianceDocumentDto(r, today)) } };
+    },
+    listComplianceExpiryAlerts: async (input) => {
+      const { rows } = await read(input, (s) => wallet.listAlerts(s));
+      return { status: 200, body: { data: rows.map(toExpiryAlertDto) } };
+    },
+    createComplianceDocument: async (input) => {
+      const b = input.body;
+      const { row, today } = await tx(input, (s) =>
+        wallet.create(s, {
+          itemType: b.itemType,
+          title: b.title,
+          ...(b.number ? { number: b.number } : {}),
+          ...(b.issuingState ? { issuingState: b.issuingState } : {}),
+          ...(b.licenceClass ? { licenceClass: b.licenceClass } : {}),
+          ...(b.insurer ? { insurer: b.insurer } : {}),
+          ...(b.limitCents !== undefined ? { limitCents: b.limitCents } : {}),
+          ...(b.startsOn ? { startsOn: b.startsOn } : {}),
+          ...(b.expiresOn ? { expiresOn: b.expiresOn } : {}),
+          fileIds: (b.fileIds ?? []).map((f, i) => ref('file', f, `fileIds/${i}`)),
+          selfDeclared: b.selfDeclared === true,
+        }),
+      );
+      return {
+        status: 201,
+        body: toComplianceDocumentDto(row, today),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    updateComplianceDocument: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const b = input.body;
+      const { row, today } = await tx(input, (s) =>
+        wallet.update(
+          s,
+          id('complianceDocument', input.params.documentId, 'compliance_document.not_found'),
+          expected,
+          {
+            ...b,
+            ...(b.fileIds
+              ? { fileIds: b.fileIds.map((f, i) => ref('file', f, `fileIds/${i}`)) }
+              : {}),
+          },
+        ),
+      );
+      return {
+        status: 200,
+        body: toComplianceDocumentDto(row, today),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    sightComplianceDocument: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const { row, today } = await tx(input, (s) =>
+        wallet.sight(
+          s,
+          id('complianceDocument', input.params.documentId, 'compliance_document.not_found'),
+          expected,
+        ),
+      );
+      return {
+        status: 200,
+        body: toComplianceDocumentDto(row, today),
+        headers: { etag: etag(row.version) },
+      };
+    },
+    // -------------------------------------------------------------------- wallet sharing (builder side)
+
+    listComplianceAccessRequests: async (input) => {
+      const rows = await read(input, (s) => grants.listRequests(s));
+      return { status: 200, body: { data: rows.map(toAccessRequestDto) } };
+    },
+    createComplianceAccessRequest: async (input) => {
+      const b = input.body;
+      const { row, code } = await tx(input, (s) =>
+        grants.createRequest(s, {
+          ...(b.projectId ? { projectId: ref('project', b.projectId, 'projectId') } : {}),
+          allProjects: b.allProjects === true,
+          itemTypes: b.itemTypes,
+          ...(b.expiresOn ? { expiresOn: b.expiresOn } : {}),
+        }),
+      );
+      return {
+        status: 201,
+        body: { request: toAccessRequestDto(row), code },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    cancelComplianceAccessRequest: async (input) => {
+      const row = await tx(input, (s) =>
+        grants.cancelRequest(
+          s,
+          id('complianceAccessRequest', input.params.requestId, 'compliance_grant.not_found'),
+          parseIfMatch(input.headers['if-match']),
+        ),
+      );
+      return { status: 200, body: toAccessRequestDto(row), headers: { etag: etag(row.version) } };
+    },
+    listGrantedWallets: async (input) => {
+      const { rows } = await read(input, (s) => grants.listGranted(s));
+      return { status: 200, body: { data: rows.map(toGrantedWalletDto) } };
+    },
+    // Writes the subbie's access log in the same transaction, so it is not a read-only transaction.
+    listGrantedWalletDocuments: async (input) => {
+      const r = await tx(input, (s) =>
+        grants.listGrantedDocuments(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          ref('project', input.query.projectId, 'projectId'),
+        ),
+      );
+      return {
+        status: 200,
+        body: { data: r.documents.map(toSharedDocumentDto) },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    // Writes the subbie's access log first, so it is not a read-only transaction.
+    getGrantedWalletFileLink: async (input) => {
+      const r = await tx(input, (s) =>
+        grants.fileUrl(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          ref('project', input.query.projectId, 'projectId'),
+          id('complianceDocument', input.params.documentId, 'compliance_document.not_found'),
+          Number(input.params.position),
+        ),
+      );
+      return {
+        status: 200,
+        body: { url: r.url, expiresAt: r.expiresAt.toISOString() },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    createComplianceSnapshot: async (input) => {
+      const b = input.body;
+      const row = await tx(input, (s) =>
+        grants.createSnapshot(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          ref('project', b.projectId, 'projectId'),
+          ref('complianceDocument', b.documentId, 'documentId'),
+          b.reason,
+        ),
+      );
+      return { status: 201, body: toSnapshotDto(row) };
+    },
+    // -------------------------------------------------------------------- wallet sharing (subcontractor side)
+
+    previewComplianceShareCode: async (input) => {
+      const r = await tx(input, (s) => grants.previewCode(s, input.body.code));
+      return {
+        status: 200,
+        body: toAccessRequestPreviewDto(r),
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
+    acceptComplianceGrant: async (input) => {
+      const g = await tx(input, (s) => grants.acceptCode(s, input.body.code));
+      return { status: 201, body: toGrantDto(g, new Date().toISOString().slice(0, 10)) };
+    },
+    listComplianceGrants: async (input) => {
+      const { rows, today } = await read(input, (s) => grants.listGrants(s));
+      return { status: 200, body: { data: rows.map((g) => toGrantDto(g, today)) } };
+    },
+    revokeComplianceGrant: async (input) => {
+      const { row, today } = await tx(input, (s) =>
+        grants.revokeGrant(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          parseIfMatch(input.headers['if-match']),
+        ),
+      );
+      return { status: 200, body: toGrantDto(row, today), headers: { etag: etag(row.version) } };
+    },
+    listComplianceAccessLog: async (input) => {
+      const rows = await read(input, (s) => grants.accessLog(s));
+      return { status: 200, body: { data: rows.map(toAccessLogDto) } };
     },
     // -------------------------------------------------------------------- inductions over an access link
 

@@ -741,6 +741,40 @@ export function createDiaryService(deps: DiaryDeps) {
    * limited to their own company's labour (a subcontractor, or a member scoped by company) and everyone outside the
    * organisation hold none, so the notes, delays and other companies' labour never reach them through Ask.
    */
+  /**
+   * The delay register (scheduling): every delay line on the project with its day, newest first. Null for a reader who
+   * only sees their own company's lines - the register is for builder staff. At most `limit` + 1 rows come back so the
+   * caller can tell the list was cut.
+   */
+  async function delayLines(
+    scope: TenantScope,
+    projectId: string,
+    opts: { from?: LocalDate; to?: LocalDate; type?: DelayType; limit: number },
+  ) {
+    if ((await viewer(scope, projectId)).scopedCompanyId) return null;
+    const where: SQL[] = [eq(entries.projectId, projectId), isNull(LINE_TABLES.delay.deletedAt)];
+    if (opts.from) where.push(gte(entries.date, opts.from));
+    if (opts.to) where.push(lte(entries.date, opts.to));
+    if (opts.type) where.push(eq(LINE_TABLES.delay.type, opts.type));
+    const rows = await scope.tx
+      .select({
+        id: LINE_TABLES.delay.id,
+        entryId: entries.id,
+        date: entries.date,
+        status: entries.status,
+        type: LINE_TABLES.delay.type,
+        description: LINE_TABLES.delay.description,
+        hours: LINE_TABLES.delay.hours,
+        isEotCandidate: LINE_TABLES.delay.isEotCandidate,
+      })
+      .from(LINE_TABLES.delay)
+      .innerJoin(entries, eq(entries.id, LINE_TABLES.delay.entryId))
+      .where(and(...where))
+      .orderBy(desc(entries.date), desc(LINE_TABLES.delay.id))
+      .limit(opts.limit + 1);
+    return rows;
+  }
+
   async function aiAccessScopes(scope: TenantScope, projectId: string): Promise<string[]> {
     if (scope.ctx.principalType !== 'member') return [];
     if (!(await deps.access.can(scope, 'diary.entries.read', { projectId }))) return [];
@@ -1160,6 +1194,7 @@ export function createDiaryService(deps: DiaryDeps) {
     dayForSummary,
     aiSources,
     aiAccessScopes,
+    delayLines,
     saveHeader,
     submit,
     signOff,

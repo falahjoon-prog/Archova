@@ -26,7 +26,7 @@ export function normaliseForMatch(text: string): string {
 }
 
 /** Models sometimes elide the middle of a long quote with "..."; each part must appear, in order. */
-function quoteAppears(quote: string, passage: string): boolean {
+export function quoteAppears(quote: string, passage: string): boolean {
   const parts = normaliseForMatch(quote)
     .split(/\s*(?:\.\.\.|…)\s*/)
     .filter((p) => p.length > 0);

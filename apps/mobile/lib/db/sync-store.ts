@@ -4,6 +4,8 @@
 import {
   commandModule,
   type AttentionReason,
+  type Drain,
+  type DrainGrant,
   type NewOutboxEntry,
   type OutboxEntry,
   type OutboxStatus,
@@ -386,13 +388,51 @@ export class SqliteSyncStore implements SyncStore {
    * Empties the tables. Deleting the organisation's database file and key is the caller's job
    * (`deleteOrgDatabase`), once the engine reports the wipe.
    */
+  async loadDrains(): Promise<Drain[]> {
+    const rows = await this.db.getAllAsync<{
+      project_id: string;
+      module: string;
+      revoked_at: string | null;
+      until_ms: number;
+      grant_json: string | null;
+    }>('SELECT project_id, module, revoked_at, until_ms, grant_json FROM sync_drain');
+    // The whole organisation is stored with empty strings, since both columns are part of the key.
+    return rows.map((r) => ({
+      projectId: r.project_id === '' ? null : r.project_id,
+      module: r.module === '' ? null : r.module,
+      revokedAt: r.revoked_at,
+      until: r.until_ms,
+      ...(r.grant_json ? { grant: JSON.parse(r.grant_json) as DrainGrant } : {}),
+    }));
+  }
+
+  async saveDrains(drains: readonly Drain[]): Promise<void> {
+    await this.db.withExclusiveTransactionAsync(async (tx) => {
+      await tx.runAsync('DELETE FROM sync_drain');
+      for (const d of drains) {
+        await tx.runAsync(
+          'INSERT INTO sync_drain (project_id, module, revoked_at, until_ms, grant_json) VALUES (?, ?, ?, ?, ?)',
+          [
+            d.projectId ?? '',
+            d.module ?? '',
+            d.revokedAt,
+            d.until,
+            d.grant ? JSON.stringify(d.grant) : null,
+          ],
+        );
+      }
+    });
+  }
+
   async wipe(): Promise<WipeCounts> {
     let dropped: { entity_type: string }[] = [];
     await this.db.withExclusiveTransactionAsync(async (tx) => {
       dropped = await tx.getAllAsync<{ entity_type: string }>(
         `SELECT entity_type FROM outbox WHERE status <> 'pending_review'`,
       );
-      await tx.execAsync('DELETE FROM outbox; DELETE FROM records; DELETE FROM sync_state;');
+      await tx.execAsync(
+        'DELETE FROM outbox; DELETE FROM records; DELETE FROM sync_state; DELETE FROM sync_drain;',
+      );
     });
     return countByType(dropped);
   }

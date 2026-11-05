@@ -1,19 +1,30 @@
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
+import {
+  createHttpsTransport,
+  createWebhookService,
+  vaultFromKey,
+} from '@archova/mod-integrations';
 import { AI_JOBS, AI_ROUTES } from './ai/declaration';
 import { loadConfig, workerRole } from './config';
-import { startQueues } from './queues';
+import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
+import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
+import { templateBackfill } from './jobs/template-backfill';
+import { trialBackfill } from './jobs/trial-backfill';
+import { trialEndingEmail } from './jobs/trial-ending-email';
+import { createLogSender, createSesSender } from './email';
+import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
+import { walletExpiry } from './jobs/wallet-expiry';
+import { webhookDelivery } from './webhooks';
 
-/** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
-const SUBSCRIBERS: Subscriber[] = [];
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
 const ROUTES = AI_ROUTES;
 
@@ -25,8 +36,48 @@ async function main() {
     );
   const config = loadConfig();
   const database = createDatabase(config.databaseUrl);
+  /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
+  const SUBSCRIBERS: Subscriber[] = [];
   /** Nightly and hourly per-org jobs (backend 05 §3). */
-  const jobs: TenantJob[] = [accessLinkPurge, importStagingPurge, syncHoldsPurge];
+  const jobs: TenantJob[] = [
+    accessLinkPurge,
+    importStagingPurge,
+    syncHoldsPurge,
+    trialExpiry,
+    trialBackfill,
+    trialEndingEmail(
+      config.email.provider === 'ses'
+        ? createSesSender({
+            region: config.email.region,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg)),
+      config.email.appBaseUrl,
+    ),
+    templateBackfill,
+    meetingReminders,
+    // Alert rows are the record until the notification inbox lands; log what was raised.
+    walletExpiry(async (scope, alerts) => {
+      log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');
+    }),
+  ];
+  let webhooks: ReturnType<typeof webhookDelivery> | null = null;
+  if (config.webhookSecretKey) {
+    webhooks = webhookDelivery(
+      connectionFor(config.redisUrl),
+      database,
+      createWebhookService({
+        vault: vaultFromKey(config.webhookSecretKey),
+        transport: createHttpsTransport(),
+      }),
+      (msg, o) => log.info(o, msg),
+    );
+    SUBSCRIBERS.push(webhooks.fanOut);
+    jobs.push(webhooks.sweep);
+  } else {
+    log.warn({}, 'WORKER_WEBHOOK_SECRET_KEY is not set: webhooks are not delivered');
+  }
   if (config.files.store === 's3') {
     const store = createS3ObjectStore({
       bucket: config.files.bucket,
@@ -61,6 +112,7 @@ async function main() {
   });
 
   await running.close();
+  await webhooks?.close();
   await platform.end();
   await database.close();
 }

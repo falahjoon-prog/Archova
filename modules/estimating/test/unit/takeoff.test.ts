@@ -29,6 +29,32 @@ describe('takeoff rules', () => {
     ).toBe('geometry/points');
   });
 
+  it('accepts cut-outs on an area only, each with three finite points', () => {
+    const hole = [
+      [0.1, 0.1],
+      [0.2, 0.1],
+      [0.2, 0.2],
+    ];
+    expect(measurementProblem('area', { ...square, holes: [hole] }, 3)).toBeNull();
+    expect(measurementProblem('area', { ...square, holes: [hole.slice(0, 2)] }, 3)?.path).toBe(
+      'geometry/holes',
+    );
+    expect(
+      measurementProblem(
+        'length',
+        {
+          type: 'polyline',
+          points: [
+            [0, 0],
+            [1, 1],
+          ],
+          holes: [hole],
+        },
+        1,
+      )?.path,
+    ).toBe('geometry/holes');
+  });
+
   it('keeps a count equal to the points placed and quantities non-negative', () => {
     const pts = {
       type: 'points' as const,
@@ -47,5 +73,25 @@ describe('takeoff rules', () => {
     expect(confirmedOnCreate('manual')).toBe(true);
     expect(confirmedOnCreate('assisted')).toBe(false);
     expect(confirmedOnCreate('auto')).toBe(false);
+  });
+});
+
+describe('Nova-assisted takeoff', () => {
+  it('waits for a person to confirm what Nova drew, but not what they draw themselves', () => {
+    expect(confirmedOnCreate('assisted')).toBe(false);
+    expect(confirmedOnCreate('auto')).toBe(false);
+    expect(confirmedOnCreate('manual')).toBe(true);
+  });
+
+  it('wants a count to equal the points Nova placed', () => {
+    const points = {
+      type: 'points' as const,
+      points: [
+        [0.1, 0.1],
+        [0.2, 0.2],
+      ],
+    };
+    expect(measurementProblem('count', points, 2)).toBeNull();
+    expect(measurementProblem('count', points, 3)?.path).toBe('quantity');
   });
 });

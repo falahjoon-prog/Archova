@@ -4,7 +4,18 @@ export interface WorkerConfig {
   /** app_rw: tenant transactions for subscribers, exactly like the API. */
   databaseUrl: string;
   redisUrl: string;
+  /** 32 bytes, base64: opens the webhook signing secrets the API sealed (same key as API_WEBHOOK_SECRET_KEY). */
+  webhookSecretKey: string | null;
   /** Object storage for file jobs; `none` leaves them unregistered (local runs without a bucket). */
+  /** `ses` sends mail through Amazon SES in `region`; anything else only logs (local runs). */
+  email: {
+    provider: 'ses' | 'log';
+    region: string;
+    from: string;
+    replyTo: string | undefined;
+    /** Base URL of the web app, for links in emails. */
+    appBaseUrl: string;
+  };
   files: {
     store: 's3' | 'none';
     bucket: string;
@@ -36,6 +47,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
     platformDatabaseUrl: required(env, 'DATABASE_PLATFORM_URL'),
     databaseUrl: required(env, 'DATABASE_URL'),
     redisUrl: required(env, 'REDIS_URL'),
+    webhookSecretKey: env.WORKER_WEBHOOK_SECRET_KEY || null,
+    email: {
+      provider: env.WORKER_EMAIL_PROVIDER === 'ses' ? 'ses' : 'log',
+      region: env.WORKER_EMAIL_REGION ?? 'ap-southeast-2',
+      from: env.WORKER_EMAIL_FROM ?? 'Archova <no-reply@archova.com.au>',
+      replyTo: env.WORKER_EMAIL_REPLY_TO || undefined,
+      appBaseUrl: env.WORKER_APP_BASE_URL ?? 'https://app.archova.com.au',
+    },
     files: {
       store: env.WORKER_FILES_STORE === 's3' ? 's3' : 'none',
       bucket: env.WORKER_FILES_BUCKET ?? 'archova-local-files',

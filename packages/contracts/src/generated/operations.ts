@@ -5,6 +5,17 @@ import * as s from './schemas';
 
 export const SignupBody = s.SignupRequestSchema;
 export const LoginBody = s.LoginRequestSchema;
+export const ListApiTokensParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateApiTokenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateApiTokenBody = s.CreateApiTokenRequestSchema;
+export const RevokeApiTokenParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "apiTokenId": z.string().regex(new RegExp("^tok_[0-9A-Za-z]{26}$")),
+});
 export const OauthAuthorizeQuery = z.object({
   "response_type": z.enum(["code"]),
   "client_id": z.string(),
@@ -19,8 +30,44 @@ export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const GetSupportAccessParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListStaffActionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListSupportReadsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetSupportBannerParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateSupportAccessGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateSupportAccessGrantBody = s.CreateSupportAccessGrantRequestSchema;
+export const RevokeSupportAccessGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string(),
+});
 export const GetEntitlementsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetFeatureFlagsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListNotificationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListNotificationsQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(100).default(30),
+});
+export const MarkAllNotificationsReadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const MarkNotificationReadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "notificationId": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
 });
 export const ListProjectsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -42,6 +89,112 @@ export const UpdateProjectParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
 export const UpdateProjectBody = s.UpdateProjectRequestSchema;
+export const GetKeyDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateKeyDatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const UpdateKeyDatesBody = s.UpdateKeyDatesRequestSchema;
+export const ListKeyDateChangesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetDelayRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetDelayRegisterQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+  "cause": s.DiaryDelayTypeSchema.optional(),
+  "source": z.enum(["diary", "rfi"]).optional(),
+  "eotOnly": z.enum(["true", "false"]).optional(),
+});
+export const ListSchedulesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleBody = s.CreateScheduleRequestSchema;
+export const ImportScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportScheduleBody = s.ImportScheduleRequestSchema;
+export const GetScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const DeleteScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleActivityBody = s.CreateScheduleActivityRequestSchema;
+export const UpdateScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const UpdateScheduleActivityBody = s.UpdateScheduleActivityRequestSchema;
+export const DeleteScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleDependencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleDependencyBody = s.CreateScheduleDependencyRequestSchema;
+export const DeleteScheduleDependencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "dependencyId": z.string().regex(new RegExp("^sdp_[0-9A-Za-z]{26}$")),
+});
+export const ListScheduleLinksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleLinkBody = s.CreateScheduleLinkRequestSchema;
+export const DeleteScheduleLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^slk_[0-9A-Za-z]{26}$")),
+});
+export const GetScheduleLookaheadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const GetScheduleLookaheadQuery = z.object({
+  "weeks": z.coerce.number().int().min(1).max(6).default(3),
+  "from": z.string().date().optional(),
+});
 export const ListProjectMembersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -274,6 +427,14 @@ export const AcknowledgeTransmittalParams = z.object({
   "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
 });
 export const AcknowledgeTransmittalBody = s.AcknowledgeTransmittalRequestSchema;
+export const ResendTransmittalLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "transmittalId": z.string().regex(new RegExp("^trm_[0-9A-Za-z]{26}$")),
+  "recipientId": z.string().regex(new RegExp("^trr_[0-9A-Za-z]{26}$")),
+});
+export const OpenTransmittalAccessBody = s.OpenInductionAccessRequestSchema;
+export const DownloadTransmittalAccessItemBody = s.DownloadTransmittalItemRequestSchema;
 export const GetAiSettingsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -380,6 +541,102 @@ export const ReadQuoteWithNovaBody = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
   "fileId": s.FileRefSchema,
 }).strict();
+export const DetectTakeoffWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DetectTakeoffWithNovaBody = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "target": z.object({
+  "kind": s.TakeoffKindSchema,
+  "what": z.string().min(1).max(120),
+  "hint": z.string().max(400).optional(),
+}).strict(),
+  "image": z.object({
+  "mime": z.enum(["image/png", "image/jpeg", "image/webp"]),
+  "base64": z.string().min(1).max(11500000),
+}).strict().optional(),
+  "examples": z.array(z.object({
+  "x": z.number().min(0).max(1),
+  "y": z.number().min(0).max(1),
+}).strict()).max(5).optional(),
+}).strict();
+export const ListContractReviewsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReviewContractWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReviewContractWithNovaBody = z.object({
+  "fileId": s.FileRefSchema,
+  "contractType": s.ContractTypeSchema,
+  "ourSide": z.enum(["we_pay", "we_get_paid"]),
+  "baseForm": z.enum(["as4000", "as2124", "as4902", "as4903", "other"]).nullable().optional(),
+  "multiState": z.boolean().optional(),
+}).strict();
+export const GetContractReviewParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const DecideContractFlagParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+  "flagIndex": z.string().regex(new RegExp("^[0-9]{1,4}$")),
+});
+export const DecideContractFlagBody = z.object({
+  "decision": s.ContractFlagDecisionKindSchema,
+  "note": z.string().max(1000).nullable().optional(),
+}).strict();
+export const AskContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "suggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+});
+export const AskContractBody = z.object({
+  "question": z.string().min(3).max(500),
+}).strict();
+export const CompareContractsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CompareContractsBody = z.object({
+  "baseReviewId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+  "otherReviewId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")),
+}).strict();
+export const GetContractPlaybookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contractType": s.ContractTypeSchema,
+});
+export const ReplaceContractPlaybookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "contractType": s.ContractTypeSchema,
+});
+export const ReplaceContractPlaybookBody = z.object({
+  "topics": z.array(s.ContractPlaybookTopicSchema).max(40),
+}).strict();
+export const NegotiateQuoteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const NegotiateQuoteBody = z.object({
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "quoteId": z.string(),
+  "targetExGst": z.string().regex(new RegExp("^\\d{1,12}(\\.\\d{1,2})?$")).nullable().optional(),
+  "question": z.string().max(1000).optional(),
+  "history": z.array(s.NegotiationTurnSchema).max(10).optional(),
+}).strict();
+export const TranscribeSpeechParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const TranscribeSpeechBody = z.object({
+  "audio": z.string().min(1).max(900000),
+  "mimeType": z.enum(["audio/webm", "audio/ogg", "audio/mp4", "audio/wav"]),
+}).strict();
 export const SummariseDiaryDayWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -390,6 +647,12 @@ export const SummariseDiaryWeekWithNovaParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "weekStart": z.string().date(),
 });
+export const DraftMinutesWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const DraftMinutesWithNovaBody = s.DraftMinutesRequestSchema;
 export const CompareDrawingRevisionParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -449,6 +712,33 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const ListBidderListsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListBidderListsQuery = z.object({
+  "trade": z.string().max(100).optional(),
+});
+export const CreateBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateBidderListBody = s.CreateBidderListRequestSchema;
+export const UpdateBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateBidderListBody = s.UpdateBidderListRequestSchema;
+export const DeleteBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+});
+export const GetBidBoardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetBidBoardQuery = z.object({
+  "status": s.PackageStatusSchema.optional(),
+  "trade": z.string().max(100).optional(),
+  "projectId": z.string().optional(),
+});
 export const ListTenderPackagesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -576,6 +866,182 @@ export const ConfirmTakeoffMeasurementParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
 });
+export const ListCostItemsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCostItemsQuery = z.object({
+  "q": z.string().max(100).optional(),
+  "trade": z.string().max(100).optional(),
+  "category": s.CostCategorySchema.optional(),
+  "region": z.string().max(60).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateCostItemBody = s.CreateCostItemRequestSchema;
+export const GetCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCostItemBody = s.UpdateCostItemRequestSchema;
+export const DeleteCostItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const ListCostRatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const AddCostRateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "costItemId": z.string().regex(new RegExp("^cit_[0-9A-Za-z]{26}$")),
+});
+export const AddCostRateBody = s.CostRateInputSchema;
+export const ListEstimatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEstimatesQuery = z.object({
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEstimateBody = s.CreateEstimateRequestSchema;
+export const GetEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEstimateBody = s.UpdateEstimateRequestSchema;
+export const DeleteEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const AddEstimateLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const AddEstimateLineBody = s.EstimateLineInputSchema;
+export const UpdateEstimateLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^esl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEstimateLineBody = s.EstimateLineInputSchema;
+export const DeleteEstimateLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^esl_[0-9A-Za-z]{26}$")),
+});
+export const IssueEstimateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "estimateId": z.string().regex(new RegExp("^est_[0-9A-Za-z]{26}$")),
+});
+export const CreateAssistedTakeoffMeasurementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateAssistedTakeoffMeasurementsBody = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "items": z.array(z.object({
+  "label": z.string().min(1).max(200),
+  "kind": s.TakeoffKindSchema,
+  "geometry": s.TakeoffGeometrySchema,
+  "quantity": z.string().regex(new RegExp("^[0-9]{1,15}(\\.[0-9]{1,3})?$")),
+  "unit": z.string().min(1).max(20),
+  "confidence": z.number().min(0).max(1),
+}).strict()).min(1).max(200),
+}).strict();
+export const ConfirmTakeoffMeasurementsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ConfirmTakeoffMeasurementsBody = z.object({
+  "revisionId": z.string().regex(new RegExp("^drv_[0-9A-Za-z]{26}$")),
+  "ids": z.array(z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$"))).min(1).max(200).optional(),
+  "minConfidence": z.number().min(0).max(1).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 2, { message: 'At least 2 field(s) required' });
+export const RejectTakeoffMeasurementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "measurementId": z.string().regex(new RegExp("^tkm_[0-9A-Za-z]{26}$")),
+});
+export const ListAccountingConnectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const DisconnectAccountingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const StartAccountingConnectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const CompleteAccountingConnectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const CompleteAccountingConnectionBody = s.AccountingCallbackRequestSchema;
+export const ListAccountingTargetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const SelectAccountingTargetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const SelectAccountingTargetBody = s.AccountingTargetSchema;
+export const UpdateAccountingFieldMapParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const UpdateAccountingFieldMapBody = s.AccountingFieldMapSchema;
+export const UpdateAccountingSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["xero", "myob"]),
+});
+export const UpdateAccountingSettingsBody = s.AccountingSettingsSchema;
+export const ListAccountingSyncIssuesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ResolveAccountingSyncIssueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
+});
+export const ListWebhooksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWebhookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateWebhookBody = s.CreateWebhookRequestSchema;
+export const DeleteWebhookParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
+});
+export const ListWebhookDeliveriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
+});
 export const ListImportJobsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -658,6 +1124,124 @@ export const TransitionDefectParams = z.object({
   "defectId": z.string().regex(new RegExp("^dfx_[0-9A-Za-z]{26}$")),
 });
 export const TransitionDefectBody = s.DefectTransitionRequestSchema;
+export const ListSubmittalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListSubmittalsQuery = z.object({
+  "status": s.SubmittalStatusSchema.optional(),
+  "type": s.SubmittalTypeSchema.optional(),
+  "ballInCourt": s.UserRefSchema.optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSubmittalBody = s.CreateSubmittalRequestSchema;
+export const GetSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSubmittalBody = s.UpdateSubmittalRequestSchema;
+export const SubmitSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const SubmitSubmittalBody = s.SubmitSubmittalRequestSchema;
+export const RespondToSubmittalStepParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+  "stepId": z.string().regex(new RegExp("^sbs_[0-9A-Za-z]{26}$")),
+});
+export const RespondToSubmittalStepBody = s.RespondSubmittalStepRequestSchema;
+export const CloseSubmittalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "submittalId": z.string().regex(new RegExp("^sbm_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceTypesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceTypesQuery = z.object({
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateCorrespondenceTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateCorrespondenceTypeBody = s.CreateCorrespondenceTypeRequestSchema;
+export const UpdateCorrespondenceTypeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "typeId": z.string().regex(new RegExp("^cty_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCorrespondenceTypeBody = s.UpdateCorrespondenceTypeRequestSchema;
+export const ListProjectCorrespondenceTypesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListCorrespondenceQuery = z.object({
+  "status": s.CorrespondenceStatusSchema.optional(),
+  "typeId": s.CorrespondenceTypeRefSchema.optional(),
+  "awaitingResponse": z.enum(["true", "false"]).optional(),
+  "q": z.string().min(1).max(200).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCorrespondenceBody = s.CreateCorrespondenceRequestSchema;
+export const GetCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCorrespondenceBody = s.UpdateCorrespondenceRequestSchema;
+export const SendCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const RespondToCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const RespondToCorrespondenceBody = s.RespondCorrespondenceRequestSchema;
+export const CloseCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const VoidCorrespondenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "correspondenceId": z.string().regex(new RegExp("^cor_[0-9A-Za-z]{26}$")),
+});
+export const VoidCorrespondenceBody = s.VoidCorrespondenceRequestSchema;
 export const ListRfisParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1137,6 +1721,147 @@ export const SightWorkerCredentialParams = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "credentialId": z.string().regex(new RegExp("^wcr_[0-9A-Za-z]{26}$")),
 });
+export const ListComplianceExpiryAlertsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceDocumentsQuery = z.object({
+  "itemType": s.ComplianceItemTypeSchema.optional(),
+  "includeArchived": z.enum(["true", "false"]).optional(),
+});
+export const CreateComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceDocumentBody = s.CreateComplianceDocumentRequestSchema;
+export const UpdateComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+});
+export const UpdateComplianceDocumentBody = s.UpdateComplianceDocumentRequestSchema;
+export const SightComplianceDocumentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceAccessRequestsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceAccessRequestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceAccessRequestBody = s.CreateComplianceAccessRequestSchema;
+export const CancelComplianceAccessRequestParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "requestId": z.string().regex(new RegExp("^car_[0-9A-Za-z]{26}$")),
+});
+export const PreviewComplianceShareCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const PreviewComplianceShareCodeBody = s.ComplianceShareCodeRequestSchema;
+export const ListComplianceGrantsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const AcceptComplianceGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const AcceptComplianceGrantBody = s.ComplianceShareCodeRequestSchema;
+export const RevokeComplianceGrantParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+});
+export const ListComplianceAccessLogParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPrequalTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrequalTemplateBody = s.CreatePrequalTemplateRequestSchema;
+export const GetPrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalTemplateBody = s.UpdatePrequalTemplateRequestSchema;
+export const PublishPrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const NewPrequalTemplateVersionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const ListPrequalificationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPrequalificationsQuery = z.object({
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "status": s.PrequalStatusSchema.optional(),
+});
+export const CreatePrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrequalificationBody = s.CreatePrequalificationRequestSchema;
+export const GetPrequalificationRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetPrequalificationRegisterQuery = z.object({
+  "state": s.PrequalQualificationSchema.optional(),
+  "trade": z.string().max(100).optional(),
+});
+export const GetPrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalificationBody = s.UpdatePrequalificationRequestSchema;
+export const SubmitPrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const ApprovePrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const ApprovePrequalificationBody = s.ApprovePrequalificationRequestSchema;
+export const RejectPrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const RejectPrequalificationBody = s.RejectPrequalificationRequestSchema;
+export const ListGrantedWalletsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListGrantedWalletDocumentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+});
+export const ListGrantedWalletDocumentsQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetGrantedWalletFileLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "position": z.enum(["1", "2", "3", "4"]),
+});
+export const GetGrantedWalletFileLinkQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceSnapshotParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+});
+export const CreateComplianceSnapshotBody = s.CreateComplianceSnapshotRequestSchema;
 export const ListInductionLinksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1170,6 +1895,358 @@ export const AddLinkInductionCredentialBody = s.CreateWorkerCredentialRequestSch
 export const SignLinkInductionBody = s.SignInductionRequestSchema;
 export const AskLinkInductionBody = s.AskInductionRequestSchema;
 export const GetLinkInductionTranslationBody = s.TranslateInductionRequestSchema;
+export const ListInspectionTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListInspectionTemplatesQuery = z.object({
+  "published": z.enum(["true", "false"]).optional(),
+});
+export const CreateInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateInspectionTemplateBody = s.CreateInspectionTemplateRequestSchema;
+export const GetInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateInspectionTemplateBody = s.UpdateInspectionTemplateRequestSchema;
+export const PublishInspectionTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const NewInspectionTemplateVersionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")),
+});
+export const ListInspectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListInspectionsQuery = z.object({
+  "status": s.InspectionStatusSchema.optional(),
+  "templateId": z.string().regex(new RegExp("^itp_[0-9A-Za-z]{26}$")).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateInspectionBody = s.CreateInspectionRequestSchema;
+export const GetInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const RecordInspectionResponsesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const RecordInspectionResponsesBody = s.RecordInspectionResponsesRequestSchema;
+export const SubmitInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const SubmitInspectionBody = s.SubmitInspectionRequestSchema;
+export const CloseInspectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "inspectionId": z.string().regex(new RegExp("^ins_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListObservationsQuery = z.object({
+  "status": s.ObservationStatusSchema.optional(),
+  "type": s.ObservationTypeSchema.optional(),
+  "assigneeCompanyId": s.CompanyRefSchema.optional(),
+  "priority": s.DefectPrioritySchema.optional(),
+  "overdue": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateObservationBody = s.CreateObservationRequestSchema;
+export const GetObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
+});
+export const UpdateObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
+});
+export const UpdateObservationBody = s.UpdateObservationRequestSchema;
+export const TransitionObservationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
+});
+export const TransitionObservationBody = s.ObservationTransitionRequestSchema;
+export const ListSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListSwmsQuery = z.object({
+  "status": s.SwmsStatusSchema.optional(),
+  "companyId": s.CompanyRefSchema.optional(),
+  "category": s.HighRiskWorkCategorySchema.optional(),
+  "expired": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const CreateSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateSwmsBody = s.CreateSwmsRequestSchema;
+export const GetSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const UpdateSwmsBody = s.UpdateSwmsRequestSchema;
+export const CheckSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const TransitionSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const TransitionSwmsBody = s.SwmsTransitionRequestSchema;
+export const AcknowledgeSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "swmsId": z.string().regex(new RegExp("^sws_[0-9A-Za-z]{26}$")),
+});
+export const AcknowledgeSwmsBody = s.AcknowledgeSwmsRequestSchema;
+export const ListContractsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateContractBody = s.CreateContractRequestSchema;
+export const GetContractParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SubmitPaymentClaimParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SubmitPaymentClaimBody = s.SubmitPaymentClaimRequestSchema;
+export const GetCostForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateForecastAdjustmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateForecastAdjustmentBody = s.CreateForecastAdjustmentRequestSchema;
+export const DeleteForecastAdjustmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "adjustmentId": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
+});
+export const ListVariationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const CreateVariationBody = s.CreateVariationRequestSchema;
+export const GetVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const SubmitVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const ApproveVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const ApproveVariationBody = s.VariationDecisionRequestSchema;
+export const RejectVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const RejectVariationBody = s.VariationDecisionRequestSchema;
+export const WithdrawVariationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const ListPaymentClaimsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListPaymentClaimsQuery = z.object({
+  "status": s.PaymentClaimStatusSchema.optional(),
+});
+export const GetPaymentClaimParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const IssuePaymentScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const IssuePaymentScheduleBody = s.IssuePaymentScheduleRequestSchema;
+export const ListClaimEvidenceParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const GetClaimEvidencePdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const GetClaimEvidenceJsonParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "kind": z.enum(["claim", "schedule"]),
+});
+export const ListMeetingSeriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingSeriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingSeriesBody = s.CreateMeetingSeriesRequestSchema;
+export const UpdateMeetingSeriesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "seriesId": z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingSeriesBody = s.UpdateMeetingSeriesRequestSchema;
+export const CreateMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "seriesId": z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingBody = s.CreateMeetingRequestSchema;
+export const ListMeetingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListMeetingsQuery = z.object({
+  "seriesId": s.MeetingSeriesRefSchema.optional(),
+});
+export const ListMeetingsLinkedToParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListMeetingsLinkedToQuery = z.object({
+  "type": z.enum(["rfi", "variation", "defect"]),
+  "id": z.string().min(5).max(40),
+});
+export const GetMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingBody = s.UpdateMeetingRequestSchema;
+export const SetMeetingAttendeesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const SetMeetingAttendeesBody = s.SetMeetingAttendeesRequestSchema;
+export const AddMeetingSectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const AddMeetingSectionBody = s.AddMeetingSectionRequestSchema;
+export const CreateMeetingItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const CreateMeetingItemBody = s.CreateMeetingItemRequestSchema;
+export const UpdateMeetingItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^mit_[0-9A-Za-z]{26}$")),
+});
+export const UpdateMeetingItemBody = s.UpdateMeetingItemRequestSchema;
+export const DeleteMeetingItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^mit_[0-9A-Za-z]{26}$")),
+});
+export const IssueMeetingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+});
+export const IssueMeetingBody = s.IssueMeetingRequestSchema;
+export const GetMeetingMinutesPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "meetingId": z.string().regex(new RegExp("^mtg_[0-9A-Za-z]{26}$")),
+  "version": z.string().regex(new RegExp("^[1-9][0-9]{0,5}$")),
+});
+export const ListMeetingActionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListMeetingActionsQuery = z.object({
+  "scope": z.enum(["mine", "all"]).default("mine"),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -1178,6 +2255,10 @@ export interface OperationDef {
   auth: 'required' | 'none';
   permission: string | null;
   internal: boolean;
+  /** Feature flag that must be on for the org (x-flag); absent for ungated operations. */
+  flag?: string;
+  /** Requests per minute for one user in one org (x-rate-limit), counted for every caller; absent when unlimited. */
+  rateLimit?: number;
   contentType: string | null;
   params: z.ZodTypeAny | null;
   query: z.ZodTypeAny | null;
@@ -1230,6 +2311,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: null,
+    query: null,
+    body: null,
+  },
+  listApiTokens: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/api-tokens',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: ListApiTokensParams,
+    query: null,
+    body: null,
+  },
+  createApiToken: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/api-tokens',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: "application/json",
+    params: CreateApiTokenParams,
+    query: null,
+    body: CreateApiTokenBody,
+  },
+  revokeApiToken: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/api-tokens/{apiTokenId}',
+    module: "identity",
+    auth: "required",
+    permission: null,
+    internal: true,
+    contentType: null,
+    params: RevokeApiTokenParams,
     query: null,
     body: null,
   },
@@ -1317,6 +2434,78 @@ export const operations = {
     query: null,
     body: null,
   },
+  getSupportAccess: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportAccessParams,
+    query: null,
+    body: null,
+  },
+  listStaffActions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/staff-actions',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListStaffActionsParams,
+    query: null,
+    body: null,
+  },
+  listSupportReads: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/reads',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListSupportReadsParams,
+    query: null,
+    body: null,
+  },
+  getSupportBanner: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/support-access/banner',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetSupportBannerParams,
+    query: null,
+    body: null,
+  },
+  createSupportAccessGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/support-access/grants',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: CreateSupportAccessGrantParams,
+    query: null,
+    body: CreateSupportAccessGrantBody,
+  },
+  revokeSupportAccessGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/support-access/grants/{grantId}/revoke',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: RevokeSupportAccessGrantParams,
+    query: null,
+    body: null,
+  },
   getPublicPriceBook: {
     method: 'GET',
     path: '/v1/public/price-book',
@@ -1338,6 +2527,54 @@ export const operations = {
     internal: false,
     contentType: null,
     params: GetEntitlementsParams,
+    query: null,
+    body: null,
+  },
+  getFeatureFlags: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/feature-flags',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: GetFeatureFlagsParams,
+    query: null,
+    body: null,
+  },
+  listNotifications: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/notifications',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: ListNotificationsParams,
+    query: ListNotificationsQuery,
+    body: null,
+  },
+  markAllNotificationsRead: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/notifications/read-all',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: MarkAllNotificationsReadParams,
+    query: null,
+    body: null,
+  },
+  markNotificationRead: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/notifications/{notificationId}/read',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: MarkNotificationReadParams,
     query: null,
     body: null,
   },
@@ -1388,6 +2625,222 @@ export const operations = {
     params: UpdateProjectParams,
     query: null,
     body: UpdateProjectBody,
+  },
+  getKeyDates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/key-dates',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: GetKeyDatesParams,
+    query: null,
+    body: null,
+  },
+  updateKeyDates: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/key-dates',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.update",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateKeyDatesParams,
+    query: null,
+    body: UpdateKeyDatesBody,
+  },
+  listKeyDateChanges: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/key-dates/changes',
+    module: "platform",
+    auth: "required",
+    permission: "platform.projects.read",
+    internal: false,
+    contentType: null,
+    params: ListKeyDateChangesParams,
+    query: null,
+    body: null,
+  },
+  getDelayRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/delay-register',
+    module: "diary",
+    auth: "required",
+    permission: "diary.entries.read",
+    internal: false,
+    contentType: null,
+    params: GetDelayRegisterParams,
+    query: GetDelayRegisterQuery,
+    body: null,
+  },
+  listSchedules: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListSchedulesParams,
+    query: null,
+    body: null,
+  },
+  createSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleParams,
+    query: null,
+    body: CreateScheduleBody,
+  },
+  importSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/import',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.import",
+    internal: false,
+    contentType: "application/json",
+    params: ImportScheduleParams,
+    query: null,
+    body: ImportScheduleBody,
+  },
+  getSchedule: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetScheduleParams,
+    query: null,
+    body: null,
+  },
+  deleteSchedule: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.import",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleParams,
+    query: null,
+    body: null,
+  },
+  createScheduleActivity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleActivityParams,
+    query: null,
+    body: CreateScheduleActivityBody,
+  },
+  updateScheduleActivity: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateScheduleActivityParams,
+    query: null,
+    body: UpdateScheduleActivityBody,
+  },
+  deleteScheduleActivity: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleActivityParams,
+    query: null,
+    body: null,
+  },
+  createScheduleDependency: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleDependencyParams,
+    query: null,
+    body: CreateScheduleDependencyBody,
+  },
+  deleteScheduleDependency: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies/{dependencyId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleDependencyParams,
+    query: null,
+    body: null,
+  },
+  listScheduleLinks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListScheduleLinksParams,
+    query: null,
+    body: null,
+  },
+  createScheduleLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}/links',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleLinkParams,
+    query: null,
+    body: CreateScheduleLinkBody,
+  },
+  deleteScheduleLink: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links/{linkId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleLinkParams,
+    query: null,
+    body: null,
+  },
+  getScheduleLookahead: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetScheduleLookaheadParams,
+    query: GetScheduleLookaheadQuery,
+    body: null,
   },
   listProjectMembers: {
     method: 'GET',
@@ -1881,6 +3334,66 @@ export const operations = {
     query: null,
     body: AcknowledgeTransmittalBody,
   },
+  resendTransmittalLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/transmittals/{transmittalId}/recipients/{recipientId}/resend',
+    module: "documents",
+    auth: "required",
+    permission: "documents.transmittals.manage",
+    internal: false,
+    contentType: null,
+    params: ResendTransmittalLinkParams,
+    query: null,
+    body: null,
+  },
+  getTransmittalAccess: {
+    method: 'GET',
+    path: '/v1/transmittal-access',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openTransmittalAccess: {
+    method: 'POST',
+    path: '/v1/transmittal-access',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenTransmittalAccessBody,
+  },
+  acknowledgeTransmittalAccess: {
+    method: 'POST',
+    path: '/v1/transmittal-access/acknowledge',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  downloadTransmittalAccessItem: {
+    method: 'POST',
+    path: '/v1/transmittal-access/download',
+    module: "documents",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DownloadTransmittalAccessItemBody,
+  },
   getAiSettings: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/ai/settings',
@@ -2049,6 +3562,139 @@ export const operations = {
     query: null,
     body: ReadQuoteWithNovaBody,
   },
+  detectTakeoffWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/takeoff-detections',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    flag: "nova_estimating",
+    contentType: "application/json",
+    params: DetectTakeoffWithNovaParams,
+    query: null,
+    body: DetectTakeoffWithNovaBody,
+  },
+  listContractReviews: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: null,
+    params: ListContractReviewsParams,
+    query: null,
+    body: null,
+  },
+  reviewContractWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewContractWithNovaParams,
+    query: null,
+    body: ReviewContractWithNovaBody,
+  },
+  getContractReview: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: null,
+    params: GetContractReviewParams,
+    query: null,
+    body: null,
+  },
+  decideContractFlag: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/flags/{flagIndex}/decision',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: DecideContractFlagParams,
+    query: null,
+    body: DecideContractFlagBody,
+  },
+  askContract: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-reviews/{suggestionId}/questions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: AskContractParams,
+    query: null,
+    body: AskContractBody,
+  },
+  compareContracts: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/contract-compares',
+    module: "ai",
+    auth: "required",
+    permission: "ai.contracts.review",
+    internal: false,
+    contentType: "application/json",
+    params: CompareContractsParams,
+    query: null,
+    body: CompareContractsBody,
+  },
+  getContractPlaybook: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.settings.manage",
+    internal: false,
+    contentType: null,
+    params: GetContractPlaybookParams,
+    query: null,
+    body: null,
+  },
+  replaceContractPlaybook: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/ai/contract-playbooks/{contractType}',
+    module: "ai",
+    auth: "required",
+    permission: "ai.settings.manage",
+    internal: false,
+    contentType: "application/json",
+    params: ReplaceContractPlaybookParams,
+    query: null,
+    body: ReplaceContractPlaybookBody,
+  },
+  negotiateQuote: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/quote-negotiations',
+    module: "ai",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: "application/json",
+    params: NegotiateQuoteParams,
+    query: null,
+    body: NegotiateQuoteBody,
+  },
+  transcribeSpeech: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/speech-transcriptions',
+    module: "ai",
+    auth: "required",
+    permission: "ai.ask.use",
+    internal: false,
+    contentType: "application/json",
+    params: TranscribeSpeechParams,
+    query: null,
+    body: TranscribeSpeechBody,
+  },
   summariseDiaryDayWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/diary/{date}/nova-summary',
@@ -2072,6 +3718,18 @@ export const operations = {
     params: SummariseDiaryWeekWithNovaParams,
     query: null,
     body: null,
+  },
+  draftMinutesWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/nova-minutes',
+    module: "ai",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: DraftMinutesWithNovaParams,
+    query: null,
+    body: DraftMinutesWithNovaBody,
   },
   compareDrawingRevision: {
     method: 'POST',
@@ -2192,6 +3850,66 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  listBidderLists: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bidder-lists',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.read",
+    internal: false,
+    contentType: null,
+    params: ListBidderListsParams,
+    query: ListBidderListsQuery,
+    body: null,
+  },
+  createBidderList: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/bidder-lists',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBidderListParams,
+    query: null,
+    body: CreateBidderListBody,
+  },
+  updateBidderList: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/bidder-lists/{bidderListId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateBidderListParams,
+    query: null,
+    body: UpdateBidderListBody,
+  },
+  deleteBidderList: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/bidder-lists/{bidderListId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteBidderListParams,
+    query: null,
+    body: null,
+  },
+  getBidBoard: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bid-board',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.board.read",
+    internal: false,
+    contentType: null,
+    params: GetBidBoardParams,
+    query: GetBidBoardQuery,
+    body: null,
   },
   listTenderPackages: {
     method: 'GET',
@@ -2445,6 +4163,403 @@ export const operations = {
     query: null,
     body: null,
   },
+  listCostItems: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/cost-items',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.read",
+    internal: false,
+    contentType: null,
+    params: ListCostItemsParams,
+    query: ListCostItemsQuery,
+    body: null,
+  },
+  createCostItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/cost-items',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCostItemParams,
+    query: null,
+    body: CreateCostItemBody,
+  },
+  getCostItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.read",
+    internal: false,
+    contentType: null,
+    params: GetCostItemParams,
+    query: null,
+    body: null,
+  },
+  updateCostItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCostItemParams,
+    query: null,
+    body: UpdateCostItemBody,
+  },
+  deleteCostItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteCostItemParams,
+    query: null,
+    body: null,
+  },
+  listCostRates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}/rates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.read",
+    internal: false,
+    contentType: null,
+    params: ListCostRatesParams,
+    query: null,
+    body: null,
+  },
+  addCostRate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/cost-items/{costItemId}/rates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.library.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddCostRateParams,
+    query: null,
+    body: AddCostRateBody,
+  },
+  listEstimates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.read",
+    internal: false,
+    contentType: null,
+    params: ListEstimatesParams,
+    query: ListEstimatesQuery,
+    body: null,
+  },
+  createEstimate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEstimateParams,
+    query: null,
+    body: CreateEstimateBody,
+  },
+  getEstimate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.read",
+    internal: false,
+    contentType: null,
+    params: GetEstimateParams,
+    query: null,
+    body: null,
+  },
+  updateEstimate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEstimateParams,
+    query: null,
+    body: UpdateEstimateBody,
+  },
+  deleteEstimate: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteEstimateParams,
+    query: null,
+    body: null,
+  },
+  addEstimateLine: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddEstimateLineParams,
+    query: null,
+    body: AddEstimateLineBody,
+  },
+  updateEstimateLine: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEstimateLineParams,
+    query: null,
+    body: UpdateEstimateLineBody,
+  },
+  deleteEstimateLine: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/lines/{lineId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteEstimateLineParams,
+    query: null,
+    body: null,
+  },
+  issueEstimate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/estimates/{estimateId}/issue',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.estimates.issue",
+    internal: false,
+    contentType: null,
+    params: IssueEstimateParams,
+    query: null,
+    body: null,
+  },
+  createAssistedTakeoffMeasurements: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/batch',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.manage",
+    internal: false,
+    flag: "nova_estimating",
+    contentType: "application/json",
+    params: CreateAssistedTakeoffMeasurementsParams,
+    query: null,
+    body: CreateAssistedTakeoffMeasurementsBody,
+  },
+  confirmTakeoffMeasurements: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/confirm-batch',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.confirm",
+    internal: false,
+    contentType: "application/json",
+    params: ConfirmTakeoffMeasurementsParams,
+    query: null,
+    body: ConfirmTakeoffMeasurementsBody,
+  },
+  rejectTakeoffMeasurement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/takeoff-measurements/{measurementId}/reject',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.takeoff.confirm",
+    internal: false,
+    contentType: null,
+    params: RejectTakeoffMeasurementParams,
+    query: null,
+    body: null,
+  },
+  listAccountingConnections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/accounting/connections',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ListAccountingConnectionsParams,
+    query: null,
+    body: null,
+  },
+  disconnectAccounting: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: DisconnectAccountingParams,
+    query: null,
+    body: null,
+  },
+  startAccountingConnection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/connect',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: StartAccountingConnectionParams,
+    query: null,
+    body: null,
+  },
+  completeAccountingConnection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/callback',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: CompleteAccountingConnectionParams,
+    query: null,
+    body: CompleteAccountingConnectionBody,
+  },
+  listAccountingTargets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/targets',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ListAccountingTargetsParams,
+    query: null,
+    body: null,
+  },
+  selectAccountingTarget: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/targets',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: SelectAccountingTargetParams,
+    query: null,
+    body: SelectAccountingTargetBody,
+  },
+  updateAccountingFieldMap: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/field-map',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: UpdateAccountingFieldMapParams,
+    query: null,
+    body: UpdateAccountingFieldMapBody,
+  },
+  updateAccountingSettings: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/accounting/connections/{provider}/settings',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: "application/json",
+    params: UpdateAccountingSettingsParams,
+    query: null,
+    body: UpdateAccountingSettingsBody,
+  },
+  listAccountingSyncIssues: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/accounting/sync-issues',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ListAccountingSyncIssuesParams,
+    query: null,
+    body: null,
+  },
+  resolveAccountingSyncIssue: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/accounting/sync-issues/{syncIssueId}/resolve',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.accounting.manage",
+    internal: true,
+    contentType: null,
+    params: ResolveAccountingSyncIssueParams,
+    query: null,
+    body: null,
+  },
+  listWebhooks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/webhooks',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: ListWebhooksParams,
+    query: null,
+    body: null,
+  },
+  createWebhook: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/webhooks',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: "application/json",
+    params: CreateWebhookParams,
+    query: null,
+    body: CreateWebhookBody,
+  },
+  deleteWebhook: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/webhooks/{webhookId}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: DeleteWebhookParams,
+    query: null,
+    body: null,
+  },
+  listWebhookDeliveries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: ListWebhookDeliveriesParams,
+    query: null,
+    body: null,
+  },
   listImportJobs: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/import-jobs',
@@ -2588,6 +4703,246 @@ export const operations = {
     params: TransitionDefectParams,
     query: null,
     body: TransitionDefectBody,
+  },
+  listSubmittals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.read",
+    internal: false,
+    contentType: null,
+    params: ListSubmittalsParams,
+    query: ListSubmittalsQuery,
+    body: null,
+  },
+  createSubmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSubmittalParams,
+    query: null,
+    body: CreateSubmittalBody,
+  },
+  getSubmittal: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.read",
+    internal: false,
+    contentType: null,
+    params: GetSubmittalParams,
+    query: null,
+    body: null,
+  },
+  updateSubmittal: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateSubmittalParams,
+    query: null,
+    body: UpdateSubmittalBody,
+  },
+  submitSubmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/submit',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.submit",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitSubmittalParams,
+    query: null,
+    body: SubmitSubmittalBody,
+  },
+  respondToSubmittalStep: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/steps/{stepId}/respond',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.review",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToSubmittalStepParams,
+    query: null,
+    body: RespondToSubmittalStepBody,
+  },
+  closeSubmittal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/submittals/{submittalId}/close',
+    module: "submittals",
+    auth: "required",
+    permission: "submittals.submittals.close",
+    internal: false,
+    contentType: null,
+    params: CloseSubmittalParams,
+    query: null,
+    body: null,
+  },
+  listCorrespondenceTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/correspondence-templates',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.manage",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceTemplatesParams,
+    query: null,
+    body: null,
+  },
+  listCorrespondenceTypes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/correspondence-types',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceTypesParams,
+    query: ListCorrespondenceTypesQuery,
+    body: null,
+  },
+  createCorrespondenceType: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/correspondence-types',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCorrespondenceTypeParams,
+    query: null,
+    body: CreateCorrespondenceTypeBody,
+  },
+  updateCorrespondenceType: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/correspondence-types/{typeId}',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.types.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCorrespondenceTypeParams,
+    query: null,
+    body: UpdateCorrespondenceTypeBody,
+  },
+  listProjectCorrespondenceTypes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence-types',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: null,
+    params: ListProjectCorrespondenceTypesParams,
+    query: null,
+    body: null,
+  },
+  listCorrespondence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: ListCorrespondenceParams,
+    query: ListCorrespondenceQuery,
+    body: null,
+  },
+  createCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCorrespondenceParams,
+    query: null,
+    body: CreateCorrespondenceBody,
+  },
+  getCorrespondence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.read",
+    internal: false,
+    contentType: null,
+    params: GetCorrespondenceParams,
+    query: null,
+    body: null,
+  },
+  updateCorrespondence: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCorrespondenceParams,
+    query: null,
+    body: UpdateCorrespondenceBody,
+  },
+  sendCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/send',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.send",
+    internal: false,
+    contentType: null,
+    params: SendCorrespondenceParams,
+    query: null,
+    body: null,
+  },
+  respondToCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/responses',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.respond",
+    internal: false,
+    contentType: "application/json",
+    params: RespondToCorrespondenceParams,
+    query: null,
+    body: RespondToCorrespondenceBody,
+  },
+  closeCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/close',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.close",
+    internal: false,
+    contentType: null,
+    params: CloseCorrespondenceParams,
+    query: null,
+    body: null,
+  },
+  voidCorrespondence: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/correspondence/{correspondenceId}/void',
+    module: "correspondence",
+    auth: "required",
+    permission: "correspondence.items.close",
+    internal: false,
+    contentType: "application/json",
+    params: VoidCorrespondenceParams,
+    query: null,
+    body: VoidCorrespondenceBody,
   },
   listRfis: {
     method: 'GET',
@@ -3501,6 +5856,416 @@ export const operations = {
     query: null,
     body: null,
   },
+  listComplianceExpiryAlerts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-document-alerts',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceExpiryAlertsParams,
+    query: null,
+    body: null,
+  },
+  listComplianceDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceDocumentsParams,
+    query: ListComplianceDocumentsQuery,
+    body: null,
+  },
+  createComplianceDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: CreateComplianceDocumentParams,
+    query: null,
+    body: CreateComplianceDocumentBody,
+  },
+  updateComplianceDocument: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/compliance-documents/{documentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: "application/json",
+    params: UpdateComplianceDocumentParams,
+    query: null,
+    body: UpdateComplianceDocumentBody,
+  },
+  sightComplianceDocument: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-documents/{documentId}/sight',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: SightComplianceDocumentParams,
+    query: null,
+    body: null,
+  },
+  listComplianceAccessRequests: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-access-requests',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.request",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceAccessRequestsParams,
+    query: null,
+    body: null,
+  },
+  createComplianceAccessRequest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-access-requests',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.request",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 20,
+    contentType: "application/json",
+    params: CreateComplianceAccessRequestParams,
+    query: null,
+    body: CreateComplianceAccessRequestBody,
+  },
+  cancelComplianceAccessRequest: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-access-requests/{requestId}/cancel',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.request",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: CancelComplianceAccessRequestParams,
+    query: null,
+    body: null,
+  },
+  previewComplianceShareCode: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-share-codes/preview',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 10,
+    contentType: "application/json",
+    params: PreviewComplianceShareCodeParams,
+    query: null,
+    body: PreviewComplianceShareCodeBody,
+  },
+  listComplianceGrants: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-grants',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceGrantsParams,
+    query: null,
+    body: null,
+  },
+  acceptComplianceGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-grants',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 10,
+    contentType: "application/json",
+    params: AcceptComplianceGrantParams,
+    query: null,
+    body: AcceptComplianceGrantBody,
+  },
+  revokeComplianceGrant: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/compliance-grants/{grantId}/revoke',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.manage",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: RevokeComplianceGrantParams,
+    query: null,
+    body: null,
+  },
+  listComplianceAccessLog: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/compliance-access-log',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.view",
+    internal: false,
+    flag: "subcontractor_wallet",
+    contentType: null,
+    params: ListComplianceAccessLogParams,
+    query: null,
+    body: null,
+  },
+  listPrequalTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequal-templates',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: ListPrequalTemplatesParams,
+    query: null,
+    body: null,
+  },
+  createPrequalTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequal-templates',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: CreatePrequalTemplateParams,
+    query: null,
+    body: CreatePrequalTemplateBody,
+  },
+  getPrequalTemplate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalTemplateParams,
+    query: null,
+    body: null,
+  },
+  updatePrequalTemplate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: UpdatePrequalTemplateParams,
+    query: null,
+    body: UpdatePrequalTemplateBody,
+  },
+  publishPrequalTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}/publish',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: PublishPrequalTemplateParams,
+    query: null,
+    body: null,
+  },
+  newPrequalTemplateVersion: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}/new-version',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: NewPrequalTemplateVersionParams,
+    query: null,
+    body: null,
+  },
+  listPrequalifications: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalifications',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: ListPrequalificationsParams,
+    query: ListPrequalificationsQuery,
+    body: null,
+  },
+  createPrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: CreatePrequalificationParams,
+    query: null,
+    body: CreatePrequalificationBody,
+  },
+  getPrequalificationRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalification-register',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalificationRegisterParams,
+    query: GetPrequalificationRegisterQuery,
+    body: null,
+  },
+  getPrequalification: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalificationParams,
+    query: null,
+    body: null,
+  },
+  updatePrequalification: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: UpdatePrequalificationParams,
+    query: null,
+    body: UpdatePrequalificationBody,
+  },
+  submitPrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}/submit',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: SubmitPrequalificationParams,
+    query: null,
+    body: null,
+  },
+  approvePrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}/approve',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.decide",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: ApprovePrequalificationParams,
+    query: null,
+    body: ApprovePrequalificationBody,
+  },
+  rejectPrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}/reject',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.decide",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: RejectPrequalificationParams,
+    query: null,
+    body: RejectPrequalificationBody,
+  },
+  listGrantedWallets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 30,
+    contentType: null,
+    params: ListGrantedWalletsParams,
+    query: null,
+    body: null,
+  },
+  listGrantedWalletDocuments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 30,
+    contentType: null,
+    params: ListGrantedWalletDocumentsParams,
+    query: ListGrantedWalletDocumentsQuery,
+    body: null,
+  },
+  getGrantedWalletFileLink: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 20,
+    contentType: null,
+    params: GetGrantedWalletFileLinkParams,
+    query: GetGrantedWalletFileLinkQuery,
+    body: null,
+  },
+  createComplianceSnapshot: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 30,
+    contentType: "application/json",
+    params: CreateComplianceSnapshotParams,
+    query: null,
+    body: CreateComplianceSnapshotBody,
+  },
   listInductionLinks: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/inductions/{inductionId}/links',
@@ -3704,6 +6469,726 @@ export const operations = {
     params: null,
     query: null,
     body: GetLinkInductionTranslationBody,
+  },
+  listInspectionTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.read",
+    internal: false,
+    contentType: null,
+    params: ListInspectionTemplatesParams,
+    query: ListInspectionTemplatesQuery,
+    body: null,
+  },
+  createInspectionTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateInspectionTemplateParams,
+    query: null,
+    body: CreateInspectionTemplateBody,
+  },
+  getInspectionTemplate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.read",
+    internal: false,
+    contentType: null,
+    params: GetInspectionTemplateParams,
+    query: null,
+    body: null,
+  },
+  updateInspectionTemplate: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateInspectionTemplateParams,
+    query: null,
+    body: UpdateInspectionTemplateBody,
+  },
+  publishInspectionTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/publish',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: null,
+    params: PublishInspectionTemplateParams,
+    query: null,
+    body: null,
+  },
+  newInspectionTemplateVersion: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspection-templates/{templateId}/versions',
+    module: "quality",
+    auth: "required",
+    permission: "quality.templates.manage",
+    internal: false,
+    contentType: null,
+    params: NewInspectionTemplateVersionParams,
+    query: null,
+    body: null,
+  },
+  listInspections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.read",
+    internal: false,
+    contentType: null,
+    params: ListInspectionsParams,
+    query: ListInspectionsQuery,
+    body: null,
+  },
+  createInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: CreateInspectionParams,
+    query: null,
+    body: CreateInspectionBody,
+  },
+  getInspection: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.read",
+    internal: false,
+    contentType: null,
+    params: GetInspectionParams,
+    query: null,
+    body: null,
+  },
+  recordInspectionResponses: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/responses',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: RecordInspectionResponsesParams,
+    query: null,
+    body: RecordInspectionResponsesBody,
+  },
+  submitInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/submit',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.perform",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitInspectionParams,
+    query: null,
+    body: SubmitInspectionBody,
+  },
+  closeInspection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/inspections/{inspectionId}/close',
+    module: "quality",
+    auth: "required",
+    permission: "quality.inspections.close",
+    internal: false,
+    contentType: null,
+    params: CloseInspectionParams,
+    query: null,
+    body: null,
+  },
+  listObservations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: null,
+    params: ListObservationsParams,
+    query: ListObservationsQuery,
+    body: null,
+  },
+  createObservation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: "application/json",
+    params: CreateObservationParams,
+    query: null,
+    body: CreateObservationBody,
+  },
+  getObservation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: null,
+    params: GetObservationParams,
+    query: null,
+    body: null,
+  },
+  updateObservation: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.create",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateObservationParams,
+    query: null,
+    body: UpdateObservationBody,
+  },
+  transitionObservation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/observations/{observationId}/transition',
+    module: "quality",
+    auth: "required",
+    permission: "quality.observations.read",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionObservationParams,
+    query: null,
+    body: TransitionObservationBody,
+  },
+  listSwms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.read",
+    internal: false,
+    contentType: null,
+    params: ListSwmsParams,
+    query: ListSwmsQuery,
+    body: null,
+  },
+  createSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: CreateSwmsParams,
+    query: null,
+    body: CreateSwmsBody,
+  },
+  getSwms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.read",
+    internal: false,
+    contentType: null,
+    params: GetSwmsParams,
+    query: null,
+    body: null,
+  },
+  updateSwms: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateSwmsParams,
+    query: null,
+    body: UpdateSwmsBody,
+  },
+  checkSwms: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/check',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.read",
+    internal: false,
+    contentType: null,
+    params: CheckSwmsParams,
+    query: null,
+    body: null,
+  },
+  transitionSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/transition',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.review",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionSwmsParams,
+    query: null,
+    body: TransitionSwmsBody,
+  },
+  acknowledgeSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/swms/{swmsId}/acknowledge',
+    module: "safety",
+    auth: "required",
+    permission: "safety.swms.acknowledge",
+    internal: false,
+    contentType: "application/json",
+    params: AcknowledgeSwmsParams,
+    query: null,
+    body: AcknowledgeSwmsBody,
+  },
+  listContracts: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: ListContractsParams,
+    query: null,
+    body: null,
+  },
+  createContract: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateContractParams,
+    query: null,
+    body: CreateContractBody,
+  },
+  getContract: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetContractParams,
+    query: null,
+    body: null,
+  },
+  submitPaymentClaim: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/claims',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: SubmitPaymentClaimParams,
+    query: null,
+    body: SubmitPaymentClaimBody,
+  },
+  getCostForecast: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.read",
+    internal: false,
+    contentType: null,
+    params: GetCostForecastParams,
+    query: null,
+    body: null,
+  },
+  createForecastAdjustment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateForecastAdjustmentParams,
+    query: null,
+    body: CreateForecastAdjustmentBody,
+  },
+  deleteForecastAdjustment: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments/{adjustmentId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteForecastAdjustmentParams,
+    query: null,
+    body: null,
+  },
+  listVariations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: ListVariationsParams,
+    query: null,
+    body: null,
+  },
+  createVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateVariationParams,
+    query: null,
+    body: CreateVariationBody,
+  },
+  getVariation: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetVariationParams,
+    query: null,
+    body: null,
+  },
+  submitVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/submit',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: null,
+    params: SubmitVariationParams,
+    query: null,
+    body: null,
+  },
+  approveVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/approve',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.decide",
+    internal: false,
+    contentType: "application/json",
+    params: ApproveVariationParams,
+    query: null,
+    body: ApproveVariationBody,
+  },
+  rejectVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/reject',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.decide",
+    internal: false,
+    contentType: "application/json",
+    params: RejectVariationParams,
+    query: null,
+    body: RejectVariationBody,
+  },
+  withdrawVariation: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/withdraw',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: null,
+    params: WithdrawVariationParams,
+    query: null,
+    body: null,
+  },
+  listPaymentClaims: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListPaymentClaimsParams,
+    query: ListPaymentClaimsQuery,
+    body: null,
+  },
+  getPaymentClaim: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetPaymentClaimParams,
+    query: null,
+    body: null,
+  },
+  issuePaymentSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/schedule',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.assess",
+    internal: false,
+    contentType: "application/json",
+    params: IssuePaymentScheduleParams,
+    query: null,
+    body: IssuePaymentScheduleBody,
+  },
+  listClaimEvidence: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: ListClaimEvidenceParams,
+    query: null,
+    body: null,
+  },
+  getClaimEvidencePdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/pdf',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetClaimEvidencePdfParams,
+    query: null,
+    body: null,
+  },
+  getClaimEvidenceJson: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/json',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetClaimEvidenceJsonParams,
+    query: null,
+    body: null,
+  },
+  listMeetingSeries: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingSeriesParams,
+    query: null,
+    body: null,
+  },
+  createMeetingSeries: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMeetingSeriesParams,
+    query: null,
+    body: CreateMeetingSeriesBody,
+  },
+  updateMeetingSeries: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMeetingSeriesParams,
+    query: null,
+    body: UpdateMeetingSeriesBody,
+  },
+  createMeeting: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-series/{seriesId}/meetings',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMeetingParams,
+    query: null,
+    body: CreateMeetingBody,
+  },
+  listMeetings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingsParams,
+    query: ListMeetingsQuery,
+    body: null,
+  },
+  listMeetingsLinkedTo: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-links',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingsLinkedToParams,
+    query: ListMeetingsLinkedToQuery,
+    body: null,
+  },
+  getMeeting: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: GetMeetingParams,
+    query: null,
+    body: null,
+  },
+  updateMeeting: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMeetingParams,
+    query: null,
+    body: UpdateMeetingBody,
+  },
+  setMeetingAttendees: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/attendees',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: SetMeetingAttendeesParams,
+    query: null,
+    body: SetMeetingAttendeesBody,
+  },
+  addMeetingSection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/sections',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: AddMeetingSectionParams,
+    query: null,
+    body: AddMeetingSectionBody,
+  },
+  createMeetingItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/items',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateMeetingItemParams,
+    query: null,
+    body: CreateMeetingItemBody,
+  },
+  updateMeetingItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-items/{itemId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateMeetingItemParams,
+    query: null,
+    body: UpdateMeetingItemBody,
+  },
+  deleteMeetingItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-items/{itemId}',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.write",
+    internal: false,
+    contentType: null,
+    params: DeleteMeetingItemParams,
+    query: null,
+    body: null,
+  },
+  issueMeeting: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/issue',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.issue",
+    internal: false,
+    contentType: "application/json",
+    params: IssueMeetingParams,
+    query: null,
+    body: IssueMeetingBody,
+  },
+  getMeetingMinutesPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meetings/{meetingId}/versions/{version}/pdf',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: GetMeetingMinutesPdfParams,
+    query: null,
+    body: null,
+  },
+  listMeetingActions: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/meeting-actions',
+    module: "meetings",
+    auth: "required",
+    permission: "meetings.meetings.read",
+    internal: false,
+    contentType: null,
+    params: ListMeetingActionsParams,
+    query: ListMeetingActionsQuery,
+    body: null,
   },
 } as const satisfies Record<string, OperationDef>;
 

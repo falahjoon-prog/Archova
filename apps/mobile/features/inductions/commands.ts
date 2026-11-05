@@ -42,6 +42,20 @@ export async function getInductionFile(
   );
 }
 
+/** A short-lived link to the current revision of a SWMS the induction names, with its title and revision. */
+export async function getInductionSwms(
+  api: ApiClient,
+  t: InductionTarget,
+  completionId: string,
+  documentId: string,
+) {
+  return unwrap(
+    await api.GET(`${base}/{completionId}/swms/{documentId}/download`, {
+      params: { path: { orgId: t.orgId, projectId: t.projectId, completionId, documentId } },
+    }),
+  );
+}
+
 export async function recordSectionSeen(
   api: ApiClient,
   t: InductionTarget,

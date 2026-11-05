@@ -1,6 +1,7 @@
 import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
+import type { Entitlements, MessageSender } from '@archova/kernel';
 import type { FilesModule } from '@archova/mod-files';
 import type { IdentityApi } from '@archova/mod-identity';
 import type { PlatformApi } from '@archova/mod-platform';
@@ -13,17 +14,31 @@ import { createFolderService } from './application/folders';
 import { createMarkupService } from './application/markups';
 import { createTileService } from './application/tiles';
 import { createTransmittalService } from './application/transmittals';
+import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
 import { toDocumentDto, toFolderDto } from './api/mappers';
+import {
+  createDrawingsSyncSource,
+  createMarkupCommand,
+  deleteMarkupCommand,
+  updateMarkupCommand,
+} from './api/drawings-sync';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
 
 export function createDocumentsModule(
   services: KernelServices,
   deps: {
     access: AccessService;
-    platform: Pick<PlatformApi, 'getProject'>;
-    files: Pick<FilesModule['api'], 'getFile' | 'signTiles'>;
-    identity: Pick<IdentityApi, 'findUserByEmail'>;
+    platform: Pick<PlatformApi, 'getProject' | 'getOrg' | 'resolveTenantAccess'>;
+    files: Pick<FilesModule['api'], 'getFile' | 'signTiles' | 'downloadUrl'>;
+    identity: Pick<IdentityApi, 'findUserByEmail' | 'getUser'>;
+    /** Transmittal emails for recipients without an account (X45). */
+    links: {
+      messages: MessageSender;
+      entitlements: (orgId: string) => Promise<Entitlements>;
+      /** The public web origin the link points at, e.g. `https://app.archova.com.au`. */
+      baseUrl: string;
+    };
   },
 ) {
   const c = createContext(deps);
@@ -34,6 +49,16 @@ export function createDocumentsModule(
   const geometry = createGeometryService(drawings);
   const tiles = createTileService(drawings, { signTiles: deps.files.signTiles });
   const transmittals = createTransmittalService(c, documents, drawings);
+  const transmittalLinks = createTransmittalLinkService({
+    database: services.database,
+    transmittals,
+    c,
+    platform: deps.platform,
+    files: deps.files,
+    entitlements: deps.links.entitlements,
+    redis: services.redis,
+    logger: services.logger,
+  });
   const aiSources = createAiSourceService(c, folders);
   const syncSource: SyncSource = {
     module: 'documents',
@@ -58,6 +83,7 @@ export function createDocumentsModule(
       return out;
     },
   };
+  const drawingsSyncSource = createDrawingsSyncSource(drawings, markups);
   return {
     definition: defineModule({ name: 'documents', permissions: DOCUMENTS_PERMISSIONS }),
     routes: documentsRoutes({
@@ -70,10 +96,23 @@ export function createDocumentsModule(
       geometry,
       tiles,
       transmittals,
+      links: transmittalLinks,
+      platform: deps.platform,
+      messages: deps.links.messages,
+      baseUrl: deps.links.baseUrl,
+      logger: services.logger,
     }),
     api: {
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
+      /** The drawing register and revisions the mobile pull reads (modules/sync). */
+      drawingsSyncSource,
+      /** What a device may queue offline and push (modules/sync). */
+      syncCommands: [
+        createMarkupCommand(drawings, markups),
+        updateMarkupCommand(markups),
+        deleteMarkupCommand(markups),
+      ],
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */

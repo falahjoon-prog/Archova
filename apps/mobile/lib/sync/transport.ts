@@ -12,7 +12,11 @@ import {
 
 function asSyncError(error: unknown): unknown {
   if (error instanceof ApiError) {
-    return new SyncHttpError(error.status, { code: error.code, message: error.message });
+    return new SyncHttpError(error.status, {
+      code: error.code,
+      message: error.message,
+      ...(error.problem?.drainGrant ? { drainGrant: error.problem.drainGrant } : {}),
+    });
   }
   // fetch rejects with a TypeError when there is no network.
   if (error instanceof TypeError) return new SyncHttpError(0, { message: error.message });

@@ -5,8 +5,10 @@ import {
   type Logger,
   type TenantContext,
 } from '@archova/kernel';
+import { randomBytes } from 'node:crypto';
 import type { ModelProvider } from '@archova/mod-ai';
 import { createMemoryObjectStore, noScanner } from '@archova/mod-files';
+import { vaultFromKey } from '@archova/mod-integrations';
 import type { AiWorkerConfig } from './config';
 import { indexContext, isOrgGone, type ReindexDeps } from './reindex';
 
@@ -18,7 +20,7 @@ import { indexContext, isOrgGone, type ReindexDeps } from './reindex';
 export function loadAiWorkerModules(
   database: Database,
   logger: Logger,
-  config: Pick<AiWorkerConfig, 'ai'>,
+  config: Pick<AiWorkerConfig, 'ai' | 'accounting'>,
   provider?: ModelProvider,
 ): Promise<Modules> {
   return loadModules(
@@ -35,6 +37,27 @@ export function loadAiWorkerModules(
       linkBaseUrl: 'http://ai-worker.invalid',
       backoffice: { localLogin: false, soloCoolingOffHours: 24 },
       ai: { config: config.ai, ...(provider ? { provider } : {}) },
+      // Webhooks are delivered by the default worker; here they can neither seal a secret nor send.
+      webhooks: {
+        vault: vaultFromKey(randomBytes(32).toString('base64')),
+        transport: {
+          send: async () => ({ status: null, error: 'webhooks are off in the ai-worker' }),
+        },
+      },
+      // Real only when configured: the push subscriber opens tokens the API sealed, so it needs the API's key.
+      accounting: config.accounting
+        ? {
+            vault: vaultFromKey(config.accounting.secretKey),
+            fetch: (url, init) => fetch(url, init),
+            redirectBase: `${config.accounting.linkBaseUrl}/orgs/accounting`,
+            credentials: config.accounting.credentials,
+          }
+        : {
+            vault: vaultFromKey(randomBytes(32).toString('base64')),
+            fetch: async () => new Response(null, { status: 503 }),
+            redirectBase: 'http://ai-worker.invalid',
+            credentials: { xero: null, myob: null },
+          },
     },
   );
 }

@@ -5,3 +5,4 @@ export { DefectDetailScreen } from './screens/DefectDetailScreen';
 /** Preview only: read access for Ask Nova's sample answers until the ai module answers from the API. */
 export { defectsSource as defectsPreviewSource } from './data/source';
 export { formatDefectNumber } from './lib/types';
+export { useDefectList } from './hooks/useDefects';

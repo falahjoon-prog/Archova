@@ -86,6 +86,39 @@ export const MIGRATIONS: readonly string[] = [
   ) WITHOUT ROWID;
   CREATE INDEX gate_queue_created ON gate_queue (created_at);
   `,
+  // 4: drains in progress (X38), so a restart inside the 72-hour window does not forget unsent work or its grant.
+  `
+  CREATE TABLE sync_drain (
+    project_id TEXT NOT NULL,
+    module     TEXT NOT NULL,
+    revoked_at TEXT,
+    until_ms   INTEGER NOT NULL,
+    grant_json TEXT,
+    PRIMARY KEY (project_id, module)
+  ) WITHOUT ROWID;
+  `,
+  // 5: projects the user removed from this device (mobile 02 §2.8). Everything else stays offline by default.
+  `
+  CREATE TABLE offline_excluded (
+    project_id TEXT PRIMARY KEY,
+    removed_at TEXT NOT NULL
+  ) WITHOUT ROWID;
+  `,
+  // 6: drawing sheets saved on the device (mobile 03 §3.3): the overview and the low-resolution tile levels.
+  `
+  CREATE TABLE sheet_cache (
+    revision_id  TEXT PRIMARY KEY,
+    project_id   TEXT NOT NULL,
+    width        INTEGER NOT NULL,
+    height       INTEGER NOT NULL,
+    tile_size    INTEGER NOT NULL,
+    levels       INTEGER NOT NULL,
+    cached_level INTEGER NOT NULL,
+    bytes        INTEGER NOT NULL,
+    cached_at    TEXT NOT NULL
+  ) WITHOUT ROWID;
+  CREATE INDEX sheet_cache_project ON sheet_cache (project_id);
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

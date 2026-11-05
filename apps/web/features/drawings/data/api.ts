@@ -1,10 +1,12 @@
 // Drawings against the documents and ai modules (backend 04 §3, ai/01 F1), with the same interface as the preview
 // source in `source.ts`. Each call maps the contract's records onto the screen's types in `lib/types.ts`.
 //
-// Not in the API yet, so absent here: sheet geometry and scale confirmation (measure and count stay off on these
-// sheets) and per-field "checked" state while a set is in review, which is kept for the session in this module.
+// Not in the API yet, so absent here: the sheet's vector geometry file (no snapping; measuring runs as on a raster
+// sheet, labelled lower confidence) and per-field "checked" state while a set is in review, which is kept for the
+// session in this module. The scale is the API's: detected and confirmed as the N in 1:N.
 
 import { ApiError, unwrap } from '@archova/api-client';
+import type { components } from '@archova/contracts/openapi';
 import type {
   AiSuggestion,
   DrawingRevision as ApiRevision,
@@ -13,7 +15,7 @@ import type {
   MarkupShape as ApiShape,
   PublishConflict,
 } from '@archova/contracts';
-import type { MarkupShape } from '@archova/markup';
+import { formatScale, parseScale, type MarkupShape } from '@archova/markup';
 import { api, ensureCsrfToken } from '@/shared/lib/api';
 import { allPages } from '@/shared/lib/data-mode';
 import { projectPeople } from '@/shared/lib/people';
@@ -27,6 +29,7 @@ import type {
   ReadField,
   ReviewSheet,
   SheetConflict,
+  SheetGeometry,
 } from '../lib/types';
 import { compareRevs, publishBlockers, type DrawingsSource } from './source';
 
@@ -240,6 +243,23 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R
 
 // ---- Source ----
 
+type ApiGeometry = components['schemas']['SheetGeometry'];
+
+const toGeometry = (g: ApiGeometry, people: ReadonlyMap<string, string>): SheetGeometry => ({
+  revisionId: g.revisionId,
+  sheetNo: '1',
+  units: 'mm',
+  scaleDetected: g.scaleDetected ? formatScale(g.scaleDetected) : null,
+  scaleConfirmed: g.scaleConfirmed ? formatScale(g.scaleConfirmed) : null,
+  scaleConfirmedBy: g.scaleConfirmedBy
+    ? (people.get(g.scaleConfirmedBy) ?? 'Project member')
+    : null,
+  scaleConfirmedAt: g.scaleConfirmedAt,
+  scaleConflict: null,
+  hasVector: false,
+  segments: [],
+});
+
 export function createDrawingsApi(orgId: string): DrawingsSource {
   const listApiMarkups = async (projectId: string, revisionId: string) =>
     unwrap(
@@ -409,18 +429,33 @@ export function createDrawingsApi(orgId: string): DrawingsSource {
       };
     },
 
-    async getGeometry() {
-      return null;
+    /** Null until the files worker has read the sheet; measuring stays off until then (frontend 07 §3). */
+    async getGeometry(projectId, revisionId) {
+      const g = unwrap(
+        await api.GET(
+          '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/geometry',
+          {
+            params: { path: { orgId, projectId, drawingRevisionId: revisionId } },
+          },
+        ),
+      );
+      return g.status === 'ready' ? toGeometry(g, await projectPeople(orgId, projectId)) : null;
     },
 
-    async confirmScale() {
-      throw new ApiError(501, {
-        type: 'about:blank',
-        title: 'Not available yet',
-        status: 501,
-        detail: "Setting the scale needs the sheet geometry service, which isn't connected yet.",
-        code: 'not_available',
-      } as never);
+    async confirmScale(projectId, revisionId, scale) {
+      const n = parseScale(scale);
+      if (!n) throw new Error(`Not a scale: ${scale}`);
+      await ensureCsrfToken();
+      const g = unwrap(
+        await api.PUT(
+          '/v1/orgs/{orgId}/projects/{projectId}/drawing-revisions/{drawingRevisionId}/scale',
+          {
+            params: { path: { orgId, projectId, drawingRevisionId: revisionId } },
+            body: { scale: n },
+          },
+        ),
+      );
+      return toGeometry(g, await projectPeople(orgId, projectId));
     },
 
     async listPins(projectId, revisionId) {

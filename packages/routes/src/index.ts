@@ -12,6 +12,17 @@ export const webRoutes = {
   newOrg: () => '/orgs/new',
   org: (orgSlug: string) => `/${enc(orgSlug)}`,
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
+  inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
+  bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
+  accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
+  wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  subcontractorWallets: (orgSlug: string) => `/${enc(orgSlug)}/settings/subcontractor-wallets`,
+  plan: (orgSlug: string) => `/${enc(orgSlug)}/settings/plan`,
+  permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
+  novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
+  contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
+  apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,
@@ -22,14 +33,45 @@ export const webRoutes = {
   /** A sheet in the viewer; without `revisionId` it opens the current revision. */
   drawing: (orgSlug: string, projectId: string, sheetId: string, revisionId?: string) =>
     `${p(orgSlug, projectId)}/drawings/${enc(sheetId)}${revisionId ? `?rev=${enc(revisionId)}` : ''}`,
+  transmittals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/transmittals`,
+  newTransmittal: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/transmittals/new`,
+  transmittal: (orgSlug: string, projectId: string, transmittalId: string) =>
+    `${p(orgSlug, projectId)}/transmittals/${enc(transmittalId)}`,
   rfis: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis`,
   newRfi: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/rfis/new`,
   rfi: (orgSlug: string, projectId: string, rfiId: string) =>
     `${p(orgSlug, projectId)}/rfis/${enc(rfiId)}`,
+  submittals: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals`,
+  newSubmittal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/submittals/new`,
+  submittal: (orgSlug: string, projectId: string, submittalId: string) =>
+    `${p(orgSlug, projectId)}/submittals/${enc(submittalId)}`,
+  correspondence: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/correspondence`,
+  newCorrespondence: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/correspondence/new`,
+  correspondenceItem: (orgSlug: string, projectId: string, itemId: string) =>
+    `${p(orgSlug, projectId)}/correspondence/${enc(itemId)}`,
   /** The diary for a project-local date (`YYYY-MM-DD`); without a date it opens today. */
   diary: (orgSlug: string, projectId: string, date?: string) =>
     `${p(orgSlug, projectId)}/diary${date ? `/${enc(date)}` : ''}`,
+  delays: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/delays`,
+  programme: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/programme`,
+  contracts: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts`,
+  newContract: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/contracts/new`,
+  contract: (orgSlug: string, projectId: string, contractId: string) =>
+    `${p(orgSlug, projectId)}/contracts/${enc(contractId)}`,
+  contractReviews: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/contracts/review`,
+  contractReview: (orgSlug: string, projectId: string, reviewId: string) =>
+    `${p(orgSlug, projectId)}/contracts/review/${enc(reviewId)}`,
+  costForecast: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/cost-forecast`,
+  paymentClaims: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/payment-claims`,
+  paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
+    `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
   defects: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects`,
+  meetings: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/meetings`,
+  meeting: (orgSlug: string, projectId: string, meetingId: string) =>
+    `${p(orgSlug, projectId)}/meetings/${enc(meetingId)}`,
   newDefect: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/defects/new`,
   defect: (orgSlug: string, projectId: string, defectId: string) =>
     `${p(orgSlug, projectId)}/defects/${enc(defectId)}`,
@@ -39,10 +81,34 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inductions/${enc(inductionId)}`,
   inductionRegister: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inductions/register`,
+  swms: (orgSlug: string, projectId: string, swmsId?: string) =>
+    `${p(orgSlug, projectId)}/swms${swmsId ? `?id=${enc(swmsId)}` : ''}`,
+  inspections: (orgSlug: string, projectId: string, inspectionId?: string) =>
+    `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
+  inspectionTemplates: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/inspections/templates`,
+  imports: (orgSlug: string, projectId: string, jobId?: string) =>
+    `${p(orgSlug, projectId)}/imports${jobId ? `?id=${enc(jobId)}` : ''}`,
+  lateSubmissions: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/late-submissions`,
+  observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
+  attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
+  attendanceWorkers: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/workers`,
+  attendanceRollCall: (orgSlug: string, projectId: string, rollCallId?: string) =>
+    `${p(orgSlug, projectId)}/attendance/roll-call${rollCallId ? `?id=${enc(rollCallId)}` : ''}`,
+  attendanceSites: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/estimating/packages`,
   tenderPackage: (orgSlug: string, projectId: string, packageId: string) =>
     `${p(orgSlug, projectId)}/estimating/packages/${enc(packageId)}`,
+  estimates: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/estimates`,
+  estimate: (orgSlug: string, projectId: string, estimateId: string) =>
+    `${p(orgSlug, projectId)}/estimating/estimates/${enc(estimateId)}`,
+  costLibrary: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/estimating/cost-library`,
 
   // Guest flows outside any org (X58): no app sign-in, the link itself is the access (X45).
   /** A worker's site induction, opened from an SMS or email access link. */
@@ -53,13 +119,20 @@ export const webRoutes = {
 export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
+  offline: () => '/offline',
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
+  inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
+  inspection: (projectId: string, inspectionId: string) =>
+    `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,
   siteSignIn: (projectId: string) => `/project/${enc(projectId)}/sign-in`,
+  meetings: (projectId: string) => `/project/${enc(projectId)}/meetings`,
+  meeting: (projectId: string, meetingId: string) =>
+    `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (
