@@ -16,6 +16,7 @@ import {
   Textarea,
 } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
+import { OnProgramme } from '@/features/schedule';
 import { useAskNova, usePublishAssistantScope } from '@/features/assistant';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
@@ -417,6 +418,7 @@ function Details({ rfi }: { rfi: Rfi }) {
           ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
         ]}
       />
+      <OnProgramme kind="rfi" itemId={rfi.id} />
     </div>
   );
 }

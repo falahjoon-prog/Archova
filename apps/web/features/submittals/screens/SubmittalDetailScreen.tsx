@@ -16,6 +16,7 @@ import {
 import { webRoutes } from '@archova/routes';
 import { atLeast } from '@archova/domain/permissions';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { OnProgramme } from '@/features/schedule';
 import { useProjectPermissions } from '@/features/projects';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
@@ -154,6 +155,8 @@ function Detail({ d }: { d: SubmittalDetail }) {
           ]}
         />
       </section>
+
+      <OnProgramme kind="submittal" itemId={s.id} headingClass="u-h3" />
 
       <section className="stack" aria-labelledby="sub-history">
         <h2 id="sub-history" className="u-h3">

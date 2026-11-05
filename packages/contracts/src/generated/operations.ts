@@ -168,6 +168,14 @@ export const DeleteScheduleDependencyParams = z.object({
   "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
   "dependencyId": z.string().regex(new RegExp("^sdp_[0-9A-Za-z]{26}$")),
 });
+export const ListScheduleLinksForItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListScheduleLinksForItemQuery = z.object({
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+});
 export const ListScheduleLinksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2846,6 +2854,18 @@ export const operations = {
     contentType: null,
     params: DeleteScheduleDependencyParams,
     query: null,
+    body: null,
+  },
+  listScheduleLinksForItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedule-links',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListScheduleLinksForItemParams,
+    query: ListScheduleLinksForItemQuery,
     body: null,
   },
   listScheduleLinks: {
