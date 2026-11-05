@@ -130,6 +130,14 @@ export class SheetCache {
     return row?.n ?? 0;
   }
 
+  /** Bytes held for saved sheets across all projects on this device. */
+  async totalBytes(): Promise<number> {
+    const row = await this.db.getFirstAsync<{ n: number | null }>(
+      'SELECT SUM(bytes) AS n FROM sheet_cache',
+    );
+    return row?.n ?? 0;
+  }
+
   /**
    * Save a sheet from a fresh tiles response. Does nothing if it is already saved or being saved. The record is
    * written only when the overview and every planned tile arrived, so a half-saved sheet is never trusted; files
@@ -218,4 +226,70 @@ export class SheetCache {
     }
     return dropped;
   }
+}
+
+export interface SaveAllProgress {
+  done: number;
+  total: number;
+}
+
+export interface SaveAllResult {
+  /** Sheets saved in this run. */
+  saved: number;
+  /** Sheets that were already on the device. */
+  alreadySaved: number;
+  /** Sheets the server has not finished preparing (no tiles yet), or whose download failed. */
+  failed: number;
+  /** Why the run ended early, if it did. */
+  stoppedBecause: 'full' | 'cancelled' | null;
+}
+
+/**
+ * Save every listed sheet for offline use, one at a time (mobile 03 §3.3). A sheet whose tiles are not ready or
+ * whose download fails is counted and skipped; the run stops when the device's sheet storage reaches `limitBytes`
+ * or the caller cancels. Sheets saved before a stop stay saved.
+ */
+export async function saveAllSheets(
+  cache: Pick<SheetCache, 'get' | 'save' | 'totalBytes'>,
+  sheets: readonly { projectId: string; revisionId: string }[],
+  fetchTiles: (revisionId: string) => Promise<(SheetTiles & { ready: boolean }) | null>,
+  opts: {
+    limitBytes?: number;
+    budget?: number;
+    isCancelled?: () => boolean;
+    onProgress?: (p: SaveAllProgress) => void;
+  } = {},
+): Promise<SaveAllResult> {
+  const limit = opts.limitBytes ?? DEFAULT_CACHE_LIMIT_BYTES;
+  const result: SaveAllResult = { saved: 0, alreadySaved: 0, failed: 0, stoppedBecause: null };
+  let done = 0;
+  for (const sheet of sheets) {
+    if (opts.isCancelled?.()) {
+      result.stoppedBecause = 'cancelled';
+      break;
+    }
+    if (await cache.get(sheet.revisionId)) {
+      result.alreadySaved++;
+    } else {
+      if ((await cache.totalBytes()) >= limit) {
+        result.stoppedBecause = 'full';
+        break;
+      }
+      let ok = false;
+      try {
+        const tiles = await fetchTiles(sheet.revisionId);
+        ok =
+          !!tiles &&
+          tiles.ready &&
+          (await cache.save(sheet.projectId, sheet.revisionId, tiles, opts.budget));
+      } catch {
+        ok = false;
+      }
+      if (ok) result.saved++;
+      else result.failed++;
+    }
+    done++;
+    opts.onProgress?.({ done, total: sheets.length });
+  }
+  return result;
 }

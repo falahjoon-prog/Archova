@@ -46,3 +46,15 @@ export const dependencies = schedulingSchema.table('dependencies', {
   lagDays: integer('lag_days').notNull().default(0),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const activityLinks = schedulingSchema.table('activity_links', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  scheduleId: uuid('schedule_id').notNull(),
+  activityId: uuid('activity_id').notNull(),
+  kind: text('kind').$type<'rfi' | 'submittal'>().notNull(),
+  targetId: uuid('target_id').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});

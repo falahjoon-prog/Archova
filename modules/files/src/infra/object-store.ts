@@ -21,7 +21,10 @@ export interface ObjectStore {
   head(key: string): Promise<{ size: number; sha256Base64: string | null } | null>;
   copy(from: string, to: string): Promise<void>;
   delete(key: string): Promise<void>;
-  presignGet(key: string, p: { contentDisposition: string; expiresInS: number }): Promise<string>;
+  presignGet(
+    key: string,
+    p: { contentDisposition: string; expiresInS: number; contentType?: string },
+  ): Promise<string>;
   /** Reads a whole object, for server-side processing (Nova title blocks); null when it doesn't exist. */
   get(key: string): Promise<Uint8Array | null>;
 }
@@ -100,6 +103,7 @@ export function createS3ObjectStore(cfg: S3StoreConfig): ObjectStore {
           Bucket,
           Key: key,
           ResponseContentDisposition: p.contentDisposition,
+          ...(p.contentType ? { ResponseContentType: p.contentType } : {}),
         }),
         {
           expiresIn: p.expiresInS,
@@ -141,7 +145,7 @@ export function createMemoryObjectStore() {
       objects.delete(key);
     },
     async presignGet(key, p) {
-      return `memory://download/${key}?disposition=${encodeURIComponent(p.contentDisposition)}&expires=${p.expiresInS}`;
+      return `memory://download/${key}?disposition=${encodeURIComponent(p.contentDisposition)}&expires=${p.expiresInS}${p.contentType ? `&type=${encodeURIComponent(p.contentType)}` : ''}`;
     },
     put(key, size, sha256Base64, bytes) {
       objects.set(key, { size, sha256Base64, bytes: bytes ?? null });

@@ -758,6 +758,23 @@ export function workforceRoutes(
         headers: { 'cache-control': 'no-store' },
       };
     },
+    // Writes the subbie's access log first, so it is not a read-only transaction.
+    getGrantedWalletFileLink: async (input) => {
+      const r = await tx(input, (s) =>
+        grants.fileUrl(
+          s,
+          id('complianceGrant', input.params.grantId, 'compliance_grant.not_found'),
+          ref('project', input.query.projectId, 'projectId'),
+          id('complianceDocument', input.params.documentId, 'compliance_document.not_found'),
+          Number(input.params.position),
+        ),
+      );
+      return {
+        status: 200,
+        body: { url: r.url, expiresAt: r.expiresAt.toISOString() },
+        headers: { 'cache-control': 'no-store' },
+      };
+    },
     createComplianceSnapshot: async (input) => {
       const b = input.body;
       const row = await tx(input, (s) =>

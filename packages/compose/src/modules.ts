@@ -339,6 +339,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     database: services.database as Database,
     diary: diary.api,
     rfis: rfis.api,
+    submittals: submittals.api,
     platform: platform.api,
   });
 
@@ -377,7 +378,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce.api.syncSource,
       quality.api.syncSource,
     ],
-    commands: [...defects.api.syncCommands, ...quality.api.syncCommands],
+    commands: [
+      ...defects.api.syncCommands,
+      ...quality.api.syncCommands,
+      ...documents.api.syncCommands,
+    ],
     accessState: platform.api.getProjectAccessState,
   });
 

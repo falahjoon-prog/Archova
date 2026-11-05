@@ -23,7 +23,11 @@ export function createWorkforceModule(
   const inductions = createInductionService(deps, attendance);
   sources.unshift(inductions.gateSource);
   const wallet = createWalletService({ files: deps.files });
-  const grants = createWalletGrantService({ access: deps.access, platform: deps.platform });
+  const grants = createWalletGrantService({
+    access: deps.access,
+    platform: deps.platform,
+    files: deps.files,
+  });
   const links = createInductionLinkService({
     ...deps.links,
     database: services.database,

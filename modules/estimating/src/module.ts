@@ -1,4 +1,5 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
+import { createBiddersService } from './application/bidders';
 import { createBoardService } from './application/board';
 import { createEstimateService } from './application/estimate';
 import { createLibraryService } from './application/library';
@@ -13,9 +14,18 @@ export function createEstimatingModule(services: KernelServices, deps: Estimatin
   const library = createLibraryService(deps);
   const estimates = createEstimateService({ ...deps, library });
   const board = createBoardService(deps);
+  const bidders = createBiddersService(deps);
   return {
     definition: defineModule({ name: 'estimating', permissions: ESTIMATING_PERMISSIONS }),
-    routes: estimatingRoutes(services.database, tenders, takeoff, library, estimates, board),
+    routes: estimatingRoutes(
+      services.database,
+      tenders,
+      takeoff,
+      library,
+      estimates,
+      board,
+      bidders,
+    ),
     api: {
       scopeForQuoteReading: tenders.scopeForQuoteReading,
       quoteForNegotiation: tenders.quoteForNegotiation,

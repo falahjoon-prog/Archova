@@ -7,6 +7,7 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { LinksService } from '../application/links';
 import type { ProgrammeService } from '../application/programme';
 import type { RegisterService } from '../application/register';
 import type { RegisterFilter } from '../domain/register';
@@ -21,6 +22,7 @@ export function schedulingRoutes(
   database: Database,
   register: RegisterService,
   programme: ProgrammeService,
+  links: LinksService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -96,6 +98,33 @@ export function schedulingRoutes(
         ),
       ),
     }),
+    listScheduleLinks: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => links.list(s, proj(input.params), sched(input.params))),
+    }),
+    createScheduleLink: async (input) => ({
+      status: 201,
+      body: await tx(input, (s) =>
+        links.create(
+          s,
+          proj(input.params),
+          sched(input.params),
+          idOf('scheduleActivity', input.params.activityId, 'schedule.activity_not_found'),
+          input.body,
+        ),
+      ),
+    }),
+    deleteScheduleLink: async (input) => {
+      await tx(input, (s) =>
+        links.remove(
+          s,
+          proj(input.params),
+          sched(input.params),
+          idOf('scheduleLink', input.params.linkId, 'schedule.item_link_not_found'),
+        ),
+      );
+      return { status: 204 };
+    },
     getScheduleLookahead: async (input) => ({
       status: 200,
       body: await read(input, (s) =>

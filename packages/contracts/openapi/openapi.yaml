@@ -864,6 +864,63 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ScheduleDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    get:
+      operationId: listScheduleLinks
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Every RFI and submittal tied to an activity on this programme (SCH-US10). Items the caller cannot see come back as `visible: false` with no details.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}/links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+      - $ref: '#/components/parameters/ScheduleActivityId'
+    post:
+      operationId: createScheduleLink
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Tie an RFI or submittal to this activity. The caller must be able to see the item.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScheduleLinkRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+      - $ref: '#/components/parameters/ScheduleLinkId'
+    delete:
+      operationId: deleteScheduleLink
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Untie an RFI or submittal from its activity.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3141,6 +3198,85 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bidder-lists:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listBidderLists
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.read
+      summary: The company's reusable bidder lists, by name.
+      description: |
+        A bidder list names the companies an estimator usually invites for a trade. Using one on a package still goes
+        through the package's invites, so only companies on the project can be invited. Staff only.
+      parameters:
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderListList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Save a bidder list.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBidderListRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bidder-lists/{bidderListId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/BidderListId'
+    patch:
+      operationId: updateBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Rename a bidder list, change its trade or replace its companies.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBidderListRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderList' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Delete a bidder list. Invites already sent are unaffected.
+      responses:
+        '204':
+          description: Removed
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -7811,6 +7947,50 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SharedComplianceDocumentList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: grantId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: documentId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: position,
+          in: path,
+          required: true,
+          schema: { type: string, enum: ['1', '2', '3', '4'] },
+        }
+    get:
+      operationId: getGrantedWalletFileLink
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-rate-limit: 20
+      x-permission: workforce.wallet.read_granted
+      summary: Get a 60-second download link for one file of a shared document.
+      description: The view is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A revoked or expired grant, a type the grant does not cover, `wwcc`, an archived document and any other subcontractor's file all answer 404.
+      parameters:
+        - {
+            name: projectId,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceFileLink' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9603,6 +9783,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    BidderListId:
+      name: bidderListId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
     CostItemId:
       name: costItemId
       in: path
@@ -9687,6 +9872,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^sdp_[0-9A-Za-z]{26}$' }
+    ScheduleLinkId:
+      name: linkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^slk_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -9792,6 +9982,48 @@ components:
         slackDays: { type: integer }
         violated:
           { type: boolean, description: 'The dates break this link (the successor is too early).' }
+    ScheduleLink:
+      type: object
+      required:
+        [id, activityId, kind, targetId, visible, ref, title, status, dueDate, scheduleImpactDays]
+      properties:
+        id: { type: string }
+        activityId: { type: string }
+        kind: { type: string, enum: [rfi, submittal] }
+        targetId: { type: string, description: 'Public id of the RFI or submittal.' }
+        visible:
+          {
+            type: boolean,
+            description: 'False when the caller cannot see the item (or it is gone); the details are null.',
+          }
+        ref: { type: [string, 'null'], description: 'RFI-012 or the submittal number label.' }
+        title: { type: [string, 'null'] }
+        status: { type: [string, 'null'] }
+        dueDate:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'RFI due date, or the submittal required-on-site date.',
+          }
+        scheduleImpactDays:
+          {
+            type: [integer, 'null'],
+            description: 'RFI schedule impact in days; null for submittals.',
+          }
+    ScheduleLinkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleLink' }
+    CreateScheduleLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, targetId]
+      properties:
+        kind: { type: string, enum: [rfi, submittal] }
+        targetId: { type: string }
     ScheduleDetail:
       type: object
       required: [schedule, activities, dependencies, criticalCount, violationCount]
@@ -14143,6 +14375,48 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BidderList:
+      type: object
+      required: [id, name, trade, companyIds, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        trade: { type: string, description: Empty when the list is not tied to a trade. }
+        companyIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    BidderListList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BidderList' }
+    CreateBidderListRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, maxLength: 100 }
+        companyIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
+    UpdateBidderListRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, maxLength: 100 }
+        companyIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
     BidBoard:
       type: object
       required: [data, asOf, truncated]
@@ -17882,6 +18156,7 @@ components:
           evidence,
           expiry,
           sightedAt,
+          fileCount,
         ]
       properties:
         id: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' }
@@ -17897,6 +18172,19 @@ components:
         evidence: { type: string, enum: [recorded, sighted, self_declared] }
         expiry: { type: string, enum: [no_expiry, current, expiring, expired] }
         sightedAt: { type: [string, 'null'], format: date-time }
+        fileCount:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 4,
+            description: 'How many files back this document; fetch each by position (1 to fileCount) through the file route.',
+          }
+    ComplianceFileLink:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url: { type: string, description: 'Signed download link, valid for 60 seconds.' }
+        expiresAt: { type: string, format: date-time }
     SharedComplianceDocumentList:
       type: object
       required: [data]
