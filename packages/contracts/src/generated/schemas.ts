@@ -2043,6 +2043,7 @@ export const CreateRfiRequestSchema = z.object({
   "specSection": z.string().max(200).optional(),
   "location": z.string().max(200).optional(),
   "pin": RfiPinInputSchema.optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateRfiRequest = z.infer<typeof CreateRfiRequestSchema>;
@@ -2427,6 +2428,11 @@ export const DelayRegisterSchema = z.object({
   "truncated": z.boolean(),
 });
 export type DelayRegister = z.infer<typeof DelayRegisterSchema>;
+
+export const DeleteMeRequestSchema = z.object({
+  "confirm": z.enum(["DELETE"]),
+}).strict();
+export type DeleteMeRequest = z.infer<typeof DeleteMeRequestSchema>;
 
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
@@ -3249,6 +3255,7 @@ export const ScheduleSummarySchema = z.object({
   "name": z.string(),
   "source": ScheduleSourceSchema,
   "dataDate": z.string().date().nullable(),
+  "baselineSetAt": z.string().datetime({ offset: true }).nullable(),
   "activityCount": z.number().int(),
   "startDate": z.string().date().nullable(),
   "finishDate": z.string().date().nullable(),
@@ -3269,6 +3276,9 @@ export const ScheduleActivitySchema = z.object({
   "externalId": z.string().nullable(),
   "floatDays": z.number().int(),
   "critical": z.boolean(),
+  "baselineStart": z.string().date().nullable(),
+  "baselineFinish": z.string().date().nullable(),
+  "varianceDays": z.number().int().nullable(),
 });
 export type ScheduleActivity = z.infer<typeof ScheduleActivitySchema>;
 
@@ -3441,6 +3451,42 @@ export type IncidentTransitionRequest = z.infer<typeof IncidentTransitionRequest
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
 
+export const InductionAnimationElementSchema = z.object({
+  "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
+  "kind": z.enum(["text", "icon", "arrow", "box"]),
+  "x": z.number().min(0).max(100),
+  "y": z.number().min(0).max(100),
+  "w": z.number().min(1).max(100),
+  "h": z.number().min(1).max(100),
+  "text": z.string().max(200).nullable().optional(),
+  "icon": z.enum(["hazard", "helmet", "vest", "boots", "glasses", "gloves", "hearing", "fire", "exit", "first_aid", "stop", "forklift", "person", "tick", "cross"]).nullable().optional(),
+  "tone": z.enum(["neutral", "info", "warning", "danger", "safe"]),
+  "rotation": z.number().int().min(-180).max(180).optional(),
+  "motion": z.object({
+  "preset": z.enum(["none", "fade_in", "slide_up", "slide_left", "pop", "pulse", "draw_on"]),
+  "startMs": z.number().int().min(0).max(60000),
+  "durationMs": z.number().int().min(100).max(10000),
+}).strict(),
+}).strict();
+export type InductionAnimationElement = z.infer<typeof InductionAnimationElementSchema>;
+
+export const InductionAnimationSceneSchema = z.object({
+  "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
+  "template": z.enum(["blank", "hazard_callout", "steps", "site_walkthrough", "ppe_checklist", "emergency_route"]),
+  "title": z.string().min(1).max(200),
+  "narration": z.string().max(1200).nullable().optional(),
+  "durationMs": z.number().int().min(2000).max(60000),
+  "elements": z.array(InductionAnimationElementSchema).max(30),
+}).strict();
+export type InductionAnimationScene = z.infer<typeof InductionAnimationSceneSchema>;
+
+export const InductionAnimationBlockSchema = z.object({
+  "type": z.enum(["animation"]),
+  "title": z.string().max(200).nullable().optional(),
+  "scenes": z.array(InductionAnimationSceneSchema).min(1).max(20),
+}).strict();
+export type InductionAnimationBlock = z.infer<typeof InductionAnimationBlockSchema>;
+
 export const InductionSlideSchema = z.object({
   "title": z.string().min(1).max(200),
   "points": z.array(z.string().min(1).max(400)).max(12),
@@ -3474,7 +3520,7 @@ export const InductionSwmsBlockSchema = z.object({
 }).strict();
 export type InductionSwmsBlock = z.infer<typeof InductionSwmsBlockSchema>;
 
-export const InductionBlockSchema = z.union([InductionSlidesBlockSchema, InductionTextBlockSchema, InductionFileBlockSchema, InductionSwmsBlockSchema]);
+export const InductionBlockSchema = z.union([InductionAnimationBlockSchema, InductionSlidesBlockSchema, InductionTextBlockSchema, InductionFileBlockSchema, InductionSwmsBlockSchema]);
 export type InductionBlock = z.infer<typeof InductionBlockSchema>;
 
 export const InductionSectionSchema = z.object({
@@ -4427,6 +4473,13 @@ export const NovaContractReviewSchema = z.object({
   "dayType": z.enum(["business", "calendar", "unclear"]),
   "source": ContractSourceRefSchema,
 })),
+  "obligations": z.array(z.object({
+  "party": z.enum(["builder", "other_party", "both", "unclear"]),
+  "category": z.enum(["payment", "notice", "insurance", "security", "reporting", "programme", "quality", "other"]),
+  "action": z.string(),
+  "timing": z.string().nullable(),
+  "source": ContractSourceRefSchema,
+})).optional(),
   "flags": z.array(z.object({
   "topicKey": z.string(),
   "topic": z.string(),
@@ -4931,6 +4984,7 @@ export const PackageInviteSchema = z.object({
   "invitedAt": z.string().datetime({ offset: true }),
   "viewedAt": z.string().datetime({ offset: true }).nullable(),
   "respondedAt": z.string().datetime({ offset: true }).nullable(),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 
@@ -5023,6 +5077,12 @@ export const PortfolioTotalsSchema = z.object({
   "defectsOverdue": z.number().int(),
   "submittalsOpen": z.number().int(),
   "submittalsOverdue": z.number().int(),
+  "claimsOpen": z.number().int(),
+  "claimsOverdue": z.number().int(),
+  "variationsOpen": z.number().int(),
+  "variationsOverdue": z.number().int(),
+  "incidentsOpen": z.number().int(),
+  "incidentsOverdue": z.number().int(),
 });
 export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
 
@@ -5041,6 +5101,8 @@ export const PortfolioProjectSchema = z.object({
   "rfis": PortfolioToolSchema,
   "defects": PortfolioToolSchema,
   "submittals": PortfolioToolSchema,
+  "claims": PortfolioToolSchema,
+  "variations": PortfolioToolSchema,
   "attention": z.number().int(),
 });
 export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
@@ -5233,6 +5295,11 @@ export const PublishInductionRequestSchema = z.object({
   "changeNote": z.string().min(1).max(1000).optional(),
 }).strict();
 export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSchema>;
+
+export const PutRfiAnnotationRequestSchema = z.object({
+  "shapes": z.array(MarkupShapeSchema).max(500),
+}).strict();
+export type PutRfiAnnotationRequest = z.infer<typeof PutRfiAnnotationRequestSchema>;
 
 export const QueueClaimEvidenceDeliveryRequestSchema = z.object({
   "recipientEmail": z.string().email().max(254),
@@ -5549,7 +5616,7 @@ export const ReplaceSpecSectionsRequestSchema = z.object({
 export type ReplaceSpecSectionsRequest = z.infer<typeof ReplaceSpecSectionsRequestSchema>;
 
 export const ReportConfigSchema = z.object({
-  "source": z.enum(["rfis", "defects", "submittals"]),
+  "source": z.enum(["rfis", "defects", "submittals", "claims", "variations", "incidents"]),
   "state": z.enum(["open", "closed", "all"]),
   "projectIds": z.array(z.string()).max(200),
   "columns": z.array(z.enum(["project", "ref", "title", "status", "dueDate", "overdue", "createdAt"])).min(1).max(7),
@@ -5632,6 +5699,11 @@ export const RespondSubmittalStepRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict();
 export type RespondSubmittalStepRequest = z.infer<typeof RespondSubmittalStepRequestSchema>;
+
+export const RespondTenderAccessRequestSchema = z.object({
+  "response": z.enum(["intends_to_quote", "declined"]),
+}).strict();
+export type RespondTenderAccessRequest = z.infer<typeof RespondTenderAccessRequestSchema>;
 
 export const RespondToShiftRequestSchema = z.object({
   "status": z.enum(["accepted", "declined", "attended", "no_show"]),
@@ -5728,6 +5800,7 @@ export const RfiSchema = z.object({
   "specSection": z.string().nullable(),
   "location": z.string().nullable(),
   "pin": z.union([RfiPinSchema, z.null()]),
+  "fileIds": z.array(z.string()),
   "officialResponseId": z.string().nullable(),
   "createdBy": z.string().nullable(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -5757,6 +5830,27 @@ export const RfiActivitySchema = z.object({
   "data": z.array(RfiActivityItemSchema),
 });
 export type RfiActivity = z.infer<typeof RfiActivitySchema>;
+
+export const RfiAnnotationSchema = z.object({
+  "id": z.string(),
+  "rfiId": z.string(),
+  "fileId": z.string(),
+  "authorId": z.string().nullable(),
+  "shapes": z.array(MarkupShapeSchema),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type RfiAnnotation = z.infer<typeof RfiAnnotationSchema>;
+
+export const RfiAnnotationListSchema = z.object({
+  "data": z.array(RfiAnnotationSchema),
+});
+export type RfiAnnotationList = z.infer<typeof RfiAnnotationListSchema>;
+
+export const RfiAnnotationResultSchema = z.object({
+  "annotation": z.union([RfiAnnotationSchema, z.null()]),
+});
+export type RfiAnnotationResult = z.infer<typeof RfiAnnotationResultSchema>;
 
 export const RfiResponseSchema = z.object({
   "id": z.string(),
@@ -6449,6 +6543,30 @@ export const TakeoffMeasurementPageSchema = z.object({
 });
 export type TakeoffMeasurementPage = z.infer<typeof TakeoffMeasurementPageSchema>;
 
+export const TenderAccessSchema = z.object({
+  "package": z.object({
+  "number": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "dueAt": z.string().datetime({ offset: true }).nullable(),
+  "scope": z.array(z.object({
+  "description": z.string(),
+})),
+  "fromOrg": z.string(),
+  "projectName": z.string(),
+}),
+  "invite": z.object({
+  "companyId": z.string(),
+  "email": z.string().nullable(),
+  "status": PackageInviteStatusSchema,
+  "viewedAt": z.string().datetime({ offset: true }).nullable(),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+}),
+  "actions": z.array(z.enum(["view", "respond"])),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type TenderAccess = z.infer<typeof TenderAccessSchema>;
+
 export const TenderPackageSchema = z.object({
   "id": z.string(),
   "projectId": z.string(),
@@ -7042,6 +7160,7 @@ export const UpdateRfiRequestSchema = z.object({
   "specSection": z.string().max(200).nullable().optional(),
   "location": z.string().max(200).nullable().optional(),
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
 
@@ -7053,6 +7172,7 @@ export const UpdateScheduleActivityRequestSchema = z.object({
   "finish": z.string().date().optional(),
   "pctComplete": z.number().int().min(0).max(100).optional(),
   "assignee": z.string().max(200).optional(),
+  "cascade": z.boolean().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateScheduleActivityRequest = z.infer<typeof UpdateScheduleActivityRequestSchema>;
 

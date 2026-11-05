@@ -78,6 +78,8 @@ export const packageInvites = estimatingSchema.table('package_invites', {
   invitedAt: timestamp('invited_at', { withTimezone: true }).notNull().defaultNow(),
   viewedAt: timestamp('viewed_at', { withTimezone: true }),
   respondedAt: timestamp('responded_at', { withTimezone: true }),
+  accessLinkId: uuid('access_link_id'),
+  deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   createdBy: uuid('created_by'),
 });
 

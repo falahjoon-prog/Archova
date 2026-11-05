@@ -497,6 +497,7 @@ function Quotes({
 
 function Scope({ pkg }: { pkg: TenderPackage }) {
   const { companies, companyName, onProject } = useProjectDirectory();
+  const project = useCurrentProject();
   const m = usePackageMutations(pkg.id);
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
@@ -634,7 +635,34 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
           <ul className="plain-list">
             {pkg.invites.map((i) => (
               <li key={i.companyId} className="row-actions">
-                <span>{companyName(i.companyId)}</span>
+                <span>
+                  {companyName(i.companyId)}
+                  {pkg.status === 'draft' ? (
+                    <span className="u-caption u-block">
+                      Gets a link by email when you send it.
+                    </span>
+                  ) : i.deliveredAt ? (
+                    <span className="u-caption u-block">
+                      Link emailed {formatInstant(i.deliveredAt, project.timezone)}
+                    </span>
+                  ) : (
+                    <span className="u-caption u-block">
+                      Not emailed yet. Check the company has an email address, then resend.
+                    </span>
+                  )}
+                </span>
+                {pkg.status === 'out_to_tender' &&
+                ['invited', 'viewed', 'intends_to_quote'].includes(i.status) ? (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    loading={m.resend.isPending && m.resend.variables === i.companyId}
+                    aria-label={`Resend link to ${companyName(i.companyId)}`}
+                    onClick={() => m.resend.mutate(i.companyId)}
+                  >
+                    Resend link
+                  </Button>
+                ) : null}
                 <StatusPill
                   tone={
                     i.status === 'declined'
@@ -660,7 +688,9 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
         ) : null}
         {!locked && candidates.length ? (
           <fieldset className="fieldset stack">
-            <legend>Invite (they get one link by email and can quote without an account)</legend>
+            <legend>
+              Invite (each gets a link by email to see the scope and say if they will quote)
+            </legend>
             {bidderLists.data?.length ? (
               <Select
                 label="Tick a bidder list"
@@ -730,6 +760,7 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
           </fieldset>
         ) : null}
         <ErrorAlert error={m.invite.error} title="We couldn't send the invites" />
+        <ErrorAlert error={m.resend.error} title="We couldn't resend that link" />
       </section>
     </div>
   );

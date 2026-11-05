@@ -2,6 +2,8 @@
 // endpoints are in @archova/contracts the preview source serves these shapes; field names follow X58
 // (`inductions`, `induction_versions`, `induction_completions`, `worker_credentials`).
 
+import type { AnimationScene } from '@archova/ui';
+
 export interface InductionSite {
   builderName: string;
   siteName: string;
@@ -18,6 +20,7 @@ export type SectionBlock =
   | { type: 'video'; fileId: string; title: string | null }
   | { type: 'slides'; slides: Array<{ title: string; points: string[] }> }
   | { type: 'text'; body: string }
+  | { type: 'animation'; title: string | null; scenes: AnimationScene[] }
   | { type: 'swms'; documentId: string; title: string; summary?: string[] }
   | { type: 'document'; fileId: string; title: string | null }
   | { type: 'image'; fileId: string; title: string | null; alt?: string };

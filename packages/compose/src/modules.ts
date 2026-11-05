@@ -321,6 +321,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     files: files.api,
     financials: financials.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const integrations = createIntegrationsModule(services, {
@@ -421,6 +430,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     defects: defects.api,
     submittals: submittals.api,
+    claims: financials.api.reporting.claims,
+    variations: financials.api.reporting.variations,
+    incidents: safety.api.reporting,
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,

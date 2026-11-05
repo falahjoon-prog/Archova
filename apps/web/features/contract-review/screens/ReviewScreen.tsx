@@ -33,6 +33,8 @@ import {
   DAY_TYPE_LABEL,
   SUMMARY_LABEL,
   TIME_BAR_LABEL,
+  OBLIGATION_CATEGORY_LABEL,
+  OBLIGATION_PARTY_LABEL,
   currentDecisions,
 } from '../lib/labels';
 
@@ -160,12 +162,14 @@ function Review({ r, canDecide }: { r: ContractReview; canDecide: boolean }) {
           { id: 'summary', label: 'Summary' },
           { id: 'flags', label: 'Flags', count: r.flags.length },
           { id: 'timebars', label: 'Time bars', count: r.timeBars.length },
+          { id: 'obligations', label: 'Obligations', count: r.obligations?.length ?? 0 },
           { id: 'ask', label: 'Ask' },
           { id: 'compare', label: 'Compare' },
         ]}
       >
         {tab === 'summary' ? <SummaryTab r={r} /> : null}
         {tab === 'timebars' ? <TimeBarsTab r={r} /> : null}
+        {tab === 'obligations' ? <ObligationsTab r={r} /> : null}
         {tab === 'ask' ? (
           <AskTab review={r} turns={turns} onAnswer={(a) => setTurns((t) => [a, ...t])} />
         ) : null}
@@ -263,6 +267,39 @@ function SummaryTab({ r }: { r: ContractReview }) {
           </ul>
         </Card>
       ) : null}
+    </div>
+  );
+}
+
+function ObligationsTab({ r }: { r: ContractReview }) {
+  const items = r.obligations ?? [];
+  if (!items.length)
+    return (
+      <p className="u-m-0">
+        Nova found no obligations to list. Reviews made before this was added don&apos;t have them:
+        run the review again to get them.
+      </p>
+    );
+  return (
+    <div className="stack">
+      <p className="u-caption u-m-0">
+        Who must do what, in the contract&apos;s own words. Nova works out no dates and lists the
+        main duties, not every one.
+      </p>
+      <ul className="plain-list" aria-label="Obligations">
+        {items.map((o, i) => (
+          <li key={i} className="plain-list__item">
+            <strong>
+              {OBLIGATION_PARTY_LABEL[o.party]} · {OBLIGATION_CATEGORY_LABEL[o.category]}
+            </strong>
+            <span>
+              {o.action}
+              {o.timing ? ` (${o.timing})` : ''}
+            </span>
+            <SourceQuote source={o.source} />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

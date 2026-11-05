@@ -30,6 +30,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useActor } from '@/shared/providers/useActor';
 import { RespondForm } from '../components/RespondForm';
+import { RfiPhotos } from '../components/RfiPhotos';
 import { ImpactChip, RfiDue, RfiStatusPill, ballInCourtLabel } from '../components/RfiChips';
 import { RfiForm } from '../forms/RfiForm';
 import { useRfi, useRfiMutations } from '../hooks/useRfis';
@@ -99,6 +100,7 @@ function DraftView({ rfi }: { rfi: Rfi }) {
           m.update.mutate({ id: rfi.id, input }, { onSuccess: () => m.submit.mutate(rfi.id) })
         }
       />
+      <RfiPhotos rfi={rfi} />
     </div>
   );
 }
@@ -346,6 +348,13 @@ function RfiView({ rfi }: { rfi: Rfi }) {
 }
 
 function Details({ rfi }: { rfi: Rfi }) {
+  const [{ photo }] = useUrlState(['photo'] as const);
+  // A photo open for marking takes the whole tab, so the canvas isn't pushed below the fold.
+  if (photo) return <RfiPhotos rfi={rfi} />;
+  return <DetailsBody rfi={rfi} />;
+}
+
+function DetailsBody({ rfi }: { rfi: Rfi }) {
   const dir = useProjectDirectory();
   const org = useCurrentOrg();
   const project = useCurrentProject();
@@ -418,6 +427,7 @@ function Details({ rfi }: { rfi: Rfi }) {
           ...(rfi.dueDate ? [{ label: 'Due date', value: formatLocalDate(rfi.dueDate) }] : []),
         ]}
       />
+      <RfiPhotos rfi={rfi} />
       <OnProgramme kind="rfi" itemId={rfi.id} />
     </div>
   );

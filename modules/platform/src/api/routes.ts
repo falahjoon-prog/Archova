@@ -8,7 +8,8 @@ import {
   requireTenant,
   type Database,
 } from '@archova/kernel';
-import type { IdentityApi } from '@archova/mod-identity';
+import { CSRF_COOKIE, SESSION_COOKIE, type IdentityApi } from '@archova/mod-identity';
+import type { AccountDeletionService } from '../application/account-deletion';
 import type { CompanyService } from '../application/companies';
 import type { KeyDateService } from '../application/key-dates';
 import type { MemberService } from '../application/members';
@@ -49,7 +50,11 @@ export interface PlatformRouteDeps {
   keyDates: KeyDateService;
   companies: CompanyService;
   members: MemberService;
+  accountDeletion: AccountDeletionService;
 }
+
+/** How recently the person must have signed in to delete their account. */
+const STEP_UP_MS = 15 * 60_000;
 
 /** Customers see public project ids, never the stored uuids. */
 const withEncodedProjects = <G extends { projectIds: string[] | null }>(g: G) => ({
@@ -102,6 +107,16 @@ export function platformRoutes(d: PlatformRouteDeps) {
           memberships: orgList.map(toMembershipSummary),
         },
       };
+    },
+    deleteMe: async (input) => {
+      const principal = requirePrincipal(input);
+      // A person deletes their own account, signed in to the app: never a token, and only after a recent sign-in.
+      if (principal.apiToken)
+        throw new AppError('api_token.not_allowed', 'Sign in as yourself to delete your account.');
+      if (Date.now() - principal.authTime.getTime() > STEP_UP_MS)
+        throw new AppError('auth.step_up_required', 'Sign in again to delete your account.');
+      await d.accountDeletion.deleteAccount(principal.userId, input.requestId, input.ip);
+      return { status: 204, clearCookies: [SESSION_COOKIE, CSRF_COOKIE] };
     },
     createOrg: async (input) => {
       const principal = requirePrincipal(input);

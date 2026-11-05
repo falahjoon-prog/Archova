@@ -18,11 +18,14 @@ export const SOURCE_LABELS: Record<ReportSource, string> = {
   rfis: 'RFIs',
   defects: 'Defects',
   submittals: 'Submittals',
+  claims: 'Payment claims',
+  variations: 'Variations',
+  incidents: 'Safety incidents',
 };
 
 export const STATE_LABELS: Record<ReportState, string> = {
   open: 'Still open',
-  closed: 'Answered or closed',
+  closed: 'Answered, paid or closed',
   all: 'Everything',
 };
 

@@ -72,4 +72,22 @@ export {
   type WatchToEndVideoProps,
 } from './patterns/WatchToEndVideo';
 
+export {
+  AnimationPlayer,
+  SceneFrame,
+  ANIMATION_ICONS,
+  type AnimationElement,
+  type AnimationPlayerProps,
+  type AnimationScene,
+} from './patterns/animation/AnimationPlayer';
+export {
+  locate as locateAnimation,
+  motionAt,
+  sceneStart,
+  totalMs as animationTotalMs,
+  type Motion as AnimationMotion,
+  type MotionPreset,
+  type MotionState,
+} from './patterns/animation/timeline';
+
 export { cx } from './lib/cx';

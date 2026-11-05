@@ -15,6 +15,9 @@ const counts = (r: [number, number], d: [number, number], s: [number, number]): 
   rfis: tool(...r),
   defects: tool(...d),
   submittals: tool(...s),
+  claims: tool(0, 0),
+  variations: tool(0, 0),
+  incidents: tool(0, 0),
 });
 
 describe('columns and config', () => {
@@ -87,5 +90,22 @@ describe('sortRows', () => {
       row('Alpha', 'RFI-002', '3'),
     ]);
     expect(sorted.map((r) => r.id)).toEqual(['3', '2', '1']);
+  });
+});
+
+describe('claims and variations in the portfolio', () => {
+  it('counts overdue claims toward attention and totals, and ignores variations for overdue', () => {
+    const p: ProjectCounts = {
+      ...counts([0, 0], [0, 0], [0, 0]),
+      claims: tool(3, 2),
+      variations: tool(4, 0),
+    };
+    expect(attention(p)).toBe(2);
+    expect(totals([p])).toMatchObject({
+      claimsOpen: 3,
+      claimsOverdue: 2,
+      variationsOpen: 4,
+      variationsOverdue: 0,
+    });
   });
 });
