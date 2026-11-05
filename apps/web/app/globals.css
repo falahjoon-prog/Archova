@@ -530,6 +530,9 @@ main:focus {
   font-size: var(--font-xs);
   color: var(--c-text-secondary);
 }
+.u-nowrap {
+  white-space: nowrap;
+}
 .u-mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-variant-numeric: tabular-nums;
