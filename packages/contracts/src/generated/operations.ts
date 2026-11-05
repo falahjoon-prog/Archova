@@ -597,6 +597,40 @@ export const TagDefectWithNovaBody = z.object({
   "note": z.string().max(1000).optional(),
   "pin": s.DrawingPinSchema.optional(),
 }).strict();
+export const ScanSitePhotoForHazardsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ScanSitePhotoForHazardsWithNovaBody = z.object({
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ListHazardSignalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListHazardSignalsQuery = z.object({
+  "status": s.HazardSignalStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(50),
+});
+export const ReviewHazardSignalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "signalId": z.string().regex(new RegExp("^ahs_[0-9A-Za-z]{26}$")),
+});
+export const ReviewHazardSignalBody = z.object({
+  "decision": z.enum(["confirmed", "dismissed"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const GetHazardPatternsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetHazardPatternsQuery = z.object({
+  "days": z.coerce.number().int().min(7).max(180).default(30),
+});
 export const SuggestImportMappingWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -814,6 +848,12 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetReadinessPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetReadinessPackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -841,6 +881,20 @@ export const DeleteReportParams = z.object({
 export const RunReportParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const ListDataExportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportDownloadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -1148,6 +1202,9 @@ export const ListAccountingSyncIssuesParams = z.object({
 export const ResolveAccountingSyncIssueParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "syncIssueId": z.string().regex(new RegExp("^syi_[0-9A-Za-z]{26}$")),
+});
+export const GetIntegrationsCatalogueParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const ListWebhooksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -4319,6 +4376,54 @@ export const operations = {
     query: null,
     body: TagDefectWithNovaBody,
   },
+  scanSitePhotoForHazardsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.scan",
+    internal: false,
+    contentType: "application/json",
+    params: ScanSitePhotoForHazardsWithNovaParams,
+    query: null,
+    body: ScanSitePhotoForHazardsWithNovaBody,
+  },
+  listHazardSignals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: ListHazardSignalsParams,
+    query: ListHazardSignalsQuery,
+    body: null,
+  },
+  reviewHazardSignal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewHazardSignalParams,
+    query: null,
+    body: ReviewHazardSignalBody,
+  },
+  getHazardPatterns: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: GetHazardPatternsParams,
+    query: GetHazardPatternsQuery,
+    body: null,
+  },
   suggestImportMappingWithNova: {
     method: 'POST',
     path: '/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings',
@@ -4692,6 +4797,30 @@ export const operations = {
     query: GetPortfolioQuery,
     body: null,
   },
+  getReadinessPack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackParams,
+    query: null,
+    body: null,
+  },
+  getReadinessPackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackPdfParams,
+    query: null,
+    body: null,
+  },
   listReports: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/reports',
@@ -4773,6 +4902,56 @@ export const operations = {
     internal: false,
     contentType: null,
     params: RunReportParams,
+    query: null,
+    body: null,
+  },
+  listDataExports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: ListDataExportsParams,
+    query: null,
+    body: null,
+  },
+  createDataExport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 10,
+    contentType: null,
+    params: CreateDataExportParams,
+    query: null,
+    body: null,
+  },
+  getDataExport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: GetDataExportParams,
+    query: null,
+    body: null,
+  },
+  createDataExportDownload: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}/download',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 30,
+    contentType: null,
+    params: CreateDataExportDownloadParams,
     query: null,
     body: null,
   },
@@ -5410,6 +5589,18 @@ export const operations = {
     internal: true,
     contentType: null,
     params: ResolveAccountingSyncIssueParams,
+    query: null,
+    body: null,
+  },
+  getIntegrationsCatalogue: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/integrations/catalogue',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.marketplace.read",
+    internal: true,
+    contentType: null,
+    params: GetIntegrationsCatalogueParams,
     query: null,
     body: null,
   },

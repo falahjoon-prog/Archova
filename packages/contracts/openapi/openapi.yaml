@@ -47,6 +47,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: reporting
+  - name: data-export
 paths:
   /v1/auth/signup:
     post:
@@ -2584,6 +2585,153 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaDefectTag' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: scanSitePhotoForHazardsWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.scan
+      summary: Nova flags visual hazard signals in a site photo (F35).
+      description: |
+        Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+        the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+        an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+        confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+        does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+        (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+        `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+        a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+        is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: What the person said or typed about the photo. May be empty.
+      responses:
+        '200':
+          description: The signals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaHazardScan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listHazardSignals
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Hazard signals Nova flagged in this project's photos, newest first.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/HazardSignalStatus' } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: The signals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: signalId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ahs_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reviewHazardSignal
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Confirm or dismiss a hazard signal.
+      description: |
+        A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+        project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+        is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+        the manager reports one from the incidents screen if it warrants it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [confirmed, dismissed] }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: The decided signal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHazardPatterns
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Hazard categories that keep showing up in this project's photos.
+      description: |
+        Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+        least three signals in it across at least two different photos, the early warning that a near miss may follow.
+        `trend` compares the later half of the window with the earlier half.
+      parameters:
+        - {
+            name: days,
+            in: query,
+            schema: { type: integer, minimum: 7, maximum: 180, default: 30 },
+          }
+      responses:
+        '200':
+          description: The categories, patterns first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [days, data]
+                properties:
+                  days: { type: integer }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/HazardPattern' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3600,6 +3748,43 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/readiness-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getReadinessPack
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.readiness.read
+      summary: The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+      description: |
+        One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+        caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+        safety and trust cover only the projects where the caller can read them (the rest are counted in
+        `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+      responses:
+        '200':
+          description: The pack
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/readiness-pack/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getReadinessPackPdf
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.readiness.read
+      summary: The tender-readiness pack as a PDF.
+      responses:
+        '200':
+          description: The PDF, base64 encoded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/reports:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3723,6 +3908,83 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listDataExports
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      summary: The organisation's recent full exports, newest first.
+      description: Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDataExport
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      x-rate-limit: 10
+      summary: Start a full export of everything the organisation holds in Archova.
+      description: |
+        Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+        original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+        sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+        a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+        hours later, depending on how many files there are, and kept for 7 days.
+      responses:
+        '202':
+          description: Accepted; poll the export until it is ready.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports/{exportId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DataExportId'
+    get:
+      operationId: getDataExport
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      summary: One export and how far it has got.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports/{exportId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DataExportId'
+    post:
+      operationId: createDataExportDownload
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      x-rate-limit: 30
+      summary: A short-lived link to download a finished export.
+      description: |
+        The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+        still being built or if it failed; 410 once it has expired.
+      responses:
+        '200':
+          description: The link
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportDownload' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -4930,6 +5192,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AccountingSyncIssue' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/integrations/catalogue:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getIntegrationsCatalogue
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.marketplace.read
+      x-internal: true
+      summary: Every connector the org can set up, with its live status (integrations/06 §4).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegrationCatalogue' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/webhooks:
     parameters:
@@ -12359,6 +12638,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    DataExportId:
+      name: exportId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxp_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -12580,6 +12864,116 @@ components:
             type: boolean,
             description: 'True when more than 200 projects matched and the rest were left out.',
           }
+    ReadinessPackPdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    ReadinessPack:
+      type: object
+      required: [generatedOn, timeZone, prequal, credentials, safety, trust, attention, truncated]
+      properties:
+        generatedOn: { type: string, description: 'Local date the pack was built.' }
+        timeZone: { type: string }
+        prequal:
+          type: object
+          required:
+            [
+              restricted,
+              companies,
+              qualified,
+              expiring,
+              pending,
+              expired,
+              notQualified,
+              requiredForTenders,
+            ]
+          properties:
+            restricted: { type: boolean }
+            companies: { type: integer }
+            qualified: { type: integer }
+            expiring: { type: integer }
+            pending: { type: integer }
+            expired: { type: integer }
+            notQualified: { type: integer }
+            requiredForTenders: { type: boolean }
+        credentials:
+          type: object
+          required: [restricted, current, expiring, expired, noExpiry, items]
+          properties:
+            restricted: { type: boolean }
+            current: { type: integer }
+            expiring: { type: integer }
+            expired: { type: integer }
+            noExpiry: { type: integer }
+            items:
+              type: array
+              items:
+                type: object
+                required: [itemType, title, insurer, expiresOn, evidence, state]
+                properties:
+                  itemType: { type: string }
+                  title: { type: string }
+                  insurer: { type: [string, 'null'] }
+                  expiresOn: { type: [string, 'null'] }
+                  evidence: { type: string, enum: [recorded, sighted, self_declared] }
+                  state: { type: string, enum: [current, expiring, expired, no_expiry] }
+        safety:
+          type: object
+          required: [projectsCovered, projectsRestricted, incidents, swms]
+          properties:
+            projectsCovered: { type: integer }
+            projectsRestricted: { type: integer }
+            incidents:
+              type: object
+              required: [total, notifiable, notClosed, high, critical]
+              properties:
+                total: { type: integer }
+                notifiable: { type: integer }
+                notClosed: { type: integer }
+                high: { type: integer }
+                critical: { type: integer }
+            swms:
+              type: object
+              required: [accepted, expired, awaitingReview, rejected]
+              properties:
+                accepted: { type: integer }
+                expired: { type: integer }
+                awaitingReview: { type: integer }
+                rejected: { type: integer }
+        trust:
+          type: object
+          required:
+            [
+              projectsCovered,
+              projectsRestricted,
+              subcontracts,
+              ok,
+              shortfall,
+              notSetUp,
+              notRequired,
+              shortfallCents,
+            ]
+          properties:
+            projectsCovered: { type: integer }
+            projectsRestricted: { type: integer }
+            subcontracts: { type: integer }
+            ok: { type: integer }
+            shortfall: { type: integer }
+            notSetUp: { type: integer }
+            notRequired: { type: integer }
+            shortfallCents: { type: integer }
+        attention:
+          type: array
+          items:
+            type: object
+            required: [area, text]
+            properties:
+              area: { type: string, enum: [prequal, credentials, safety, trust] }
+              text: { type: string }
+        truncated: { type: boolean }
     ReportConfig:
       type: object
       additionalProperties: false
@@ -12630,6 +13024,62 @@ components:
           }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    DataExport:
+      type: object
+      required:
+        [
+          id,
+          status,
+          requestedBy,
+          createdAt,
+          startedAt,
+          finishedAt,
+          expiresAt,
+          sizeBytes,
+          sha256,
+          tableCount,
+          fileCount,
+          skippedFileCount,
+          error,
+        ]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, ready, failed, expired] }
+        requestedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, 'null'], format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        sizeBytes: { type: [integer, 'null'] }
+        sha256:
+          {
+            type: [string, 'null'],
+            description: SHA-256 of the zip,
+            so it can be checked after download.,
+          }
+        tableCount: { type: [integer, 'null'] }
+        fileCount: { type: [integer, 'null'] }
+        skippedFileCount:
+          {
+            type: [integer, 'null'],
+            description: Files that could not be included (infected,
+            missing from storage); each is listed in the manifest with the reason.,
+          }
+        error: { type: [string, 'null'], description: Why a failed export failed, in plain words. }
+    DataExportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DataExport' }
+    DataExportDownload:
+      type: object
+      required: [url, expiresAt, filename]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        filename: { type: string }
     ReportList:
       type: object
       required: [data]
@@ -14456,6 +14906,7 @@ components:
           rfi_draft,
           diary_summary,
           defect_tagging,
+          safety_hazards,
           minutes,
           estimating,
           contract_review,
@@ -15446,6 +15897,74 @@ components:
           scopeKey: { type: [string, 'null'] }
           source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
           warning: { type: [string, 'null'], enum: [source_not_found, null] }
+    HazardSignalStatus: { type: string, enum: [open, confirmed, dismissed] }
+    HazardConfidence: { type: string, enum: [low, medium, high] }
+    HazardSignal:
+      type: object
+      required:
+        [
+          id,
+          fileId,
+          category,
+          categoryLabel,
+          observation,
+          confidence,
+          status,
+          reviewNote,
+          reviewedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, description: The signal (`ahs_`) }
+        fileId: { type: string, description: The photo it was flagged in (`fil_`) }
+        category: { type: string }
+        categoryLabel: { type: string }
+        observation:
+          {
+            type: string,
+            description: What the photo shows,
+            as an observation and never a finding.,
+          }
+        confidence: { $ref: '#/components/schemas/HazardConfidence' }
+        status: { $ref: '#/components/schemas/HazardSignalStatus' }
+        reviewNote: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NovaHazardScan:
+      type: object
+      required: [runId, scanId, signals, photoUnclear, dropped, unsupportedNumbers, disclaimer]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        scanId: { type: string, description: The scan (`ahn_`); its signals share it }
+        signals:
+          type: array
+          items: { $ref: '#/components/schemas/HazardSignal' }
+        photoUnclear:
+          {
+            type: boolean,
+            description: The photo was too dark,
+            blurred or distant to judge,
+            or isn't a site photo.,
+          }
+        dropped:
+          type: integer
+          description: Signals left out because their wording judged instead of observing.
+        unsupportedNumbers:
+          type: array
+          items: { type: string }
+        disclaimer: { type: string }
+    HazardPattern:
+      type: object
+      required: [category, label, open, confirmed, dismissed, photos, isPattern, trend]
+      properties:
+        category: { type: string }
+        label: { type: string }
+        open: { type: integer }
+        confirmed: { type: integer }
+        dismissed: { type: integer }
+        photos: { type: integer, description: Photos with a confirmed signal in this category. }
+        isPattern: { type: boolean }
+        trend: { type: string, enum: [rising, steady, falling] }
     NovaDefectTag:
       type: object
       required:
@@ -18777,6 +19296,31 @@ components:
         status: { type: string, enum: [active, disabled] }
         disabledReason: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+    IntegrationCatalogueEntry:
+      type: object
+      required: [key, name, category, summary, status, detail, manage]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        category: { type: string, enum: [accounting, files, developer] }
+        summary: { type: string }
+        status:
+          {
+            type: string,
+            enum: [connected, available, needs_attention, not_configured, coming_soon],
+          }
+        detail: { type: [string, 'null'] }
+        manage:
+          type: [string, 'null']
+          enum: [accounting, folders, api, null]
+          description: Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+    IntegrationCatalogue:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IntegrationCatalogueEntry' }
     AccountingProviderName: { type: string, enum: [xero, myob] }
     AccountingTarget:
       type: object

@@ -167,7 +167,7 @@ export const AdjustTimesheetLineRequestSchema = z.object({
 }).strict();
 export type AdjustTimesheetLineRequest = z.infer<typeof AdjustTimesheetLineRequestSchema>;
 
-export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating", "contract_review"]);
+export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "safety_hazards", "minutes", "estimating", "contract_review"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
 
 export const AiFeedbackRequestSchema = z.object({
@@ -2285,6 +2285,35 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const DataExportSchema = z.object({
+  "id": z.string(),
+  "status": z.enum(["queued", "running", "ready", "failed", "expired"]),
+  "requestedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "startedAt": z.string().datetime({ offset: true }).nullable(),
+  "finishedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresAt": z.string().datetime({ offset: true }).nullable(),
+  "sizeBytes": z.number().int().nullable(),
+  "sha256": z.string().nullable(),
+  "tableCount": z.number().int().nullable(),
+  "fileCount": z.number().int().nullable(),
+  "skippedFileCount": z.number().int().nullable(),
+  "error": z.string().nullable(),
+});
+export type DataExport = z.infer<typeof DataExportSchema>;
+
+export const DataExportDownloadSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "filename": z.string(),
+});
+export type DataExportDownload = z.infer<typeof DataExportDownloadSchema>;
+
+export const DataExportListSchema = z.object({
+  "data": z.array(DataExportSchema),
+});
+export type DataExportList = z.infer<typeof DataExportListSchema>;
+
 export const DateRangeRequestSchema = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
@@ -3103,6 +3132,38 @@ export const GrantedWalletListSchema = z.object({
 });
 export type GrantedWalletList = z.infer<typeof GrantedWalletListSchema>;
 
+export const HazardConfidenceSchema = z.enum(["low", "medium", "high"]);
+export type HazardConfidence = z.infer<typeof HazardConfidenceSchema>;
+
+export const HazardPatternSchema = z.object({
+  "category": z.string(),
+  "label": z.string(),
+  "open": z.number().int(),
+  "confirmed": z.number().int(),
+  "dismissed": z.number().int(),
+  "photos": z.number().int(),
+  "isPattern": z.boolean(),
+  "trend": z.enum(["rising", "steady", "falling"]),
+});
+export type HazardPattern = z.infer<typeof HazardPatternSchema>;
+
+export const HazardSignalStatusSchema = z.enum(["open", "confirmed", "dismissed"]);
+export type HazardSignalStatus = z.infer<typeof HazardSignalStatusSchema>;
+
+export const HazardSignalSchema = z.object({
+  "id": z.string(),
+  "fileId": z.string(),
+  "category": z.string(),
+  "categoryLabel": z.string(),
+  "observation": z.string(),
+  "confidence": HazardConfidenceSchema,
+  "status": HazardSignalStatusSchema,
+  "reviewNote": z.string().nullable(),
+  "reviewedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type HazardSignal = z.infer<typeof HazardSignalSchema>;
+
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
 
@@ -3844,6 +3905,22 @@ export const InspectionTemplateListSchema = z.object({
 });
 export type InspectionTemplateList = z.infer<typeof InspectionTemplateListSchema>;
 
+export const IntegrationCatalogueEntrySchema = z.object({
+  "key": z.string(),
+  "name": z.string(),
+  "category": z.enum(["accounting", "files", "developer"]),
+  "summary": z.string(),
+  "status": z.enum(["connected", "available", "needs_attention", "not_configured", "coming_soon"]),
+  "detail": z.string().nullable(),
+  "manage": z.enum(["accounting", "folders", "api"]).nullable(),
+});
+export type IntegrationCatalogueEntry = z.infer<typeof IntegrationCatalogueEntrySchema>;
+
+export const IntegrationCatalogueSchema = z.object({
+  "data": z.array(IntegrationCatalogueEntrySchema),
+});
+export type IntegrationCatalogue = z.infer<typeof IntegrationCatalogueSchema>;
+
 export const InvitePackageRequestSchema = z.object({
   "companyIds": z.array(CompanyRefSchema).min(1).max(50),
   "overrideReason": z.string().min(1).max(500).optional(),
@@ -4491,6 +4568,17 @@ export const NovaDrawingCompareSchema = z.object({
 })),
 });
 export type NovaDrawingCompare = z.infer<typeof NovaDrawingCompareSchema>;
+
+export const NovaHazardScanSchema = z.object({
+  "runId": z.string(),
+  "scanId": z.string(),
+  "signals": z.array(HazardSignalSchema),
+  "photoUnclear": z.boolean(),
+  "dropped": z.number().int(),
+  "unsupportedNumbers": z.array(z.string()),
+  "disclaimer": z.string(),
+});
+export type NovaHazardScan = z.infer<typeof NovaHazardScanSchema>;
 
 export const NovaImportMappingSchema = z.object({
   "runId": z.string(),
@@ -5296,6 +5384,76 @@ export const QuotePageSchema = z.object({
   "data": z.array(QuoteSchema),
 });
 export type QuotePage = z.infer<typeof QuotePageSchema>;
+
+export const ReadinessPackSchema = z.object({
+  "generatedOn": z.string(),
+  "timeZone": z.string(),
+  "prequal": z.object({
+  "restricted": z.boolean(),
+  "companies": z.number().int(),
+  "qualified": z.number().int(),
+  "expiring": z.number().int(),
+  "pending": z.number().int(),
+  "expired": z.number().int(),
+  "notQualified": z.number().int(),
+  "requiredForTenders": z.boolean(),
+}),
+  "credentials": z.object({
+  "restricted": z.boolean(),
+  "current": z.number().int(),
+  "expiring": z.number().int(),
+  "expired": z.number().int(),
+  "noExpiry": z.number().int(),
+  "items": z.array(z.object({
+  "itemType": z.string(),
+  "title": z.string(),
+  "insurer": z.string().nullable(),
+  "expiresOn": z.string().nullable(),
+  "evidence": z.enum(["recorded", "sighted", "self_declared"]),
+  "state": z.enum(["current", "expiring", "expired", "no_expiry"]),
+})),
+}),
+  "safety": z.object({
+  "projectsCovered": z.number().int(),
+  "projectsRestricted": z.number().int(),
+  "incidents": z.object({
+  "total": z.number().int(),
+  "notifiable": z.number().int(),
+  "notClosed": z.number().int(),
+  "high": z.number().int(),
+  "critical": z.number().int(),
+}),
+  "swms": z.object({
+  "accepted": z.number().int(),
+  "expired": z.number().int(),
+  "awaitingReview": z.number().int(),
+  "rejected": z.number().int(),
+}),
+}),
+  "trust": z.object({
+  "projectsCovered": z.number().int(),
+  "projectsRestricted": z.number().int(),
+  "subcontracts": z.number().int(),
+  "ok": z.number().int(),
+  "shortfall": z.number().int(),
+  "notSetUp": z.number().int(),
+  "notRequired": z.number().int(),
+  "shortfallCents": z.number().int(),
+}),
+  "attention": z.array(z.object({
+  "area": z.enum(["prequal", "credentials", "safety", "trust"]),
+  "text": z.string(),
+})),
+  "truncated": z.boolean(),
+});
+export type ReadinessPack = z.infer<typeof ReadinessPackSchema>;
+
+export const ReadinessPackPdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type ReadinessPackPdf = z.infer<typeof ReadinessPackPdfSchema>;
 
 export const RecordAttendanceRequestSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
