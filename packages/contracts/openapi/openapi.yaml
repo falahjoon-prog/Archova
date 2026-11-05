@@ -6721,6 +6721,168 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: The project's equipment register.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Add a machine to the register.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEquipmentRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+    patch:
+      operationId: updateEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Rename a machine or change its status (available, in use, maintenance, retired).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEquipmentRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment-bookings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listEquipmentBookings
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: Bookings across the project's equipment that touch a date range.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date } }
+        - { name: to, in: query, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentBookingList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+    post:
+      operationId: createEquipmentBooking
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Book a machine for a date range. Refused when it overlaps another active booking.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEquipmentBookingRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentBooking' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings/{bookingId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+      - $ref: '#/components/parameters/EquipmentBookingId'
+    post:
+      operationId: cancelEquipmentBooking
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Cancel a booking.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentBooking' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/logs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/EquipmentId'
+    get:
+      operationId: listEquipmentLogs
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: Hours a machine has run, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentLogList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logEquipmentHours
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.log
+      summary: Log hours a machine ran on a day.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogEquipmentHoursRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentLog' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/shifts:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11408,6 +11570,16 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    EquipmentId:
+      name: equipmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+    EquipmentBookingId:
+      name: bookingId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^eqb_[0-9A-Za-z]{26}$' }
     ShiftId:
       name: shiftId
       in: path
@@ -13557,10 +13729,10 @@ components:
         id: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
         kind:
           type: string
-          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due` or `financials.payment_overdue`.
+          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due`, `financials.payment_overdue` or `safety.incident_action_assigned`.
         title: { type: string }
         body: { type: string }
-        entityType: { type: string, enum: [meeting, tender_package, contract] }
+        entityType: { type: string, enum: [meeting, tender_package, contract, incident] }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
         readAt: { type: [string, 'null'], format: date-time }
@@ -19837,6 +20009,101 @@ components:
         status: { $ref: '#/components/schemas/ShiftAssignmentStatus' }
         notifiedAt: { type: [string, 'null'], format: date-time }
         respondedAt: { type: [string, 'null'], format: date-time }
+    EquipmentStatus:
+      type: string
+      enum: [available, in_use, maintenance, retired]
+    Equipment:
+      type: object
+      required: [id, name, assetNumber, type, status, version]
+      properties:
+        id: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        assetNumber: { type: string }
+        type: { type: string }
+        status: { $ref: '#/components/schemas/EquipmentStatus' }
+        version: { type: integer }
+    EquipmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Equipment' }
+    CreateEquipmentRequest:
+      type: object
+      additionalProperties: false
+      required: [name, assetNumber, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        assetNumber: { type: string, minLength: 1, maxLength: 60 }
+        type: { type: string, minLength: 1, maxLength: 100 }
+    UpdateEquipmentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        type: { type: string, minLength: 1, maxLength: 100 }
+        status: { $ref: '#/components/schemas/EquipmentStatus' }
+    EquipmentBooking:
+      type: object
+      required: [id, equipmentId, startsOn, endsOn, bookedFor, note, status]
+      properties:
+        id: { type: string, pattern: '^eqb_[0-9A-Za-z]{26}$' }
+        equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        bookedFor: { type: string }
+        note: { type: [string, 'null'] }
+        status: { type: string, enum: [active, cancelled] }
+    EquipmentBookingList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EquipmentBooking' }
+    CreateEquipmentBookingRequest:
+      type: object
+      additionalProperties: false
+      required: [startsOn, endsOn, bookedFor]
+      properties:
+        startsOn: { type: string, format: date }
+        endsOn: { type: string, format: date }
+        bookedFor: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+    EquipmentLog:
+      type: object
+      required: [id, equipmentId, date, hours, operator, notes]
+      properties:
+        id: { type: string, pattern: '^eql_[0-9A-Za-z]{26}$' }
+        equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        date: { type: string, format: date }
+        hours: { type: string, pattern: '^\\d{1,2}\\.\\d{2}$' }
+        operator: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+    EquipmentLogList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/EquipmentLog' }
+    LogEquipmentHoursRequest:
+      type: object
+      additionalProperties: false
+      required: [date, hours]
+      properties:
+        date: { type: string, format: date }
+        hours:
+          {
+            type: string,
+            pattern: '^\\d{1,2}(\\.\\d{1,2})?$',
+            description: In quarter hours,
+            up to 24.,
+          }
+        operator: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: string, minLength: 1, maxLength: 2000 }
     Shift:
       type: object
       required:

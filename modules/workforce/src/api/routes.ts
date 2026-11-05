@@ -14,7 +14,9 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { EquipmentService } from '../application/equipment';
 import type { RosterService } from '../application/roster';
+import { toBookingDto, toEquipmentDto, toLogDto } from './equipment-mappers';
 import { toShiftDto } from './roster-mappers';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
@@ -99,6 +101,7 @@ export function workforceRoutes(
   wallet: WalletService,
   grants: WalletGrantService,
   roster: RosterService,
+  equip: EquipmentService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -124,7 +127,82 @@ export function workforceRoutes(
   const assignmentId = (p: { assignmentId: string }) =>
     id('shiftAssignment', p.assignmentId, 'workforce_shift.assignment_not_found');
 
+  const equipId = (p: { equipmentId: string }) =>
+    id('equipment', p.equipmentId, 'workforce_equipment.not_found');
+  const bookingId = (p: { bookingId: string }) =>
+    id('equipmentBooking', p.bookingId, 'workforce_equipment.booking_not_found');
+
   return defineRoutes({
+    listEquipment: async (input) => ({
+      status: 200,
+      body: {
+        data: (await read(input, (s) => equip.list(s, project(input.params)))).map(toEquipmentDto),
+      },
+    }),
+    createEquipment: async (input) => ({
+      status: 201,
+      body: toEquipmentDto(
+        await tx(input, (s) => equip.create(s, project(input.params), input.body)),
+      ),
+    }),
+    updateEquipment: async (input) => ({
+      status: 200,
+      body: toEquipmentDto(
+        await tx(input, (s) =>
+          equip.update(s, project(input.params), equipId(input.params), input.body),
+        ),
+      ),
+    }),
+    listEquipmentBookings: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) =>
+            equip.bookings(s, project(input.params), {
+              ...(input.query.from ? { from: input.query.from } : {}),
+              ...(input.query.to ? { to: input.query.to } : {}),
+            }),
+          )
+        ).map(toBookingDto),
+      },
+    }),
+    createEquipmentBooking: async (input) => ({
+      status: 201,
+      body: toBookingDto(
+        await tx(input, (s) =>
+          equip.book(s, project(input.params), equipId(input.params), input.body),
+        ),
+      ),
+    }),
+    cancelEquipmentBooking: async (input) => ({
+      status: 200,
+      body: toBookingDto(
+        await tx(input, (s) =>
+          equip.cancelBooking(
+            s,
+            project(input.params),
+            equipId(input.params),
+            bookingId(input.params),
+          ),
+        ),
+      ),
+    }),
+    listEquipmentLogs: async (input) => ({
+      status: 200,
+      body: {
+        data: (
+          await read(input, (s) => equip.logs(s, project(input.params), equipId(input.params)))
+        ).map(toLogDto),
+      },
+    }),
+    logEquipmentHours: async (input) => ({
+      status: 201,
+      body: toLogDto(
+        await tx(input, (s) =>
+          equip.logHours(s, project(input.params), equipId(input.params), input.body),
+        ),
+      ),
+    }),
     listShifts: async (input) => {
       const q = input.query;
       const rows = await read(input, (s) =>

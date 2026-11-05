@@ -603,6 +603,9 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../../modules/financials
       '@archova/mod-integrations':
         specifier: workspace:*
         version: link:../../modules/integrations
@@ -612,6 +615,9 @@ importers:
       '@archova/mod-notifications':
         specifier: workspace:*
         version: link:../../modules/notifications
+      '@archova/mod-safety':
+        specifier: workspace:*
+        version: link:../../modules/safety
       '@archova/mod-sync':
         specifier: workspace:*
         version: link:../../modules/sync
@@ -12050,9 +12056,7 @@ snapshots:
       metro-runtime: 0.84.6
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.86.3': {}
 
