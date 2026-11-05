@@ -17,6 +17,9 @@ function fake() {
     recordResponses: vi.fn(async () => ({ inspection: { version: 5 } })),
     submit: vi.fn(async () => ({ inspection: { version: 6 } })),
     visibleAmong: vi.fn(async () => []),
+    create: vi.fn(async () => ({ inspection: { version: 1 } })),
+    templateProjectOf: vi.fn(async (): Promise<string | null> => projId),
+    templatesAmong: vi.fn(async (): Promise<unknown[]> => []),
   };
   return { service, pieces: syncPieces(service as unknown as InspectionService) };
 }
@@ -114,5 +117,99 @@ describe('quality sync source', () => {
     expect(service.visibleAmong).not.toHaveBeenCalled();
     expect(pieces.syncSource.publicId('observation', insId)).toMatch(/^obs_/);
     expect(pieces.syncSource.publicId('inspection', insId)).toMatch(/^ins_/);
+  });
+});
+
+const tplId = '0191a5b0-0000-7000-8000-000000000004';
+
+describe('quality.startInspection', () => {
+  const start = (over: object = {}) =>
+    mutation({
+      payload: { templateId: encodeId('inspectionTemplate', tplId), ...over },
+    });
+
+  it('creates the inspection under the id the device chose, in the template project', async () => {
+    const { service, pieces } = fake();
+    const cmd = command(pieces, 'quality.startInspection');
+    expect(await cmd.run(scope, start({ title: ' Slab pour ', location: 'Level 2' }))).toEqual({
+      version: 1,
+    });
+    expect(service.create).toHaveBeenCalledWith(scope, projId, {
+      id: insId,
+      templateId: tplId,
+      title: ' Slab pour ',
+      location: 'Level 2',
+    });
+    expect(await cmd.current(scope, encodeId('inspection', insId))).toBeNull();
+  });
+
+  it('leaves out blank text and rejects bad ids, long text and unknown templates', async () => {
+    const { service, pieces } = fake();
+    const run = command(pieces, 'quality.startInspection').run;
+    await run(scope, start({ title: '  ', location: null }));
+    expect(service.create).toHaveBeenLastCalledWith(scope, projId, {
+      id: insId,
+      templateId: tplId,
+    });
+    service.create.mockClear();
+    await expect(run(scope, mutation({ payload: { templateId: 'x' } }))).rejects.toBeInstanceOf(
+      AppError,
+    );
+    await expect(run(scope, start({ title: 'x'.repeat(201) }))).rejects.toBeInstanceOf(AppError);
+    await expect(run(scope, { ...start(), entityId: 'nope' })).rejects.toBeInstanceOf(AppError);
+    service.templateProjectOf.mockResolvedValueOnce(null);
+    await expect(run(scope, start())).rejects.toMatchObject({
+      code: 'inspection_template.not_found',
+    });
+    expect(service.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('quality sync source: templates', () => {
+  it('serves published checklists flat, with their items, and names their public id', async () => {
+    const { service, pieces } = fake();
+    const now = new Date('2026-11-05T01:00:00Z');
+    service.templatesAmong.mockResolvedValueOnce([
+      {
+        template: {
+          id: tplId,
+          projectId: projId,
+          name: 'Pre-pour',
+          type: 'inspection',
+          version: 2,
+          published: true,
+          createdAt: now,
+          updatedAt: now,
+        },
+        items: [
+          {
+            id: itemId,
+            section: 'Formwork',
+            sort: 0,
+            prompt: 'Level?',
+            responseType: 'pass_fail_na',
+            options: [],
+            required: true,
+            createsDefectOnFail: false,
+          },
+        ],
+      },
+    ]);
+    const out = await pieces.syncSource.load(scope, {
+      projectId: projId,
+      entityType: 'inspection_template',
+      ids: [tplId],
+    });
+    expect(out.get(tplId)).toMatchObject({
+      version: 2,
+      data: {
+        name: 'Pre-pour',
+        projectId: expect.stringMatching(/^prj_/),
+        items: [{ prompt: 'Level?', section: 'Formwork' }],
+      },
+    });
+    expect(pieces.syncSource.publicId('inspection_template', tplId)).toBe(
+      encodeId('inspectionTemplate', tplId),
+    );
   });
 });

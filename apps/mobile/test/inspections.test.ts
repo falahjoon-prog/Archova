@@ -4,9 +4,13 @@ vi.mock('../features/inspections/screens/InspectionScreen', () => ({}));
 import { migrate, SqliteSyncStore } from '../lib/db';
 import {
   getInspection,
+  latestTemplates,
   listInspections,
+  listTemplates,
   saveAnswer,
+  startInspection,
   submitInspection,
+  type LocalTemplate,
   type LocalInspection,
 } from '../features/inspections';
 import { nodeSqlDriver } from './support/node-sql';
@@ -171,5 +175,103 @@ describe('inspections offline', () => {
         clientAt: at,
       }),
     ).toMatchObject({ ok: false, code: 'inspection.not_editable' });
+  });
+});
+
+describe('start from a template', () => {
+  const template = (over: Partial<LocalTemplate> = {}): LocalTemplate => ({
+    id: 'tpl_1',
+    projectId: 'prj_1',
+    name: 'Pre-pour',
+    type: 'inspection',
+    version: 1,
+    published: true,
+    items: [item('a'), item('b', { responseType: 'text', sort: 1 })] as never,
+    ...over,
+  });
+
+  it('offers the latest published version of each checklist', () => {
+    const list = latestTemplates([
+      template({ id: 't1', version: 1 }),
+      template({ id: 't2', version: 3 }),
+      template({ id: 't3', version: 4, published: false }),
+      template({ id: 't4', name: 'Handover', version: 1 }),
+    ]);
+    expect(list.map((t) => t.id)).toEqual(['t4', 't2']);
+  });
+
+  it('lists the templates held on the device for a project', async () => {
+    const { store } = await setup();
+    await store.applyPull({
+      changes: [
+        {
+          op: 'upsert',
+          entityType: 'inspection_template',
+          id: 'tpl_1',
+          version: 1,
+          data: template(),
+        },
+      ],
+      scopeKeys: ['project:prj_1:quality'],
+      nextSince: '2',
+    });
+    expect((await listTemplates(store, 'prj_1')).map((t) => t.id)).toEqual(['tpl_1']);
+    expect(await listTemplates(store, 'prj_other')).toEqual([]);
+  });
+
+  it('starts an inspection on the device and queues it, then answers and submits queue behind it', async () => {
+    const { store } = await setup();
+    const r = await startInspection(store, {
+      template: template(),
+      location: ' Level 3 ',
+      mutationId: 'm-start',
+      clientAt: at,
+    });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const inspection = r.value;
+    expect(inspection).toMatchObject({
+      title: 'Pre-pour',
+      location: 'Level 3',
+      status: 'scheduled',
+      missingRequiredItemIds: ['a', 'b'],
+    });
+    expect(inspection.id).toMatch(/^ins_|^[a-z]+_/);
+    const shown = await getInspection(store, inspection.id);
+    expect(shown?.pending).toBe(true);
+    const [queued] = await store.listOutbox();
+    expect(queued).toMatchObject({
+      command: 'quality.startInspection',
+      entityId: inspection.id,
+      baseVersion: null,
+      payload: { templateId: 'tpl_1', title: 'Pre-pour', location: 'Level 3' },
+    });
+
+    const answered = await saveAnswer(store, {
+      inspection,
+      version: null,
+      itemId: 'a',
+      answer: { result: 'pass' },
+      mutationId: 'm-a',
+      clientAt: at,
+    });
+    expect(answered.ok).toBe(true);
+    const queue = await store.listOutbox();
+    expect(queue.map((e) => e.command)).toEqual([
+      'quality.startInspection',
+      'quality.recordResponses',
+    ]);
+    expect(queue[1]!.dependsOn).toEqual(['m-start']);
+  });
+
+  it('refuses a checklist with no items', async () => {
+    const { store } = await setup();
+    const r = await startInspection(store, {
+      template: template({ items: [] }),
+      mutationId: 'm1',
+      clientAt: at,
+    });
+    expect(r.ok).toBe(false);
+    expect(await store.listOutbox()).toEqual([]);
   });
 });

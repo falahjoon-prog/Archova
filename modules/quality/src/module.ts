@@ -11,7 +11,7 @@ import type { ResponseInput } from './application/inspections';
 import { createObservationService } from './application/observations';
 import type { QualityDeps } from './application/shared';
 import { qualityRoutes } from './api/routes';
-import { toInspectionDetail } from './api/mappers';
+import { toInspectionDetail, toTemplateDetail } from './api/mappers';
 import { QUALITY_PERMISSIONS } from './permissions';
 
 export type { QualityDeps } from './application/shared';
@@ -70,11 +70,30 @@ export function syncPieces(inspections: InspectionService) {
     module: 'quality',
     permission: 'quality.inspections.read',
     publicId: (entityType, uuid) =>
-      encodeId(entityType === 'observation' ? 'observation' : 'inspection', uuid),
+      encodeId(
+        entityType === 'observation'
+          ? 'observation'
+          : entityType === 'inspection_template'
+            ? 'inspectionTemplate'
+            : 'inspection',
+        uuid,
+      ),
     async load(scope, { projectId, entityType, ids }) {
       const out = new Map<string, { version: number; data: Record<string, unknown> }>();
       // Observations are online-only for now; their changes reach the device as deletes of nothing.
-      if (!projectId || entityType !== 'inspection') return out;
+      if (!projectId) return out;
+      if (entityType === 'inspection_template') {
+        for (const d of await inspections.templatesAmong(scope, projectId, ids)) {
+          const { template, items } = toTemplateDetail(d);
+          out.set(d.template.id, {
+            version: d.template.version,
+            // Flat, like inspections: the device files the record by its `projectId`.
+            data: { ...template, items } as unknown as Record<string, unknown>,
+          });
+        }
+        return out;
+      }
+      if (entityType !== 'inspection') return out;
       for (const d of await inspections.visibleAmong(scope, projectId, ids))
         out.set(d.inspection.id, dto(d));
       return out;
@@ -142,7 +161,41 @@ export function syncPieces(inspections: InspectionService) {
     current,
   };
 
-  return { syncSource, syncCommands: [recordResponses, submit] };
+  /**
+   * `quality.startInspection`: the REST "start an inspection from a published checklist" call queued offline. The
+   * device picks the inspection's id; the number is given by the server when this arrives.
+   */
+  const startInspection: SyncCommand = {
+    name: 'quality.startInspection',
+    module: 'quality',
+    async run(scope, m) {
+      const inspectionId = id('inspection', m.entityId, 'entityId');
+      const p = m.payload;
+      const templateId = id('inspectionTemplate', p.templateId, 'payload/templateId');
+      const text = (v: unknown, path: string, max: number) => {
+        if (v === undefined || v === null) return undefined;
+        if (typeof v !== 'string' || v.length > max) throw invalid(path);
+        return v.trim() === '' ? undefined : v;
+      };
+      const title = text(p.title, 'payload/title', 200);
+      const location = text(p.location, 'payload/location', 200);
+      const projectId = await inspections.templateProjectOf(scope, templateId);
+      if (!projectId) throw new AppError('inspection_template.not_found');
+      const d = await inspections.create(scope, projectId, {
+        id: inspectionId,
+        templateId,
+        ...(title ? { title } : {}),
+        ...(location ? { location } : {}),
+      });
+      return { version: d.inspection.version };
+    },
+    // A start has no earlier copy to conflict with.
+    async current() {
+      return null;
+    },
+  };
+
+  return { syncSource, syncCommands: [startInspection, recordResponses, submit] };
 }
 
 export function createQualityModule(services: KernelServices, deps: QualityDeps) {
