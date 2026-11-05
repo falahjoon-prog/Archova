@@ -54,6 +54,8 @@ export type ProjectTool =
   | 'observations'
   | 'swms'
   | 'inspections'
+  | 'late-submissions'
+  | 'imports'
   | 'tender-packages'
   | 'takeoff-measurements'
   | 'estimates'

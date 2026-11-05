@@ -5907,6 +5907,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Projected cost to complete and margin, from contracts, approved variations, claims and adjustments. */
+        get: operations["getCostForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add unawarded work, an allowance, a risk or a saving to the forecast. */
+        post: operations["createForecastAdjustment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments/{adjustmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                adjustmentId: components["parameters"]["ForecastAdjustmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a forecast adjustment. */
+        delete: operations["deleteForecastAdjustment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations": {
         parameters: {
             query?: never;
@@ -10265,6 +10326,53 @@ export interface components {
         BudgetAdjustmentList: {
             data: components["schemas"]["BudgetAdjustment"][];
         };
+        /** @description Decimal AUD ex GST, negative allowed. */
+        FinancialsSignedMoney: string;
+        ForecastAdjustment: {
+            id: string;
+            contractId: string | null;
+            category: components["schemas"]["ForecastAdjustmentCategory"];
+            label: string;
+            note: string | null;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @enum {string} */
+        ForecastAdjustmentCategory: "unawarded_work" | "allowance" | "risk" | "saving" | "other";
+        CreateForecastAdjustmentRequest: {
+            contractId?: string;
+            category: components["schemas"]["ForecastAdjustmentCategory"];
+            label: string;
+            note?: string;
+            amount: components["schemas"]["FinancialsSignedMoney"];
+        };
+        CommitmentForecast: {
+            contractId: string;
+            number: number;
+            title: string;
+            committed: components["schemas"]["FinancialsMoney"];
+            claimedToDate: components["schemas"]["FinancialsMoney"];
+            costToComplete: components["schemas"]["FinancialsMoney"];
+            adjustments: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            pendingVariations: components["schemas"]["FinancialsMoney"];
+        };
+        CostForecast: {
+            revenue: components["schemas"]["FinancialsMoney"];
+            billedToDate: components["schemas"]["FinancialsMoney"];
+            pendingRevenueVariations: components["schemas"]["FinancialsMoney"];
+            committed: components["schemas"]["FinancialsMoney"];
+            claimedToDate: components["schemas"]["FinancialsMoney"];
+            costToComplete: components["schemas"]["FinancialsMoney"];
+            projectAdjustments: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinalCost: components["schemas"]["FinancialsSignedMoney"];
+            pendingCostVariations: components["schemas"]["FinancialsMoney"];
+            forecastMargin: components["schemas"]["FinancialsSignedMoney"];
+            forecastMarginPct: string | null;
+            commitments: components["schemas"]["CommitmentForecast"][];
+            adjustments: components["schemas"]["ForecastAdjustment"][];
+        };
         /** @enum {string} */
         VariationStatus: "draft" | "submitted" | "approved" | "rejected" | "withdrawn";
         Variation: {
@@ -12101,6 +12209,7 @@ export interface components {
         ContractId: string;
         CostCodeId: string;
         BudgetLineId: string;
+        ForecastAdjustmentId: string;
         VariationId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
@@ -21822,6 +21931,83 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PaymentClaimDetail"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCostForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CostForecast"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createForecastAdjustment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateForecastAdjustmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ForecastAdjustment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteForecastAdjustment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                adjustmentId: components["parameters"]["ForecastAdjustmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

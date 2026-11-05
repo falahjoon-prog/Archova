@@ -7,6 +7,8 @@ import {
   type TenantContext,
   type TenantScope,
 } from '@archova/kernel';
+import type { ForecastService } from '../application/forecast';
+import { toAdjustmentDto, toForecastDto } from './forecast-mappers';
 import type { FinancialsService } from '../application/financials';
 import { isMoney } from '../domain/money';
 import {
@@ -37,7 +39,11 @@ const money = (value: string, path: string) => {
   return value;
 };
 
-export function financialsRoutes(database: Database, financials: FinancialsService) {
+export function financialsRoutes(
+  database: Database,
+  financials: FinancialsService,
+  forecast: ForecastService,
+) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -176,6 +182,39 @@ export function financialsRoutes(database: Database, financials: FinancialsServi
         ),
       ),
     }),
+    getCostForecast: async (input) => ({
+      status: 200,
+      body: toForecastDto(
+        await read(input, (s) => forecast.costForecast(s, project(input.params))),
+      ),
+    }),
+    createForecastAdjustment: async (input) => {
+      const b = input.body;
+      return {
+        status: 201,
+        body: toAdjustmentDto(
+          await tx(input, (s) =>
+            forecast.createAdjustment(s, project(input.params), {
+              ...(b.contractId ? { contractId: ref('contract', b.contractId, 'contractId') } : {}),
+              category: b.category,
+              label: b.label,
+              ...(b.note ? { note: b.note } : {}),
+              amount: b.amount,
+            }),
+          ),
+        ),
+      };
+    },
+    deleteForecastAdjustment: async (input) => {
+      await tx(input, (s) =>
+        forecast.deleteAdjustment(
+          s,
+          project(input.params),
+          ref('forecastAdjustment', input.params.adjustmentId, 'adjustmentId'),
+        ),
+      );
+      return { status: 204 };
+    },
     submitVariation: async (input) => move(input, 'submitted'),
     approveVariation: async (input) => move(input, 'approved', input.body?.note),
     rejectVariation: async (input) => move(input, 'rejected', input.body?.note),

@@ -82,6 +82,10 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inspections/templates`,
+  imports: (orgSlug: string, projectId: string, jobId?: string) =>
+    `${p(orgSlug, projectId)}/imports${jobId ? `?id=${enc(jobId)}` : ''}`,
+  lateSubmissions: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
@@ -114,6 +118,9 @@ export const mobileRoutes = {
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
+  inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
+  inspection: (projectId: string, inspectionId: string) =>
+    `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,

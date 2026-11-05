@@ -205,3 +205,18 @@ export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
 });
+
+export const forecastAdjustments = financialsSchema.table('forecast_adjustments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id'),
+  category: text('category')
+    .$type<'unawarded_work' | 'allowance' | 'risk' | 'saving' | 'other'>()
+    .notNull(),
+  label: text('label').notNull(),
+  note: text('note'),
+  amount: money('amount').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
