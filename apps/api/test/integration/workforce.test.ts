@@ -384,3 +384,114 @@ describe('site sign-in (product/12)', () => {
     });
   });
 });
+
+describe('Rosters (ATT-US11)', () => {
+  const day = (h: number) => `2030-03-04T${String(h).padStart(2, '0')}:00:00Z`;
+
+  it('drafts, assigns, publishes and answers a shift, with company scoping and overlap checks', async () => {
+    const s = await setup('roster');
+    const mk = async (browser: typeof s.sm.browser, fullName: string, companyId: string) => {
+      const r = await browser.post(`${s.base}/workers`, { fullName, companyId });
+      expect(r.statusCode).toBe(201);
+      return r.json().id as string;
+    };
+    const w1 = await mk(s.sm.browser, 'Dana Formworker', s.subCo.companyId);
+    const w2 = await mk(s.sm.browser, 'Eli Sparky', s.sub2Co.companyId);
+
+    // A subcontractor cannot build rosters.
+    const denied = await s.sub.browser.post(`${s.base}/shifts`, {
+      siteId: s.site.id,
+      trade: 'Formwork',
+      startsAt: day(7),
+      endsAt: day(15),
+      requiredHeadcount: 2,
+    });
+    expect(denied.statusCode).toBe(403);
+
+    const bad = await s.sm.browser.post(`${s.base}/shifts`, {
+      siteId: s.site.id,
+      trade: 'Formwork',
+      startsAt: day(15),
+      endsAt: day(7),
+      requiredHeadcount: 2,
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const created = await s.sm.browser.post(`${s.base}/shifts`, {
+      siteId: s.site.id,
+      crew: 'Slab crew',
+      trade: 'Formwork',
+      startsAt: day(7),
+      endsAt: day(15),
+      requiredHeadcount: 2,
+    });
+    expect(created.statusCode).toBe(201);
+    const shift = created.json();
+    expect(shift).toMatchObject({ status: 'draft', filled: 0, publishedAt: null });
+    const sp = `${s.base}/shifts/${shift.id}`;
+
+    // Drafts are the site manager's own.
+    expect((await s.sub.browser.get(sp)).statusCode).toBe(404);
+
+    const assigned = await s.sm.browser.post(`${sp}/assignments`, { workerIds: [w1, w2] });
+    expect(assigned.statusCode).toBe(200);
+    expect(assigned.json()).toMatchObject({ filled: 2 });
+    expect(
+      assigned.json().assignments.every((a: { notifiedAt: unknown }) => a.notifiedAt === null),
+    ).toBe(true);
+
+    // The same person can't be on an overlapping shift; back to back is fine.
+    const second = (
+      await s.sm.browser.post(`${s.base}/shifts`, {
+        siteId: s.site.id,
+        trade: 'Formwork',
+        startsAt: day(14),
+        endsAt: day(18),
+        requiredHeadcount: 1,
+      })
+    ).json();
+    const clash = await s.sm.browser.post(`${s.base}/shifts/${second.id}/assignments`, {
+      workerIds: [w1],
+    });
+    expect(clash.statusCode).toBe(409);
+
+    const published = await s.sm.browser.post(`${sp}/publish`);
+    expect(published.statusCode).toBe(200);
+    expect(published.json().status).toBe('published');
+    expect((await s.sm.browser.post(`${sp}/publish`)).statusCode).toBe(409);
+
+    // A subcontractor sees the shift but only its own worker's assignment, and answers only for them.
+    const seen = (await s.sub.browser.get(sp)).json();
+    expect(seen.assignments).toHaveLength(1);
+    expect(seen.filled).toBe(2);
+    const mine = seen.assignments[0];
+    expect(mine.notifiedAt).not.toBeNull();
+    const yes = await s.sub.browser.post(`${sp}/assignments/${mine.id}/respond`, {
+      status: 'accepted',
+    });
+    expect(yes.statusCode).toBe(200);
+    expect(yes.json().assignments[0].status).toBe('accepted');
+    const theirs = (await s.sm.browser.get(sp))
+      .json()
+      .assignments.find((a: { workerId: string }) => a.workerId === w2);
+    expect(
+      (await s.sub.browser.post(`${sp}/assignments/${theirs.id}/respond`, { status: 'accepted' }))
+        .statusCode,
+    ).toBe(404);
+
+    // Attendance is the manager's call, and only once the shift has begun (this one is in 2030).
+    expect(
+      (await s.sm.browser.post(`${sp}/assignments/${mine.id}/respond`, { status: 'attended' }))
+        .statusCode,
+    ).toBe(409);
+
+    const listed = await s.sm.browser.get(`${s.base}/shifts?from=${day(0)}&to=${day(23)}`);
+    expect(listed.json().data).toHaveLength(2);
+
+    const cancelled = await s.sm.browser.post(`${sp}/cancel`);
+    expect(cancelled.json().status).toBe('cancelled');
+    expect((await s.sm.browser.post(`${sp}/assignments`, { workerIds: [w1] })).statusCode).toBe(
+      409,
+    );
+  });
+});

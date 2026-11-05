@@ -6444,6 +6444,176 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listShifts
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.view
+      summary: Shifts in a date range, with the assigned workers. Drafts show only to site managers; a subcontractor sees only its own workers.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: siteId, in: query, schema: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/ShiftStatus' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ShiftList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Draft a shift at a site.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateShiftRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    get:
+      operationId: getShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.view
+      summary: One shift with its assigned workers.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    post:
+      operationId: publishShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Offer a draft shift to the workers assigned to it.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/cancel:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    post:
+      operationId: cancelShift
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Cancel a shift.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+    post:
+      operationId: assignShiftWorkers
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Add workers to a shift. A worker already on an overlapping shift is refused.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AssignShiftWorkersRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+      - $ref: '#/components/parameters/ShiftAssignmentId'
+    delete:
+      operationId: removeShiftAssignment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.manage
+      summary: Take a worker off a shift.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/shifts/{shiftId}/assignments/{assignmentId}/respond:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ShiftId'
+      - $ref: '#/components/parameters/ShiftAssignmentId'
+    post:
+      operationId: respondToShiftAssignment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.rosters.view
+      summary: Accept or decline an offer, or (site managers, once the shift has begun) record attended or no show.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondToShiftRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Shift' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/attendance/sites:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10765,6 +10935,16 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    ShiftId:
+      name: shiftId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^shf_[0-9A-Za-z]{26}$' }
+    ShiftAssignmentId:
+      name: assignmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sha_[0-9A-Za-z]{26}$' }
     InspectionTemplateId:
       name: templateId
       in: path
@@ -18851,6 +19031,94 @@ components:
         code:
           type: string
           description: The secret printed on the gate poster as a QR. Shown only once; reissue to get a new one.
+    ShiftStatus:
+      type: string
+      enum: [draft, published, cancelled]
+    ShiftAssignmentStatus:
+      type: string
+      enum: [offered, accepted, declined, no_show, attended]
+    ShiftAssignment:
+      type: object
+      required: [id, shiftId, workerId, companyId, status, notifiedAt, respondedAt]
+      properties:
+        id: { type: string, pattern: '^sha_[0-9A-Za-z]{26}$' }
+        shiftId: { type: string, pattern: '^shf_[0-9A-Za-z]{26}$' }
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        status: { $ref: '#/components/schemas/ShiftAssignmentStatus' }
+        notifiedAt: { type: [string, 'null'], format: date-time }
+        respondedAt: { type: [string, 'null'], format: date-time }
+    Shift:
+      type: object
+      required:
+        [
+          id,
+          siteId,
+          crew,
+          trade,
+          note,
+          startsAt,
+          endsAt,
+          requiredHeadcount,
+          filled,
+          status,
+          publishedAt,
+          assignments,
+        ]
+      properties:
+        id: { type: string, pattern: '^shf_[0-9A-Za-z]{26}$' }
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        crew: { type: [string, 'null'] }
+        trade: { type: string }
+        note: { type: [string, 'null'] }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        requiredHeadcount: { type: integer }
+        filled:
+          description: Workers assigned who have not declined, across all companies.
+          type: integer
+        status: { $ref: '#/components/schemas/ShiftStatus' }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        assignments:
+          type: array
+          items: { $ref: '#/components/schemas/ShiftAssignment' }
+    ShiftList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Shift' }
+    CreateShiftRequest:
+      type: object
+      additionalProperties: false
+      required: [siteId, trade, startsAt, endsAt, requiredHeadcount]
+      properties:
+        siteId: { type: string, pattern: '^wst_[0-9A-Za-z]{26}$' }
+        crew: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, minLength: 1, maxLength: 100 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+        requiredHeadcount: { type: integer, minimum: 1, maximum: 500 }
+    AssignShiftWorkersRequest:
+      type: object
+      additionalProperties: false
+      required: [workerIds]
+      properties:
+        workerIds:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+    RespondToShiftRequest:
+      type: object
+      additionalProperties: false
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [accepted, declined, attended, no_show]
     AttendanceSite:
       type: object
       required:

@@ -61,6 +61,8 @@ export const ID_PREFIXES = {
   diaryStandDown: 'dsd',
   diaryAmendment: 'dam',
   workforceSite: 'wst',
+  shift: 'shf',
+  shiftAssignment: 'sha',
   gate: 'wgt',
   worker: 'wkr',
   attendanceSession: 'ats',

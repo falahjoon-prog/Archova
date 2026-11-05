@@ -261,6 +261,11 @@ export const AskInductionRequestSchema = z.object({
 }).strict();
 export type AskInductionRequest = z.infer<typeof AskInductionRequestSchema>;
 
+export const AssignShiftWorkersRequestSchema = z.object({
+  "workerIds": z.array(z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$"))).min(1).max(100),
+}).strict();
+export type AssignShiftWorkersRequest = z.infer<typeof AssignShiftWorkersRequestSchema>;
+
 export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
 export type CompanyRef = z.infer<typeof CompanyRefSchema>;
 
@@ -1871,6 +1876,17 @@ export const CreateScheduleRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
 export type CreateScheduleRequest = z.infer<typeof CreateScheduleRequestSchema>;
+
+export const CreateShiftRequestSchema = z.object({
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+  "crew": z.string().min(1).max(100).optional(),
+  "trade": z.string().min(1).max(100),
+  "note": z.string().min(1).max(2000).optional(),
+  "startsAt": z.string().datetime({ offset: true }),
+  "endsAt": z.string().datetime({ offset: true }),
+  "requiredHeadcount": z.number().int().min(1).max(500),
+}).strict();
+export type CreateShiftRequest = z.infer<typeof CreateShiftRequestSchema>;
 
 export const SubmittalTypeSchema = z.enum(["shop_drawing", "product_data", "sample", "mock_up", "certificate", "other"]);
 export type SubmittalType = z.infer<typeof SubmittalTypeSchema>;
@@ -5006,6 +5022,11 @@ export const RespondSubmittalStepRequestSchema = z.object({
 }).strict();
 export type RespondSubmittalStepRequest = z.infer<typeof RespondSubmittalStepRequestSchema>;
 
+export const RespondToShiftRequestSchema = z.object({
+  "status": z.enum(["accepted", "declined", "attended", "no_show"]),
+}).strict();
+export type RespondToShiftRequest = z.infer<typeof RespondToShiftRequestSchema>;
+
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
   "client_id": z.string(),
@@ -5300,6 +5321,44 @@ export const SheetGeometrySchema = z.object({
   "version": z.number().int(),
 });
 export type SheetGeometry = z.infer<typeof SheetGeometrySchema>;
+
+export const ShiftStatusSchema = z.enum(["draft", "published", "cancelled"]);
+export type ShiftStatus = z.infer<typeof ShiftStatusSchema>;
+
+export const ShiftAssignmentStatusSchema = z.enum(["offered", "accepted", "declined", "no_show", "attended"]);
+export type ShiftAssignmentStatus = z.infer<typeof ShiftAssignmentStatusSchema>;
+
+export const ShiftAssignmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^sha_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable(),
+  "status": ShiftAssignmentStatusSchema,
+  "notifiedAt": z.string().datetime({ offset: true }).nullable(),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type ShiftAssignment = z.infer<typeof ShiftAssignmentSchema>;
+
+export const ShiftSchema = z.object({
+  "id": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+  "crew": z.string().nullable(),
+  "trade": z.string(),
+  "note": z.string().nullable(),
+  "startsAt": z.string().datetime({ offset: true }),
+  "endsAt": z.string().datetime({ offset: true }),
+  "requiredHeadcount": z.number().int(),
+  "filled": z.number().int(),
+  "status": ShiftStatusSchema,
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+  "assignments": z.array(ShiftAssignmentSchema),
+});
+export type Shift = z.infer<typeof ShiftSchema>;
+
+export const ShiftListSchema = z.object({
+  "data": z.array(ShiftSchema),
+});
+export type ShiftList = z.infer<typeof ShiftListSchema>;
 
 export const SignInResultSchema = z.object({
   "outcome": z.enum(["accepted", "blocked", "overridden", "already_on_site", "signed_out"]),
