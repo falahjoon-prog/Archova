@@ -113,6 +113,70 @@ export const GetDelayRegisterQuery = z.object({
   "source": z.enum(["diary", "rfi"]).optional(),
   "eotOnly": z.enum(["true", "false"]).optional(),
 });
+export const ListSchedulesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleBody = s.CreateScheduleRequestSchema;
+export const ImportScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportScheduleBody = s.ImportScheduleRequestSchema;
+export const GetScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const DeleteScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleActivityBody = s.CreateScheduleActivityRequestSchema;
+export const UpdateScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const UpdateScheduleActivityBody = s.UpdateScheduleActivityRequestSchema;
+export const DeleteScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleDependencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleDependencyBody = s.CreateScheduleDependencyRequestSchema;
+export const DeleteScheduleDependencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "dependencyId": z.string().regex(new RegExp("^sdp_[0-9A-Za-z]{26}$")),
+});
+export const GetScheduleLookaheadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const GetScheduleLookaheadQuery = z.object({
+  "weeks": z.coerce.number().int().min(1).max(6).default(3),
+  "from": z.string().date().optional(),
+});
 export const ListProjectMembersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -630,6 +694,14 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const GetBidBoardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetBidBoardQuery = z.object({
+  "status": s.PackageStatusSchema.optional(),
+  "trade": z.string().max(100).optional(),
+  "projectId": z.string().optional(),
+});
 export const ListTenderPackagesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1664,6 +1736,71 @@ export const RevokeComplianceGrantParams = z.object({
 export const ListComplianceAccessLogParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListPrequalTemplatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrequalTemplateBody = s.CreatePrequalTemplateRequestSchema;
+export const GetPrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalTemplateBody = s.UpdatePrequalTemplateRequestSchema;
+export const PublishPrequalTemplateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const NewPrequalTemplateVersionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+});
+export const ListPrequalificationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListPrequalificationsQuery = z.object({
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).optional(),
+  "status": s.PrequalStatusSchema.optional(),
+});
+export const CreatePrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreatePrequalificationBody = s.CreatePrequalificationRequestSchema;
+export const GetPrequalificationRegisterParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetPrequalificationRegisterQuery = z.object({
+  "state": s.PrequalQualificationSchema.optional(),
+  "trade": z.string().max(100).optional(),
+});
+export const GetPrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalificationBody = s.UpdatePrequalificationRequestSchema;
+export const SubmitPrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const ApprovePrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const ApprovePrequalificationBody = s.ApprovePrequalificationRequestSchema;
+export const RejectPrequalificationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "prequalId": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+});
+export const RejectPrequalificationBody = s.RejectPrequalificationRequestSchema;
 export const ListGrantedWalletsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2543,6 +2680,138 @@ export const operations = {
     contentType: null,
     params: GetDelayRegisterParams,
     query: GetDelayRegisterQuery,
+    body: null,
+  },
+  listSchedules: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListSchedulesParams,
+    query: null,
+    body: null,
+  },
+  createSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleParams,
+    query: null,
+    body: CreateScheduleBody,
+  },
+  importSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/import',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.import",
+    internal: false,
+    contentType: "application/json",
+    params: ImportScheduleParams,
+    query: null,
+    body: ImportScheduleBody,
+  },
+  getSchedule: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetScheduleParams,
+    query: null,
+    body: null,
+  },
+  deleteSchedule: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.import",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleParams,
+    query: null,
+    body: null,
+  },
+  createScheduleActivity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleActivityParams,
+    query: null,
+    body: CreateScheduleActivityBody,
+  },
+  updateScheduleActivity: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateScheduleActivityParams,
+    query: null,
+    body: UpdateScheduleActivityBody,
+  },
+  deleteScheduleActivity: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleActivityParams,
+    query: null,
+    body: null,
+  },
+  createScheduleDependency: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleDependencyParams,
+    query: null,
+    body: CreateScheduleDependencyBody,
+  },
+  deleteScheduleDependency: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies/{dependencyId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleDependencyParams,
+    query: null,
+    body: null,
+  },
+  getScheduleLookahead: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetScheduleLookaheadParams,
+    query: GetScheduleLookaheadQuery,
     body: null,
   },
   listProjectMembers: {
@@ -3553,6 +3822,18 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  getBidBoard: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bid-board',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.board.read",
+    internal: false,
+    contentType: null,
+    params: GetBidBoardParams,
+    query: GetBidBoardQuery,
+    body: null,
   },
   listTenderPackages: {
     method: 'GET',
@@ -5670,6 +5951,188 @@ export const operations = {
     params: ListComplianceAccessLogParams,
     query: null,
     body: null,
+  },
+  listPrequalTemplates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequal-templates',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: ListPrequalTemplatesParams,
+    query: null,
+    body: null,
+  },
+  createPrequalTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequal-templates',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: CreatePrequalTemplateParams,
+    query: null,
+    body: CreatePrequalTemplateBody,
+  },
+  getPrequalTemplate: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalTemplateParams,
+    query: null,
+    body: null,
+  },
+  updatePrequalTemplate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: UpdatePrequalTemplateParams,
+    query: null,
+    body: UpdatePrequalTemplateBody,
+  },
+  publishPrequalTemplate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}/publish',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: PublishPrequalTemplateParams,
+    query: null,
+    body: null,
+  },
+  newPrequalTemplateVersion: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequal-templates/{templateId}/new-version',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: NewPrequalTemplateVersionParams,
+    query: null,
+    body: null,
+  },
+  listPrequalifications: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalifications',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: ListPrequalificationsParams,
+    query: ListPrequalificationsQuery,
+    body: null,
+  },
+  createPrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: CreatePrequalificationParams,
+    query: null,
+    body: CreatePrequalificationBody,
+  },
+  getPrequalificationRegister: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalification-register',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalificationRegisterParams,
+    query: GetPrequalificationRegisterQuery,
+    body: null,
+  },
+  getPrequalification: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalificationParams,
+    query: null,
+    body: null,
+  },
+  updatePrequalification: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: UpdatePrequalificationParams,
+    query: null,
+    body: UpdatePrequalificationBody,
+  },
+  submitPrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}/submit',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: SubmitPrequalificationParams,
+    query: null,
+    body: null,
+  },
+  approvePrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}/approve',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.decide",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: ApprovePrequalificationParams,
+    query: null,
+    body: ApprovePrequalificationBody,
+  },
+  rejectPrequalification: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/prequalifications/{prequalId}/reject',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.decide",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: RejectPrequalificationParams,
+    query: null,
+    body: RejectPrequalificationBody,
   },
   listGrantedWallets: {
     method: 'GET',

@@ -69,6 +69,7 @@ export {
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,
+  ChartGantt as ProgrammeIcon,
   Handshake as ContractsIcon,
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,

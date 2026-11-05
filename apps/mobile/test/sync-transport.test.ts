@@ -160,7 +160,7 @@ describe('deviceScopes', () => {
     const scopes = await deviceScopes(api, 'org1');
     expect(scopes).toContainEqual(ORG_SCOPE);
     expect(scopes).toContainEqual(projectScope('p2', 'diary'));
-    expect(scopes).toHaveLength(1 + 2 * 4);
+    expect(scopes).toHaveLength(1 + 2 * 5);
   });
 
   it('leaves out projects removed from the device', async () => {
@@ -169,6 +169,6 @@ describe('deviceScopes', () => {
     );
     const scopes = await deviceScopes(api, 'org1', async () => new Set(['p1']));
     expect(scopes).not.toContainEqual(projectScope('p1', 'diary'));
-    expect(scopes).toHaveLength(1 + 4);
+    expect(scopes).toHaveLength(1 + 5);
   });
 });

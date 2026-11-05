@@ -34,6 +34,7 @@ tags:
   - name: defects
   - name: financials
   - name: quality
+  - name: precon
   - name: safety
   - name: estimating
   - name: integrations
@@ -667,6 +668,227 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/DelayRegister' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listSchedules
+      tags: [scheduling]
+      # Rides with the diary entitlement until `scheduling` is sold as its own plan module (like the delay register).
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'The project programmes, newest first (SCH-US9).'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createSchedule
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Start an empty programme to build in Archova.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScheduleRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/import:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: importSchedule
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.import
+      summary: 'Import an MS Project XML or Primavera P6 XER file as a new programme revision (SCH-AC6). The file is sent as text, up to about 900 KB.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ImportScheduleRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ImportScheduleResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    get:
+      operationId: getSchedule
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'A programme with its activities, links, float and critical path.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteSchedule
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.import
+      summary: 'Remove a programme revision.'
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    post:
+      operationId: createScheduleActivity
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Add a task or milestone. Returns the whole programme with float recalculated.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScheduleActivityRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+      - $ref: '#/components/parameters/ScheduleActivityId'
+    patch:
+      operationId: updateScheduleActivity
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Change dates, progress, name or assignee. Returns the whole programme.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateScheduleActivityRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteScheduleActivity
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Remove an activity and its links. Returns the whole programme.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    post:
+      operationId: createScheduleDependency
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Link two activities (finish-to-start, start-to-start, finish-to-finish, start-to-finish, with lag). A link that would make a loop is refused.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScheduleDependencyRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies/{dependencyId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+      - $ref: '#/components/parameters/ScheduleDependencyId'
+    delete:
+      operationId: deleteScheduleDependency
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Remove a link. Returns the whole programme.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    get:
+      operationId: getScheduleLookahead
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'The look-ahead: unfinished work on the programme in the next 2 to 6 whole weeks (SCH-US8). Subcontractors can filter on their own assignee name in the client.'
+      parameters:
+        - {
+            name: weeks,
+            in: query,
+            required: false,
+            schema: { type: integer, minimum: 1, maximum: 6, default: 3 },
+          }
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleLookahead' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/members:
     parameters:
@@ -2919,6 +3141,33 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bid-board:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getBidBoard
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.board.read
+      summary: Tender packages across the company's projects, with how invitees have answered and where the price stands.
+      description: |
+        The bid board. One entry per tender package on projects where the caller holds `estimating.quotes.review`
+        (other projects are left out, since the board shows prices). Each entry carries a tally of invitee answers,
+        quotes confirmed and waiting for review, the lowest levelled total ex GST (allowances included), and a due state
+        for packages still out to tender: `overdue`, `closing_soon` (within 72 hours) or `open`. Ordered by due date,
+        soonest first. At most 500 packages; `truncated` says when there are more. Builder staff only; a subcontractor
+        never reaches it.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/PackageStatus' } }
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: projectId, in: query, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidBoard' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages:
     parameters:
@@ -7150,6 +7399,368 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ComplianceAccessLogList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPrequalTemplates
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: The prequalification forms, by name then newest version.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Start a new form as a draft.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrequalTemplateRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates/{templateId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: templateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getPrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: One form with its questions.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Edit a draft form. A published form is frozen.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrequalTemplateRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates/{templateId}/publish:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: templateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: publishPrequalTemplate
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Freeze a form so companies can be asked to complete it.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequal-templates/{templateId}/new-version:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: templateId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: newPrequalTemplateVersion
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: Copy a published form into a draft at the next version.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalTemplate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listPrequalifications
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: Prequalification forms, newest first.
+      parameters:
+        - {
+            name: companyId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^cmp_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/PrequalStatus' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalificationList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.manage
+      summary: Start a form for a company on a published template.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePrequalificationRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalification-register:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPrequalificationRegister
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: 'One line per company: who is qualified today, who is expiring, who has lapsed.'
+      description: 'Each company shows its best standing: an approved form in date wins over a pending renewal, which wins over an expired or rejected form. Sorted by soonest expiry. Standing is worked out when asked, so it never goes stale.'
+      parameters:
+        - {
+            name: state,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/PrequalQualification' },
+          }
+        - { name: trade, in: query, required: false, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalRegister' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: One form with its answers.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updatePrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.manage
+      summary: Save answers or trades on a draft.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePrequalificationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: submitPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.manage
+      summary: Submit a completed draft for a decision. Required questions must be answered; the advisory score is worked out now.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: approvePrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.decide
+      summary: Approve a submitted form. A person decides; the score is advice only.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ApprovePrequalificationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalifications/{prequalId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: prequalId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' },
+        }
+    post:
+      operationId: rejectPrequalification
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.decide
+      summary: Reject a submitted form, with the reason.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectPrequalificationRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Prequalification' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/subcontractor-wallets:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9283,6 +9894,21 @@ components:
       required: true
       description: The ETag from the last read. Missing → 428, stale → 412.
       schema: { type: string }
+    ScheduleId:
+      name: scheduleId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sch_[0-9A-Za-z]{26}$' }
+    ScheduleActivityId:
+      name: activityId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sac_[0-9A-Za-z]{26}$' }
+    ScheduleDependencyId:
+      name: dependencyId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^sdp_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -9314,6 +9940,172 @@ components:
         application/problem+json:
           schema: { $ref: '#/components/schemas/Problem' }
   schemas:
+    ScheduleSource:
+      type: string
+      enum: [native, msp, p6]
+    ScheduleDepType:
+      type: string
+      enum: [FS, SS, FF, SF]
+    ScheduleSummary:
+      type: object
+      required:
+        [id, projectId, name, source, dataDate, activityCount, startDate, finishDate, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        source: { $ref: '#/components/schemas/ScheduleSource' }
+        dataDate: { type: [string, 'null'], format: date }
+        activityCount: { type: integer }
+        startDate: { type: [string, 'null'], format: date }
+        finishDate: { type: [string, 'null'], format: date }
+        createdAt: { type: string, format: date-time }
+    ScheduleList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleSummary' }
+    ScheduleActivity:
+      type: object
+      required:
+        [
+          id,
+          wbs,
+          name,
+          kind,
+          start,
+          finish,
+          durationDays,
+          pctComplete,
+          assignee,
+          externalId,
+          floatDays,
+          critical,
+        ]
+      properties:
+        id: { type: string }
+        wbs: { type: string }
+        name: { type: string }
+        kind: { type: string, enum: [task, milestone] }
+        start: { type: string, format: date }
+        finish: { type: string, format: date }
+        durationDays:
+          { type: integer, description: 'Working days, Monday to Friday; 0 for a milestone.' }
+        pctComplete: { type: integer }
+        assignee: { type: string }
+        externalId: { type: [string, 'null'] }
+        floatDays:
+          {
+            type: integer,
+            description: 'Total float in working days, from the dates on the programme.',
+          }
+        critical: { type: boolean }
+    ScheduleDependency:
+      type: object
+      required: [id, predecessorId, successorId, type, lagDays, slackDays, violated]
+      properties:
+        id: { type: string }
+        predecessorId: { type: string }
+        successorId: { type: string }
+        type: { $ref: '#/components/schemas/ScheduleDepType' }
+        lagDays: { type: integer }
+        slackDays: { type: integer }
+        violated:
+          { type: boolean, description: 'The dates break this link (the successor is too early).' }
+    ScheduleDetail:
+      type: object
+      required: [schedule, activities, dependencies, criticalCount, violationCount]
+      properties:
+        schedule: { $ref: '#/components/schemas/ScheduleSummary' }
+        activities:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleActivity' }
+        dependencies:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleDependency' }
+        criticalCount: { type: integer }
+        violationCount: { type: integer }
+    ImportScheduleResult:
+      type: object
+      required: [detail, skipped]
+      properties:
+        detail: { $ref: '#/components/schemas/ScheduleDetail' }
+        skipped:
+          type: array
+          items: { type: string }
+    CreateScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+    ImportScheduleRequest:
+      type: object
+      additionalProperties: false
+      required: [format, content]
+      properties:
+        format: { type: string, enum: [msp, p6] }
+        name: { type: string, minLength: 1, maxLength: 200 }
+        content: { type: string, minLength: 1, maxLength: 900000 }
+    CreateScheduleActivityRequest:
+      type: object
+      additionalProperties: false
+      required: [name, start]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 300 }
+        kind: { type: string, enum: [task, milestone] }
+        wbs: { type: string, maxLength: 100 }
+        start: { type: string, format: date }
+        finish: { type: string, format: date }
+        pctComplete: { type: integer, minimum: 0, maximum: 100 }
+        assignee: { type: string, maxLength: 200 }
+    UpdateScheduleActivityRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 300 }
+        kind: { type: string, enum: [task, milestone] }
+        wbs: { type: string, maxLength: 100 }
+        start: { type: string, format: date }
+        finish: { type: string, format: date }
+        pctComplete: { type: integer, minimum: 0, maximum: 100 }
+        assignee: { type: string, maxLength: 200 }
+    CreateScheduleDependencyRequest:
+      type: object
+      additionalProperties: false
+      required: [predecessorId, successorId]
+      properties:
+        predecessorId: { type: string }
+        successorId: { type: string }
+        type: { $ref: '#/components/schemas/ScheduleDepType' }
+        lagDays: { type: integer, minimum: -1000, maximum: 1000 }
+    ScheduleLookaheadItem:
+      type: object
+      required: [activity, startsInWindow, finishesInWindow, late]
+      properties:
+        activity: { $ref: '#/components/schemas/ScheduleActivity' }
+        startsInWindow: { type: boolean }
+        finishesInWindow: { type: boolean }
+        late:
+          {
+            type: boolean,
+            description: 'Should have started or finished before today and has not.',
+          }
+    ScheduleLookahead:
+      type: object
+      required: [scheduleId, weeks, today, windowStart, windowEnd, items]
+      properties:
+        scheduleId: { type: string }
+        weeks: { type: integer }
+        today: { type: string, format: date }
+        windowStart: { type: string, format: date }
+        windowEnd: { type: string, format: date }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleLookaheadItem' }
     CreateMeetingSeriesRequest:
       type: object
       additionalProperties: false
@@ -13573,6 +14365,64 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BidBoard:
+      type: object
+      required: [data, asOf, truncated]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BidBoardEntry' }
+        asOf: { type: string, format: date-time }
+        truncated: { type: boolean }
+    BidBoardEntry:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          projectName,
+          numberLabel,
+          name,
+          trade,
+          status,
+          dueAt,
+          dueState,
+          invites,
+          quotesConfirmed,
+          quotesToReview,
+          lowestExGst,
+          awarded,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        projectName: { type: string }
+        numberLabel: { type: string, description: 'TP-001' }
+        name: { type: string }
+        trade: { type: string }
+        status: { $ref: '#/components/schemas/PackageStatus' }
+        dueAt: { type: [string, 'null'], format: date-time }
+        dueState:
+          type: [string, 'null']
+          enum: [overdue, closing_soon, open, null]
+          description: Null unless the package is out to tender with a due date.
+        invites: { $ref: '#/components/schemas/BidBoardInviteTally' }
+        quotesConfirmed: { type: integer }
+        quotesToReview: { type: integer }
+        lowestExGst:
+          type: [string, 'null']
+          description: Lowest levelled total ex GST across confirmed quotes, decimal AUD. Null with none confirmed.
+        awarded: { type: boolean }
+    BidBoardInviteTally:
+      type: object
+      required: [invited, viewed, declined, intendsToQuote, submitted, awaiting]
+      properties:
+        invited: { type: integer }
+        viewed: { type: integer }
+        declined: { type: integer }
+        intendsToQuote: { type: integer }
+        submitted: { type: integer }
+        awaiting: { type: integer, description: Invited or only viewed, with no answer yet. }
     PackageStatus:
       type: string
       enum: [draft, out_to_tender, closed, awarded, cancelled]
@@ -16910,6 +17760,210 @@ components:
           abn,
           other,
         ]
+    PrequalQuestion:
+      type: object
+      required: [id, section, prompt, type, options, required, expect, points, critical]
+      properties:
+        id: { type: string, pattern: '^[a-z0-9][a-z0-9_-]{0,39}$' }
+        section: { type: string, maxLength: 100 }
+        prompt: { type: string, minLength: 1, maxLength: 1000 }
+        type: { type: string, enum: [yes_no, text, number, select, date] }
+        options: { type: array, items: { type: string, maxLength: 200 }, maxItems: 20 }
+        required: { type: boolean }
+        expect:
+          type: [string, 'null']
+          enum: [yes, no, null]
+          description: For a yes/no question, the answer the builder wants.
+        points: { type: integer, minimum: 0, maximum: 100 }
+        critical:
+          type: boolean
+          description: An unwanted answer is flagged to whoever decides. It never rejects a form by itself.
+    PrequalTemplate:
+      type: object
+      required:
+        [id, name, version, published, validityMonths, questions, rowVersion, createdAt, updatedAt]
+      properties:
+        id: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        version:
+          { type: integer, description: The form's own version, raised by making a new version. }
+        published: { type: boolean }
+        validityMonths:
+          {
+            type: integer,
+            description: How long an approval lasts unless the approver sets another date.,
+          }
+        questions: { type: array, items: { $ref: '#/components/schemas/PrequalQuestion' } }
+        rowVersion: { type: integer, description: Concurrency version, sent back as If-Match. }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    PrequalTemplateList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PrequalTemplate' } }
+    CreatePrequalTemplateRequest:
+      type: object
+      required: [name, questions]
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        validityMonths: { type: integer, minimum: 1, maximum: 60 }
+        questions:
+          { type: array, items: { $ref: '#/components/schemas/PrequalQuestion' }, maxItems: 100 }
+    UpdatePrequalTemplateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        validityMonths: { type: integer, minimum: 1, maximum: 60 }
+        questions:
+          { type: array, items: { $ref: '#/components/schemas/PrequalQuestion' }, maxItems: 100 }
+    PrequalStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected]
+    PrequalQualification:
+      type: string
+      enum: [qualified, expiring, expired, pending, not_qualified]
+      description: '`qualified`: approved and in date. `expiring`: within 30 days of expiry. `expired`: approved but lapsed. `pending`: a draft or submitted form with nothing in date. `not_qualified`: the latest form was rejected.'
+    PrequalAnswers:
+      type: object
+      description: Answers by question id. yes/no is a boolean, number a number, the rest strings.
+      additionalProperties:
+        oneOf:
+          [{ type: string, maxLength: 2000 }, { type: number }, { type: boolean }, { type: 'null' }]
+    Prequalification:
+      type: object
+      required:
+        [
+          id,
+          companyId,
+          templateId,
+          templateName,
+          templateVersion,
+          status,
+          qualification,
+          trades,
+          answers,
+          scorePoints,
+          scoreMax,
+          concerns,
+          submittedAt,
+          decidedAt,
+          decidedBy,
+          decisionNote,
+          validFrom,
+          expiresOn,
+          questions,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        templateId: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' }
+        templateName: { type: string }
+        templateVersion: { type: integer }
+        status: { $ref: '#/components/schemas/PrequalStatus' }
+        qualification: { $ref: '#/components/schemas/PrequalQualification' }
+        trades: { type: array, items: { type: string } }
+        answers: { $ref: '#/components/schemas/PrequalAnswers' }
+        scorePoints:
+          {
+            type: [integer, 'null'],
+            description: Set on submit. Advice for the person deciding,
+            never a decision.,
+          }
+        scoreMax: { type: [integer, 'null'] }
+        concerns:
+          {
+            type: array,
+            items: { type: string },
+            description: Ids of critical questions not answered as wanted.,
+          }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decidedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        decisionNote: { type: [string, 'null'] }
+        validFrom: { type: [string, 'null'], format: date }
+        expiresOn: { type: [string, 'null'], format: date }
+        questions:
+          {
+            type: array,
+            items: { $ref: '#/components/schemas/PrequalQuestion' },
+            description: The questions on the version this form was started on.,
+          }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    PrequalificationList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PrequalificationSummary' } }
+    PrequalificationSummary:
+      type: object
+      required:
+        [
+          id,
+          companyId,
+          templateName,
+          templateVersion,
+          status,
+          qualification,
+          trades,
+          scorePoints,
+          scoreMax,
+          concerns,
+          decidedAt,
+          expiresOn,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^pqf_[0-9A-Za-z]{26}$' }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        templateName: { type: string }
+        templateVersion: { type: integer }
+        status: { $ref: '#/components/schemas/PrequalStatus' }
+        qualification: { $ref: '#/components/schemas/PrequalQualification' }
+        trades: { type: array, items: { type: string } }
+        scorePoints: { type: [integer, 'null'] }
+        scoreMax: { type: [integer, 'null'] }
+        concerns: { type: array, items: { type: string } }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        expiresOn: { type: [string, 'null'], format: date }
+        createdAt: { type: string, format: date-time }
+    PrequalRegister:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/PrequalificationSummary' } }
+    CreatePrequalificationRequest:
+      type: object
+      required: [companyId, templateId]
+      additionalProperties: false
+      properties:
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        templateId: { type: string, pattern: '^pqt_[0-9A-Za-z]{26}$' }
+        trades: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 20 }
+    UpdatePrequalificationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        answers: { $ref: '#/components/schemas/PrequalAnswers' }
+        trades: { type: array, items: { type: string, minLength: 1, maxLength: 100 }, maxItems: 20 }
+    ApprovePrequalificationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, maxLength: 2000 }
+        expiresOn:
+          { type: string, format: date, description: Defaults to the form's validity from today. }
+    RejectPrequalificationRequest:
+      type: object
+      required: [note]
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 2000 }
     ComplianceDocument:
       type: object
       required:

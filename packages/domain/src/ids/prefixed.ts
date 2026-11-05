@@ -83,6 +83,9 @@ export const ID_PREFIXES = {
   meetingSection: 'msc',
   meetingItem: 'mit',
   meetingAttendee: 'mat',
+  schedule: 'sch',
+  scheduleActivity: 'sac',
+  scheduleDependency: 'sdp',
   notification: 'ntf',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
@@ -99,6 +102,8 @@ export const ID_PREFIXES = {
   budget: 'bud',
   budgetLine: 'bln',
   budgetAdjustment: 'bad',
+  prequalTemplate: 'pqt',
+  prequalification: 'pqf',
   forecastAdjustment: 'fca',
 } as const;
 

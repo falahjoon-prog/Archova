@@ -47,6 +47,7 @@ export type ProjectTool =
   | 'diary'
   | 'key-dates'
   | 'delays'
+  | 'programme'
   | 'defects'
   | 'meetings'
   | 'inductions'

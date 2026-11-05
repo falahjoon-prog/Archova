@@ -1,49 +1,43 @@
-// The drawing register, online only for now (DOC-AC5). A row opens the viewer.
-import { useQuery } from '@tanstack/react-query';
+// The drawing register from the device store (DOC-AC5), so it opens with no signal. A row opens the viewer.
 import { useRouter } from 'expo-router';
+import type { DrawingSheet } from '@archova/contracts';
 import { mobileRoutes } from '@archova/routes';
 import { ListItem, Screen } from '@archova/ui-native';
-import { queries } from '../../../lib/api';
-import { StateMessage, useCurrentOrg } from '../../../shared';
+import { StateMessage, useDeviceData, useLocalQuery } from '../../../shared';
 import { registerRows } from '../register';
 
 export function DrawingRegisterScreen({ projectId }: { projectId: string }) {
   const router = useRouter();
-  const { orgId } = useCurrentOrg();
-  const drawings = useQuery({
-    ...queries.drawings(orgId ?? '', projectId),
-    enabled: orgId !== null,
-  });
+  const device = useDeviceData();
+  const data = device.status === 'ready' ? device.data : null;
+  const sheets = useLocalQuery(
+    data
+      ? async () => ({
+          sheets: (await data.store.listRecords<DrawingSheet>('drawing_sheet', projectId)).map(
+            (r) => r.data,
+          ),
+          saved: await data.sheets.savedRevisionIds(projectId),
+        })
+      : null,
+    [data, projectId],
+  );
 
-  if (!orgId) {
-    return (
-      <Screen title="Drawings">
-        <StateMessage message="Choose an organisation on the Home tab first." />
-      </Screen>
-    );
-  }
-  if (drawings.isPending) {
-    return (
-      <Screen title="Drawings">
-        <StateMessage loading message="Loading drawings" />
-      </Screen>
-    );
-  }
-  if (drawings.isError) {
+  if (!data || sheets.value === null) {
     return (
       <Screen title="Drawings">
         <StateMessage
-          tone="danger"
-          message="Could not load drawings. Check your connection."
-          onRetry={() => void drawings.refetch()}
+          loading={device.status === 'opening' || (data !== null && sheets.value === null)}
+          message="Opening drawings"
         />
       </Screen>
     );
   }
-  const rows = registerRows(drawings.data.data);
+  const rows = registerRows(sheets.value.sheets, sheets.value.saved);
   return (
     <Screen title="Drawings">
-      {rows.length === 0 ? <StateMessage message="No drawings on this project yet." /> : null}
+      {rows.length === 0 ? (
+        <StateMessage message="No drawings on this device yet. Connect and sync to get this project's sheets." />
+      ) : null}
       {rows.map((r) => (
         <ListItem
           key={r.id}
