@@ -168,6 +168,18 @@ export function createClaimsApi(orgId: string) {
         }),
       );
     },
+    async setVariationCostCode(
+      projectId: string,
+      variationId: string,
+      costCodeId: string | null,
+    ): Promise<Variation> {
+      return unwrap(
+        await api.PUT(`${P}/variations/{variationId}/cost-code`, {
+          params: { path: { orgId, projectId, variationId }, header: idempotencyKey() },
+          body: { costCodeId },
+        }),
+      );
+    },
     async moveVariation(
       projectId: string,
       variationId: string,
