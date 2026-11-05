@@ -3879,6 +3879,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/risk/late-sopa-claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getLateSopaClaimRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Projects at risk of a late SOPA payment schedule, with the schedule and insurance signals behind each.
+      description: |
+        Nova project risk. Lists the projects the caller can see that have a valid subcontract claim still waiting for a
+        payment schedule that is due within 5 days or already past due. Each project is ranked high, medium or low:
+        both aggravators (an expired insurance, or one expiring on or before the payment due date, for a claiming
+        subcontractor; and programme tasks past their planned finish) make it high, one makes it medium, none makes it
+        low, raised to medium when a schedule is already overdue. Every figure comes from the tool modules, each read
+        as the caller: projects where the caller cannot read claims are counted in `unreadableProjects` and left out;
+        a subcontractor's insurance is read only through a live compliance wallet grant, otherwise it is `not_visible`;
+        a programme the caller cannot read is listed under `unknown`. All sentences come from fixed rules, not a model.
+        Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The projects at risk
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LateSopaClaimRisk' }
+
   /v1/orgs/{orgId}/readiness-pack:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13159,6 +13192,93 @@ components:
         variationsOverdue: { type: integer }
         incidentsOpen: { type: integer }
         incidentsOverdue: { type: integer }
+    LateSopaClaimRisk:
+      type: object
+      required: [projects, unreadableProjects, truncated]
+      properties:
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/LateSopaClaimRiskProject' }
+        unreadableProjects:
+          type: integer
+          description: 'Projects left out because the caller cannot read their claims.'
+        truncated: { type: boolean }
+    LateSopaClaimRiskProject:
+      type: object
+      required:
+        [
+          projectId,
+          projectName,
+          number,
+          level,
+          claims,
+          insuranceProblem,
+          scheduleSlip,
+          unknown,
+          slip,
+        ]
+      properties:
+        projectId: { type: string }
+        projectName: { type: string }
+        number: { type: [string, 'null'] }
+        level: { type: string, enum: [high, medium, low] }
+        insuranceProblem: { type: boolean }
+        scheduleSlip: { type: boolean }
+        unknown:
+          type: array
+          items: { type: string }
+          description: 'Signals Nova could not read, so a gap is never shown as no risk.'
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/LateSopaClaimRiskClaim' }
+        slip:
+          type: object
+          required: [lateCount, worst]
+          properties:
+            lateCount: { type: integer }
+            worst:
+              type: array
+              items:
+                type: object
+                required: [id, wbs, name, finish, daysLate]
+                properties:
+                  id: { type: string }
+                  wbs: { type: string }
+                  name: { type: string }
+                  finish: { type: string, format: date }
+                  daysLate: { type: integer }
+    LateSopaClaimRiskClaim:
+      type: object
+      required:
+        [
+          claimId,
+          claimNumber,
+          contractNumber,
+          contractTitle,
+          subbieName,
+          claimedTotal,
+          scheduleDueOn,
+          paymentDueOn,
+          deadline,
+          daysToScheduleDue,
+          insurance,
+          summary,
+        ]
+      properties:
+        claimId: { type: string }
+        claimNumber: { type: integer }
+        contractNumber: { type: integer }
+        contractTitle: { type: string }
+        subbieName: { type: [string, 'null'] }
+        claimedTotal: { type: string }
+        scheduleDueOn: { type: string, format: date }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        deadline: { type: string, enum: [overdue, due_soon] }
+        daysToScheduleDue: { type: integer }
+        insurance:
+          type: string
+          enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
+        summary: { type: string }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
