@@ -189,6 +189,13 @@ paths:
             schema: { type: string, enum: [S256] },
           }
         - { name: state, in: query, required: true, schema: { type: string, maxLength: 512 } }
+        - {
+            name: prompt,
+            in: query,
+            required: false,
+            description: '`login` forces a fresh sign-in: a session whose sign-in is older than five minutes is sent back to the sign-in page, and the code carries the new sign-in time (so step-up checks such as account deletion pass).',
+            schema: { type: string, enum: [login] },
+          }
       responses:
         '302': { description: Redirect to the client with an authorisation code }
         default: { $ref: '#/components/responses/Problem' }

@@ -16220,6 +16220,8 @@ export interface operations {
                 code_challenge: string;
                 code_challenge_method: "S256";
                 state: string;
+                /** @description `login` forces a fresh sign-in: a session whose sign-in is older than five minutes is sent back to the sign-in page, and the code carries the new sign-in time (so step-up checks such as account deletion pass). */
+                prompt?: "login";
             };
             header?: never;
             path?: never;

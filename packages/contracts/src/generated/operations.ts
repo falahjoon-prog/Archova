@@ -23,6 +23,7 @@ export const OauthAuthorizeQuery = z.object({
   "code_challenge": z.string().min(43).max(128),
   "code_challenge_method": z.enum(["S256"]),
   "state": z.string().max(512),
+  "prompt": z.enum(["login"]).optional(),
 });
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
