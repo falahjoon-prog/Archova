@@ -126,6 +126,9 @@ export const mobileRoutes = {
   home: () => '/',
   offline: () => '/offline',
   bidBoard: () => '/bid-board',
+  tenders: (projectId: string) => `/project/${enc(projectId)}/tenders`,
+  tender: (projectId: string, packageId: string) =>
+    `/project/${enc(projectId)}/tenders/${enc(packageId)}`,
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
