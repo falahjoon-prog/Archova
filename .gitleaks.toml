@@ -1,0 +1,14 @@
+# Extends the default gitleaks rules. Keep this file small and every entry justified.
+title = "Archova gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed false positives (commit-scoped, so a new occurrence still fails)"
+commits = [
+  # apps/api/src/config.ts DEV_EVIDENCE_SIGNING_KEY: a fixed development-only Ed25519 key
+  # whose 32 key bytes are 0x0b repeated. It is public by construction, not a credential,
+  # and it is not used outside development. It matched the private-key rule (reviewed by Sam, 5 Nov 2026).
+  "3f4630b55f2887dcf887448395d93648cd01107b",
+]
