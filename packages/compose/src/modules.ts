@@ -423,6 +423,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     submittals: submittals.api,
     claims: financials.api.reporting.claims,
     variations: financials.api.reporting.variations,
+    incidents: safety.api.reporting,
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,

@@ -20,6 +20,7 @@ export const SOURCE_LABELS: Record<ReportSource, string> = {
   submittals: 'Submittals',
   claims: 'Payment claims',
   variations: 'Variations',
+  incidents: 'Safety incidents',
 };
 
 export const STATE_LABELS: Record<ReportState, string> = {

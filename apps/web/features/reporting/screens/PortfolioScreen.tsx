@@ -86,6 +86,12 @@ export function PortfolioScreen() {
       cell: (r) => <ToolCell tool={r.variations} />,
     },
     {
+      id: 'incidents',
+      header: 'Incidents open',
+      sortValue: (r) => r.incidents.open,
+      cell: (r) => <ToolCell tool={r.incidents} />,
+    },
+    {
       id: 'attention',
       header: 'Overdue',
       align: 'end',
@@ -125,6 +131,10 @@ export function PortfolioScreen() {
             {
               label: 'Variations to decide',
               value: String(data.totals.variationsOpen),
+            },
+            {
+              label: 'Incidents open',
+              value: `${data.totals.incidentsOpen} (${data.totals.incidentsOverdue} to notify)`,
             },
           ]}
         />
