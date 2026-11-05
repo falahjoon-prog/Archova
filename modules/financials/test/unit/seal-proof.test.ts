@@ -30,6 +30,22 @@ describe('evidence signature', () => {
     expect(s.verify(msg, Buffer.alloc(64).toString('base64'), 'k1')).toBe(false);
     expect(s.publicKeyPem).toContain('BEGIN PUBLIC KEY');
   });
+  it('still verifies records signed by a retired key, and refuses an id it does not hold', () => {
+    const old = createEvidenceSigner('k1', pem);
+    const sig = old.sign(msg);
+    const rotated = createEvidenceSigner(
+      'k2',
+      generateKeyPairSync('ed25519').privateKey.export({ type: 'pkcs8', format: 'pem' }).toString(),
+      { k1: old.publicKeyPem },
+    );
+    expect(rotated.verify(msg, sig, 'k1')).toBe(true);
+    expect(rotated.publicKeyFor('k1')).toBe(old.publicKeyPem);
+    expect(rotated.publicKeyFor('k3')).toBeNull();
+    expect(rotated.verify(msg, sig, 'k3')).toBe(false);
+    expect(() => createEvidenceSigner('k1', pem, { k1: old.publicKeyPem })).toThrow(
+      /both current and retired/,
+    );
+  });
   it('refuses a key that is not Ed25519', () => {
     const rsa = generateKeyPairSync('rsa', { modulusLength: 2048 }).privateKey.export({
       type: 'pkcs8',
@@ -101,11 +117,27 @@ describe('RFC 3161 timestamp', () => {
     expect(() => parseTimestampResponse(Buffer.from('not der'), exp)).toThrow();
     expect(() => parseTimestampResponse(ok.subarray(0, 40), exp)).toThrow();
   });
-  it('asks the authority and checks what comes back', async () => {
-    const r = await requestTimestamp('https://tsa.example/ts', imprint, async (_u, body) => {
+  it('asks the authority, verifies the chain, and refuses a failed check or a time far from now', async () => {
+    const post = async (_u: string, body: Buffer) => {
       const nonce = /0208([0-9a-f]{16})0101ff$/.exec(body.toString('hex'))![1]!;
       return response(imprint, nonce);
-    });
+    };
+    const now = new Date('2026-11-05T07:35:00Z');
+    let checked = 0;
+    const ok = async () => {
+      checked++;
+    };
+    const r = await requestTimestamp('https://tsa.example/ts', msg, post, ok, now);
     expect(r.token.length).toBeGreaterThan(50);
+    expect(checked).toBe(1);
+    const bad = async () => {
+      throw new Error('did not verify');
+    };
+    await expect(requestTimestamp('https://tsa.example/ts', msg, post, bad, now)).rejects.toThrow(
+      /did not verify/,
+    );
+    await expect(
+      requestTimestamp('https://tsa.example/ts', msg, post, ok, new Date('2026-11-05T08:30:00Z')),
+    ).rejects.toThrow(/too far from now/);
   });
 });

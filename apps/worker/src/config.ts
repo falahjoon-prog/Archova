@@ -20,6 +20,8 @@ export interface WorkerConfig {
   };
   /** RFC 3161 authority (https) for sealed claim evidence; unset leaves timestamping off. */
   evidenceTimestampUrl: string | null;
+  /** PEM file of the authority's pinned certificates (root and any intermediates); required with the URL. */
+  evidenceTimestampCaFile: string | null;
   files: {
     store: 's3' | 'none';
     bucket: string;
@@ -78,6 +80,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
       appBaseUrl: env.WORKER_APP_BASE_URL ?? 'https://app.archova.com.au',
     },
     evidenceTimestampUrl: env.WORKER_EVIDENCE_TSA_URL || null,
+    evidenceTimestampCaFile: env.WORKER_EVIDENCE_TSA_CA_FILE || null,
     files: {
       store: env.WORKER_FILES_STORE === 's3' ? 's3' : 'none',
       bucket: env.WORKER_FILES_BUCKET ?? 'archova-local-files',

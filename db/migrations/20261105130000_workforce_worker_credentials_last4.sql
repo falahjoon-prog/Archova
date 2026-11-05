@@ -3,6 +3,10 @@
 -- number, matching the compliance wallet. Backfill, then drop the full number.
 alter table workforce.worker_credentials
   add column number_last4 text check (length(number_last4) between 1 and 4);
+-- The backfill spans every org, so it runs with FORCE lifted: the tenant policy reads app.org_id, which a
+-- migration never sets, and fails even when the table is empty. Restored straight after.
+alter table workforce.worker_credentials no force row level security;
 update workforce.worker_credentials set number_last4 = right(number, 4);
+alter table workforce.worker_credentials force row level security;
 alter table workforce.worker_credentials alter column number_last4 set not null;
 alter table workforce.worker_credentials drop column number;

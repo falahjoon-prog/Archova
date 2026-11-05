@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { type TenantScope } from '@archova/kernel';
-import { sealMessage, sha256Bytes, type TimestampResult } from '../domain/seal-proof';
+import { sealMessage, type TimestampResult } from '../domain/seal-proof';
 import { evidenceDeliveries, evidenceRecords, evidenceTimestamps } from '../infra/tables';
 
 /** Worker-side steps for sealed evidence: sending the service emails and taking the outside timestamps. */
@@ -137,7 +137,8 @@ export async function recordDeliveryEvent(
 
 export interface UntimestampedRecord {
   evidenceId: string;
-  imprint: Buffer;
+  /** The seal message; its SHA-256 is what the authority timestamps. */
+  message: string;
 }
 
 /** Sealed records with no outside timestamp yet, oldest first. The imprint is sha256 of the seal message. */
@@ -161,15 +162,13 @@ export async function findUntimestamped(
     .limit(limit);
   return rows.map((r) => ({
     evidenceId: r.id,
-    imprint: sha256Bytes(
-      sealMessage({
-        kind: r.kind,
-        claimId: r.claimId,
-        sealedAt: r.sealedAt.toISOString(),
-        snapshotSha256: r.snapshotSha256,
-        pdfSha256: r.pdfSha256,
-      }),
-    ),
+    message: sealMessage({
+      kind: r.kind,
+      claimId: r.claimId,
+      sealedAt: r.sealedAt.toISOString(),
+      snapshotSha256: r.snapshotSha256,
+      pdfSha256: r.pdfSha256,
+    }),
   }));
 }
 
@@ -178,6 +177,7 @@ export async function recordTimestamp(
   evidenceId: string,
   authority: string,
   t: TimestampResult,
+  caChainPem: string,
 ) {
   await scope.tx
     .insert(evidenceTimestamps)
@@ -189,6 +189,7 @@ export async function recordTimestamp(
       genTime: t.genTime,
       serialHex: t.serialHex,
       token: t.token,
+      caChainPem,
     })
     .onConflictDoNothing();
 }
