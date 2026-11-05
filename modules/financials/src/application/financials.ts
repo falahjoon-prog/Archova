@@ -29,6 +29,7 @@ import {
   type EvidenceSnapshot,
 } from '../domain/evidence';
 import {
+  claimStatements,
   contracts,
   costCodes,
   evidenceRecords,
@@ -47,6 +48,17 @@ export type ClaimLineRow = typeof paymentClaimLines.$inferSelect;
 export type ScheduleRow = typeof paymentSchedules.$inferSelect;
 export type VariationRow = typeof variations.$inferSelect;
 export type EvidenceRow = typeof evidenceRecords.$inferSelect;
+export type ClaimStatementRow = typeof claimStatements.$inferSelect;
+
+export interface RecordStatementInput {
+  periodEnd: string;
+  receivedOn: string;
+  signedOn?: string;
+  note?: string;
+}
+
+/** The only claim warning so far. It warns; it never suggests withholding (compliance/05 §6, lawyer question open). */
+export type ClaimWarning = 'subcontractor_statement_missing';
 
 export interface FinancialsDeps {
   access: AccessService;
@@ -66,6 +78,8 @@ export interface CreateContractInput {
   scheduleDays?: number | null;
   paymentDays?: number | null;
   sov: { code: string; description: string; value: string; costCodeId?: string }[];
+  /** Set when the contract is raised from an awarded tender quote; one quote raises at most one contract. */
+  source?: { packageId: string; quoteId: string };
 }
 
 /** What an accounting system needs to record a claim, in cents and neutral of any provider (integrations/02 §2). */
@@ -242,6 +256,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
         sopaState,
         scheduleDays: input.scheduleDays ?? null,
         paymentDays: input.paymentDays ?? null,
+        sourcePackageId: input.source?.packageId ?? null,
+        sourceQuoteId: input.source?.quoteId ?? null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -274,6 +290,16 @@ export function createFinancialsService(deps: FinancialsDeps) {
       sovValues.map((v) => ({ recordId: v.id, projectId })),
     );
     return { contract: row!, sov: await sovFor(scope, id) };
+  }
+
+  /** The contract already raised from this quote, if any (read by the award flow to stay idempotent). */
+  async function contractForQuote(scope: TenantScope, projectId: string, quoteId: string) {
+    await need(scope, 'financials.contracts.read', projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(and(eq(contracts.projectId, projectId), eq(contracts.sourceQuoteId, quoteId)));
+    return row ?? null;
   }
 
   async function listContracts(scope: TenantScope, projectId: string) {
@@ -527,8 +553,113 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .from(paymentSchedules)
       .where(eq(paymentSchedules.claimId, claimId))
       .limit(1);
+    const [statement] = await scope.tx
+      .select()
+      .from(claimStatements)
+      .where(eq(claimStatements.claimId, claimId))
+      .limit(1);
+    const [contract] = await scope.tx
+      .select({ kind: contracts.kind, sopaState: contracts.sopaState })
+      .from(contracts)
+      .where(eq(contracts.id, claim.contractId))
+      .limit(1);
+    const warnings: ClaimWarning[] =
+      statementExpected(contract) && !statement ? ['subcontractor_statement_missing'] : [];
     const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
-    return { claim, lines, schedule: schedule ?? null, today };
+    return {
+      claim,
+      lines,
+      schedule: schedule ?? null,
+      statement: statement ?? null,
+      warnings,
+      today,
+    };
+  }
+
+  /** NSW asks for a subcontractor's statement with each payment claim a subcontractor makes. */
+  const statementExpected = (c?: { kind: string; sopaState: string }) =>
+    c?.kind === 'subcontract' && c.sopaState === 'NSW';
+
+  /**
+   * Link the subcontractor's statement to a claim (compliance/05 §6): the period it covers, when it arrived and the
+   * day it was signed. One per claim; recording again replaces it. Staff work, like recording the claim itself.
+   */
+  async function recordStatement(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    input: RecordStatementInput,
+  ) {
+    await need(scope, 'financials.claims.record', projectId);
+    await requireStaff(scope, projectId, 'record a subcontractor’s statement');
+    const { claim } = await claimDetail(scope, projectId, claimId, false);
+    const contract = await getContractRow(scope, projectId, claim.contractId);
+    if (!statementExpected(contract))
+      throw new AppError(
+        'validation_failed',
+        'A subcontractor’s statement applies to NSW subcontract claims.',
+      );
+    const today = localDateOf(now(), (await deps.platform.getProject(scope, projectId)).timezone);
+    if (input.receivedOn > today)
+      throw new AppError(
+        'validation_failed',
+        'The statement can’t have been received in the future.',
+        [{ path: 'receivedOn', message: 'Must not be in the future' }],
+      );
+    if (input.signedOn && input.signedOn > input.receivedOn)
+      throw new AppError('validation_failed', 'The statement was signed after it was received.', [
+        { path: 'signedOn', message: 'Must not be after receivedOn' },
+      ]);
+    const values = {
+      periodEnd: input.periodEnd,
+      receivedOn: input.receivedOn,
+      signedOn: input.signedOn ?? null,
+      note: input.note?.trim() || null,
+    };
+    const [cur] = await scope.tx
+      .select()
+      .from(claimStatements)
+      .where(eq(claimStatements.claimId, claimId))
+      .limit(1);
+    const at = new Date();
+    const [row] = cur
+      ? await scope.tx
+          .update(claimStatements)
+          .set({
+            ...values,
+            recordedBy: scope.ctx.userId,
+            updatedAt: at,
+            version: cur.version + 1,
+          })
+          .where(eq(claimStatements.id, cur.id))
+          .returning()
+      : await scope.tx
+          .insert(claimStatements)
+          .values({
+            id: uuidv7(),
+            orgId: scope.ctx.orgId,
+            projectId,
+            claimId,
+            ...values,
+            recordedBy: scope.ctx.userId,
+          })
+          .returning();
+    scope.events.add({
+      type: 'financials.claim_statement.recorded.v1',
+      projectId,
+      entityType: 'paymentClaim',
+      entityId: claimId,
+      entityVersion: row!.version,
+      data: { claimId, periodEnd: values.periodEnd, receivedOn: values.receivedOn },
+    });
+    await recordRetention(scope, {
+      recordType: 'financials.claim_statements',
+      recordId: row!.id,
+      projectId,
+      category: 'financial_7y',
+      anchor: at,
+    });
+    return claimDetail(scope, projectId, claimId, false);
   }
 
   /**
@@ -1173,11 +1304,13 @@ export function createFinancialsService(deps: FinancialsDeps) {
     getVariation,
     moveVariation,
     createContract,
+    contractForQuote,
     listContracts,
     getContract,
     submitClaim,
     listClaims,
     claimDetail,
+    recordStatement,
     issueSchedule,
     listEvidence,
     evidencePdf,

@@ -20,6 +20,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { DeadlineChip } from '../components/DeadlineChip';
 import { IssueScheduleForm } from '../components/IssueScheduleForm';
+import { StatementCard } from '../components/StatementCard';
 import type { PaymentClaimDetail } from '../data/api';
 import { useContract, useVariations, usePaymentClaim } from '../hooks/useClaims';
 import { STATUS_LABELS } from '../lib/deadline';
@@ -52,6 +53,10 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
     perms.data?.orgRole === 'owner' ||
     perms.data?.orgRole === 'admin' ||
     atLeast(perms.data?.toolLevels.payment_claims, 'admin');
+  const canRecord =
+    perms.data?.orgRole === 'owner' ||
+    perms.data?.orgRole === 'admin' ||
+    atLeast(perms.data?.toolLevels.payment_claims, 'standard');
   const item = (id: string) => contract.data?.sov.find((s) => s.id === id);
 
   const lineColumns: DataTableColumn<Line>[] = [
@@ -155,6 +160,7 @@ function Detail({ d }: { d: PaymentClaimDetail }) {
         rows={d.lines}
         getRowId={(l) => (l.sovItemId ?? l.variationId)!}
       />
+      <StatementCard detail={d} canRecord={canRecord} />
       {d.schedule ? (
         <Card title="Payment schedule">
           <DescriptionList

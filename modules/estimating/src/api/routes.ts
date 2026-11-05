@@ -1,4 +1,4 @@
-import { decodeId, type IdKind } from '@archova/domain';
+import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
   defineRoutes,
@@ -639,6 +639,21 @@ export function estimatingRoutes(
           ),
         ),
       );
+    },
+    createSubcontractFromAward: async (input) => {
+      const r = await tx(input, (s) =>
+        svc.createSubcontract(s, project(input.params), pkgId(input.params)),
+      );
+      return {
+        status: 200,
+        body: {
+          contractId: encodeId('contract', r.contract.id),
+          number: r.contract.number,
+          title: r.contract.title,
+          originalValue: r.contract.originalValue,
+          created: r.created,
+        },
+      };
     },
     awardTenderPackage: async (input) =>
       pkg(

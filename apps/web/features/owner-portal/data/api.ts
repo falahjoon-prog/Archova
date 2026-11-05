@@ -82,5 +82,28 @@ export function createOwnerPortalApi(orgId: string) {
         }),
       );
     },
+    async updateItem(
+      projectId: string,
+      itemId: string,
+      version: number,
+      body: Partial<CapitalItemInput>,
+    ) {
+      return unwrap(
+        await api.PATCH(`${B}/capital-plan/{itemId}` as const, {
+          params: {
+            path: { ...path(projectId), itemId },
+            header: { 'If-Match': `"${version}"` },
+          },
+          body,
+        }),
+      );
+    },
+    async removeItem(projectId: string, itemId: string): Promise<void> {
+      unwrap(
+        await api.DELETE(`${B}/capital-plan/{itemId}` as const, {
+          params: { path: { ...path(projectId), itemId } },
+        }),
+      );
+    },
   };
 }

@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { Alert, Button, PageHeader, Select, TextField } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { useCostCodes } from '@/features/budget';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
@@ -15,7 +16,7 @@ import { useClaimsMutations } from '../hooks/useClaims';
 import { aud, cents } from '../lib/money';
 
 const STATES = ['NSW', 'VIC', 'QLD'] as const;
-type Row = { code: string; description: string; value: string };
+type Row = { code: string; description: string; value: string; costCodeId: string };
 
 /** Sets up a contract and its schedule of values. The schedule must add up to the contract value (CLM-US1). */
 export function ContractNewScreen() {
@@ -28,6 +29,7 @@ export function ContractNewScreen() {
     record: { type: 'contracts', id: 'new' },
   });
   const { createContract } = useClaimsMutations(project.projectId);
+  const costCodes = (useCostCodes(project.projectId).data ?? []).filter((c) => !c.archived);
   const [kind, setKind] = useState<'head' | 'subcontract'>('subcontract');
   const [title, setTitle] = useState('');
   const [payee, setPayee] = useState('');
@@ -37,7 +39,9 @@ export function ContractNewScreen() {
   const [state, setState] = useState<string>(STATES.find((s) => s === project.state) ?? 'NSW');
   const [scheduleDays, setScheduleDays] = useState('');
   const [paymentDays, setPaymentDays] = useState('');
-  const [rows, setRows] = useState<Row[]>([{ code: '', description: '', value: '' }]);
+  const [rows, setRows] = useState<Row[]>([
+    { code: '', description: '', value: '', costCodeId: '' },
+  ]);
   const [error, setError] = useState<string | null>(null);
 
   const total = rows.reduce((n, r) => n + (cents(r.value) ?? 0), 0);
@@ -71,6 +75,7 @@ export function ContractNewScreen() {
         code: r.code.trim(),
         description: r.description.trim(),
         value: r.value.trim(),
+        ...(r.costCodeId ? { costCodeId: r.costCodeId } : {}),
       })),
     };
     createContract.mutate(body, {
@@ -176,6 +181,17 @@ export function ContractNewScreen() {
                 value={r.value}
                 onChange={(e) => setRow(i, { value: e.target.value })}
               />
+              {costCodes.length > 0 ? (
+                <Select
+                  label={`Cost code ${i + 1}`}
+                  value={r.costCodeId}
+                  onChange={(e) => setRow(i, { costCodeId: e.target.value })}
+                  options={[
+                    { value: '', label: 'No cost code' },
+                    ...costCodes.map((c) => ({ value: c.id, label: `${c.code} ${c.description}` })),
+                  ]}
+                />
+              ) : null}
               {rows.length > 1 ? (
                 <Button
                   type="button"
@@ -191,7 +207,9 @@ export function ContractNewScreen() {
             <Button
               type="button"
               variant="secondary"
-              onClick={() => setRows((rs) => [...rs, { code: '', description: '', value: '' }])}
+              onClick={() =>
+                setRows((rs) => [...rs, { code: '', description: '', value: '', costCodeId: '' }])
+              }
             >
               Add line
             </Button>

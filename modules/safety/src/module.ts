@@ -1,4 +1,5 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
+import { createIncidentService } from './application/incidents';
 import { createSwmsService, type SafetyDeps } from './application/swms';
 import { safetyRoutes } from './api/routes';
 import { SAFETY_PERMISSIONS } from './permissions';
@@ -7,9 +8,10 @@ export type { SafetyDeps } from './application/swms';
 
 export function createSafetyModule(services: KernelServices, deps: SafetyDeps) {
   const swms = createSwmsService(deps);
+  const incidents = createIncidentService(deps);
   return {
     definition: defineModule({ name: 'safety', permissions: SAFETY_PERMISSIONS }),
-    routes: safetyRoutes(services.database, swms),
+    routes: safetyRoutes(services.database, swms, incidents),
     api: {
       /** "Stop work: SWMS not followed" (r300). Called by `quality` only, from an observation. */
       reopenForReview: swms.reopenForReview,

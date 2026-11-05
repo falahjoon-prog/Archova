@@ -49,6 +49,7 @@ import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
 import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
 import {
@@ -68,6 +69,7 @@ export const MODULE_PERMISSIONS = [
   MEETINGS_PERMISSIONS,
   OWNERPORTAL_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
+  REPORTING_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
@@ -286,6 +288,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+    financials: financials.api,
   });
 
   const integrations = createIntegrationsModule(services, {
@@ -351,6 +354,14 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
   });
 
+  const reporting = createReportingModule({
+    database: services.database as Database,
+    platform: platform.api,
+    rfis: rfis.api,
+    defects: defects.api,
+    submittals: submittals.api,
+  });
+
   const workforce = createWorkforceModule(services, {
     access: access.api,
     platform: platform.api,
@@ -388,6 +399,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     ],
     commands: [
       ...defects.api.syncCommands,
+      ...diary.api.syncCommands,
       ...quality.api.syncCommands,
       ...documents.api.syncCommands,
     ],
@@ -418,6 +430,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     integrations,
     diary,
     scheduling,
+    reporting,
     workforce,
     sync,
   ];
@@ -454,6 +467,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     sync,
     diary,
     scheduling,
+    reporting,
     workforce,
     routes,
   };

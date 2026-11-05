@@ -732,12 +732,46 @@ export const CreateBidderListParams = z.object({
 export const CreateBidderListBody = s.CreateBidderListRequestSchema;
 export const UpdateBidderListParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
 });
 export const UpdateBidderListBody = s.UpdateBidderListRequestSchema;
 export const DeleteBidderListParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
-  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const GetPortfolioParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetPortfolioQuery = z.object({
+  "includeClosed": z.enum(["true", "false"]).optional(),
+});
+export const ListReportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateReportBody = s.ReportInputSchema;
+export const PreviewReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const PreviewReportBody = s.ReportConfigSchema;
+export const GetReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const UpdateReportBody = s.ReportInputSchema;
+export const DeleteReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
+});
+export const RunReportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
 });
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -796,6 +830,11 @@ export const AwardTenderPackageParams = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
 });
 export const AwardTenderPackageBody = s.AwardPackageRequestSchema;
+export const CreateSubcontractFromAwardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
 export const GetQuoteComparisonParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2015,6 +2054,52 @@ export const TransitionObservationParams = z.object({
   "observationId": z.string().regex(new RegExp("^obs_[0-9A-Za-z]{26}$")),
 });
 export const TransitionObservationBody = s.ObservationTransitionRequestSchema;
+export const ListIncidentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListIncidentsQuery = z.object({
+  "status": s.IncidentStatusSchema.optional(),
+  "type": s.IncidentTypeSchema.optional(),
+  "notifiable": z.enum(["true", "false"]).optional(),
+  "limit": z.coerce.number().int().min(1).max(200).default(50),
+  "cursor": z.string().max(200).optional(),
+});
+export const ReportIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ReportIncidentBody = s.ReportIncidentRequestSchema;
+export const GetIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const UpdateIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const UpdateIncidentBody = s.UpdateIncidentRequestSchema;
+export const TransitionIncidentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const TransitionIncidentBody = s.IncidentTransitionRequestSchema;
+export const AddIncidentActionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+});
+export const AddIncidentActionBody = s.CreateIncidentActionRequestSchema;
+export const UpdateIncidentActionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "incidentId": z.string().regex(new RegExp("^inx_[0-9A-Za-z]{26}$")),
+  "actionId": z.string().regex(new RegExp("^iac_[0-9A-Za-z]{26}$")),
+});
+export const UpdateIncidentActionBody = s.UpdateIncidentActionRequestSchema;
 export const ListSwmsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2116,6 +2201,23 @@ export const RecordTrustMovementParams = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
 });
 export const RecordTrustMovementBody = s.RecordTrustMovementRequestSchema;
+export const GetContractRetentionReleaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractRetentionTermsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractRetentionTermsBody = s.SaveRetentionTermsRequestSchema;
+export const RecordRetentionReleaseParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const RecordRetentionReleaseBody = s.RecordRetentionReleaseRequestSchema;
 export const ListVariationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2212,6 +2314,43 @@ export const WithdrawVariationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
+export const ListCommitmentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCommitmentBody = s.CreateCommitmentRequestSchema;
+export const GetCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const SubmitCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const ApproveCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const ApproveCommitmentBody = s.CommitmentApprovalRequestSchema;
+export const RejectCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const RejectCommitmentBody = s.CommitmentDecisionRequestSchema;
+export const VoidCommitmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+});
+export const VoidCommitmentBody = s.CommitmentDecisionRequestSchema;
 export const SetVariationCostCodeParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2236,6 +2375,12 @@ export const IssuePaymentScheduleParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
 export const IssuePaymentScheduleBody = s.IssuePaymentScheduleRequestSchema;
+export const RecordClaimStatementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const RecordClaimStatementBody = s.RecordClaimStatementRequestSchema;
 export const ListClaimEvidenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4072,6 +4217,102 @@ export const operations = {
     query: null,
     body: null,
   },
+  getPortfolio: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/portfolio',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.portfolio.read",
+    internal: false,
+    contentType: null,
+    params: GetPortfolioParams,
+    query: GetPortfolioQuery,
+    body: null,
+  },
+  listReports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: ListReportsParams,
+    query: null,
+    body: null,
+  },
+  createReport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/reports',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateReportParams,
+    query: null,
+    body: CreateReportBody,
+  },
+  previewReport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/reports/preview',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: "application/json",
+    params: PreviewReportParams,
+    query: null,
+    body: PreviewReportBody,
+  },
+  getReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: GetReportParams,
+    query: null,
+    body: null,
+  },
+  updateReport: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateReportParams,
+    query: null,
+    body: UpdateReportBody,
+  },
+  deleteReport: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/reports/{reportId}',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteReportParams,
+    query: null,
+    body: null,
+  },
+  runReport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/reports/{reportId}/run',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.reports.read",
+    internal: false,
+    contentType: null,
+    params: RunReportParams,
+    query: null,
+    body: null,
+  },
   getBidBoard: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/bid-board',
@@ -4179,6 +4420,18 @@ export const operations = {
     params: AwardTenderPackageParams,
     query: null,
     body: AwardTenderPackageBody,
+  },
+  createSubcontractFromAward: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/subcontract',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: null,
+    params: CreateSubcontractFromAwardParams,
+    query: null,
+    body: null,
   },
   getQuoteComparison: {
     method: 'GET',
@@ -6873,6 +7126,90 @@ export const operations = {
     query: null,
     body: TransitionObservationBody,
   },
+  listIncidents: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: null,
+    params: ListIncidentsParams,
+    query: ListIncidentsQuery,
+    body: null,
+  },
+  reportIncident: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.report",
+    internal: false,
+    contentType: "application/json",
+    params: ReportIncidentParams,
+    query: null,
+    body: ReportIncidentBody,
+  },
+  getIncident: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: null,
+    params: GetIncidentParams,
+    query: null,
+    body: null,
+  },
+  updateIncident: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateIncidentParams,
+    query: null,
+    body: UpdateIncidentBody,
+  },
+  transitionIncident: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/transition',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: TransitionIncidentParams,
+    query: null,
+    body: TransitionIncidentBody,
+  },
+  addIncidentAction: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddIncidentActionParams,
+    query: null,
+    body: AddIncidentActionBody,
+  },
+  updateIncidentAction: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions/{actionId}',
+    module: "safety",
+    auth: "required",
+    permission: "safety.incidents.read",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateIncidentActionParams,
+    query: null,
+    body: UpdateIncidentActionBody,
+  },
   listSwms: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/swms',
@@ -7088,6 +7425,42 @@ export const operations = {
     params: RecordTrustMovementParams,
     query: null,
     body: RecordTrustMovementBody,
+  },
+  getContractRetentionRelease: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetContractRetentionReleaseParams,
+    query: null,
+    body: null,
+  },
+  saveContractRetentionTerms: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release',
+    module: "financials",
+    auth: "required",
+    permission: "financials.retention.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveContractRetentionTermsParams,
+    query: null,
+    body: SaveContractRetentionTermsBody,
+  },
+  recordRetentionRelease: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases',
+    module: "financials",
+    auth: "required",
+    permission: "financials.retention.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordRetentionReleaseParams,
+    query: null,
+    body: RecordRetentionReleaseBody,
   },
   listVariations: {
     method: 'GET',
@@ -7317,6 +7690,90 @@ export const operations = {
     query: null,
     body: null,
   },
+  listCommitments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: ListCommitmentsParams,
+    query: null,
+    body: null,
+  },
+  createCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCommitmentParams,
+    query: null,
+    body: CreateCommitmentBody,
+  },
+  getCommitment: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.read",
+    internal: false,
+    contentType: null,
+    params: GetCommitmentParams,
+    query: null,
+    body: null,
+  },
+  submitCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: null,
+    params: SubmitCommitmentParams,
+    query: null,
+    body: null,
+  },
+  approveCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.decide",
+    internal: false,
+    contentType: "application/json",
+    params: ApproveCommitmentParams,
+    query: null,
+    body: ApproveCommitmentBody,
+  },
+  rejectCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.decide",
+    internal: false,
+    contentType: "application/json",
+    params: RejectCommitmentParams,
+    query: null,
+    body: RejectCommitmentBody,
+  },
+  voidCommitment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void',
+    module: "financials",
+    auth: "required",
+    permission: "financials.commitments.manage",
+    internal: false,
+    contentType: "application/json",
+    params: VoidCommitmentParams,
+    query: null,
+    body: VoidCommitmentBody,
+  },
   setVariationCostCode: {
     method: 'PUT',
     path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code',
@@ -7364,6 +7821,18 @@ export const operations = {
     params: IssuePaymentScheduleParams,
     query: null,
     body: IssuePaymentScheduleBody,
+  },
+  recordClaimStatement: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimStatementParams,
+    query: null,
+    body: RecordClaimStatementBody,
   },
   listClaimEvidence: {
     method: 'GET',

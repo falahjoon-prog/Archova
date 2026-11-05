@@ -2608,6 +2608,122 @@ export interface paths {
         patch: operations["updateBidderList"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One row per project with what is open and overdue, and company totals.
+         * @description The portfolio dashboard. Covers the projects the caller can see (org owners and admins: every project), tender,
+         *     active and on-hold projects unless `includeClosed` is true, at most 200. For each project the open and overdue
+         *     counts of RFIs, defects and submittals, counted only from what the caller may read on that project: a tool the
+         *     caller cannot read shows `restricted` and counts nothing, and is left out of the company totals. `attention`
+         *     is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
+         */
+        get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Saved reports the caller made, and those shared with the company. */
+        get: operations["listReports"];
+        put?: never;
+        /** Save a report definition. */
+        post: operations["createReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run a report definition without saving it.
+         * @description A read-only POST so the builder can show rows while the definition is being edited. Nothing is stored.
+         */
+        post: operations["previewReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports/{reportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        /** One saved report. */
+        get: operations["getReport"];
+        /** Replace a saved report. Only its maker, or an org owner or admin. */
+        put: operations["updateReport"];
+        post?: never;
+        /** Delete a saved report. Only its maker, or an org owner or admin. */
+        delete: operations["deleteReport"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/reports/{reportId}/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Run a saved report now.
+         * @description One row per RFI, defect or submittal across the report's projects (or every project the caller can see), counted
+         *     only from what the caller may read. Projects where the caller cannot read the tool are counted in
+         *     `restrictedProjects` and add no rows. At most 500 rows per project and 5000 in all; `truncated` says when the
+         *     answer was cut short.
+         */
+        get: operations["runReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bid-board": {
         parameters: {
             query?: never;
@@ -2756,6 +2872,33 @@ export interface paths {
         put?: never;
         /** Select the preferred confirmed quote. A reason is required when it is not the lowest after allowances (EST-AC7). */
         post: operations["awardTenderPackage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/subcontract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Raise the draft subcontract for an awarded package from its winning quote.
+         * @description The subcontract is a draft contract in financials: payee is the winning company, the value is the quote total
+         *     ex GST, and the schedule of values follows the quote's lines (or a single item if the lines don't add up to the
+         *     total). Retention and payment terms are left for the builder to set. Also needs `financials.contracts.manage`.
+         *     Safe to repeat: a quote raises one contract, and a repeat returns it with `created` false.
+         */
+        post: operations["createSubcontractFromAward"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6316,6 +6459,113 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/incidents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Incidents on the project, newest first. People who are not builder staff see only the ones they reported. */
+        get: operations["listIncidents"];
+        put?: never;
+        /** Report an incident. It is numbered INC-0001 per project. Only builder staff can set the severity, notifiable class and regulator dates. */
+        post: operations["reportIncident"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        /** An incident with its people, corrective actions and history. Injury details need the view_medical permission. */
+        get: operations["getIncident"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Classify, record regulator dates and the root cause, or change the people on an incident. A closed incident must be reopened first. */
+        patch: operations["updateIncident"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/transition": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start the investigation, close (needs a root cause, the regulator date when notifiable, and every action verified) or reopen with a reason. */
+        post: operations["transitionIncident"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a corrective action, optionally linked to the inspection or observation it came from. */
+        post: operations["addIncidentAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions/{actionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+                actionId: components["parameters"]["IncidentActionId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** The assigned company or person marks an action done; the builder edits it and verifies it (or sends it back to open). */
+        patch: operations["updateIncidentAction"];
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/swms": {
         parameters: {
             query?: never;
@@ -6606,6 +6856,49 @@ export interface paths {
         put?: never;
         /** Record money paid into or out of the trust account (append-only; undo with a reversal). */
         post: operations["recordTrustMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Retention held, the contract's release terms and what has been released, visible to the payee. */
+        get: operations["getContractRetentionRelease"];
+        /** Set practical completion, the defects period and the share released at practical completion (builder staff). */
+        put: operations["saveContractRetentionTerms"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record retention released to the payee, up to what the stage entitles (append-only). */
+        post: operations["recordRetentionRelease"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6905,6 +7198,132 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Subcontracts and purchase orders, newest first. */
+        get: operations["listCommitments"];
+        put?: never;
+        /** Draft a subcontract or purchase order against budget lines. */
+        post: operations["createCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        /** One commitment with its lines. */
+        get: operations["getCommitment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a draft for approval. */
+        post: operations["submitCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve. Counts as committed cost; past budget needs allowOverBudget and a note. */
+        post: operations["approveCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted commitment. A reason is required. */
+        post: operations["rejectCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a commitment, releasing its committed cost. A reason is required once submitted. */
+        post: operations["voidCommitment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code": {
         parameters: {
             query?: never;
@@ -6981,6 +7400,30 @@ export interface paths {
         put?: never;
         /** Issue the payment schedule. A reason is required when the scheduled amount is less than the claim (CLM-AC8). Once issued it cannot be changed, and whether it was in time is recorded (CLM-AC10). */
         post: operations["issuePaymentSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Link the NSW subcontractor's statement to a payment claim (compliance/05 §6).
+         * @description One statement per claim; recording again replaces it. Only for NSW subcontract claims. A claim without one is flagged (`warnings`) but never blocked, and the statement says nothing about withholding payment.
+         */
+        put: operations["recordClaimStatement"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -7591,6 +8034,92 @@ export interface components {
             /** @enum {string} */
             kind: "rfi" | "submittal";
             targetId: string;
+        };
+        PortfolioTool: {
+            /** @description True when the caller cannot read this tool on the project; counts are then zero. */
+            restricted: boolean;
+            open: number;
+            overdue: number;
+        };
+        PortfolioProject: {
+            id: string;
+            name: string;
+            number: string | null;
+            status: string;
+            rfis: components["schemas"]["PortfolioTool"];
+            defects: components["schemas"]["PortfolioTool"];
+            submittals: components["schemas"]["PortfolioTool"];
+            /** @description Overdue RFIs, defects and submittals together. */
+            attention: number;
+        };
+        PortfolioTotals: {
+            projects: number;
+            rfisOpen: number;
+            rfisOverdue: number;
+            defectsOpen: number;
+            defectsOverdue: number;
+            submittalsOpen: number;
+            submittalsOverdue: number;
+        };
+        Portfolio: {
+            totals: components["schemas"]["PortfolioTotals"];
+            projects: components["schemas"]["PortfolioProject"][];
+            /** @description True when more than 200 projects matched and the rest were left out. */
+            truncated: boolean;
+        };
+        ReportConfig: {
+            /** @enum {string} */
+            source: "rfis" | "defects" | "submittals";
+            /**
+             * @description Open is what is still waiting on someone; closed is answered, approved or closed.
+             * @enum {string}
+             */
+            state: "open" | "closed" | "all";
+            /** @description Projects to cover; empty means every project the caller can see. */
+            projectIds: string[];
+            columns: ("project" | "ref" | "title" | "status" | "dueDate" | "overdue" | "createdAt")[];
+            overdueOnly: boolean;
+        };
+        ReportInput: {
+            name: string;
+            /** @description True lets everyone in the company run it; false keeps it to its maker. */
+            shared: boolean;
+            config: components["schemas"]["ReportConfig"];
+        };
+        Report: {
+            id: string;
+            name: string;
+            shared: boolean;
+            config: components["schemas"]["ReportConfig"];
+            /** @description True when the caller made it, or is an org owner or admin, so may change it. */
+            mine: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        ReportList: {
+            data: components["schemas"]["Report"][];
+        };
+        ReportRow: {
+            projectId: string;
+            project: string;
+            ref: string;
+            title: string;
+            status: string;
+            /** Format: date */
+            dueDate: string | null;
+            overdue: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReportResult: {
+            columns: ("project" | "ref" | "title" | "status" | "dueDate" | "overdue" | "createdAt")[];
+            rows: components["schemas"]["ReportRow"][];
+            restrictedProjects: number;
+            truncated: boolean;
+            /** Format: date-time */
+            generatedAt: string;
         };
         ScheduleDetail: {
             schedule: components["schemas"]["ScheduleSummary"];
@@ -10663,6 +11192,15 @@ export interface components {
                 [key: string]: string;
             };
         };
+        AwardedSubcontract: {
+            contractId: string;
+            number: number;
+            title: string;
+            /** @description Ex GST */
+            originalValue: string;
+            /** @description False when the quote had already raised this contract. */
+            created: boolean;
+        };
         AwardPackageRequest: {
             quoteId: string;
             reason?: string;
@@ -11710,6 +12248,53 @@ export interface components {
             totalPaid: components["schemas"]["FinancialsSignedMoney"];
             trust: components["schemas"]["ContractTrust"];
         };
+        /** @enum {string} */
+        RetentionStage: "practical_completion" | "defects_end";
+        /** @enum {string} */
+        RetentionStageStatus: "awaiting_date" | "upcoming" | "due" | "released";
+        RetentionRelease: {
+            contractId: string;
+            terms: {
+                /** Format: date */
+                practicalCompletionOn: string | null;
+                defectsPeriodDays: number | null;
+                firstReleasePct: string;
+            };
+            retentionHeld: components["schemas"]["FinancialsMoney"];
+            stages: {
+                stage: components["schemas"]["RetentionStage"];
+                /** Format: date */
+                dueOn: string | null;
+                entitled: components["schemas"]["FinancialsMoney"];
+                released: components["schemas"]["FinancialsMoney"];
+                remaining: components["schemas"]["FinancialsMoney"];
+                status: components["schemas"]["RetentionStageStatus"];
+            }[];
+            releases: {
+                stage: components["schemas"]["RetentionStage"];
+                amount: components["schemas"]["FinancialsMoney"];
+                /** Format: date */
+                releasedOn: string;
+                reference: string;
+                note: string | null;
+                /** Format: date-time */
+                recordedAt: string;
+            }[];
+        };
+        SaveRetentionTermsRequest: {
+            /** Format: date */
+            practicalCompletionOn?: string | null;
+            defectsPeriodDays?: number | null;
+            firstReleasePct?: string;
+        };
+        RecordRetentionReleaseRequest: {
+            stage: components["schemas"]["RetentionStage"];
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            releasedOn: string;
+            reference: string;
+            note?: string;
+        };
         VariationList: {
             data: components["schemas"]["Variation"][];
             approvedTotal: components["schemas"]["FinancialsMoney"];
@@ -11723,6 +12308,54 @@ export interface components {
         };
         VariationDecisionRequest: {
             note?: string;
+        };
+        /** @enum {string} */
+        CommitmentStatus: "draft" | "submitted" | "approved" | "rejected" | "void";
+        Commitment: {
+            id: string;
+            number: number;
+            /** @enum {string} */
+            kind: "subcontract" | "purchase_order";
+            title: string;
+            vendorCompanyId: string | null;
+            status: components["schemas"]["CommitmentStatus"];
+            total: components["schemas"]["FinancialsMoney"];
+            overBudgetOverride: boolean;
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+        };
+        CommitmentLine: {
+            budgetLineId: string;
+            description: string;
+            amount: components["schemas"]["FinancialsMoney"];
+        };
+        CommitmentDetail: {
+            commitment: components["schemas"]["Commitment"];
+            lines: components["schemas"]["CommitmentLine"][];
+        };
+        CommitmentList: {
+            data: components["schemas"]["Commitment"][];
+        };
+        CreateCommitmentRequest: {
+            /** @enum {string} */
+            kind: "subcontract" | "purchase_order";
+            title: string;
+            vendorCompanyId?: string | null;
+            lines: {
+                budgetLineId: string;
+                description: string;
+                amount: components["schemas"]["FinancialsMoney"];
+            }[];
+        };
+        CommitmentDecisionRequest: {
+            note?: string;
+        };
+        CommitmentApprovalRequest: {
+            note?: string;
+            allowOverBudget?: boolean;
         };
         /** @enum {string} */
         PaymentClaimStatus: "submitted" | "scheduled" | "paid" | "disputed" | "adjudication" | "withdrawn";
@@ -11783,9 +12416,42 @@ export interface components {
             data: components["schemas"]["PaymentClaim"][];
         };
         PaymentClaimDetail: {
+            /** @description The NSW subcontractor's statement linked to this claim, if one was recorded. */
+            statement: components["schemas"]["ClaimStatement"] | null;
+            /** @description `subcontractor_statement_missing` is an NSW subcontract claim with no statement linked. A prompt only: Archova does not suggest withholding payment for it (open question for the lawyer). */
+            warnings: "subcontractor_statement_missing"[];
             claim: components["schemas"]["PaymentClaim"];
             lines: components["schemas"]["PaymentClaimLine"][];
             schedule: components["schemas"]["PaymentSchedule"] | null;
+        };
+        ClaimStatement: {
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date */
+            receivedOn: string;
+            /** Format: date */
+            signedOn: string | null;
+            note: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        RecordClaimStatementRequest: {
+            /**
+             * Format: date
+             * @description The last day of the period the statement covers.
+             */
+            periodEnd: string;
+            /**
+             * Format: date
+             * @description The day it reached the builder. Not in the future.
+             */
+            receivedOn: string;
+            /**
+             * Format: date
+             * @description Not after receivedOn.
+             */
+            signedOn?: string;
+            note?: string;
         };
         SubmitPaymentClaimRequest: {
             /** Format: date */
@@ -13532,6 +14198,204 @@ export interface components {
          */
         HighRiskWorkCategory: "fall_2m" | "telco_tower" | "demolition_load_bearing" | "demolition_integrity" | "asbestos" | "temp_support" | "confined_space" | "shaft_trench_tunnel" | "explosives" | "pressurised_gas" | "chemical_fuel_refrigerant" | "energised_electrical" | "contaminated_atmosphere" | "tilt_up_precast" | "traffic_corridor" | "mobile_plant" | "extreme_temperature" | "drowning" | "diving";
         /** @enum {string} */
+        IncidentType: "injury" | "near_miss" | "property_damage" | "environmental" | "dangerous_occurrence";
+        /** @enum {string} */
+        IncidentSeverity: "low" | "medium" | "high" | "critical";
+        /**
+         * @description WHS Act s35-s37. A person confirms the class; Archova never notifies the regulator.
+         * @enum {string}
+         */
+        NotifiableClass: "death" | "serious_injury_illness" | "dangerous_incident";
+        /** @enum {string} */
+        IncidentStatus: "reported" | "investigating" | "closed";
+        /** @enum {string} */
+        IncidentTransitionAction: "investigate" | "close" | "reopen";
+        /** @enum {string} */
+        CorrectiveStatus: "open" | "done" | "verified";
+        IncidentRootCause: {
+            /** @enum {string} */
+            method: "five_whys" | "fishbone" | "other";
+            causes: string[];
+            summary: string;
+        };
+        IncidentPerson: {
+            id: string;
+            personName: string;
+            companyId: string | null;
+            /** @enum {string} */
+            role: "injured" | "witness" | "involved";
+            /** @description Health information. Null without the view_medical permission (see injuryHidden). */
+            injury: {
+                [key: string]: unknown;
+            } | null;
+        };
+        IncidentPersonInput: {
+            personName: string;
+            companyId?: components["schemas"]["CompanyRef"];
+            /** @enum {string} */
+            role: "injured" | "witness" | "involved";
+            injury?: {
+                [key: string]: unknown;
+            };
+        };
+        IncidentSource: {
+            /** @enum {string} */
+            type: "inspection" | "observation";
+            id: string;
+        };
+        Incident: {
+            id: string;
+            projectId: string;
+            number: number;
+            /** @description INC-0007 */
+            numberLabel: string;
+            title: string;
+            type: components["schemas"]["IncidentType"];
+            severity: components["schemas"]["IncidentSeverity"];
+            /** Format: date-time */
+            occurredAt: string;
+            location: string | null;
+            description: string;
+            immediateActions: string | null;
+            isNotifiable: boolean;
+            notifiableClass: components["schemas"]["NotifiableClass"] | null;
+            /** Format: date-time */
+            regulatorNotifiedAt: string | null;
+            /** Format: date-time */
+            writtenNoticeRequestedAt: string | null;
+            /**
+             * Format: date-time
+             * @description 48 hours after the regulator asked for written notice (s38(4)).
+             */
+            writtenNoticeDueAt: string | null;
+            /**
+             * Format: date-time
+             * @description The record is kept at least 5 years from notification (s38(7)).
+             */
+            keepUntil: string | null;
+            rootCause: components["schemas"]["IncidentRootCause"] | null;
+            status: components["schemas"]["IncidentStatus"];
+            /** Format: date-time */
+            closedAt: string | null;
+            /** @description Corrective actions not yet verified. */
+            openActions: number;
+            createdBy: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        IncidentEvent: {
+            id: string;
+            action: string;
+            fromStatus: string | null;
+            toStatus: string;
+            note: string | null;
+            actorId: string | null;
+            /** Format: date-time */
+            at: string;
+        };
+        IncidentAction: {
+            id: string;
+            incidentId: string;
+            number: number;
+            title: string;
+            description: string | null;
+            assigneeCompanyId: string | null;
+            assigneeUserId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            source: components["schemas"]["IncidentSource"] | null;
+            status: components["schemas"]["CorrectiveStatus"];
+            isOverdue: boolean;
+            /** Format: date-time */
+            completedAt: string | null;
+            /** Format: date-time */
+            verifiedAt: string | null;
+            version: number;
+        };
+        IncidentCloseBlocker: {
+            field: string;
+            message: string;
+        };
+        IncidentDetail: {
+            incident: components["schemas"]["Incident"];
+            people: components["schemas"]["IncidentPerson"][];
+            /** @description True when injury details are withheld from the caller. */
+            injuryHidden: boolean;
+            actions: components["schemas"]["IncidentAction"][];
+            /** @description History, oldest first. */
+            events: components["schemas"]["IncidentEvent"][];
+            /** @description What stops the incident closing now. Empty when it can close. */
+            closeBlockers: components["schemas"]["IncidentCloseBlocker"][];
+            canManage: boolean;
+        };
+        IncidentPage: {
+            data: components["schemas"]["Incident"][];
+            nextCursor: string | null;
+        };
+        ReportIncidentRequest: {
+            title: string;
+            type: components["schemas"]["IncidentType"];
+            /** Format: date-time */
+            occurredAt: string;
+            location?: string;
+            description?: string;
+            immediateActions?: string;
+            severity?: components["schemas"]["IncidentSeverity"];
+            isNotifiable?: boolean;
+            notifiableClass?: components["schemas"]["NotifiableClass"];
+            /** Format: date-time */
+            regulatorNotifiedAt?: string;
+            /** Format: date-time */
+            writtenNoticeRequestedAt?: string;
+            people?: components["schemas"]["IncidentPersonInput"][];
+        };
+        UpdateIncidentRequest: {
+            title?: string;
+            type?: components["schemas"]["IncidentType"];
+            /** Format: date-time */
+            occurredAt?: string;
+            location?: string | null;
+            description?: string;
+            immediateActions?: string | null;
+            severity?: components["schemas"]["IncidentSeverity"];
+            isNotifiable?: boolean;
+            notifiableClass?: components["schemas"]["NotifiableClass"] | null;
+            /** Format: date-time */
+            regulatorNotifiedAt?: string | null;
+            /** Format: date-time */
+            writtenNoticeRequestedAt?: string | null;
+            rootCause?: components["schemas"]["IncidentRootCause"] | null;
+            /** @description Replaces the whole list. */
+            people?: components["schemas"]["IncidentPersonInput"][];
+        };
+        IncidentTransitionRequest: {
+            action: components["schemas"]["IncidentTransitionAction"];
+            /** @description Required to reopen. */
+            reason?: string;
+        };
+        CreateIncidentActionRequest: {
+            title: string;
+            description?: string;
+            assigneeCompanyId?: components["schemas"]["CompanyRef"];
+            assigneeUserId?: components["schemas"]["UserRef"];
+            /** Format: date */
+            dueDate?: string;
+            source?: components["schemas"]["IncidentSource"];
+        };
+        UpdateIncidentActionRequest: {
+            title?: string;
+            description?: string | null;
+            assigneeCompanyId?: components["schemas"]["CompanyRef"] | null;
+            assigneeUserId?: components["schemas"]["UserRef"] | null;
+            /** Format: date */
+            dueDate?: string | null;
+            source?: components["schemas"]["IncidentSource"] | null;
+            status?: components["schemas"]["CorrectiveStatus"];
+        };
+        /** @enum {string} */
         SwmsStatus: "submitted" | "reviewed" | "accepted" | "rejected";
         /** @enum {string} */
         SwmsAction: "markReviewed" | "accept" | "reject" | "reopen";
@@ -13682,6 +14546,8 @@ export interface components {
         InspectionTemplateId: string;
         InspectionId: string;
         ObservationId: string;
+        IncidentId: string;
+        IncidentActionId: string;
         SwmsId: string;
         OrgId: string;
         ProjectId: string;
@@ -13703,6 +14569,7 @@ export interface components {
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
+        CommitmentId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
         DefectId: string;
@@ -13732,6 +14599,7 @@ export interface components {
         OwnerProgressUpdateId: string;
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
+        ReportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -17528,6 +18396,208 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getPortfolio: {
+        parameters: {
+            query?: {
+                includeClosed?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The portfolio */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listReports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createReport: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportInput"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    previewReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportConfig"];
+            };
+        };
+        responses: {
+            /** @description The rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Report"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    runReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                reportId: components["parameters"]["ReportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The rows */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getBidBoard: {
         parameters: {
             query?: {
@@ -17799,6 +18869,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSubcontractFromAward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardedSubcontract"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -24136,6 +25231,225 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listIncidents: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["IncidentStatus"];
+                type?: components["schemas"]["IncidentType"];
+                notifiable?: "true" | "false";
+                limit?: components["parameters"]["Limit"];
+                cursor?: components["parameters"]["Cursor"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentPage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reportIncident: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReportIncidentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getIncident: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateIncident: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIncidentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    transitionIncident: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IncidentTransitionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addIncidentAction: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateIncidentActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateIncidentAction: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                incidentId: components["parameters"]["IncidentId"];
+                actionId: components["parameters"]["IncidentActionId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateIncidentActionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IncidentAction"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listSwms: {
         parameters: {
             query?: {
@@ -24638,6 +25952,91 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractRetentionRelease: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveContractRetentionTerms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveRetentionTermsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordRetentionRelease: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordRetentionReleaseRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RetentionRelease"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -25167,6 +26566,205 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listCommitments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCommitmentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCommitment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approveCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidCommitment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                commitmentId: components["parameters"]["CommitmentId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommitmentDecisionRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommitmentDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     setVariationCostCode: {
         parameters: {
             query?: never;
@@ -25270,6 +26868,35 @@ export interface operations {
         responses: {
             /** @description Issued */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimStatementRequest"];
+            };
+        };
+        responses: {
+            /** @description The claim with its statement linked */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

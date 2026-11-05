@@ -467,7 +467,23 @@ export function createDiaryService(deps: DiaryDeps) {
       .select()
       .from(t)
       .where(and(...where))) as LineRow[];
-    return { entries: [], lines: rows.map((row) => ({ kind, row })) };
+    // The phone files a line under its day, which the line itself does not carry.
+    const days = rows.length
+      ? await scope.tx
+          .select({ id: entries.id, date: entries.date })
+          .from(entries)
+          .where(inArray(entries.id, [...new Set(rows.map((r) => r.entryId))]))
+      : [];
+    const dayOf = new Map(days.map((d) => [d.id, d.date]));
+    return {
+      entries: [],
+      lines: rows.map((row) => ({ kind, row: { ...row, date: dayOf.get(row.entryId) ?? null } })),
+    };
+  }
+
+  /** The day's current entry version, or null when nothing has been written for it yet. */
+  async function currentVersion(scope: TenantScope, projectId: string, date: LocalDate) {
+    return (await findEntry(scope, projectId, date))?.version ?? null;
   }
 
   async function list(scope: TenantScope, projectId: string, from: LocalDate, to: LocalDate) {
@@ -989,7 +1005,19 @@ export function createDiaryService(deps: DiaryDeps) {
     kind: LineKind,
     input: LineValues,
     reason?: string,
+    /** A device-chosen id, so the record the phone already shows is the one the next pull confirms. */
+    deviceId?: string,
   ) {
+    if (deviceId) {
+      // A retry after a lost response: the line is already there.
+      const t = LINE_TABLES[kind];
+      const [have] = (await scope.tx
+        .select()
+        .from(t)
+        .where(and(eq(t.id, deviceId), eq(t.projectId, projectId)))
+        .limit(1)) as LineRow[];
+      if (have) return have;
+    }
     const entry = await ensureEntry(scope, projectId, date);
     const amendmentReason = amendmentReasonFor(entry, reason);
     const values = pick(kind, input);
@@ -998,7 +1026,7 @@ export function createDiaryService(deps: DiaryDeps) {
     if (kind === 'labour') delete values.editReason;
     await checkCompanies(scope, values);
     const t = LINE_TABLES[kind];
-    const id = uuidv7();
+    const id = deviceId ?? uuidv7();
     const [row] = (await scope.tx
       .insert(t)
       .values({
@@ -1191,6 +1219,7 @@ export function createDiaryService(deps: DiaryDeps) {
     detail,
     applyAttendanceTotals,
     visibleAmong,
+    currentVersion,
     dayForSummary,
     aiSources,
     aiAccessScopes,

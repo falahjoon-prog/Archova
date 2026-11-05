@@ -93,6 +93,9 @@ export function usePackageMutations(packageId: string) {
       mutationFn: (action: PackageAction) => quotesSource.transition(projectId, packageId, action),
       onSuccess: invalidate,
     }),
+    subcontract: useMutation({
+      mutationFn: () => quotesSource.createSubcontract(projectId, packageId),
+    }),
     allowance: useMutation({
       mutationFn: (v: { quoteId: string; scopeKey: string; cents: number | null }) =>
         quotesSource.setAllowance(projectId, packageId, v.quoteId, v.scopeKey, v.cents),

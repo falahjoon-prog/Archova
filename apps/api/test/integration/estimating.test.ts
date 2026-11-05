@@ -237,6 +237,9 @@ describe('tender packages and quotes (product/10)', () => {
     expect(
       (await s.tilerA.browser.get(`${s.base}/tender-packages/${pkg.id}`)).json().allowances,
     ).toEqual({});
+    expect(
+      (await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`)).json().code,
+    ).toBe('tender.invalid_state');
     const noReason = await s.pm.browser.post(
       `${s.base}/tender-packages/${pkg.id}/award`,
       { quoteId: qb.json().id },
@@ -261,6 +264,23 @@ describe('tender packages and quotes (product/10)', () => {
     expect(
       (await s.tilerA.browser.get(`${s.base}/tender-packages/${pkg.id}`)).json().award,
     ).toBeNull();
+
+    // Awarding raises the draft subcontract from the winning quote, once, for the winning company.
+    const raised = await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`);
+    expect(raised.statusCode).toBe(200);
+    expect(raised.json()).toMatchObject({ created: true });
+    expect(
+      (await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`)).statusCode,
+    ).toBeGreaterThanOrEqual(400);
+    const again = await s.pm.browser.post(`${s.base}/tender-packages/${pkg.id}/subcontract`);
+    expect(again.json()).toMatchObject({ created: false, contractId: raised.json().contractId });
+    const contract = await s.pm.browser.get(`${s.base}/contracts/${raised.json().contractId}`);
+    expect(contract.json().contract).toMatchObject({
+      kind: 'subcontract',
+      status: 'draft',
+      payeeCompanyId: s.coB.companyId,
+      originalValue: raised.json().originalValue,
+    });
 
     // After the award: no more quotes, no edits, and the winning quote can't be declined.
     const late = await s.tilerA.browser.post(`${s.base}/tender-packages/${pkg.id}/quotes`, {

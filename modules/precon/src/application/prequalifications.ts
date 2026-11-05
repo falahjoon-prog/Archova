@@ -1,6 +1,6 @@
 import { and, desc, eq } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
-import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
+import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
 import {
   addMonths,
@@ -229,6 +229,23 @@ export function createPrequalService(deps: PreconDeps) {
     return load(scope, row.id);
   }
 
+  /** A decided form, and the frozen question set it was answered against, are kept for the retention period. */
+  async function keep(scope: TenantScope, row: typeof prequalifications.$inferSelect) {
+    const anchor = new Date(
+      Math.max(row.decidedAt?.getTime() ?? 0, Date.parse(`${row.expiresOn ?? ''}T00:00:00Z`) || 0),
+    );
+    for (const [recordType, recordId] of [
+      ['precon.prequalifications', row.id],
+      ['precon.prequal_templates', row.templateId],
+    ] as const)
+      await recordRetention(scope, {
+        recordType,
+        recordId,
+        category: 'prequalification_7y',
+        anchor,
+      });
+  }
+
   async function approve(
     scope: TenantScope,
     id: string,
@@ -261,6 +278,7 @@ export function createPrequalService(deps: PreconDeps) {
       .returning();
     if (!row) throw versionConflict();
     audit(scope, 'approved', row);
+    await keep(scope, row);
     return load(scope, row.id);
   }
 
@@ -287,6 +305,7 @@ export function createPrequalService(deps: PreconDeps) {
       .returning();
     if (!row) throw versionConflict();
     audit(scope, 'rejected', row);
+    await keep(scope, row);
     return load(scope, row.id);
   }
 

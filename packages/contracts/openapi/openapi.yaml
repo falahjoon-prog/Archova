@@ -45,6 +45,7 @@ tags:
   - name: meetings
   - name: ownerportal
   - name: notifications
+  - name: reporting
 paths:
   /v1/auth/signup:
     post:
@@ -3304,6 +3305,159 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/portfolio:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPortfolio
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: One row per project with what is open and overdue, and company totals.
+      description: |
+        The portfolio dashboard. Covers the projects the caller can see (org owners and admins: every project), tender,
+        active and on-hold projects unless `includeClosed` is true, at most 200. For each project the open and overdue
+        counts of RFIs, defects and submittals, counted only from what the caller may read on that project: a tool the
+        caller cannot read shows `restricted` and counts nothing, and is left out of the company totals. `attention`
+        is the project's overdue total, so the list can be ordered by what needs chasing. Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The portfolio
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Portfolio' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listReports
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Saved reports the caller made, and those shared with the company.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Save a report definition.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportInput' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/preview:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    post:
+      operationId: previewReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Run a report definition without saving it.
+      description: A read-only POST so the builder can show rows while the definition is being edited. Nothing is stored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportConfig' }
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/{reportId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: getReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: One saved report.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updateReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Replace a saved report. Only its maker, or an org owner or admin.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportInput' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Report' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.manage
+      summary: Delete a saved report. Only its maker, or an org owner or admin.
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/reports/{reportId}/run:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ReportId'
+    get:
+      operationId: runReport
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.reports.read
+      summary: Run a saved report now.
+      description: |
+        One row per RFI, defect or submittal across the report's projects (or every project the caller can see), counted
+        only from what the caller may read. Projects where the caller cannot read the tool are counted in
+        `restrictedProjects` and add no rows. At most 500 rows per project and 5000 in all; `truncated` says when the
+        answer was cut short.
+      responses:
+        '200':
+          description: The rows
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3531,6 +3685,29 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/subcontract:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: createSubcontractFromAward
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: Raise the draft subcontract for an awarded package from its winning quote.
+      description: |
+        The subcontract is a draft contract in financials: payee is the winning company, the value is the quote total
+        ex GST, and the schedule of values follows the quote's lines (or a single item if the lines don't add up to the
+        total). Retention and payment terms are left for the builder to set. Also needs `financials.contracts.manage`.
+        Safe to repeat: a quote raises one contract, and a repeat returns it with `created` false.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AwardedSubcontract' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison:
     parameters:
@@ -8787,6 +8964,175 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Observation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listIncidents
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: Incidents on the project, newest first. People who are not builder staff see only the ones they reported.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/IncidentStatus' } }
+        - { name: type, in: query, schema: { $ref: '#/components/schemas/IncidentType' } }
+        - { name: notifiable, in: query, schema: { type: string, enum: ['true', 'false'] } }
+        - { $ref: '#/components/parameters/Limit' }
+        - { $ref: '#/components/parameters/Cursor' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentPage' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: reportIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.report
+      summary: Report an incident. It is numbered INC-0001 per project. Only builder staff can set the severity, notifiable class and regulator dates.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReportIncidentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+    get:
+      operationId: getIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: An incident with its people, corrective actions and history. Injury details need the view_medical permission.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.manage
+      summary: Classify, record regulator dates and the root cause, or change the people on an incident. A closed incident must be reopened first.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateIncidentRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/transition:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+    post:
+      operationId: transitionIncident
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.manage
+      summary: Start the investigation, close (needs a root cause, the regulator date when notifiable, and every action verified) or reopen with a reason.
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IncidentTransitionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+    post:
+      operationId: addIncidentAction
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.manage
+      summary: Add a corrective action, optionally linked to the inspection or observation it came from.
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateIncidentActionRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/incidents/{incidentId}/actions/{actionId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/IncidentId'
+      - $ref: '#/components/parameters/IncidentActionId'
+    patch:
+      operationId: updateIncidentAction
+      tags: [safety]
+      x-module: safety
+      x-permission: safety.incidents.read
+      summary: The assigned company or person marks an action done; the builder edits it and verifies it (or sends it back to open).
+      parameters:
+        - { $ref: '#/components/parameters/IfMatch' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateIncidentActionRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IncidentAction' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/swms:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9167,6 +9513,67 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ContractTrust' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractRetentionRelease
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Retention held, the contract's release terms and what has been released, visible to the payee.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveContractRetentionTerms
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.retention.manage
+      summary: Set practical completion, the defects period and the share released at practical completion (builder staff).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveRetentionTermsRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/retention-release/releases:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: recordRetentionRelease
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.retention.manage
+      summary: Record retention released to the payee, up to what the stage entitles (append-only).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordRetentionReleaseRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RetentionRelease' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9541,6 +9948,156 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCommitments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: Subcontracts and purchase orders, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Draft a subcontract or purchase order against budget lines.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommitmentRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    get:
+      operationId: getCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.read
+      summary: One commitment with its lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: submitCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Send a draft for approval.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: approveCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Approve. Counts as committed cost; past budget needs allowOverBudget and a note.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentApprovalRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: rejectCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.decide
+      summary: Reject a submitted commitment. A reason is required.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/commitments/{commitmentId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CommitmentId'
+    post:
+      operationId: voidCommitment
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.commitments.manage
+      summary: Void a commitment, releasing its committed cost. A reason is required once submitted.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CommitmentDecisionRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommitmentDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9625,6 +10182,30 @@ paths:
       responses:
         '201':
           description: Issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    put:
+      operationId: recordClaimStatement
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: Link the NSW subcontractor's statement to a payment claim (compliance/05 §6).
+      description: One statement per claim; recording again replaces it. Only for NSW subcontract claims. A claim without one is flagged (`warnings`) but never blocked, and the statement says nothing about withholding payment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimStatementRequest' }
+      responses:
+        '200':
+          description: The claim with its statement linked
           content:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
@@ -10285,6 +10866,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^obs_[0-9A-Za-z]{26}$' }
+    IncidentId:
+      name: incidentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^inx_[0-9A-Za-z]{26}$' }
+    IncidentActionId:
+      name: actionId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^iac_[0-9A-Za-z]{26}$' }
     SwmsId:
       name: swmsId
       in: path
@@ -10390,6 +10981,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+    CommitmentId:
+      name: commitmentId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
     PaymentClaimId:
       name: claimId
       in: path
@@ -10424,7 +11020,7 @@ components:
       name: bidderListId
       in: path
       required: true
-      schema: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
+      schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
     CostItemId:
       name: costItemId
       in: path
@@ -10529,6 +11125,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^oci_[0-9A-Za-z]{26}$' }
+    ReportId:
+      name: reportId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -10694,6 +11295,144 @@ components:
       properties:
         kind: { type: string, enum: [rfi, submittal] }
         targetId: { type: string }
+    PortfolioTool:
+      type: object
+      required: [restricted, open, overdue]
+      properties:
+        restricted:
+          {
+            type: boolean,
+            description: 'True when the caller cannot read this tool on the project; counts are then zero.',
+          }
+        open: { type: integer }
+        overdue: { type: integer }
+    PortfolioProject:
+      type: object
+      required: [id, name, number, status, rfis, defects, submittals, attention]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        number: { type: [string, 'null'] }
+        status: { type: string }
+        rfis: { $ref: '#/components/schemas/PortfolioTool' }
+        defects: { $ref: '#/components/schemas/PortfolioTool' }
+        submittals: { $ref: '#/components/schemas/PortfolioTool' }
+        attention: { type: integer, description: 'Overdue RFIs, defects and submittals together.' }
+    PortfolioTotals:
+      type: object
+      required:
+        [
+          projects,
+          rfisOpen,
+          rfisOverdue,
+          defectsOpen,
+          defectsOverdue,
+          submittalsOpen,
+          submittalsOverdue,
+        ]
+      properties:
+        projects: { type: integer }
+        rfisOpen: { type: integer }
+        rfisOverdue: { type: integer }
+        defectsOpen: { type: integer }
+        defectsOverdue: { type: integer }
+        submittalsOpen: { type: integer }
+        submittalsOverdue: { type: integer }
+    Portfolio:
+      type: object
+      required: [totals, projects, truncated]
+      properties:
+        totals: { $ref: '#/components/schemas/PortfolioTotals' }
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/PortfolioProject' }
+        truncated:
+          {
+            type: boolean,
+            description: 'True when more than 200 projects matched and the rest were left out.',
+          }
+    ReportConfig:
+      type: object
+      additionalProperties: false
+      required: [source, state, projectIds, columns, overdueOnly]
+      properties:
+        source: { type: string, enum: [rfis, defects, submittals] }
+        state:
+          {
+            type: string,
+            enum: [open, closed, all],
+            description: 'Open is what is still waiting on someone; closed is answered, approved or closed.',
+          }
+        projectIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
+          description: 'Projects to cover; empty means every project the caller can see.'
+        columns:
+          type: array
+          minItems: 1
+          maxItems: 7
+          items: { type: string, enum: [project, ref, title, status, dueDate, overdue, createdAt] }
+        overdueOnly: { type: boolean }
+    ReportInput:
+      type: object
+      additionalProperties: false
+      required: [name, shared, config]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 120 }
+        shared:
+          {
+            type: boolean,
+            description: 'True lets everyone in the company run it; false keeps it to its maker.',
+          }
+        config: { $ref: '#/components/schemas/ReportConfig' }
+    Report:
+      type: object
+      required: [id, name, shared, config, mine, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        shared: { type: boolean }
+        config: { $ref: '#/components/schemas/ReportConfig' }
+        mine:
+          {
+            type: boolean,
+            description: 'True when the caller made it, or is an org owner or admin, so may change it.',
+          }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    ReportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Report' }
+    ReportRow:
+      type: object
+      required: [projectId, project, ref, title, status, dueDate, overdue, createdAt]
+      properties:
+        projectId: { type: string }
+        project: { type: string }
+        ref: { type: string }
+        title: { type: string }
+        status: { type: string }
+        dueDate: { type: [string, 'null'], format: date }
+        overdue: { type: boolean }
+        createdAt: { type: string, format: date-time }
+    ReportResult:
+      type: object
+      required: [columns, rows, restrictedProjects, truncated, generatedAt]
+      properties:
+        columns:
+          type: array
+          items: { type: string, enum: [project, ref, title, status, dueDate, overdue, createdAt] }
+        rows:
+          type: array
+          items: { $ref: '#/components/schemas/ReportRow' }
+        restrictedProjects: { type: integer }
+        truncated: { type: boolean }
+        generatedAt: { type: string, format: date-time }
     ScheduleDetail:
       type: object
       required: [schedule, activities, dependencies, criticalCount, violationCount]
@@ -15512,6 +16251,16 @@ components:
         allowances:
           type: object
           additionalProperties: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    AwardedSubcontract:
+      type: object
+      required: [contractId, number, title, originalValue, created]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        originalValue: { type: string, description: Ex GST }
+        created:
+          { type: boolean, description: False when the quote had already raised this contract. }
     AwardPackageRequest:
       type: object
       additionalProperties: false
@@ -17212,6 +17961,66 @@ components:
         totalDue: { $ref: '#/components/schemas/FinancialsMoney' }
         totalPaid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
         trust: { $ref: '#/components/schemas/ContractTrust' }
+    RetentionStage:
+      type: string
+      enum: [practical_completion, defects_end]
+    RetentionStageStatus:
+      type: string
+      enum: [awaiting_date, upcoming, due, released]
+    RetentionRelease:
+      type: object
+      required: [contractId, terms, retentionHeld, stages, releases]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        terms:
+          type: object
+          required: [practicalCompletionOn, defectsPeriodDays, firstReleasePct]
+          properties:
+            practicalCompletionOn: { type: [string, 'null'], format: date }
+            defectsPeriodDays: { type: [integer, 'null'] }
+            firstReleasePct: { type: string }
+        retentionHeld: { $ref: '#/components/schemas/FinancialsMoney' }
+        stages:
+          type: array
+          items:
+            type: object
+            required: [stage, dueOn, entitled, released, remaining, status]
+            properties:
+              stage: { $ref: '#/components/schemas/RetentionStage' }
+              dueOn: { type: [string, 'null'], format: date }
+              entitled: { $ref: '#/components/schemas/FinancialsMoney' }
+              released: { $ref: '#/components/schemas/FinancialsMoney' }
+              remaining: { $ref: '#/components/schemas/FinancialsMoney' }
+              status: { $ref: '#/components/schemas/RetentionStageStatus' }
+        releases:
+          type: array
+          items:
+            type: object
+            required: [stage, amount, releasedOn, reference, note, recordedAt]
+            properties:
+              stage: { $ref: '#/components/schemas/RetentionStage' }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+              releasedOn: { type: string, format: date }
+              reference: { type: string }
+              note: { type: [string, 'null'] }
+              recordedAt: { type: string, format: date-time }
+    SaveRetentionTermsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        practicalCompletionOn: { type: [string, 'null'], format: date }
+        defectsPeriodDays: { type: [integer, 'null'], minimum: 0, maximum: 3650 }
+        firstReleasePct: { type: string, pattern: '^\d{1,3}(\.\d{1,2})?$' }
+    RecordRetentionReleaseRequest:
+      type: object
+      additionalProperties: false
+      required: [stage, amount, releasedOn, reference]
+      properties:
+        stage: { $ref: '#/components/schemas/RetentionStage' }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        releasedOn: { type: string, format: date }
+        reference: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
     VariationList:
       type: object
       required: [data, approvedTotal]
@@ -17236,6 +18045,90 @@ components:
       additionalProperties: false
       properties:
         note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, void]
+    Commitment:
+      type: object
+      required:
+        [
+          id,
+          number,
+          kind,
+          title,
+          vendorCompanyId,
+          status,
+          total,
+          overBudgetOverride,
+          submittedAt,
+          decidedAt,
+          decisionNote,
+        ]
+      properties:
+        id: { type: string, pattern: '^cmt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        kind: { type: string, enum: [subcontract, purchase_order] }
+        title: { type: string }
+        vendorCompanyId: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/CommitmentStatus' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+        overBudgetOverride: { type: boolean }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+    CommitmentLine:
+      type: object
+      required: [budgetLineId, description, amount]
+      properties:
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        description: { type: string }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentDetail:
+      type: object
+      required: [commitment, lines]
+      properties:
+        commitment: { $ref: '#/components/schemas/Commitment' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/CommitmentLine' }
+    CommitmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Commitment' }
+    CreateCommitmentRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, title, lines]
+      properties:
+        kind: { type: string, enum: [subcontract, purchase_order] }
+        title: { type: string, minLength: 1, maxLength: 300 }
+        vendorCompanyId: { type: [string, 'null'] }
+        lines:
+          type: array
+          minItems: 1
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            required: [budgetLineId, description, amount]
+            properties:
+              budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+              description: { type: string, minLength: 1, maxLength: 300 }
+              amount: { $ref: '#/components/schemas/FinancialsMoney' }
+    CommitmentDecisionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+    CommitmentApprovalRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
+        allowOverBudget: { type: boolean }
     PaymentClaimStatus:
       type: string
       enum: [submitted, scheduled, paid, disputed, adjudication, withdrawn]
@@ -17346,8 +18239,17 @@ components:
           items: { $ref: '#/components/schemas/PaymentClaim' }
     PaymentClaimDetail:
       type: object
-      required: [claim, lines, schedule]
+      required: [claim, lines, schedule, statement, warnings]
       properties:
+        statement:
+          oneOf:
+            - { $ref: '#/components/schemas/ClaimStatement' }
+            - { type: 'null' }
+          description: The NSW subcontractor's statement linked to this claim, if one was recorded.
+        warnings:
+          type: array
+          items: { type: string, enum: [subcontractor_statement_missing] }
+          description: '`subcontractor_statement_missing` is an NSW subcontract claim with no statement linked. A prompt only: Archova does not suggest withholding payment for it (open question for the lawyer).'
         claim: { $ref: '#/components/schemas/PaymentClaim' }
         lines:
           type: array
@@ -17356,6 +18258,34 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/PaymentSchedule' }
             - { type: 'null' }
+    ClaimStatement:
+      type: object
+      required: [periodEnd, receivedOn, signedOn, note, recordedAt]
+      properties:
+        periodEnd: { type: string, format: date }
+        receivedOn: { type: string, format: date }
+        signedOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        recordedAt: { type: string, format: date-time }
+    RecordClaimStatementRequest:
+      type: object
+      additionalProperties: false
+      required: [periodEnd, receivedOn]
+      properties:
+        periodEnd:
+          {
+            type: string,
+            format: date,
+            description: The last day of the period the statement covers.,
+          }
+        receivedOn:
+          {
+            type: string,
+            format: date,
+            description: The day it reached the builder. Not in the future.,
+          }
+        signedOn: { type: string, format: date, description: Not after receivedOn. }
+        note: { type: string, maxLength: 500 }
     SubmitPaymentClaimRequest:
       type: object
       additionalProperties: false
@@ -20172,6 +21102,283 @@ components:
         - extreme_temperature
         - drowning
         - diving
+    IncidentType:
+      type: string
+      enum: [injury, near_miss, property_damage, environmental, dangerous_occurrence]
+    IncidentSeverity:
+      type: string
+      enum: [low, medium, high, critical]
+    NotifiableClass:
+      type: string
+      description: 'WHS Act s35-s37. A person confirms the class; Archova never notifies the regulator.'
+      enum: [death, serious_injury_illness, dangerous_incident]
+    IncidentStatus:
+      type: string
+      enum: [reported, investigating, closed]
+    IncidentTransitionAction:
+      type: string
+      enum: [investigate, close, reopen]
+    CorrectiveStatus:
+      type: string
+      enum: [open, done, verified]
+    IncidentRootCause:
+      type: object
+      additionalProperties: false
+      required: [method, causes, summary]
+      properties:
+        method: { type: string, enum: [five_whys, fishbone, other] }
+        causes:
+          type: array
+          maxItems: 20
+          items: { type: string, maxLength: 500 }
+        summary: { type: string, maxLength: 4000 }
+    IncidentPerson:
+      type: object
+      required: [id, personName, companyId, role, injury]
+      properties:
+        id: { type: string }
+        personName: { type: string }
+        companyId: { type: [string, 'null'] }
+        role: { type: string, enum: [injured, witness, involved] }
+        injury:
+          type: [object, 'null']
+          additionalProperties: true
+          description: Health information. Null without the view_medical permission (see injuryHidden).
+    IncidentPersonInput:
+      type: object
+      additionalProperties: false
+      required: [personName, role]
+      properties:
+        personName: { type: string, minLength: 1, maxLength: 200 }
+        companyId: { $ref: '#/components/schemas/CompanyRef' }
+        role: { type: string, enum: [injured, witness, involved] }
+        injury: { type: object, additionalProperties: true }
+    IncidentSource:
+      type: object
+      additionalProperties: false
+      required: [type, id]
+      properties:
+        type: { type: string, enum: [inspection, observation] }
+        id: { type: string, pattern: '^(ins|obs)_[0-9A-Za-z]{26}$' }
+    Incident:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          numberLabel,
+          title,
+          type,
+          severity,
+          occurredAt,
+          location,
+          description,
+          immediateActions,
+          isNotifiable,
+          notifiableClass,
+          regulatorNotifiedAt,
+          writtenNoticeRequestedAt,
+          writtenNoticeDueAt,
+          keepUntil,
+          rootCause,
+          status,
+          closedAt,
+          openActions,
+          createdBy,
+          createdAt,
+          updatedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        numberLabel: { type: string, description: 'INC-0007' }
+        title: { type: string }
+        type: { $ref: '#/components/schemas/IncidentType' }
+        severity: { $ref: '#/components/schemas/IncidentSeverity' }
+        occurredAt: { type: string, format: date-time }
+        location: { type: [string, 'null'] }
+        description: { type: string }
+        immediateActions: { type: [string, 'null'] }
+        isNotifiable: { type: boolean }
+        notifiableClass:
+          { oneOf: [{ $ref: '#/components/schemas/NotifiableClass' }, { type: 'null' }] }
+        regulatorNotifiedAt: { type: [string, 'null'], format: date-time }
+        writtenNoticeRequestedAt: { type: [string, 'null'], format: date-time }
+        writtenNoticeDueAt:
+          type: [string, 'null']
+          format: date-time
+          description: 48 hours after the regulator asked for written notice (s38(4)).
+        keepUntil:
+          type: [string, 'null']
+          format: date-time
+          description: The record is kept at least 5 years from notification (s38(7)).
+        rootCause: { oneOf: [{ $ref: '#/components/schemas/IncidentRootCause' }, { type: 'null' }] }
+        status: { $ref: '#/components/schemas/IncidentStatus' }
+        closedAt: { type: [string, 'null'], format: date-time }
+        openActions: { type: integer, description: Corrective actions not yet verified. }
+        createdBy: { type: [string, 'null'] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    IncidentEvent:
+      type: object
+      required: [id, action, fromStatus, toStatus, note, actorId, at]
+      properties:
+        id: { type: string }
+        action: { type: string }
+        fromStatus: { type: [string, 'null'] }
+        toStatus: { type: string }
+        note: { type: [string, 'null'] }
+        actorId: { type: [string, 'null'] }
+        at: { type: string, format: date-time }
+    IncidentAction:
+      type: object
+      required:
+        [
+          id,
+          incidentId,
+          number,
+          title,
+          description,
+          assigneeCompanyId,
+          assigneeUserId,
+          dueDate,
+          source,
+          status,
+          isOverdue,
+          completedAt,
+          verifiedAt,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        incidentId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: [string, 'null'] }
+        assigneeCompanyId: { type: [string, 'null'] }
+        assigneeUserId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        source:
+          oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }]
+        status: { $ref: '#/components/schemas/CorrectiveStatus' }
+        isOverdue: { type: boolean }
+        completedAt: { type: [string, 'null'], format: date-time }
+        verifiedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+    IncidentCloseBlocker:
+      type: object
+      required: [field, message]
+      properties:
+        field: { type: string }
+        message: { type: string }
+    IncidentDetail:
+      type: object
+      required: [incident, people, injuryHidden, actions, events, closeBlockers, canManage]
+      properties:
+        incident: { $ref: '#/components/schemas/Incident' }
+        people:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentPerson' }
+        injuryHidden:
+          { type: boolean, description: True when injury details are withheld from the caller. }
+        actions:
+          type: array
+          items: { $ref: '#/components/schemas/IncidentAction' }
+        events:
+          type: array
+          description: History, oldest first.
+          items: { $ref: '#/components/schemas/IncidentEvent' }
+        closeBlockers:
+          type: array
+          description: What stops the incident closing now. Empty when it can close.
+          items: { $ref: '#/components/schemas/IncidentCloseBlocker' }
+        canManage: { type: boolean }
+    IncidentPage:
+      type: object
+      required: [data, nextCursor]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Incident' }
+        nextCursor: { type: [string, 'null'] }
+    ReportIncidentRequest:
+      type: object
+      additionalProperties: false
+      required: [title, type, occurredAt]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        type: { $ref: '#/components/schemas/IncidentType' }
+        occurredAt: { type: string, format: date-time }
+        location: { type: string, maxLength: 500 }
+        description: { type: string, maxLength: 8000 }
+        immediateActions: { type: string, maxLength: 4000 }
+        severity: { $ref: '#/components/schemas/IncidentSeverity' }
+        isNotifiable: { type: boolean }
+        notifiableClass: { $ref: '#/components/schemas/NotifiableClass' }
+        regulatorNotifiedAt: { type: string, format: date-time }
+        writtenNoticeRequestedAt: { type: string, format: date-time }
+        people:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/IncidentPersonInput' }
+    UpdateIncidentRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        type: { $ref: '#/components/schemas/IncidentType' }
+        occurredAt: { type: string, format: date-time }
+        location: { type: [string, 'null'], maxLength: 500 }
+        description: { type: string, maxLength: 8000 }
+        immediateActions: { type: [string, 'null'], maxLength: 4000 }
+        severity: { $ref: '#/components/schemas/IncidentSeverity' }
+        isNotifiable: { type: boolean }
+        notifiableClass:
+          { oneOf: [{ $ref: '#/components/schemas/NotifiableClass' }, { type: 'null' }] }
+        regulatorNotifiedAt: { type: [string, 'null'], format: date-time }
+        writtenNoticeRequestedAt: { type: [string, 'null'], format: date-time }
+        rootCause: { oneOf: [{ $ref: '#/components/schemas/IncidentRootCause' }, { type: 'null' }] }
+        people:
+          type: array
+          description: Replaces the whole list.
+          maxItems: 50
+          items: { $ref: '#/components/schemas/IncidentPersonInput' }
+    IncidentTransitionRequest:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: { $ref: '#/components/schemas/IncidentTransitionAction' }
+        reason: { type: string, maxLength: 2000, description: Required to reopen. }
+    CreateIncidentActionRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: string, maxLength: 4000 }
+        assigneeCompanyId: { $ref: '#/components/schemas/CompanyRef' }
+        assigneeUserId: { $ref: '#/components/schemas/UserRef' }
+        dueDate: { type: string, format: date }
+        source: { $ref: '#/components/schemas/IncidentSource' }
+    UpdateIncidentActionRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 300 }
+        description: { type: [string, 'null'], maxLength: 4000 }
+        assigneeCompanyId:
+          { oneOf: [{ $ref: '#/components/schemas/CompanyRef' }, { type: 'null' }] }
+        assigneeUserId: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
+        dueDate: { type: [string, 'null'], format: date }
+        source: { oneOf: [{ $ref: '#/components/schemas/IncidentSource' }, { type: 'null' }] }
+        status: { $ref: '#/components/schemas/CorrectiveStatus' }
     SwmsStatus:
       type: string
       enum: [submitted, reviewed, accepted, rejected]

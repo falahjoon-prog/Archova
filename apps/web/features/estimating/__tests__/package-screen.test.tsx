@@ -61,6 +61,9 @@ describe('PackageScreen', () => {
     await user.click(confirm);
     expect(await screen.findByText('Selected Harbour Tile Co')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Select Ironbark Tiling' })).toBeNull();
+    // Once selected, the draft subcontract can be raised from the winning quote.
+    await user.click(screen.getByRole('button', { name: 'Create subcontract from this quote' }));
+    expect(await screen.findByText(/Draft subcontract created/)).toBeTruthy();
   });
 
   it('reviews and confirms a quote Nova read, with corrections kept', async () => {

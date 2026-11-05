@@ -3,11 +3,13 @@ import { encodeId } from '@archova/domain';
 import type {
   ClaimLineRow,
   ClaimRow,
+  ClaimStatementRow,
   ContractRow,
   ScheduleRow,
   SovRow,
   VariationRow,
 } from '../application/financials';
+import type { CommitmentLineRow, CommitmentRow } from '../application/commitments';
 
 const company = (id: string | null) => (id ? encodeId('company', id) : null);
 
@@ -85,6 +87,14 @@ export const toLineDto = (l: ClaimLineRow) => ({
   toDate: l.toDate,
 });
 
+export const toStatementDto = (s: ClaimStatementRow) => ({
+  periodEnd: s.periodEnd,
+  receivedOn: s.receivedOn,
+  signedOn: s.signedOn,
+  note: s.note,
+  recordedAt: s.recordedAt.toISOString(),
+});
+
 export const toScheduleDto = (s: ScheduleRow) => ({
   id: encodeId('paymentSchedule', s.id),
   scheduledAmount: s.scheduledAmount,
@@ -96,4 +106,24 @@ export const toScheduleDto = (s: ScheduleRow) => ({
   })),
   issuedAt: s.issuedAt.toISOString(),
   issuedWithinTime: s.issuedWithinTime,
+});
+
+export const toCommitmentDto = (c: CommitmentRow) => ({
+  id: encodeId('commitment', c.id),
+  number: c.number,
+  kind: c.kind,
+  title: c.title,
+  vendorCompanyId: company(c.vendorCompanyId),
+  status: c.status as 'draft',
+  total: c.total,
+  overBudgetOverride: c.overBudgetOverride,
+  submittedAt: c.submittedAt?.toISOString() ?? null,
+  decidedAt: c.decidedAt?.toISOString() ?? null,
+  decisionNote: c.decisionNote,
+});
+
+export const toCommitmentLineDto = (l: CommitmentLineRow) => ({
+  budgetLineId: encodeId('budgetLine', l.budgetLineId),
+  description: l.description,
+  amount: l.amount,
 });

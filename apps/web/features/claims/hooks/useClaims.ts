@@ -10,7 +10,12 @@ import {
   type CreateForecastAdjustment,
   type CreateVariation,
   type IssuePaymentSchedule,
+  type RecordClaimStatement,
   type PaymentClaimStatus,
+  type RecordRetentionRelease,
+  type RecordTrustMovement,
+  type SaveRetentionTerms,
+  type SaveContractTrust,
   type SubmitPaymentClaim,
   type VariationAction,
 } from '../data/api';
@@ -38,12 +43,81 @@ export function useContract(projectId: string, contractId: string) {
   });
 }
 
+/** The payee's view of one contract: claims, what is owed and paid, and the trust record beside them. */
+export function usePaymentSummary(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'contracts', { paymentSummary: contractId }),
+    queryFn: () => source.paymentSummary(projectId, contractId),
+  });
+}
+
+/** Trust records change the payment summary (it carries the trust position), so both are refreshed. */
+export function useTrustMutations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') });
+  return {
+    saveTrust: useMutation({
+      mutationFn: (body: SaveContractTrust) => source.saveTrust(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+    recordMovement: useMutation({
+      mutationFn: (body: RecordTrustMovement) =>
+        source.recordTrustMovement(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+  };
+}
+
+export function useRetentionRelease(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'contracts', { retentionRelease: contractId }),
+    queryFn: () => source.retentionRelease(projectId, contractId),
+  });
+}
+
+export function useRetentionMutations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') });
+  return {
+    saveTerms: useMutation({
+      mutationFn: (body: SaveRetentionTerms) =>
+        source.saveRetentionTerms(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+    recordRelease: useMutation({
+      mutationFn: (body: RecordRetentionRelease) =>
+        source.recordRetentionRelease(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+  };
+}
+
 export function useCostForecast(projectId: string, enabled = true) {
   const { orgId } = useCurrentOrg();
   const source = useClaimsApi();
   return useQuery({
     queryKey: queryKeys.toolList(orgId, projectId, 'cost-forecast', {}),
     queryFn: () => source.costForecast(projectId),
+    enabled,
+  });
+}
+
+export function useBudgetVsForecast(projectId: string, enabled = true) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'cost-forecast', { view: 'budget' }),
+    queryFn: () => source.budgetVsForecast(projectId),
     enabled,
   });
 }
@@ -123,6 +197,11 @@ export function useClaimsMutations(projectId: string) {
     submitClaim: useMutation({
       mutationFn: (v: { contractId: string; body: SubmitPaymentClaim }) =>
         source.submitClaim(projectId, v.contractId, v.body),
+      onSuccess: refresh,
+    }),
+    recordStatement: useMutation({
+      mutationFn: (v: { claimId: string; body: RecordClaimStatement }) =>
+        source.recordStatement(projectId, v.claimId, v.body),
       onSuccess: refresh,
     }),
     issueSchedule: useMutation({

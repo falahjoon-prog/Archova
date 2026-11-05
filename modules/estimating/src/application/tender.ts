@@ -11,6 +11,7 @@ import {
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
 import type { FilesModule } from '@archova/mod-files';
+import type { FinancialsModule } from '@archova/mod-financials';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf } from '@archova/time';
 import { compareQuotes } from '../domain/comparison';
@@ -21,6 +22,7 @@ import {
   lowestQuote,
   nextPackageStatus,
   quoteTotals,
+  subcontractSov,
   takesQuotes,
   fromCents,
   toCents,
@@ -49,6 +51,8 @@ export interface EstimatingDeps {
   platform: Pick<PlatformApi, 'getProject' | 'projectCompanies' | 'companyExists'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision' | 'getDocumentRef'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  /** Raising a subcontract from the awarded quote. */
+  financials: Pick<FinancialsModule['api'], 'createContract' | 'contractForQuote'>;
   /** Prequalification (precon): which companies a tender invite must refuse when the org requires it. */
   prequal: {
     tenderGate(
@@ -536,6 +540,52 @@ export function createTenderService(deps: EstimatingDeps) {
     return get(scope, projectId, packageId);
   }
 
+  /**
+   * Raise the draft subcontract for an awarded package from its winning quote. Safe to call again: a quote raises at
+   * most one contract, and the second call returns it. Needs `financials.contracts.manage` as well as the right to
+   * review quotes, which the financials service checks.
+   */
+  async function createSubcontract(scope: TenantScope, projectId: string, packageId: string) {
+    const { row } = await load(scope, projectId, packageId);
+    // Serialise two people pressing the button at once; the unique index is the backstop.
+    await scope.tx
+      .select({ id: tenderPackages.id })
+      .from(tenderPackages)
+      .where(eq(tenderPackages.id, packageId))
+      .for('update');
+    if (row.status !== 'awarded' || !row.awardedQuoteId)
+      throw new AppError(
+        'tender.invalid_state',
+        'Award the package before raising a subcontract.',
+        undefined,
+        {
+          status: row.status,
+        },
+      );
+    const existing = await deps.financials.contractForQuote(scope, projectId, row.awardedQuoteId);
+    if (existing) return { contract: existing, created: false };
+    const [quote] = await scope.tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.id, row.awardedQuoteId), eq(quotes.packageId, packageId)))
+      .limit(1);
+    if (!quote) throw new AppError('quote.not_found');
+    const lines = await scope.tx
+      .select()
+      .from(quoteLines)
+      .where(eq(quoteLines.quoteId, quote.id))
+      .orderBy(asc(quoteLines.sort));
+    const made = await deps.financials.createContract(scope, projectId, {
+      kind: 'subcontract',
+      title: row.name.slice(0, 300),
+      payeeCompanyId: quote.companyId,
+      originalValue: fromCents(toCents(quote.totalExGst)),
+      sov: subcontractSov(lines, quote.totalExGst, row.name),
+      source: { packageId, quoteId: quote.id },
+    });
+    return { contract: made.contract, created: true };
+  }
+
   // ---- quotes ----
 
   async function withLines(scope: TenantScope, rows: QuoteRow[]): Promise<QuoteView[]> {
@@ -974,6 +1024,7 @@ export function createTenderService(deps: EstimatingDeps) {
     invite,
     setAllowances,
     award,
+    createSubcontract,
     listQuotes,
     getQuote,
     createQuote,

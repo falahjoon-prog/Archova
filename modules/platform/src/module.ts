@@ -55,6 +55,8 @@ export function createPlatformModule(
       getProjectAccessState: members.getProjectAccessState,
       contactsOfCompany: members.contactsOfCompany,
       getProject: projects.get,
+      /** A page of the projects the caller can see (org admins: all). Used by `reporting` for the portfolio. */
+      listProjects: projects.list,
       getOrg: orgs.getOrg,
       /** Project names for an open support session; read-only and org-wide, never a member's view (Sam 12 §4a). */
       /** True when the project exists in the org. Used by staff to check a legal hold names a real project. */
