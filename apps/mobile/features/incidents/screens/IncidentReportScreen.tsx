@@ -48,6 +48,8 @@ export function IncidentReportScreen({ projectId }: { projectId: string }) {
     borderRadius: t.radius.md,
     padding: t.space[2],
   };
+  // Multiline fields start at about three lines so they read as text areas, not single-line boxes.
+  const multiline = { ...input, minHeight: 96, textAlignVertical: 'top' as const };
   const submit = () => {
     setSaving(true);
     setMessage(null);
@@ -118,7 +120,7 @@ export function IncidentReportScreen({ projectId }: { projectId: string }) {
         placeholderTextColor={t.color.textSecondary}
         multiline
         accessibilityLabel="Details"
-        style={input}
+        style={multiline}
       />
       <TextInput
         value={immediate}
@@ -127,7 +129,7 @@ export function IncidentReportScreen({ projectId }: { projectId: string }) {
         placeholderTextColor={t.color.textSecondary}
         multiline
         accessibilityLabel="What was done straight away"
-        style={input}
+        style={multiline}
       />
       <Button label="Report incident" disabled={saving} onPress={submit} testID="report-incident" />
       {message ? <Text style={{ color: t.color.text }}>{message}</Text> : null}
