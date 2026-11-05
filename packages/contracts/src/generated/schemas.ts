@@ -250,6 +250,12 @@ export const ApproveInductionSectionRequestSchema = z.object({
 }).strict();
 export type ApproveInductionSectionRequest = z.infer<typeof ApproveInductionSectionRequestSchema>;
 
+export const ApprovePrequalificationRequestSchema = z.object({
+  "note": z.string().max(2000).optional(),
+  "expiresOn": z.string().date().optional(),
+}).strict();
+export type ApprovePrequalificationRequest = z.infer<typeof ApprovePrequalificationRequestSchema>;
+
 export const AskInductionRequestSchema = z.object({
   "question": z.string().min(1).max(500),
 }).strict();
@@ -387,6 +393,22 @@ export const BidBoardSchema = z.object({
   "truncated": z.boolean(),
 });
 export type BidBoard = z.infer<typeof BidBoardSchema>;
+
+export const BidderListSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "companyIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type BidderList = z.infer<typeof BidderListSchema>;
+
+export const BidderListListSchema = z.object({
+  "data": z.array(BidderListSchema),
+});
+export type BidderListList = z.infer<typeof BidderListListSchema>;
 
 export const BudgetLineSchema = z.object({
   "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
@@ -637,6 +659,12 @@ export const ComplianceExpiryAlertListSchema = z.object({
 });
 export type ComplianceExpiryAlertList = z.infer<typeof ComplianceExpiryAlertListSchema>;
 
+export const ComplianceFileLinkSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceFileLink = z.infer<typeof ComplianceFileLinkSchema>;
+
 export const ComplianceGrantSchema = z.object({
   "id": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
   "granteeName": z.string(),
@@ -676,6 +704,7 @@ export const SharedComplianceDocumentSchema = z.object({
   "evidence": z.enum(["recorded", "sighted", "self_declared"]),
   "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
   "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "fileCount": z.number().int().min(0).max(4),
 });
 export type SharedComplianceDocument = z.infer<typeof SharedComplianceDocumentSchema>;
 
@@ -994,6 +1023,13 @@ export const CreateAttendanceSiteRequestSchema = z.object({
   "gateCheckMode": z.enum(["block", "warn"]).optional(),
 }).strict();
 export type CreateAttendanceSiteRequest = z.infer<typeof CreateAttendanceSiteRequestSchema>;
+
+export const CreateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict();
+export type CreateBidderListRequest = z.infer<typeof CreateBidderListRequestSchema>;
 
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -1449,6 +1485,33 @@ export const CreateOrgRequestSchema = z.object({
 }).strict();
 export type CreateOrgRequest = z.infer<typeof CreateOrgRequestSchema>;
 
+export const PrequalQuestionSchema = z.object({
+  "id": z.string().regex(new RegExp("^[a-z0-9][a-z0-9_-]{0,39}$")),
+  "section": z.string().max(100),
+  "prompt": z.string().min(1).max(1000),
+  "type": z.enum(["yes_no", "text", "number", "select", "date"]),
+  "options": z.array(z.string().max(200)).max(20),
+  "required": z.boolean(),
+  "expect": z.enum(["yes", "no"]).nullable(),
+  "points": z.number().int().min(0).max(100),
+  "critical": z.boolean(),
+});
+export type PrequalQuestion = z.infer<typeof PrequalQuestionSchema>;
+
+export const CreatePrequalTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "validityMonths": z.number().int().min(1).max(60).optional(),
+  "questions": z.array(PrequalQuestionSchema).max(100),
+}).strict();
+export type CreatePrequalTemplateRequest = z.infer<typeof CreatePrequalTemplateRequestSchema>;
+
+export const CreatePrequalificationRequestSchema = z.object({
+  "companyId": CompanyRefSchema,
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+  "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
+}).strict();
+export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificationRequestSchema>;
+
 export const ProjectStatusSchema = z.enum(["tender", "active", "on_hold", "closed", "archived"]);
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 
@@ -1566,6 +1629,12 @@ export const CreateScheduleDependencyRequestSchema = z.object({
   "lagDays": z.number().int().min(-1000).max(1000).optional(),
 }).strict();
 export type CreateScheduleDependencyRequest = z.infer<typeof CreateScheduleDependencyRequestSchema>;
+
+export const CreateScheduleLinkRequestSchema = z.object({
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+}).strict();
+export type CreateScheduleLinkRequest = z.infer<typeof CreateScheduleLinkRequestSchema>;
 
 export const CreateScheduleRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -3408,7 +3477,7 @@ export const NotificationSchema = z.object({
   "kind": z.string(),
   "title": z.string(),
   "body": z.string(),
-  "entityType": z.enum(["meeting"]),
+  "entityType": z.enum(["meeting", "tender_package"]),
   "entityId": z.string(),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
   "readAt": z.string().datetime({ offset: true }).nullable(),
@@ -3995,6 +4064,85 @@ export const PermissionTemplateSchema = z.object({
 });
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
 
+export const PrequalAnswersSchema = z.record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean(), z.null()]));
+export type PrequalAnswers = z.infer<typeof PrequalAnswersSchema>;
+
+export const PrequalQualificationSchema = z.enum(["qualified", "expiring", "expired", "pending", "not_qualified"]);
+export type PrequalQualification = z.infer<typeof PrequalQualificationSchema>;
+
+export const PrequalStatusSchema = z.enum(["draft", "submitted", "approved", "rejected"]);
+export type PrequalStatus = z.infer<typeof PrequalStatusSchema>;
+
+export const PrequalificationSummarySchema = z.object({
+  "id": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+  "companyId": CompanyRefSchema,
+  "templateName": z.string(),
+  "templateVersion": z.number().int(),
+  "status": PrequalStatusSchema,
+  "qualification": PrequalQualificationSchema,
+  "trades": z.array(z.string()),
+  "scorePoints": z.number().int().nullable(),
+  "scoreMax": z.number().int().nullable(),
+  "concerns": z.array(z.string()),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type PrequalificationSummary = z.infer<typeof PrequalificationSummarySchema>;
+
+export const PrequalRegisterSchema = z.object({
+  "data": z.array(PrequalificationSummarySchema),
+});
+export type PrequalRegister = z.infer<typeof PrequalRegisterSchema>;
+
+export const PrequalTemplateSchema = z.object({
+  "id": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "version": z.number().int(),
+  "published": z.boolean(),
+  "validityMonths": z.number().int(),
+  "questions": z.array(PrequalQuestionSchema),
+  "rowVersion": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type PrequalTemplate = z.infer<typeof PrequalTemplateSchema>;
+
+export const PrequalTemplateListSchema = z.object({
+  "data": z.array(PrequalTemplateSchema),
+});
+export type PrequalTemplateList = z.infer<typeof PrequalTemplateListSchema>;
+
+export const PrequalificationSchema = z.object({
+  "id": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+  "companyId": CompanyRefSchema,
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+  "templateName": z.string(),
+  "templateVersion": z.number().int(),
+  "status": PrequalStatusSchema,
+  "qualification": PrequalQualificationSchema,
+  "trades": z.array(z.string()),
+  "answers": PrequalAnswersSchema,
+  "scorePoints": z.number().int().nullable(),
+  "scoreMax": z.number().int().nullable(),
+  "concerns": z.array(z.string()),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedBy": z.union([UserRefSchema, z.null()]),
+  "decisionNote": z.string().nullable(),
+  "validFrom": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "questions": z.array(PrequalQuestionSchema),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Prequalification = z.infer<typeof PrequalificationSchema>;
+
+export const PrequalificationListSchema = z.object({
+  "data": z.array(PrequalificationSummarySchema),
+});
+export type PrequalificationList = z.infer<typeof PrequalificationListSchema>;
+
 export const ProblemSchema = z.object({
   "drainGrant": DrainGrantSchema.optional(),
   "type": z.string(),
@@ -4252,6 +4400,11 @@ export const RecordInspectionResponsesRequestSchema = z.object({
 }).strict();
 export type RecordInspectionResponsesRequest = z.infer<typeof RecordInspectionResponsesRequestSchema>;
 
+export const RejectPrequalificationRequestSchema = z.object({
+  "note": z.string().min(1).max(2000),
+}).strict();
+export type RejectPrequalificationRequest = z.infer<typeof RejectPrequalificationRequestSchema>;
+
 export const RemoveProjectMemberRequestSchema = z.object({
   "kind": z.enum(["ordinary", "for_cause", "wipe_now"]),
   "reason": z.string().max(500).optional(),
@@ -4445,6 +4598,25 @@ export const SaveInductionDraftRequestSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
+
+export const ScheduleLinkSchema = z.object({
+  "id": z.string(),
+  "activityId": z.string(),
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+  "visible": z.boolean(),
+  "ref": z.string().nullable(),
+  "title": z.string().nullable(),
+  "status": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "scheduleImpactDays": z.number().int().nullable(),
+});
+export type ScheduleLink = z.infer<typeof ScheduleLinkSchema>;
+
+export const ScheduleLinkListSchema = z.object({
+  "data": z.array(ScheduleLinkSchema),
+});
+export type ScheduleLinkList = z.infer<typeof ScheduleLinkListSchema>;
 
 export const ScheduleListSchema = z.object({
   "data": z.array(ScheduleSummarySchema),
@@ -5065,6 +5237,13 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
 
+export const UpdateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateBidderListRequest = z.infer<typeof UpdateBidderListRequestSchema>;
+
 export const UpdateBudgetLineRequestSchema = z.object({
   "description": z.string().max(300).optional(),
   "original": FinancialsMoneySchema.optional(),
@@ -5336,6 +5515,19 @@ export const UpdateObservationRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateObservationRequest = z.infer<typeof UpdateObservationRequestSchema>;
+
+export const UpdatePrequalTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "validityMonths": z.number().int().min(1).max(60).optional(),
+  "questions": z.array(PrequalQuestionSchema).max(100).optional(),
+}).strict();
+export type UpdatePrequalTemplateRequest = z.infer<typeof UpdatePrequalTemplateRequestSchema>;
+
+export const UpdatePrequalificationRequestSchema = z.object({
+  "answers": PrequalAnswersSchema.optional(),
+  "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
+}).strict();
+export type UpdatePrequalificationRequest = z.infer<typeof UpdatePrequalificationRequestSchema>;
 
 export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

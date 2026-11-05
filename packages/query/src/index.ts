@@ -62,6 +62,7 @@ export type ProjectTool =
   | 'estimates'
   | 'contracts'
   | 'payment-claims'
+  | 'cost-forecast'
   | 'budget';
 
 /** Identity helper that keeps the literal key type, like TanStack's `queryOptions`. */

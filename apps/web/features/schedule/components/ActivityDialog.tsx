@@ -5,7 +5,10 @@ import { Button, Dialog, Select, TextField } from '@archova/ui';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { serverFieldErrors } from '@/shared/lib/forms';
 import type { DepType, ScheduleActivity, ScheduleDetail } from '../data/programme';
-import { useProgrammeMutations } from '../hooks/useProgramme';
+import { formatRfiNumber, useRfiList } from '@/features/rfis';
+import { useSubmittalList } from '@/features/submittals';
+import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { useProgrammeMutations, useScheduleLinks } from '../hooks/useProgramme';
 import { DEP_LABELS } from '../lib/labels';
 
 const DEP_OPTIONS = Object.entries(DEP_LABELS).map(([value, label]) => ({ value, label }));
@@ -13,6 +16,110 @@ const KIND_OPTIONS = [
   { value: 'task', label: 'Task' },
   { value: 'milestone', label: 'Milestone' },
 ];
+
+const LINK_KIND_OPTIONS = [
+  { value: 'rfi', label: 'An RFI' },
+  { value: 'submittal', label: 'A submittal' },
+];
+const clip = (s: string) => (s.length > 70 ? `${s.slice(0, 69)}…` : s);
+
+/** RFIs and submittals tied to one activity (SCH-US10): what the work is waiting on from design and review. */
+function LinkedItems({ detail, activityId }: { detail: ScheduleDetail; activityId: string }) {
+  const { projectId } = useCurrentProject();
+  const m = useProgrammeMutations(detail.schedule.id);
+  const links = useScheduleLinks(detail.schedule.id);
+  const [kind, setKind] = useState<'rfi' | 'submittal'>('rfi');
+  const [target, setTarget] = useState('');
+  const rfis = useRfiList(projectId, {});
+  const submittals = useSubmittalList(projectId, {});
+  const mine = (links.data ?? []).filter((l) => l.activityId === activityId);
+  const options =
+    kind === 'rfi'
+      ? (rfis.data ?? []).map((r) => ({
+          value: r.id,
+          label: clip(`${formatRfiNumber(r.number)}  ${r.subject}`),
+        }))
+      : (submittals.data ?? []).map((s) => ({
+          value: s.id,
+          label: clip(`${s.numberLabel}  ${s.title}`),
+        }));
+  const pending = kind === 'rfi' ? rfis.isPending : submittals.isPending;
+  return (
+    <section className="stack" aria-label="Linked RFIs and submittals">
+      <h3 className="u-m-0">RFIs and submittals</h3>
+      <ErrorAlert
+        error={links.error ?? m.createLink.error ?? m.deleteLink.error}
+        title="We couldn't change the linked items"
+      />
+      {mine.length ? (
+        <ul className="activity-links">
+          {mine.map((l) => (
+            <li key={l.id} className="activity-links__row">
+              <span>
+                {l.visible ? (
+                  <>
+                    {l.ref} {l.title}{' '}
+                    <span className="u-muted">
+                      ({(l.status ?? '').replace(/_/g, ' ')}
+                      {l.dueDate
+                        ? `, ${l.kind === 'rfi' ? 'due' : 'needed on site'} ${l.dueDate}`
+                        : ''}
+                      {l.scheduleImpactDays ? `, ${l.scheduleImpactDays}d impact` : ''})
+                    </span>
+                  </>
+                ) : (
+                  <span className="u-muted">
+                    {l.kind === 'rfi' ? 'An RFI' : 'A submittal'} you can't see
+                  </span>
+                )}
+              </span>
+              <Button
+                variant="tertiary"
+                loading={m.deleteLink.isPending && m.deleteLink.variables === l.id}
+                onClick={() => m.deleteLink.mutate(l.id)}
+              >
+                Remove
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="u-muted u-m-0">Nothing linked yet.</p>
+      )}
+      <div className="form-row form-row--end">
+        <Select
+          label="Type"
+          options={LINK_KIND_OPTIONS}
+          value={kind}
+          onChange={(e) => {
+            setKind(e.target.value as 'rfi' | 'submittal');
+            setTarget('');
+          }}
+        />
+        <Select
+          label="Item"
+          placeholder={pending ? 'Loading…' : 'Choose an item'}
+          options={options}
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+        />
+        <Button
+          variant="secondary"
+          disabled={!target}
+          loading={m.createLink.isPending}
+          onClick={() =>
+            m.createLink.mutate(
+              { activityId, kind, targetId: target },
+              { onSuccess: () => setTarget('') },
+            )
+          }
+        >
+          Link
+        </Button>
+      </div>
+    </section>
+  );
+}
 
 /** Adds or edits a task or milestone, and (when editing) the activities it waits for (SCH-US9). */
 export function ActivityDialog({
@@ -251,6 +358,7 @@ export function ActivityDialog({
           ) : null}
         </section>
       ) : null}
+      {activity ? <LinkedItems detail={detail} activityId={activity.id} /> : null}
     </Dialog>
   );
 }

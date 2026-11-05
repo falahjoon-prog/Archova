@@ -101,7 +101,7 @@ export type InductionDeps = WorkforceDeps & {
     downloadUrl(
       scope: TenantScope,
       fileId: string,
-      opts: { authorised: boolean },
+      opts: { authorised: boolean; expiresInS?: number; contentType?: string },
     ): Promise<{ url: string; expiresAt: Date }>;
   };
   documents: {

@@ -24,6 +24,7 @@ export const ID_PREFIXES = {
   quoteLine: 'qln',
   takeoffMeasurement: 'tkm',
   costItem: 'cit',
+  bidderList: 'bdl',
   estimate: 'est',
   estimateLine: 'esl',
   importJob: 'imp',
@@ -86,6 +87,7 @@ export const ID_PREFIXES = {
   schedule: 'sch',
   scheduleActivity: 'sac',
   scheduleDependency: 'sdp',
+  scheduleLink: 'slk',
   notification: 'ntf',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',
@@ -102,6 +104,8 @@ export const ID_PREFIXES = {
   budget: 'bud',
   budgetLine: 'bln',
   budgetAdjustment: 'bad',
+  prequalTemplate: 'pqt',
+  prequalification: 'pqf',
   forecastAdjustment: 'fca',
 } as const;
 

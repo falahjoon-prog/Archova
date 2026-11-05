@@ -22,6 +22,8 @@ export function createSubmittalsModule(
     api: {
       /** Meeting agenda (`meetings`): submittals the caller can see that are due soon. */
       dueForMeeting: service.dueForMeeting,
+      /** Programme links (`scheduling`): details of the submittals among some ids that the caller can see. */
+      summariesByIds: service.summariesByIds,
     },
   };
 }

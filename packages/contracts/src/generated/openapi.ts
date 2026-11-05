@@ -730,6 +730,71 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        /** Every RFI and submittal tied to an activity on this programme (SCH-US10). Items the caller cannot see come back as `visible: false` with no details. */
+        get: operations["listScheduleLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Tie an RFI or submittal to this activity. The caller must be able to see the item. */
+        post: operations["createScheduleLink"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                linkId: components["parameters"]["ScheduleLinkId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Untie an RFI or submittal from its activity. */
+        delete: operations["deleteScheduleLink"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead": {
         parameters: {
             query?: never;
@@ -2476,6 +2541,51 @@ export interface paths {
         options?: never;
         head?: never;
         patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bidder-lists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The company's reusable bidder lists, by name.
+         * @description A bidder list names the companies an estimator usually invites for a trade. Using one on a package still goes
+         *     through the package's invites, so only companies on the project can be invited. Staff only.
+         */
+        get: operations["listBidderLists"];
+        put?: never;
+        /** Save a bidder list. */
+        post: operations["createBidderList"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bidder-lists/{bidderListId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bidderListId: components["parameters"]["BidderListId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a bidder list. Invites already sent are unaffected. */
+        delete: operations["deleteBidderList"];
+        options?: never;
+        head?: never;
+        /** Rename a bidder list, change its trade or replace its companies. */
+        patch: operations["updateBidderList"];
         trace?: never;
     };
     "/v1/orgs/{orgId}/bid-board": {
@@ -5333,6 +5443,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/prequal-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The prequalification forms, by name then newest version. */
+        get: operations["listPrequalTemplates"];
+        put?: never;
+        /** Start a new form as a draft. */
+        post: operations["createPrequalTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequal-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        /** One form with its questions. */
+        get: operations["getPrequalTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft form. A published form is frozen. */
+        patch: operations["updatePrequalTemplate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequal-templates/{templateId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze a form so companies can be asked to complete it. */
+        post: operations["publishPrequalTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequal-templates/{templateId}/new-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a published form into a draft at the next version. */
+        post: operations["newPrequalTemplateVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Prequalification forms, newest first. */
+        get: operations["listPrequalifications"];
+        put?: never;
+        /** Start a form for a company on a published template. */
+        post: operations["createPrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalification-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One line per company: who is qualified today, who is expiring, who has lapsed.
+         * @description Each company shows its best standing: an approved form in date wins over a pending renewal, which wins over an expired or rejected form. Sorted by soonest expiry. Standing is worked out when asked, so it never goes stale.
+         */
+        get: operations["getPrequalificationRegister"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        /** One form with its answers. */
+        get: operations["getPrequalification"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save answers or trades on a draft. */
+        patch: operations["updatePrequalification"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a completed draft for a decision. Required questions must be answered; the advisory score is worked out now. */
+        post: operations["submitPrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a submitted form. A person decides; the score is advice only. */
+        post: operations["approvePrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted form, with the reason. */
+        post: operations["rejectPrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/subcontractor-wallets": {
         parameters: {
             query?: never;
@@ -5367,6 +5681,31 @@ export interface paths {
          * @description Only the document types the grant covers, never `wwcc`, never files or the full number. Each read is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A grant for one project answers 404 for any other.
          */
         get: operations["listGrantedWalletDocuments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+                documentId: string;
+                position: "1" | "2" | "3" | "4";
+            };
+            cookie?: never;
+        };
+        /**
+         * Get a 60-second download link for one file of a shared document.
+         * @description The view is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A revoked or expired grant, a type the grant does not cover, `wwcc`, an archived document and any other subcontractor's file all answer 404.
+         */
+        get: operations["getGrantedWalletFileLink"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6893,6 +7232,35 @@ export interface components {
             /** @description The dates break this link (the successor is too early). */
             violated: boolean;
         };
+        ScheduleLink: {
+            id: string;
+            activityId: string;
+            /** @enum {string} */
+            kind: "rfi" | "submittal";
+            /** @description Public id of the RFI or submittal. */
+            targetId: string;
+            /** @description False when the caller cannot see the item (or it is gone); the details are null. */
+            visible: boolean;
+            /** @description RFI-012 or the submittal number label. */
+            ref: string | null;
+            title: string | null;
+            status: string | null;
+            /**
+             * Format: date
+             * @description RFI due date, or the submittal required-on-site date.
+             */
+            dueDate: string | null;
+            /** @description RFI schedule impact in days; null for submittals. */
+            scheduleImpactDays: number | null;
+        };
+        ScheduleLinkList: {
+            data: components["schemas"]["ScheduleLink"][];
+        };
+        CreateScheduleLinkRequest: {
+            /** @enum {string} */
+            kind: "rfi" | "submittal";
+            targetId: string;
+        };
         ScheduleDetail: {
             schedule: components["schemas"]["ScheduleSummary"];
             activities: components["schemas"]["ScheduleActivity"][];
@@ -7810,12 +8178,12 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon` or `meeting.action_overdue`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`. */
             kind: string;
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting";
+            entityType: "meeting" | "tender_package";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
@@ -9675,6 +10043,31 @@ export interface components {
         };
         RfiReasonRequest: {
             reason: string;
+        };
+        BidderList: {
+            id: string;
+            name: string;
+            /** @description Empty when the list is not tied to a trade. */
+            trade: string;
+            companyIds: string[];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            version: number;
+        };
+        BidderListList: {
+            data: components["schemas"]["BidderList"][];
+        };
+        CreateBidderListRequest: {
+            name: string;
+            trade?: string;
+            companyIds?: string[];
+        };
+        UpdateBidderListRequest: {
+            name?: string;
+            trade?: string;
+            companyIds?: string[];
         };
         BidBoard: {
             data: components["schemas"]["BidBoardEntry"][];
@@ -11744,6 +12137,138 @@ export interface components {
         };
         /** @enum {string} */
         ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "other";
+        PrequalQuestion: {
+            id: string;
+            section: string;
+            prompt: string;
+            /** @enum {string} */
+            type: "yes_no" | "text" | "number" | "select" | "date";
+            options: string[];
+            required: boolean;
+            /**
+             * @description For a yes/no question, the answer the builder wants.
+             * @enum {string|null}
+             */
+            expect: "yes" | "no" | null;
+            points: number;
+            /** @description An unwanted answer is flagged to whoever decides. It never rejects a form by itself. */
+            critical: boolean;
+        };
+        PrequalTemplate: {
+            id: string;
+            name: string;
+            /** @description The form's own version */
+            version: number;
+            published: boolean;
+            /** @description How long an approval lasts unless the approver sets another date. */
+            validityMonths: number;
+            questions: components["schemas"]["PrequalQuestion"][];
+            /** @description Concurrency version */
+            rowVersion: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PrequalTemplateList: {
+            data: components["schemas"]["PrequalTemplate"][];
+        };
+        CreatePrequalTemplateRequest: {
+            name: string;
+            validityMonths?: number;
+            questions: components["schemas"]["PrequalQuestion"][];
+        };
+        UpdatePrequalTemplateRequest: {
+            name?: string;
+            validityMonths?: number;
+            questions?: components["schemas"]["PrequalQuestion"][];
+        };
+        /** @enum {string} */
+        PrequalStatus: "draft" | "submitted" | "approved" | "rejected";
+        /**
+         * @description `qualified`: approved and in date. `expiring`: within 30 days of expiry. `expired`: approved but lapsed. `pending`: a draft or submitted form with nothing in date. `not_qualified`: the latest form was rejected.
+         * @enum {string}
+         */
+        PrequalQualification: "qualified" | "expiring" | "expired" | "pending" | "not_qualified";
+        /** @description Answers by question id. yes/no is a boolean, number a number, the rest strings. */
+        PrequalAnswers: {
+            [key: string]: string | number | boolean | null;
+        };
+        Prequalification: {
+            id: string;
+            companyId: components["schemas"]["CompanyRef"];
+            templateId: string;
+            templateName: string;
+            templateVersion: number;
+            status: components["schemas"]["PrequalStatus"];
+            qualification: components["schemas"]["PrequalQualification"];
+            trades: string[];
+            answers: components["schemas"]["PrequalAnswers"];
+            /** @description Set on submit. Advice for the person deciding */
+            scorePoints: number | null;
+            scoreMax: number | null;
+            /** @description Ids of critical questions not answered as wanted. */
+            concerns: string[];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedBy: components["schemas"]["UserRef"] | null;
+            decisionNote: string | null;
+            /** Format: date */
+            validFrom: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            /** @description The questions on the version this form was started on. */
+            questions: components["schemas"]["PrequalQuestion"][];
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PrequalificationList: {
+            data: components["schemas"]["PrequalificationSummary"][];
+        };
+        PrequalificationSummary: {
+            id: string;
+            companyId: components["schemas"]["CompanyRef"];
+            templateName: string;
+            templateVersion: number;
+            status: components["schemas"]["PrequalStatus"];
+            qualification: components["schemas"]["PrequalQualification"];
+            trades: string[];
+            scorePoints: number | null;
+            scoreMax: number | null;
+            concerns: string[];
+            /** Format: date-time */
+            decidedAt: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PrequalRegister: {
+            data: components["schemas"]["PrequalificationSummary"][];
+        };
+        CreatePrequalificationRequest: {
+            companyId: components["schemas"]["CompanyRef"];
+            templateId: string;
+            trades?: string[];
+        };
+        UpdatePrequalificationRequest: {
+            answers?: components["schemas"]["PrequalAnswers"];
+            trades?: string[];
+        };
+        ApprovePrequalificationRequest: {
+            note?: string;
+            /**
+             * Format: date
+             * @description Defaults to the form's validity from today.
+             */
+            expiresOn?: string;
+        };
+        RejectPrequalificationRequest: {
+            note: string;
+        };
         ComplianceDocument: {
             id: string;
             itemType: components["schemas"]["ComplianceItemType"];
@@ -11954,6 +12479,14 @@ export interface components {
             expiry: "no_expiry" | "current" | "expiring" | "expired";
             /** Format: date-time */
             sightedAt: string | null;
+            /** @description How many files back this document; fetch each by position (1 to fileCount) through the file route. */
+            fileCount: number;
+        };
+        ComplianceFileLink: {
+            /** @description Signed download link, valid for 60 seconds. */
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         SharedComplianceDocumentList: {
             data: components["schemas"]["SharedComplianceDocument"][];
@@ -12572,6 +13105,7 @@ export interface components {
         TenderPackageId: string;
         QuoteId: string;
         TakeoffMeasurementId: string;
+        BidderListId: string;
         CostItemId: string;
         EstimateId: string;
         EstimateLineId: string;
@@ -12590,6 +13124,7 @@ export interface components {
         ScheduleId: string;
         ScheduleActivityId: string;
         ScheduleDependencyId: string;
+        ScheduleLinkId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -13710,6 +14245,85 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ScheduleDetail"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listScheduleLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleLinkList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createScheduleLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleLinkRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleLink"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteScheduleLink: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                linkId: components["parameters"]["ScheduleLinkId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };
@@ -16166,6 +16780,115 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LateSubmission"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBidderLists: {
+        parameters: {
+            query?: {
+                trade?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidderListList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBidderList: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBidderListRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidderList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteBidderList: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bidderListId: components["parameters"]["BidderListId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateBidderList: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                bidderListId: components["parameters"]["BidderListId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBidderListRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidderList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -21313,6 +22036,403 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    listPrequalTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrequalTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrequalTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrequalTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePrequalTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishPrequalTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    newPrequalTemplateVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPrequalifications: {
+        parameters: {
+            query?: {
+                companyId?: string;
+                status?: components["schemas"]["PrequalStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalificationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrequalification: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalificationRegister: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["PrequalQualification"];
+                trade?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalRegister"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitPrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approvePrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovePrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectPrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listGrantedWallets: {
         parameters: {
             query?: never;
@@ -21357,6 +22477,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SharedComplianceDocumentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getGrantedWalletFileLink: {
+        parameters: {
+            query: {
+                projectId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+                documentId: string;
+                position: "1" | "2" | "3" | "4";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceFileLink"];
                 };
             };
             default: components["responses"]["Problem"];

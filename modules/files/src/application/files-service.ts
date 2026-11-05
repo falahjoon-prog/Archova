@@ -318,15 +318,18 @@ export function createFilesService({
   async function downloadUrl(
     scope: TenantScope,
     fileId: string,
-    opts: { authorised?: boolean } = {},
+    opts: { authorised?: boolean; expiresInS?: number; contentType?: string } = {},
   ) {
     const f = await get(scope, fileId, opts);
     assertFileReady(f);
+    // A caller can ask for a shorter life (never a longer one).
+    const ttl = Math.min(DOWNLOAD_URL_TTL_S, Math.max(1, opts.expiresInS ?? DOWNLOAD_URL_TTL_S));
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
-      expiresInS: DOWNLOAD_URL_TTL_S,
+      expiresInS: ttl,
+      contentType: opts.contentType,
     });
-    return { url, expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000) };
+    return { url, expiresAt: new Date(Date.now() + ttl * 1000) };
   }
 
   /**

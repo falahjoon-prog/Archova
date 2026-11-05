@@ -16,7 +16,10 @@ export interface NewNotification {
   dedupeKey: string;
 }
 
-const ENTITY_KIND: Record<NotificationEntity, IdKind> = { meeting: 'meeting' };
+const ENTITY_KIND: Record<NotificationEntity, IdKind> = {
+  meeting: 'meeting',
+  tender_package: 'tenderPackage',
+};
 
 type Row = typeof notifications.$inferSelect;
 

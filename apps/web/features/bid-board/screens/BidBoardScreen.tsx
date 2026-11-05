@@ -18,6 +18,7 @@ import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatMoney } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { BidderLists } from './BidderLists';
 import { useBidBoard } from '../hooks/useBidBoard';
 import {
   STATUS_LABELS,
@@ -181,6 +182,7 @@ export function BidBoardScreen() {
           }
         />
       )}
+      <BidderLists />
     </div>
   );
 }
