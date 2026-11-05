@@ -421,6 +421,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     defects: defects.api,
     submittals: submittals.api,
+    claims: financials.api.reporting.claims,
+    variations: financials.api.reporting.variations,
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,

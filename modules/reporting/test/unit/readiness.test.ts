@@ -87,6 +87,8 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
     rfis: tool,
     defects: tool,
     submittals: tool,
+    claims: tool,
+    variations: tool,
     access: { can: async () => true },
     precon: {
       readinessSummary: async () => ({

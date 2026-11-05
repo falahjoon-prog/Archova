@@ -12821,7 +12821,7 @@ components:
         overdue: { type: integer }
     PortfolioProject:
       type: object
-      required: [id, name, number, status, rfis, defects, submittals, attention]
+      required: [id, name, number, status, rfis, defects, submittals, claims, variations, attention]
       properties:
         id: { type: string }
         name: { type: string }
@@ -12830,7 +12830,18 @@ components:
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
-        attention: { type: integer, description: 'Overdue RFIs, defects and submittals together.' }
+        claims:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Payment claims not yet paid or withdrawn; overdue means the SOPA schedule or payment date has passed.',
+          }
+        variations:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Variations submitted and waiting for a decision; they have no due date, so overdue is always zero.',
+          }
+        attention:
+          { type: integer, description: 'Overdue RFIs, defects, submittals and claims together.' }
     PortfolioTotals:
       type: object
       required:
@@ -12842,6 +12853,10 @@ components:
           defectsOverdue,
           submittalsOpen,
           submittalsOverdue,
+          claimsOpen,
+          claimsOverdue,
+          variationsOpen,
+          variationsOverdue,
         ]
       properties:
         projects: { type: integer }
@@ -12851,6 +12866,10 @@ components:
         defectsOverdue: { type: integer }
         submittalsOpen: { type: integer }
         submittalsOverdue: { type: integer }
+        claimsOpen: { type: integer }
+        claimsOverdue: { type: integer }
+        variationsOpen: { type: integer }
+        variationsOverdue: { type: integer }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -12979,7 +12998,7 @@ components:
       additionalProperties: false
       required: [source, state, projectIds, columns, overdueOnly]
       properties:
-        source: { type: string, enum: [rfis, defects, submittals] }
+        source: { type: string, enum: [rfis, defects, submittals, claims, variations] }
         state:
           {
             type: string,

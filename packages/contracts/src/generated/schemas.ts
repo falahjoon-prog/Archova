@@ -5023,6 +5023,10 @@ export const PortfolioTotalsSchema = z.object({
   "defectsOverdue": z.number().int(),
   "submittalsOpen": z.number().int(),
   "submittalsOverdue": z.number().int(),
+  "claimsOpen": z.number().int(),
+  "claimsOverdue": z.number().int(),
+  "variationsOpen": z.number().int(),
+  "variationsOverdue": z.number().int(),
 });
 export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
 
@@ -5041,6 +5045,8 @@ export const PortfolioProjectSchema = z.object({
   "rfis": PortfolioToolSchema,
   "defects": PortfolioToolSchema,
   "submittals": PortfolioToolSchema,
+  "claims": PortfolioToolSchema,
+  "variations": PortfolioToolSchema,
   "attention": z.number().int(),
 });
 export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
@@ -5549,7 +5555,7 @@ export const ReplaceSpecSectionsRequestSchema = z.object({
 export type ReplaceSpecSectionsRequest = z.infer<typeof ReplaceSpecSectionsRequestSchema>;
 
 export const ReportConfigSchema = z.object({
-  "source": z.enum(["rfis", "defects", "submittals"]),
+  "source": z.enum(["rfis", "defects", "submittals", "claims", "variations"]),
   "state": z.enum(["open", "closed", "all"]),
   "projectIds": z.array(z.string()).max(200),
   "columns": z.array(z.enum(["project", "ref", "title", "status", "dueDate", "overdue", "createdAt"])).min(1).max(7),
