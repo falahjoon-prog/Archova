@@ -2020,7 +2020,7 @@ export interface paths {
          *     access also search sent RFIs, their question and every response; an RFI is cited by its `rfi_` id, and other
          *     people never retrieve RFI text through Ask. When the project's records don't answer it, `found` is false and
          *     `closestMatches` lists the nearest passages instead of a guess. Costs one Nova credit when the model is
-         *     called; nothing when no visible passage matches.
+         *     called; nothing when no visible passage matches. `nccReferences` lists signed NCC provisions the answer touches.
          */
         post: operations["askNova"];
         delete?: never;
@@ -11117,6 +11117,34 @@ export interface components {
             citations: components["schemas"]["NovaCitation"][];
             /** @description When not found, the nearest passages so the user can check themselves. */
             closestMatches: components["schemas"]["NovaSource"][];
+            /**
+             * @description National Construction Code provisions from Archova's signed table (edition, volume, clause, link) that the
+             *     question or answer touches. Chosen by matching the table's keywords, never written by the model, and
+             *     empty when no signed provision applies.
+             */
+            nccReferences?: components["schemas"]["NccReference"][];
+            /** @description Fixed wording to show with `nccReferences` when there are any. */
+            nccNote?: string;
+        };
+        NccReference: {
+            provisionKey: string;
+            /**
+             * @description The NCC edition the clause number was checked against.
+             * @example 2022
+             */
+            edition: string;
+            /** @enum {string} */
+            volume: "1" | "2" | "3";
+            /** @example J3D3 */
+            clause: string;
+            title: string;
+            /** @description In Archova's own words */
+            summary: string;
+            /** Format: uri */
+            url: string;
+            signedBy: string;
+            /** Format: date */
+            signedOn: string;
         };
         NovaRfiDraft: {
             /** @description For feedback (`air_`) */

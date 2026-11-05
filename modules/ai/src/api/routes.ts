@@ -46,6 +46,7 @@ import type { HazardScanService, HazardSignalView } from '../application/hazard-
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
+import { NCC_NOTE } from '../domain/ncc-references';
 import type { SummarySource } from '../domain/diary-summary';
 import type { suggestions } from '../infra/tables';
 
@@ -363,6 +364,8 @@ export function aiRoutes(
           answer: a.answer,
           citations: a.citations.map((c) => ({ ...toSourceDto(c), quote: c.quote })),
           closestMatches: a.closestMatches.map(toSourceDto),
+          nccReferences: a.nccReferences,
+          ...(a.nccReferences.length ? { nccNote: NCC_NOTE } : {}),
         },
       };
     },
