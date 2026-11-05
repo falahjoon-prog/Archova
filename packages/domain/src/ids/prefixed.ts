@@ -100,6 +100,8 @@ export const ID_PREFIXES = {
   variation: 'var',
   budgetLine: 'bdl',
   commitment: 'cmt',
+  prequalTemplate: 'pqt',
+  prequalification: 'pqf',
   forecastAdjustment: 'fca',
 } as const;
 

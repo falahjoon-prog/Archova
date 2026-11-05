@@ -5333,6 +5333,210 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/prequal-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The prequalification forms, by name then newest version. */
+        get: operations["listPrequalTemplates"];
+        put?: never;
+        /** Start a new form as a draft. */
+        post: operations["createPrequalTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequal-templates/{templateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        /** One form with its questions. */
+        get: operations["getPrequalTemplate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a draft form. A published form is frozen. */
+        patch: operations["updatePrequalTemplate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequal-templates/{templateId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Freeze a form so companies can be asked to complete it. */
+        post: operations["publishPrequalTemplate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequal-templates/{templateId}/new-version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Copy a published form into a draft at the next version. */
+        post: operations["newPrequalTemplateVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Prequalification forms, newest first. */
+        get: operations["listPrequalifications"];
+        put?: never;
+        /** Start a form for a company on a published template. */
+        post: operations["createPrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalification-register": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * One line per company: who is qualified today, who is expiring, who has lapsed.
+         * @description Each company shows its best standing: an approved form in date wins over a pending renewal, which wins over an expired or rejected form. Sorted by soonest expiry. Standing is worked out when asked, so it never goes stale.
+         */
+        get: operations["getPrequalificationRegister"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        /** One form with its answers. */
+        get: operations["getPrequalification"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Save answers or trades on a draft. */
+        patch: operations["updatePrequalification"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit a completed draft for a decision. Required questions must be answered; the advisory score is worked out now. */
+        post: operations["submitPrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve a submitted form. A person decides; the score is advice only. */
+        post: operations["approvePrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/prequalifications/{prequalId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject a submitted form, with the reason. */
+        post: operations["rejectPrequalification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/subcontractor-wallets": {
         parameters: {
             query?: never;
@@ -11733,6 +11937,138 @@ export interface components {
         };
         /** @enum {string} */
         ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "other";
+        PrequalQuestion: {
+            id: string;
+            section: string;
+            prompt: string;
+            /** @enum {string} */
+            type: "yes_no" | "text" | "number" | "select" | "date";
+            options: string[];
+            required: boolean;
+            /**
+             * @description For a yes/no question, the answer the builder wants.
+             * @enum {string|null}
+             */
+            expect: "yes" | "no" | null;
+            points: number;
+            /** @description An unwanted answer is flagged to whoever decides. It never rejects a form by itself. */
+            critical: boolean;
+        };
+        PrequalTemplate: {
+            id: string;
+            name: string;
+            /** @description The form's own version */
+            version: number;
+            published: boolean;
+            /** @description How long an approval lasts unless the approver sets another date. */
+            validityMonths: number;
+            questions: components["schemas"]["PrequalQuestion"][];
+            /** @description Concurrency version */
+            rowVersion: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        PrequalTemplateList: {
+            data: components["schemas"]["PrequalTemplate"][];
+        };
+        CreatePrequalTemplateRequest: {
+            name: string;
+            validityMonths?: number;
+            questions: components["schemas"]["PrequalQuestion"][];
+        };
+        UpdatePrequalTemplateRequest: {
+            name?: string;
+            validityMonths?: number;
+            questions?: components["schemas"]["PrequalQuestion"][];
+        };
+        /** @enum {string} */
+        PrequalStatus: "draft" | "submitted" | "approved" | "rejected";
+        /**
+         * @description `qualified`: approved and in date. `expiring`: within 30 days of expiry. `expired`: approved but lapsed. `pending`: a draft or submitted form with nothing in date. `not_qualified`: the latest form was rejected.
+         * @enum {string}
+         */
+        PrequalQualification: "qualified" | "expiring" | "expired" | "pending" | "not_qualified";
+        /** @description Answers by question id. yes/no is a boolean, number a number, the rest strings. */
+        PrequalAnswers: {
+            [key: string]: string | number | boolean | null;
+        };
+        Prequalification: {
+            id: string;
+            companyId: components["schemas"]["CompanyRef"];
+            templateId: string;
+            templateName: string;
+            templateVersion: number;
+            status: components["schemas"]["PrequalStatus"];
+            qualification: components["schemas"]["PrequalQualification"];
+            trades: string[];
+            answers: components["schemas"]["PrequalAnswers"];
+            /** @description Set on submit. Advice for the person deciding */
+            scorePoints: number | null;
+            scoreMax: number | null;
+            /** @description Ids of critical questions not answered as wanted. */
+            concerns: string[];
+            /** Format: date-time */
+            submittedAt: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decidedBy: components["schemas"]["UserRef"] | null;
+            decisionNote: string | null;
+            /** Format: date */
+            validFrom: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            /** @description The questions on the version this form was started on. */
+            questions: components["schemas"]["PrequalQuestion"][];
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PrequalificationList: {
+            data: components["schemas"]["PrequalificationSummary"][];
+        };
+        PrequalificationSummary: {
+            id: string;
+            companyId: components["schemas"]["CompanyRef"];
+            templateName: string;
+            templateVersion: number;
+            status: components["schemas"]["PrequalStatus"];
+            qualification: components["schemas"]["PrequalQualification"];
+            trades: string[];
+            scorePoints: number | null;
+            scoreMax: number | null;
+            concerns: string[];
+            /** Format: date-time */
+            decidedAt: string | null;
+            /** Format: date */
+            expiresOn: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        PrequalRegister: {
+            data: components["schemas"]["PrequalificationSummary"][];
+        };
+        CreatePrequalificationRequest: {
+            companyId: components["schemas"]["CompanyRef"];
+            templateId: string;
+            trades?: string[];
+        };
+        UpdatePrequalificationRequest: {
+            answers?: components["schemas"]["PrequalAnswers"];
+            trades?: string[];
+        };
+        ApprovePrequalificationRequest: {
+            note?: string;
+            /**
+             * Format: date
+             * @description Defaults to the form's validity from today.
+             */
+            expiresOn?: string;
+        };
+        RejectPrequalificationRequest: {
+            note: string;
+        };
         ComplianceDocument: {
             id: string;
             itemType: components["schemas"]["ComplianceItemType"];
@@ -21296,6 +21632,403 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComplianceAccessLogList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPrequalTemplates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrequalTemplate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrequalTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrequalTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePrequalTemplateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishPrequalTemplate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    newPrequalTemplateVersion: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                templateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalTemplate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listPrequalifications: {
+        parameters: {
+            query?: {
+                companyId?: string;
+                status?: components["schemas"]["PrequalStatus"];
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalificationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createPrequalification: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalificationRegister: {
+        parameters: {
+            query?: {
+                state?: components["schemas"]["PrequalQualification"];
+                trade?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalRegister"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    submitPrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    approvePrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovePrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rejectPrequalification: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                prequalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectPrequalificationRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Prequalification"];
                 };
             };
             default: components["responses"]["Problem"];

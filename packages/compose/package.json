@@ -21,6 +21,7 @@
     "@archova/mod-meetings": "workspace:*",
     "@archova/mod-notifications": "workspace:*",
     "@archova/mod-financials": "workspace:*",
+    "@archova/mod-precon": "workspace:*",
     "@archova/mod-quality": "workspace:*",
     "@archova/mod-safety": "workspace:*",
     "@archova/mod-diary": "workspace:*",
