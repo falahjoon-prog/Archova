@@ -81,6 +81,16 @@ export function useCostForecast(projectId: string, enabled = true) {
   });
 }
 
+export function useBudgetVsForecast(projectId: string, enabled = true) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'cost-forecast', { view: 'budget' }),
+    queryFn: () => source.budgetVsForecast(projectId),
+    enabled,
+  });
+}
+
 /** The forecast is derived from contracts and claims, so a change to either is also a change to it. */
 export function useForecastMutations(projectId: string) {
   const { orgId } = useCurrentOrg();
