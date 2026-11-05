@@ -1,4 +1,4 @@
--- Composed from modules/estimating/db/migrations/20261105150100_estimating_invite_access_link_index.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/estimating/db/migrations/20261105163100_estimating_invite_access_link_index.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- archova:no-transaction
 -- A guest request finds its invite from the link it came in on.
 create index concurrently if not exists package_invites_access_link
