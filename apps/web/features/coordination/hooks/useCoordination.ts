@@ -28,6 +28,11 @@ export function useBimModels() {
   });
 }
 
+export function useModelFileLoader() {
+  const api = useApi();
+  return api.downloadModelFile;
+}
+
 export function useCoordinationIssues(filter: { status?: CoordinationIssueStatus; q?: string }) {
   const api = useApi();
   const { orgId } = useCurrentOrg();
@@ -58,7 +63,12 @@ export function useCoordinationMutations() {
     qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'coordination') });
   return {
     registerModel: useMutation({
-      mutationFn: (v: NewModel) => api.createModel(projectId, v),
+      /** A picked IFC file is stored first, so the model is only registered once its file is safe. */
+      mutationFn: async (v: NewModel & { file?: File }) => {
+        const { file, ...model } = v;
+        const fileId = file ? await api.uploadModelFile(projectId, file) : undefined;
+        return api.createModel(projectId, { ...model, ...(fileId ? { fileId } : {}) });
+      },
       onSuccess: refresh,
     }),
     raise: useMutation({
