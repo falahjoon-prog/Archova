@@ -1,8 +1,9 @@
-import { decodeId, type IdKind } from '@archova/domain';
-import { AppError, forbidden, type SyncCommand } from '@archova/kernel';
+import { decodeId, encodeId, type IdKind } from '@archova/domain';
+import { AppError, forbidden, type SyncCommand, type SyncSource } from '@archova/kernel';
 import { INCIDENT_TYPES, type IncidentType } from './domain/incident';
 import type { IncidentService, PersonInput } from './application/incidents';
 import type { SafetyDeps } from './application/swms';
+import { toIncidentSyncDto } from './api/mappers';
 
 const invalid = (path: string, message = 'Invalid') =>
   new AppError('validation_failed', message, [{ path, message }]);
@@ -17,6 +18,45 @@ function text(v: unknown, path: string, max: number): string | undefined {
   if (v === undefined || v === null) return undefined;
   if (typeof v !== 'string' || v.length > max) throw invalid(path);
   return v.trim() === '' ? undefined : v;
+}
+
+/**
+ * What the phone records about an injury: a few short text answers. Anything else is refused, so the phone cannot
+ * store free-form blobs in health information.
+ */
+const INJURY_KEYS = ['nature', 'bodyPart', 'treatment'] as const;
+
+function injury(v: unknown, path: string): Record<string, unknown> | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v !== 'object' || Array.isArray(v)) throw invalid(path);
+  const out: Record<string, unknown> = {};
+  for (const [k, val] of Object.entries(v)) {
+    if (!(INJURY_KEYS as readonly string[]).includes(k)) throw invalid(`${path}/${k}`);
+    const t = text(val, `${path}/${k}`, 500);
+    if (t) out[k] = t;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+/** What the phone's pull reads for incidents (modules/sync): the caller's own reports, or all for staff. */
+export function incidentSyncSource(incidents: IncidentService): SyncSource {
+  return {
+    module: 'safety',
+    permission: 'safety.incidents.read',
+    publicId: (_type, uuid) => encodeId('incident', uuid),
+    async load(scope, { projectId, entityType, ids }) {
+      const out = new Map<string, { version: number; data: Record<string, unknown> }>();
+      // The same module also carries SWMS changes, which stay online-only.
+      if (!projectId || entityType !== 'incident') return out;
+      const { rows, people, photos } = await incidents.visibleAmong(scope, projectId, ids);
+      for (const r of rows)
+        out.set(r.id, {
+          version: r.version,
+          data: toIncidentSyncDto(r, people.get(r.id) ?? [], photos.get(r.id) ?? 0),
+        });
+      return out;
+    },
+  };
 }
 
 /**
@@ -51,7 +91,8 @@ export function incidentSyncCommands(incidents: IncidentService, deps: SafetyDep
           if (!name) throw invalid(`payload/people/${i}/personName`, 'Required');
           if (r.role !== 'injured' && r.role !== 'witness' && r.role !== 'involved')
             throw invalid(`payload/people/${i}/role`);
-          people.push({ personName: name, role: r.role });
+          const inj = r.role === 'injured' ? injury(r.injury, `payload/people/${i}/injury`) : null;
+          people.push({ personName: name, role: r.role, ...(inj ? { injury: inj } : {}) });
         });
       }
       const d = await incidents.create(scope, projectId, {
@@ -71,5 +112,25 @@ export function incidentSyncCommands(incidents: IncidentService, deps: SafetyDep
       return null;
     },
   };
-  return [reportIncident];
+  /**
+   * `safety.attachIncidentPhoto`: a photo taken at the scene, sent once its file has uploaded. It follows the
+   * `reportIncident` that created the incident, so the incident exists by the time it runs.
+   */
+  const attachIncidentPhoto: SyncCommand = {
+    name: 'safety.attachIncidentPhoto',
+    module: 'safety',
+    async run(scope, m) {
+      const incidentId = id('incident', m.entityId, 'entityId');
+      const fileId = id('file', m.payload.fileId, 'payload/fileId');
+      const projectId = await incidents.projectOf(scope, incidentId);
+      if (!projectId) throw new AppError('incident.not_found');
+      const row = await incidents.attachPhoto(scope, projectId, incidentId, fileId);
+      return { version: row.version };
+    },
+    // Adding a photo never conflicts with anything.
+    async current() {
+      return null;
+    },
+  };
+  return [reportIncident, attachIncidentPhoto];
 }

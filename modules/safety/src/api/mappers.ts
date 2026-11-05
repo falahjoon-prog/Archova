@@ -156,4 +156,35 @@ export const toIncidentDetail = (d: IncidentDetailData): IncidentDetail => ({
   })),
   closeBlockers: d.closeBlockers,
   canManage: d.canManage,
+  photoFileIds: d.photoFileIds.map((f) => encodeId('file', f)),
+});
+
+/**
+ * What a phone keeps of an incident (modules/sync pull). A superset of what the phone writes when it reports one, so
+ * the server's copy replaces the local one once it arrives. Injury details are already withheld in `people` unless the
+ * caller holds `view_medical`.
+ */
+export const toIncidentSyncDto = (
+  r: Awaited<ReturnType<IncidentService['visibleAmong']>>['rows'][number],
+  people: Awaited<ReturnType<IncidentService['visibleAmong']>>['people'] extends Map<
+    string,
+    infer P
+  >
+    ? P
+    : never,
+  photoCount: number,
+) => ({
+  id: encodeId('incident', r.id),
+  projectId: encodeId('project', r.projectId),
+  number: r.number,
+  numberLabel: incidentLabel(r.number),
+  title: r.title,
+  type: r.type,
+  status: r.status,
+  occurredAt: r.occurredAt.toISOString(),
+  location: r.location,
+  description: r.description,
+  immediateActions: r.immediateActions,
+  people: people.map((p) => ({ personName: p.personName, role: p.role, injury: p.injury })),
+  photoCount,
 });

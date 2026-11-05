@@ -12,13 +12,27 @@ export interface ActionNoticeCandidate {
   title: string;
   dueDate: string | null;
   recipients: string[];
+  /** True when someone else was told about this action before, so the people now holding it were given it later. */
+  reassigned?: boolean;
 }
+
+export type ActionNoticeKind =
+  | 'safety.incident_action_assigned'
+  | 'safety.incident_action_reassigned'
+  | 'safety.incident_action_overdue';
+
+/** Every notice kind this module raises, for the email job to pick up. */
+export const ACTION_NOTICE_KINDS: readonly ActionNoticeKind[] = [
+  'safety.incident_action_assigned',
+  'safety.incident_action_reassigned',
+  'safety.incident_action_overdue',
+];
 
 export interface PlannedActionNotice {
   userId: string;
   projectId: string;
   incidentId: string;
-  kind: 'safety.incident_action_assigned';
+  kind: ActionNoticeKind;
   title: string;
   body: string;
   dedupeKey: string;
@@ -26,11 +40,25 @@ export interface PlannedActionNotice {
 
 /** Only recent actions are announced, so switching this on does not flood people with old ones. */
 const WINDOW_DAYS = 3;
+/** An overdue notice stops after this many days past the due date: by then it is a conversation, not a reminder. */
+const OVERDUE_DAYS = 14;
+
+/** Who may be told about an action: its person, or else its company's active members on the project. */
+const RECIPIENTS = sql`
+  array(
+    select distinct pm.user_id::text from platform.project_members pm
+     where pm.project_id = a.project_id and pm.status = 'active'
+       and pm.user_id is distinct from a.created_by
+       and ((a.assignee_user_id is not null and pm.user_id = a.assignee_user_id)
+         or (a.assignee_user_id is null and a.assignee_company_id is not null
+             and pm.company_id = a.assignee_company_id))
+  )`;
 
 /**
- * Open corrective actions raised in the last few days. An action assigned to a person goes to that person; one
- * assigned to a company goes to the company's active members on the project. Whoever raised it is not told about
- * their own action. Reads under the job's tenant scope, so only this organisation's rows are seen.
+ * Open corrective actions raised or handed on in the last few days. An action assigned to a person goes to that
+ * person; one assigned to a company goes to the company's active members on the project. Whoever raised it is not
+ * told about their own action. An action whose assignee has changed is told to the new holders as a reassignment.
+ * Reads under the job's tenant scope, so only this organisation's rows are seen.
  */
 export async function findActionNotices(
   scope: TenantScope,
@@ -45,25 +73,72 @@ export async function findActionNotices(
     title: string;
     due_date: string | null;
     recipients: string[] | null;
+    notified: string[] | null;
   }>(sql`
     select a.id as action_id, a.incident_id, a.project_id, i.number as incident_number, a.number as action_number,
            a.title, to_char(a.due_date, 'YYYY-MM-DD') as due_date,
+           ${RECIPIENTS} as recipients,
            array(
-             select distinct pm.user_id::text from platform.project_members pm
-              where pm.project_id = a.project_id and pm.status = 'active'
-                and pm.user_id is distinct from a.created_by
-                and ((a.assignee_user_id is not null and pm.user_id = a.assignee_user_id)
-                  or (a.assignee_user_id is null and a.assignee_company_id is not null
-                      and pm.company_id = a.assignee_company_id))
-           ) as recipients
+             select n.user_id::text from notifications.notifications n
+              where n.dedupe_key = 'incident_action:' || a.id::text || ':assigned'
+           ) as notified
       from safety.incident_actions a
       join safety.incidents i on i.id = a.incident_id
      where a.status = 'open'
        and (a.assignee_user_id is not null or a.assignee_company_id is not null)
-       and a.created_at > ${new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString()}::timestamptz
+       and a.updated_at > ${new Date(now.getTime() - WINDOW_DAYS * 86_400_000).toISOString()}::timestamptz
   `);
   return rows.rows
     .filter((r) => (r.recipients ?? []).length > 0)
+    .map((r) => {
+      const recipients = r.recipients ?? [];
+      return {
+        actionId: r.action_id,
+        incidentId: r.incident_id,
+        projectId: r.project_id,
+        incidentNumber: r.incident_number,
+        actionNumber: r.action_number,
+        title: r.title,
+        dueDate: r.due_date,
+        recipients,
+        reassigned: (r.notified ?? []).some((u) => !recipients.includes(u)),
+      };
+    });
+}
+
+/**
+ * Open corrective actions that are past their due date in the project's own time zone, by no more than a couple of
+ * weeks. Goes to whoever holds the action and to the person who raised it, who is the one chasing it.
+ */
+export async function findOverdueNotices(
+  scope: TenantScope,
+  now: Date,
+): Promise<ActionNoticeCandidate[]> {
+  const rows = await scope.tx.execute<{
+    action_id: string;
+    incident_id: string;
+    project_id: string;
+    incident_number: number;
+    action_number: number;
+    title: string;
+    due_date: string;
+    recipients: string[] | null;
+    raiser: string | null;
+  }>(sql`
+    select a.id as action_id, a.incident_id, a.project_id, i.number as incident_number, a.number as action_number,
+           a.title, to_char(a.due_date, 'YYYY-MM-DD') as due_date,
+           ${RECIPIENTS} as recipients,
+           (select pm.user_id::text from platform.project_members pm
+             where pm.project_id = a.project_id and pm.status = 'active' and pm.user_id = a.created_by) as raiser
+      from safety.incident_actions a
+      join safety.incidents i on i.id = a.incident_id
+      join platform.projects p on p.id = a.project_id
+     where a.status = 'open'
+       and a.due_date is not null
+       and a.due_date < (${now.toISOString()}::timestamptz at time zone p.timezone)::date
+       and a.due_date >= (${now.toISOString()}::timestamptz at time zone p.timezone)::date - ${OVERDUE_DAYS}::int
+  `);
+  return rows.rows
     .map((r) => ({
       actionId: r.action_id,
       incidentId: r.incident_id,
@@ -72,8 +147,9 @@ export async function findActionNotices(
       actionNumber: r.action_number,
       title: r.title,
       dueDate: r.due_date,
-      recipients: r.recipients ?? [],
-    }));
+      recipients: [...new Set([...(r.recipients ?? []), ...(r.raiser ? [r.raiser] : [])])],
+    }))
+    .filter((c) => c.recipients.length > 0);
 }
 
 /**
@@ -88,10 +164,33 @@ export function planActionNotices(
       userId,
       projectId: c.projectId,
       incidentId: c.incidentId,
-      kind: 'safety.incident_action_assigned' as const,
-      title: `${incidentLabel(c.incidentNumber)}: corrective action assigned to you`,
+      kind: c.reassigned
+        ? ('safety.incident_action_reassigned' as const)
+        : ('safety.incident_action_assigned' as const),
+      title: `${incidentLabel(c.incidentNumber)}: corrective action ${c.reassigned ? 'reassigned to you' : 'assigned to you'}`,
       body: `${c.title}${c.dueDate ? `. Due ${c.dueDate}.` : '.'}`,
+      // Per person, so the new holder of a reassigned action is told once and the old one is not told again.
       dedupeKey: `incident_action:${c.actionId}:assigned`,
+    })),
+  );
+}
+
+/**
+ * One reminder per person per action per due date, so moving the due date re-arms it and a rerun tells nobody twice.
+ * The text carries no health detail.
+ */
+export function planOverdueNotices(
+  candidates: readonly ActionNoticeCandidate[],
+): PlannedActionNotice[] {
+  return candidates.flatMap((c) =>
+    c.recipients.map((userId) => ({
+      userId,
+      projectId: c.projectId,
+      incidentId: c.incidentId,
+      kind: 'safety.incident_action_overdue' as const,
+      title: `${incidentLabel(c.incidentNumber)}: corrective action overdue`,
+      body: `${c.title}. It was due ${c.dueDate}.`,
+      dedupeKey: `incident_action:${c.actionId}:overdue:${c.dueDate}`,
     })),
   );
 }

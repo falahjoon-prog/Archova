@@ -14,6 +14,7 @@ import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
 import { trustReminders } from './jobs/trust-reminders';
+import { incidentActionEmails } from './jobs/incident-action-emails';
 import { incidentActionNotices } from './jobs/incident-action-notices';
 import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
@@ -53,7 +54,6 @@ async function main() {
   const database = createDatabase(config.databaseUrl);
   /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
   const SUBSCRIBERS: Subscriber[] = [];
-  /** Nightly and hourly per-org jobs (backend 05 §3). */
   const emailSender =
     config.email.provider === 'ses'
       ? createSesSender({
@@ -62,6 +62,7 @@ async function main() {
           replyTo: config.email.replyTo,
         })
       : createLogSender((msg, o) => log.info(o, msg));
+  /** Nightly and hourly per-org jobs (backend 05 §3). */
   const jobs: TenantJob[] = [
     accessLinkPurge,
     importStagingPurge,
@@ -85,6 +86,7 @@ async function main() {
     bidReminders,
     trustReminders,
     incidentActionNotices,
+    incidentActionEmails(emailSender, config.email.appBaseUrl),
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(async (scope, alerts) => {
       log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');

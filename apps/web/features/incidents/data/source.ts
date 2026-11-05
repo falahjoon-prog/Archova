@@ -7,6 +7,7 @@ import type {
   ActionInput,
   ActionSource,
   SourcedAction,
+  SourceOption,
   ClassifyInput,
   CorrectiveAction,
   CorrectiveStatus,
@@ -37,6 +38,8 @@ export interface IncidentSource {
   ): Promise<IncidentDetail>;
   /** The corrective actions that came from one inspection or observation. */
   fromSource(projectId: string, source: ActionSource): Promise<SourcedAction[]>;
+  /** The inspections and observations on the project, for the "raised from" picker. */
+  sourceOptions(projectId: string): Promise<SourceOption[]>;
 }
 
 interface Store {
@@ -102,6 +105,7 @@ function make(n: number, over: Partial<Incident>): IncidentDetail {
     },
     people: [],
     injuryHidden: false,
+    photoFileIds: [],
     actions: [],
     events: [
       { id: mockId('ive'), action: 'report', toStatus: 'reported', note: null, at: nowIso() },
@@ -258,6 +262,11 @@ export const incidentsPreview: IncidentSource = {
     a!.version += 1;
     return delay(structuredClone(refresh(hit)));
   },
+  sourceOptions: () =>
+    delay([
+      { type: 'inspection', id: 'ins_0001', label: 'INS-0001 · Weekly site safety walk' },
+      { type: 'observation', id: 'obs_0001', label: 'OBS-0001 · Scaffold tie missing' },
+    ]),
   fromSource: (projectId, source) =>
     delay(
       stores.get(projectId).items.flatMap((d) =>

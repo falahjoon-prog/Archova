@@ -26,7 +26,13 @@ import {
   type RootCause,
   type Severity,
 } from '../domain/incident';
-import { incidentActions, incidentEvents, incidentPeople, incidents } from '../infra/tables';
+import {
+  incidentActions,
+  incidentEvents,
+  incidentFiles,
+  incidentPeople,
+  incidents,
+} from '../infra/tables';
 import type { SafetyDeps } from './swms';
 
 export type IncidentRow = typeof incidents.$inferSelect;
@@ -230,7 +236,7 @@ export function createIncidentService(deps: SafetyDeps) {
 
   async function detail(scope: TenantScope, projectId: string, id: string) {
     const { row } = await getVisible(scope, projectId, id);
-    const [events, people, actions, medical, date] = await Promise.all([
+    const [events, people, actions, medical, date, files] = await Promise.all([
       scope.tx
         .select()
         .from(incidentEvents)
@@ -248,6 +254,11 @@ export function createIncidentService(deps: SafetyDeps) {
         .orderBy(asc(incidentActions.number)),
       deps.access.can(scope, 'safety.incidents.view_medical', { projectId }),
       today(scope, projectId),
+      scope.tx
+        .select({ fileId: incidentFiles.fileId })
+        .from(incidentFiles)
+        .where(eq(incidentFiles.incidentId, id))
+        .orderBy(asc(incidentFiles.createdAt), asc(incidentFiles.id)),
     ]);
     const manage = await canManage(scope, projectId);
     const blockers = closeBlockers({ ...row, actions });
@@ -260,7 +271,109 @@ export function createIncidentService(deps: SafetyDeps) {
       actions: actions.map((a) => ({ ...a, isOverdue: isOverdue(a.dueDate, a.status, date) })),
       closeBlockers: blockers,
       canManage: manage,
+      photoFileIds: files.map((f) => f.fileId),
     };
+  }
+
+  /**
+   * Incidents among `ids` that the caller may see, for the phone's pull: staff see all, anyone else only what they
+   * reported. Health details come only with `view_medical`. Photos are counted, not listed.
+   */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    const none = {
+      rows: [] as IncidentRow[],
+      people: new Map<string, PersonRow[]>(),
+      photos: new Map<string, number>(),
+    };
+    if (ids.length === 0) return none;
+    const v = await viewerOf(scope, projectId);
+    const conditions: SQL[] = [
+      eq(incidents.projectId, projectId),
+      inArray(incidents.id, [...ids]),
+      isNull(incidents.deletedAt),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select()
+      .from(incidents)
+      .where(and(...conditions));
+    const found = rows.map((r) => r.id);
+    if (found.length === 0) return none;
+    const [medical, people, photos] = await Promise.all([
+      deps.access.can(scope, 'safety.incidents.view_medical', { projectId }),
+      scope.tx
+        .select()
+        .from(incidentPeople)
+        .where(inArray(incidentPeople.incidentId, found))
+        .orderBy(asc(incidentPeople.createdAt), asc(incidentPeople.id)),
+      scope.tx
+        .select({ incidentId: incidentFiles.incidentId, n: sql<number>`count(*)::int` })
+        .from(incidentFiles)
+        .where(inArray(incidentFiles.incidentId, found))
+        .groupBy(incidentFiles.incidentId),
+    ]);
+    const byIncident = new Map<string, PersonRow[]>();
+    for (const p of people)
+      byIncident.set(p.incidentId, [
+        ...(byIncident.get(p.incidentId) ?? []),
+        { ...p, injury: medical ? p.injury : null },
+      ]);
+    return {
+      rows,
+      people: byIncident,
+      photos: new Map(photos.map((p) => [p.incidentId, p.n] as const)),
+    };
+  }
+
+  /** The project an incident is on, so a queued command can be checked against the right project. */
+  async function projectOf(scope: TenantScope, id: string) {
+    const [r] = await scope.tx
+      .select({ projectId: incidents.projectId })
+      .from(incidents)
+      .where(and(eq(incidents.id, id), isNull(incidents.deletedAt)))
+      .limit(1);
+    return r?.projectId ?? null;
+  }
+
+  const MAX_PHOTOS = 20;
+
+  /**
+   * Adds a photo taken at the scene. The reporter (or staff) may add to an incident they can see; the file must be
+   * a ready upload on this project. Attaching the same file twice changes nothing.
+   */
+  async function attachPhoto(
+    scope: TenantScope,
+    projectId: string,
+    incidentId: string,
+    fileId: string,
+  ) {
+    if (!(await deps.access.can(scope, 'safety.incidents.report', { projectId })))
+      throw new AppError('access.denied', "You can't add to incidents on this project.");
+    const { row } = await getVisible(scope, projectId, incidentId);
+    const f = await deps.files.getFile(scope, fileId);
+    if (f.projectId !== projectId || f.status !== 'ready')
+      throw new AppError('file.not_in_project', 'Attach a file uploaded to this project.', [
+        { path: 'fileId', message: 'Not a ready file in this project' },
+      ]);
+    const have = await scope.tx
+      .select({ fileId: incidentFiles.fileId })
+      .from(incidentFiles)
+      .where(eq(incidentFiles.incidentId, incidentId));
+    if (have.some((h) => h.fileId === fileId)) return row;
+    if (have.length >= MAX_PHOTOS)
+      throw new AppError('validation_failed', `An incident holds at most ${MAX_PHOTOS} photos.`, [
+        { path: 'fileId', message: 'Too many photos' },
+      ]);
+    await scope.tx.insert(incidentFiles).values({
+      id: uuidv7(),
+      orgId: scope.ctx.orgId,
+      projectId,
+      incidentId,
+      fileId,
+      createdBy: scope.ctx.userId,
+    });
+    return row;
   }
 
   async function list(
@@ -738,7 +851,19 @@ export function createIncidentService(deps: SafetyDeps) {
     }));
   }
 
-  return { list, create, detail, update, transition, addAction, updateAction, actionsFromSource };
+  return {
+    list,
+    create,
+    detail,
+    update,
+    transition,
+    addAction,
+    updateAction,
+    actionsFromSource,
+    visibleAmong,
+    projectOf,
+    attachPhoto,
+  };
 }
 
 export type IncidentService = ReturnType<typeof createIncidentService>;

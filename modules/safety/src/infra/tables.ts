@@ -139,6 +139,20 @@ export const incidentActions = safetySchema.table('incident_actions', {
   version: integer('version').notNull().default(1),
 });
 
+export const incidentFiles = safetySchema.table(
+  'incident_files',
+  {
+    id: uuid('id').primaryKey(),
+    orgId: uuid('org_id').notNull(),
+    projectId: uuid('project_id').notNull(),
+    incidentId: uuid('incident_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    createdBy: uuid('created_by'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.incidentId, t.fileId)],
+);
+
 export const incidentEvents = safetySchema.table('incident_events', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),
