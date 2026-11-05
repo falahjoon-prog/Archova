@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { MarkupVisibility } from '@archova/markup';
 import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
@@ -33,7 +33,7 @@ export function createMarkupService(c: DocumentsContext, drawings: DrawingServic
     scope: TenantScope,
     projectId: string,
     revisionId: string,
-    input: { visibility?: MarkupVisibility; shapes: StoredShape[] },
+    input: { id?: string; visibility?: MarkupVisibility; shapes: StoredShape[] },
   ) {
     const revision = await drawings.getRevision(scope, projectId, revisionId);
     if (revision.status === 'draft') throw new AppError('drawing_revision.not_found');
@@ -47,7 +47,7 @@ export function createMarkupService(c: DocumentsContext, drawings: DrawingServic
         'markup.company_required',
         'Company markups need you to be on the project with a company.',
       );
-    const id = uuidv7();
+    const id = input.id ?? uuidv7();
     const now = new Date();
     const [row] = await scope.tx
       .insert(drawingMarkups)
@@ -170,7 +170,7 @@ export function createMarkupService(c: DocumentsContext, drawings: DrawingServic
       .set({ deletedAt: new Date(), updatedBy: scope.ctx.userId, version: current.version + 1 })
       .where(eq(drawingMarkups.id, markupId));
     await scope.recordChange({
-      module: 'documents',
+      module: 'drawings',
       entityType: 'drawing_markup',
       entityId: markupId,
       op: 'delete',
@@ -180,7 +180,24 @@ export function createMarkupService(c: DocumentsContext, drawings: DrawingServic
     });
   }
 
-  return { list, create, update, remove, getOwn };
+  /** Markups among `ids` on a project the caller may see (own, own company's, published), for the mobile pull. */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (ids.length === 0) return [];
+    const v = await c.viewer(scope, projectId);
+    const rows = await scope.tx
+      .select()
+      .from(drawingMarkups)
+      .where(
+        and(
+          eq(drawingMarkups.projectId, projectId),
+          inArray(drawingMarkups.id, [...ids]),
+          isNull(drawingMarkups.deletedAt),
+        ),
+      );
+    return rows.filter((m) => canSeeMarkup(m, v));
+  }
+
+  return { list, create, update, remove, getOwn, visibleAmong };
 }
 
 /** Private and company markups only sync to the people who can see them. */
@@ -193,7 +210,7 @@ function syncScope(m: MarkupRow) {
 
 async function changed(scope: TenantScope, projectId: string, m: MarkupRow) {
   await scope.recordChange({
-    module: 'documents',
+    module: 'drawings',
     entityType: 'drawing_markup',
     entityId: m.id,
     op: 'upsert',

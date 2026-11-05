@@ -7,4 +7,9 @@ export { supersededNotice, type RevisionForBanner, type SupersededNotice } from 
 export { pdfPageUrl, drawingPdfUrl } from './pdf';
 export { markupPrimitives, needsLocationCheck, type Primitive } from './markup';
 export { createInk, MAX_SHAPES, MAX_POINTS_PER_STROKE, type Ink, type PenShape } from './ink';
-export { createPenMarkup, type MarkupTarget } from './commands';
+export {
+  listRevisionMarkups,
+  savePenMarkup,
+  type MarkupTarget,
+  type SavePenMarkupInput,
+} from './commands';

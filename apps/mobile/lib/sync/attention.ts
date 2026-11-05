@@ -8,6 +8,7 @@ const COMMAND_LABEL: Record<string, string> = {
   'defects.markReadyForReview': 'Defect marked ready for review',
   'defects.close': 'Defect closed',
   'photos.create': 'Photo',
+  'drawings.createMarkup': 'Drawing markup',
   'comments.add': 'Comment',
   'quality.recordResponses': 'Inspection answer',
   'quality.submit': 'Inspection submitted',
