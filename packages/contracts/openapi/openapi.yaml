@@ -18974,7 +18974,7 @@ components:
         id: { type: string, description: 'A drv_ or doc_ id; linked, not copied' }
     PackageInvite:
       type: object
-      required: [companyId, status, invitedAt, viewedAt, respondedAt, deliveredAt]
+      required: [companyId, status, invitedAt, viewedAt, respondedAt, deliveredAt, lastRemindedAt]
       properties:
         companyId: { type: string }
         status: { $ref: '#/components/schemas/PackageInviteStatus' }
@@ -18986,6 +18986,12 @@ components:
             type: [string, 'null'],
             format: date-time,
             description: 'When the invite email last went out; null if it has not (no contact email, or the send failed)',
+          }
+        lastRemindedAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When the last reminder email went out; null if none has',
           }
     RespondTenderAccessRequest:
       type: object

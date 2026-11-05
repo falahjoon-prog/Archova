@@ -13155,6 +13155,11 @@ export interface components {
              * @description When the invite email last went out; null if it has not (no contact email, or the send failed)
              */
             deliveredAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the last reminder email went out; null if none has
+             */
+            lastRemindedAt: string | null;
         };
         RespondTenderAccessRequest: {
             /** @enum {string} */

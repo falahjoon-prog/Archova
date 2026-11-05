@@ -32,11 +32,15 @@ import { formatPackageNumber, takesQuotes } from '../domain/tender';
 import { packageInvites, tenderPackages } from '../infra/tables';
 
 export const TENDER_LINK_ENTITY = 'tender_package';
+/** Its own cookie, so opening a tender link never replaces a transmittal or induction session in the same browser. */
+export const TENDER_LINK_COOKIE = '__Host-tlk';
 export const TENDER_LINK_ACTIONS = ['view', 'respond'] as const;
 const TENDER_LINK_MAX_USES = 100;
 /** A link works for 30 days or until a week after the package closes, whichever comes later (never past 90). */
 const GRACE_AFTER_DUE_MS = 7 * 86_400_000;
 const RESENDS_PER_INVITE_DAY = 5;
+/** Tender invite emails an org can send in a day (new invites and resends together). */
+const LINKS_PER_ORG_DAY = 300;
 
 export interface TenderLinkDeps {
   database: Database;
@@ -78,6 +82,19 @@ export function createTenderLinkService(deps: TenderLinkDeps) {
   const { database } = deps;
 
   // ------------------------------------------------------------------------------------------ issuing
+
+  /** Caps invite emails per org per day so the endpoints can't be used to send mail in bulk. */
+  async function assertOrgCap(scope: TenantScope, adding: number) {
+    const dayAgo = new Date(now().getTime() - 86_400_000).toISOString();
+    const res = await scope.tx.execute<{ n: string }>(sql`
+      select count(*) as n from shared.access_links
+      where entity_type = ${TENDER_LINK_ENTITY} and created_at > ${dayAgo}`);
+    if (Number(res.rows[0]?.n ?? 0) + adding > LINKS_PER_ORG_DAY)
+      throw new AppError(
+        'access_link.rate_limited',
+        'Your organisation has sent as many tender links as it can today. Try again tomorrow.',
+      );
+  }
 
   /**
    * Gives each invited company on a package that is out to tender its own link. Companies that already have a live
@@ -121,6 +138,7 @@ export function createTenderLinkService(deps: TenderLinkDeps) {
         await deps.platform.companyContacts(scope, [...new Set(wanted.map((r) => r.companyId))])
       ).map((c) => [c.id, c]),
     );
+    await assertOrgCap(scope, wanted.length);
     const t = now();
     const expiresAt = new Date(
       Math.min(
@@ -211,7 +229,7 @@ export function createTenderLinkService(deps: TenderLinkDeps) {
         select count(*) as n from shared.access_links
         where entity_type = ${TENDER_LINK_ENTITY} and entity_id = ${packageId}
           and recipient_email = ${email} and created_at > ${dayAgo}`);
-      if (Number(res.rows[0]?.n ?? 0) > RESENDS_PER_INVITE_DAY)
+      if (Number(res.rows[0]?.n ?? 0) >= RESENDS_PER_INVITE_DAY)
         throw new AppError(
           'access_link.rate_limited',
           'That link has been resent enough times today. Try again tomorrow.',

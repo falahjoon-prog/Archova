@@ -5105,6 +5105,7 @@ export const PackageInviteSchema = z.object({
   "viewedAt": z.string().datetime({ offset: true }).nullable(),
   "respondedAt": z.string().datetime({ offset: true }).nullable(),
   "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+  "lastRemindedAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 

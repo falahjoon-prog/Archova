@@ -644,6 +644,9 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
                   ) : i.deliveredAt ? (
                     <span className="u-caption u-block">
                       Link emailed {formatInstant(i.deliveredAt, project.timezone)}
+                      {i.lastRemindedAt
+                        ? ` · reminded ${formatInstant(i.lastRemindedAt, project.timezone)}`
+                        : ''}
                     </span>
                   ) : (
                     <span className="u-caption u-block">
