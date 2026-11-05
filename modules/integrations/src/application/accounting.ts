@@ -22,6 +22,12 @@ import {
   type TokenSet,
   type TokenVault,
 } from '../domain/accounting';
+import type {
+  FolderProvider,
+  FolderProviderName,
+  GoogleCredentials,
+  M365Credentials,
+} from '../domain/folders';
 import {
   accountingConnections,
   accountingContacts,
@@ -72,6 +78,11 @@ export interface AccountingDeps {
    */
   database?: Database;
   now?: () => Date;
+  /** SharePoint and Google Drive folder links share this vault, fetch and redirect base (integrations/03, 04). */
+  folders?: {
+    credentials: { m365: M365Credentials | null; google: GoogleCredentials | null };
+    providerOverride?: (provider: FolderProviderName) => FolderProvider;
+  };
 }
 
 const DEFAULT_SETTINGS: ConnectionSettings = {

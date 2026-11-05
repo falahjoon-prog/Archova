@@ -114,6 +114,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         fetch: deps.accountingFetch ?? ((url, init) => fetch(url, init)),
         redirectBase: `${config.linkBaseUrl}/orgs/accounting`,
         credentials: config.accounting,
+        folders: { credentials: config.folders },
       },
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {

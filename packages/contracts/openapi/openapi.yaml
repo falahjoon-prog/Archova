@@ -4709,6 +4709,145 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/WebhookDeliveryList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listFolderConnections
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: The org's SharePoint and Google Drive connections, and which providers this installation can offer (integrations/03, 04).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderConnectionList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections/{provider}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FolderProvider'
+    delete:
+      operationId: disconnectFolders
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: Forget the connection and every project link on it. Files already published are left where they are.
+      responses:
+        '204':
+          description: Disconnected
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections/{provider}/connect:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FolderProvider'
+    post:
+      operationId: startFolderConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: >-
+        Begin sign-in. Google returns its sign-in address; Microsoft 365 returns the admin-consent address for the
+        tenant id given.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderConnectRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AccountingConnectStart' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/folder-connections/{provider}/callback:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/FolderProvider'
+    post:
+      operationId: completeFolderConnection
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folders.manage
+      x-internal: true
+      summary: Finish sign-in with the state (and, for Google, the code) the provider returned. Makes the connection active.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderCallbackRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderConnection' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/folder-links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listFolderLinks
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folder_links.manage
+      x-internal: true
+      summary: The folders this project's current drawing set is published to.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createFolderLink
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folder_links.manage
+      x-internal: true
+      summary: >-
+        Publish the project's drawing set, one way, to a SharePoint folder (the address is required) or a new Google
+        Drive folder. Each drawing revision published from now on is uploaded and the revision it replaces is moved to a
+        Superseded subfolder.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FolderLinkCreate' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FolderLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/folder-links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: linkId
+        in: path
+        required: true
+        schema: { type: string }
+    delete:
+      operationId: deleteFolderLink
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.folder_links.manage
+      x-internal: true
+      summary: Stop publishing to the folder. What is already there stays.
+      responses:
+        '204':
+          description: Unlinked
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/import-jobs:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11026,6 +11165,11 @@ components:
       in: path
       required: true
       schema: { type: string, enum: [xero, myob] }
+    FolderProvider:
+      name: provider
+      in: path
+      required: true
+      schema: { type: string, enum: [m365, google] }
     SyncIssueId:
       name: syncIssueId
       in: path
@@ -17112,6 +17256,66 @@ components:
         available:
           type: array
           items: { $ref: '#/components/schemas/AccountingProviderName' }
+    FolderProviderName:
+      type: string
+      enum: [m365, google]
+    FolderConnection:
+      type: object
+      required: [id, provider, status, tenantId, lastError, updatedAt]
+      properties:
+        id: { type: string }
+        provider: { $ref: '#/components/schemas/FolderProviderName' }
+        status: { type: string, enum: [pending, active, error] }
+        tenantId: { type: [string, 'null'] }
+        lastError: { type: [string, 'null'] }
+        updatedAt: { type: string, format: date-time }
+    FolderConnectionList:
+      type: object
+      required: [data, available]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FolderConnection' }
+        available:
+          type: array
+          items: { $ref: '#/components/schemas/FolderProviderName' }
+    FolderConnectRequest:
+      type: object
+      properties:
+        tenantId: { type: string, minLength: 1, maxLength: 255 }
+    FolderCallbackRequest:
+      type: object
+      required: [state]
+      properties:
+        state: { type: string, minLength: 1, maxLength: 200 }
+        code: { type: string, minLength: 1, maxLength: 2000 }
+    FolderLink:
+      type: object
+      required:
+        [id, projectId, provider, folderName, webUrl, status, lastError, lastPublishedAt, createdAt]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        provider: { $ref: '#/components/schemas/FolderProviderName' }
+        folderName: { type: string }
+        webUrl: { type: [string, 'null'] }
+        status: { type: string, enum: [active, error] }
+        lastError: { type: [string, 'null'] }
+        lastPublishedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    FolderLinkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/FolderLink' }
+    FolderLinkCreate:
+      type: object
+      required: [provider]
+      properties:
+        provider: { $ref: '#/components/schemas/FolderProviderName' }
+        url: { type: string, minLength: 1, maxLength: 2000 }
     AccountingConnectStart:
       type: object
       required: [url]

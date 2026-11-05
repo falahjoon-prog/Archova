@@ -41,6 +41,15 @@ export const ACCOUNTING_PUSH_ROUTE: SubscriberRoute = {
   queue: 'ai',
 };
 
+export const FOLDER_PUBLISH_SUBSCRIBER = 'folders.publish';
+
+/** A newly current drawing revision, one way to the SharePoint or Drive folders linked to its project (integrations/03 M2). */
+export const FOLDER_PUBLISH_ROUTE: SubscriberRoute = {
+  name: FOLDER_PUBLISH_SUBSCRIBER,
+  types: ['documents.drawing.revision.published.v1'],
+  queue: 'ai',
+};
+
 export const ACCOUNTING_PULL_JOB = 'accounting.pull';
 
 /**
@@ -58,6 +67,7 @@ export const AI_ROUTES: readonly SubscriberRoute[] = [
   AI_REINDEX_ROUTE,
   AI_RESTAMP_ROUTE,
   ACCOUNTING_PUSH_ROUTE,
+  FOLDER_PUBLISH_ROUTE,
 ];
 
 export const AI_SWEEP_JOB = 'ai.sweep';

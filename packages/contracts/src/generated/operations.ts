@@ -1089,6 +1089,37 @@ export const ListWebhookDeliveriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
 });
+export const ListFolderConnectionsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const DisconnectFoldersParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["m365", "google"]),
+});
+export const StartFolderConnectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["m365", "google"]),
+});
+export const StartFolderConnectionBody = s.FolderConnectRequestSchema;
+export const CompleteFolderConnectionParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "provider": z.enum(["m365", "google"]),
+});
+export const CompleteFolderConnectionBody = s.FolderCallbackRequestSchema;
+export const ListFolderLinksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateFolderLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateFolderLinkBody = s.FolderLinkCreateSchema;
+export const DeleteFolderLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "linkId": z.string(),
+});
 export const ListImportJobsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4977,6 +5008,90 @@ export const operations = {
     internal: true,
     contentType: null,
     params: ListWebhookDeliveriesParams,
+    query: null,
+    body: null,
+  },
+  listFolderConnections: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/folder-connections',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folders.manage",
+    internal: true,
+    contentType: null,
+    params: ListFolderConnectionsParams,
+    query: null,
+    body: null,
+  },
+  disconnectFolders: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/folder-connections/{provider}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folders.manage",
+    internal: true,
+    contentType: null,
+    params: DisconnectFoldersParams,
+    query: null,
+    body: null,
+  },
+  startFolderConnection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/folder-connections/{provider}/connect',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folders.manage",
+    internal: true,
+    contentType: "application/json",
+    params: StartFolderConnectionParams,
+    query: null,
+    body: StartFolderConnectionBody,
+  },
+  completeFolderConnection: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/folder-connections/{provider}/callback',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folders.manage",
+    internal: true,
+    contentType: "application/json",
+    params: CompleteFolderConnectionParams,
+    query: null,
+    body: CompleteFolderConnectionBody,
+  },
+  listFolderLinks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/folder-links',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folder_links.manage",
+    internal: true,
+    contentType: null,
+    params: ListFolderLinksParams,
+    query: null,
+    body: null,
+  },
+  createFolderLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/folder-links',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folder_links.manage",
+    internal: true,
+    contentType: "application/json",
+    params: CreateFolderLinkParams,
+    query: null,
+    body: CreateFolderLinkBody,
+  },
+  deleteFolderLink: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/folder-links/{linkId}',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.folder_links.manage",
+    internal: true,
+    contentType: null,
+    params: DeleteFolderLinkParams,
     query: null,
     body: null,
   },

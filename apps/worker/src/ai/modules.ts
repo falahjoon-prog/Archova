@@ -51,6 +51,7 @@ export function loadAiWorkerModules(
             fetch: (url, init) => fetch(url, init),
             redirectBase: `${config.accounting.linkBaseUrl}/orgs/accounting`,
             credentials: config.accounting.credentials,
+            folders: { credentials: config.accounting.folders },
           }
         : {
             vault: vaultFromKey(randomBytes(32).toString('base64')),

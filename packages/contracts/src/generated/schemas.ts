@@ -2699,6 +2699,60 @@ export const FolderSchema = z.object({
 });
 export type Folder = z.infer<typeof FolderSchema>;
 
+export const FolderCallbackRequestSchema = z.object({
+  "state": z.string().min(1).max(200),
+  "code": z.string().min(1).max(2000).optional(),
+});
+export type FolderCallbackRequest = z.infer<typeof FolderCallbackRequestSchema>;
+
+export const FolderConnectRequestSchema = z.object({
+  "tenantId": z.string().min(1).max(255).optional(),
+});
+export type FolderConnectRequest = z.infer<typeof FolderConnectRequestSchema>;
+
+export const FolderProviderNameSchema = z.enum(["m365", "google"]);
+export type FolderProviderName = z.infer<typeof FolderProviderNameSchema>;
+
+export const FolderConnectionSchema = z.object({
+  "id": z.string(),
+  "provider": FolderProviderNameSchema,
+  "status": z.enum(["pending", "active", "error"]),
+  "tenantId": z.string().nullable(),
+  "lastError": z.string().nullable(),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type FolderConnection = z.infer<typeof FolderConnectionSchema>;
+
+export const FolderConnectionListSchema = z.object({
+  "data": z.array(FolderConnectionSchema),
+  "available": z.array(FolderProviderNameSchema),
+});
+export type FolderConnectionList = z.infer<typeof FolderConnectionListSchema>;
+
+export const FolderLinkSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "provider": FolderProviderNameSchema,
+  "folderName": z.string(),
+  "webUrl": z.string().nullable(),
+  "status": z.enum(["active", "error"]),
+  "lastError": z.string().nullable(),
+  "lastPublishedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type FolderLink = z.infer<typeof FolderLinkSchema>;
+
+export const FolderLinkCreateSchema = z.object({
+  "provider": FolderProviderNameSchema,
+  "url": z.string().min(1).max(2000).optional(),
+});
+export type FolderLinkCreate = z.infer<typeof FolderLinkCreateSchema>;
+
+export const FolderLinkListSchema = z.object({
+  "data": z.array(FolderLinkSchema),
+});
+export type FolderLinkList = z.infer<typeof FolderLinkListSchema>;
+
 export const FolderListSchema = z.object({
   "data": z.array(FolderSchema),
 });

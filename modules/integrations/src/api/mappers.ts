@@ -2,12 +2,15 @@ import { encodeId } from '@archova/domain';
 import type {
   AccountingConnection,
   AccountingSyncIssue,
+  FolderConnection,
+  FolderLink,
   ImportJob,
   ImportRow,
   Webhook,
   WebhookDelivery,
 } from '@archova/contracts';
 import type { ConnectionRow, SyncIssueRow } from '../application/accounting';
+import type { FolderConnectionRow, FolderLinkRow } from '../application/folders';
 import type { ImportJobRow, ImportRowRow } from '../application/imports';
 import type { DeliveryRow, SubscriptionRow } from '../application/webhooks';
 
@@ -89,4 +92,25 @@ export const toSyncIssueDto = (
   message: i.message,
   status: i.status,
   createdAt: i.createdAt.toISOString(),
+});
+
+export const toFolderConnectionDto = (c: FolderConnectionRow): FolderConnection => ({
+  id: encodeId('folderConnection', c.id),
+  provider: c.provider,
+  status: c.status,
+  tenantId: c.tenantRef,
+  lastError: c.lastError,
+  updatedAt: c.updatedAt.toISOString(),
+});
+
+export const toFolderLinkDto = (l: FolderLinkRow, provider: 'm365' | 'google'): FolderLink => ({
+  id: encodeId('folderLink', l.id),
+  projectId: encodeId('project', l.projectId),
+  provider,
+  folderName: l.remoteName,
+  webUrl: l.remoteWebUrl,
+  status: l.status,
+  lastError: l.lastError,
+  lastPublishedAt: iso(l.lastPublishedAt),
+  createdAt: l.createdAt.toISOString(),
 });

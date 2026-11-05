@@ -32,6 +32,8 @@ export const ID_PREFIXES = {
   webhookDelivery: 'whd',
   accountingConnection: 'acn',
   syncIssue: 'syi',
+  folderConnection: 'fcn',
+  folderLink: 'fln',
   importRow: 'imr',
   lateSubmission: 'lsb',
   diary: 'dia',
