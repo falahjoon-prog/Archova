@@ -699,6 +699,28 @@ export interface paths {
         patch: operations["updateScheduleActivity"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/baseline": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** Save the current dates as the baseline, replacing any earlier one. Returns the whole programme. */
+        put: operations["setScheduleBaseline"];
+        post?: never;
+        /** Remove the baseline. Returns the whole programme. */
+        delete: operations["clearScheduleBaseline"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies": {
         parameters: {
             query?: never;
@@ -2624,6 +2646,39 @@ export interface paths {
          *     and accepts or rejects it with the suggestion decision endpoint. Costs 3 Nova credits.
          */
         post: operations["draftInduction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova drafts a first version of a Safe Work Method Statement for high-risk work (F20).
+         * @description Nova drafts hazards, controls (highest level of the hierarchy first), how they are put in place and what is
+         *     particular to this site, for the high-risk work codes given and nothing else (compliance/08 §3). It will not
+         *     draft without the site, the activity, at least one high-risk code, the work area, the access, the plant and the
+         *     adjacent trades (an empty list means none). It reads site rules and a WHS management plan the caller can open.
+         *     Controls too general to follow, claims that the SWMS is compliant or safe, and anything outside the chosen codes
+         *     are removed and listed in `warnings`; a number nobody supplied, a code without a hazard or control, and
+         *     a site section that fits any site are flagged, not fixed. The result is a pending suggestion (task
+         *     `swms.draft`) for the caller alone, shaped like the SWMS content so they can edit it and submit it to the SWMS
+         *     register: it is never a SWMS until a person submits it, and a competent person must review it on site and accept
+         *     it before work starts. Costs 3 Nova credits. Returns `ai.swms.not_enabled` (403) until the feature is switched
+         *     on for pilots.
+         */
+        post: operations["draftSwms"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4804,6 +4859,54 @@ export interface paths {
         /** What happened to the RFI and when (RFI-AC10), for the activity feed. */
         get: operations["getRfiActivity"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        /** Everyone's marks on the RFI's photos, for anyone who can see the RFI. */
+        get: operations["listRfiAnnotations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+         * @description Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+         *     The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+         *     closed or void. The original photo is never changed.
+         */
+        put: operations["putRfiFileAnnotation"];
         post?: never;
         delete?: never;
         options?: never;
@@ -9195,6 +9298,8 @@ export interface components {
             source: components["schemas"]["ScheduleSource"];
             /** Format: date */
             dataDate: string | null;
+            /** Format: date-time */
+            baselineSetAt: string | null;
             activityCount: number;
             /** Format: date */
             startDate: string | null;
@@ -9224,6 +9329,12 @@ export interface components {
             /** @description Total float in working days, from the dates on the programme. */
             floatDays: number;
             critical: boolean;
+            /** Format: date */
+            baselineStart: string | null;
+            /** Format: date */
+            baselineFinish: string | null;
+            /** @description Working days the finish is after the baseline finish (negative = ahead); null without a baseline. */
+            varianceDays: number | null;
         };
         ScheduleDependency: {
             id: string;
@@ -9311,6 +9422,8 @@ export interface components {
             claimsOverdue: number;
             variationsOpen: number;
             variationsOverdue: number;
+            incidentsOpen: number;
+            incidentsOverdue: number;
         };
         Portfolio: {
             totals: components["schemas"]["PortfolioTotals"];
@@ -9391,7 +9504,7 @@ export interface components {
         };
         ReportConfig: {
             /** @enum {string} */
-            source: "rfis" | "defects" | "submittals" | "claims" | "variations";
+            source: "rfis" | "defects" | "submittals" | "claims" | "variations" | "incidents";
             /**
              * @description Open is what is still waiting on someone; closed is answered, approved or closed.
              * @enum {string}
@@ -9518,6 +9631,8 @@ export interface components {
             finish?: string;
             pctComplete?: number;
             assignee?: string;
+            /** @description Push successors later where the move breaks a link, keeping their durations (drag-to-reschedule). */
+            cascade?: boolean;
         };
         CreateScheduleDependencyRequest: {
             predecessorId: string;
@@ -11145,6 +11260,17 @@ export interface components {
                 dayType: "business" | "calendar" | "unclear";
                 source: components["schemas"]["ContractSourceRef"];
             }[];
+            /** @description Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed. */
+            obligations?: {
+                /** @enum {string} */
+                party: "builder" | "other_party" | "both" | "unclear";
+                /** @enum {string} */
+                category: "payment" | "notice" | "insurance" | "security" | "reporting" | "programme" | "quality" | "other";
+                action: string;
+                /** @description The contract's own words for when. Nova works out no dates. */
+                timing: string | null;
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
             /** @description Highest severity first. Each cites its clause. */
             flags: {
                 topicKey: string;
@@ -12613,6 +12739,8 @@ export interface components {
             /** @description As written on the form. */
             location: string | null;
             pin: components["schemas"]["RfiPin"] | null;
+            /** @description Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`). */
+            fileIds: string[];
             officialResponseId: string | null;
             createdBy: string | null;
             /** Format: date-time */
@@ -12663,6 +12791,7 @@ export interface components {
             /** @description Where on the project, as written (e.g. `Level 2, gridline C`). */
             location?: string;
             pin?: components["schemas"]["RfiPinInput"];
+            fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.draft` suggestion this RFI was drafted from (`suggestionId` of the draft); recorded on the RFI and its created event. */
             aiSuggestionId?: string;
         };
@@ -12684,12 +12813,34 @@ export interface components {
             specSection?: string | null;
             location?: string | null;
             pin?: components["schemas"]["RfiPinInput"] | null;
+            /** @description The files attached to the question; replaces the list. */
+            fileIds?: components["schemas"]["FileRef"][];
         };
         CreateRfiResponseRequest: {
             body: string;
             fileIds?: components["schemas"]["FileRef"][];
             /** @description The Nova `rfi.answer` suggestion this response was drafted from. */
             aiSuggestionId?: string;
+        };
+        RfiAnnotation: {
+            id: string;
+            rfiId: string;
+            fileId: string;
+            authorId: string | null;
+            shapes: components["schemas"]["MarkupShape"][];
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        RfiAnnotationList: {
+            data: components["schemas"]["RfiAnnotation"][];
+        };
+        RfiAnnotationResult: {
+            annotation: components["schemas"]["RfiAnnotation"] | null;
+        };
+        PutRfiAnnotationRequest: {
+            shapes: components["schemas"]["MarkupShape"][];
         };
         RfiActivityItem: {
             id: string;
@@ -17795,6 +17946,56 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    setScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    clearScheduleBaseline: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     createScheduleDependency: {
         parameters: {
             query?: never;
@@ -20657,6 +20858,45 @@ export interface operations {
             content: {
                 "application/json": {
                     siteName: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The draft, as a pending suggestion */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AiSuggestion"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    draftSwms: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    siteAddress: string;
+                    activity: string;
+                    highRiskWorkCategories: components["schemas"]["HighRiskWorkCategory"][];
+                    workArea: string;
+                    access: string;
+                    plant: string[];
+                    adjacentTrades: string[];
+                    /** @description True on projects of $250,000 or more (Vic $350,000). */
+                    whsPlanApplies?: boolean;
+                    notes?: string;
                 };
             };
         };
@@ -24401,6 +24641,63 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RfiActivity"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listRfiAnnotations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    putRfiFileAnnotation: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                rfiId: components["parameters"]["RfiId"];
+                fileId: components["parameters"]["FileId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PutRfiAnnotationRequest"];
+            };
+        };
+        responses: {
+            /** @description The caller's layer after the change; `null` when it was removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RfiAnnotationResult"];
                 };
             };
             default: components["responses"]["Problem"];

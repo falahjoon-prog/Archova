@@ -21,6 +21,7 @@ import { quoteReadSuite } from './suites/quote-read';
 import { meetingMinutesSuite } from './suites/meeting-minutes';
 import { rfiAnswerSuite } from './suites/rfi-answer';
 import { rfiDraftSuite } from './suites/rfi-draft';
+import { swmsDraftSuite } from './suites/swms-draft';
 import { takeoffDetectSuite } from './suites/takeoff-detect';
 import { translationSuite } from './suites/translation';
 
@@ -41,6 +42,7 @@ export const SUITES: readonly AnySuite[] = [
   meetingMinutesSuite,
   rfiDraftSuite,
   rfiAnswerSuite,
+  swmsDraftSuite,
   drawingCompareSuite,
   drawingCompareVisualSuite,
   defectTagSuite,

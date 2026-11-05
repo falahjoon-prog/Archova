@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { ImportError, parseMspXml, parseXer } from '../../src/domain/import';
 import {
+  addWorkDays,
   analyse,
+  cascade,
   lookahead,
+  varianceDays,
   wouldCycle,
   workingDays,
   type ActivityInput,
@@ -246,5 +249,46 @@ describe('P6 XER', () => {
   });
   it('refuses other files', () => {
     expect(() => parseXer('hello')).toThrow(ImportError);
+  });
+});
+
+describe('re-flow after a move', () => {
+  it('adds working days across a weekend', () => {
+    expect(addWorkDays('2026-11-06', 1)).toBe('2026-11-09');
+    expect(addWorkDays('2026-11-06', 0)).toBe('2026-11-06');
+    expect(addWorkDays('2026-11-02', 5)).toBe('2026-11-09');
+  });
+  it('measures finish variance in working days', () => {
+    expect(varianceDays('2026-11-09', '2026-11-06')).toBe(1);
+    expect(varianceDays('2026-11-04', '2026-11-06')).toBe(-2);
+    expect(varianceDays('2026-11-06', '2026-11-06')).toBe(0);
+  });
+  it('pushes broken successors later down the chain and never pulls anything earlier', () => {
+    const acts = [
+      act('A', '2026-11-04', '2026-11-05'), // moved here from Mon-Tue
+      act('B', '2026-11-04', '2026-11-05'),
+      act('C', '2026-11-06', '2026-11-06'),
+      act('D', '2026-11-02', '2026-11-02'), // not linked: untouched
+    ];
+    const deps = [dep('d1', 'A', 'B'), dep('d2', 'B', 'C')];
+    const r = cascade(acts, deps, 'A');
+    expect(r.get('B')).toEqual({ start: '2026-11-06', finish: '2026-11-09' });
+    expect(r.get('C')).toEqual({ start: '2026-11-10', finish: '2026-11-10' });
+    expect(r.has('A') || r.has('D')).toBe(false);
+    // Moving earlier leaves the links with spare room, so nothing changes.
+    expect(
+      cascade(
+        [act('A', '2026-11-02', '2026-11-02'), act('B', '2026-11-04', '2026-11-04')],
+        [dep('d', 'A', 'B')],
+        'A',
+      ).size,
+    ).toBe(0);
+  });
+  it('leaves finished work alone', () => {
+    const acts = [
+      act('A', '2026-11-09', '2026-11-09'),
+      act('B', '2026-11-09', '2026-11-09', { pctComplete: 100 }),
+    ];
+    expect(cascade(acts, [dep('d', 'A', 'B')], 'A').size).toBe(0);
   });
 });

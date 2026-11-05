@@ -73,3 +73,39 @@ export function weekendBands(span: Span, dayWidth: number): BarBox[] {
   }
   return out;
 }
+
+export type DragMode = 'move' | 'resize';
+
+/** Whole days a pointer travelled, snapped to the day grid. */
+export function dragDays(dxPx: number, dayWidth: number): number {
+  const d = Math.round(dxPx / dayWidth);
+  return d === 0 ? 0 : d; // never -0
+}
+
+export interface DragDates {
+  start: LocalDate;
+  finish: LocalDate;
+}
+
+/**
+ * The dates a drag leaves an activity on. Moving shifts both ends (a milestone is one day, so it just moves);
+ * resizing moves the finish only and never lets it pass the start.
+ */
+export function draggedDates(
+  a: { kind: 'task' | 'milestone'; start: LocalDate; finish: LocalDate },
+  mode: DragMode,
+  days: number,
+): DragDates {
+  if (mode === 'move' || a.kind === 'milestone')
+    return { start: addDays(a.start, days), finish: addDays(a.finish, days) };
+  const finish = addDays(a.finish, days);
+  return { start: a.start, finish: compareLocalDates(finish, a.start) < 0 ? a.start : finish };
+}
+
+/** "3 days late", "2 days ahead", "On baseline"; empty when there is no baseline. */
+export function varianceLabel(days: number | null): string {
+  if (days === null) return '';
+  if (days === 0) return 'On baseline';
+  const n = Math.abs(days);
+  return `${n} ${n === 1 ? 'day' : 'days'} ${days > 0 ? 'late' : 'ahead'}`;
+}

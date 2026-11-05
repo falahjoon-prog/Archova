@@ -1,6 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
+import { webRoutes } from '@archova/routes';
 import {
   Button,
   DataTable,
@@ -12,9 +14,12 @@ import {
   StatusPill,
   TextField,
   Textarea,
+  buttonClassName,
   type DataTableColumn,
 } from '@archova/ui';
 import { CoordinationIcon } from '@archova/ui/icons';
+import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
@@ -48,6 +53,8 @@ const DISCIPLINES = Object.keys(DISCIPLINE_LABEL) as BimDiscipline[];
 /** Design coordination: the clashes and gaps found in the models, and the models they were found in. */
 export function CoordinationScreen() {
   const dir = useProjectDirectory();
+  const org = useCurrentOrg();
+  const project = useCurrentProject();
   const [params, setParams] = useUrlState(['status', 'issue'] as const);
   const status = (STATUSES as string[]).includes(params.status)
     ? (params.status as CoordinationIssueStatus)
@@ -73,6 +80,7 @@ export function CoordinationScreen() {
   const [discipline, setDiscipline] = useState<BimDiscipline>('architectural');
   const [versionLabel, setVersionLabel] = useState('');
   const [replaces, setReplaces] = useState('');
+  const [modelFile, setModelFile] = useState<File | null>(null);
 
   const modelName_ = (id: string | null) =>
     id ? ((models.data ?? []).find((x) => x.id === id)?.name ?? '—') : '—';
@@ -117,6 +125,7 @@ export function CoordinationScreen() {
     { id: 'name', header: 'Model', rowHeader: true, cell: (x) => x.name },
     { id: 'discipline', header: 'Discipline', cell: (x) => DISCIPLINE_LABEL[x.discipline] },
     { id: 'version', header: 'Version', cell: (x) => x.versionLabel || '—' },
+    { id: 'file', header: 'IFC file', cell: (x) => (x.fileId ? 'Attached' : 'None') },
     {
       id: 'status',
       header: 'Status',
@@ -136,21 +145,29 @@ export function CoordinationScreen() {
         title="Coordination issues"
         description="Clashes and gaps found in the models. Pin each to the elements involved, assign it, and link the RFI that resolves it."
         actions={
-          <Button
-            onClick={() => {
-              m.raise.reset();
-              setTitle('');
-              setDescription('');
-              setPriority('medium');
-              setAssignee('');
-              setModelId('');
-              setLocation('');
-              setGuids('');
-              setRaising(true);
-            }}
-          >
-            Raise an issue
-          </Button>
+          <>
+            <Link
+              className={buttonClassName('secondary')}
+              href={webRoutes.coordinationModels(org.orgSlug, project.projectId)}
+            >
+              Open 3D viewer
+            </Link>
+            <Button
+              onClick={() => {
+                m.raise.reset();
+                setTitle('');
+                setDescription('');
+                setPriority('medium');
+                setAssignee('');
+                setModelId('');
+                setLocation('');
+                setGuids('');
+                setRaising(true);
+              }}
+            >
+              Raise an issue
+            </Button>
+          </>
         }
       />
       <div className="u-row">
@@ -270,6 +287,7 @@ export function CoordinationScreen() {
               setDiscipline('architectural');
               setVersionLabel('');
               setReplaces('');
+              setModelFile(null);
               setRegistering(true);
             }}
           >
@@ -394,12 +412,17 @@ export function CoordinationScreen() {
                     discipline,
                     ...(versionLabel.trim() ? { versionLabel: versionLabel.trim() } : {}),
                     ...(replaces ? { supersedesModelId: replaces } : {}),
+                    ...(modelFile ? { file: modelFile } : {}),
                   },
                   { onSuccess: () => setRegistering(false) },
                 )
               }
             >
-              {m.registerModel.isPending ? 'Registering…' : 'Register model'}
+              {m.registerModel.isPending
+                ? modelFile
+                  ? 'Uploading…'
+                  : 'Registering…'
+                : 'Register model'}
             </Button>
           </>
         }
@@ -422,6 +445,19 @@ export function CoordinationScreen() {
             value={versionLabel}
             onChange={(e) => setVersionLabel(e.target.value)}
           />
+          <div className="ac-field">
+            <label className="ac-field__label" htmlFor="model-file">
+              IFC file (optional)
+            </label>
+            <input
+              id="model-file"
+              className="file-input"
+              type="file"
+              accept=".ifc"
+              onChange={(e) => setModelFile(e.target.files?.[0] ?? null)}
+            />
+            <span className="ac-field__hint">Needed to open the model in the 3D viewer.</span>
+          </div>
           {currentModels.length > 0 ? (
             <Select
               label="Replaces"

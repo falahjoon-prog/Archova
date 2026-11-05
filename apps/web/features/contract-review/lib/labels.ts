@@ -64,6 +64,26 @@ export const TIME_BAR_LABEL: Record<ContractReview['timeBars'][number]['event'],
   other: 'Other',
 };
 
+type Obligation = NonNullable<ContractReview['obligations']>[number];
+
+export const OBLIGATION_PARTY_LABEL: Record<Obligation['party'], string> = {
+  builder: 'Builder',
+  other_party: 'Other party',
+  both: 'Both parties',
+  unclear: 'Not clear who',
+};
+
+export const OBLIGATION_CATEGORY_LABEL: Record<Obligation['category'], string> = {
+  payment: 'Payment',
+  notice: 'Notice',
+  insurance: 'Insurance',
+  security: 'Security',
+  reporting: 'Reporting',
+  programme: 'Programme',
+  quality: 'Quality',
+  other: 'Other',
+};
+
 export const DAY_TYPE_LABEL = {
   business: 'business days',
   calendar: 'calendar days',

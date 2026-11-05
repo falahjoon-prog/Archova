@@ -181,6 +181,7 @@ export const PROBLEM_CODES = {
   'rfi.assignee_not_on_project': 422,
   'rfi.response_not_allowed': 403,
   'rfi_response.not_found': 422,
+  'rfi.photo_not_markable': 422,
   // submittals
   'submittal.not_found': 404,
   'submittal.invalid_transition': 409,
@@ -363,6 +364,7 @@ export const PROBLEM_CODES = {
   'incident.closed': 409,
   'incident.cannot_close': 422,
   'incident.reason_required': 422,
+  'ai.swms.not_enabled': 403,
   'ai.induction.no_documents': 422,
   'ai.induction.up_to_date': 409,
   'ai.induction.cannot_refresh': 422,
