@@ -98,6 +98,8 @@ export const ID_PREFIXES = {
   paymentClaim: 'pcl',
   paymentSchedule: 'psc',
   variation: 'var',
+  prequalTemplate: 'pqt',
+  prequalification: 'pqf',
   forecastAdjustment: 'fca',
 } as const;
 
