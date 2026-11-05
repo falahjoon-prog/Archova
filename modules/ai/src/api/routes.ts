@@ -513,6 +513,7 @@ export function aiRoutes(
           ourSide: input.body.ourSide,
           baseForm: input.body.baseForm ?? null,
           multiState: input.body.multiState ?? false,
+          state: input.body.state ?? null,
         },
       );
       return {

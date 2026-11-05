@@ -235,3 +235,19 @@ export const contractPlaybookHistory = ai.table('ai_contract_playbook_history', 
   savedBy: uuid('saved_by'),
   savedAt: timestamp('saved_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const legalRules = ai.table('ai_legal_rules', {
+  id: uuid('id').primaryKey(),
+  ruleKey: text('rule_key').notNull(),
+  version: integer('version').notNull(),
+  state: text('state').notNull(),
+  contractTypes: text('contract_types').array().notNull(),
+  topic: text('topic').notNull(),
+  detect: text('detect').notNull(),
+  wording: text('wording').notNull(),
+  provision: text('provision').notNull(),
+  status: text('status').notNull(),
+  signedBy: text('signed_by'),
+  signedOn: date('signed_on', { mode: 'string' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
