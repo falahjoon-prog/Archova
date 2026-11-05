@@ -47,7 +47,7 @@ export function createLogSender(
 ): EmailSender {
   return {
     async send(m) {
-      log('email not sent: WORKER_EMAIL_PROVIDER is not ses', { subject: m.subject });
+      log('email not sent: WORKER_EMAIL_PROVIDER is not ses or smtp', { subject: m.subject });
     },
   };
 }
