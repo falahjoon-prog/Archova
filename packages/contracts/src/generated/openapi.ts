@@ -3004,6 +3004,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email an invited company a new link to the package. The earlier link stops working (X45). */
+        post: operations["resendTenderInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The package behind the current link session. */
+        get: operations["getTenderAccess"];
+        put?: never;
+        /**
+         * Exchange a tender link token for a session on that link (web `/q/[token]`, X45). Marks the invite viewed.
+         * @description Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, or a package no longer out to tender, returns `access_link.invalid` with no detail about the record.
+         */
+        post: operations["openTenderAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tender-access/respond": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The invited company says it intends to quote or declines. It can change its answer until a quote is submitted. */
+        post: operations["respondTenderAccess"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances": {
         parameters: {
             query?: never;
@@ -12237,6 +12297,41 @@ export interface components {
             viewedAt: string | null;
             /** Format: date-time */
             respondedAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the invite email last went out; null if it has not (no contact email, or the send failed)
+             */
+            deliveredAt: string | null;
+        };
+        RespondTenderAccessRequest: {
+            /** @enum {string} */
+            response: "intends_to_quote" | "declined";
+        };
+        TenderAccess: {
+            package: {
+                number: string;
+                name: string;
+                trade: string;
+                /** Format: date-time */
+                dueAt: string | null;
+                scope: {
+                    description: string;
+                }[];
+                fromOrg: string;
+                projectName: string;
+            };
+            invite: {
+                companyId: string;
+                email: string | null;
+                status: components["schemas"]["PackageInviteStatus"];
+                /** Format: date-time */
+                viewedAt: string | null;
+                /** Format: date-time */
+                respondedAt: string | null;
+            };
+            actions: ("view" | "respond")[];
+            /** Format: date-time */
+            expiresAt: string;
         };
         PackageAward: {
             quoteId: string;
@@ -20570,6 +20665,103 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    resendTenderInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+                companyId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The package; the invite's `deliveredAt` shows when the email went out */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    openTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenInductionAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description The package behind the link; `__Host-lnk` set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    respondTenderAccess: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RespondTenderAccessRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenderAccess"];
                 };
             };
             default: components["responses"]["Problem"];

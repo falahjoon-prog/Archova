@@ -216,6 +216,8 @@ export const PROBLEM_CODES = {
   'tender.company_not_on_project': 422,
   'tender.company_not_qualified': 422,
   'tender.reason_required': 422,
+  'tender.invite_not_found': 404,
+  'tender.no_contact_email': 422,
   'quote.not_found': 404,
   'quote.invalid_state': 409,
   'quote.company_not_invited': 422,

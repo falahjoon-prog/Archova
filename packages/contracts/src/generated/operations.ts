@@ -887,6 +887,14 @@ export const InviteToTenderPackageParams = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
 });
 export const InviteToTenderPackageBody = s.InvitePackageRequestSchema;
+export const ResendTenderInviteParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+  "companyId": z.string(),
+});
+export const OpenTenderAccessBody = s.OpenInductionAccessRequestSchema;
+export const RespondTenderAccessBody = s.RespondTenderAccessRequestSchema;
 export const SetTenderPackageAllowancesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4836,6 +4844,54 @@ export const operations = {
     params: InviteToTenderPackageParams,
     query: null,
     body: InviteToTenderPackageBody,
+  },
+  resendTenderInvite: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.packages.manage",
+    internal: false,
+    contentType: null,
+    params: ResendTenderInviteParams,
+    query: null,
+    body: null,
+  },
+  getTenderAccess: {
+    method: 'GET',
+    path: '/v1/tender-access',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: null,
+    params: null,
+    query: null,
+    body: null,
+  },
+  openTenderAccess: {
+    method: 'POST',
+    path: '/v1/tender-access',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: OpenTenderAccessBody,
+  },
+  respondTenderAccess: {
+    method: 'POST',
+    path: '/v1/tender-access/respond',
+    module: "estimating",
+    auth: "none",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: RespondTenderAccessBody,
   },
   setTenderPackageAllowances: {
     method: 'PUT',

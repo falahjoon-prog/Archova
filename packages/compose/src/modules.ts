@@ -319,6 +319,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     files: files.api,
     financials: financials.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const integrations = createIntegrationsModule(services, {

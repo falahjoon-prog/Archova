@@ -59,6 +59,7 @@ export const toPackageDto = (p: PackageView): TenderPackage => ({
     invitedAt: i.invitedAt.toISOString(),
     viewedAt: iso(i.viewedAt),
     respondedAt: iso(i.respondedAt),
+    deliveredAt: iso(i.deliveredAt),
   })),
   allowances: allowanceKeysOut(p.allowances),
   award:
