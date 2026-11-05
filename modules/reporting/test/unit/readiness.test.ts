@@ -91,6 +91,16 @@ function deps(over: Partial<ReportingDeps> = {}): ReportingDeps {
     variations: tool,
     incidents: tool,
     programme: tool,
+    budget: {
+      portfolioSummary: async () => ({
+        restricted: true,
+        hasBudget: false,
+        revisedCents: 0,
+        forecastFinalCents: 0,
+        varianceCents: 0,
+        overBudgetCodes: 0,
+      }),
+    },
     access: { can: async () => true },
     precon: {
       readinessSummary: async () => ({

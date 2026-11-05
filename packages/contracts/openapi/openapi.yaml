@@ -13255,6 +13255,25 @@ components:
           }
         open: { type: integer }
         overdue: { type: integer }
+    PortfolioBudget:
+      type: object
+      required: [restricted, hasBudget, revised, forecastFinal, variance, overBudgetCodes]
+      description: >-
+        Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and
+        margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost,
+        so a negative variance is over budget.
+      properties:
+        restricted:
+          {
+            type: boolean,
+            description: 'True when the caller may not read the budget or forecast; figures are then zero.',
+          }
+        hasBudget: { type: boolean }
+        revised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        forecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        variance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        overBudgetCodes:
+          { type: integer, description: 'Cost codes whose forecast is over their revised budget.' }
     PortfolioProject:
       type: object
       required:
@@ -13270,6 +13289,7 @@ components:
           variations,
           incidents,
           programme,
+          budget,
           attention,
         ]
       properties:
@@ -13300,6 +13320,7 @@ components:
             allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
             description: 'Activities on the newest programme that are not complete; overdue means they should have started or finished before today.',
           }
+        budget: { $ref: '#/components/schemas/PortfolioBudget' }
         attention:
           {
             type: integer,
@@ -13324,6 +13345,11 @@ components:
           incidentsOverdue,
           programmeOpen,
           programmeOverdue,
+          budgetProjects,
+          projectsOverBudget,
+          budgetRevised,
+          budgetForecastFinal,
+          budgetVariance,
         ]
       properties:
         projects: { type: integer }
@@ -13341,6 +13367,11 @@ components:
         incidentsOverdue: { type: integer }
         programmeOpen: { type: integer }
         programmeOverdue: { type: integer }
+        budgetProjects: { type: integer, description: 'Projects with a budget the caller can see.' }
+        projectsOverBudget: { type: integer }
+        budgetRevised: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        budgetForecastFinal: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        budgetVariance: { $ref: '#/components/schemas/FinancialsSignedMoney' }
     LateSopaClaimRisk:
       type: object
       required: [projects, unreadableProjects, truncated]

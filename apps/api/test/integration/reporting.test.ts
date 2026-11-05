@@ -116,6 +116,17 @@ describe('Portfolio dashboard', () => {
     expect(p.projects.map((x) => x.name)).toEqual(['Alpha Tower', 'Bravo Lofts']);
     expect(p.projects[0]).toMatchObject({ attention: 1, rfis: { open: 2, overdue: 1 } });
     expect(p.projects[1]).toMatchObject({ attention: 1, defects: { open: 1, overdue: 1 } });
+    // Neither project has a budget yet: no figures, and they don't count towards the company's budget position.
+    expect(p.projects[0]!.budget).toMatchObject({
+      hasBudget: false,
+      revised: '0.00',
+      variance: '0.00',
+    });
+    expect(p.totals).toMatchObject({
+      budgetProjects: 0,
+      projectsOverBudget: 0,
+      budgetVariance: '0.00',
+    });
   });
 
   it('is staff only: a subcontractor on one project cannot open it', async () => {

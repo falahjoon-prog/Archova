@@ -2,6 +2,7 @@ import type { TenantScope } from '@archova/kernel';
 import type { PlatformApi } from '@archova/mod-platform';
 import {
   PROJECT_LIMIT,
+  type BudgetSummary,
   type ReportSource,
   type SourceRow,
   type ToolCounts,
@@ -23,6 +24,10 @@ export interface ReportingDeps {
   variations: Tool;
   incidents: Tool;
   programme: Tool;
+  /** Budget against forecast per project (`financials`); restricted unless the caller may read it. */
+  budget: {
+    portfolioSummary(scope: TenantScope, projectId: string): Promise<BudgetSummary>;
+  };
   /** For the tender-readiness pack; each narrows to what the caller may read. */
   access: {
     can(
