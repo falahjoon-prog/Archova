@@ -66,7 +66,8 @@ export function usePackageMutations(packageId: string) {
       onSuccess: invalidate,
     }),
     invite: useMutation({
-      mutationFn: (companyIds: string[]) => quotesSource.invite(projectId, packageId, companyIds),
+      mutationFn: (v: { companyIds: string[]; overrideReason?: string }) =>
+        quotesSource.invite(projectId, packageId, v.companyIds, v.overrideReason),
       onSuccess: invalidate,
     }),
     upload: useMutation({

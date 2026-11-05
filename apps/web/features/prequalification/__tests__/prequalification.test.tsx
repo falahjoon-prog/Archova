@@ -180,4 +180,21 @@ describe('PrequalScreen', () => {
     await screen.findByText('Sparky Electrical');
     expect(screen.getByRole('tab', { name: 'Question sets' })).toBeTruthy();
   });
+
+  it('lets an admin require prequalification for tender invites', async () => {
+    const S = '/v1/orgs/{orgId}/prequalification-settings';
+    fake.on('GET', S, () => ({ requireForTenders: false }));
+    fake.on('PUT', S, () => ({ requireForTenders: true }));
+    const user = userEvent.setup();
+    renderInProject(<PrequalScreen />);
+    await screen.findByText('Sparky Electrical');
+    await user.click(screen.getByRole('tab', { name: 'Question sets' }));
+    await user.click(
+      await screen.findByRole('checkbox', {
+        name: 'Only invite prequalified subcontractors to tender',
+      }),
+    );
+    await waitFor(() => expect(fake.callsTo('PUT', S)).toHaveLength(1));
+    expect(fake.callsTo('PUT', S)[0]!.init.body).toEqual({ requireForTenders: true });
+  });
 });

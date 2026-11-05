@@ -1110,6 +1110,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
   }
 
   return {
+    contractFor: getContractRow,
+    requireStaff,
     ledgerSource,
     recordPayment,
     createVariation,

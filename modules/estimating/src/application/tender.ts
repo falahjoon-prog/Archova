@@ -49,6 +49,13 @@ export interface EstimatingDeps {
   platform: Pick<PlatformApi, 'getProject' | 'projectCompanies' | 'companyExists'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision' | 'getDocumentRef'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  /** Prequalification (precon): which companies a tender invite must refuse when the org requires it. */
+  prequal: {
+    tenderGate(
+      scope: TenantScope,
+      companyIds: readonly string[],
+    ): Promise<{ required: boolean; blocked: { companyId: string; state: string }[] }>;
+  };
   now?: () => Date;
 }
 
@@ -363,6 +370,7 @@ export function createTenderService(deps: EstimatingDeps) {
     projectId: string,
     packageId: string,
     companyIds: string[],
+    overrideReason?: string,
   ) {
     const { row } = await load(scope, projectId, packageId);
     if (!isEditable(row.status))
@@ -381,6 +389,32 @@ export function createTenderService(deps: EstimatingDeps) {
         throw new AppError('tender.company_not_on_project', 'Invite companies on this project.', [
           { path: `companyIds/${i}`, message: 'Not a company on the project' },
         ]);
+    // Companies already invited are left as they are, so only the new ones face the prequalification check.
+    const already = new Set(
+      (
+        await scope.tx
+          .select({ companyId: packageInvites.companyId })
+          .from(packageInvites)
+          .where(eq(packageInvites.packageId, packageId))
+      ).map((r) => r.companyId),
+    );
+    const gate = await deps.prequal.tenderGate(
+      scope,
+      ids.filter((id) => !already.has(id)),
+    );
+    const overridden = gate.blocked.length > 0 && Boolean(overrideReason?.trim());
+    if (gate.blocked.length > 0) {
+      if (overridden) await deps.access.assert(scope, 'precon.prequal.decide');
+      else
+        throw new AppError(
+          'tender.company_not_qualified',
+          'Only prequalified companies can be invited. Get the form approved, or override with a reason.',
+          gate.blocked.map((b) => ({
+            path: `companyIds/${ids.indexOf(b.companyId)}`,
+            message: `Not prequalified (${b.state})`,
+          })),
+        );
+    }
     await scope.tx
       .insert(packageInvites)
       .values(
@@ -401,6 +435,19 @@ export function createTenderService(deps: EstimatingDeps) {
       entityId: packageId,
       data: { packageId, companyIds: ids },
     });
+    if (overridden)
+      scope.events.add({
+        type: 'estimating.package.invite_override.v1',
+        projectId,
+        entityType: 'tender_package',
+        entityId: packageId,
+        data: {
+          packageId,
+          actorId: scope.ctx.userId,
+          reason: overrideReason!.trim(),
+          companyIds: gate.blocked.map((b) => b.companyId),
+        },
+      });
     return get(scope, projectId, packageId);
   }
 

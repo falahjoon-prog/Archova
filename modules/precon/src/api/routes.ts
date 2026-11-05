@@ -10,6 +10,7 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { PrequalService } from '../application/prequalifications';
+import type { SettingsService } from '../application/settings';
 import type { TemplateService } from '../application/templates';
 import { toPrequalDto, toSummaryDto, toTemplateDto } from './mappers';
 
@@ -29,6 +30,7 @@ export function preconRoutes(
   database: Database,
   templates: TemplateService,
   forms: PrequalService,
+  settings: SettingsService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -51,6 +53,14 @@ export function preconRoutes(
   });
 
   return defineRoutes({
+    getPrequalSettings: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => settings.get(s)),
+    }),
+    updatePrequalSettings: async (input) => ({
+      status: 200,
+      body: await tx(input, (s) => settings.set(s, input.body)),
+    }),
     listPrequalTemplates: async (input) => {
       const rows = await read(input, (s) => templates.list(s));
       return { status: 200, body: { data: rows.map(toTemplateDto) } };

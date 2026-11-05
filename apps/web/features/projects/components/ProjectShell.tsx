@@ -10,6 +10,7 @@ import {
   InspectionsIcon,
   SwmsIcon,
   LateSubmissionsIcon,
+  OwnerPortalIcon,
   ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
@@ -187,6 +188,11 @@ export function projectToolGroups(
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
+    },
+    canRead('owner_portal') && {
+      href: webRoutes.ownerPortal(orgSlug, projectId),
+      label: 'Owner portal',
+      icon: OwnerPortalIcon,
     },
     canAdmin('project_admin') && {
       href: webRoutes.lateSubmissions(orgSlug, projectId),
