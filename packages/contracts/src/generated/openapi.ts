@@ -9164,12 +9164,12 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention` or `financials.retention_release_due`. */
             kind: string;
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package";
+            entityType: "meeting" | "tender_package" | "contract";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;
