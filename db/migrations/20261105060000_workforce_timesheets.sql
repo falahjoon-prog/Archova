@@ -1,4 +1,4 @@
--- Composed from modules/workforce/db/migrations/20261105050000_workforce_timesheets.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/workforce/db/migrations/20261105060000_workforce_timesheets.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Daily timesheets per worker (ATT-US9, X54): built from attendance sessions, adjusted with a reason, approved by a
 -- supervisor. An approved timesheet is locked; a change needs a rejection first. Hours only: awards and pay stay in
 -- payroll.
