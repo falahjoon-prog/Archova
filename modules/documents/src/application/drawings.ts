@@ -404,7 +404,7 @@ export function createDrawingService(c: DocumentsContext) {
         updatedBy: scope.ctx.userId,
       });
       await scope.recordChange({
-        module: 'documents',
+        module: 'drawings',
         entityType: 'drawing_markup',
         entityId: id,
         op: 'upsert',
@@ -439,6 +439,16 @@ export function createDrawingService(c: DocumentsContext) {
       .orderBy(asc(drawingSheets.sheetNumber), asc(drawingSheets.id))
       .limit(opts.limit + 1);
     return toPage(rows, opts.limit, (r) => ({ n: r.sheet.sheetNumber, id: r.sheet.id }));
+  }
+
+  /** The project a revision belongs to (RLS limits this to the caller's organisation), or null. */
+  async function projectOfRevision(scope: TenantScope, revisionId: string) {
+    const [row] = await scope.tx
+      .select({ projectId: drawingRevisions.projectId })
+      .from(drawingRevisions)
+      .where(eq(drawingRevisions.id, revisionId))
+      .limit(1);
+    return row?.projectId ?? null;
   }
 
   /** Sheets among `ids` with their current revision, for the mobile pull. */
@@ -556,6 +566,7 @@ export function createDrawingService(c: DocumentsContext) {
   }
 
   return {
+    projectOfRevision,
     sheetsAmong,
     publishedRevisionsAmong,
     listSets,

@@ -36,6 +36,7 @@ const MODULE_OF: Record<string, string> = {
   inspection: 'quality',
   drawing_sheet: 'drawings',
   drawing_revision: 'drawings',
+  drawing_markup: 'drawings',
 };
 const moduleOf = (entityType: string) => MODULE_OF[entityType] ?? entityType;
 

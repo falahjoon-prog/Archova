@@ -371,7 +371,11 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       workforce.api.syncSource,
       quality.api.syncSource,
     ],
-    commands: [...defects.api.syncCommands, ...quality.api.syncCommands],
+    commands: [
+      ...defects.api.syncCommands,
+      ...quality.api.syncCommands,
+      ...documents.api.syncCommands,
+    ],
     accessState: platform.api.getProjectAccessState,
   });
 
