@@ -18,6 +18,7 @@ const counts = (r: [number, number], d: [number, number], s: [number, number]): 
   claims: tool(0, 0),
   variations: tool(0, 0),
   incidents: tool(0, 0),
+  programme: tool(0, 0),
 });
 
 describe('columns and config', () => {

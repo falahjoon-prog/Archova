@@ -22,6 +22,7 @@ export interface ReportingDeps {
   claims: Tool;
   variations: Tool;
   incidents: Tool;
+  programme: Tool;
   /** For the tender-readiness pack; each narrows to what the caller may read. */
   access: {
     can(
