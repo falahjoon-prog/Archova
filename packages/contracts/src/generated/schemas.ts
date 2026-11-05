@@ -394,6 +394,22 @@ export const BidBoardSchema = z.object({
 });
 export type BidBoard = z.infer<typeof BidBoardSchema>;
 
+export const BidderListSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "companyIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type BidderList = z.infer<typeof BidderListSchema>;
+
+export const BidderListListSchema = z.object({
+  "data": z.array(BidderListSchema),
+});
+export type BidderListList = z.infer<typeof BidderListListSchema>;
+
 export const BudgetLineSchema = z.object({
   "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
@@ -643,6 +659,12 @@ export const ComplianceExpiryAlertListSchema = z.object({
 });
 export type ComplianceExpiryAlertList = z.infer<typeof ComplianceExpiryAlertListSchema>;
 
+export const ComplianceFileLinkSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceFileLink = z.infer<typeof ComplianceFileLinkSchema>;
+
 export const ComplianceGrantSchema = z.object({
   "id": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
   "granteeName": z.string(),
@@ -682,6 +704,7 @@ export const SharedComplianceDocumentSchema = z.object({
   "evidence": z.enum(["recorded", "sighted", "self_declared"]),
   "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
   "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "fileCount": z.number().int().min(0).max(4),
 });
 export type SharedComplianceDocument = z.infer<typeof SharedComplianceDocumentSchema>;
 
@@ -1000,6 +1023,13 @@ export const CreateAttendanceSiteRequestSchema = z.object({
   "gateCheckMode": z.enum(["block", "warn"]).optional(),
 }).strict();
 export type CreateAttendanceSiteRequest = z.infer<typeof CreateAttendanceSiteRequestSchema>;
+
+export const CreateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict();
+export type CreateBidderListRequest = z.infer<typeof CreateBidderListRequestSchema>;
 
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -1599,6 +1629,12 @@ export const CreateScheduleDependencyRequestSchema = z.object({
   "lagDays": z.number().int().min(-1000).max(1000).optional(),
 }).strict();
 export type CreateScheduleDependencyRequest = z.infer<typeof CreateScheduleDependencyRequestSchema>;
+
+export const CreateScheduleLinkRequestSchema = z.object({
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+}).strict();
+export type CreateScheduleLinkRequest = z.infer<typeof CreateScheduleLinkRequestSchema>;
 
 export const CreateScheduleRequestSchema = z.object({
   "name": z.string().min(1).max(200),
@@ -4563,6 +4599,25 @@ export const SaveInductionDraftRequestSchema = z.object({
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
 
+export const ScheduleLinkSchema = z.object({
+  "id": z.string(),
+  "activityId": z.string(),
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+  "visible": z.boolean(),
+  "ref": z.string().nullable(),
+  "title": z.string().nullable(),
+  "status": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "scheduleImpactDays": z.number().int().nullable(),
+});
+export type ScheduleLink = z.infer<typeof ScheduleLinkSchema>;
+
+export const ScheduleLinkListSchema = z.object({
+  "data": z.array(ScheduleLinkSchema),
+});
+export type ScheduleLinkList = z.infer<typeof ScheduleLinkListSchema>;
+
 export const ScheduleListSchema = z.object({
   "data": z.array(ScheduleSummarySchema),
 });
@@ -5181,6 +5236,13 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
+
+export const UpdateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateBidderListRequest = z.infer<typeof UpdateBidderListRequestSchema>;
 
 export const UpdateBudgetLineRequestSchema = z.object({
   "description": z.string().max(300).optional(),

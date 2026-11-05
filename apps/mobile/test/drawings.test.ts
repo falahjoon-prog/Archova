@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { DrawingSheet as Sheet } from '@archova/contracts';
-import { drawingPdfUrl, pdfPageUrl, registerRows } from '../features/drawings';
+import { drawingPdfUrl, pdfPageUrl, registerRows, saveAllSummary } from '../features/drawings';
 
 vi.mock('../features/drawings/screens/DrawingRegisterScreen', () => ({}));
 vi.mock('../features/drawings/screens/DrawingViewerScreen', () => ({}));
@@ -68,5 +68,16 @@ describe('sheet PDF fallback', () => {
     expect(GET).toHaveBeenCalledWith('/v1/orgs/{orgId}/files/{fileId}/download', {
       params: { path: { orgId: 'org1', fileId: 'fil_1' } },
     });
+  });
+});
+
+describe('saveAllSummary', () => {
+  it('says what happened in plain words', () => {
+    expect(saveAllSummary({ saved: 0, alreadySaved: 0, failed: 0, stoppedBecause: null })).toBe(
+      'Nothing to save.',
+    );
+    expect(saveAllSummary({ saved: 2, alreadySaved: 1, failed: 0, stoppedBecause: 'full' })).toBe(
+      '2 saved. 1 already on this device. Stopped because the drawing storage is full.',
+    );
   });
 });

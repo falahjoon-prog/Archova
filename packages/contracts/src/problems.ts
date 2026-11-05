@@ -209,6 +209,9 @@ export const PROBLEM_CODES = {
   'cost_item.not_found': 404,
   'cost_item.invalid': 422,
   'cost_item.code_taken': 409,
+  'bidder_list.not_found': 404,
+  'bidder_list.invalid': 422,
+  'bidder_list.name_taken': 409,
   'estimate.not_found': 404,
   'estimate.line_not_found': 404,
   'estimate.invalid': 422,
@@ -253,6 +256,8 @@ export const PROBLEM_CODES = {
   'schedule.dependency_not_found': 404,
   'schedule.link_cycle': 409,
   'schedule.link_exists': 409,
+  'schedule.item_link_not_found': 404,
+  'schedule.item_link_exists': 409,
   'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,

@@ -2020,6 +2020,18 @@ fieldset.worker-card > legend {
   gap: var(--space-2);
 }
 
+/* Cost forecast: the cost and margin summaries sit side by side once there is room for two. */
+.forecast-summary {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 768px) {
+  .forecast-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* Programme: Gantt chart and look-ahead */
 .programme-bar {
   display: flex;
