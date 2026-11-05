@@ -508,7 +508,36 @@ export function createInspectionService(deps: QualityDeps) {
     return detail(scope, projectId, id);
   }
 
+  /** The project an inspection belongs to (RLS limits this to the caller's organisation), or null. */
+  async function projectOf(scope: TenantScope, id: string) {
+    const [row] = await scope.tx
+      .select({ projectId: inspections.projectId })
+      .from(inspections)
+      .where(and(eq(inspections.id, id), isNull(inspections.deletedAt)))
+      .limit(1);
+    return row?.projectId ?? null;
+  }
+
+  /** Inspections among `ids` the caller may see (builder staff only), each with its checklist, for the mobile pull. */
+  async function visibleAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    await internal(scope, projectId, 'inspection.not_found').catch((e: unknown) => {
+      if (e instanceof AppError && e.code === 'inspection.not_found') return null;
+      throw e;
+    });
+    const out: Awaited<ReturnType<typeof detail>>[] = [];
+    for (const id of ids) {
+      try {
+        out.push(await detail(scope, projectId, id));
+      } catch (e) {
+        if (!(e instanceof AppError && e.code === 'inspection.not_found')) throw e;
+      }
+    }
+    return out;
+  }
+
   return {
+    projectOf,
+    visibleAmong,
     listTemplates,
     templateDetail,
     createTemplate,

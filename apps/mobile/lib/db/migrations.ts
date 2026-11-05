@@ -97,6 +97,13 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (project_id, module)
   ) WITHOUT ROWID;
   `,
+  // 5: projects the user removed from this device (mobile 02 §2.8). Everything else stays offline by default.
+  `
+  CREATE TABLE offline_excluded (
+    project_id TEXT PRIMARY KEY,
+    removed_at TEXT NOT NULL
+  ) WITHOUT ROWID;
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

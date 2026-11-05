@@ -97,6 +97,7 @@ export const ID_PREFIXES = {
   variation: 'var',
   budgetLine: 'bdl',
   commitment: 'cmt',
+  forecastAdjustment: 'fca',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

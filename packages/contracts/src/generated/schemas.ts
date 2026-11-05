@@ -449,6 +449,22 @@ export const CommitmentDetailSchema = z.object({
 });
 export type CommitmentDetail = z.infer<typeof CommitmentDetailSchema>;
 
+export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
+export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
+
+export const CommitmentForecastSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "committed": FinancialsMoneySchema,
+  "claimedToDate": FinancialsMoneySchema,
+  "costToComplete": FinancialsMoneySchema,
+  "adjustments": FinancialsSignedMoneySchema,
+  "forecastFinal": FinancialsSignedMoneySchema,
+  "pendingVariations": FinancialsMoneySchema,
+});
+export type CommitmentForecast = z.infer<typeof CommitmentForecastSchema>;
+
 export const CommitmentListSchema = z.object({
   "data": z.array(CommitmentSchema),
 });
@@ -833,6 +849,37 @@ export type CorrespondenceTypeRef = z.infer<typeof CorrespondenceTypeRefSchema>;
 export const CostCategorySchema = z.enum(["labour", "material", "plant", "subcontract", "other"]);
 export type CostCategory = z.infer<typeof CostCategorySchema>;
 
+export const ForecastAdjustmentCategorySchema = z.enum(["unawarded_work", "allowance", "risk", "saving", "other"]);
+export type ForecastAdjustmentCategory = z.infer<typeof ForecastAdjustmentCategorySchema>;
+
+export const ForecastAdjustmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).nullable(),
+  "category": ForecastAdjustmentCategorySchema,
+  "label": z.string(),
+  "note": z.string().nullable(),
+  "amount": FinancialsSignedMoneySchema,
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ForecastAdjustment = z.infer<typeof ForecastAdjustmentSchema>;
+
+export const CostForecastSchema = z.object({
+  "revenue": FinancialsMoneySchema,
+  "billedToDate": FinancialsMoneySchema,
+  "pendingRevenueVariations": FinancialsMoneySchema,
+  "committed": FinancialsMoneySchema,
+  "claimedToDate": FinancialsMoneySchema,
+  "costToComplete": FinancialsMoneySchema,
+  "projectAdjustments": FinancialsSignedMoneySchema,
+  "forecastFinalCost": FinancialsSignedMoneySchema,
+  "pendingCostVariations": FinancialsMoneySchema,
+  "forecastMargin": FinancialsSignedMoneySchema,
+  "forecastMarginPct": z.string().nullable(),
+  "commitments": z.array(CommitmentForecastSchema),
+  "adjustments": z.array(ForecastAdjustmentSchema),
+});
+export type CostForecast = z.infer<typeof CostForecastSchema>;
+
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
 
@@ -1166,6 +1213,15 @@ export const CreateFolderRequestSchema = z.object({
   "allowedCompanyIds": z.array(CompanyRefSchema).max(200).optional(),
 }).strict();
 export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
+
+export const CreateForecastAdjustmentRequestSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).optional(),
+  "category": ForecastAdjustmentCategorySchema,
+  "label": z.string().min(1).max(300),
+  "note": z.string().min(1).max(5000).optional(),
+  "amount": FinancialsSignedMoneySchema,
+}).strict();
+export type CreateForecastAdjustmentRequest = z.infer<typeof CreateForecastAdjustmentRequestSchema>;
 
 export const CreateGateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
