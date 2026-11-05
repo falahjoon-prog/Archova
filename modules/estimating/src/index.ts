@@ -8,10 +8,14 @@ export {
 } from './application/reminders';
 export {
   claimInviteeReminder,
+  commitReminderLink,
+  creatorsStillAllowed,
+  discardReminderLink,
   findInviteeCandidates,
   mintReminderLink,
   planInviteeReminders,
   releaseInviteeReminder,
+  syncRemindersPaused,
   type InviteeCandidate,
   type PlannedInviteeReminder,
   type ReminderStage,

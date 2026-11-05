@@ -115,22 +115,76 @@ export async function releaseInviteeReminder(
     delete from estimating.invite_reminders
     where invite_id = ${p.candidate.inviteId} and stage = ${p.stage}
       and due_at = ${p.candidate.dueAt.toISOString()}`);
-  await scope.tx
-    .update(packageInvites)
-    .set({ deliveredAt: null })
-    .where(eq(packageInvites.id, p.candidate.inviteId));
 }
 
 /**
- * Replaces the invite's link with a new one and returns its token. The old link is revoked. Issued in the package
- * creator's name, so `creatorStillAllowed` keeps working when the guest opens it.
+ * Of the package creators behind these candidates, the ones whose links would still work. A link dies with its
+ * creator's access (`creatorStillAllowed`, checked in full on every guest request), so mailing one for someone who has
+ * left only sends a dead link. This is the cheaper pre-check the worker can make: the creator must still have access
+ * (an active membership) and, unless they are an owner or admin, still be on the package's project.
+ */
+export async function creatorsStillAllowed(
+  scope: TenantScope,
+  candidates: readonly InviteeCandidate[],
+): Promise<Set<string>> {
+  const packages = [...new Set(candidates.map((c) => c.packageId))];
+  if (!packages.length) return new Set();
+  const res = await scope.tx.execute<{ package_id: string }>(sql`
+    select p.id as package_id
+    from estimating.tender_packages p
+    join platform.memberships m on m.user_id = p.created_by and m.status = 'active'
+    where p.id in (${sql.join(
+      packages.map((i) => sql`${i}::uuid`),
+      sql`, `,
+    )})
+      and (
+        m.role in ('owner', 'admin')
+        or exists (
+          select 1 from platform.project_members pm
+          where pm.project_id = p.project_id and pm.user_id = p.created_by and pm.status = 'active'
+        )
+      )`);
+  return new Set(res.rows.map((r) => r.package_id));
+}
+
+/** Records which packages have reminders paused because their creator lost access, and clears it when they regain it. */
+export async function syncRemindersPaused(
+  scope: TenantScope,
+  allowed: ReadonlySet<string>,
+  all: readonly InviteeCandidate[],
+): Promise<void> {
+  const seen = new Map(all.map((c) => [c.packageId, c.projectId]));
+  for (const [packageId, projectId] of seen) {
+    const ok = allowed.has(packageId);
+    const res = await scope.tx.execute<{ id: string }>(
+      ok
+        ? sql`update estimating.tender_packages set invite_reminders_paused_at = null
+              where id = ${packageId} and invite_reminders_paused_at is not null returning id`
+        : sql`update estimating.tender_packages set invite_reminders_paused_at = now()
+              where id = ${packageId} and invite_reminders_paused_at is null returning id`,
+    );
+    if (!ok && res.rows.length)
+      scope.events.add({
+        type: 'estimating.package.invite_reminders_paused.v1',
+        projectId,
+        entityType: 'tender_package',
+        entityId: packageId,
+        data: { packageId, reason: 'creator_lost_access' },
+      });
+  }
+}
+
+/**
+ * Creates the fresh link for a reminder. It is not attached to the invite yet: the old link keeps working until the
+ * email has gone out (`commitReminderLink`), and a failed send throws this one away (`discardReminderLink`). Issued in
+ * the package creator's name, so `creatorStillAllowed` keeps working when the guest opens it.
  */
 export async function mintReminderLink(
   scope: TenantScope,
   p: PlannedInviteeReminder,
   email: string,
   now: Date,
-): Promise<{ token: string; expiresAt: Date }> {
+): Promise<{ token: string; expiresAt: Date; linkId: string }> {
   const c = p.candidate;
   const asCreator: TenantScope = { ...scope, ctx: { ...scope.ctx, userId: c.createdBy } };
   const expiresAt = new Date(
@@ -152,10 +206,32 @@ export async function mintReminderLink(
     expiresAt,
     maxUses: 100,
   });
-  if (c.accessLinkId) await revokeAccessLink(asCreator, c.accessLinkId);
+  return { token, expiresAt, linkId: link.id };
+}
+
+/** After a successful send: the new link becomes the invite's, the old one is revoked, and the reminder is logged. */
+export async function commitReminderLink(
+  scope: TenantScope,
+  p: PlannedInviteeReminder,
+  linkId: string,
+  now: Date,
+): Promise<void> {
+  const c = p.candidate;
+  if (c.accessLinkId) await revokeAccessLink(scope, c.accessLinkId);
   await scope.tx
     .update(packageInvites)
-    .set({ accessLinkId: link.id, lastRemindedAt: now, deliveredAt: now })
+    .set({ accessLinkId: linkId, lastRemindedAt: now, deliveredAt: now })
     .where(eq(packageInvites.id, c.inviteId));
-  return { token, expiresAt };
+  scope.events.add({
+    type: 'estimating.invite_reminder_sent.v1',
+    projectId: c.projectId,
+    entityType: 'tender_package',
+    entityId: c.packageId,
+    data: { packageId: c.packageId, companyId: c.companyId, stage: p.stage },
+  });
+}
+
+/** After a failed send: the unsent link is revoked and the old one stays, so the invitee is never left without one. */
+export async function discardReminderLink(scope: TenantScope, linkId: string): Promise<void> {
+  await revokeAccessLink(scope, linkId);
 }

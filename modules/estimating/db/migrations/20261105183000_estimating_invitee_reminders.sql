@@ -13,5 +13,7 @@ create table estimating.invite_reminders (
 select kernel.enable_tenant_rls('estimating.invite_reminders');
 
 alter table estimating.package_invites add column last_reminded_at timestamptz;
+-- Set while reminders are held because the package's creator has lost access, so dead links are not mailed.
+alter table estimating.tender_packages add column invite_reminders_paused_at timestamptz;
 
 select kernel.grant_module_schema('estimating');

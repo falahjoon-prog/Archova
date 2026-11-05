@@ -1,10 +1,14 @@
 import { sql } from 'drizzle-orm';
 import {
   claimInviteeReminder,
+  commitReminderLink,
+  creatorsStillAllowed,
+  discardReminderLink,
   findInviteeCandidates,
   mintReminderLink,
   planInviteeReminders,
   releaseInviteeReminder,
+  syncRemindersPaused,
   type PlannedInviteeReminder,
 } from '@archova/mod-estimating';
 import type { EmailSender } from '@archova/kernel';
@@ -21,8 +25,8 @@ const escapeHtml = (s: string) =>
  * Reminds invited companies that have not answered a tender, two days and one day before it is due (daily at 22:00 UTC,
  * about 08:00 on the east coast). The project's own calendar day decides which reminder is due (X34). Each reminder is
  * claimed in `estimating.invite_reminders` before sending, keyed by invite, stage and due time, so a rerun sends
- * nothing and a moved due date re-arms it; a failed send gives the claim back. Each email carries a fresh link and the
- * earlier one is revoked. Companies that answered or sent a quote are not emailed, and nor are companies with no email.
+ * nothing and a moved due date re-arms it; a failed send gives the claim back. Each email carries a fresh link; the earlier
+ * one is revoked only after the email has gone out. Companies that answered or sent a quote are not emailed, and nor are companies with no email.
  */
 export function inviteeReminders(sender: EmailSender, appBaseUrl: string): TenantJob {
   const base = appBaseUrl.replace(/\/$/, '');
@@ -44,13 +48,25 @@ export function inviteeReminders(sender: EmailSender, appBaseUrl: string): Tenan
           (id) => project.get(id)?.timezone ?? null,
         );
         if (plan.length === 0) return null;
+        // A link dies with its creator's access: reminders for a package whose creator has left are held, not mailed.
+        const allowed = await creatorsStillAllowed(
+          scope,
+          plan.map((p) => p.candidate),
+        );
+        await syncRemindersPaused(
+          scope,
+          allowed,
+          plan.map((p) => p.candidate),
+        );
+        const sendable = plan.filter((p) => allowed.has(p.candidate.packageId));
+        if (sendable.length === 0) return null;
         const companies = await scope.tx.execute<{
           id: string;
           name: string;
           email: string | null;
         }>(
           sql`select id, name, email from platform.companies where deleted_at is null and id in (${sql.join(
-            [...new Set(plan.map((p) => p.candidate.companyId))].map((i) => sql`${i}::uuid`),
+            [...new Set(sendable.map((p) => p.candidate.companyId))].map((i) => sql`${i}::uuid`),
             sql`, `,
           )})`,
         );
@@ -65,11 +81,12 @@ export function inviteeReminders(sender: EmailSender, appBaseUrl: string): Tenan
           email: string;
           companyName: string;
           token: string;
+          linkId: string;
           expiresAt: Date;
           projectName: string;
           zone: string;
         }> = [];
-        for (const p of plan) {
+        for (const p of sendable) {
           const c = company.get(p.candidate.companyId);
           const email = (p.candidate.contactEmail ?? c?.email ?? '').trim();
           if (!c || !EMAIL.test(email)) continue;
@@ -90,7 +107,9 @@ export function inviteeReminders(sender: EmailSender, appBaseUrl: string): Tenan
       if (!work || work.ready.length === 0) return { sent: 0, failed: 0 };
 
       let sent = 0;
-      const failedOnes: PlannedInviteeReminder[] = [];
+      const sentOnes: Array<{ p: PlannedInviteeReminder; linkId: string }> = [];
+      const failedOnes: Array<{ p: PlannedInviteeReminder; linkId: string }> = [];
+      const errorClasses: string[] = [];
       for (const r of work.ready) {
         const c = r.p.candidate;
         const when = localDateOf(c.dueAt, r.zone);
@@ -110,17 +129,28 @@ export function inviteeReminders(sender: EmailSender, appBaseUrl: string): Tenan
         try {
           await sender.send({ to: r.email, subject, text, html });
           sent += 1;
-        } catch {
-          failedOnes.push(r.p);
+          sentOnes.push({ p: r.p, linkId: r.linkId });
+        } catch (e) {
+          // Only the class of the error is kept: a mail failure can carry the address.
+          errorClasses.push(e instanceof Error ? e.name : 'unknown');
+          failedOnes.push({ p: r.p, linkId: r.linkId });
         }
       }
-      // A failed send gives its claim back, so the next run mints a fresh link and tries again.
-      if (failedOnes.length) {
+      // The new link replaces the old one only after its email has gone out. A failed send throws the unsent link away,
+      // keeps the old one working and gives the claim back, so the next run tries again.
+      if (sentOnes.length || failedOnes.length) {
         await database.withTenantTx(ctx, async (scope) => {
-          for (const p of failedOnes) await releaseInviteeReminder(scope, p);
+          for (const x of sentOnes) await commitReminderLink(scope, x.p, x.linkId, now);
+          for (const x of failedOnes) {
+            await discardReminderLink(scope, x.linkId);
+            await releaseInviteeReminder(scope, x.p);
+          }
         });
       }
-      return { sent, failed: failedOnes.length };
+      // The job result is counts only: failures are tallied by error class.
+      const byClass: Record<string, number> = {};
+      for (const c of errorClasses) byClass[`error_${c}`] = (byClass[`error_${c}`] ?? 0) + 1;
+      return { sent, failed: failedOnes.length, ...byClass };
     },
   };
 }
