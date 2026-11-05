@@ -286,6 +286,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
     documents: documents.api,
     files: files.api,
+    financials: financials.api,
   });
 
   const integrations = createIntegrationsModule(services, {

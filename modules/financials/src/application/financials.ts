@@ -65,6 +65,8 @@ export interface CreateContractInput {
   scheduleDays?: number | null;
   paymentDays?: number | null;
   sov: { code: string; description: string; value: string }[];
+  /** Set when the contract is raised from an awarded tender quote; one quote raises at most one contract. */
+  source?: { packageId: string; quoteId: string };
 }
 
 /** What an accounting system needs to record a claim, in cents and neutral of any provider (integrations/02 §2). */
@@ -228,6 +230,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
         sopaState,
         scheduleDays: input.scheduleDays ?? null,
         paymentDays: input.paymentDays ?? null,
+        sourcePackageId: input.source?.packageId ?? null,
+        sourceQuoteId: input.source?.quoteId ?? null,
         createdBy: scope.ctx.userId,
         updatedBy: scope.ctx.userId,
       })
@@ -259,6 +263,16 @@ export function createFinancialsService(deps: FinancialsDeps) {
       sovValues.map((v) => ({ recordId: v.id, projectId })),
     );
     return { contract: row!, sov: await sovFor(scope, id) };
+  }
+
+  /** The contract already raised from this quote, if any (read by the award flow to stay idempotent). */
+  async function contractForQuote(scope: TenantScope, projectId: string, quoteId: string) {
+    await need(scope, 'financials.contracts.read', projectId);
+    const [row] = await scope.tx
+      .select()
+      .from(contracts)
+      .where(and(eq(contracts.projectId, projectId), eq(contracts.sourceQuoteId, quoteId)));
+    return row ?? null;
   }
 
   async function listContracts(scope: TenantScope, projectId: string) {
@@ -1105,6 +1119,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     getVariation,
     moveVariation,
     createContract,
+    contractForQuote,
     listContracts,
     getContract,
     submitClaim,

@@ -34,6 +34,8 @@ export const contracts = financialsSchema.table('contracts', {
   sopaState: text('sopa_state').$type<SopaState | 'WA' | 'SA' | 'TAS' | 'ACT' | 'NT'>().notNull(),
   scheduleDays: integer('schedule_days'),
   paymentDays: integer('payment_days'),
+  sourcePackageId: uuid('source_package_id'),
+  sourceQuoteId: uuid('source_quote_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),

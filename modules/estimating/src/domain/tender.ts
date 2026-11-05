@@ -54,6 +54,31 @@ export function fromCents(cents: number): string {
   return `${sign}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
 }
 
+/**
+ * The schedule of values for a subcontract raised from a quote: one item per quote line when the lines add up to the
+ * quote total (so claims can follow the quote's own breakdown), otherwise a single item for the whole price.
+ */
+export function subcontractSov(
+  lines: readonly { description: string; amount: string }[],
+  totalExGst: string,
+  fallbackDescription: string,
+): { code: string; description: string; value: string }[] {
+  const sum = lines.reduce((n, l) => n + toCents(l.amount), 0);
+  if (lines.length === 0 || sum !== toCents(totalExGst) || lines.some((l) => toCents(l.amount) < 0))
+    return [
+      {
+        code: '1',
+        description: fallbackDescription.slice(0, 300) || 'Subcontract works',
+        value: fromCents(toCents(totalExGst)),
+      },
+    ];
+  return lines.map((l, i) => ({
+    code: String(i + 1),
+    description: l.description.trim().slice(0, 300) || `Item ${i + 1}`,
+    value: fromCents(toCents(l.amount)),
+  }));
+}
+
 /** GST at 10% of an ex-GST amount, rounded half up to the cent (product/10 "ex GST"). */
 export const gstOn = (exGstCents: number) => Math.round(exGstCents / 10);
 

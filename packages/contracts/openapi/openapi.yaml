@@ -3532,6 +3532,29 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/TenderPackage' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/subcontract:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+    post:
+      operationId: createSubcontractFromAward
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.quotes.review
+      summary: Raise the draft subcontract for an awarded package from its winning quote.
+      description: |
+        The subcontract is a draft contract in financials: payee is the winning company, the value is the quote total
+        ex GST, and the schedule of values follows the quote's lines (or a single item if the lines don't add up to the
+        total). Retention and payment terms are left for the builder to set. Also needs `financials.contracts.manage`.
+        Safe to repeat: a quote raises one contract, and a repeat returns it with `created` false.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AwardedSubcontract' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -15470,6 +15493,15 @@ components:
         allowances:
           type: object
           additionalProperties: { type: string, pattern: '^\d{1,16}(\.\d{1,2})?$' }
+    AwardedSubcontract:
+      type: object
+      required: [contractId, number, title, originalValue, created]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        title: { type: string }
+        originalValue: { type: string, description: Ex GST }
+        created: { type: boolean, description: False when the quote had already raised this contract. }
     AwardPackageRequest:
       type: object
       additionalProperties: false

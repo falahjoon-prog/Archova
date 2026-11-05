@@ -796,6 +796,11 @@ export const AwardTenderPackageParams = z.object({
   "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
 });
 export const AwardTenderPackageBody = s.AwardPackageRequestSchema;
+export const CreateSubcontractFromAwardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "packageId": z.string().regex(new RegExp("^tpk_[0-9A-Za-z]{26}$")),
+});
 export const GetQuoteComparisonParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4169,6 +4174,18 @@ export const operations = {
     params: AwardTenderPackageParams,
     query: null,
     body: AwardTenderPackageBody,
+  },
+  createSubcontractFromAward: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/subcontract',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.quotes.review",
+    internal: false,
+    contentType: null,
+    params: CreateSubcontractFromAwardParams,
+    query: null,
+    body: null,
   },
   getQuoteComparison: {
     method: 'GET',

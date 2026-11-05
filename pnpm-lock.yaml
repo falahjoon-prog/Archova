@@ -1038,6 +1038,9 @@ importers:
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../files
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../financials
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../platform
