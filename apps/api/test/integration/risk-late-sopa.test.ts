@@ -1,9 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sql } from 'drizzle-orm';
+import { decodeId } from '@archova/domain';
 import {
   addMember,
+  clearFlagTargets,
   createOrg,
   createProject,
   createTestContext,
+  enableFlag,
   signUp,
   type TestContext,
 } from './helpers';
@@ -14,7 +18,10 @@ let t: TestContext;
 beforeAll(async () => {
   t = await createTestContext();
 });
-afterAll(() => t.close());
+afterAll(async () => {
+  await clearFlagTargets(t, 'subcontractor_wallet');
+  await t.close();
+});
 
 type Risk = {
   unreadableProjects: number;
@@ -122,5 +129,97 @@ describe('GET /risk/late-sopa-claims', () => {
     await addMember(pm.browser, org.id, project.id, sub.email, 'Subcontractor', 'Sparky');
     const res = await sub.browser.get(`/v1/orgs/${org.id}/risk/late-sopa-claims`);
     expect([401, 403, 404]).toContain(res.statusCode);
+  });
+
+  it('reads an expired insurance through a live wallet grant, in a write transaction, and logs the read', async () => {
+    const bld = await signUp(t.app, 'risk3-bld');
+    const sub = await signUp(t.app, 'risk3-sub');
+    const bldOrg = await createOrg(bld.browser, 'Risk Builder 3');
+    const subOrg = await createOrg(sub.browser, 'Risk Electrical 3');
+    await enableFlag(t, 'subcontractor_wallet', bldOrg.id);
+    await enableFlag(t, 'subcontractor_wallet', subOrg.id);
+    const project = await createProject(bld.browser, bldOrg.id, {
+      name: 'Risk Tower 3',
+      state: 'NSW',
+    });
+    const subCo = await addMember(
+      bld.browser,
+      bldOrg.id,
+      project.id,
+      sub.email,
+      'Subcontractor',
+      'Sparky 3',
+    );
+    const base = `/v1/orgs/${bldOrg.id}/projects/${project.id}`;
+
+    // The subbie's expired public liability, shared with the builder for this project.
+    const doc = await sub.browser.post(`/v1/orgs/${subOrg.id}/compliance-documents`, {
+      itemType: 'public_liability',
+      title: 'Public liability',
+      selfDeclared: true,
+      expiresOn: '2020-01-01',
+    });
+    expect(doc.statusCode).toBe(201);
+    const made = await bld.browser.post(`/v1/orgs/${bldOrg.id}/compliance-access-requests`, {
+      projectId: project.id,
+      itemTypes: ['public_liability'],
+    });
+    const accepted = await sub.browser.post(`/v1/orgs/${subOrg.id}/compliance-grants`, {
+      code: made.json().code,
+    });
+    expect(accepted.statusCode).toBe(201);
+
+    // Link the builder's company record to the subbie's organisation (nothing sets this yet in the product).
+    await t.adminDb.withTenantTx(
+      {
+        orgId: decodeId('org', bldOrg.id)!,
+        userId: decodeId('user', bld.userId)!,
+        principalType: 'member' as const,
+        orgRole: 'owner' as const,
+        entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+        requestId: 'test',
+      },
+      ({ tx }) =>
+        tx.execute(
+          sql`update platform.companies set linked_org_id = ${decodeId('org', subOrg.id)} where id = ${decodeId('company', subCo.companyId)}`,
+        ),
+    );
+
+    const contract = (
+      await bld.browser.post(`${base}/contracts`, {
+        kind: 'subcontract',
+        title: 'Electrical',
+        payeeCompanyId: subCo.companyId,
+        originalValue: '100000.00',
+        retentionPct: '5.00',
+        sov: [{ code: 'E1', description: 'Rough-in', value: '100000.00' }],
+      })
+    ).json();
+    let found = false;
+    for (let back = 6; back <= 40 && !found; back++) {
+      const r = await bld.browser.post(`${base}/contracts/${contract.contract.id}/claims`, {
+        periodEnd: iso(new Date(Date.now() - (back + 5) * DAY)),
+        receivedAt: new Date(Date.now() - back * DAY).toISOString(),
+        statesAct: true,
+        lines: [{ sovItemId: contract.sov[0].id, thisClaim: '1000.00' }],
+      });
+      const left = Math.round(
+        (Date.parse(r.json().claim?.scheduleDueOn ?? '2099-01-01') - Date.now()) / DAY,
+      );
+      found = r.statusCode === 201 && left >= -3 && left <= 4;
+    }
+    expect(found).toBe(true);
+
+    const res = await bld.browser.get(`/v1/orgs/${bldOrg.id}/risk/late-sopa-claims`);
+    expect(res.statusCode).toBe(200);
+    const p = (res.json() as Risk).projects.find((x) => x.projectName === 'Risk Tower 3')!;
+    expect(p.insuranceProblem).toBe(true);
+    expect(p.claims[0]!.insurance).toBe('expired');
+    expect(p.claims[0]!.summary).toContain('has expired');
+
+    // The read is in the subbie's access log.
+    const log = (await sub.browser.get(`/v1/orgs/${subOrg.id}/compliance-access-log`)).json()
+      .data as Array<{ kind: string }>;
+    expect(log.some((l) => l.kind === 'document')).toBe(true);
   });
 });

@@ -525,8 +525,19 @@ export function createWalletGrantService(deps: {
         );
       seen.add(g.orgId);
       if (docs.length === 0) await logView(scope, g, 'list');
+      for (const d of docs) await logView(scope, g, 'document', d);
+      scope.events.add({
+        type: 'workforce.compliance_grant.viewed.v1',
+        projectId,
+        entityType: 'compliance_grant',
+        entityId: g.id,
+        data: {
+          grantId: g.id,
+          subbieOrgId: g.orgId,
+          itemTypes: [...new Set(docs.map((d) => d.itemType))],
+        },
+      });
       for (const d of docs) {
-        await logView(scope, g, 'document', d);
         insurances.push({
           subbieOrgId: g.orgId,
           documentId: d.id,
@@ -538,6 +549,8 @@ export function createWalletGrantService(deps: {
         });
       }
     }
+    // The grant setting is per transaction; clear it so nothing later in this one reads a subbie's rows.
+    await scope.tx.execute(sql`select set_config('app.wallet_grant', '', true)`);
     return {
       restricted: false as const,
       insurances,

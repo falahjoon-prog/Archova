@@ -36,7 +36,8 @@ export function reportingRoutes(
     }),
     getLateSopaClaimRisk: async (input) => ({
       status: 200,
-      body: await read(input, (s) =>
+      // A write transaction: reading a subbie's wallet is recorded in the subbie's access log.
+      body: await tx(input, (s) =>
         risk.lateSopaClaims(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
     }),
