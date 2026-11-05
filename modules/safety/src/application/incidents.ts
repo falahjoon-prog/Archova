@@ -318,6 +318,8 @@ export function createIncidentService(deps: SafetyDeps) {
       title: string;
       type: IncidentType;
       occurredAt: Date;
+      /** A device-chosen id, so a report made offline keeps its identity once it syncs. */
+      id?: string;
     },
   ) {
     await deps.platform.getProject(scope, projectId);
@@ -337,7 +339,7 @@ export function createIncidentService(deps: SafetyDeps) {
           ...(input.people ? { people: input.people } : {}),
         };
     validateFields(f);
-    const id = uuidv7();
+    const id = input.id ?? uuidv7();
     const number = await nextNumber(scope, projectId, 'incident');
     const [row] = await scope.tx
       .insert(incidents)
