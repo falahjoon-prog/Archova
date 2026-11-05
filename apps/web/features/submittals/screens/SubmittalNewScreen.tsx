@@ -6,6 +6,7 @@ import { useState, type FormEvent } from 'react';
 import { Button, PageHeader, Select, TextField } from '@archova/ui';
 import { webRoutes } from '@archova/routes';
 import { usePublishAssistantScope } from '@/features/assistant';
+import { SpecSectionField } from '@/features/specifications';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { dueInBusinessDays, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
@@ -97,11 +98,10 @@ export function SubmittalNewScreen() {
             options={SUBMITTAL_TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
             onChange={(e) => set('type', e.target.value as SubmittalType)}
           />
-          <TextField
-            label="Spec section"
-            placeholder="0331 Concrete – combined"
+          <SpecSectionField
+            placeholder="03 30 00 Cast-in-place concrete"
             value={v.specSection}
-            onChange={(e) => set('specSection', e.target.value)}
+            onChange={(x) => set('specSection', x)}
           />
           <Select
             label="Responsible company"
