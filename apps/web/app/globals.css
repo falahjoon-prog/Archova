@@ -314,6 +314,12 @@ main:focus {
   flex-direction: column;
   gap: var(--space-4);
 }
+.stack--flush {
+  margin-block-start: var(--space-6);
+}
+.stack--flush > * {
+  margin-block: 0;
+}
 .stack-lg {
   display: flex;
   flex-direction: column;

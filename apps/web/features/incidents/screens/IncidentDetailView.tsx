@@ -95,7 +95,7 @@ export function IncidentDetailView({ id }: { id: string }) {
       </p>
 
       {i.isNotifiable ? (
-        <section aria-labelledby="inc-notifiable" className="stack">
+        <section aria-labelledby="inc-notifiable" className="stack stack--flush">
           <h2 id="inc-notifiable">Notifiable incident</h2>
           <Alert tone="danger" title={i.notifiableClass ? CLASS_LABELS[i.notifiableClass] : ''}>
             Tell your state work health and safety regulator immediately, by the fastest means.
@@ -131,14 +131,14 @@ export function IncidentDetailView({ id }: { id: string }) {
         </Alert>
       ) : null}
 
-      <section aria-labelledby="inc-what" className="stack">
+      <section aria-labelledby="inc-what" className="stack stack--flush">
         <h2 id="inc-what">What happened</h2>
         <p>{i.description || <span className="u-muted">Not described.</span>}</p>
         <h3>Done straight away</h3>
         <p>{i.immediateActions || <span className="u-muted">Nothing recorded.</span>}</p>
       </section>
 
-      <section aria-labelledby="inc-people" className="stack">
+      <section aria-labelledby="inc-people" className="stack stack--flush">
         <h2 id="inc-people">People involved</h2>
         {d.people.length === 0 ? (
           <p className="u-muted">No one recorded.</p>
@@ -159,7 +159,7 @@ export function IncidentDetailView({ id }: { id: string }) {
         ) : null}
       </section>
 
-      <section aria-labelledby="inc-cause" className="stack">
+      <section aria-labelledby="inc-cause" className="stack stack--flush">
         <h2 id="inc-cause">Root cause</h2>
         {i.rootCause ? (
           <>
@@ -175,7 +175,7 @@ export function IncidentDetailView({ id }: { id: string }) {
         )}
       </section>
 
-      <section aria-labelledby="inc-actions" className="stack">
+      <section aria-labelledby="inc-actions" className="stack stack--flush">
         <h2 id="inc-actions">Corrective actions</h2>
         {d.canManage && i.status !== 'closed' ? (
           <div>
@@ -249,7 +249,7 @@ export function IncidentDetailView({ id }: { id: string }) {
         )}
       </section>
 
-      <section aria-labelledby="inc-history" className="stack">
+      <section aria-labelledby="inc-history" className="stack stack--flush">
         <h2 id="inc-history">History</h2>
         <ul>
           {d.events.map((e) => (
