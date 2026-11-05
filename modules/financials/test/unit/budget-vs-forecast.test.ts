@@ -74,4 +74,21 @@ describe('budget vs forecast', () => {
     expect(r.totals.forecastFinalCents).toBe(0);
     expect(r.unallocated.committedCents).toBe(0);
   });
+
+  it('counts direct costs as spent, with nothing left to complete, and honours hidden codes', () => {
+    const direct = [
+      { costCodeId: 'c1', amountCents: 7_000 },
+      { costCodeId: 'c2', amountCents: 1_500 },
+      { costCodeId: null, amountCents: 500 },
+    ];
+    const r = budgetVsForecast(lines, [], [], new Set(), direct);
+    const c1 = r.rows.find((x) => x.costCodeId === 'c1')!;
+    expect(c1).toMatchObject({ directCents: 7_000, forecastFinalCents: 7_000 });
+    expect(c1.varianceCents).toBe(100_000 - 7_000);
+    expect(r.unallocated).toMatchObject({ directCents: 500, forecastFinalCents: 500 });
+    expect(r.totals).toMatchObject({ directCents: 9_000, forecastFinalCents: 9_000 });
+
+    const hidden = budgetVsForecast(lines, [], [], new Set(['c2']), direct);
+    expect(hidden.totals.directCents).toBe(7_500);
+  });
 });

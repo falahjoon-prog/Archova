@@ -1305,6 +1305,17 @@ describe('Direct costs', () => {
     expect(list.total).toBe('1200.50');
     expect((await s.pm.browser.get(`${s.base}/direct-costs/${a.json().id}`)).statusCode).toBe(200);
 
+    // Direct costs count in the cost forecast and, per cost code, in budget against forecast.
+    const bvf = (await s.pm.browser.get(`${s.base}/budget/vs-forecast`)).json();
+    expect(bvf.rows[0]).toMatchObject({
+      code: '07',
+      directCosts: '1200.50',
+      forecastFinal: '1200.50',
+    });
+    const fc = (await s.pm.browser.get(`${s.base}/cost-forecast`)).json();
+    expect(fc.directCosts).toBe('1200.50');
+    expect(fc.forecastFinalCost).toBe(bvf.totals.forecastFinal);
+
     // Subcontractors see none of it.
     expect((await s.sub.browser.get(`${s.base}/direct-costs`)).statusCode).toBe(403);
     expect((await s.sub.browser.post(`${s.base}/direct-costs`, body)).statusCode).toBe(403);

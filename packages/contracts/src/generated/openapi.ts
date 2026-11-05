@@ -12645,6 +12645,7 @@ export interface components {
             committed: components["schemas"]["FinancialsMoney"];
             claimed: components["schemas"]["FinancialsMoney"];
             adjustments: components["schemas"]["FinancialsSignedMoney"];
+            directCosts: components["schemas"]["FinancialsMoney"];
             forecastFinal: components["schemas"]["FinancialsSignedMoney"];
             /** @description Revised budget less forecast final cost. Negative is over budget. */
             variance: components["schemas"]["FinancialsSignedMoney"];
@@ -12709,6 +12710,7 @@ export interface components {
             claimedToDate: components["schemas"]["FinancialsMoney"];
             costToComplete: components["schemas"]["FinancialsMoney"];
             projectAdjustments: components["schemas"]["FinancialsSignedMoney"];
+            directCosts: components["schemas"]["FinancialsMoney"];
             forecastFinalCost: components["schemas"]["FinancialsSignedMoney"];
             pendingCostVariations: components["schemas"]["FinancialsMoney"];
             forecastMargin: components["schemas"]["FinancialsSignedMoney"];

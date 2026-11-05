@@ -5,8 +5,10 @@ import type { AccessService } from '@archova/mod-access';
 import { computeForecast, type HeadInput } from '../domain/forecast';
 import { toCents } from '../domain/money';
 import {
+  budgetLines,
   contracts,
   costCodes,
+  directCosts,
   forecastAdjustments,
   paymentClaimLines,
   paymentClaims,
@@ -105,8 +107,23 @@ export function createForecastService(deps: { access: AccessService }) {
       subs.map((c) => ({ contractId: c.id, ...input(c) })),
       heads,
       adj.map((a) => ({ contractId: a.contractId, amountCents: signedCents(a.amount) })),
+      (await directByCode(scope, projectId)).reduce((n, d) => n + d.amountCents, 0),
     );
     return { result, subs, adjustments: adj };
+  }
+
+  /** Recorded (not voided) direct costs, per cost code of the budget line they were posted to. */
+  async function directByCode(scope: TenantScope, projectId: string) {
+    const rows = await scope.tx
+      .select({
+        costCodeId: budgetLines.costCodeId,
+        total: sql<string>`coalesce(sum(${directCosts.amount}), 0)`,
+      })
+      .from(directCosts)
+      .innerJoin(budgetLines, eq(budgetLines.id, directCosts.budgetLineId))
+      .where(and(eq(directCosts.projectId, projectId), eq(directCosts.status, 'recorded')))
+      .groupBy(budgetLines.costCodeId);
+    return rows.map((r) => ({ costCodeId: r.costCodeId, amountCents: toCents(r.total) }));
   }
 
   /** Subcontract commitments with their schedule items, and adjustments, for the budget-vs-forecast comparison. */
@@ -159,6 +176,7 @@ export function createForecastService(deps: { access: AccessService }) {
       : [[], [], []];
     const adj = await adjustments(scope, projectId);
     return {
+      direct: await directByCode(scope, projectId),
       subs: subs.map((c) => {
         const mine = claims.filter((r) => r.contractId === c.id);
         const myVars = vars.filter((v) => v.contractId === c.id);

@@ -198,6 +198,7 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
         committed: fromCents(x.committedCents),
         claimed: fromCents(x.claimedCents),
         adjustments: fromCents(x.adjustmentsCents),
+        directCosts: fromCents(x.directCents),
         forecastFinal: fromCents(x.forecastFinalCents),
         variance: fromCents(x.varianceCents),
       });

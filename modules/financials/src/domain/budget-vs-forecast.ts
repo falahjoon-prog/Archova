@@ -26,12 +26,19 @@ export interface BvfAdjustment {
   amountCents: number;
 }
 
+export interface BvfDirect {
+  costCodeId: string | null;
+  amountCents: number;
+}
+
 export interface BvfRow {
   costCodeId: string | null;
   revisedCents: number;
   committedCents: number;
   claimedCents: number;
   adjustmentsCents: number;
+  /** Direct costs recorded against the code: spent, nothing left to complete. */
+  directCents: number;
   forecastFinalCents: number;
   varianceCents: number;
 }
@@ -42,6 +49,7 @@ const blank = (costCodeId: string | null, revisedCents = 0): BvfRow => ({
   committedCents: 0,
   claimedCents: 0,
   adjustmentsCents: 0,
+  directCents: 0,
   forecastFinalCents: 0,
   varianceCents: 0,
 });
@@ -55,6 +63,7 @@ export function budgetVsForecast(
   subs: BvfSub[],
   adjustments: BvfAdjustment[],
   hidden: ReadonlySet<string> = new Set(),
+  direct: BvfDirect[] = [],
 ) {
   const rows = new Map<string, BvfRow>(
     lines.map((l) => [l.costCodeId, blank(l.costCodeId, l.revisedCents)]),
@@ -93,9 +102,14 @@ export function budgetVsForecast(
     rowFor(a.costCodeId).adjustmentsCents += a.amountCents;
   }
 
+  for (const x of direct) {
+    if (x.costCodeId !== null && hidden.has(x.costCodeId)) continue;
+    rowFor(x.costCodeId).directCents += x.amountCents;
+  }
+
   const finish = (r: BvfRow) => {
     r.forecastFinalCents =
-      r.claimedCents + (toComplete.get(r.costCodeId) ?? 0) + r.adjustmentsCents;
+      r.claimedCents + (toComplete.get(r.costCodeId) ?? 0) + r.adjustmentsCents + r.directCents;
     r.varianceCents = r.revisedCents - r.forecastFinalCents;
     return r;
   };
@@ -107,6 +121,7 @@ export function budgetVsForecast(
     totals.committedCents += r.committedCents;
     totals.claimedCents += r.claimedCents;
     totals.adjustmentsCents += r.adjustmentsCents;
+    totals.directCents += r.directCents;
     totals.forecastFinalCents += r.forecastFinalCents;
     totals.varianceCents += r.varianceCents;
   }
