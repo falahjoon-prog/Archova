@@ -21,6 +21,8 @@ import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
+import { evidenceDeliveries } from './jobs/evidence-deliveries';
+import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
@@ -43,22 +45,24 @@ async function main() {
   /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
   const SUBSCRIBERS: Subscriber[] = [];
   /** Nightly and hourly per-org jobs (backend 05 §3). */
+  const emailSender =
+    config.email.provider === 'ses'
+      ? createSesSender({
+          region: config.email.region,
+          from: config.email.from,
+          replyTo: config.email.replyTo,
+        })
+      : createLogSender((msg, o) => log.info(o, msg));
   const jobs: TenantJob[] = [
     accessLinkPurge,
     importStagingPurge,
     syncHoldsPurge,
     trialExpiry,
     trialBackfill,
-    trialEndingEmail(
-      config.email.provider === 'ses'
-        ? createSesSender({
-            region: config.email.region,
-            from: config.email.from,
-            replyTo: config.email.replyTo,
-          })
-        : createLogSender((msg, o) => log.info(o, msg)),
-      config.email.appBaseUrl,
-    ),
+    trialEndingEmail(emailSender, config.email.appBaseUrl),
+    // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
+    ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
+    ...(config.evidenceTimestampUrl ? [evidenceTimestamps(config.evidenceTimestampUrl)] : []),
     templateBackfill,
     meetingReminders,
     bidReminders,

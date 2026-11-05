@@ -7,9 +7,20 @@ export interface EmailMessage {
   subject: string;
   text: string;
   html: string;
+  /** Files sent with the message. A service email carries the sealed PDF as an attachment, never a link. */
+  attachments?: EmailAttachment[];
+}
+
+export interface EmailAttachment {
+  filename: string;
+  contentType: string;
+  content: Uint8Array;
 }
 
 export interface EmailSender {
-  /** Throws when the provider rejects or cannot be reached; callers decide whether to retry. */
-  send(message: EmailMessage): Promise<void>;
+  /**
+   * Throws when the provider rejects or cannot be reached; callers decide whether to retry. Returns the provider's
+   * message id when it gives one, which is how a later delivery confirmation is matched to the message.
+   */
+  send(message: EmailMessage): Promise<{ messageId?: string } | void>;
 }

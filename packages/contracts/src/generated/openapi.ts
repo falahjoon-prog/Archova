@@ -8357,6 +8357,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        /** Emails of this sealed record, with delivery confirmation. Builder staff only. */
+        get: operations["listClaimEvidenceDeliveries"];
+        put?: never;
+        /** Email the sealed PDF and JSON, attached, to the address the payer gave for service. Never a link. Sent by the background worker; service counts from the delivery confirmation. Serving a schedule needs `financials.claims.assess`. At most five a day per record. */
+        post: operations["queueClaimEvidenceDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/meeting-series": {
         parameters: {
             query?: never;
@@ -9463,6 +9486,63 @@ export interface components {
             pdfSha256: string;
             pdfBytes: number;
             intact: boolean;
+            /** @description The platform's Ed25519 signature over `message`. Null for records sealed before signing was on. */
+            signature: null | components["schemas"]["ClaimEvidenceSignature"];
+            /** @description An outside RFC 3161 timestamp over SHA-256 of the signed message. Null until the authority has answered. */
+            timestamp: null | components["schemas"]["ClaimEvidenceTimestamp"];
+        };
+        ClaimEvidenceSignature: {
+            keyId: string;
+            /** @enum {string} */
+            algorithm: "ed25519";
+            signatureBase64: string;
+            /** @description The exact text signed; it names both hashes, the claim and the sealed time. */
+            message: string;
+            /** @description Null when the server no longer holds that key. */
+            publicKeyPem: string | null;
+            /** @description Null when the server cannot check (key not held). */
+            valid: boolean | null;
+        };
+        ClaimEvidenceTimestamp: {
+            authority: string;
+            /** Format: date-time */
+            time: string;
+            imprintSha256: string;
+            serialHex: string;
+            /** @description The whole RFC 3161 TimeStampToken, so the authority signature can be checked. */
+            tokenBase64: string;
+        };
+        ClaimEvidenceDelivery: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "claim" | "schedule";
+            recipientEmail: string;
+            /** @enum {string} */
+            status: "queued" | "sending" | "sent" | "delivered" | "bounced" | "failed";
+            /** Format: date-time */
+            queuedAt: string;
+            /** Format: date-time */
+            sentAt: string | null;
+            /**
+             * Format: date-time
+             * @description When the receiving mail server accepted it. Service time counts from this, never from sending.
+             */
+            deliveredAt: string | null;
+            /** Format: date-time */
+            bouncedAt: string | null;
+            /** @description True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it. */
+            notConfirmed: boolean;
+        };
+        ClaimEvidenceDeliveryList: {
+            deliveries: components["schemas"]["ClaimEvidenceDelivery"][];
+        };
+        QueueClaimEvidenceDeliveryRequest: {
+            /**
+             * Format: email
+             * @description The address the payer gave for service.
+             */
+            recipientEmail: string;
         };
         ClaimEvidenceList: {
             records: components["schemas"]["ClaimEvidenceRecord"][];
@@ -29681,6 +29761,62 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClaimEvidenceJson"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listClaimEvidenceDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceDeliveryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    queueClaimEvidenceDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+                kind: components["parameters"]["ClaimEvidenceKind"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueueClaimEvidenceDeliveryRequest"];
+            };
+        };
+        responses: {
+            /** @description Queued */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClaimEvidenceDelivery"];
                 };
             };
             default: components["responses"]["Problem"];
