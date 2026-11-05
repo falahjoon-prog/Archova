@@ -127,6 +127,8 @@ export const mobileRoutes = {
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
     `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
+  inspectionItemPhoto: (projectId: string, inspectionId: string, itemId: string) =>
+    `/project/${enc(projectId)}/inspections/${enc(inspectionId)}/photo?itemId=${enc(itemId)}`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,

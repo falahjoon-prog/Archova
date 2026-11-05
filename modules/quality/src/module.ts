@@ -126,13 +126,50 @@ export function syncPieces(inspections: InspectionService) {
     module: 'quality',
     async run(scope, m) {
       const { inspectionId, projectId } = await target(scope, m.entityId);
-      const d = await inspections.recordResponses(
-        scope,
-        projectId,
-        inspectionId,
-        parseResponses(m.payload),
-      );
+      const answers = parseResponses(m.payload);
+      // An answer that does not mention photos leaves the item's photos as they are: the phone may have sent it
+      // before a photo taken meanwhile reached the server, and must not wipe it.
+      const held = await inspections.detail(scope, projectId, inspectionId);
+      for (const a of answers) {
+        if (a.fileIds === undefined)
+          a.fileIds =
+            held.responses.find((r) => r.templateItemId === a.templateItemId)?.fileIds ?? [];
+      }
+      const d = await inspections.recordResponses(scope, projectId, inspectionId, answers);
       return { version: d.inspection.version };
+    },
+    current,
+  };
+
+  /**
+   * `quality.attachItemPhoto`: a photo taken on site for one checklist item. The phone queues it held until the
+   * photo has uploaded, then fills in `fileId`. It adds the file to the item's answer and keeps the rest of the
+   * answer as it is; a retry that finds the file already attached changes nothing.
+   */
+  const attachItemPhoto: SyncCommand = {
+    name: 'quality.attachItemPhoto',
+    module: 'quality',
+    async run(scope, m) {
+      const { inspectionId, projectId } = await target(scope, m.entityId);
+      const itemId = id('inspectionItem', m.payload.templateItemId, 'payload/templateItemId');
+      const fileId = id('file', m.payload.fileId, 'payload/fileId');
+      const d = await inspections.detail(scope, projectId, inspectionId);
+      const existing = d.responses.find((r) => r.templateItemId === itemId);
+      const have = existing?.fileIds ?? [];
+      if (have.includes(fileId)) return { version: d.inspection.version };
+      if (have.length >= 20) throw invalid('payload/fileId', 'An item holds at most 20 photos');
+      const next = await inspections.recordResponses(scope, projectId, inspectionId, [
+        {
+          templateItemId: itemId,
+          ...(existing?.value !== null && existing?.value !== undefined
+            ? { value: existing.value as string | number | boolean }
+            : {}),
+          ...(existing?.result ? { result: existing.result } : {}),
+          ...(existing?.note ? { note: existing.note } : {}),
+          fileIds: [...have, fileId],
+        },
+      ]);
+      return { version: next.inspection.version };
     },
     current,
   };
@@ -195,7 +232,7 @@ export function syncPieces(inspections: InspectionService) {
     },
   };
 
-  return { syncSource, syncCommands: [startInspection, recordResponses, submit] };
+  return { syncSource, syncCommands: [startInspection, recordResponses, attachItemPhoto, submit] };
 }
 
 export function createQualityModule(services: KernelServices, deps: QualityDeps) {

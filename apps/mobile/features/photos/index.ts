@@ -1,2 +1,2 @@
 export * from './commands';
-export { CaptureScreen } from './screens/CaptureScreen';
+export { CaptureScreen, type TakenPhoto } from './screens/CaptureScreen';
