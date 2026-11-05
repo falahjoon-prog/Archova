@@ -958,6 +958,41 @@ export function createRfiService(deps: RfisDeps) {
   }
 
   /**
+   * Programme links (`scheduling`): headline details of the RFIs among `ids` the caller may see, by the same rule as
+   * `list`. Ids not returned are missing, drafts the caller can't see, or hidden; empty when the caller can't read RFIs.
+   */
+  async function summariesByIds(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (!ids.length || !(await deps.access.can(scope, 'rfis.rfis.read', { projectId }))) return [];
+    const v = await viewer(scope, projectId);
+    const conditions: SQL[] = [
+      eq(rfis.projectId, projectId),
+      isNull(rfis.deletedAt),
+      inArray(rfis.id, [...ids]),
+    ];
+    const vis = visibleTo(v);
+    if (vis) conditions.push(vis);
+    const rows = await scope.tx
+      .select({
+        id: rfis.id,
+        number: rfis.number,
+        subject: rfis.subject,
+        status: rfis.status,
+        dueDate: rfis.dueDate,
+        scheduleImpactDays: rfis.scheduleImpactDays,
+      })
+      .from(rfis)
+      .where(and(...conditions));
+    return rows.map((r) => ({
+      id: r.id,
+      ref: r.number === null ? 'Draft' : formatRfiNumber(r.number),
+      title: r.subject,
+      status: r.status as string,
+      dueDate: r.dueDate,
+      scheduleImpactDays: r.scheduleImpactDays,
+    }));
+  }
+
+  /**
    * The delay register (`scheduling`): RFIs the caller can see that cost time - a schedule impact above zero, an answer
    * that came after the due date, or an open RFI past it. `today` and `timeZone` are the project's, so the caller can
    * turn the instants into local days. Drafts and voided RFIs are left out; empty when the caller can't read RFIs.
@@ -1050,6 +1085,7 @@ export function createRfiService(deps: RfisDeps) {
     aiSources,
     aiAccessScopes,
     timeImpacts,
+    summariesByIds,
     openOnDrawing,
     forAnswerDraft,
     ballInCourt,

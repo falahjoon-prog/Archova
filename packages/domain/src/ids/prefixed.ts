@@ -86,6 +86,7 @@ export const ID_PREFIXES = {
   schedule: 'sch',
   scheduleActivity: 'sac',
   scheduleDependency: 'sdp',
+  scheduleLink: 'slk',
   notification: 'ntf',
   inspectionTemplate: 'itp',
   inspectionItem: 'iti',

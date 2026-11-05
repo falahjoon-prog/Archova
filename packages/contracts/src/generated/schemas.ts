@@ -1484,6 +1484,12 @@ export const CreateScheduleDependencyRequestSchema = z.object({
 }).strict();
 export type CreateScheduleDependencyRequest = z.infer<typeof CreateScheduleDependencyRequestSchema>;
 
+export const CreateScheduleLinkRequestSchema = z.object({
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+}).strict();
+export type CreateScheduleLinkRequest = z.infer<typeof CreateScheduleLinkRequestSchema>;
+
 export const CreateScheduleRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
@@ -4362,6 +4368,25 @@ export const SaveInductionDraftRequestSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
+
+export const ScheduleLinkSchema = z.object({
+  "id": z.string(),
+  "activityId": z.string(),
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+  "visible": z.boolean(),
+  "ref": z.string().nullable(),
+  "title": z.string().nullable(),
+  "status": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "scheduleImpactDays": z.number().int().nullable(),
+});
+export type ScheduleLink = z.infer<typeof ScheduleLinkSchema>;
+
+export const ScheduleLinkListSchema = z.object({
+  "data": z.array(ScheduleLinkSchema),
+});
+export type ScheduleLinkList = z.infer<typeof ScheduleLinkListSchema>;
 
 export const ScheduleListSchema = z.object({
   "data": z.array(ScheduleSummarySchema),

@@ -242,6 +242,8 @@ export const PROBLEM_CODES = {
   'schedule.dependency_not_found': 404,
   'schedule.link_cycle': 409,
   'schedule.link_exists': 409,
+  'schedule.item_link_not_found': 404,
+  'schedule.item_link_exists': 409,
   'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,

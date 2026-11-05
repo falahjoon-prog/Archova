@@ -222,4 +222,90 @@ describe('Programme: Gantt, float, import and look-ahead (product/08 S4/S5)', ()
     const own = await b.pm.browser.get(`${b.base}/schedules/${sid}`);
     expect(own.statusCode).toBe(404);
   });
+
+  it('ties RFIs and submittals to an activity, hides what the caller cannot see and refuses duplicates (SCH-US10)', async () => {
+    const s = await setup();
+    const sid = (
+      (await s.pm.browser.post(`${s.base}/schedules`, { name: 'Linked' })).json() as Detail
+    ).schedule.id;
+    const detail = (await (
+      await s.pm.browser.post(`${s.base}/schedules/${sid}/activities`, {
+        name: 'Slab pour',
+        start: '2030-03-04',
+        finish: '2030-03-06',
+      })
+    ).json()) as Detail;
+    const aid = detail.activities[0]!.id;
+    const rfi = (
+      await s.pm.browser.post(`${s.base}/rfis`, {
+        subject: 'Slab edge detail',
+        question: 'Which governs?',
+      })
+    ).json().rfi as { id: string };
+    const submittal = (
+      await s.pm.browser.post(`${s.base}/submittals`, {
+        title: 'Slab reinforcement',
+        type: 'shop_drawing',
+        requiredOnSite: '2030-03-01',
+      })
+    ).json().submittal as { id: string };
+
+    const url = `${s.base}/schedules/${sid}/activities/${aid}/links`;
+    const l1 = await s.pm.browser.post(url, { kind: 'rfi', targetId: rfi.id });
+    expect(l1.statusCode).toBe(201);
+    expect(l1.json()).toMatchObject({
+      kind: 'rfi',
+      visible: true,
+      title: 'Slab edge detail',
+      ref: 'Draft',
+    });
+    const l2 = await s.pm.browser.post(url, { kind: 'submittal', targetId: submittal.id });
+    expect(l2.statusCode).toBe(201);
+    expect(l2.json()).toMatchObject({ kind: 'submittal', visible: true, dueDate: '2030-03-01' });
+
+    expect((await s.pm.browser.post(url, { kind: 'rfi', targetId: rfi.id })).statusCode).toBe(409);
+    // A submittal id is not an RFI id, and an unknown RFI is refused.
+    expect((await s.pm.browser.post(url, { kind: 'rfi', targetId: submittal.id })).statusCode).toBe(
+      422,
+    );
+    const other = await setup();
+    const foreign = (
+      await other.pm.browser.post(`${other.base}/rfis`, { subject: 'Not yours', question: 'x' })
+    ).json().rfi as { id: string };
+    expect((await s.pm.browser.post(url, { kind: 'rfi', targetId: foreign.id })).statusCode).toBe(
+      422,
+    );
+
+    const list = await s.pm.browser.get(`${s.base}/schedules/${sid}/links`);
+    expect(list.statusCode).toBe(200);
+    expect((list.json() as { data: unknown[] }).data).toHaveLength(2);
+
+    // A subcontractor reads the programme but can't see the builder's draft RFI or submittal, and can't change links.
+    const subList = (await s.sub.browser.get(`${s.base}/schedules/${sid}/links`)).json() as {
+      data: Array<{ visible: boolean; title: string | null }>;
+    };
+    expect(subList.data.map((l) => [l.visible, l.title])).toEqual([
+      [false, null],
+      [false, null],
+    ]);
+    expect((await s.sub.browser.post(url, { kind: 'rfi', targetId: rfi.id })).statusCode).toBe(403);
+
+    const linkId = (l1.json() as { id: string }).id;
+    expect((await s.sub.browser.del(`${s.base}/schedules/${sid}/links/${linkId}`)).statusCode).toBe(
+      403,
+    );
+    expect((await s.pm.browser.del(`${s.base}/schedules/${sid}/links/${linkId}`)).statusCode).toBe(
+      204,
+    );
+    expect((await s.pm.browser.del(`${s.base}/schedules/${sid}/links/${linkId}`)).statusCode).toBe(
+      404,
+    );
+
+    // Removing the activity removes its links.
+    await s.pm.browser.del(`${s.base}/schedules/${sid}/activities/${aid}`);
+    const after = (await s.pm.browser.get(`${s.base}/schedules/${sid}/links`)).json() as {
+      data: unknown[];
+    };
+    expect(after.data).toHaveLength(0);
+  });
 });

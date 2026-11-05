@@ -863,6 +863,63 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ScheduleDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+    get:
+      operationId: listScheduleLinks
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Every RFI and submittal tied to an activity on this programme (SCH-US10). Items the caller cannot see come back as `visible: false` with no details.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleLinkList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}/links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+      - $ref: '#/components/parameters/ScheduleActivityId'
+    post:
+      operationId: createScheduleLink
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Tie an RFI or submittal to this activity. The caller must be able to see the item.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateScheduleLinkRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleLink' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links/{linkId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ScheduleId'
+      - $ref: '#/components/parameters/ScheduleLinkId'
+    delete:
+      operationId: deleteScheduleLink
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.write
+      summary: 'Untie an RFI or submittal from its activity.'
+      responses:
+        '204': { description: No content }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9324,6 +9381,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^sdp_[0-9A-Za-z]{26}$' }
+    ScheduleLinkId:
+      name: linkId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^slk_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -9429,6 +9491,48 @@ components:
         slackDays: { type: integer }
         violated:
           { type: boolean, description: 'The dates break this link (the successor is too early).' }
+    ScheduleLink:
+      type: object
+      required:
+        [id, activityId, kind, targetId, visible, ref, title, status, dueDate, scheduleImpactDays]
+      properties:
+        id: { type: string }
+        activityId: { type: string }
+        kind: { type: string, enum: [rfi, submittal] }
+        targetId: { type: string, description: 'Public id of the RFI or submittal.' }
+        visible:
+          {
+            type: boolean,
+            description: 'False when the caller cannot see the item (or it is gone); the details are null.',
+          }
+        ref: { type: [string, 'null'], description: 'RFI-012 or the submittal number label.' }
+        title: { type: [string, 'null'] }
+        status: { type: [string, 'null'] }
+        dueDate:
+          {
+            type: [string, 'null'],
+            format: date,
+            description: 'RFI due date, or the submittal required-on-site date.',
+          }
+        scheduleImpactDays:
+          {
+            type: [integer, 'null'],
+            description: 'RFI schedule impact in days; null for submittals.',
+          }
+    ScheduleLinkList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleLink' }
+    CreateScheduleLinkRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, targetId]
+      properties:
+        kind: { type: string, enum: [rfi, submittal] }
+        targetId: { type: string }
     ScheduleDetail:
       type: object
       required: [schedule, activities, dependencies, criticalCount, violationCount]

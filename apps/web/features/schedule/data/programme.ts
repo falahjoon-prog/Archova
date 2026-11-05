@@ -14,6 +14,7 @@ export type CreateActivity = S['CreateScheduleActivityRequest'];
 export type UpdateActivity = S['UpdateScheduleActivityRequest'];
 export type CreateDependency = S['CreateScheduleDependencyRequest'];
 export type ImportRequest = S['ImportScheduleRequest'];
+export type ScheduleLink = S['ScheduleLink'];
 export type DepType = S['ScheduleDepType'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/schedules' as const;
@@ -80,6 +81,31 @@ export function createProgrammeApi(orgId: string) {
       return unwrap(
         await api.DELETE(`${P}/{scheduleId}/dependencies/{dependencyId}`, {
           params: { path: { orgId, projectId, scheduleId, dependencyId } },
+        }),
+      );
+    },
+    async listLinks(projectId: string, scheduleId: string): Promise<ScheduleLink[]> {
+      return unwrap(
+        await api.GET(`${P}/{scheduleId}/links`, { params: path(projectId, scheduleId) }),
+      ).data;
+    },
+    async createLink(
+      projectId: string,
+      scheduleId: string,
+      activityId: string,
+      body: { kind: 'rfi' | 'submittal'; targetId: string },
+    ): Promise<ScheduleLink> {
+      return unwrap(
+        await api.POST(`${P}/{scheduleId}/activities/{activityId}/links`, {
+          params: { path: { orgId, projectId, scheduleId, activityId } },
+          body,
+        }),
+      );
+    },
+    async deleteLink(projectId: string, scheduleId: string, linkId: string) {
+      unwrap(
+        await api.DELETE(`${P}/{scheduleId}/links/{linkId}`, {
+          params: { path: { orgId, projectId, scheduleId, linkId } },
         }),
       );
     },
