@@ -19,6 +19,67 @@ export interface ReportingDeps {
   rfis: Tool;
   defects: Tool;
   submittals: Tool;
+  /** For the tender-readiness pack; each narrows to what the caller may read. */
+  access: {
+    can(
+      scope: TenantScope,
+      key: string,
+      resource?: { projectId?: string | null },
+    ): Promise<boolean>;
+  };
+  precon: {
+    readinessSummary(scope: TenantScope): Promise<{
+      companies: number;
+      qualified: number;
+      expiring: number;
+      pending: number;
+      expired: number;
+      not_qualified: number;
+      requiredForTenders: boolean;
+    }>;
+  };
+  workforce: {
+    credentialSummary(scope: TenantScope): Promise<{
+      counts: { current: number; expiring: number; expired: number; no_expiry: number };
+      items: readonly {
+        itemType: string;
+        title: string;
+        insurer: string | null;
+        expiresOn: string | null;
+        evidence: 'recorded' | 'sighted' | 'self_declared';
+        state: 'current' | 'expiring' | 'expired' | 'no_expiry';
+      }[];
+    }>;
+  };
+  safety: {
+    readinessSummary(
+      scope: TenantScope,
+      projectId: string,
+    ): Promise<{
+      restricted: boolean;
+      incidents: {
+        total: number;
+        notifiable: number;
+        notClosed: number;
+        bySeverity: { high: number; critical: number };
+      };
+      swms: { accepted: number; expired: number; awaitingReview: number; rejected: number };
+    }>;
+  };
+  financials: {
+    trustSummary(
+      scope: TenantScope,
+      projectId: string,
+    ): Promise<{
+      restricted: boolean;
+      subcontracts: number;
+      shortfallCents: number;
+      ok: number;
+      shortfall: number;
+      not_set_up: number;
+      not_required: number;
+    }>;
+  };
 }
 
 interface Tool {

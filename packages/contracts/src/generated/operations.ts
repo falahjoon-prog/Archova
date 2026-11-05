@@ -848,6 +848,12 @@ export const GetPortfolioParams = z.object({
 export const GetPortfolioQuery = z.object({
   "includeClosed": z.enum(["true", "false"]).optional(),
 });
+export const GetReadinessPackParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetReadinessPackPdfParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
 export const ListReportsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -4763,6 +4769,30 @@ export const operations = {
     contentType: null,
     params: GetPortfolioParams,
     query: GetPortfolioQuery,
+    body: null,
+  },
+  getReadinessPack: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackParams,
+    query: null,
+    body: null,
+  },
+  getReadinessPackPdf: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/readiness-pack/pdf',
+    module: "platform",
+    auth: "required",
+    permission: "reporting.readiness.read",
+    internal: false,
+    contentType: null,
+    params: GetReadinessPackPdfParams,
+    query: null,
     body: null,
   },
   listReports: {

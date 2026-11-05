@@ -5341,6 +5341,76 @@ export const QuotePageSchema = z.object({
 });
 export type QuotePage = z.infer<typeof QuotePageSchema>;
 
+export const ReadinessPackSchema = z.object({
+  "generatedOn": z.string(),
+  "timeZone": z.string(),
+  "prequal": z.object({
+  "restricted": z.boolean(),
+  "companies": z.number().int(),
+  "qualified": z.number().int(),
+  "expiring": z.number().int(),
+  "pending": z.number().int(),
+  "expired": z.number().int(),
+  "notQualified": z.number().int(),
+  "requiredForTenders": z.boolean(),
+}),
+  "credentials": z.object({
+  "restricted": z.boolean(),
+  "current": z.number().int(),
+  "expiring": z.number().int(),
+  "expired": z.number().int(),
+  "noExpiry": z.number().int(),
+  "items": z.array(z.object({
+  "itemType": z.string(),
+  "title": z.string(),
+  "insurer": z.string().nullable(),
+  "expiresOn": z.string().nullable(),
+  "evidence": z.enum(["recorded", "sighted", "self_declared"]),
+  "state": z.enum(["current", "expiring", "expired", "no_expiry"]),
+})),
+}),
+  "safety": z.object({
+  "projectsCovered": z.number().int(),
+  "projectsRestricted": z.number().int(),
+  "incidents": z.object({
+  "total": z.number().int(),
+  "notifiable": z.number().int(),
+  "notClosed": z.number().int(),
+  "high": z.number().int(),
+  "critical": z.number().int(),
+}),
+  "swms": z.object({
+  "accepted": z.number().int(),
+  "expired": z.number().int(),
+  "awaitingReview": z.number().int(),
+  "rejected": z.number().int(),
+}),
+}),
+  "trust": z.object({
+  "projectsCovered": z.number().int(),
+  "projectsRestricted": z.number().int(),
+  "subcontracts": z.number().int(),
+  "ok": z.number().int(),
+  "shortfall": z.number().int(),
+  "notSetUp": z.number().int(),
+  "notRequired": z.number().int(),
+  "shortfallCents": z.number().int(),
+}),
+  "attention": z.array(z.object({
+  "area": z.enum(["prequal", "credentials", "safety", "trust"]),
+  "text": z.string(),
+})),
+  "truncated": z.boolean(),
+});
+export type ReadinessPack = z.infer<typeof ReadinessPackSchema>;
+
+export const ReadinessPackPdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type ReadinessPackPdf = z.infer<typeof ReadinessPackPdfSchema>;
+
 export const RecordAttendanceRequestSchema = z.object({
   "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),

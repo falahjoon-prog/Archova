@@ -2905,6 +2905,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/readiness-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+         * @description One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+         *     caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+         *     safety and trust cover only the projects where the caller can read them (the rest are counted in
+         *     `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+         */
+        get: operations["getReadinessPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/readiness-pack/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The tender-readiness pack as a PDF. */
+        get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/reports": {
         parameters: {
             query?: never;
@@ -9127,6 +9171,77 @@ export interface components {
             totals: components["schemas"]["PortfolioTotals"];
             projects: components["schemas"]["PortfolioProject"][];
             /** @description True when more than 200 projects matched and the rest were left out. */
+            truncated: boolean;
+        };
+        ReadinessPackPdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        ReadinessPack: {
+            /** @description Local date the pack was built. */
+            generatedOn: string;
+            timeZone: string;
+            prequal: {
+                restricted: boolean;
+                companies: number;
+                qualified: number;
+                expiring: number;
+                pending: number;
+                expired: number;
+                notQualified: number;
+                requiredForTenders: boolean;
+            };
+            credentials: {
+                restricted: boolean;
+                current: number;
+                expiring: number;
+                expired: number;
+                noExpiry: number;
+                items: {
+                    itemType: string;
+                    title: string;
+                    insurer: string | null;
+                    expiresOn: string | null;
+                    /** @enum {string} */
+                    evidence: "recorded" | "sighted" | "self_declared";
+                    /** @enum {string} */
+                    state: "current" | "expiring" | "expired" | "no_expiry";
+                }[];
+            };
+            safety: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                incidents: {
+                    total: number;
+                    notifiable: number;
+                    notClosed: number;
+                    high: number;
+                    critical: number;
+                };
+                swms: {
+                    accepted: number;
+                    expired: number;
+                    awaitingReview: number;
+                    rejected: number;
+                };
+            };
+            trust: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                subcontracts: number;
+                ok: number;
+                shortfall: number;
+                notSetUp: number;
+                notRequired: number;
+                shortfallCents: number;
+            };
+            attention: {
+                /** @enum {string} */
+                area: "prequal" | "credentials" | "safety" | "trust";
+                text: string;
+            }[];
             truncated: boolean;
         };
         ReportConfig: {
@@ -20564,6 +20679,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Portfolio"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReadinessPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReadinessPackPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF, base64 encoded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPackPdf"];
                 };
             };
             default: components["responses"]["Problem"];
