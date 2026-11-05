@@ -10113,7 +10113,7 @@ export interface components {
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract" | "incident";
+            entityType: "meeting" | "tender_package" | "contract" | "incident" | "compliance_document";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;

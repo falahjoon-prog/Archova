@@ -14,6 +14,7 @@ const tz = () => Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 /** Where a notification leads: a meeting, or a tender package. */
 function target(orgSlug: string, n: Notification): string | null {
+  if (n.entityType === 'compliance_document') return webRoutes.wallet(orgSlug);
   if (!n.projectId) return null;
   if (n.entityType === 'meeting') return webRoutes.meeting(orgSlug, n.projectId, n.entityId);
   if (n.entityType === 'tender_package')
