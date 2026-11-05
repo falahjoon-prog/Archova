@@ -4,6 +4,7 @@ import {
   overviewPath,
   planTiles,
   SheetCache,
+  saveAllSheets,
   tilePath,
   tilesAtLevel,
   type SheetFiles,
@@ -105,5 +106,57 @@ describe('SheetCache', () => {
     expect(await cache.get('rev_a')).toBeNull();
     expect(await cache.get('rev_c')).not.toBeNull();
     expect(removed).toContain('file:///docs/drawings/rev_a/');
+  });
+});
+
+describe('saveAllSheets', () => {
+  const list = ['rev_1', 'rev_2', 'rev_3'].map((revisionId) => ({
+    projectId: 'prj_1',
+    revisionId,
+  }));
+  const ready = async () => ({ ...tiles, ready: true });
+
+  it('saves every sheet and reports progress', async () => {
+    const { cache } = await setup();
+    const seen: number[] = [];
+    const r = await saveAllSheets(cache, list, ready, {
+      budget: 1,
+      onProgress: (p) => seen.push(p.done),
+    });
+    expect(r).toEqual({ saved: 3, alreadySaved: 0, failed: 0, stoppedBecause: null });
+    expect(seen).toEqual([1, 2, 3]);
+    // A second run only counts what is already there.
+    const again = await saveAllSheets(cache, list, ready, { budget: 1 });
+    expect(again).toMatchObject({ saved: 0, alreadySaved: 3 });
+  });
+
+  it('counts not-ready, missing, throwing and half-downloaded sheets as failed', async () => {
+    const { cache } = await setup((url) => url.includes('rev_4'));
+    const fetch = async (id: string) => {
+      if (id === 'rev_1') return { ...tiles, ready: false };
+      if (id === 'rev_2') return null;
+      if (id === 'rev_3') throw new Error('offline');
+      if (id === 'rev_4') return { ...tiles, ready: true, overviewUrl: 'https://cdn/rev_4.webp' };
+      return { ...tiles, ready: true };
+    };
+    const sheets = ['rev_1', 'rev_2', 'rev_3', 'rev_4', 'rev_5'].map((revisionId) => ({
+      projectId: 'prj_1',
+      revisionId,
+    }));
+    const r = await saveAllSheets(cache, sheets, fetch, { budget: 1 });
+    expect(r).toMatchObject({ saved: 1, failed: 4, stoppedBecause: null });
+  });
+
+  it('stops when the storage limit is reached', async () => {
+    const { cache } = await setup();
+    const r = await saveAllSheets(cache, list, ready, { budget: 1, limitBytes: 1 });
+    expect(r).toMatchObject({ saved: 1, stoppedBecause: 'full' });
+  });
+
+  it('stops when cancelled', async () => {
+    const { cache } = await setup();
+    let n = 0;
+    const r = await saveAllSheets(cache, list, ready, { budget: 1, isCancelled: () => n++ >= 1 });
+    expect(r).toMatchObject({ saved: 1, stoppedBecause: 'cancelled' });
   });
 });
