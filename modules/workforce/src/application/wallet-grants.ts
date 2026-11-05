@@ -215,6 +215,9 @@ export function createWalletGrantService(deps: {
   }
 
   async function documentsFor(scope: TenantScope, g: GrantRow) {
+    // The documents policy only lets a builder see a subbie's rows for the one grant named here, so nothing else in
+    // this transaction (the builder's own wallet queries, say) can see them. Set after the grant has been checked.
+    await scope.tx.execute(sql`select set_config('app.wallet_grant', ${g.id}, true)`);
     // RLS is the floor; the filters repeat what the grant covers so the intent is readable.
     return scope.tx
       .select()
