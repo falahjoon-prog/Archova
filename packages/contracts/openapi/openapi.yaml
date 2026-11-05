@@ -18765,6 +18765,8 @@ components:
           wwcc,
           modern_slavery,
           abn,
+          white_card,
+          hrw_licence,
           other,
         ]
     PrequalSettings:
@@ -18997,6 +18999,10 @@ components:
           fileIds,
           evidence,
           expiry,
+          workerId,
+          holderName,
+          whiteCard,
+          lastWorkDeclaredOn,
           sightedBy,
           sightedAt,
           archivedAt,
@@ -19029,6 +19035,30 @@ components:
           type: string
           enum: [no_expiry, current, expiring, expired]
           description: "`expiring` is within 30 days of `expiresOn`, in the company's own time zone (Sydney until orgs carry one)."
+        workerId:
+          oneOf: [{ type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }, { type: 'null' }]
+          description: "The holder's entry on this org's worker list, when linked; null otherwise. Per-worker items are never shared with a builder."
+        holderName:
+          {
+            type: [string, 'null'],
+            description: Whose card it is,
+            for a white card or high-risk licence.,
+          }
+        whiteCard:
+          oneOf:
+            - type: object
+              required: [state, lastWorkOn, source]
+              properties:
+                state:
+                  type: string
+                  enum: [no_work_recorded, recent_work, may_have_lapsed]
+                  description: 'A white card has no expiry date but lapses after 2 years without construction work. `may_have_lapsed` is a prompt to check, not a finding: no record of work is not a record of no work, and states differ (VIC unconfirmed).'
+                lastWorkOn: { type: [string, 'null'], format: date }
+                source:
+                  oneOf: [{ type: string, enum: [sign_in, declared] }, { type: 'null' }]
+                  description: Whether the date is the last Archova sign-in or the holder's own declaration (the later of the two).
+            - type: 'null'
+        lastWorkDeclaredOn: { type: [string, 'null'], format: date }
         sightedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
         sightedAt: { type: [string, 'null'], format: date-time }
         archivedAt: { type: [string, 'null'], format: date-time }
@@ -19087,6 +19117,25 @@ components:
             items: { $ref: '#/components/schemas/FileRef' },
             description: 'Ready files in this org. Required unless `selfDeclared`.',
           }
+        holderName:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 200,
+            description: 'Required for a white card or high-risk licence (whose card it is); not allowed for a company item.',
+          }
+        workerId:
+          {
+            type: string,
+            pattern: '^wkr_[0-9A-Za-z]{26}$',
+            description: "Optional, per-worker items only: the holder's entry on this org's worker list, so their sign-ins count towards the white card 2-year rule.",
+          }
+        lastWorkOn:
+          {
+            type: string,
+            format: date,
+            description: 'White card only: the day the holder says they last did construction work. Used for the 2-year rule.',
+          }
         selfDeclared:
           {
             type: boolean,
@@ -19106,6 +19155,7 @@ components:
         startsOn: { type: [string, 'null'], format: date }
         expiresOn: { type: [string, 'null'], format: date }
         fileIds: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/FileRef' } }
+        lastWorkOn: { type: [string, 'null'], format: date }
         archived: { type: boolean }
     ComplianceShareCodeRequest:
       type: object

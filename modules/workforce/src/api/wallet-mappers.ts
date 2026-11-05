@@ -1,13 +1,10 @@
 import { encodeId } from '@archova/domain';
 import type { ComplianceDocument, ComplianceExpiryAlert } from '@archova/contracts';
 import type { LocalDate } from '@archova/time';
-import type { ComplianceDocumentRow, ComplianceAlertRow } from '../application/wallet';
-import { expiryState } from '../domain/wallet';
+import type { WalletDoc, ComplianceAlertRow } from '../application/wallet';
+import { expiryState, whiteCardCheck } from '../domain/wallet';
 
-export const toComplianceDocumentDto = (
-  r: ComplianceDocumentRow,
-  today: LocalDate,
-): ComplianceDocument => ({
+export const toComplianceDocumentDto = (r: WalletDoc, today: LocalDate): ComplianceDocument => ({
   id: encodeId('complianceDocument', r.id),
   itemType: r.itemType as ComplianceDocument['itemType'],
   title: r.title,
@@ -22,6 +19,16 @@ export const toComplianceDocumentDto = (
   fileIds: r.fileIds.map((f) => encodeId('file', f)),
   evidence: r.evidence,
   expiry: expiryState(r.expiresOn, today),
+  workerId: r.workerId ? encodeId('worker', r.workerId) : null,
+  holderName: r.holderName,
+  whiteCard:
+    r.itemType === 'white_card'
+      ? (() => {
+          const c = whiteCardCheck(r.lastWorkDeclaredOn, r.lastSignInOn, today);
+          return { state: c.state, lastWorkOn: c.lastWorkOn, source: c.source };
+        })()
+      : null,
+  lastWorkDeclaredOn: r.lastWorkDeclaredOn,
   sightedBy: r.sightedBy ? encodeId('user', r.sightedBy) : null,
   sightedAt: r.sightedAt ? r.sightedAt.toISOString() : null,
   archivedAt: r.archivedAt ? r.archivedAt.toISOString() : null,

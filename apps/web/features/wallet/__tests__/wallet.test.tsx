@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { enterText, renderInProject } from '@/test/render';
@@ -31,6 +31,10 @@ const base = {
   sightedAt: null,
   archivedAt: null,
   version: 1,
+  workerId: null,
+  holderName: null,
+  whiteCard: null,
+  lastWorkDeclaredOn: null,
   createdAt: '2026-11-01T00:00:00Z',
 };
 const doc = { ...base, id: 'cdo_01HZZZZZZZZZZZZZZZZZZZZZZ1' };
@@ -140,6 +144,52 @@ describe('WalletScreen', () => {
     await user.click(screen.getAllByRole('button', { name: 'Add document' }).at(-1)!);
     expect(await screen.findByText(/Add a file/)).toBeTruthy();
     expect(fake.callsTo('POST', D)).toHaveLength(0);
+  });
+
+  it('shows a white card with its holder and says "may have lapsed", never "lapsed"', async () => {
+    fake.on('GET', D, () => ({
+      data: [
+        {
+          ...doc,
+          itemType: 'white_card',
+          title: 'White card',
+          holderName: 'Sam Hand',
+          expiresOn: null,
+          expiry: 'no_expiry',
+          lastWorkDeclaredOn: '2023-01-01',
+          whiteCard: { state: 'may_have_lapsed', lastWorkOn: '2023-01-01', source: 'declared' },
+        },
+      ],
+    }));
+    renderInProject(<WalletScreen />);
+    expect(await screen.findByText('May have lapsed')).toBeTruthy();
+    expect(screen.getByText(/Sam Hand/)).toBeTruthy();
+    expect(screen.queryByText(/^Lapsed$/i)).toBeNull();
+  });
+
+  it('asks whose card it is for a white card and sends the holder and last work day', async () => {
+    const user = userEvent.setup();
+    fake.on('GET', D, () => ({ data: [] }));
+    fake.on('POST', D, () => ({ ...doc, itemType: 'white_card' }));
+    renderInProject(<WalletScreen />);
+    await user.click((await screen.findAllByRole('button', { name: 'Add document' }))[0]!);
+    await user.selectOptions(
+      within(screen.getByRole('dialog')).getByLabelText(/^Type/),
+      'white_card',
+    );
+    await enterText(user, screen.getByLabelText(/Title/), 'White card');
+    await user.click(screen.getByLabelText(/No document, a declaration only/));
+    await user.click(screen.getAllByRole('button', { name: 'Add document' }).at(-1)!);
+    expect(await screen.findByText('Say whose card this is.')).toBeTruthy();
+    await enterText(user, screen.getByLabelText(/Whose card is it/), 'Sam Hand');
+    await enterText(user, screen.getByLabelText(/Last did construction work on/), '2026-09-01');
+    await user.click(screen.getAllByRole('button', { name: 'Add document' }).at(-1)!);
+    await waitFor(() => expect(fake.callsTo('POST', D)).toHaveLength(1));
+    expect(fake.callsTo('POST', D)[0]!.init.body).toMatchObject({
+      itemType: 'white_card',
+      holderName: 'Sam Hand',
+      lastWorkOn: '2026-09-01',
+    });
   });
 
   it('says so when the flag is off', async () => {
