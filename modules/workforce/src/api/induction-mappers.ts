@@ -66,6 +66,7 @@ export function fromContentDto(c: InductionContentDto): InductionContent {
             title: null,
           };
         if (b.type === 'slides') return { type: 'slides', slides: b.slides };
+        if (b.type === 'animation') return b as InductionBlock;
         if (b.type === 'text') return { type: 'text', body: b.body };
         throw new AppError('validation_failed', 'Unknown block', [
           { path, message: 'Unknown type' },

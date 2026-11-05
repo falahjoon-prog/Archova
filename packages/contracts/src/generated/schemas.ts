@@ -2032,6 +2032,42 @@ export type ImportRowPage = z.infer<typeof ImportRowPageSchema>;
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
 
+export const InductionAnimationElementSchema = z.object({
+  "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
+  "kind": z.enum(["text", "icon", "arrow", "box"]),
+  "x": z.number().min(0).max(100),
+  "y": z.number().min(0).max(100),
+  "w": z.number().min(1).max(100),
+  "h": z.number().min(1).max(100),
+  "text": z.string().max(200).nullable().optional(),
+  "icon": z.enum(["hazard", "helmet", "vest", "boots", "glasses", "gloves", "hearing", "fire", "exit", "first_aid", "stop", "forklift", "person", "tick", "cross"]).nullable().optional(),
+  "tone": z.enum(["neutral", "info", "warning", "danger", "safe"]),
+  "rotation": z.number().int().min(-180).max(180).optional(),
+  "motion": z.object({
+  "preset": z.enum(["none", "fade_in", "slide_up", "slide_left", "pop", "pulse", "draw_on"]),
+  "startMs": z.number().int().min(0).max(60000),
+  "durationMs": z.number().int().min(100).max(10000),
+}).strict(),
+}).strict();
+export type InductionAnimationElement = z.infer<typeof InductionAnimationElementSchema>;
+
+export const InductionAnimationSceneSchema = z.object({
+  "id": z.string().regex(new RegExp("^[A-Za-z0-9_-]{1,40}$")),
+  "template": z.enum(["blank", "hazard_callout", "steps", "site_walkthrough", "ppe_checklist", "emergency_route"]),
+  "title": z.string().min(1).max(200),
+  "narration": z.string().max(1200).nullable().optional(),
+  "durationMs": z.number().int().min(2000).max(60000),
+  "elements": z.array(InductionAnimationElementSchema).max(30),
+}).strict();
+export type InductionAnimationScene = z.infer<typeof InductionAnimationSceneSchema>;
+
+export const InductionAnimationBlockSchema = z.object({
+  "type": z.enum(["animation"]),
+  "title": z.string().max(200).nullable().optional(),
+  "scenes": z.array(InductionAnimationSceneSchema).min(1).max(20),
+}).strict();
+export type InductionAnimationBlock = z.infer<typeof InductionAnimationBlockSchema>;
+
 export const InductionSlideSchema = z.object({
   "title": z.string().min(1).max(200),
   "points": z.array(z.string().min(1).max(400)).max(12),
@@ -2065,7 +2101,7 @@ export const InductionSwmsBlockSchema = z.object({
 }).strict();
 export type InductionSwmsBlock = z.infer<typeof InductionSwmsBlockSchema>;
 
-export const InductionBlockSchema = z.union([InductionSlidesBlockSchema, InductionTextBlockSchema, InductionFileBlockSchema, InductionSwmsBlockSchema]);
+export const InductionBlockSchema = z.union([InductionAnimationBlockSchema, InductionSlidesBlockSchema, InductionTextBlockSchema, InductionFileBlockSchema, InductionSwmsBlockSchema]);
 export type InductionBlock = z.infer<typeof InductionBlockSchema>;
 
 export const InductionSectionSchema = z.object({

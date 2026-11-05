@@ -25,6 +25,8 @@ export function blockSummary(b: InductionBlock): string {
       return 'Text';
     case 'slides':
       return `${b.slides.length} ${b.slides.length === 1 ? 'slide' : 'slides'}`;
+    case 'animation':
+      return `Animation: ${b.scenes.length} ${b.scenes.length === 1 ? 'scene' : 'scenes'}`;
     case 'swms':
       return b.title ? `SWMS: ${b.title}` : 'SWMS';
     default:

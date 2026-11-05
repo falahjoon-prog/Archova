@@ -9992,7 +9992,50 @@ export interface components {
             /** @description Filled in from the document register; ignored on input. */
             title?: string | null;
         };
-        InductionBlock: components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
+        /** @description One drawn thing on a scene. Positions and sizes are percentages of the scene (0 to 100). */
+        InductionAnimationElement: {
+            id: string;
+            /** @enum {string} */
+            kind: "text" | "icon" | "arrow" | "box";
+            x: number;
+            y: number;
+            w: number;
+            h: number;
+            text?: string | null;
+            /** @enum {string|null} */
+            icon?: "hazard" | "helmet" | "vest" | "boots" | "glasses" | "gloves" | "hearing" | "fire" | "exit" | "first_aid" | "stop" | "forklift" | "person" | "tick" | "cross" | null;
+            /** @enum {string} */
+            tone: "neutral" | "info" | "warning" | "danger" | "safe";
+            /** @description Degrees; arrows only. */
+            rotation?: number;
+            motion: {
+                /** @enum {string} */
+                preset: "none" | "fade_in" | "slide_up" | "slide_left" | "pop" | "pulse" | "draw_on";
+                startMs: number;
+                durationMs: number;
+            };
+        };
+        InductionAnimationScene: {
+            id: string;
+            /**
+             * @description The starting layout the editor used; the player only draws the elements.
+             * @enum {string}
+             */
+            template: "blank" | "hazard_callout" | "steps" | "site_walkthrough" | "ppe_checklist" | "emergency_route";
+            title: string;
+            /** @description Read aloud when voiceover is on, and shown as the caption otherwise. */
+            narration?: string | null;
+            durationMs: number;
+            elements: components["schemas"]["InductionAnimationElement"][];
+        };
+        /** @description A scene-based motion lesson, played to the end like a video (the worker cannot skip ahead). */
+        InductionAnimationBlock: {
+            /** @enum {string} */
+            type: "animation";
+            title?: string | null;
+            scenes: components["schemas"]["InductionAnimationScene"][];
+        };
+        InductionBlock: components["schemas"]["InductionAnimationBlock"] | components["schemas"]["InductionSlidesBlock"] | components["schemas"]["InductionTextBlock"] | components["schemas"]["InductionFileBlock"] | components["schemas"]["InductionSwmsBlock"];
         InductionSection: {
             key: components["schemas"]["InductionSectionKey"];
             title: string;
