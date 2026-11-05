@@ -236,6 +236,13 @@ export const PROBLEM_CODES = {
   'meeting.live_unavailable': 422,
   // notifications
   'notification.not_found': 404,
+  // scheduling (programme)
+  'schedule.not_found': 404,
+  'schedule.activity_not_found': 404,
+  'schedule.dependency_not_found': 404,
+  'schedule.link_cycle': 409,
+  'schedule.link_exists': 409,
+  'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,
   'financials.claim.not_found': 404,
