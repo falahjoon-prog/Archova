@@ -96,6 +96,11 @@ export function ProjectScreen({
         onPress={() => router.push(mobileRoutes.meetings(projectId))}
       />
       <ListItem
+        title="Owner portal"
+        subtitle="Progress, approvals and the capital plan"
+        onPress={() => router.push(mobileRoutes.ownerPortal(projectId))}
+      />
+      <ListItem
         title="Drawings"
         subtitle="Current sheets for this project"
         onPress={() => router.push(mobileRoutes.drawings(projectId))}
