@@ -90,6 +90,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inspections/templates`,
   imports: (orgSlug: string, projectId: string, jobId?: string) =>
     `${p(orgSlug, projectId)}/imports${jobId ? `?id=${enc(jobId)}` : ''}`,
+  ownerPortal: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/owner-portal`,
   lateSubmissions: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,

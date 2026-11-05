@@ -25,6 +25,8 @@ export const TRIAL_ENTITLEMENTS: Entitlements = {
     'correspondence',
     'workforce',
     'estimating',
+    // Owner and client portal (phase 5).
+    'ownerportal',
     // Contracts, claims and SOPA schedules (phase 2). Paid plans list this as 'claims'; until the catalogue is
     // reconciled the trial (pilots) is the only way in, and every date shows "rules not yet legally reviewed".
     'financials',
