@@ -1,6 +1,8 @@
 import { defineModule, type KernelServices } from '@archova/kernel';
 import { budgetRoutes } from './api/budgetRoutes';
 import { financialsRoutes } from './api/routes';
+import { directCostRoutes } from './api/directCostRoutes';
+import { createDirectCostsService } from './application/directCosts';
 import { createCommitmentsService } from './application/commitments';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
@@ -26,6 +28,10 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     access: deps.access,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const directCosts = createDirectCostsService({
+    access: deps.access,
+    ...(deps.now ? { now: deps.now } : {}),
+  });
   const trustDeps = {
     ...deps,
     contractFor: service.contractFor,
@@ -38,6 +44,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     routes: {
       ...financialsRoutes(services.database, service, forecast, commitments, trust, retention),
       ...budgetRoutes(services.database, budget),
+      ...directCostRoutes(services.database, directCosts),
     },
     api: {
       ledgerSource: service.ledgerSource,

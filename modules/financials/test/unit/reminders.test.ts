@@ -22,6 +22,7 @@ const base: ReminderContract = {
   movements: [],
   terms: { firstReleasePctHundredths: 5000, practicalCompletionOn: null, defectsPeriodDays: null },
   releasedByStage: {},
+  unpaidClaims: [],
 };
 
 describe('planReminders', () => {
@@ -90,6 +91,24 @@ describe('planReminders', () => {
     expect(
       planReminders([{ ...due, releasedByStage: { practical_completion: 50_000 } }], NOW, ctx),
     ).toEqual([]);
+  });
+
+  it('reminds once about an unpaid claim past its payment due date', () => {
+    const claim = (paymentDueOn: string, outstandingCents = 11_000) => ({
+      ...base,
+      sopaState: 'VIC',
+      unpaidClaims: [{ claimId: 'q1', number: 2, paymentDueOn, outstandingCents }],
+    });
+    const [r] = planReminders([claim('2026-11-04')], NOW, ctx);
+    expect(r).toMatchObject({
+      kind: 'financials.payment_overdue',
+      title: 'C-003 Tiling: claim 2 is past its payment due date',
+      dedupeKey: 'payment-overdue:q1:2026-11-04',
+    });
+    expect(r?.body).toContain('$110.00');
+    expect(planReminders([claim('2026-11-05')], NOW, ctx)).toEqual([]); // due today is not late
+    expect(planReminders([claim('2026-11-04', 0)], NOW, ctx)).toEqual([]);
+    expect(planReminders([claim('2026-08-01')], NOW, ctx)).toEqual([]); // long past
   });
 
   it('skips unknown projects and people who have left', () => {

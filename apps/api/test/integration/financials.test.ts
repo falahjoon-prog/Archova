@@ -1251,3 +1251,62 @@ describe('Budget against forecast', () => {
     expect((await put(w.id, cc.id)).statusCode).toBe(409);
   });
 });
+
+describe('Direct costs', () => {
+  it('adds to a budget line actual, voids with a reason, and is staff only', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}/${path}`, body);
+    const cc = (await post('cost-codes', { code: '07', description: 'Site costs' })).json();
+    await post('budget');
+    const line = (await post('budget/lines', { costCodeId: cc.id, original: '10000.00' })).json();
+    const actualOf = async () =>
+      (await s.pm.browser.get(`${s.base}/budget`))
+        .json()
+        .lines.find((l: { id: string }) => l.id === line.id).actual;
+    const body = {
+      budgetLineId: line.id,
+      category: 'materials',
+      description: 'Formwork timber',
+      supplier: 'Timber Co',
+      reference: 'INV-204',
+      incurredOn: '2026-10-01',
+      amount: '1200.50',
+      gst: '120.05',
+    };
+
+    const a = await post('direct-costs', body);
+    expect(a.statusCode).toBe(201);
+    expect(a.json()).toMatchObject({ number: 1, status: 'recorded', amount: '1200.50' });
+    const b = (await post('direct-costs', { ...body, amount: '300.00', gst: '30.00' })).json();
+    expect(b.number).toBe(2);
+    expect(await actualOf()).toBe('1500.50');
+
+    // Bad input.
+    expect((await post('direct-costs', { ...body, amount: '0.00' })).statusCode).toBe(422);
+    expect((await post('direct-costs', { ...body, incurredOn: '2999-01-01' })).statusCode).toBe(
+      422,
+    );
+    expect(
+      (await post('direct-costs', { ...body, budgetLineId: 'bln_0000000000000000000000000A' }))
+        .statusCode,
+    ).toBe(404);
+
+    // Voiding needs a reason, takes the amount off, and can't be repeated.
+    expect((await post(`direct-costs/${b.id}/void`, { note: '' })).statusCode).toBe(422);
+    const v = await post(`direct-costs/${b.id}/void`, { note: 'Posted twice' });
+    expect(v.json()).toMatchObject({ status: 'void', voidReason: 'Posted twice' });
+    expect(await actualOf()).toBe('1200.50');
+    expect((await post(`direct-costs/${b.id}/void`, { note: 'again' })).json().code).toBe(
+      'financials.direct_cost.already_void',
+    );
+
+    const list = (await s.pm.browser.get(`${s.base}/direct-costs`)).json();
+    expect(list.data.map((d: { number: number }) => d.number)).toEqual([2, 1]);
+    expect(list.total).toBe('1200.50');
+    expect((await s.pm.browser.get(`${s.base}/direct-costs/${a.json().id}`)).statusCode).toBe(200);
+
+    // Subcontractors see none of it.
+    expect((await s.sub.browser.get(`${s.base}/direct-costs`)).statusCode).toBe(403);
+    expect((await s.sub.browser.post(`${s.base}/direct-costs`, body)).statusCode).toBe(403);
+  });
+});

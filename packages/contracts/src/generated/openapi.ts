@@ -7683,6 +7683,69 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/direct-costs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Direct costs, newest first, with the total of those not voided (ex GST). */
+        get: operations["listDirectCosts"];
+        put?: never;
+        /** Record money spent against a budget line outside a subcontract or purchase order. It adds to the line's actual cost. */
+        post: operations["recordDirectCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        /** One direct cost. */
+        get: operations["getDirectCost"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}/void": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Void a direct cost with a reason. The amount comes off the budget line's actual cost. */
+        post: operations["voidDirectCost"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/commitments": {
         parameters: {
             query?: never;
@@ -9649,7 +9712,7 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention` or `financials.retention_release_due`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due` or `financials.payment_overdue`. */
             kind: string;
             title: string;
             body: string;
@@ -13031,6 +13094,46 @@ export interface components {
             commitment: components["schemas"]["Commitment"];
             lines: components["schemas"]["CommitmentLine"][];
         };
+        /** @enum {string} */
+        DirectCostCategory: "labour" | "materials" | "plant" | "fees" | "other";
+        DirectCost: {
+            id: string;
+            number: number;
+            budgetLineId: string;
+            category: components["schemas"]["DirectCostCategory"];
+            description: string;
+            supplier: string | null;
+            reference: string | null;
+            /** Format: date */
+            incurredOn: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            gst: components["schemas"]["FinancialsMoney"];
+            /** @enum {string} */
+            status: "recorded" | "void";
+            voidReason: string | null;
+            /** Format: date-time */
+            voidedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        DirectCostList: {
+            data: components["schemas"]["DirectCost"][];
+            total: components["schemas"]["FinancialsMoney"];
+        };
+        RecordDirectCostRequest: {
+            budgetLineId: string;
+            category: components["schemas"]["DirectCostCategory"];
+            description: string;
+            supplier?: string;
+            reference?: string;
+            /** Format: date */
+            incurredOn: string;
+            amount: components["schemas"]["FinancialsMoney"];
+            gst?: components["schemas"]["FinancialsMoney"];
+        };
+        VoidDirectCostRequest: {
+            note: string;
+        };
         CommitmentList: {
             data: components["schemas"]["Commitment"][];
         };
@@ -15331,6 +15434,7 @@ export interface components {
         BudgetLineId: string;
         ForecastAdjustmentId: string;
         VariationId: string;
+        DirectCostId: string;
         CommitmentId: string;
         PaymentClaimId: string;
         ClaimEvidenceKind: "claim" | "schedule";
@@ -28126,6 +28230,116 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Variation"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDirectCosts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCostList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordDirectCost: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordDirectCostRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCost"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDirectCost: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCost"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    voidDirectCost: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                directCostId: components["parameters"]["DirectCostId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VoidDirectCostRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DirectCost"];
                 };
             };
             default: components["responses"]["Problem"];
