@@ -1674,6 +1674,15 @@ export const ListGrantedWalletDocumentsParams = z.object({
 export const ListGrantedWalletDocumentsQuery = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetGrantedWalletFileLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "position": z.enum(["1", "2", "3", "4"]),
+});
+export const GetGrantedWalletFileLinkQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const CreateComplianceSnapshotParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
@@ -5643,6 +5652,20 @@ export const operations = {
     contentType: null,
     params: ListGrantedWalletDocumentsParams,
     query: ListGrantedWalletDocumentsQuery,
+    body: null,
+  },
+  getGrantedWalletFileLink: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 20,
+    contentType: null,
+    params: GetGrantedWalletFileLinkParams,
+    query: GetGrantedWalletFileLinkQuery,
     body: null,
   },
   createComplianceSnapshot: {
