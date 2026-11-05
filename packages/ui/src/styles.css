@@ -1048,6 +1048,67 @@
   align-items: center;
 }
 
+/* Induction animations: a 16:9 stage; positions are percentages and text scales with the stage width. */
+.ac-anim {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+.ac-anim__stage {
+  position: relative;
+}
+.ac-anim__frame {
+  position: relative;
+  container-type: inline-size;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--c-border-control);
+  background: var(--c-surface);
+}
+.ac-anim__el {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  will-change: transform, opacity;
+}
+.ac-anim__el[data-selected='true'] {
+  outline: 2px dashed var(--c-action-primary);
+  outline-offset: 2px;
+}
+.ac-anim__el--text {
+  font-size: clamp(0.8rem, 4cqw, 2rem);
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+.ac-anim__box {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  border: 3px solid currentColor;
+  border-radius: var(--radius-md);
+  font-size: clamp(0.75rem, 3.2cqw, 1.6rem);
+  font-weight: 600;
+}
+.ac-anim__el svg {
+  width: 100%;
+  height: 100%;
+}
+.ac-anim__caption {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: var(--space-2) var(--space-3);
+  background: rgb(0 0 0 / 0.72);
+  color: #fff;
+  font-size: var(--font-size-sm, 0.875rem);
+}
+.ac-anim__title {
+  margin: 0;
+  color: var(--c-text-secondary);
+}
+
 .ac-signature {
   display: grid;
   gap: var(--space-2);

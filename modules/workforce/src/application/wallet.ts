@@ -4,7 +4,14 @@ import { uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
 import type { NumberVault } from '../domain/number-vault';
-import { checkNumber, hasNumberCheck, isWorkerItem, last4 } from '../domain/wallet';
+import {
+  checkNumber,
+  expiryState,
+  hasNumberCheck,
+  isWorkerItem,
+  last4,
+  type ExpiryState,
+} from '../domain/wallet';
 import {
   attendanceSessions,
   complianceDocuments,
@@ -414,7 +421,40 @@ export function createWalletService(deps: { files: InductionDeps['files']; vault
     return { row: (await withWorkers(scope, [row]))[0]!, today: today() };
   }
 
-  return { list, listAlerts, create, update, sight };
+  /**
+   * The company's own licences and insurances as one row each with how current it is, for the tender-readiness pack
+   * (`reporting`). Per-worker items (white card, high-risk licence) are left out: they are personal to the holder.
+   * "Recorded" and "sighted" are the strongest claims; nothing here has been checked against a register.
+   */
+  async function readinessSummary(scope: TenantScope) {
+    const rows = await scope.tx
+      .select({
+        itemType: complianceDocuments.itemType,
+        title: complianceDocuments.title,
+        insurer: complianceDocuments.insurer,
+        expiresOn: complianceDocuments.expiresOn,
+        evidence: complianceDocuments.evidence,
+      })
+      .from(complianceDocuments)
+      .where(
+        and(eq(complianceDocuments.orgId, scope.ctx.orgId), isNull(complianceDocuments.archivedAt)),
+      )
+      .orderBy(sql`${complianceDocuments.expiresOn} asc nulls last`);
+    const day = today();
+    const items = rows
+      .filter((r) => !isWorkerItem(r.itemType))
+      .map((r) => ({ ...r, state: expiryState(r.expiresOn, day) }));
+    const counts: Record<ExpiryState, number> = {
+      current: 0,
+      expiring: 0,
+      expired: 0,
+      no_expiry: 0,
+    };
+    for (const i of items) counts[i.state] += 1;
+    return { counts, items };
+  }
+
+  return { list, listAlerts, create, update, sight, readinessSummary };
 }
 
 export type WalletService = ReturnType<typeof createWalletService>;

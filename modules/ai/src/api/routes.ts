@@ -42,6 +42,7 @@ import type { RfiAnswerPayload, RfiAnswerService } from '../application/rfi-answ
 import type { RfiDraftPayload, RfiDraftService } from '../application/rfi-draft';
 import type { SwmsDraftPayload, SwmsDraftService } from '../application/swms-draft';
 import type { DefectTagPayload, DefectTagService } from '../application/defect-tag';
+import type { HazardScanService, HazardSignalView } from '../application/hazard-scan';
 import type { ImportMappingService } from '../application/import-mapping';
 import type { QuoteReadPayload, QuoteReadService } from '../application/quote-read';
 import type { DrawingCompareService } from '../application/drawing-compare';
@@ -242,6 +243,19 @@ const toSourceDto = (s: AnswerSource) => ({
   page: s.page,
 });
 
+const toHazardSignalDto = (s: HazardSignalView) => ({
+  id: encodeId('aiHazardSignal', s.id),
+  fileId: encodeId('file', s.fileId),
+  category: s.category,
+  categoryLabel: s.categoryLabel,
+  observation: s.observation,
+  confidence: s.confidence,
+  status: s.status,
+  reviewNote: s.reviewNote,
+  reviewedAt: s.reviewedAt?.toISOString() ?? null,
+  createdAt: s.createdAt.toISOString(),
+});
+
 const projectUuid = (id: string) => {
   const uuid = decodeId('project', id);
   if (!uuid) throw new AppError('project.not_found');
@@ -282,6 +296,7 @@ export function aiRoutes(
   takeoffDetect: TakeoffDetectService,
   minutesExtract: MinutesExtractService,
   swmsDrafts: SwmsDraftService,
+  hazardScans: HazardScanService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -689,6 +704,62 @@ export function aiRoutes(
           },
         },
       };
+    },
+    scanSitePhotoForHazardsWithNova: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const photoFileId = decodeId('file', input.body.photo.fileId);
+      if (!photoFileId) throw new AppError('file.not_found');
+      const r = await hazardScans.scan(requireTenant(input), projectId, {
+        note: input.body.note ?? '',
+        photoFileId,
+      });
+      return {
+        status: 200,
+        body: {
+          runId: encodeId('aiRun', r.runId),
+          scanId: encodeId('aiHazardScan', r.scanId),
+          signals: r.signals.map(toHazardSignalDto),
+          photoUnclear: r.photoUnclear,
+          dropped: r.dropped,
+          unsupportedNumbers: r.unsupportedNumbers,
+          disclaimer: r.disclaimer,
+        },
+      };
+    },
+    listHazardSignals: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) =>
+          hazardScans.list(scope, projectId, {
+            limit: input.query.limit ?? 50,
+            ...(input.query.status ? { status: input.query.status } : {}),
+          }),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toHazardSignalDto) } };
+    },
+    reviewHazardSignal: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const id = decodeId('aiHazardSignal', input.params.signalId);
+      if (!id) throw new AppError('ai.hazard_signal.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        hazardScans.review(scope, projectId, id, {
+          decision: input.body.decision,
+          ...(input.body.note ? { note: input.body.note } : {}),
+        }),
+      );
+      return { status: 200, body: toHazardSignalDto(row) };
+    },
+    getHazardPatterns: async (input) => {
+      const projectId = projectUuid(input.params.projectId);
+      const days = input.query.days ?? 30;
+      const data = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => hazardScans.patterns(scope, projectId, days),
+        ro,
+      );
+      return { status: 200, body: { days, data } };
     },
     summariseDiaryDayWithNova: async (input) => {
       const projectId = projectUuid(input.params.projectId);

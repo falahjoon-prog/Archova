@@ -3,6 +3,7 @@
 import type { ModelProvider } from '../../domain/provider';
 import { createBedrockProvider } from './bedrock';
 import { heuristicDefectTag } from '../../eval/suites/defect-tag';
+import { heuristicHazardScan } from '../../eval/suites/hazard-scan';
 import { heuristicImportMapping } from '../../eval/suites/import-mapping';
 import { heuristicDiarySummary } from '../../eval/suites/diary-summary';
 import { heuristicDiaryWeekly } from '../../eval/suites/diary-weekly';
@@ -50,6 +51,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'drawing.compare': heuristicDrawingCompare,
   'drawing.compare_visual': heuristicDrawingCompareVisual,
   'defect.tag': heuristicDefectTag,
+  'safety.hazard_scan': heuristicHazardScan,
   'import.mapping': heuristicImportMapping,
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,

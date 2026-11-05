@@ -287,12 +287,14 @@ export async function addMember(
   template: string,
   companyName = 'Sparky Electrical',
   trades: string[] = [],
+  companyEmail?: string,
 ) {
   const company = (
     await owner.post(`/v1/orgs/${orgId}/companies`, {
       name: companyName,
       type: 'subcontractor',
       ...(trades.length ? { trades } : {}),
+      ...(companyEmail ? { email: companyEmail } : {}),
     })
   ).json() as { id: string };
   const templates = (await owner.get(`/v1/orgs/${orgId}/permission-templates`)).json()

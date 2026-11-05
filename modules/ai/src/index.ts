@@ -25,6 +25,7 @@ import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-ans
 import { createRfiDraftService } from './application/rfi-draft';
 import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
+import { createHazardScanService } from './application/hazard-scan';
 import { createImportMappingService } from './application/import-mapping';
 import {
   createQuoteNegotiateService,
@@ -412,6 +413,12 @@ export function createAiModule(
     projectCompanies: deps.projectCompanies,
     openDefectsNear: deps.openDefectsNear,
   });
+  const hazardScans = createHazardScanService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    readFile: deps.readFile,
+  });
   const importMappings = createImportMappingService({
     database: services.database,
     gateway,
@@ -510,6 +517,7 @@ export function createAiModule(
       takeoffDetect,
       minutesExtract,
       swmsDrafts,
+      hazardScans,
     ),
     permissions: AI_PERMISSIONS,
     provider,

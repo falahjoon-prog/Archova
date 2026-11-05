@@ -47,6 +47,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: reporting
+  - name: data-export
 paths:
   /v1/auth/signup:
     post:
@@ -189,6 +190,13 @@ paths:
             schema: { type: string, enum: [S256] },
           }
         - { name: state, in: query, required: true, schema: { type: string, maxLength: 512 } }
+        - {
+            name: prompt,
+            in: query,
+            required: false,
+            description: '`login` forces a fresh sign-in: a session whose sign-in is older than five minutes is sent back to the sign-in page, and the code carries the new sign-in time (so step-up checks such as account deletion pass).',
+            schema: { type: string, enum: [login] },
+          }
       responses:
         '302': { description: Redirect to the client with an authorisation code }
         default: { $ref: '#/components/responses/Problem' }
@@ -251,6 +259,29 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Me' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteMe
+      tags: [me]
+      x-module: platform
+      summary: Delete my account (the in-app deletion both app stores require).
+      description: |
+        Needs a sign-in in the last 15 minutes (`403 auth.step_up_required` otherwise) and `confirm: DELETE`.
+        Clears the profile, credentials, sessions and API tokens, and ends the person's seat in every organisation and
+        project (their phone is told to wipe). Records they made or signed stay, as retention rules require, and read
+        "Deleted user". The email can be used to sign up again.
+
+        `409 account.sole_owner` (with `orgs`) means an organisation others still use has no other owner: make
+        someone else an owner first. `409 account.org_on_hold` means the person's own empty organisation can't be
+        closed because of a platform hold: contact support. An owner who is alone in an organisation closes it with
+        the account. Returns 204; the session ends, so the client signs the person out locally.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeleteMeRequest' }
+      responses:
+        '204': { description: Account deleted }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs:
     post:
@@ -2584,6 +2615,153 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaDefectTag' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: scanSitePhotoForHazardsWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.scan
+      summary: Nova flags visual hazard signals in a site photo (F35).
+      description: |
+        Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+        the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+        an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+        confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+        does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+        (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+        `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+        a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+        is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: What the person said or typed about the photo. May be empty.
+      responses:
+        '200':
+          description: The signals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaHazardScan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listHazardSignals
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Hazard signals Nova flagged in this project's photos, newest first.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/HazardSignalStatus' } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: The signals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: signalId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ahs_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reviewHazardSignal
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Confirm or dismiss a hazard signal.
+      description: |
+        A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+        project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+        is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+        the manager reports one from the incidents screen if it warrants it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [confirmed, dismissed] }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: The decided signal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHazardPatterns
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Hazard categories that keep showing up in this project's photos.
+      description: |
+        Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+        least three signals in it across at least two different photos, the early warning that a near miss may follow.
+        `trend` compares the later half of the window with the earlier half.
+      parameters:
+        - {
+            name: days,
+            in: query,
+            schema: { type: integer, minimum: 7, maximum: 180, default: 30 },
+          }
+      responses:
+        '200':
+          description: The categories, patterns first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [days, data]
+                properties:
+                  days: { type: integer }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/HazardPattern' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3670,6 +3848,43 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/readiness-pack:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getReadinessPack
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.readiness.read
+      summary: The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+      description: |
+        One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+        caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+        safety and trust cover only the projects where the caller can read them (the rest are counted in
+        `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+      responses:
+        '200':
+          description: The pack
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPack' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/readiness-pack/pdf:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getReadinessPackPdf
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.readiness.read
+      summary: The tender-readiness pack as a PDF.
+      responses:
+        '200':
+          description: The PDF, base64 encoded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReadinessPackPdf' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/reports:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -3793,6 +4008,83 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listDataExports
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      summary: The organisation's recent full exports, newest first.
+      description: Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDataExport
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      x-rate-limit: 10
+      summary: Start a full export of everything the organisation holds in Archova.
+      description: |
+        Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+        original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+        sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+        a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+        hours later, depending on how many files there are, and kept for 7 days.
+      responses:
+        '202':
+          description: Accepted; poll the export until it is ready.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports/{exportId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DataExportId'
+    get:
+      operationId: getDataExport
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      summary: One export and how far it has got.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports/{exportId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DataExportId'
+    post:
+      operationId: createDataExportDownload
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      x-rate-limit: 30
+      summary: A short-lived link to download a finished export.
+      description: |
+        The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+        still being built or if it failed; 410 once it has expired.
+      responses:
+        '200':
+          description: The link
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportDownload' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -3965,6 +4257,77 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/invites/{companyId}/resend:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TenderPackageId'
+      - { name: companyId, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: resendTenderInvite
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.packages.manage
+      summary: Email an invited company a new link to the package. The earlier link stops working (X45).
+      responses:
+        '200':
+          description: The package; the invite's `deliveredAt` shows when the email went out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderPackage' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/tender-access:
+    post:
+      operationId: openTenderAccess
+      tags: [estimating]
+      x-module: estimating
+      x-auth: none
+      summary: Exchange a tender link token for a session on that link (web `/q/[token]`, X45). Marks the invite viewed.
+      description: 'Sets the `__Host-lnk` cookie (12 hours, this link only). The page then removes the token from the address bar. An expired, revoked or unknown link, or a package no longer out to tender, returns `access_link.invalid` with no detail about the record.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OpenInductionAccessRequest' }
+      responses:
+        '200':
+          description: The package behind the link; `__Host-lnk` set.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+    get:
+      operationId: getTenderAccess
+      tags: [estimating]
+      x-module: estimating
+      x-auth: none
+      summary: The package behind the current link session.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderAccess' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/tender-access/respond:
+    post:
+      operationId: respondTenderAccess
+      tags: [estimating]
+      x-module: estimating
+      x-auth: none
+      summary: The invited company says it intends to quote or declines. It can change its answer until a quote is submitted.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RespondTenderAccessRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TenderAccess' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/allowances:
     parameters:
@@ -5000,6 +5363,23 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/AccountingSyncIssue' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/integrations/catalogue:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getIntegrationsCatalogue
+      tags: [integrations]
+      x-module: integrations
+      x-permission: integrations.marketplace.read
+      x-internal: true
+      summary: Every connector the org can set up, with its live status (integrations/06 §4).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IntegrationCatalogue' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/webhooks:
     parameters:
@@ -6133,6 +6513,54 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/RfiActivity' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    get:
+      operationId: listRfiAnnotations
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      summary: Everyone's marks on the RFI's photos, for anyone who can see the RFI.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiAnnotationList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: putRfiFileAnnotation
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.create
+      summary: Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+      description: |
+        Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+        The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+        closed or void. The original photo is never changed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutRfiAnnotationRequest' }
+      responses:
+        '200':
+          description: The caller's layer after the change; `null` when it was removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiAnnotationResult' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close:
     parameters:
@@ -11450,6 +11878,78 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ClaimEvidenceDelivery' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+    get:
+      operationId: listClaimEvidenceServiceRecords
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: 'Records that this sealed record was served by other means. Builder staff only.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecordList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordClaimEvidenceService
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Record that the sealed claim or schedule was served by hand, courier, post or the recipient's own reply, and
+        when. Append-only; it is a person's statement, kept apart from email deliveries. Recording service of a
+        schedule needs `financials.claims.assess`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimEvidenceServiceRequest' }
+      responses:
+        '201':
+          description: Recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence/{kind}/service-records/{recordId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+      - $ref: '#/components/parameters/ClaimEvidenceKind'
+      - { name: recordId, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: voidClaimEvidenceService
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: >
+        Void a mistaken service record with a reason. The record is never edited or deleted; the void is a separate
+        append-only row. Voiding service of a schedule needs `financials.claims.assess`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              additionalProperties: false
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        '200':
+          description: Voided
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/meeting-series:
     parameters:
       - { $ref: '#/components/parameters/OrgId' }
@@ -12357,6 +12857,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    DataExportId:
+      name: exportId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxp_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -12535,7 +13040,7 @@ components:
         overdue: { type: integer }
     PortfolioProject:
       type: object
-      required: [id, name, number, status, rfis, defects, submittals, attention]
+      required: [id, name, number, status, rfis, defects, submittals, claims, variations, attention]
       properties:
         id: { type: string }
         name: { type: string }
@@ -12544,7 +13049,18 @@ components:
         rfis: { $ref: '#/components/schemas/PortfolioTool' }
         defects: { $ref: '#/components/schemas/PortfolioTool' }
         submittals: { $ref: '#/components/schemas/PortfolioTool' }
-        attention: { type: integer, description: 'Overdue RFIs, defects and submittals together.' }
+        claims:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Payment claims not yet paid or withdrawn; overdue means the SOPA schedule or payment date has passed.',
+          }
+        variations:
+          {
+            allOf: [{ $ref: '#/components/schemas/PortfolioTool' }],
+            description: 'Variations submitted and waiting for a decision; they have no due date, so overdue is always zero.',
+          }
+        attention:
+          { type: integer, description: 'Overdue RFIs, defects, submittals and claims together.' }
     PortfolioTotals:
       type: object
       required:
@@ -12556,6 +13072,10 @@ components:
           defectsOverdue,
           submittalsOpen,
           submittalsOverdue,
+          claimsOpen,
+          claimsOverdue,
+          variationsOpen,
+          variationsOverdue,
         ]
       properties:
         projects: { type: integer }
@@ -12565,6 +13085,10 @@ components:
         defectsOverdue: { type: integer }
         submittalsOpen: { type: integer }
         submittalsOverdue: { type: integer }
+        claimsOpen: { type: integer }
+        claimsOverdue: { type: integer }
+        variationsOpen: { type: integer }
+        variationsOverdue: { type: integer }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -12578,12 +13102,122 @@ components:
             type: boolean,
             description: 'True when more than 200 projects matched and the rest were left out.',
           }
+    ReadinessPackPdf:
+      type: object
+      required: [filename, contentType, dataBase64]
+      properties:
+        filename: { type: string }
+        contentType: { type: string, enum: [application/pdf] }
+        dataBase64: { type: string }
+    ReadinessPack:
+      type: object
+      required: [generatedOn, timeZone, prequal, credentials, safety, trust, attention, truncated]
+      properties:
+        generatedOn: { type: string, description: 'Local date the pack was built.' }
+        timeZone: { type: string }
+        prequal:
+          type: object
+          required:
+            [
+              restricted,
+              companies,
+              qualified,
+              expiring,
+              pending,
+              expired,
+              notQualified,
+              requiredForTenders,
+            ]
+          properties:
+            restricted: { type: boolean }
+            companies: { type: integer }
+            qualified: { type: integer }
+            expiring: { type: integer }
+            pending: { type: integer }
+            expired: { type: integer }
+            notQualified: { type: integer }
+            requiredForTenders: { type: boolean }
+        credentials:
+          type: object
+          required: [restricted, current, expiring, expired, noExpiry, items]
+          properties:
+            restricted: { type: boolean }
+            current: { type: integer }
+            expiring: { type: integer }
+            expired: { type: integer }
+            noExpiry: { type: integer }
+            items:
+              type: array
+              items:
+                type: object
+                required: [itemType, title, insurer, expiresOn, evidence, state]
+                properties:
+                  itemType: { type: string }
+                  title: { type: string }
+                  insurer: { type: [string, 'null'] }
+                  expiresOn: { type: [string, 'null'] }
+                  evidence: { type: string, enum: [recorded, sighted, self_declared] }
+                  state: { type: string, enum: [current, expiring, expired, no_expiry] }
+        safety:
+          type: object
+          required: [projectsCovered, projectsRestricted, incidents, swms]
+          properties:
+            projectsCovered: { type: integer }
+            projectsRestricted: { type: integer }
+            incidents:
+              type: object
+              required: [total, notifiable, notClosed, high, critical]
+              properties:
+                total: { type: integer }
+                notifiable: { type: integer }
+                notClosed: { type: integer }
+                high: { type: integer }
+                critical: { type: integer }
+            swms:
+              type: object
+              required: [accepted, expired, awaitingReview, rejected]
+              properties:
+                accepted: { type: integer }
+                expired: { type: integer }
+                awaitingReview: { type: integer }
+                rejected: { type: integer }
+        trust:
+          type: object
+          required:
+            [
+              projectsCovered,
+              projectsRestricted,
+              subcontracts,
+              ok,
+              shortfall,
+              notSetUp,
+              notRequired,
+              shortfallCents,
+            ]
+          properties:
+            projectsCovered: { type: integer }
+            projectsRestricted: { type: integer }
+            subcontracts: { type: integer }
+            ok: { type: integer }
+            shortfall: { type: integer }
+            notSetUp: { type: integer }
+            notRequired: { type: integer }
+            shortfallCents: { type: integer }
+        attention:
+          type: array
+          items:
+            type: object
+            required: [area, text]
+            properties:
+              area: { type: string, enum: [prequal, credentials, safety, trust] }
+              text: { type: string }
+        truncated: { type: boolean }
     ReportConfig:
       type: object
       additionalProperties: false
       required: [source, state, projectIds, columns, overdueOnly]
       properties:
-        source: { type: string, enum: [rfis, defects, submittals] }
+        source: { type: string, enum: [rfis, defects, submittals, claims, variations] }
         state:
           {
             type: string,
@@ -12628,6 +13262,62 @@ components:
           }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    DataExport:
+      type: object
+      required:
+        [
+          id,
+          status,
+          requestedBy,
+          createdAt,
+          startedAt,
+          finishedAt,
+          expiresAt,
+          sizeBytes,
+          sha256,
+          tableCount,
+          fileCount,
+          skippedFileCount,
+          error,
+        ]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, ready, failed, expired] }
+        requestedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, 'null'], format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        sizeBytes: { type: [integer, 'null'] }
+        sha256:
+          {
+            type: [string, 'null'],
+            description: SHA-256 of the zip,
+            so it can be checked after download.,
+          }
+        tableCount: { type: [integer, 'null'] }
+        fileCount: { type: [integer, 'null'] }
+        skippedFileCount:
+          {
+            type: [integer, 'null'],
+            description: Files that could not be included (infected,
+            missing from storage); each is listed in the manifest with the reason.,
+          }
+        error: { type: [string, 'null'], description: Why a failed export failed, in plain words. }
+    DataExportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DataExport' }
+    DataExportDownload:
+      type: object
+      required: [url, expiresAt, filename]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        filename: { type: string }
     ReportList:
       type: object
       required: [data]
@@ -13471,14 +14161,55 @@ components:
     ClaimEvidenceDelivery:
       type: object
       required:
-        [id, kind, recipientEmail, status, queuedAt, sentAt, deliveredAt, bouncedAt, notConfirmed]
+        [
+          id,
+          kind,
+          recipientEmail,
+          status,
+          queuedAt,
+          sentAt,
+          deliveredAt,
+          bouncedAt,
+          notConfirmed,
+          serviceBasis,
+          sendProof,
+          addressBasis,
+        ]
       properties:
+        serviceBasis:
+          type: string
+          enum: [confirmed_delivery, dispatch_only]
+          description: '`confirmed_delivery` only when the receiving mail server confirmed it. `dispatch_only` means we sent it and have a record of that, which is not proof it arrived. Never show dispatch_only as served.'
+        sendProof:
+          type: [object, 'null']
+          description: Our signed record of what was sent, to whom and when. Null until the message has been sent.
+          required: [recordedAt, messageSha256, signed, timestampedAt]
+          properties:
+            recordedAt: { type: string, format: date-time }
+            messageSha256: { type: string }
+            signed: { type: boolean }
+            timestampedAt:
+              {
+                type: [string, 'null'],
+                format: date-time,
+                description: 'Time the outside authority stamped the send proof, once taken.',
+              }
         id: { type: string, format: uuid }
         kind: { type: string, enum: [claim, schedule] }
         recipientEmail: { type: string }
+        addressBasis:
+          {
+            type: [string, 'null'],
+            description: 'Where the address came from, e.g. the contract clause that nominates it, as typed at send time.',
+          }
         status: { type: string, enum: [queued, sending, sent, delivered, bounced, failed] }
         queuedAt: { type: string, format: date-time }
-        sentAt: { type: [string, 'null'], format: date-time }
+        sentAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When our mail relay accepted it. Not delivery to the recipient.',
+          }
         deliveredAt:
           {
             type: [string, 'null'],
@@ -13489,6 +14220,52 @@ components:
         notConfirmed:
           type: boolean
           description: True after a bounce or failure, or when no delivery confirmation came within an hour. The user must serve another way and record it.
+    ClaimEvidenceServiceRecord:
+      type: object
+      required:
+        [id, kind, method, basis, servedAt, servedTo, note, recordedAt, voidedAt, voidReason]
+      properties:
+        voidedAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'Set when the record was voided as mistaken. A voided record stays on file.',
+          }
+        voidReason: { type: [string, 'null'] }
+        basis:
+          {
+            type: string,
+            enum: [self_reported],
+            description: "The recording user's own statement; Archova has not checked it. Never show as verified.",
+          }
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [claim, schedule] }
+        method: { type: string, enum: [hand, courier, post, recipient_reply, other] }
+        servedAt:
+          {
+            type: string,
+            format: date-time,
+            description: 'When it reached the recipient, as stated by the person recording.',
+          }
+        servedTo: { type: string, maxLength: 200 }
+        note: { type: [string, 'null'], maxLength: 2000 }
+        recordedAt: { type: string, format: date-time }
+    ClaimEvidenceServiceRecordList:
+      type: object
+      required: [records]
+      properties:
+        records:
+          type: array
+          items: { $ref: '#/components/schemas/ClaimEvidenceServiceRecord' }
+    RecordClaimEvidenceServiceRequest:
+      type: object
+      required: [method, servedAt, servedTo]
+      additionalProperties: false
+      properties:
+        method: { type: string, enum: [hand, courier, post, recipient_reply, other] }
+        servedAt: { type: string, format: date-time }
+        servedTo: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: [string, 'null'], maxLength: 2000 }
     ClaimEvidenceDeliveryList:
       type: object
       required: [deliveries]
@@ -13507,6 +14284,12 @@ components:
             format: email,
             maxLength: 254,
             description: 'The address the payer gave for service.',
+          }
+        addressBasis:
+          {
+            type: [string, 'null'],
+            maxLength: 500,
+            description: 'Where the address came from, e.g. the contract clause that nominates it. Kept in the signed send record.',
           }
     ClaimEvidenceList:
       type: object
@@ -14361,6 +15144,7 @@ components:
           rfi_draft,
           diary_summary,
           defect_tagging,
+          safety_hazards,
           minutes,
           estimating,
           contract_review,
@@ -15154,6 +15938,22 @@ components:
               days: { type: [integer, 'null'] }
               dayType: { type: string, enum: [business, calendar, unclear] }
               source: { $ref: '#/components/schemas/ContractSourceRef' }
+        obligations:
+          type: array
+          description: Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed.
+          items:
+            type: object
+            required: [party, category, action, timing, source]
+            properties:
+              party: { type: string, enum: [builder, other_party, both, unclear] }
+              category:
+                type: string
+                enum: [payment, notice, insurance, security, reporting, programme, quality, other]
+              action: { type: string }
+              timing:
+                type: [string, 'null']
+                description: The contract's own words for when. Nova works out no dates.
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
         flags:
           type: array
           description: Highest severity first. Each cites its clause.
@@ -15351,6 +16151,74 @@ components:
           scopeKey: { type: [string, 'null'] }
           source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
           warning: { type: [string, 'null'], enum: [source_not_found, null] }
+    HazardSignalStatus: { type: string, enum: [open, confirmed, dismissed] }
+    HazardConfidence: { type: string, enum: [low, medium, high] }
+    HazardSignal:
+      type: object
+      required:
+        [
+          id,
+          fileId,
+          category,
+          categoryLabel,
+          observation,
+          confidence,
+          status,
+          reviewNote,
+          reviewedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, description: The signal (`ahs_`) }
+        fileId: { type: string, description: The photo it was flagged in (`fil_`) }
+        category: { type: string }
+        categoryLabel: { type: string }
+        observation:
+          {
+            type: string,
+            description: What the photo shows,
+            as an observation and never a finding.,
+          }
+        confidence: { $ref: '#/components/schemas/HazardConfidence' }
+        status: { $ref: '#/components/schemas/HazardSignalStatus' }
+        reviewNote: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NovaHazardScan:
+      type: object
+      required: [runId, scanId, signals, photoUnclear, dropped, unsupportedNumbers, disclaimer]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        scanId: { type: string, description: The scan (`ahn_`); its signals share it }
+        signals:
+          type: array
+          items: { $ref: '#/components/schemas/HazardSignal' }
+        photoUnclear:
+          {
+            type: boolean,
+            description: The photo was too dark,
+            blurred or distant to judge,
+            or isn't a site photo.,
+          }
+        dropped:
+          type: integer
+          description: Signals left out because their wording judged instead of observing.
+        unsupportedNumbers:
+          type: array
+          items: { type: string }
+        disclaimer: { type: string }
+    HazardPattern:
+      type: object
+      required: [category, label, open, confirmed, dismissed, photos, isPattern, trend]
+      properties:
+        category: { type: string }
+        label: { type: string }
+        open: { type: integer }
+        confirmed: { type: integer }
+        dismissed: { type: integer }
+        photos: { type: integer, description: Photos with a confirmed signal in this category. }
+        isPattern: { type: boolean }
+        trend: { type: string, enum: [rising, steady, falling] }
     NovaDefectTag:
       type: object
       required:
@@ -17326,6 +18194,7 @@ components:
           ballInCourt,
           distributionUserIds,
           distributionCompanyIds,
+          fileIds,
           dueDate,
           isOverdue,
           openedAt,
@@ -17382,6 +18251,10 @@ components:
         specSection: { type: [string, 'null'], description: 'As written on the form.' }
         location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
+        fileIds:
+          description: Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`).
+          type: array
+          items: { type: string }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
@@ -17465,6 +18338,10 @@ components:
             description: 'Where on the project, as written (e.g. `Level 2, gridline C`).',
           }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
         aiSuggestionId:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
@@ -17498,6 +18375,11 @@ components:
         specSection: { type: [string, 'null'], maxLength: 200 }
         location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
+        fileIds:
+          description: The files attached to the question; replaces the list.
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
     CreateRfiResponseRequest:
       type: object
       additionalProperties: false
@@ -17512,6 +18394,41 @@ components:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
           description: The Nova `rfi.answer` suggestion this response was drafted from.
+    RfiAnnotation:
+      type: object
+      required: [id, rfiId, fileId, authorId, shapes, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        rfiId: { type: string }
+        fileId: { type: string }
+        authorId: { type: [string, 'null'] }
+        shapes:
+          type: array
+          items: { $ref: '#/components/schemas/MarkupShape' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RfiAnnotationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RfiAnnotation' }
+    RfiAnnotationResult:
+      type: object
+      required: [annotation]
+      properties:
+        annotation:
+          oneOf: [{ $ref: '#/components/schemas/RfiAnnotation' }, { type: 'null' }]
+    PutRfiAnnotationRequest:
+      type: object
+      additionalProperties: false
+      required: [shapes]
+      properties:
+        shapes:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/MarkupShape' }
     RfiActivityItem:
       type: object
       required: [id, kind, at, actorId, details]
@@ -17702,13 +18619,59 @@ components:
         id: { type: string, description: 'A drv_ or doc_ id; linked, not copied' }
     PackageInvite:
       type: object
-      required: [companyId, status, invitedAt, viewedAt, respondedAt]
+      required: [companyId, status, invitedAt, viewedAt, respondedAt, deliveredAt]
       properties:
         companyId: { type: string }
         status: { $ref: '#/components/schemas/PackageInviteStatus' }
         invitedAt: { type: string, format: date-time }
         viewedAt: { type: [string, 'null'], format: date-time }
         respondedAt: { type: [string, 'null'], format: date-time }
+        deliveredAt:
+          {
+            type: [string, 'null'],
+            format: date-time,
+            description: 'When the invite email last went out; null if it has not (no contact email, or the send failed)',
+          }
+    RespondTenderAccessRequest:
+      type: object
+      additionalProperties: false
+      required: [response]
+      properties:
+        response: { type: string, enum: [intends_to_quote, declined] }
+    TenderAccess:
+      type: object
+      required: [package, invite, actions, expiresAt]
+      properties:
+        package:
+          type: object
+          required: [number, name, trade, dueAt, scope, fromOrg, projectName]
+          properties:
+            number: { type: string }
+            name: { type: string }
+            trade: { type: string }
+            dueAt: { type: [string, 'null'], format: date-time }
+            scope:
+              type: array
+              items:
+                type: object
+                required: [description]
+                properties:
+                  description: { type: string }
+            fromOrg: { type: string }
+            projectName: { type: string }
+        invite:
+          type: object
+          required: [companyId, email, status, viewedAt, respondedAt]
+          properties:
+            companyId: { type: string }
+            email: { type: [string, 'null'] }
+            status: { $ref: '#/components/schemas/PackageInviteStatus' }
+            viewedAt: { type: [string, 'null'], format: date-time }
+            respondedAt: { type: [string, 'null'], format: date-time }
+        actions:
+          type: array
+          items: { type: string, enum: [view, respond] }
+        expiresAt: { type: string, format: date-time }
     PackageAward:
       type: object
       required: [quoteId, by, at, reason, notLowest]
@@ -18682,6 +19645,31 @@ components:
         status: { type: string, enum: [active, disabled] }
         disabledReason: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
+    IntegrationCatalogueEntry:
+      type: object
+      required: [key, name, category, summary, status, detail, manage]
+      properties:
+        key: { type: string }
+        name: { type: string }
+        category: { type: string, enum: [accounting, files, developer] }
+        summary: { type: string }
+        status:
+          {
+            type: string,
+            enum: [connected, available, needs_attention, not_configured, coming_soon],
+          }
+        detail: { type: [string, 'null'] }
+        manage:
+          type: [string, 'null']
+          enum: [accounting, folders, api, null]
+          description: Which settings screen sets the entry up. Null for entries that cannot be opened yet.
+    IntegrationCatalogue:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/IntegrationCatalogueEntry' }
     AccountingProviderName: { type: string, enum: [xero, myob] }
     AccountingTarget:
       type: object
@@ -20795,7 +21783,7 @@ components:
         approvedAt: { type: [string, 'null'], format: date-time }
         rejectionReason: { type: [string, 'null'] }
         paidMinutes: { type: integer, description: Minutes worked less breaks. }
-        paidHours: { type: string, pattern: '^\\d+\\.\\d{2}$' }
+        paidHours: { type: string, pattern: '^\d+\.\d{2}$' }
         lines:
           type: array
           items: { $ref: '#/components/schemas/TimesheetLine' }
@@ -20920,7 +21908,7 @@ components:
         id: { type: string, pattern: '^eql_[0-9A-Za-z]{26}$' }
         equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
         date: { type: string, format: date }
-        hours: { type: string, pattern: '^\\d{1,2}\\.\\d{2}$' }
+        hours: { type: string, pattern: '^\d{1,2}\.\d{2}$' }
         operator: { type: [string, 'null'] }
         notes: { type: [string, 'null'] }
     EquipmentLogList:
@@ -20939,7 +21927,7 @@ components:
         hours:
           {
             type: string,
-            pattern: '^\\d{1,2}(\\.\\d{1,2})?$',
+            pattern: '^\d{1,2}(\.\d{1,2})?$',
             description: In quarter hours,
             up to 24.,
           }
@@ -21400,8 +22388,92 @@ components:
           type: [string, 'null']
           maxLength: 300
           description: Filled in from the document register; ignored on input.
+    InductionAnimationElement:
+      type: object
+      additionalProperties: false
+      required: [id, kind, x, y, w, h, tone, motion]
+      description: One drawn thing on a scene. Positions and sizes are percentages of the scene (0 to 100).
+      properties:
+        id: { type: string, pattern: '^[A-Za-z0-9_-]{1,40}$' }
+        kind: { type: string, enum: [text, icon, arrow, box] }
+        x: { type: number, minimum: 0, maximum: 100 }
+        y: { type: number, minimum: 0, maximum: 100 }
+        w: { type: number, minimum: 1, maximum: 100 }
+        h: { type: number, minimum: 1, maximum: 100 }
+        text: { type: [string, 'null'], maxLength: 200 }
+        icon:
+          type: [string, 'null']
+          enum:
+            [
+              hazard,
+              helmet,
+              vest,
+              boots,
+              glasses,
+              gloves,
+              hearing,
+              fire,
+              exit,
+              first_aid,
+              stop,
+              forklift,
+              person,
+              tick,
+              cross,
+              null,
+            ]
+        tone: { type: string, enum: [neutral, info, warning, danger, safe] }
+        rotation:
+          { type: integer, minimum: -180, maximum: 180, description: 'Degrees; arrows only.' }
+        motion:
+          type: object
+          additionalProperties: false
+          required: [preset, startMs, durationMs]
+          properties:
+            preset:
+              { type: string, enum: [none, fade_in, slide_up, slide_left, pop, pulse, draw_on] }
+            startMs: { type: integer, minimum: 0, maximum: 60000 }
+            durationMs: { type: integer, minimum: 100, maximum: 10000 }
+    InductionAnimationScene:
+      type: object
+      additionalProperties: false
+      required: [id, template, title, durationMs, elements]
+      properties:
+        id: { type: string, pattern: '^[A-Za-z0-9_-]{1,40}$' }
+        template:
+          type: string
+          enum: [blank, hazard_callout, steps, site_walkthrough, ppe_checklist, emergency_route]
+          description: The starting layout the editor used; the player only draws the elements.
+        title: { type: string, minLength: 1, maxLength: 200 }
+        narration:
+          type: [string, 'null']
+          maxLength: 1200
+          description: Read aloud when voiceover is on, and shown as the caption otherwise.
+        durationMs: { type: integer, minimum: 2000, maximum: 60000 }
+        elements:
+          {
+            type: array,
+            maxItems: 30,
+            items: { $ref: '#/components/schemas/InductionAnimationElement' },
+          }
+    InductionAnimationBlock:
+      type: object
+      additionalProperties: false
+      required: [type, scenes]
+      description: A scene-based motion lesson, played to the end like a video (the worker cannot skip ahead).
+      properties:
+        type: { type: string, enum: [animation] }
+        title: { type: [string, 'null'], maxLength: 200 }
+        scenes:
+          {
+            type: array,
+            minItems: 1,
+            maxItems: 20,
+            items: { $ref: '#/components/schemas/InductionAnimationScene' },
+          }
     InductionBlock:
       oneOf:
+        - $ref: '#/components/schemas/InductionAnimationBlock'
         - $ref: '#/components/schemas/InductionSlidesBlock'
         - $ref: '#/components/schemas/InductionTextBlock'
         - $ref: '#/components/schemas/InductionFileBlock'
@@ -22662,6 +23734,12 @@ components:
       required: [lang]
       properties:
         lang: { type: string, pattern: '^[a-z]{2,3}(-[A-Za-z]{2,4})?$' }
+    DeleteMeRequest:
+      type: object
+      additionalProperties: false
+      required: [confirm]
+      properties:
+        confirm: { type: string, enum: [DELETE] }
     AskInductionRequest:
       type: object
       additionalProperties: false

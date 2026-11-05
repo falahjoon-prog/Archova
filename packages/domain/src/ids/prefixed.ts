@@ -50,7 +50,10 @@ export const ID_PREFIXES = {
   transmittalRecipient: 'trr',
   aiRun: 'air',
   aiSuggestion: 'ais',
+  aiHazardScan: 'ahn',
+  aiHazardSignal: 'ahs',
   rfiResponse: 'rfr',
+  rfiAnnotation: 'rfa',
   submittal: 'sbm',
   submittalStep: 'sbs',
   correspondenceType: 'cty',
@@ -132,6 +135,7 @@ export const ID_PREFIXES = {
   prequalification: 'pqf',
   forecastAdjustment: 'fca',
   trustMovement: 'tmv',
+  dataExport: 'dxp',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

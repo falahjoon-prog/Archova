@@ -8,12 +8,14 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { PortfolioService } from '../application/portfolio';
+import type { ReadinessService } from '../application/readiness';
 import type { ReportsService } from '../application/reports';
 
 export function reportingRoutes(
   database: Database,
   portfolio: PortfolioService,
   reports: ReportsService,
+  readiness: ReadinessService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -31,6 +33,14 @@ export function reportingRoutes(
       body: await read(input, (s) =>
         portfolio.get(s, { includeClosed: input.query?.includeClosed === 'true' }),
       ),
+    }),
+    getReadinessPack: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => readiness.build(s)),
+    }),
+    getReadinessPackPdf: async (input) => ({
+      status: 200,
+      body: await read(input, (s) => readiness.pdf(s)),
     }),
     listReports: async (input) => ({
       status: 200,

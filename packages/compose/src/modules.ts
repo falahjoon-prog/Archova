@@ -58,6 +58,7 @@ import {
   type NumberVault,
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
@@ -80,6 +81,7 @@ export const MODULE_PERMISSIONS = [
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
@@ -319,6 +321,15 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     documents: documents.api,
     files: files.api,
     financials: financials.api,
+    links: {
+      messages: opts.messages,
+      entitlements: billing.api.entitlements.forOrg,
+      baseUrl: opts.linkBaseUrl,
+      senderName: async (userId) => {
+        const u = await identity.api.getUser(userId);
+        return u ? `${u.name} (${u.email})` : 'a member of the team';
+      },
+    },
   });
 
   const integrations = createIntegrationsModule(services, {
@@ -384,13 +395,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
   });
 
-  const reporting = createReportingModule({
-    database: services.database as Database,
-    platform: platform.api,
-    rfis: rfis.api,
-    defects: defects.api,
-    submittals: submittals.api,
-  });
+  const exportsModule = createExportsModule(services, { store: opts.files.store });
 
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
@@ -415,6 +420,22 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       redis: services.redis,
       logger: services.logger,
     },
+  });
+
+  // Built after workforce, safety, precon and financials: the tender-readiness pack reads all four.
+  const reporting = createReportingModule({
+    database: services.database as Database,
+    platform: platform.api,
+    access: access.api,
+    rfis: rfis.api,
+    defects: defects.api,
+    submittals: submittals.api,
+    claims: financials.api.reporting.claims,
+    variations: financials.api.reporting.variations,
+    precon: precon.api,
+    workforce: workforce.api,
+    safety: safety.api,
+    financials: financials.api,
   });
 
   const sync = createSyncModule(services, {
@@ -465,6 +486,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    exportsModule,
     workforce,
     sync,
   ];
@@ -503,6 +525,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    exportsModule,
     workforce,
     routes,
   };

@@ -1,5 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { decodeId } from '@archova/domain';
+import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { TEST_PASSWORD } from '@archova/testing';
 import { API_HOST, createTestContext, createOrg, signUp, type TestContext } from './helpers';
 
 let t: TestContext;
@@ -58,6 +61,57 @@ describe('mobile OAuth 2.1 + PKCE (ADR-0004 §2)', () => {
     });
     expect(res.statusCode).toBe(302);
     expect(res.headers.location).toMatch(/^https:\/\/app\.archova\.test\/login\?next=/);
+  });
+
+  it('honours prompt=login: a fresh sign-in passes, an old one is sent to sign in again', async () => {
+    const user = await signUp(t.app, 'prompt');
+    const qs = new URLSearchParams({
+      response_type: 'code',
+      client_id: 'archova-mobile',
+      redirect_uri: REDIRECT,
+      code_challenge: 'a'.repeat(43),
+      code_challenge_method: 'S256',
+      state: 's',
+      prompt: 'login',
+    });
+    const fresh = await user.browser.get(`/v1/oauth/authorize?${qs}`);
+    expect(fresh.statusCode).toBe(302);
+    expect(fresh.headers.location).toMatch(/^com\.archova\.app:\/oauth\/callback\?/);
+
+    // Signed in an hour ago: not "just now", whatever the session's own expiry says.
+    await t.adminDb.withGlobalTx('identity', (tx) =>
+      tx.execute(
+        sql`update identity.sessions set auth_time = now() - interval '1 hour'
+            where user_id = ${decodeId('user', user.userId)!}`,
+      ),
+    );
+    // Drop cached sessions so the aged row is read; other files' sessions just reload from the DB.
+    if (t.redis) {
+      const keys = await t.redis.keys('g:sess:*');
+      if (keys.length) await t.redis.del(...keys);
+    }
+    const stale = await user.browser.get(`/v1/oauth/authorize?${qs}`);
+    expect(stale.statusCode).toBe(302);
+    expect(stale.headers.location).toMatch(
+      /^https:\/\/app\.archova\.test\/login\?next=.*&prompt=login$/,
+    );
+
+    // Without the prompt the same old session is still accepted.
+    qs.delete('prompt');
+    expect((await user.browser.get(`/v1/oauth/authorize?${qs}`)).headers.location).toMatch(
+      /^com\.archova\.app:/,
+    );
+
+    // Signing in again makes a new session with a new auth time, which then passes.
+    const again = await user.browser.post('/v1/auth/login', {
+      email: user.email,
+      password: TEST_PASSWORD,
+    });
+    expect(again.statusCode).toBe(200);
+    qs.set('prompt', 'login');
+    expect((await user.browser.get(`/v1/oauth/authorize?${qs}`)).headers.location).toMatch(
+      /^com\.archova\.app:/,
+    );
   });
 
   it('rejects unregistered redirect URIs', async () => {
