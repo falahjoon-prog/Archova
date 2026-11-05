@@ -63,6 +63,7 @@ export {
   Eye as ObservationsIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
+  TriangleAlert as IncidentsIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
   FileUp as ImportsIcon,

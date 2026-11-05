@@ -54,6 +54,7 @@ export type ProjectTool =
   | 'attendance'
   | 'observations'
   | 'swms'
+  | 'incidents'
   | 'inspections'
   | 'late-submissions'
   | 'owner-portal'
