@@ -17,6 +17,7 @@ export const webRoutes = {
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
