@@ -400,6 +400,16 @@ export function createQuotesApi(orgId: string): QuotesSource {
       return toPackage(awarded, await names(projectId));
     },
 
+    async createSubcontract(projectId, packageId) {
+      await ensureCsrfToken();
+      const r = unwrap(
+        await api.POST(`${PKG}/subcontract`, {
+          params: { path: { orgId, projectId, packageId } },
+        }),
+      );
+      return { contractId: r.contractId, number: r.number, created: r.created };
+    },
+
     async askNova(projectId, packageId, { quoteId, targetCents, topic, question }) {
       await ensureCsrfToken();
       const advice = unwrap(

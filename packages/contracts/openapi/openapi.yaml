@@ -15501,7 +15501,8 @@ components:
         number: { type: integer }
         title: { type: string }
         originalValue: { type: string, description: Ex GST }
-        created: { type: boolean, description: False when the quote had already raised this contract. }
+        created:
+          { type: boolean, description: False when the quote had already raised this contract. }
     AwardPackageRequest:
       type: object
       additionalProperties: false

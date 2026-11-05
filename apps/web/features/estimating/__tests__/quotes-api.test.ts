@@ -177,6 +177,23 @@ describe('tender packages', () => {
   });
 });
 
+describe('subcontract from the award', () => {
+  it('raises the draft subcontract and returns where it is', async () => {
+    fake.on('POST', `${PKG}/subcontract`, () => ({
+      contractId: 'cnt_1',
+      number: 4,
+      title: 'Tiling',
+      originalValue: '11000.00',
+      created: true,
+    }));
+    expect(await source.createSubcontract('prj_1', 'tpk_1')).toEqual({
+      contractId: 'cnt_1',
+      number: 4,
+      created: true,
+    });
+  });
+});
+
 describe('quotes', () => {
   it('maps a quote with its file name, lines and sources', async () => {
     fake.on('GET', QUOTES, () => ({ data: [apiQuote()] }));
