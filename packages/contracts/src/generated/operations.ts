@@ -651,6 +651,7 @@ export const ReviewContractWithNovaBody = z.object({
   "ourSide": z.enum(["we_pay", "we_get_paid"]),
   "baseForm": z.enum(["as4000", "as2124", "as4902", "as4903", "other"]).nullable().optional(),
   "multiState": z.boolean().optional(),
+  "state": z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]).nullable().optional(),
 }).strict();
 export const GetContractReviewParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),

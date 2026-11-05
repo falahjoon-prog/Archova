@@ -2785,6 +2785,10 @@ paths:
                   description: The contract covers work in more than one state.
                   type: boolean
                   default: false
+                state:
+                  description: The state the work is in. Statutory flags are checked for it only; ignored when multiState is true.
+                  type: [string, 'null']
+                  enum: [NSW, VIC, QLD, WA, SA, TAS, ACT, NT, null]
       responses:
         '200':
           description: The review
@@ -15125,6 +15129,30 @@ components:
                 description: none means refer to your lawyer; review_due means the approved wording is past its review date.
                 type: string
                 enum: [offered, review_due, none]
+        statutoryState:
+          type: [string, 'null']
+          description: The state the signed rules were checked for, or null when no statutory check ran.
+        statutoryRulesChecked:
+          type: integer
+          minimum: 0
+          description: How many signed rules were checked. 0 means none apply yet, not that nothing was found.
+        statutoryNote: { type: string }
+        statutoryDropped: { type: integer, minimum: 0 }
+        statutoryFlags:
+          type: array
+          description: Clauses matching a signed row of the clause-rule table. The wording is the table's, never Nova's.
+          items:
+            type: object
+            required: [ruleKey, ruleVersion, topic, provision, wording, signedBy, signedOn, source]
+            properties:
+              ruleKey: { type: string }
+              ruleVersion: { type: integer, minimum: 1 }
+              topic: { type: string }
+              provision: { type: string }
+              wording: { type: string }
+              signedBy: { type: string }
+              signedOn: { type: string, format: date }
+              source: { $ref: '#/components/schemas/ContractSourceRef' }
         dropped:
           type: object
           description: What code removed from Nova's answer.

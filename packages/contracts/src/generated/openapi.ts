@@ -10642,6 +10642,24 @@ export interface components {
                  */
                 wordingStatus: "offered" | "review_due" | "none";
             }[];
+            /** @description The state the signed rules were checked for, or null when no statutory check ran. */
+            statutoryState?: string | null;
+            /** @description How many signed rules were checked. 0 means none apply yet, not that nothing was found. */
+            statutoryRulesChecked?: number;
+            statutoryNote?: string;
+            statutoryDropped?: number;
+            /** @description Clauses matching a signed row of the clause-rule table. The wording is the table's, never Nova's. */
+            statutoryFlags?: {
+                ruleKey: string;
+                ruleVersion: number;
+                topic: string;
+                provision: string;
+                wording: string;
+                signedBy: string;
+                /** Format: date */
+                signedOn: string;
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
             /** @description What code removed from Nova's answer. */
             dropped: {
                 notOnPage: number;
@@ -19416,6 +19434,11 @@ export interface operations {
                      * @default false
                      */
                     multiState?: boolean;
+                    /**
+                     * @description The state the work is in. Statutory flags are checked for it only; ignored when multiState is true.
+                     * @enum {string|null}
+                     */
+                    state?: "NSW" | "VIC" | "QLD" | "WA" | "SA" | "TAS" | "ACT" | "NT" | null;
                 };
             };
         };
