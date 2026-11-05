@@ -9374,7 +9374,11 @@ export interface components {
             claims: components["schemas"]["PortfolioTool"];
             /** @description Variations submitted and waiting for a decision; they have no due date, so overdue is always zero. */
             variations: components["schemas"]["PortfolioTool"];
-            /** @description Overdue RFIs, defects, submittals and claims together. */
+            /** @description Incidents not yet closed; overdue means a notifiable incident with no regulator notification recorded. */
+            incidents: components["schemas"]["PortfolioTool"];
+            /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
+            programme: components["schemas"]["PortfolioTool"];
+            /** @description Overdue RFIs, defects, submittals, claims, unnotified incidents and late programme activities together. */
             attention: number;
         };
         PortfolioTotals: {

@@ -5105,6 +5105,8 @@ export const PortfolioProjectSchema = z.object({
   "submittals": PortfolioToolSchema,
   "claims": PortfolioToolSchema,
   "variations": PortfolioToolSchema,
+  "incidents": PortfolioToolSchema,
+  "programme": PortfolioToolSchema,
   "attention": z.number().int(),
 });
 export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
