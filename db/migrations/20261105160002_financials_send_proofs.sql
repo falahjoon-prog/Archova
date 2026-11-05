@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261105160000_financials_send_proofs.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261105160002_financials_send_proofs.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Proof of what we sent and when, and a record of service made by other means (compliance/01 §4).
 -- A send proof shows our side only: the message left our mail system at this time to this address with exactly these
 -- attachments. It is never proof of receipt; service time still comes from delivery confirmation or a manual record.
