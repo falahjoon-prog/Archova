@@ -46,7 +46,7 @@ function BudgetCell({ budget }: { budget: PortfolioBudget }) {
   const over = budget.variance.startsWith('-');
   return (
     <>
-      {over ? aud(budget.variance.slice(1)) : aud(budget.variance)}{' '}
+      <div>{over ? aud(budget.variance.slice(1)) : aud(budget.variance)}</div>
       <StatusPill tone={over ? 'danger' : 'success'}>
         {over ? 'over budget' : 'under budget'}
       </StatusPill>
@@ -75,43 +75,43 @@ export function PortfolioScreen() {
     },
     {
       id: 'rfis',
-      header: 'RFIs open',
+      header: 'RFIs',
       sortValue: (r) => r.rfis.open,
       cell: (r) => <ToolCell tool={r.rfis} />,
     },
     {
       id: 'defects',
-      header: 'Defects open',
+      header: 'Defects',
       sortValue: (r) => r.defects.open,
       cell: (r) => <ToolCell tool={r.defects} />,
     },
     {
       id: 'submittals',
-      header: 'Submittals with reviewers',
+      header: 'Submittals',
       sortValue: (r) => r.submittals.open,
       cell: (r) => <ToolCell tool={r.submittals} />,
     },
     {
       id: 'claims',
-      header: 'Claims unpaid',
+      header: 'Claims',
       sortValue: (r) => r.claims.open,
       cell: (r) => <ToolCell tool={r.claims} />,
     },
     {
       id: 'variations',
-      header: 'Variations to decide',
+      header: 'Variations',
       sortValue: (r) => r.variations.open,
       cell: (r) => <ToolCell tool={r.variations} />,
     },
     {
       id: 'incidents',
-      header: 'Incidents open',
+      header: 'Incidents',
       sortValue: (r) => r.incidents.open,
       cell: (r) => <ToolCell tool={r.incidents} />,
     },
     {
       id: 'programme',
-      header: 'Programme activities open',
+      header: 'Programme',
       sortValue: (r) => r.programme.open,
       cell: (r) => <ToolCell tool={r.programme} />,
     },
@@ -136,7 +136,7 @@ export function PortfolioScreen() {
       <PageHeader
         eyebrow="Company"
         title="Portfolio"
-        description="What is open and what is overdue on every project you can see. Counts only include what you are allowed to open on each project."
+        description="Open items on every project you can see, with what is overdue in red. Counts only include what you are allowed to open on each project, and the totals above spell out each one."
       />
       <ErrorAlert error={portfolio.error} title="We couldn't load the portfolio" />
       {data ? (
