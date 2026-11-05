@@ -2,7 +2,12 @@ import { describe, expect, it, vi } from 'vitest';
 import type { TenantScope } from '@archova/kernel';
 import { encodeId } from '@archova/domain';
 import { AppError } from '@archova/kernel';
-import { createDrawingsSyncSource, createMarkupCommand } from '../../src/api/drawings-sync';
+import {
+  createDrawingsSyncSource,
+  createMarkupCommand,
+  deleteMarkupCommand,
+  updateMarkupCommand,
+} from '../../src/api/drawings-sync';
 
 const U = (n: number) => `0191a5b0-0000-7000-8000-00000000000${n}`;
 const date = new Date('2026-11-05T01:00:00Z');
@@ -162,5 +167,60 @@ describe('drawings.createMarkup command', () => {
       code: 'drawing_revision.not_found',
     });
     expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe('drawings.updateMarkup and drawings.deleteMarkup', () => {
+  const at = { projectId: U(1), revisionId: U(3), version: 1 };
+  const update = vi.fn(async () => ({ version: 2 }));
+  const remove = vi.fn(async () => undefined);
+  const locate = vi.fn(async () => at as never);
+  const visibleAmong = vi.fn(async () => [markup]);
+  const markups = { update, remove, locate, visibleAmong } as never;
+  const upd = updateMarkupCommand(markups);
+  const del = deleteMarkupCommand(markups);
+  const shapes = [{ id: 's1', kind: 'pen', points: [{ x: 0.1, y: 0.2 }], strokeWidth: 3 }];
+  const id = encodeId('markup', U(6));
+  const m = (payload: Record<string, unknown>, baseVersion: number | null = 1, entityId = id) => ({
+    entityId,
+    baseVersion,
+    clientAt: new Date(),
+    payload,
+  });
+
+  it('applies a shape edit or a publish against the version the device saw', async () => {
+    expect(await upd.run(scope, m({ shapes }))).toEqual({ version: 2 });
+    expect(update).toHaveBeenCalledWith(scope, U(1), U(3), U(6), 1, { shapes });
+    await upd.run(scope, m({ visibility: 'project' }));
+    expect(update).toHaveBeenLastCalledWith(scope, U(1), U(3), U(6), 1, { visibility: 'project' });
+  });
+
+  it('rejects a missing version, empty or invalid changes and unknown markups', async () => {
+    update.mockClear();
+    await expect(upd.run(scope, m({ shapes }, null))).rejects.toBeInstanceOf(AppError);
+    await expect(upd.run(scope, m({}))).rejects.toBeInstanceOf(AppError);
+    await expect(upd.run(scope, m({ visibility: 'everyone' }))).rejects.toBeInstanceOf(AppError);
+    await expect(upd.run(scope, m({ shapes: [] }))).rejects.toBeInstanceOf(AppError);
+    await expect(upd.run(scope, m({ shapes }, 1, 'nope'))).rejects.toBeInstanceOf(AppError);
+    locate.mockResolvedValueOnce(null as never);
+    await expect(upd.run(scope, m({ shapes }))).rejects.toMatchObject({ code: 'markup.not_found' });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('deletes against the saved version and reports the next one', async () => {
+    expect(await del.run(scope, m({}, 3))).toEqual({ version: 4 });
+    expect(remove).toHaveBeenCalledWith(scope, U(1), U(3), U(6), 3);
+    await expect(del.run(scope, m({}, null))).rejects.toBeInstanceOf(AppError);
+    locate.mockResolvedValueOnce(null as never);
+    await expect(del.run(scope, m({}, 1))).rejects.toMatchObject({ code: 'markup.not_found' });
+  });
+
+  it('gives the current copy for a conflict, or null when it is gone', async () => {
+    const cur = await upd.current(scope, id);
+    expect(cur).toMatchObject({ version: 1, data: { visibility: 'private' } });
+    expect(await del.current(scope, id)).toMatchObject({ version: 1 });
+    locate.mockResolvedValueOnce(null as never);
+    expect(await upd.current(scope, id)).toBeNull();
+    expect(await upd.current(scope, 'nope')).toBeNull();
   });
 });

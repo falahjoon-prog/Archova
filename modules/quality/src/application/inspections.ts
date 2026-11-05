@@ -204,6 +204,16 @@ export function createInspectionService(deps: QualityDeps) {
       .update(templates)
       .set({ published: true, updatedAt: now(), updatedBy: scope.ctx.userId })
       .where(eq(templates.id, id));
+    // A published checklist is frozen, so its version number is all a device needs to tell copies apart.
+    await scope.recordChange({
+      module: 'quality',
+      entityType: 'inspection_template',
+      entityId: id,
+      op: 'upsert',
+      version: template.version,
+      projectId,
+      isPrivate: false,
+    });
     return templateDetail(scope, projectId, id);
   }
 
@@ -324,6 +334,8 @@ export function createInspectionService(deps: QualityDeps) {
     scope: TenantScope,
     projectId: string,
     input: {
+      /** A device-chosen id, so the record it already shows is the one the next pull confirms. */
+      id?: string;
       templateId: string;
       title?: string;
       location?: string;
@@ -338,7 +350,16 @@ export function createInspectionService(deps: QualityDeps) {
         'inspection_template.not_published',
         'Publish the checklist before inspecting with it.',
       );
-    const id = uuidv7();
+    const id = input.id ?? uuidv7();
+    if (input.id) {
+      // A retry after a lost response: the inspection is already there, so answer with it.
+      const [existing] = await scope.tx
+        .select({ id: inspections.id })
+        .from(inspections)
+        .where(and(eq(inspections.id, id), eq(inspections.projectId, projectId)))
+        .limit(1);
+      if (existing) return detail(scope, projectId, id);
+    }
     const number = await nextNumber(scope, projectId, 'inspection');
     const [row] = await scope.tx
       .insert(inspections)
@@ -535,8 +556,38 @@ export function createInspectionService(deps: QualityDeps) {
     return out;
   }
 
+  /** The project a template belongs to, for a queued command that carries only the template's id. */
+  async function templateProjectOf(scope: TenantScope, templateId: string) {
+    const [row] = await scope.tx
+      .select({ projectId: templates.projectId })
+      .from(templates)
+      .where(and(eq(templates.id, templateId), isNull(templates.deletedAt)))
+      .limit(1);
+    return row?.projectId ?? null;
+  }
+
+  /** Published checklists among `ids` with their items, for the mobile pull (a draft is not for inspecting). */
+  async function templatesAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    await internal(scope, projectId, 'inspection_template.not_found').catch((e: unknown) => {
+      if (e instanceof AppError && e.code === 'inspection_template.not_found') return null;
+      throw e;
+    });
+    const out: Awaited<ReturnType<typeof templateDetail>>[] = [];
+    for (const id of ids) {
+      try {
+        const d = await templateDetail(scope, projectId, id);
+        if (d.template.published) out.push(d);
+      } catch (e) {
+        if (!(e instanceof AppError && e.code === 'inspection_template.not_found')) throw e;
+      }
+    }
+    return out;
+  }
+
   return {
     projectOf,
+    templateProjectOf,
+    templatesAmong,
     visibleAmong,
     listTemplates,
     templateDetail,

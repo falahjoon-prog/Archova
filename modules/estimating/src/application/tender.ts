@@ -46,7 +46,7 @@ export type QuoteView = QuoteRow & { lines: QuoteLineRow[] };
 
 export interface EstimatingDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'projectCompanies'>;
+  platform: Pick<PlatformApi, 'getProject' | 'projectCompanies' | 'companyExists'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision' | 'getDocumentRef'>;
   files: Pick<FilesModule['api'], 'getFile'>;
   now?: () => Date;

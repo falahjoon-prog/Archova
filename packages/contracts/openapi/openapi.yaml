@@ -3200,6 +3200,85 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/LateSubmission' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bidder-lists:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listBidderLists
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.read
+      summary: The company's reusable bidder lists, by name.
+      description: |
+        A bidder list names the companies an estimator usually invites for a trade. Using one on a package still goes
+        through the package's invites, so only companies on the project can be invited. Staff only.
+      parameters:
+        - { name: trade, in: query, schema: { type: string, maxLength: 100 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderListList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Save a bidder list.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBidderListRequest' }
+      responses:
+        '201':
+          description: Created
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/bidder-lists/{bidderListId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/BidderListId'
+    patch:
+      operationId: updateBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Rename a bidder list, change its trade or replace its companies.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBidderListRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BidderList' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBidderList
+      tags: [estimating]
+      x-module: estimating
+      x-permission: estimating.bidders.manage
+      summary: Delete a bidder list. Invites already sent are unaffected.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/portfolio:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9136,6 +9215,218 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCostCodes
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Cost codes for the project, in code order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCodeList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Add a cost code. A parent makes it a child code.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCostCodeRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCode' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CostCodeId'
+    patch:
+      operationId: updateCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Rename a cost code or archive it. An archived code with budget lines stays on the budget.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCostCodeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCode' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudget
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The project budget with its lines and totals, or an empty draft when none exists. Margin lines are left out without the margin permission.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBudget
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Start the project budget as a draft.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: addBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Add a line to a draft budget, one per cost code.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddBudgetLineRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetLineId'
+    patch:
+      operationId: updateBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Change a draft line. Once the budget is locked use an adjustment.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBudgetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Remove a line from a draft budget.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: No content
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: lockBudget
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Freeze the original budget. Changes after this are adjustments with a reason.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetLineId'
+    get:
+      operationId: listBudgetAdjustments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Revision history for one line, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetAdjustmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: adjustBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Raise or lower a locked line by a signed amount, with the reason. Append-only.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdjustBudgetLineRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9818,6 +10109,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+    CostCodeId:
+      name: costCodeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    BudgetLineId:
+      name: lineId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
     ForecastAdjustmentId:
       name: adjustmentId
       in: path
@@ -9858,6 +10159,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^tkm_[0-9A-Za-z]{26}$' }
+    BidderListId:
+      name: bidderListId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bdl_[0-9A-Za-z]{26}$' }
     CostItemId:
       name: costItemId
       in: path
@@ -11576,10 +11882,10 @@ components:
         id: { type: string, pattern: '^ntf_[0-9A-Za-z]{26}$' }
         kind:
           type: string
-          description: What happened, e.g. `meeting.action_due_soon` or `meeting.action_overdue`.
+          description: What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon` or `tender.bid_overdue`.
         title: { type: string }
         body: { type: string }
-        entityType: { type: string, enum: [meeting] }
+        entityType: { type: string, enum: [meeting, tender_package] }
         entityId: { type: string, description: Public id of the record the notification is about. }
         projectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
         readAt: { type: [string, 'null'], format: date-time }
@@ -14588,6 +14894,48 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1, maxLength: 1000 }
+    BidderList:
+      type: object
+      required: [id, name, trade, companyIds, createdAt, updatedAt, version]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        trade: { type: string, description: Empty when the list is not tied to a trade. }
+        companyIds:
+          type: array
+          items: { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        version: { type: integer }
+    BidderListList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BidderList' }
+    CreateBidderListRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, maxLength: 100 }
+        companyIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
+    UpdateBidderListRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name: { type: string, minLength: 1, maxLength: 100 }
+        trade: { type: string, maxLength: 100 }
+        companyIds:
+          type: array
+          maxItems: 200
+          items: { type: string }
     BidBoard:
       type: object
       required: [data, asOf, truncated]
@@ -16064,6 +16412,156 @@ components:
               code: { type: string, minLength: 1, maxLength: 50 }
               description: { type: string, minLength: 1, maxLength: 300 }
               value: { $ref: '#/components/schemas/FinancialsMoney' }
+    CostCode:
+      type: object
+      required: [id, code, description, parentId, archived]
+      properties:
+        id: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        parentId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        archived: { type: boolean }
+    CostCodeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CostCode' }
+    CreateCostCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code, description]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 30 }
+        description: { type: string, minLength: 1, maxLength: 200 }
+        parentId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    UpdateCostCodeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        archived: { type: boolean }
+    BudgetLine:
+      type: object
+      required:
+        [
+          id,
+          costCodeId,
+          code,
+          codeDescription,
+          description,
+          original,
+          approvedChanges,
+          revised,
+          committed,
+          actual,
+          forecastToComplete,
+          isMargin,
+        ]
+      properties:
+        id: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        description: { type: string }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        actual: { $ref: '#/components/schemas/FinancialsMoney' }
+        forecastToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
+        isMargin: { type: boolean }
+    BudgetTotals:
+      type: object
+      required: [original, approvedChanges, revised, committed, actual, forecastToComplete]
+      properties:
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        actual: { $ref: '#/components/schemas/FinancialsMoney' }
+        forecastToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
+    Budget:
+      type: object
+      required: [id, status, lockedAt, lines, totals]
+      properties:
+        id: { type: [string, 'null'], pattern: '^bud_[0-9A-Za-z]{26}$' }
+        status: { type: string, enum: [draft, locked] }
+        lockedAt: { type: [string, 'null'], format: date-time }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetLine' }
+        totals:
+          $ref: '#/components/schemas/BudgetTotals'
+    AddBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [costCodeId, original]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        description: { type: string, maxLength: 300 }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        isMargin: { type: boolean }
+    UpdateBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        description: { type: string, maxLength: 300 }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        isMargin: { type: boolean }
+    AdjustBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [amount, reason]
+      properties:
+        amount:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    BudgetAdjustment:
+      type: object
+      required: [id, amount, reason, createdAt]
+      properties:
+        id: { type: string, pattern: '^bad_[0-9A-Za-z]{26}$' }
+        amount:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    BudgetAdjustmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetAdjustment' }
     FinancialsSignedMoney:
       type: string
       pattern: '^-?\d{1,16}(\.\d{1,2})?$'

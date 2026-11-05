@@ -16,9 +16,11 @@ export const webRoutes = {
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
+  prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  subcontractorWallets: (orgSlug: string) => `/${enc(orgSlug)}/settings/subcontractor-wallets`,
   plan: (orgSlug: string) => `/${enc(orgSlug)}/settings/plan`,
   permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
@@ -65,6 +67,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/contracts/review`,
   contractReview: (orgSlug: string, projectId: string, reviewId: string) =>
     `${p(orgSlug, projectId)}/contracts/review/${enc(reviewId)}`,
+  costForecast: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/cost-forecast`,
   paymentClaims: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/payment-claims`,
   paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,
@@ -126,6 +129,8 @@ export const mobileRoutes = {
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
     `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
+  inspectionItemPhoto: (projectId: string, inspectionId: string, itemId: string) =>
+    `/project/${enc(projectId)}/inspections/${enc(inspectionId)}/photo?itemId=${enc(itemId)}`,
   drawings: (projectId: string) => `/project/${enc(projectId)}/drawings`,
   drawingSheet: (projectId: string, revisionId: string) =>
     `/project/${enc(projectId)}/drawings/${enc(revisionId)}`,
