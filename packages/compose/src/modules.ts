@@ -52,7 +52,11 @@ import { BIM_PERMISSIONS, createBimModule } from '@archova/mod-bim';
 import { OWNERPORTAL_PERMISSIONS, createOwnerPortalModule } from '@archova/mod-ownerportal';
 import { createNotificationsModule } from '@archova/mod-notifications';
 import { createPlatformModule } from '@archova/mod-platform';
-import { WORKFORCE_PERMISSIONS, createWorkforceModule } from '@archova/mod-workforce';
+import {
+  WORKFORCE_PERMISSIONS,
+  createWorkforceModule,
+  type NumberVault,
+} from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
@@ -101,6 +105,8 @@ export interface ModuleOptions {
   webhooks: WebhooksDeps;
   /** Xero and MYOB sign-in, token sealing and the fetch used for provider calls (integrations/02). */
   accounting: AccountingDeps;
+  /** Seals full wallet and worker credential numbers (compliance/05 §7). */
+  walletVault: NumberVault;
   /** Signs sealed claim evidence (compliance/01 §4). */
   evidenceSigner?: EvidenceSigner;
 }
@@ -387,6 +393,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
   });
 
   const workforce = createWorkforceModule(services, {
+    vault: opts.walletVault,
     access: access.api,
     platform: platform.api,
     identity: identity.api,

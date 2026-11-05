@@ -19,10 +19,12 @@ import {
   vaultFromKey,
   type WebhookTransport,
 } from '@archova/mod-integrations';
+import { numberVaultFromKey } from '@archova/mod-workforce';
 import {
   DEV_ACCOUNTING_KEY,
   DEV_EVIDENCE_KEY_ID,
   DEV_EVIDENCE_SIGNING_KEY,
+  DEV_WALLET_KEY,
   DEV_WEBHOOK_KEY,
   type ApiConfig,
 } from './config';
@@ -123,6 +125,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         credentials: config.accounting,
         folders: { credentials: config.folders },
       },
+      walletVault: numberVaultFromKey(config.walletSecretKey ?? DEV_WALLET_KEY),
       evidenceSigner: createEvidenceSigner(
         config.evidenceSigning?.keyId ?? DEV_EVIDENCE_KEY_ID,
         config.evidenceSigning?.privateKeyPem ?? DEV_EVIDENCE_SIGNING_KEY,

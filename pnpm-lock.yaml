@@ -621,6 +621,9 @@ importers:
       '@archova/mod-sync':
         specifier: workspace:*
         version: link:../../modules/sync
+      '@archova/mod-workforce':
+        specifier: workspace:*
+        version: link:../../modules/workforce
       '@archova/routes':
         specifier: workspace:*
         version: link:../../packages/routes

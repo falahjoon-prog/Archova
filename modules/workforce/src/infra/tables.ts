@@ -17,6 +17,7 @@ import {
 import type { EligibilityReason, EligibilityResult, GateCheckMode } from '../domain/attendance';
 import type { InductionContent } from '../domain/induction';
 
+const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
 
 export const workforceSchema = pgSchema('workforce');
@@ -278,6 +279,8 @@ export const workerCredentials = workforceSchema.table('worker_credentials', {
   workerId: uuid('worker_id').notNull(),
   kind: text('kind').$type<CredentialKind>().notNull(),
   numberLast4: text('number_last4').notNull(),
+  /** AES-256-GCM sealed full number; null on rows from before sealing. Never mapped to a DTO. */
+  numberSealed: bytea('number_sealed'),
   issuingState: text('issuing_state'),
   licenceClass: text('licence_class'),
   issuedOn: date('issued_on'),
@@ -296,6 +299,7 @@ export const complianceDocuments = workforceSchema.table('compliance_documents',
   itemType: text('item_type').notNull(),
   title: text('title').notNull(),
   numberLast4: text('number_last4'),
+  numberSealed: bytea('number_sealed'),
   numberCheck: text('number_check').$type<'format_ok'>(),
   issuingState: text('issuing_state'),
   licenceClass: text('licence_class'),

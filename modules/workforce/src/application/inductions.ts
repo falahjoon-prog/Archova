@@ -8,6 +8,7 @@ import { AppError, versionConflict, type TenantScope } from '@archova/kernel';
 import { INDUCTION_FIXED_TEXT } from '@archova/mod-ai';
 import { localDateOf, type LocalDate } from '@archova/time';
 import type { EligibilityReason } from '../domain/attendance';
+import type { NumberVault } from '../domain/number-vault';
 import {
   FAILED_ATTEMPTS_BEFORE_OFFICE,
   addMonths,
@@ -92,6 +93,8 @@ export interface RequestFacts {
 }
 
 export type InductionDeps = WorkforceDeps & {
+  /** Seals full credential numbers (compliance/05 §7). */
+  vault: NumberVault;
   files: {
     getFile(
       scope: TenantScope,
@@ -884,14 +887,21 @@ export function createInductionService(deps: InductionDeps, attendance: Attendan
           { path: `fileIds/${i}`, message: 'Not a ready file in this project' },
         ]);
     }
+    const id = uuidv7();
     const [row] = await scope.tx
       .insert(workerCredentials)
       .values({
-        id: uuidv7(),
+        id,
         orgId: scope.ctx.orgId,
         workerId,
         kind: input.kind,
         numberLast4: input.number.trim().slice(-4),
+        numberSealed: deps.vault.seal(
+          scope.ctx.orgId,
+          'worker-credential-number',
+          id,
+          input.number.trim(),
+        ),
         issuingState: input.issuingState ?? null,
         licenceClass: input.licenceClass?.trim() || null,
         issuedOn: input.issuedOn ?? null,
