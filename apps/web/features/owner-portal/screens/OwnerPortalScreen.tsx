@@ -575,6 +575,7 @@ function CapitalTab({ isTeam }: { isTeam: boolean }) {
   ];
   const totalColumns: DataTableColumn<(typeof totals)[number]>[] = [
     { id: 'year', header: 'Year', rowHeader: true, cell: (t) => label(t.fiscalYear) },
+    { id: 'category', header: 'Category', cell: () => 'Total' },
     { id: 'budget', header: 'Budget', align: 'end', cell: (t) => money(t.budgetCents) },
     { id: 'forecast', header: 'Forecast', align: 'end', cell: (t) => money(t.forecastCents) },
     { id: 'spent', header: 'Spent', align: 'end', cell: (t) => money(t.spentCents) },
