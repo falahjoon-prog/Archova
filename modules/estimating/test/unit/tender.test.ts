@@ -6,6 +6,7 @@ import {
   lowestQuote,
   nextPackageStatus,
   quoteTotals,
+  subcontractSov,
   toCents,
 } from '../../src/domain/tender';
 
@@ -58,5 +59,31 @@ describe('canSeePackage (EST-AC3)', () => {
     expect(canSeePackage({ status: 'out_to_tender' }, sub, ['tiler'])).toBe(true);
     expect(canSeePackage({ status: 'draft' }, sub, ['tiler'])).toBe(false);
     expect(canSeePackage({ status: 'out_to_tender' }, sub, ['other'])).toBe(false);
+  });
+});
+
+describe('subcontractSov', () => {
+  it('follows the quote lines when they add up to the total', () => {
+    expect(
+      subcontractSov(
+        [
+          { description: 'Floor', amount: '6000.00' },
+          { description: 'Wall', amount: '5000.50' },
+        ],
+        '11000.50',
+        'Tiling',
+      ),
+    ).toEqual([
+      { code: '1', description: 'Floor', value: '6000.00' },
+      { code: '2', description: 'Wall', value: '5000.50' },
+    ]);
+  });
+
+  it('uses one item for the whole price when the lines do not add up or there are none', () => {
+    const one = [{ code: '1', description: 'Tiling', value: '11000.00' }];
+    expect(subcontractSov([{ description: 'Floor', amount: '6000' }], '11000', 'Tiling')).toEqual(
+      one,
+    );
+    expect(subcontractSov([], '11000.00', 'Tiling')).toEqual(one);
   });
 });

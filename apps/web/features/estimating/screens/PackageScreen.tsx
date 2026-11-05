@@ -187,6 +187,7 @@ function Comparison({
 }) {
   const project = useCurrentProject();
   const { companyName } = useProjectDirectory();
+  const org = useCurrentOrg();
   const m = usePackageMutations(pkg.id);
   const today = todayIn(project.timezone);
   const comparable = comparableQuotes(quotes);
@@ -204,6 +205,32 @@ function Comparison({
         <Alert tone="success" title={`Selected ${companyName(awarded.companyId)}`}>
           {pkg.award.by} selected this quote on {formatInstant(pkg.award.at, project.timezone)}.
           {pkg.award.reason ? ` Reason: ${pkg.award.reason}` : ''}
+          <div className="row">
+            {m.subcontract.data ? (
+              <Link
+                className="link"
+                href={webRoutes.contract(
+                  org.orgSlug,
+                  project.projectId,
+                  m.subcontract.data.contractId,
+                )}
+              >
+                {m.subcontract.data.created
+                  ? 'Draft subcontract created'
+                  : 'Subcontract already created'}
+                : open subcontract {m.subcontract.data.number}
+              </Link>
+            ) : (
+              <Button
+                variant="secondary"
+                disabled={m.subcontract.isPending}
+                onClick={() => m.subcontract.mutate()}
+              >
+                Create subcontract from this quote
+              </Button>
+            )}
+          </div>
+          <ErrorAlert error={m.subcontract.error} title="We couldn't create the subcontract" />
         </Alert>
       ) : null}
       {toReview ? (

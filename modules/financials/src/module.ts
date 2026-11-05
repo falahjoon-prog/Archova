@@ -31,7 +31,12 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       ...financialsRoutes(services.database, service, forecast, trust),
       ...budgetRoutes(services.database, budget),
     },
-    api: { ledgerSource: service.ledgerSource, recordPayment: service.recordPayment },
+    api: {
+      ledgerSource: service.ledgerSource,
+      recordPayment: service.recordPayment,
+      createContract: service.createContract,
+      contractForQuote: service.contractForQuote,
+    },
   };
 }
 

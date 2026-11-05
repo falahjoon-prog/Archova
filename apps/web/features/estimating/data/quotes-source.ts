@@ -252,6 +252,12 @@ function settleReading(s: Store) {
   }
 }
 
+export interface RaisedSubcontract {
+  contractId: string;
+  number: number;
+  created: boolean;
+}
+
 export interface QuotesSource {
   /** The API (true) or the in-browser preview store (false): the preview reads an uploaded file by name only. */
   live: boolean;
@@ -305,6 +311,8 @@ export interface QuotesSource {
     actor: { name: string },
     today: string,
   ): Promise<TenderPackage>;
+  /** Raise the draft subcontract from the awarded quote (`POST …/subcontract`); repeating it returns the same one. */
+  createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract>;
   /** Nova on one confirmed quote (`POST …/ai/quote-negotiations`); nothing is saved or sent. */
   askNova(
     projectId: string,
@@ -592,6 +600,13 @@ export const quotesSource: QuotesSource & {
     pkg.status = 'awarded';
     pkg.award = { quoteId, by: actor.name, at: nowIso(), reason: reason.trim() || null, notLowest };
     return delay(pkg);
+  },
+
+  async createSubcontract(projectId: string, packageId: string): Promise<RaisedSubcontract> {
+    const pkg = findPackage(projectId, packageId);
+    if (pkg.status !== 'awarded')
+      problem(409, 'tender.invalid_state', 'Award the package before raising a subcontract.');
+    return delay({ contractId: mockId('cnt'), number: 1, created: true });
   },
 };
 

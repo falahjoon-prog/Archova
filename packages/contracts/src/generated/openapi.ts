@@ -2878,6 +2878,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/subcontract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Raise the draft subcontract for an awarded package from its winning quote.
+         * @description The subcontract is a draft contract in financials: payee is the winning company, the value is the quote total
+         *     ex GST, and the schedule of values follows the quote's lines (or a single item if the lines don't add up to the
+         *     total). Retention and payment terms are left for the builder to set. Also needs `financials.contracts.manage`.
+         *     Safe to repeat: a quote raises one contract, and a repeat returns it with `created` false.
+         */
+        post: operations["createSubcontractFromAward"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/tender-packages/{packageId}/comparison": {
         parameters: {
             query?: never;
@@ -10844,6 +10871,15 @@ export interface components {
                 [key: string]: string;
             };
         };
+        AwardedSubcontract: {
+            contractId: string;
+            number: number;
+            title: string;
+            /** @description Ex GST */
+            originalValue: string;
+            /** @description False when the quote had already raised this contract. */
+            created: boolean;
+        };
         AwardPackageRequest: {
             quoteId: string;
             reason?: string;
@@ -18178,6 +18214,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TenderPackage"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSubcontractFromAward: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                packageId: components["parameters"]["TenderPackageId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AwardedSubcontract"];
                 };
             };
             default: components["responses"]["Problem"];
