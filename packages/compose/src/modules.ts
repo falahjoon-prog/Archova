@@ -382,14 +382,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     rfis: rfis.api,
     submittals: submittals.api,
     platform: platform.api,
-  });
-
-  const reporting = createReportingModule({
-    database: services.database as Database,
-    platform: platform.api,
-    rfis: rfis.api,
-    defects: defects.api,
-    submittals: submittals.api,
+    access: access.api,
   });
 
   const workforce = createWorkforceModule(services, {
@@ -415,6 +408,17 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       redis: services.redis,
       logger: services.logger,
     },
+  });
+
+  const reporting = createReportingModule({
+    database: services.database as Database,
+    platform: platform.api,
+    rfis: rfis.api,
+    defects: defects.api,
+    submittals: submittals.api,
+    financials: financials.api,
+    scheduling: scheduling.api,
+    workforce: workforce.api,
   });
 
   const sync = createSyncModule(services, {

@@ -118,7 +118,20 @@ export function createCompanyService() {
     return row ?? null;
   }
 
-  return { list, create, exists, identity, onProject, onProjectWithTrades };
+  /** For cross-module risk reads: name and the Archova organisation each company is linked to, if any. */
+  async function linkedOrgs(
+    scope: TenantScope,
+    companyIds: readonly string[],
+  ): Promise<Map<string, { name: string; linkedOrgId: string | null }>> {
+    if (companyIds.length === 0) return new Map();
+    const rows = await scope.tx
+      .select({ id: companies.id, name: companies.name, linkedOrgId: companies.linkedOrgId })
+      .from(companies)
+      .where(and(inArray(companies.id, [...companyIds]), isNull(companies.deletedAt)));
+    return new Map(rows.map((r) => [r.id, { name: r.name, linkedOrgId: r.linkedOrgId }]));
+  }
+
+  return { list, create, exists, identity, linkedOrgs, onProject, onProjectWithTrades };
 }
 
 export type CompanyService = ReturnType<typeof createCompanyService>;
