@@ -1,4 +1,4 @@
--- Composed from modules/precon/db/migrations/20261105040000_precon_prequalification.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/precon/db/migrations/20261105041500_precon_prequalification.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- precon: subcontractor prequalification (product roadmap phase 4; compliance wallet holds the evidence documents).
 -- A builder designs a questionnaire, records or collects a company's answers, and a person approves or rejects.
 -- The score is advice only; expiry is derived from `expires_on`, so "currently qualified" never goes stale.

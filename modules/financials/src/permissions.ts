@@ -16,5 +16,7 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
     tool: 'payment_claims',
     level: 'standard',
   },
+  { key: 'financials.forecast.read', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  { key: 'financials.forecast.manage', scope: 'project', tool: 'payment_claims', level: 'admin' },
   { key: 'financials.variations.decide', scope: 'project', tool: 'payment_claims', level: 'admin' },
 ];

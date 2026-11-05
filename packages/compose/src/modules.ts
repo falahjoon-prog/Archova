@@ -372,8 +372,9 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       rfis.api.syncSource,
       documents.api.syncSource,
       workforce.api.syncSource,
+      quality.api.syncSource,
     ],
-    commands: [...defects.api.syncCommands],
+    commands: [...defects.api.syncCommands, ...quality.api.syncCommands],
     accessState: platform.api.getProjectAccessState,
   });
 

@@ -213,6 +213,24 @@ export function registerOperations(
     }
   }
 
+  /**
+   * Per-operation limit for sensitive routes (x-rate-limit): one user in one org, signed-in or token, so a code or
+   * a builder read cannot be hammered. Counted before the flag and permission checks so guessing is throttled too.
+   */
+  async function limitOperation(
+    reply: FastifyReply,
+    operationId: string,
+    limit: number,
+    tenant: TenantContext,
+  ) {
+    if (!rateLimiter) return;
+    const d = await rateLimiter.hit(tenant.orgId, `op:${operationId}:${tenant.userId}`, limit);
+    if (!d.allowed) {
+      void reply.header('retry-after', String(d.resetS));
+      throw new AppError('rate_limited', 'Too many requests. Slow down and retry after a moment.');
+    }
+  }
+
   function checkEntitlement(
     def: OperationDef,
     tenant: TenantContext,
@@ -336,6 +354,7 @@ export function registerOperations(
                 },
               );
             if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
+            if (def.rateLimit) await limitOperation(reply, operationId, def.rateLimit, tenant);
             checkEntitlement(def, tenant, req.method, operationId);
             // A flag launches a feature for chosen orgs; off looks the same as a route that does not exist.
             if (def.flag && !(await tenant.flags!.isOn(def.flag)))

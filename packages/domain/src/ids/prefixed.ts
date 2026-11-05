@@ -97,6 +97,7 @@ export const ID_PREFIXES = {
   variation: 'var',
   prequalTemplate: 'pqt',
   prequalification: 'pqf',
+  forecastAdjustment: 'fca',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;

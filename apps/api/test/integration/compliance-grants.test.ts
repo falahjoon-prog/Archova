@@ -212,14 +212,25 @@ describe('wallet grants', () => {
     const subBase = `/v1/orgs/${s.subOrg.id}`;
     const { code } = (await request(s, { allProjects: true, itemTypes: ['workers_comp'] })).json();
     const grant = (await s.sub.browser.post(`${subBase}/compliance-grants`, { code })).json();
-    const read = (orgId: string, userId: string) =>
-      t.database.withTenantTx(ctxFor(orgId, userId), ({ tx }) =>
-        tx.execute(sql`select item_type from workforce.compliance_documents order by item_type`),
-      );
+    const gid = decodeId('complianceGrant', grant.id)!;
+    const read = (orgId: string, userId: string, grantId?: string) =>
+      t.database.withTenantTx(ctxFor(orgId, userId), async ({ tx }) => {
+        if (grantId) await tx.execute(sql`select set_config('app.wallet_grant', ${grantId}, true)`);
+        return tx.execute(
+          sql`select item_type from workforce.compliance_documents order by item_type`,
+        );
+      });
     const types = async () =>
-      ((await read(s.bldOrg.id, s.bld.userId)).rows as Array<{ item_type: string }>).map(
+      ((await read(s.bldOrg.id, s.bld.userId, gid)).rows as Array<{ item_type: string }>).map(
         (r) => r.item_type,
       );
+
+    // Without the grant read path's setting a live grant shows the builder nothing, so its own wallet queries
+    // can never pick up a subbie's rows.
+    expect((await read(s.bldOrg.id, s.bld.userId)).rows).toEqual([]);
+    expect(
+      (await read(s.bldOrg.id, s.bld.userId, '00000000-0000-7000-8000-000000000000')).rows,
+    ).toEqual([]);
 
     // The builder, reading with the app role and no API in between, sees only the granted type.
     expect(await types()).toEqual(['workers_comp']);
@@ -250,6 +261,28 @@ describe('wallet grants', () => {
     expect(await types()).toEqual([]);
     const docs = `/v1/orgs/${s.bldOrg.id}/subcontractor-wallets/${grant.id}/documents?projectId=${s.project.id}`;
     expect((await s.bld.browser.get(docs)).statusCode).toBe(404);
+  });
+
+  it("keeps a subbie's documents out of the builder's own wallet screen while a grant is live", async () => {
+    const s = await setup('own');
+    const subDocs = (await s.sub.browser.get(`/v1/orgs/${s.subOrg.id}/compliance-documents`)).json()
+      .data as Array<{ id: string; itemType: string }>;
+    const shared = subDocs.find((d) => d.itemType === 'workers_comp')!;
+    const { code } = (await request(s, { allProjects: true, itemTypes: ['workers_comp'] })).json();
+    await s.sub.browser.post(`/v1/orgs/${s.subOrg.id}/compliance-grants`, { code });
+    // The builder's own wallet has a document of its own.
+    const own = await s.bld.browser.post(`/v1/orgs/${s.bldOrg.id}/compliance-documents`, {
+      itemType: 'public_liability',
+      title: 'Builder cover',
+      selfDeclared: true,
+    });
+    expect(own.statusCode).toBe(201);
+    const list = (await s.bld.browser.get(`/v1/orgs/${s.bldOrg.id}/compliance-documents`)).json()
+      .data as Array<{ title: string }>;
+    expect(list.map((d) => d.title)).toEqual(['Builder cover']);
+    // Nor can it load the subbie's document by id.
+    const one = `/v1/orgs/${s.bldOrg.id}/compliance-documents/${shared.id}`;
+    expect((await s.bld.browser.get(one)).statusCode).toBe(404);
   });
 
   it('makes one grant from one code however many redeem at once', async () => {

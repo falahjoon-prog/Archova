@@ -259,6 +259,7 @@ export const PROBLEM_CODES = {
   'financials.schedule.over_claim': 422,
   'financials.sopa.state_not_live': 422,
   'financials.variation.not_found': 404,
+  'financials.forecast_adjustment.not_found': 404,
   'financials.variation.bad_state': 409,
   'financials.variation.not_approved': 422,
   'financials.variation.over_amount': 422,
