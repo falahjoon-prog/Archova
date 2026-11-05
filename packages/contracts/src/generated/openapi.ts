@@ -6985,6 +6985,175 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Progress updates for the client, newest first. Drafts are shown only to the project team. */
+        get: operations["listOwnerProgressUpdates"];
+        put?: never;
+        /** Write a draft progress update. */
+        post: operations["createOwnerProgressUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a draft progress update. A published one is frozen. */
+        patch: operations["updateOwnerProgressUpdate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish the update so the client can read it. This cannot be undone. */
+        post: operations["publishOwnerProgressUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Decisions the builder has asked the client to make, newest first. */
+        get: operations["listOwnerApprovals"];
+        put?: never;
+        /** Ask the client to approve something. */
+        post: operations["createOwnerApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a request. A decision is final and the person who asked cannot make it. */
+        post: operations["decideOwnerApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw a request that has not been decided. */
+        post: operations["withdrawOwnerApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The capital plan: budget, forecast and spend by year and category, with totals. */
+        get: operations["getOwnerCapitalPlan"];
+        put?: never;
+        /** Add a line to the capital plan. */
+        post: operations["createOwnerCapitalItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["OwnerCapitalItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a capital plan line. */
+        delete: operations["deleteOwnerCapitalItem"];
+        options?: never;
+        head?: never;
+        /** Change a capital plan line. */
+        patch: operations["updateOwnerCapitalItem"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7243,6 +7412,132 @@ export interface components {
             email: string | null;
             userId: string | null;
             companyId: string | null;
+        };
+        /** @enum {string} */
+        OwnerMilestoneStatus: "done" | "on_track" | "at_risk" | "late";
+        OwnerMilestone: {
+            name: string;
+            /** Format: date */
+            date: string | null;
+            status: components["schemas"]["OwnerMilestoneStatus"];
+        };
+        OwnerProgressUpdate: {
+            id: string;
+            projectId: string;
+            title: string;
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            summary: string;
+            percentComplete: number;
+            milestones: components["schemas"]["OwnerMilestone"][];
+            /** @enum {string} */
+            status: "draft" | "published";
+            /** Format: date-time */
+            publishedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        OwnerProgressUpdateList: {
+            data: components["schemas"]["OwnerProgressUpdate"][];
+        };
+        CreateOwnerProgressUpdateRequest: {
+            title: string;
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            summary?: string;
+            percentComplete: number;
+            milestones?: components["schemas"]["OwnerMilestone"][];
+        };
+        UpdateOwnerProgressUpdateRequest: {
+            title?: string;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            summary?: string;
+            percentComplete?: number;
+            milestones?: components["schemas"]["OwnerMilestone"][];
+        };
+        /** @enum {string} */
+        OwnerApprovalStatus: "requested" | "approved" | "rejected" | "withdrawn";
+        OwnerApproval: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            amountCents: number | null;
+            /** Format: date */
+            dueDate: string | null;
+            status: components["schemas"]["OwnerApprovalStatus"];
+            decidedBy: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OwnerApprovalList: {
+            data: components["schemas"]["OwnerApproval"][];
+        };
+        CreateOwnerApprovalRequest: {
+            title: string;
+            description?: string;
+            amountCents?: number | null;
+            /** Format: date */
+            dueDate?: string | null;
+        };
+        DecideOwnerApprovalRequest: {
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note?: string;
+        };
+        OwnerCapitalItem: {
+            id: string;
+            projectId: string;
+            fiscalYear: number;
+            category: string;
+            description: string;
+            budgetCents: number;
+            forecastCents: number;
+            spentCents: number;
+            version: number;
+        };
+        OwnerCapitalItemInput: {
+            fiscalYear: number;
+            category: string;
+            description?: string;
+            budgetCents: number;
+            forecastCents: number;
+            spentCents?: number;
+        };
+        UpdateOwnerCapitalItemRequest: {
+            fiscalYear?: number;
+            category?: string;
+            description?: string;
+            budgetCents?: number;
+            forecastCents?: number;
+            spentCents?: number;
+        };
+        OwnerCapitalTotals: {
+            /** @description Null for the all-years total. */
+            fiscalYear: number | null;
+            budgetCents: number;
+            forecastCents: number;
+            spentCents: number;
+        };
+        OwnerCapitalPlan: {
+            items: components["schemas"]["OwnerCapitalItem"][];
+            /** @description One row per fiscal year, then the all-years total last. */
+            totals: components["schemas"]["OwnerCapitalTotals"][];
         };
         MeetingSeries: {
             id: string;
@@ -12824,6 +13119,9 @@ export interface components {
         ScheduleActivityId: string;
         ScheduleDependencyId: string;
         ScheduleLinkId: string;
+        OwnerProgressUpdateId: string;
+        OwnerApprovalId: string;
+        OwnerCapitalItemId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -24249,6 +24547,332 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeetingActionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerProgressUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerProgressUpdate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerProgressUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOwnerProgressUpdate: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOwnerProgressUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishOwnerProgressUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApprovalList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerApproval: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApproval"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideOwnerApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideOwnerApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApproval"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    withdrawOwnerApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApproval"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerCapitalPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerCapitalPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerCapitalItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerCapitalItemInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteOwnerCapitalItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["OwnerCapitalItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOwnerCapitalItem: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["OwnerCapitalItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOwnerCapitalItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerCapitalItem"];
                 };
             };
             default: components["responses"]["Problem"];

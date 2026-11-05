@@ -245,6 +245,13 @@ export const PROBLEM_CODES = {
   'meeting.item_carried': 409,
   'meeting.nothing_to_issue': 422,
   'meeting.live_unavailable': 422,
+  // ownerportal
+  'ownerportal.update_not_found': 404,
+  'ownerportal.update_published': 409,
+  'ownerportal.approval_not_found': 404,
+  'ownerportal.approval_decided': 409,
+  'ownerportal.own_request': 403,
+  'ownerportal.item_not_found': 404,
   // notifications
   'notification.not_found': 404,
   // scheduling (programme)

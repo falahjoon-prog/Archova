@@ -2228,6 +2228,66 @@ export const ListMeetingActionsParams = z.object({
 export const ListMeetingActionsQuery = z.object({
   "scope": z.enum(["mine", "all"]).default("mine"),
 });
+export const ListOwnerProgressUpdatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerProgressUpdateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerProgressUpdateBody = s.CreateOwnerProgressUpdateRequestSchema;
+export const UpdateOwnerProgressUpdateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "updateId": z.string().regex(new RegExp("^opu_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOwnerProgressUpdateBody = s.UpdateOwnerProgressUpdateRequestSchema;
+export const PublishOwnerProgressUpdateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "updateId": z.string().regex(new RegExp("^opu_[0-9A-Za-z]{26}$")),
+});
+export const ListOwnerApprovalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerApprovalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerApprovalBody = s.CreateOwnerApprovalRequestSchema;
+export const DecideOwnerApprovalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "approvalId": z.string().regex(new RegExp("^oap_[0-9A-Za-z]{26}$")),
+});
+export const DecideOwnerApprovalBody = s.DecideOwnerApprovalRequestSchema;
+export const WithdrawOwnerApprovalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "approvalId": z.string().regex(new RegExp("^oap_[0-9A-Za-z]{26}$")),
+});
+export const GetOwnerCapitalPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerCapitalItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerCapitalItemBody = s.OwnerCapitalItemInputSchema;
+export const UpdateOwnerCapitalItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOwnerCapitalItemBody = s.UpdateOwnerCapitalItemRequestSchema;
+export const DeleteOwnerCapitalItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
+});
 
 export interface OperationDef {
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
@@ -7121,6 +7181,150 @@ export const operations = {
     contentType: null,
     params: ListMeetingActionsParams,
     query: ListMeetingActionsQuery,
+    body: null,
+  },
+  listOwnerProgressUpdates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerProgressUpdatesParams,
+    query: null,
+    body: null,
+  },
+  createOwnerProgressUpdate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerProgressUpdateParams,
+    query: null,
+    body: CreateOwnerProgressUpdateBody,
+  },
+  updateOwnerProgressUpdate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateOwnerProgressUpdateParams,
+    query: null,
+    body: UpdateOwnerProgressUpdateBody,
+  },
+  publishOwnerProgressUpdate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}/publish',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.manage",
+    internal: false,
+    contentType: null,
+    params: PublishOwnerProgressUpdateParams,
+    query: null,
+    body: null,
+  },
+  listOwnerApprovals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerApprovalsParams,
+    query: null,
+    body: null,
+  },
+  createOwnerApproval: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.request",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerApprovalParams,
+    query: null,
+    body: CreateOwnerApprovalBody,
+  },
+  decideOwnerApproval: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/decision',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.decide",
+    internal: false,
+    contentType: "application/json",
+    params: DecideOwnerApprovalParams,
+    query: null,
+    body: DecideOwnerApprovalBody,
+  },
+  withdrawOwnerApproval: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/withdraw',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.request",
+    internal: false,
+    contentType: null,
+    params: WithdrawOwnerApprovalParams,
+    query: null,
+    body: null,
+  },
+  getOwnerCapitalPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerCapitalPlanParams,
+    query: null,
+    body: null,
+  },
+  createOwnerCapitalItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerCapitalItemParams,
+    query: null,
+    body: CreateOwnerCapitalItemBody,
+  },
+  updateOwnerCapitalItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateOwnerCapitalItemParams,
+    query: null,
+    body: UpdateOwnerCapitalItemBody,
+  },
+  deleteOwnerCapitalItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteOwnerCapitalItemParams,
+    query: null,
     body: null,
   },
 } as const satisfies Record<string, OperationDef>;

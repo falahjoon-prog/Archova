@@ -43,6 +43,7 @@ tags:
   - name: workforce
   - name: scheduling
   - name: meetings
+  - name: ownerportal
   - name: notifications
 paths:
   /v1/auth/signup:
@@ -9562,6 +9563,235 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MeetingActionList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerProgressUpdates
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.read
+      summary: 'Progress updates for the client, newest first. Drafts are shown only to the project team.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerProgressUpdate
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.manage
+      summary: 'Write a draft progress update.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerProgressUpdateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerProgressUpdateId' }
+    patch:
+      operationId: updateOwnerProgressUpdate
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.manage
+      summary: 'Change a draft progress update. A published one is frozen.'
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOwnerProgressUpdateRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}/publish:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerProgressUpdateId' }
+    post:
+      operationId: publishOwnerProgressUpdate
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.manage
+      summary: 'Publish the update so the client can read it. This cannot be undone.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerApprovals
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.read
+      summary: 'Decisions the builder has asked the client to make, newest first.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApprovalList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerApproval
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.request
+      summary: 'Ask the client to approve something.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerApprovalRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApproval' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/decision:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerApprovalId' }
+    post:
+      operationId: decideOwnerApproval
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.decide
+      summary: 'Approve or reject a request. A decision is final and the person who asked cannot make it.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideOwnerApprovalRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApproval' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/withdraw:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerApprovalId' }
+    post:
+      operationId: withdrawOwnerApproval
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.request
+      summary: 'Withdraw a request that has not been decided.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApproval' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: getOwnerCapitalPlan
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.read
+      summary: 'The capital plan: budget, forecast and spend by year and category, with totals.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerCapitalPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerCapitalItem
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.manage
+      summary: 'Add a line to the capital plan.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OwnerCapitalItemInput' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerCapitalItem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerCapitalItemId' }
+    patch:
+      operationId: updateOwnerCapitalItem
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.manage
+      summary: 'Change a capital plan line.'
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOwnerCapitalItemRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerCapitalItem' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteOwnerCapitalItem
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.manage
+      summary: 'Remove a capital plan line.'
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     InspectionTemplateId:
@@ -9793,6 +10023,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^slk_[0-9A-Za-z]{26}$' }
+    OwnerProgressUpdateId:
+      name: updateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^opu_[0-9A-Za-z]{26}$' }
+    OwnerApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^oap_[0-9A-Za-z]{26}$' }
+    OwnerCapitalItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^oci_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -10199,6 +10444,209 @@ components:
         email: { type: [string, 'null'] }
         userId: { type: [string, 'null'] }
         companyId: { type: [string, 'null'] }
+    OwnerMilestoneStatus:
+      type: string
+      enum: [done, on_track, at_risk, late]
+    OwnerMilestone:
+      type: object
+      additionalProperties: false
+      required: [name, date, status]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        date: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/OwnerMilestoneStatus' }
+    OwnerProgressUpdate:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          periodStart,
+          periodEnd,
+          summary,
+          percentComplete,
+          milestones,
+          status,
+          publishedAt,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        summary: { type: string }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        milestones:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+        status: { type: string, enum: [draft, published] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OwnerProgressUpdateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+    CreateOwnerProgressUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [title, periodStart, periodEnd, percentComplete]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        summary: { type: string, maxLength: 10000 }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        milestones:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+    UpdateOwnerProgressUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        summary: { type: string, maxLength: 10000 }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        milestones:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+    OwnerApprovalStatus:
+      type: string
+      enum: [requested, approved, rejected, withdrawn]
+    OwnerApproval:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          amountCents,
+          dueDate,
+          status,
+          decidedBy,
+          decidedAt,
+          decisionNote,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        amountCents: { type: [integer, 'null'], minimum: 0 }
+        dueDate: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/OwnerApprovalStatus' }
+        decidedBy: { type: [string, 'null'] }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    OwnerApprovalList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerApproval' }
+    CreateOwnerApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        amountCents: { type: [integer, 'null'], minimum: 0 }
+        dueDate: { type: [string, 'null'], format: date }
+    DecideOwnerApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        note: { type: string, maxLength: 5000 }
+    OwnerCapitalItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          fiscalYear,
+          category,
+          description,
+          budgetCents,
+          forecastCents,
+          spentCents,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        fiscalYear: { type: integer }
+        category: { type: string }
+        description: { type: string }
+        budgetCents: { type: integer, minimum: 0 }
+        forecastCents: { type: integer, minimum: 0 }
+        spentCents: { type: integer, minimum: 0 }
+        version: { type: integer }
+    OwnerCapitalItemInput:
+      type: object
+      additionalProperties: false
+      required: [fiscalYear, category, budgetCents, forecastCents]
+      properties:
+        fiscalYear: { type: integer, minimum: 2000, maximum: 2100 }
+        category: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        budgetCents: { type: integer, minimum: 0 }
+        forecastCents: { type: integer, minimum: 0 }
+        spentCents: { type: integer, minimum: 0 }
+    UpdateOwnerCapitalItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        fiscalYear: { type: integer, minimum: 2000, maximum: 2100 }
+        category: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        budgetCents: { type: integer, minimum: 0 }
+        forecastCents: { type: integer, minimum: 0 }
+        spentCents: { type: integer, minimum: 0 }
+    OwnerCapitalTotals:
+      type: object
+      required: [fiscalYear, budgetCents, forecastCents, spentCents]
+      properties:
+        fiscalYear: { type: [integer, 'null'], description: 'Null for the all-years total.' }
+        budgetCents: { type: integer }
+        forecastCents: { type: integer }
+        spentCents: { type: integer }
+    OwnerCapitalPlan:
+      type: object
+      required: [items, totals]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerCapitalItem' }
+        totals:
+          type: array
+          description: One row per fiscal year, then the all-years total last.
+          items: { $ref: '#/components/schemas/OwnerCapitalTotals' }
     MeetingSeries:
       type: object
       required:
