@@ -194,8 +194,18 @@ export function createOrgService({ database, access, defaultEntitlements, onOrgC
           .orderBy(desc(projectMembers.removedAt));
         const latest = rows.find((r) => r.status === 'removed' && r.removedAt);
         if (!latest?.removedAt || latest.removedAt < since) return null;
-        // Anything but an ordinary removal gives no grant and no hint (for_cause, wipe_now).
+        // Anything but an ordinary removal gives no grant and no hint (for_cause, wipe_now). One such
+        // removal in the window anywhere in this organisation ends it, not just the latest.
+        if (rows.some((r) => r.removedAt && r.removedAt >= since && r.kind !== 'ordinary'))
+          return null;
         if (latest.kind !== 'ordinary') return null;
+        // An organisation-level hold on the person (suspended membership) gives no grant either.
+        const [held] = await tx
+          .select({ id: memberships.id })
+          .from(memberships)
+          .where(and(eq(memberships.userId, userId), eq(memberships.status, 'suspended')))
+          .limit(1);
+        if (held) return null;
         return {
           projectId: latest.projectId,
           removedAt: latest.removedAt,

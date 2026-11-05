@@ -183,6 +183,7 @@ describe('drain grant (X38), on the 401 for someone with no access left', () => 
       `/v1/orgs/${w.org.id}/sync/pull?scopes=${encodeURIComponent(`project:${w.project.id}:defects`)}&since=0`,
     );
     expect(res.statusCode).toBe(401);
+    expect(res.headers['cache-control']).toBe('no-store');
     expect(res.json()).toMatchObject({ code: 'access.revoked' });
     const grant = res.json().drainGrant;
     expect(grant).toMatchObject({ projectId: w.project.id, module: null });
@@ -208,5 +209,25 @@ describe('drain grant (X38), on the 401 for someone with no access left', () => 
       );
       expect(res.statusCode).toBe(404);
     }
+  });
+
+  it('gives nothing when another removal in the window was for cause, or the person is held', async () => {
+    const w = await world('ext-mixed');
+    const second = (await createProject(w.pm.browser, w.org.id, { name: 'Tower B', state: 'NSW' }))
+      .id;
+    const mixed = await external(w, 'mixed');
+    await addMember(w.pm.browser, w.org.id, second, mixed.email, 'Consultant', 'Mixed Pty');
+    await removeMember(w.pm.browser, w.org.id, second, mixed.email, 'for_cause');
+    await removeMember(w.pm.browser, w.org.id, w.project.id, mixed.email, 'ordinary');
+    const url = `/v1/orgs/${w.org.id}/sync/pull?scopes=${encodeURIComponent(`project:${w.project.id}:defects`)}&since=0`;
+    expect((await mixed.browser.get(url)).statusCode).toBe(404);
+
+    const held = await external(w, 'held');
+    await removeMember(w.pm.browser, w.org.id, w.project.id, held.email, 'ordinary');
+    await t.adminDb.withTenantTx(w.ctx, ({ tx }) =>
+      tx.execute(sql`insert into platform.memberships (id, org_id, user_id, role, status)
+                     values (${uuidv7()}, ${w.ctx.orgId}, ${decodeId('user', held.userId)!}, 'member', 'suspended')`),
+    );
+    expect((await held.browser.get(url)).statusCode).toBe(404);
   });
 });
