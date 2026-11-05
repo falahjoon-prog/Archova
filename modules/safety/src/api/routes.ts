@@ -11,7 +11,14 @@ import {
 } from '@archova/kernel';
 import type { SwmsFields, SwmsService } from '../application/swms';
 import type { SwmsContent } from '../domain/swms';
-import { toSwmsDetail, toSwmsDto } from './mappers';
+import type { ActionInput, IncidentFields, IncidentService } from '../application/incidents';
+import {
+  toActionDto,
+  toIncidentDetail,
+  toIncidentListDto,
+  toSwmsDetail,
+  toSwmsDto,
+} from './mappers';
 
 const ref = (kind: IdKind, value: string, path: string) => {
   const uuid = decodeId(kind, value);
@@ -42,7 +49,88 @@ function fields(b: Body): SwmsFields {
   return out;
 }
 
-export function safetyRoutes(database: Database, swms: SwmsService) {
+type IncidentBody = {
+  title?: string;
+  type?: IncidentFields['type'];
+  severity?: IncidentFields['severity'];
+  occurredAt?: string;
+  location?: string | null;
+  description?: string;
+  immediateActions?: string | null;
+  isNotifiable?: boolean;
+  notifiableClass?: IncidentFields['notifiableClass'];
+  regulatorNotifiedAt?: string | null;
+  writtenNoticeRequestedAt?: string | null;
+  rootCause?: IncidentFields['rootCause'];
+  people?: {
+    personName: string;
+    companyId?: string;
+    role: 'injured' | 'witness' | 'involved';
+    injury?: Record<string, unknown>;
+  }[];
+};
+
+const dateOrNull = (v: string | null) => (v === null ? null : new Date(v));
+
+function incidentFields(b: IncidentBody): IncidentFields {
+  const out: IncidentFields = {};
+  if (b.title !== undefined) out.title = b.title;
+  if (b.type !== undefined) out.type = b.type;
+  if (b.severity !== undefined) out.severity = b.severity;
+  if (b.occurredAt !== undefined) out.occurredAt = new Date(b.occurredAt);
+  if (b.location !== undefined) out.location = b.location;
+  if (b.description !== undefined) out.description = b.description;
+  if (b.immediateActions !== undefined) out.immediateActions = b.immediateActions;
+  if (b.isNotifiable !== undefined) out.isNotifiable = b.isNotifiable;
+  if (b.notifiableClass !== undefined) out.notifiableClass = b.notifiableClass;
+  if (b.regulatorNotifiedAt !== undefined)
+    out.regulatorNotifiedAt = dateOrNull(b.regulatorNotifiedAt);
+  if (b.writtenNoticeRequestedAt !== undefined)
+    out.writtenNoticeRequestedAt = dateOrNull(b.writtenNoticeRequestedAt);
+  if (b.rootCause !== undefined) out.rootCause = b.rootCause;
+  if (b.people !== undefined)
+    out.people = b.people.map((p) => ({
+      personName: p.personName,
+      role: p.role,
+      companyId: p.companyId ? ref('company', p.companyId, 'people') : null,
+      injury: p.injury ?? null,
+    }));
+  return out;
+}
+
+type ActionBody = {
+  title?: string;
+  description?: string | null;
+  assigneeCompanyId?: string | null;
+  assigneeUserId?: string | null;
+  dueDate?: string | null;
+  source?: { type: 'inspection' | 'observation'; id: string } | null;
+  status?: ActionInput['status'];
+};
+
+function actionFields(b: ActionBody): ActionInput {
+  const out: ActionInput = {};
+  if (b.title !== undefined) out.title = b.title;
+  if (b.description !== undefined) out.description = b.description;
+  if (b.assigneeCompanyId !== undefined)
+    out.assigneeCompanyId =
+      b.assigneeCompanyId === null
+        ? null
+        : ref('company', b.assigneeCompanyId, 'assigneeCompanyId');
+  if (b.assigneeUserId !== undefined)
+    out.assigneeUserId =
+      b.assigneeUserId === null ? null : ref('user', b.assigneeUserId, 'assigneeUserId');
+  if (b.dueDate !== undefined) out.dueDate = b.dueDate;
+  if (b.source !== undefined)
+    out.source =
+      b.source === null
+        ? null
+        : { type: b.source.type, id: ref(b.source.type, b.source.id, 'source.id') };
+  if (b.status !== undefined) out.status = b.status;
+  return out;
+}
+
+export function safetyRoutes(database: Database, swms: SwmsService, incidents: IncidentService) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
   const read = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -63,7 +151,106 @@ export function safetyRoutes(database: Database, swms: SwmsService) {
     headers: { etag: etag(d.swms.version) },
   });
 
+  const incidentId = (p: { incidentId: string }) => {
+    const id = decodeId('incident', p.incidentId);
+    if (!id) throw new AppError('incident.not_found');
+    return id;
+  };
+  const incidentOk = (status: number, d: Awaited<ReturnType<IncidentService['detail']>>) => ({
+    status,
+    body: toIncidentDetail(d),
+    headers: { etag: etag(d.incident.version) },
+  });
+
   return defineRoutes({
+    listIncidents: async (input) => {
+      const q = input.query;
+      const page = await read(input, (s) =>
+        incidents.list(s, project(input.params), {
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.type ? { type: q.type } : {}),
+          ...(q.notifiable ? { notifiable: q.notifiable === 'true' } : {}),
+          limit: q.limit,
+          ...(q.cursor ? { cursor: q.cursor } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: { data: page.data.map(toIncidentListDto), nextCursor: page.nextCursor },
+      };
+    },
+    reportIncident: async (input) =>
+      incidentOk(
+        201,
+        await tx(input, (s) =>
+          incidents.create(s, project(input.params), {
+            ...incidentFields(input.body),
+            title: input.body.title,
+            type: input.body.type,
+            occurredAt: new Date(input.body.occurredAt),
+          }),
+        ),
+      ),
+    getIncident: async (input) =>
+      incidentOk(
+        200,
+        await read(input, (s) =>
+          incidents.detail(s, project(input.params), incidentId(input.params)),
+        ),
+      ),
+    updateIncident: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return incidentOk(
+        200,
+        await tx(input, (s) =>
+          incidents.update(
+            s,
+            project(input.params),
+            incidentId(input.params),
+            expected,
+            incidentFields(input.body),
+          ),
+        ),
+      );
+    },
+    transitionIncident: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      return incidentOk(
+        200,
+        await tx(input, (s) =>
+          incidents.transition(s, project(input.params), incidentId(input.params), expected, {
+            action: input.body.action,
+            ...(input.body.reason ? { reason: input.body.reason } : {}),
+          }),
+        ),
+      );
+    },
+    addIncidentAction: async (input) =>
+      incidentOk(
+        201,
+        await tx(input, (s) =>
+          incidents.addAction(s, project(input.params), incidentId(input.params), {
+            ...actionFields(input.body),
+            title: input.body.title,
+          }),
+        ),
+      ),
+    updateIncidentAction: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const actionId = decodeId('incidentAction', input.params.actionId);
+      if (!actionId) throw new AppError('incident.action_not_found');
+      const a = await tx(input, (s) =>
+        incidents.updateAction(
+          s,
+          project(input.params),
+          incidentId(input.params),
+          actionId,
+          expected,
+          actionFields(input.body),
+        ),
+      );
+      return { status: 200, body: toActionDto(a), headers: { etag: etag(a.version) } };
+    },
     listSwms: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>

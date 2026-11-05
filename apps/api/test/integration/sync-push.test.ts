@@ -109,6 +109,28 @@ describe('mobile sync push (backend 04 §4)', () => {
       history.events.filter((e: { action: string }) => e.action === 'markReadyForReview'),
     ).toHaveLength(1);
 
+    // The phone queues one command per action, with `note` and `fileIds` (mobile 02 §2.4).
+    const d3 = await issued('Missing fire collar');
+    const noPhotoAction = mutation(
+      d3.id,
+      d3.version,
+      { note: 'Done' },
+      'defects.markReadyForReview',
+    );
+    expect((await push(sub, [noPhotoAction]))[0]).toMatchObject({
+      status: 'rejected',
+      problem: { code: 'defect.photo_required' },
+    });
+    const byAction = mutation(
+      d3.id,
+      d3.version,
+      { note: 'Collar fitted', fileIds: [photo] },
+      'defects.markReadyForReview',
+    );
+    expect((await push(sub, [byAction]))[0]).toMatchObject({ status: 'applied', version: 3 });
+    const closed = mutation(d3.id, 3, { note: 'Checked' }, 'defects.close');
+    expect((await push(pm, [closed]))[0]).toMatchObject({ status: 'applied', version: 4 });
+
     // Changed since the device last saw it: a conflict with the server's copy, not stored.
     const d2 = await issued('Loose handrail');
     const edit = await pm.browser.patch(

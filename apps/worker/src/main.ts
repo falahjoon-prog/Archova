@@ -24,6 +24,7 @@ import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry } from './jobs/wallet-expiry';
+import { walletRetention } from './jobs/wallet-retention';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -63,6 +64,7 @@ async function main() {
     walletExpiry(async (scope, alerts) => {
       log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');
     }),
+    walletRetention(),
   ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {

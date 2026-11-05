@@ -18,6 +18,8 @@ export type CreateVariation = S['CreateVariationRequest'];
 export type VariationAction = 'submit' | 'approve' | 'reject' | 'withdraw';
 export type CostForecast = S['CostForecast'];
 export type ForecastAdjustment = S['ForecastAdjustment'];
+export type BudgetVsForecast = S['BudgetVsForecast'];
+export type BudgetVsForecastRow = S['BudgetVsForecastRow'];
 export type CreateForecastAdjustment = S['CreateForecastAdjustmentRequest'];
 export type ContractPaymentSummary = S['ContractPaymentSummary'];
 export type ContractTrust = S['ContractTrust'];
@@ -122,6 +124,11 @@ export function createClaimsApi(orgId: string) {
     async costForecast(projectId: string): Promise<CostForecast> {
       return unwrap(
         await api.GET(`${P}/cost-forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async budgetVsForecast(projectId: string): Promise<BudgetVsForecast> {
+      return unwrap(
+        await api.GET(`${P}/budget/vs-forecast`, { params: { path: { orgId, projectId } } }),
       );
     },
     async createAdjustment(
