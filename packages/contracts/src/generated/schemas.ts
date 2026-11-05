@@ -4469,6 +4469,13 @@ export const NovaContractReviewSchema = z.object({
   "dayType": z.enum(["business", "calendar", "unclear"]),
   "source": ContractSourceRefSchema,
 })),
+  "obligations": z.array(z.object({
+  "party": z.enum(["builder", "other_party", "both", "unclear"]),
+  "category": z.enum(["payment", "notice", "insurance", "security", "reporting", "programme", "quality", "other"]),
+  "action": z.string(),
+  "timing": z.string().nullable(),
+  "source": ContractSourceRefSchema,
+})).optional(),
   "flags": z.array(z.object({
   "topicKey": z.string(),
   "topic": z.string(),

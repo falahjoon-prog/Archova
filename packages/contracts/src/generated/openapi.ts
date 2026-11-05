@@ -11193,6 +11193,17 @@ export interface components {
                 dayType: "business" | "calendar" | "unclear";
                 source: components["schemas"]["ContractSourceRef"];
             }[];
+            /** @description Who must do what under the contract, in the contract's own words, each citing its clause. Absent on reviews saved before this existed. */
+            obligations?: {
+                /** @enum {string} */
+                party: "builder" | "other_party" | "both" | "unclear";
+                /** @enum {string} */
+                category: "payment" | "notice" | "insurance" | "security" | "reporting" | "programme" | "quality" | "other";
+                action: string;
+                /** @description The contract's own words for when. Nova works out no dates. */
+                timing: string | null;
+                source: components["schemas"]["ContractSourceRef"];
+            }[];
             /** @description Highest severity first. Each cites its clause. */
             flags: {
                 topicKey: string;
