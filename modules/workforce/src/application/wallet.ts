@@ -102,6 +102,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .from(complianceDocuments)
       .where(
         and(
+          eq(complianceDocuments.orgId, scope.ctx.orgId),
           opts.itemType ? eq(complianceDocuments.itemType, opts.itemType) : undefined,
           opts.includeArchived ? undefined : isNull(complianceDocuments.archivedAt),
         ),
@@ -124,7 +125,13 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
         archivedAt: complianceDocuments.archivedAt,
       })
       .from(complianceExpiryAlerts)
-      .innerJoin(complianceDocuments, eq(complianceDocuments.id, complianceExpiryAlerts.documentId))
+      .innerJoin(
+        complianceDocuments,
+        and(
+          eq(complianceDocuments.id, complianceExpiryAlerts.documentId),
+          eq(complianceDocuments.orgId, scope.ctx.orgId),
+        ),
+      )
       .orderBy(desc(complianceExpiryAlerts.raisedOn), asc(complianceExpiryAlerts.threshold))
       .limit(limit);
     return { rows, today: today() };
@@ -190,7 +197,7 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
     const [row] = await scope.tx
       .select()
       .from(complianceDocuments)
-      .where(eq(complianceDocuments.id, id))
+      .where(and(eq(complianceDocuments.id, id), eq(complianceDocuments.orgId, scope.ctx.orgId)))
       .limit(1);
     if (!row) throw new AppError('compliance_document.not_found');
     return row;
