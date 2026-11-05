@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, lt, or, sql, type SQL } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql, type SQL } from 'drizzle-orm';
 import { encodeId, uuidv7 } from '@archova/domain';
 import { AppError, decodeCursor, toPage, versionConflict, type TenantScope } from '@archova/kernel';
 import {
@@ -328,7 +328,7 @@ export function createDrawingService(c: DocumentsContext) {
         .returning();
       if (prior?.currentId) await carryForwardMarkups(scope, projectId, prior.currentId, d.id);
       await scope.recordChange({
-        module: 'documents',
+        module: 'drawings',
         entityType: 'drawing_sheet',
         entityId: sheetId,
         op: 'upsert',
@@ -441,6 +441,38 @@ export function createDrawingService(c: DocumentsContext) {
     return toPage(rows, opts.limit, (r) => ({ n: r.sheet.sheetNumber, id: r.sheet.id }));
   }
 
+  /** Sheets among `ids` with their current revision, for the mobile pull. */
+  async function sheetsAmong(scope: TenantScope, projectId: string, ids: readonly string[]) {
+    if (ids.length === 0) return [];
+    await c.requireProject(scope, projectId);
+    return scope.tx
+      .select({ sheet: drawingSheets, current: drawingRevisions })
+      .from(drawingSheets)
+      .leftJoin(drawingRevisions, eq(drawingRevisions.id, drawingSheets.currentRevisionId))
+      .where(and(eq(drawingSheets.projectId, projectId), inArray(drawingSheets.id, [...ids])));
+  }
+
+  /** Published revisions (current or superseded; never drafts) among `ids`, for the mobile pull. */
+  async function publishedRevisionsAmong(
+    scope: TenantScope,
+    projectId: string,
+    ids: readonly string[],
+  ) {
+    if (ids.length === 0) return [];
+    await c.requireProject(scope, projectId);
+    const rows = await scope.tx
+      .select()
+      .from(drawingRevisions)
+      .where(
+        and(
+          eq(drawingRevisions.projectId, projectId),
+          inArray(drawingRevisions.id, [...ids]),
+          ne(drawingRevisions.status, 'draft'),
+        ),
+      );
+    return withSuccessors(scope, rows);
+  }
+
   async function sheetHistory(scope: TenantScope, projectId: string, sheetId: string) {
     const [sheet] = await scope.tx
       .select({ id: drawingSheets.id })
@@ -524,6 +556,8 @@ export function createDrawingService(c: DocumentsContext) {
   }
 
   return {
+    sheetsAmong,
+    publishedRevisionsAmong,
     listSets,
     createSet,
     review,
@@ -560,7 +594,7 @@ async function revisionChanged(
   version: number | null = null,
 ) {
   await scope.recordChange({
-    module: 'documents',
+    module: 'drawings',
     entityType: 'drawing_revision',
     entityId: revisionId,
     op: 'upsert',

@@ -17,6 +17,7 @@ import { createTransmittalService } from './application/transmittals';
 import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
 import { toDocumentDto, toFolderDto } from './api/mappers';
+import { createDrawingsSyncSource } from './api/drawings-sync';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
 
 export function createDocumentsModule(
@@ -77,6 +78,7 @@ export function createDocumentsModule(
       return out;
     },
   };
+  const drawingsSyncSource = createDrawingsSyncSource(drawings);
   return {
     definition: defineModule({ name: 'documents', permissions: DOCUMENTS_PERMISSIONS }),
     routes: documentsRoutes({
@@ -98,6 +100,8 @@ export function createDocumentsModule(
     api: {
       /** What the mobile pull reads (modules/sync): folders and documents. */
       syncSource,
+      /** The drawing register and revisions the mobile pull reads (modules/sync). */
+      drawingsSyncSource,
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */

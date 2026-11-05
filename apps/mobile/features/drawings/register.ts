@@ -18,20 +18,27 @@ const issuedForLabel: Record<string, string> = {
   for_construction: 'For construction',
 };
 
-export function registerRows(sheets: readonly Sheet[]): RegisterRow[] {
-  return sheets.map((s) => {
-    const rev = s.currentRevision;
-    const parts = [
-      s.discipline,
-      rev ? `Rev ${rev.rev}` : 'No current revision',
-      rev?.issuedFor ? issuedForLabel[rev.issuedFor] : null,
-    ].filter((p): p is string => Boolean(p));
-    return {
-      id: s.id,
-      revisionId: rev?.id ?? null,
-      title: `${s.sheetNumber} · ${s.title}`,
-      subtitle: parts.join(' · '),
-      hasRevision: rev !== null,
-    };
-  });
+export function registerRows(
+  sheets: readonly Sheet[],
+  /** Revisions saved on this device, which open with no signal. */
+  saved: ReadonlySet<string> = new Set(),
+): RegisterRow[] {
+  return [...sheets]
+    .sort((a, b) => a.sheetNumber.localeCompare(b.sheetNumber, undefined, { numeric: true }))
+    .map((s) => {
+      const rev = s.currentRevision;
+      const parts = [
+        s.discipline,
+        rev ? `Rev ${rev.rev}` : 'No current revision',
+        rev?.issuedFor ? issuedForLabel[rev.issuedFor] : null,
+        rev && saved.has(rev.id) ? 'Saved offline' : null,
+      ].filter((p): p is string => Boolean(p));
+      return {
+        id: s.id,
+        revisionId: rev?.id ?? null,
+        title: `${s.sheetNumber} · ${s.title}`,
+        subtitle: parts.join(' · '),
+        hasRevision: rev !== null,
+      };
+    });
 }

@@ -29,6 +29,20 @@ describe('registerRows', () => {
     });
   });
 
+  it('sorts sheets by number and marks the ones saved on the device', () => {
+    const rev = (id: string) => ({ id, rev: 'A', issuedFor: null }) as Sheet['currentRevision'];
+    const rows = registerRows(
+      [
+        sheet({ id: 'b', sheetNumber: 'A-110', currentRevision: rev('r2') }),
+        sheet({ id: 'a', sheetNumber: 'A-9', currentRevision: rev('r1') }),
+      ],
+      new Set(['r2']),
+    );
+    expect(rows.map((r) => r.id)).toEqual(['a', 'b']);
+    expect(rows[0]!.subtitle).not.toContain('Saved offline');
+    expect(rows[1]!.subtitle).toContain('Saved offline');
+  });
+
   it('says so when a sheet has no current revision', () => {
     const [row] = registerRows([sheet({ discipline: null })]);
     expect(row).toMatchObject({ subtitle: 'No current revision', hasRevision: false });

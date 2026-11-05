@@ -104,6 +104,21 @@ export const MIGRATIONS: readonly string[] = [
     removed_at TEXT NOT NULL
   ) WITHOUT ROWID;
   `,
+  // 6: drawing sheets saved on the device (mobile 03 §3.3): the overview and the low-resolution tile levels.
+  `
+  CREATE TABLE sheet_cache (
+    revision_id  TEXT PRIMARY KEY,
+    project_id   TEXT NOT NULL,
+    width        INTEGER NOT NULL,
+    height       INTEGER NOT NULL,
+    tile_size    INTEGER NOT NULL,
+    levels       INTEGER NOT NULL,
+    cached_level INTEGER NOT NULL,
+    bytes        INTEGER NOT NULL,
+    cached_at    TEXT NOT NULL
+  ) WITHOUT ROWID;
+  CREATE INDEX sheet_cache_project ON sheet_cache (project_id);
+  `,
 ];
 
 export async function migrate(db: SqlDatabase): Promise<void> {

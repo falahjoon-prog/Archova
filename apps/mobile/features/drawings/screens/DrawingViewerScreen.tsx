@@ -1,6 +1,6 @@
 // Drawing viewer (docs/mobile/03 §3.3): overview image at once, sharp tiles on top, pan and pinch.
 // While the server has not built tiles for a sheet, say so rather than show a blank.
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
@@ -12,6 +12,7 @@ import { api, queries } from '../../../lib/api';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
 import { listDefects } from '../../defects';
 import type { Markup } from '@archova/contracts';
+import { overviewPath, tilePath } from '../../../lib/files/sheet-cache';
 import { supersededNotice } from '../banner';
 import { MarkupLayer } from './MarkupLayer';
 import { createPenMarkup } from '../commands';
@@ -42,7 +43,7 @@ function SheetCanvas({
   pyramid,
   revisionId,
   overviewUrl,
-  tileUrlTemplate,
+  tileSource,
   pins,
   markups,
   onOpenPin,
@@ -55,7 +56,8 @@ function SheetCanvas({
   pyramid: Pyramid;
   revisionId: string;
   overviewUrl: string | undefined;
-  tileUrlTemplate: string;
+  /** Where to load a tile from: a saved file, the network, or null when neither is available. */
+  tileSource: (k: { z: number; x: number; y: number }) => string | null;
   pins: SheetPin[];
   markups: readonly Markup[];
   onOpenPin: (pin: SheetPin) => void;
@@ -211,13 +213,15 @@ function SheetCanvas({
               />
             ) : null}
             {tiles.map((k) => {
+              const uri = tileSource(k);
+              if (!uri) return null;
               const f = 2 ** (pyramid.levels - 1 - k.z);
               // One tile covers tileSize * f full-resolution pixels (the last row and column may be partial).
               const span = pyramid.tileSize * f * view.scale;
               return (
                 <Image
                   key={tileCacheKey(revisionId, k)}
-                  source={{ uri: tileUrl(tileUrlTemplate, k), cache: 'force-cache' }}
+                  source={{ uri, cache: 'force-cache' }}
                   style={{
                     position: 'absolute',
                     left: drawn.left + k.x * span,
@@ -319,7 +323,16 @@ export function DrawingViewerScreen({
     ...queries.drawingRevision(orgId ?? '', projectId, revisionId),
     enabled: orgId !== null,
   });
-  const notice = revision.data ? supersededNotice(revision.data) : null;
+  // The revision from the device when offline, so the "replaced by a newer revision" notice still shows.
+  const storedRevision = useLocalQuery(
+    device.status === 'ready'
+      ? async () => (await device.data.store.get('drawing_revision', revisionId))?.data
+      : null,
+    [device.status === 'ready' ? device.data : null, revisionId],
+  );
+  const revisionInfo =
+    revision.data ?? (storedRevision.value as typeof revision.data | null | undefined) ?? undefined;
+  const notice = revisionInfo ? supersededNotice(revisionInfo) : null;
   const markups = useQuery({
     ...queries.markups(orgId ?? '', projectId, revisionId),
     enabled: orgId !== null,
@@ -334,7 +347,7 @@ export function DrawingViewerScreen({
   const saveKey = useRef(uuidv7());
   const [placing, setPlacing] = useState(false);
   const [pdfError, setPdfError] = useState(false);
-  const sheetId = revision.data?.sheetId ?? null;
+  const sheetId = revisionInfo?.sheetId ?? null;
   // Defects are raised on the current sheet only, never on one that has been replaced.
   const canPin = sheetId !== null && notice === null;
   const tiles = useQuery({
@@ -344,9 +357,48 @@ export function DrawingViewerScreen({
     refetchInterval: (q) => (q.state.data?.status === 'pending' ? 10_000 : false),
   });
 
-  if (!orgId) return <StateMessage message="Choose an organisation on the Home tab first." />;
-  if (tiles.isPending) return <StateMessage loading message="Loading drawing" />;
-  if (tiles.isError) {
+  const sheets = device.status === 'ready' ? device.data.sheets : null;
+  const saved = useLocalQuery(sheets ? () => sheets.get(revisionId) : null, [sheets, revisionId]);
+
+  // Save the sheet for offline use the first time it opens with a connection. Failures are silent: the sheet
+  // simply stays online-only and is tried again next time.
+  const ready = tiles.data;
+  useEffect(() => {
+    if (
+      !sheets ||
+      !ready ||
+      ready.status !== 'ready' ||
+      !ready.width ||
+      !ready.height ||
+      !ready.levels ||
+      !ready.tileUrlTemplate ||
+      saved.value !== null
+    )
+      return;
+    const spec = {
+      width: ready.width,
+      height: ready.height,
+      tileSize: ready.tileSize ?? 256,
+      levels: ready.levels,
+      overviewUrl: ready.overviewUrl,
+      tileUrlTemplate: ready.tileUrlTemplate,
+    };
+    void sheets
+      .save(projectId, revisionId, spec)
+      .then(async (ok) => {
+        if (ok) {
+          await sheets.evict(undefined, revisionId);
+          saved.refresh();
+        }
+      })
+      .catch(() => undefined);
+  }, [sheets, ready, saved.value === null, projectId, revisionId]);
+
+  const savedSheet = saved.value;
+  if (!orgId && !savedSheet)
+    return <StateMessage message="Choose an organisation on the Home tab first." />;
+  if (tiles.isPending && !savedSheet) return <StateMessage loading message="Loading drawing" />;
+  if (tiles.isError && !savedSheet) {
     return (
       <StateMessage
         tone="danger"
@@ -356,6 +408,21 @@ export function DrawingViewerScreen({
     );
   }
   const d = tiles.data;
+  if (!d && savedSheet && sheets) {
+    // Offline (or the tiles call failed): the saved overview and low levels, and whatever else is already cached.
+    return renderSheet({
+      pyramid: {
+        width: savedSheet.width,
+        height: savedSheet.height,
+        tileSize: savedSheet.tileSize,
+        levels: savedSheet.levels,
+      },
+      overviewUrl: overviewPath(sheets.root, revisionId),
+      tileSource: (k) =>
+        k.z <= savedSheet.cachedLevel ? tilePath(sheets.root, revisionId, k) : null,
+    });
+  }
+  if (!d) return null;
   if (d.status !== 'ready' || !d.width || !d.height || !d.levels || !d.tileUrlTemplate) {
     const file = revision.data;
     return (
@@ -370,6 +437,7 @@ export function DrawingViewerScreen({
               label="Open the PDF meanwhile"
               variant="secondary"
               onPress={() => {
+                if (!orgId) return;
                 setPdfError(false);
                 drawingPdfUrl(api, orgId, file.fileId, file.pageIndex)
                   .then((url) => WebBrowser.openBrowserAsync(url))
@@ -386,133 +454,152 @@ export function DrawingViewerScreen({
       </View>
     );
   }
-  return (
-    <View style={{ flex: 1 }}>
-      {notice ? (
-        <View
-          accessibilityRole="alert"
-          style={{ padding: t.space[3], gap: t.space[2], backgroundColor: t.color.statusWarning }}
-        >
-          <Text style={{ color: t.color.surface, fontWeight: '700' }}>{notice.message}</Text>
-          {notice.latestRevisionId ? (
-            <Button
-              label="Open latest"
-              variant="secondary"
-              onPress={() =>
-                router.replace(mobileRoutes.drawingSheet(projectId, notice.latestRevisionId))
-              }
-            />
-          ) : null}
-        </View>
-      ) : null}
-      {needsLocationCheck(markupList) ? (
-        <View style={{ padding: t.space[2], backgroundColor: t.color.statusWarning }}>
-          <Text style={{ color: t.color.surface }}>
-            Some markups came from an earlier revision. Check their location before relying on them.
-          </Text>
-        </View>
-      ) : null}
-      <SheetCanvas
-        pyramid={{
-          width: d.width,
-          height: d.height,
-          tileSize: d.tileSize ?? 256,
-          levels: d.levels,
-        }}
-        revisionId={revisionId}
-        overviewUrl={d.overviewUrl}
-        tileUrlTemplate={d.tileUrlTemplate}
-        pins={pins}
-        markups={markupList}
-        onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
-        inking={inking}
-        ink={ink}
-        onInkChange={() => setInkVersion((n) => n + 1)}
-        placing={placing}
-        onPlace={(pin) => {
-          setPlacing(false);
-          if (sheetId) {
-            router.push(
-              mobileRoutes.newDefect(projectId, { sheetId, drawingRevisionId: revisionId, ...pin }),
-            );
-          }
-        }}
-      />
-      {canPin ? (
-        <View style={{ padding: t.space[3], gap: t.space[2] }}>
-          <Button
-            label={inking ? 'Stop drawing' : 'Draw a markup'}
-            variant={inking ? 'secondary' : 'primary'}
-            onPress={() => {
-              setPlacing(false);
-              setInking((on) => !on);
-            }}
-          />
-          {ink.strokes.length > 0 ? (
-            <View style={{ gap: t.space[2] }}>
+  // Tiles: a saved file when the sheet is on the device, otherwise the network.
+  const local = savedSheet && sheets ? sheets.root : null;
+  return renderSheet({
+    pyramid: { width: d.width, height: d.height, tileSize: d.tileSize ?? 256, levels: d.levels },
+    overviewUrl: local && savedSheet ? overviewPath(local, revisionId) : d.overviewUrl,
+    tileSource: (k) =>
+      local && savedSheet && k.z <= savedSheet.cachedLevel
+        ? tilePath(local, revisionId, k)
+        : tileUrl(d.tileUrlTemplate as string, k),
+  });
+
+  function renderSheet(args: {
+    pyramid: Pyramid;
+    overviewUrl: string | undefined;
+    tileSource: (k: { z: number; x: number; y: number }) => string | null;
+  }) {
+    return (
+      <View style={{ flex: 1 }}>
+        {notice ? (
+          <View
+            accessibilityRole="alert"
+            style={{ padding: t.space[3], gap: t.space[2], backgroundColor: t.color.statusWarning }}
+          >
+            <Text style={{ color: t.color.surface, fontWeight: '700' }}>{notice.message}</Text>
+            {notice.latestRevisionId ? (
               <Button
-                label="Save markup"
-                disabled={saving}
-                onPress={() => {
-                  if (!orgId) return;
-                  setSaving(true);
-                  setSaveError(false);
-                  createPenMarkup(
-                    api,
-                    { orgId, projectId, revisionId },
-                    ink.strokes,
-                    saveKey.current,
-                  )
-                    .then(() => {
-                      ink.clear();
-                      saveKey.current = uuidv7();
-                      setInking(false);
-                      setInkVersion((n) => n + 1);
-                      return queryClient.invalidateQueries({
-                        queryKey: queries.markups(orgId, projectId, revisionId).queryKey,
-                      });
-                    })
-                    .catch(() => setSaveError(true))
-                    .finally(() => setSaving(false));
-                }}
-              />
-              <Button
-                label="Undo last stroke"
+                label="Open latest"
                 variant="secondary"
-                disabled={saving}
-                onPress={() => {
-                  ink.undo();
-                  setInkVersion((n) => n + 1);
-                }}
+                onPress={() =>
+                  router.replace(mobileRoutes.drawingSheet(projectId, notice.latestRevisionId))
+                }
               />
-              <Button
-                label="Discard drawing"
-                variant="secondary"
-                disabled={saving}
-                onPress={() => {
-                  ink.clear();
-                  setInkVersion((n) => n + 1);
-                }}
-              />
-              {saveError ? (
-                <Text style={{ color: t.color.statusDanger }}>
-                  Could not save the markup. Check your connection and try again.
-                </Text>
-              ) : null}
-            </View>
-          ) : null}
-          <Button
-            label={
-              placing ? 'Tap the sheet where the defect is (cancel)' : 'Raise defect on this sheet'
+            ) : null}
+          </View>
+        ) : null}
+        {needsLocationCheck(markupList) ? (
+          <View style={{ padding: t.space[2], backgroundColor: t.color.statusWarning }}>
+            <Text style={{ color: t.color.surface }}>
+              Some markups came from an earlier revision. Check their location before relying on
+              them.
+            </Text>
+          </View>
+        ) : null}
+        <SheetCanvas
+          pyramid={args.pyramid}
+          revisionId={revisionId}
+          overviewUrl={args.overviewUrl}
+          tileSource={args.tileSource}
+          pins={pins}
+          markups={markupList}
+          onOpenPin={(pin) => router.push(mobileRoutes.defect(projectId, pin.defectId))}
+          inking={inking}
+          ink={ink}
+          onInkChange={() => setInkVersion((n) => n + 1)}
+          placing={placing}
+          onPlace={(pin) => {
+            setPlacing(false);
+            if (sheetId) {
+              router.push(
+                mobileRoutes.newDefect(projectId, {
+                  sheetId,
+                  drawingRevisionId: revisionId,
+                  ...pin,
+                }),
+              );
             }
-            variant={placing ? 'secondary' : 'primary'}
-            onPress={() => {
-              setInking(false);
-              setPlacing((p) => !p);
-            }}
-          />
-        </View>
-      ) : null}
-    </View>
-  );
+          }}
+        />
+        {canPin ? (
+          <View style={{ padding: t.space[3], gap: t.space[2] }}>
+            <Button
+              label={inking ? 'Stop drawing' : 'Draw a markup'}
+              variant={inking ? 'secondary' : 'primary'}
+              onPress={() => {
+                setPlacing(false);
+                setInking((on) => !on);
+              }}
+            />
+            {ink.strokes.length > 0 ? (
+              <View style={{ gap: t.space[2] }}>
+                <Button
+                  label="Save markup"
+                  disabled={saving}
+                  onPress={() => {
+                    if (!orgId) return;
+                    setSaving(true);
+                    setSaveError(false);
+                    createPenMarkup(
+                      api,
+                      { orgId, projectId, revisionId },
+                      ink.strokes,
+                      saveKey.current,
+                    )
+                      .then(() => {
+                        ink.clear();
+                        saveKey.current = uuidv7();
+                        setInking(false);
+                        setInkVersion((n) => n + 1);
+                        return queryClient.invalidateQueries({
+                          queryKey: queries.markups(orgId, projectId, revisionId).queryKey,
+                        });
+                      })
+                      .catch(() => setSaveError(true))
+                      .finally(() => setSaving(false));
+                  }}
+                />
+                <Button
+                  label="Undo last stroke"
+                  variant="secondary"
+                  disabled={saving}
+                  onPress={() => {
+                    ink.undo();
+                    setInkVersion((n) => n + 1);
+                  }}
+                />
+                <Button
+                  label="Discard drawing"
+                  variant="secondary"
+                  disabled={saving}
+                  onPress={() => {
+                    ink.clear();
+                    setInkVersion((n) => n + 1);
+                  }}
+                />
+                {saveError ? (
+                  <Text style={{ color: t.color.statusDanger }}>
+                    Could not save the markup. Check your connection and try again.
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+            <Button
+              label={
+                placing
+                  ? 'Tap the sheet where the defect is (cancel)'
+                  : 'Raise defect on this sheet'
+              }
+              variant={placing ? 'secondary' : 'primary'}
+              onPress={() => {
+                setInking(false);
+                setPlacing((p) => !p);
+              }}
+            />
+          </View>
+        ) : null}
+      </View>
+    );
+  }
 }

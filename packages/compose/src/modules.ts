@@ -367,6 +367,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       diary.api.syncSource,
       rfis.api.syncSource,
       documents.api.syncSource,
+      documents.api.drawingsSyncSource,
       workforce.api.syncSource,
       quality.api.syncSource,
     ],
