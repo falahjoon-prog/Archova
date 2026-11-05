@@ -37,7 +37,7 @@ async function seed() {
       [companyB, 'Painters'],
     ] as const)
       await s.tx.execute(
-        sql`insert into platform.companies (id, org_id, name) values (${id}, ${orgId}, ${name})`,
+        sql`insert into platform.companies (id, org_id, name, type) values (${id}, ${orgId}, ${name}, 'subcontractor')`,
       );
     for (const [u, c] of [
       [a1, companyA],
