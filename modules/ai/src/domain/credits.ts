@@ -26,6 +26,8 @@ export const TASK_CREDITS: Readonly<Record<string, number>> = {
   'translation.translate': 0.25,
   'translation.check': 0,
   'rfi.draft': 1,
+  // F20: a whole SWMS at the standard tier, longer than an RFI draft; about three questions' worth. Priya to confirm.
+  'swms.draft': 3,
   // F3: the response to an RFI that exists, drafted from its thread and the project documents; like a new draft.
   'rfi.answer': 1,
   // F21: one sheet's text changes put into words; cached per revision pair, so opening it again is free. Priya to

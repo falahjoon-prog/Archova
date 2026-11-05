@@ -3266,6 +3266,76 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/AiSuggestion' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: draftSwms
+      tags: [ai]
+      x-module: ai
+      x-permission: safety.swms.submit
+      summary: Nova drafts a first version of a Safe Work Method Statement for high-risk work (F20).
+      description: |
+        Nova drafts hazards, controls (highest level of the hierarchy first), how they are put in place and what is
+        particular to this site, for the high-risk work codes given and nothing else (compliance/08 §3). It will not
+        draft without the site, the activity, at least one high-risk code, the work area, the access, the plant and the
+        adjacent trades (an empty list means none). It reads site rules and a WHS management plan the caller can open.
+        Controls too general to follow, claims that the SWMS is compliant or safe, and anything outside the chosen codes
+        are removed and listed in `warnings`; a number nobody supplied, a code without a hazard or control, and
+        a site section that fits any site are flagged, not fixed. The result is a pending suggestion (task
+        `swms.draft`) for the caller alone, shaped like the SWMS content so they can edit it and submit it to the SWMS
+        register: it is never a SWMS until a person submits it, and a competent person must review it on site and accept
+        it before work starts. Costs 3 Nova credits. Returns `ai.swms.not_enabled` (403) until the feature is switched
+        on for pilots.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                [
+                  siteAddress,
+                  activity,
+                  highRiskWorkCategories,
+                  workArea,
+                  access,
+                  plant,
+                  adjacentTrades,
+                ]
+              properties:
+                siteAddress: { type: string, minLength: 1, maxLength: 300 }
+                activity: { type: string, minLength: 1, maxLength: 500 }
+                highRiskWorkCategories:
+                  type: array
+                  minItems: 1
+                  maxItems: 19
+                  items: { $ref: '#/components/schemas/HighRiskWorkCategory' }
+                workArea: { type: string, minLength: 1, maxLength: 500 }
+                access: { type: string, minLength: 1, maxLength: 500 }
+                plant:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, minLength: 1, maxLength: 200 }
+                adjacentTrades:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, minLength: 1, maxLength: 200 }
+                whsPlanApplies:
+                  {
+                    type: boolean,
+                    description: 'True on projects of $250,000 or more (Vic $350,000).',
+                  }
+                notes: { type: string, maxLength: 2000 }
+      responses:
+        '201':
+          description: The draft, as a pending suggestion
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AiSuggestion' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/induction-drafts/{suggestionId}/currency:
     parameters:
       - $ref: '#/components/parameters/OrgId'

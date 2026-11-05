@@ -23,6 +23,7 @@ import { createMinutesExtractService, type MeetingForMinutes } from './applicati
 import type { DiaryDayForSummary } from './domain/diary-summary';
 import { createRfiAnswerService, type RfiForAnswer } from './application/rfi-answer';
 import { createRfiDraftService } from './application/rfi-draft';
+import { createSwmsDraftService } from './application/swms-draft';
 import { createDefectTagService } from './application/defect-tag';
 import { createImportMappingService } from './application/import-mapping';
 import {
@@ -373,6 +374,13 @@ export function createAiModule(
     gateway,
     currency: inductionCurrency,
   });
+  const swmsDrafts = createSwmsDraftService({
+    database: services.database,
+    gateway,
+    assert: deps.assert,
+    accessScopes: deps.accessScopes,
+    enabled: deps.config.swmsDrafts ?? false,
+  });
   const rfiDrafts = createRfiDraftService({
     database: services.database,
     gateway,
@@ -501,6 +509,7 @@ export function createAiModule(
       speech,
       takeoffDetect,
       minutesExtract,
+      swmsDrafts,
     ),
     permissions: AI_PERMISSIONS,
     provider,
@@ -529,6 +538,8 @@ export function createAiModule(
       /** F33 I2: Nova redrafts the sections of a drafted induction that rest on a changed document. */
       refreshInductionDraft: inductionRefresh.refresh,
       /** F3: an RFI subject, question and references from a typed note; nothing is saved. */
+      /** F20: a first-draft SWMS from the activity, site and high-risk work; saved as a pending suggestion, not a SWMS. */
+      draftSwms: swmsDrafts.draft,
       draftRfi: rfiDrafts.draft,
       /** F3: a response to an RFI that exists, from its thread, its files and the project documents; nothing is sent. */
       draftRfiAnswer: rfiAnswers.draft,

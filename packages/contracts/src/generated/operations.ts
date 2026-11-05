@@ -742,6 +742,21 @@ export const DraftInductionParams = z.object({
 export const DraftInductionBody = z.object({
   "siteName": z.string().min(1).max(200),
 }).strict();
+export const DraftSwmsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const DraftSwmsBody = z.object({
+  "siteAddress": z.string().min(1).max(300),
+  "activity": z.string().min(1).max(500),
+  "highRiskWorkCategories": z.array(s.HighRiskWorkCategorySchema).min(1).max(19),
+  "workArea": z.string().min(1).max(500),
+  "access": z.string().min(1).max(500),
+  "plant": z.array(z.string().min(1).max(200)).max(20),
+  "adjacentTrades": z.array(z.string().min(1).max(200)).max(20),
+  "whsPlanApplies": z.boolean().optional(),
+  "notes": z.string().max(2000).optional(),
+}).strict();
 export const GetInductionDraftCurrencyParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4512,6 +4527,18 @@ export const operations = {
     params: DraftInductionParams,
     query: null,
     body: DraftInductionBody,
+  },
+  draftSwms: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/swms-drafts',
+    module: "ai",
+    auth: "required",
+    permission: "safety.swms.submit",
+    internal: false,
+    contentType: "application/json",
+    params: DraftSwmsParams,
+    query: null,
+    body: DraftSwmsBody,
   },
   getInductionDraftCurrency: {
     method: 'GET',
