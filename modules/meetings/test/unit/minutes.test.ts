@@ -11,6 +11,7 @@ import {
   sectionsFromAgenda,
   type MinutesView,
 } from '../../src/domain/minutes';
+import { weekOf } from '../../src/domain/live';
 import { minutesLines, renderMinutesPdf } from '../../src/domain/pdf';
 
 describe('agenda and numbering (MTG-AC1)', () => {
@@ -34,7 +35,7 @@ describe('agenda and numbering (MTG-AC1)', () => {
   it('numbers items section.item', () => {
     expect(itemNumber(3, 2)).toBe('3.2');
     expect(sectionsFromAgenda(AGENDA_TEMPLATES.custom)).toEqual([
-      { position: 1, title: 'General', internalOnly: false, nextItem: 1 },
+      { position: 1, title: 'General', internalOnly: false, nextItem: 1, liveSource: null },
     ]);
   });
   it('opens actions and records everything else', () => {
@@ -173,5 +174,70 @@ describe('minutes PDF (MTG-AC4, AC7)', () => {
     const bytes = await renderMinutesPdf(long);
     expect(Buffer.from(bytes).subarray(0, 5).toString()).toBe('%PDF-');
     expect((await PDFDocument.load(bytes)).getPageCount()).toBeGreaterThan(1);
+  });
+});
+
+describe('live sections (MTG-US5, AC6)', () => {
+  const live: NonNullable<MinutesView['sections'][number]['live']> = {
+    source: 'rfis_overdue',
+    asOf: '2026-11-04T01:30:00.000Z',
+    truncated: true,
+    restricted: false,
+    rows: [{ ref: 'RFI-012', title: 'Slab edge detail', detail: 'Due 2026-10-30', link: null }],
+  };
+  const withLive: MinutesView = {
+    ...minutes,
+    sections: [
+      ...minutes.sections,
+      { position: 3, title: 'Overdue RFIs', internalOnly: true, live, items: [] },
+    ],
+  };
+
+  it('prints the list as it stood, with when and whether it was cut', () => {
+    const lines = minutesLines(withLive).map((l) => l.text);
+    expect(lines).toContain('List as at 2026-11-04 01:30 UTC');
+    expect(lines).toContain('RFI-012  Slab edge detail');
+    expect(lines).toContain('Due 2026-10-30');
+    expect(lines).toContain('The list was longer; the rest is not shown.');
+    // A live section with rows is not "Nothing recorded".
+    expect(lines.filter((l) => l === 'Nothing recorded.')).toHaveLength(0);
+  });
+
+  it('says so when the list was empty at the time', () => {
+    const empty: MinutesView = {
+      ...withLive,
+      sections: [{ ...withLive.sections[2]!, live: { ...live, rows: [], truncated: false } }],
+    };
+    expect(minutesLines(empty).map((l) => l.text)).toContain('Nothing on this list at the time.');
+  });
+
+  it('never gives a live list to an outsider, even if it is not flagged internal-only', () => {
+    const open: MinutesView = {
+      ...withLive,
+      sections: [{ ...withLive.sections[2]!, internalOnly: false }],
+    };
+    expect(forAudience(open, 'external').sections).toEqual([]);
+  });
+
+  it('keeps a live section live in the next meeting', () => {
+    const plan = carryForward({
+      sections: [
+        {
+          position: 1,
+          title: 'Overdue RFIs',
+          internalOnly: true,
+          nextItem: 1,
+          liveSource: 'rfis_overdue',
+        },
+      ],
+      items: [],
+    });
+    expect(plan.sections[0]!.liveSource).toBe('rfis_overdue');
+  });
+
+  it('takes the Monday to Sunday of the week a day falls in', () => {
+    expect(weekOf('2026-11-04')).toEqual({ from: '2026-11-02', to: '2026-11-08' }); // Wednesday
+    expect(weekOf('2026-11-02')).toEqual({ from: '2026-11-02', to: '2026-11-08' }); // Monday
+    expect(weekOf('2026-11-08')).toEqual({ from: '2026-11-02', to: '2026-11-08' }); // Sunday
   });
 });

@@ -10,10 +10,11 @@ import {
   type HandlerResult,
   type Principal,
   type RouteTable,
+  type FlagReader,
   type TenantContext,
 } from '@archova/kernel';
 import { CSRF_COOKIE, SESSION_COOKIE, requiredScope, scopeAllows } from '@archova/mod-identity';
-import { isDrainToken } from '@archova/mod-sync';
+import { DRAIN_WINDOW_MS, isDrainToken } from '@archova/mod-sync';
 import type { ApiConfig } from './config';
 import type { Modules } from '@archova/compose';
 import type { IdempotencyStore } from './plugins/idempotency';
@@ -125,6 +126,7 @@ export function registerOperations(
     orgIdParam: string,
     principal: Principal,
     requestId: string,
+    operationId: OperationId,
   ): Promise<TenantContext> {
     const orgId = decodeId('org', orgIdParam);
     if (!orgId) throw new AppError('org.not_found');
@@ -133,16 +135,71 @@ export function registerOperations(
       principal.userId,
       requestId,
     );
-    if (!access) throw new AppError('org.not_found');
+    if (!access) {
+      if (operationId === 'syncPull' || operationId === 'syncPush')
+        await throwIfRevoked(orgId, principal, requestId);
+      throw new AppError('org.not_found');
+    }
     const entitlements = await modules.billing.api.entitlements.forOrg(orgId);
+    // Evaluated lazily and at most once per key per request, so routes without a flag pay nothing.
+    const seen = new Map<string, Promise<boolean>>();
+    const flags: FlagReader = {
+      isOn: (key) => {
+        let hit = seen.get(key);
+        if (!hit) {
+          hit = modules.backoffice.api.flags.isOn(key, orgId);
+          seen.set(key, hit);
+        }
+        return hit;
+      },
+    };
     return {
       orgId,
       userId: principal.userId,
       principalType: access.principalType,
       orgRole: access.orgRole,
       entitlements,
+      flags,
       requestId,
     };
+  }
+
+  /**
+   * A phone whose person was removed in the ordinary way within the drain window (X38) is told so with a 401
+   * `access.revoked` and a grant for the project it lost, so queued work reaches the review queue. Only on the
+   * sync calls: the rest of the API keeps answering 404, and removal for cause or wipe gets no hint at all.
+   */
+  async function throwIfRevoked(orgId: string, principal: Principal, requestId: string) {
+    const removal = await modules.platform.api.findRecentOrdinaryRemoval(
+      orgId,
+      principal.userId,
+      requestId,
+      new Date(Date.now() - DRAIN_WINDOW_MS),
+    );
+    if (!removal) return;
+    const ctx: TenantContext = {
+      orgId,
+      userId: principal.userId,
+      principalType: 'external',
+      orgRole: null,
+      entitlements: await modules.billing.api.entitlements.forOrg(orgId),
+      requestId,
+    };
+    const drainGrant = await modules.database.withTenantTx(ctx, (scope) =>
+      modules.sync.api.drain.issue(scope, {
+        userId: principal.userId,
+        projectId: removal.projectId,
+        module: null,
+        accessEndedAt: removal.removedAt,
+        episode: removal.episode,
+      }),
+    );
+    throw new AppError(
+      'access.revoked',
+      'Your access to this project has ended.',
+      undefined,
+      drainGrant ? { drainGrant } : undefined,
+    );
   }
 
   /**
@@ -195,6 +252,24 @@ export function registerOperations(
     const over = [byToken, byOrg].find((d) => !d.allowed);
     if (over) {
       void reply.header('retry-after', String(over.resetS));
+      throw new AppError('rate_limited', 'Too many requests. Slow down and retry after a moment.');
+    }
+  }
+
+  /**
+   * Per-operation limit for sensitive routes (x-rate-limit): one user in one org, signed-in or token, so a code or
+   * a builder read cannot be hammered. Counted before the flag and permission checks so guessing is throttled too.
+   */
+  async function limitOperation(
+    reply: FastifyReply,
+    operationId: string,
+    limit: number,
+    tenant: TenantContext,
+  ) {
+    if (!rateLimiter) return;
+    const d = await rateLimiter.hit(tenant.orgId, `op:${operationId}:${tenant.userId}`, limit);
+    if (!d.allowed) {
+      void reply.header('retry-after', String(d.resetS));
       throw new AppError('rate_limited', 'Too many requests. Slow down and retry after a moment.');
     }
   }
@@ -310,7 +385,7 @@ export function registerOperations(
 
           let tenant: TenantContext | null = null;
           if (params.orgId && principal) {
-            tenant = await resolveTenant(params.orgId, principal, requestId);
+            tenant = await resolveTenant(params.orgId, principal, requestId, operationId);
             ctx.tenant = tenant;
             if (principal.apiToken && !tenant.entitlements.modules.includes('api'))
               throw new AppError(
@@ -322,7 +397,11 @@ export function registerOperations(
                 },
               );
             if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
+            if (def.rateLimit) await limitOperation(reply, operationId, def.rateLimit, tenant);
             checkEntitlement(def, tenant, req.method, operationId);
+            // A flag launches a feature for chosen orgs; off looks the same as a route that does not exist.
+            if (def.flag && !(await tenant.flags!.isOn(def.flag)))
+              throw new AppError('feature-unavailable', 'This feature is not available yet.');
             if (def.permission) {
               const projectId = params.projectId ? decodeId('project', params.projectId) : null;
               if (params.projectId && !projectId) throw new AppError('project.not_found');

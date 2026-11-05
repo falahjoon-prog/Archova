@@ -8,6 +8,7 @@ import {
   timestamp,
   uuid,
 } from 'drizzle-orm/pg-core';
+import type { LiveSource } from '../domain/live';
 import type { AgendaSection, ItemKind, ItemStatus, SeriesTemplate } from '../domain/minutes';
 
 export const meetingsSchema = pgSchema('meetings');
@@ -86,6 +87,8 @@ export const sections = meetingsSchema.table('sections', {
   title: text('title').notNull(),
   internalOnly: boolean('internal_only').notNull().default(false),
   nextItem: integer('next_item').notNull().default(1),
+  /** Set for a live section: the register its list comes from (MTG-US5). */
+  liveSource: text('live_source').$type<LiveSource>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 

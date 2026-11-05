@@ -17,7 +17,7 @@ describe('the ai re-index route', () => {
   });
 
   it('sends every ai route to the ai queue, so the default worker never runs one', () => {
-    expect(AI_ROUTES.map((r) => r.queue)).toEqual(['ai', 'ai', 'ai']);
+    expect(AI_ROUTES.map((r) => r.queue)).toEqual(['ai', 'ai', 'ai', 'ai', 'ai']);
     expect(new Set(AI_ROUTES.map((r) => r.name)).size).toBe(AI_ROUTES.length);
   });
 
@@ -26,9 +26,14 @@ describe('the ai re-index route', () => {
     const ai = { addBulk: vi.fn(async (_jobs: unknown[]) => []) };
     for (const type of DOCUMENT_EVENT_TYPES) {
       ai.addBulk.mockClear();
-      expect(await dispatch({ id: 'e9', orgId: 'o1', type }, AI_ROUTES, def, { ai })).toBe(1);
+      // A published drawing revision also goes to the SharePoint and Drive publish (integrations/03 M2).
+      const extra = type === 'documents.drawing.revision.published.v1' ? 1 : 0;
+      expect(await dispatch({ id: 'e9', orgId: 'o1', type }, AI_ROUTES, def, { ai })).toBe(
+        1 + extra,
+      );
       expect(ai.addBulk.mock.calls[0]![0]).toMatchObject([
         { name: 'ai.restamp-documents', opts: { jobId: 'e9.ai.restamp-documents' } },
+        ...(extra ? [{ name: 'folders.publish', opts: { jobId: 'e9.folders.publish' } }] : []),
       ]);
     }
     expect(def.addBulk).not.toHaveBeenCalled();

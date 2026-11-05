@@ -41,11 +41,43 @@ export const ACCOUNTING_PUSH_ROUTE: SubscriberRoute = {
   queue: 'ai',
 };
 
+export const FOLDER_PUBLISH_SUBSCRIBER = 'folders.publish';
+
+/** A newly current drawing revision, one way to the SharePoint or Drive folders linked to its project (integrations/03 M2). */
+export const FOLDER_PUBLISH_ROUTE: SubscriberRoute = {
+  name: FOLDER_PUBLISH_SUBSCRIBER,
+  types: ['documents.drawing.revision.published.v1'],
+  queue: 'ai',
+};
+
+export const FOLDER_BACKFILL_SUBSCRIBER = 'folders.backfill';
+
+/** A new folder link: publish the revisions already current on the project, so the folder starts complete. */
+export const FOLDER_BACKFILL_ROUTE: SubscriberRoute = {
+  name: FOLDER_BACKFILL_SUBSCRIBER,
+  types: ['integrations.folders.linked.v1'],
+  queue: 'ai',
+};
+
+export const ACCOUNTING_PULL_JOB = 'accounting.pull';
+
+/**
+ * Payments on the bills and invoices we pushed (integrations/02 A7), hourly. It polls rather than waiting for a webhook
+ * because neither Xero nor MYOB needs a public endpoint this way. Same process as the push, for the same reason.
+ */
+export const ACCOUNTING_PULL_ROUTE: ScheduledRoute = {
+  name: ACCOUNTING_PULL_JOB,
+  cron: '10 * * * *',
+  queue: 'ai',
+};
+
 /** Everything the dispatcher routes to the ai-worker. */
 export const AI_ROUTES: readonly SubscriberRoute[] = [
   AI_REINDEX_ROUTE,
   AI_RESTAMP_ROUTE,
   ACCOUNTING_PUSH_ROUTE,
+  FOLDER_PUBLISH_ROUTE,
+  FOLDER_BACKFILL_ROUTE,
 ];
 
 export const AI_SWEEP_JOB = 'ai.sweep';
@@ -58,4 +90,4 @@ export const AI_SWEEP_ROUTE: ScheduledRoute = {
 };
 
 /** Everything scheduled per org that runs in the ai-worker. */
-export const AI_JOBS: readonly ScheduledRoute[] = [AI_SWEEP_ROUTE];
+export const AI_JOBS: readonly ScheduledRoute[] = [AI_SWEEP_ROUTE, ACCOUNTING_PULL_ROUTE];

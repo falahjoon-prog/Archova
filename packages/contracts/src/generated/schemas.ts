@@ -96,9 +96,29 @@ export const AcknowledgeTransmittalRequestSchema = z.object({
 }).strict();
 export type AcknowledgeTransmittalRequest = z.infer<typeof AcknowledgeTransmittalRequestSchema>;
 
+export const FinancialsMoneySchema = z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"));
+export type FinancialsMoney = z.infer<typeof FinancialsMoneySchema>;
+
+export const AddBudgetLineRequestSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "description": z.string().max(300).optional(),
+  "original": FinancialsMoneySchema,
+  "isMargin": z.boolean().optional(),
+}).strict();
+export type AddBudgetLineRequest = z.infer<typeof AddBudgetLineRequestSchema>;
+
+export const AddCoordinationCommentRequestSchema = z.object({
+  "body": z.string().min(1).max(5000),
+}).strict();
+export type AddCoordinationCommentRequest = z.infer<typeof AddCoordinationCommentRequestSchema>;
+
+export const MeetingLiveSourceSchema = z.enum(["rfis_overdue", "submittals_due", "defects_open", "delays_week"]);
+export type MeetingLiveSource = z.infer<typeof MeetingLiveSourceSchema>;
+
 export const AddMeetingSectionRequestSchema = z.object({
   "title": z.string().min(1).max(200),
   "internalOnly": z.boolean().optional(),
+  "liveSource": z.union([MeetingLiveSourceSchema, z.null()]).optional(),
 }).strict();
 export type AddMeetingSectionRequest = z.infer<typeof AddMeetingSectionRequestSchema>;
 
@@ -112,6 +132,14 @@ export const AddProjectMemberRequestSchema = z.object({
 }).strict();
 export type AddProjectMemberRequest = z.infer<typeof AddProjectMemberRequestSchema>;
 
+export const AddTimesheetLineRequestSchema = z.object({
+  "minutes": z.number().int().min(0).max(1440),
+  "breakMinutes": z.number().int().min(0).max(1440).optional(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "reason": z.string().min(1).max(1000),
+}).strict();
+export type AddTimesheetLineRequest = z.infer<typeof AddTimesheetLineRequestSchema>;
+
 export const AuStateSchema = z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]);
 export type AuState = z.infer<typeof AuStateSchema>;
 
@@ -124,6 +152,20 @@ export const AddressSchema = z.object({
   "country": z.string().max(2).optional(),
 }).strict();
 export type Address = z.infer<typeof AddressSchema>;
+
+export const AdjustBudgetLineRequestSchema = z.object({
+  "amount": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "reason": z.string().min(1).max(1000),
+}).strict();
+export type AdjustBudgetLineRequest = z.infer<typeof AdjustBudgetLineRequestSchema>;
+
+export const AdjustTimesheetLineRequestSchema = z.object({
+  "minutes": z.number().int().min(0).max(1440).optional(),
+  "breakMinutes": z.number().int().min(0).max(1440).optional(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "reason": z.string().min(1).max(1000),
+}).strict();
+export type AdjustTimesheetLineRequest = z.infer<typeof AdjustTimesheetLineRequestSchema>;
 
 export const AiFeatureSchema = z.enum(["ask", "drawing_register", "drawing_compare", "rfi_draft", "diary_summary", "defect_tagging", "minutes", "estimating", "contract_review"]);
 export type AiFeature = z.infer<typeof AiFeatureSchema>;
@@ -229,10 +271,21 @@ export const ApproveInductionSectionRequestSchema = z.object({
 }).strict();
 export type ApproveInductionSectionRequest = z.infer<typeof ApproveInductionSectionRequestSchema>;
 
+export const ApprovePrequalificationRequestSchema = z.object({
+  "note": z.string().max(2000).optional(),
+  "expiresOn": z.string().date().optional(),
+}).strict();
+export type ApprovePrequalificationRequest = z.infer<typeof ApprovePrequalificationRequestSchema>;
+
 export const AskInductionRequestSchema = z.object({
   "question": z.string().min(1).max(500),
 }).strict();
 export type AskInductionRequest = z.infer<typeof AskInductionRequestSchema>;
+
+export const AssignShiftWorkersRequestSchema = z.object({
+  "workerIds": z.array(z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$"))).min(1).max(100),
+}).strict();
+export type AssignShiftWorkersRequest = z.infer<typeof AssignShiftWorkersRequestSchema>;
 
 export const CompanyRefSchema = z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$"));
 export type CompanyRef = z.infer<typeof CompanyRefSchema>;
@@ -323,11 +376,178 @@ export const AwardPackageRequestSchema = z.object({
 }).strict();
 export type AwardPackageRequest = z.infer<typeof AwardPackageRequestSchema>;
 
+export const AwardedCommitmentSchema = z.object({
+  "commitmentId": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "total": z.string(),
+  "created": z.boolean(),
+});
+export type AwardedCommitment = z.infer<typeof AwardedCommitmentSchema>;
+
+export const AwardedSubcontractSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "originalValue": z.string(),
+  "created": z.boolean(),
+});
+export type AwardedSubcontract = z.infer<typeof AwardedSubcontractSchema>;
+
 export const BallInCourtSchema = z.object({
   "side": z.enum(["assignees", "builder"]).nullable(),
   "userIds": z.array(z.string()),
 });
 export type BallInCourt = z.infer<typeof BallInCourtSchema>;
+
+export const PackageStatusSchema = z.enum(["draft", "out_to_tender", "closed", "awarded", "cancelled"]);
+export type PackageStatus = z.infer<typeof PackageStatusSchema>;
+
+export const BidBoardInviteTallySchema = z.object({
+  "invited": z.number().int(),
+  "viewed": z.number().int(),
+  "declined": z.number().int(),
+  "intendsToQuote": z.number().int(),
+  "submitted": z.number().int(),
+  "awaiting": z.number().int(),
+});
+export type BidBoardInviteTally = z.infer<typeof BidBoardInviteTallySchema>;
+
+export const BidBoardEntrySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "numberLabel": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "status": PackageStatusSchema,
+  "dueAt": z.string().datetime({ offset: true }).nullable(),
+  "dueState": z.enum(["overdue", "closing_soon", "open"]).nullable(),
+  "invites": BidBoardInviteTallySchema,
+  "quotesConfirmed": z.number().int(),
+  "quotesToReview": z.number().int(),
+  "lowestExGst": z.string().nullable(),
+  "awarded": z.boolean(),
+});
+export type BidBoardEntry = z.infer<typeof BidBoardEntrySchema>;
+
+export const BidBoardSchema = z.object({
+  "data": z.array(BidBoardEntrySchema),
+  "asOf": z.string().datetime({ offset: true }),
+  "truncated": z.boolean(),
+});
+export type BidBoard = z.infer<typeof BidBoardSchema>;
+
+export const BidderListSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "companyIds": z.array(z.string()),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type BidderList = z.infer<typeof BidderListSchema>;
+
+export const BidderListListSchema = z.object({
+  "data": z.array(BidderListSchema),
+});
+export type BidderListList = z.infer<typeof BidderListListSchema>;
+
+export const BimDisciplineSchema = z.enum(["architectural", "structural", "mechanical", "electrical", "hydraulic", "fire", "civil", "other"]);
+export type BimDiscipline = z.infer<typeof BimDisciplineSchema>;
+
+export const BimModelSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "discipline": BimDisciplineSchema,
+  "versionLabel": z.string(),
+  "fileId": z.string().nullable(),
+  "status": z.enum(["current", "superseded"]),
+  "supersededById": z.string().nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type BimModel = z.infer<typeof BimModelSchema>;
+
+export const BimModelListSchema = z.object({
+  "data": z.array(BimModelSchema),
+});
+export type BimModelList = z.infer<typeof BimModelListSchema>;
+
+export const BudgetLineSchema = z.object({
+  "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "codeDescription": z.string(),
+  "description": z.string(),
+  "original": FinancialsMoneySchema,
+  "approvedChanges": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "revised": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "committed": FinancialsMoneySchema,
+  "actual": FinancialsMoneySchema,
+  "forecastToComplete": FinancialsMoneySchema,
+  "isMargin": z.boolean(),
+});
+export type BudgetLine = z.infer<typeof BudgetLineSchema>;
+
+export const BudgetTotalsSchema = z.object({
+  "original": FinancialsMoneySchema,
+  "approvedChanges": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "revised": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "committed": FinancialsMoneySchema,
+  "actual": FinancialsMoneySchema,
+  "forecastToComplete": FinancialsMoneySchema,
+});
+export type BudgetTotals = z.infer<typeof BudgetTotalsSchema>;
+
+export const BudgetSchema = z.object({
+  "id": z.string().regex(new RegExp("^bud_[0-9A-Za-z]{26}$")).nullable(),
+  "status": z.enum(["draft", "locked"]),
+  "lockedAt": z.string().datetime({ offset: true }).nullable(),
+  "lines": z.array(BudgetLineSchema),
+  "totals": BudgetTotalsSchema,
+});
+export type Budget = z.infer<typeof BudgetSchema>;
+
+export const BudgetAdjustmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^bad_[0-9A-Za-z]{26}$")),
+  "amount": z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$")),
+  "reason": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type BudgetAdjustment = z.infer<typeof BudgetAdjustmentSchema>;
+
+export const BudgetAdjustmentListSchema = z.object({
+  "data": z.array(BudgetAdjustmentSchema),
+});
+export type BudgetAdjustmentList = z.infer<typeof BudgetAdjustmentListSchema>;
+
+export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
+export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
+
+export const BudgetVsForecastRowSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "code": z.string().nullable(),
+  "codeDescription": z.string(),
+  "revised": FinancialsSignedMoneySchema,
+  "committed": FinancialsMoneySchema,
+  "claimed": FinancialsMoneySchema,
+  "adjustments": FinancialsSignedMoneySchema,
+  "directCosts": FinancialsMoneySchema,
+  "forecastFinal": FinancialsSignedMoneySchema,
+  "variance": FinancialsSignedMoneySchema,
+});
+export type BudgetVsForecastRow = z.infer<typeof BudgetVsForecastRowSchema>;
+
+export const BudgetVsForecastSchema = z.object({
+  "budgetStatus": z.enum(["draft", "locked"]).nullable(),
+  "rows": z.array(BudgetVsForecastRowSchema),
+  "unallocated": BudgetVsForecastRowSchema,
+  "totals": BudgetVsForecastRowSchema,
+});
+export type BudgetVsForecast = z.infer<typeof BudgetVsForecastSchema>;
 
 export const GeoFixSchema = z.object({
   "lat": z.number().min(-90).max(90),
@@ -345,10 +565,149 @@ export const CaptureSchema = z.object({
 }).strict();
 export type Capture = z.infer<typeof CaptureSchema>;
 
+export const ClaimEvidenceDeliverySchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["claim", "schedule"]),
+  "recipientEmail": z.string(),
+  "status": z.enum(["queued", "sending", "sent", "delivered", "bounced", "failed"]),
+  "queuedAt": z.string().datetime({ offset: true }),
+  "sentAt": z.string().datetime({ offset: true }).nullable(),
+  "deliveredAt": z.string().datetime({ offset: true }).nullable(),
+  "bouncedAt": z.string().datetime({ offset: true }).nullable(),
+  "notConfirmed": z.boolean(),
+});
+export type ClaimEvidenceDelivery = z.infer<typeof ClaimEvidenceDeliverySchema>;
+
+export const ClaimEvidenceDeliveryListSchema = z.object({
+  "deliveries": z.array(ClaimEvidenceDeliverySchema),
+});
+export type ClaimEvidenceDeliveryList = z.infer<typeof ClaimEvidenceDeliveryListSchema>;
+
+export const ClaimEvidenceJsonSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/json"]),
+  "snapshotSha256": z.string(),
+  "dataText": z.string(),
+});
+export type ClaimEvidenceJson = z.infer<typeof ClaimEvidenceJsonSchema>;
+
+export const ClaimEvidenceSignatureSchema = z.object({
+  "keyId": z.string(),
+  "algorithm": z.enum(["ed25519"]),
+  "signatureBase64": z.string(),
+  "message": z.string(),
+  "publicKeyPem": z.string().nullable(),
+  "valid": z.boolean().nullable(),
+});
+export type ClaimEvidenceSignature = z.infer<typeof ClaimEvidenceSignatureSchema>;
+
+export const ClaimEvidenceTimestampSchema = z.object({
+  "authority": z.string(),
+  "time": z.string().datetime({ offset: true }),
+  "imprintSha256": z.string(),
+  "serialHex": z.string(),
+  "tokenBase64": z.string(),
+  "caChainPem": z.string(),
+});
+export type ClaimEvidenceTimestamp = z.infer<typeof ClaimEvidenceTimestampSchema>;
+
+export const ClaimEvidenceRecordSchema = z.object({
+  "kind": z.enum(["claim", "schedule"]),
+  "sealedAt": z.string().datetime({ offset: true }),
+  "snapshotSha256": z.string(),
+  "pdfSha256": z.string(),
+  "pdfBytes": z.number().int(),
+  "intact": z.boolean(),
+  "signature": z.union([z.null(), ClaimEvidenceSignatureSchema]),
+  "timestamp": z.union([z.null(), ClaimEvidenceTimestampSchema]),
+});
+export type ClaimEvidenceRecord = z.infer<typeof ClaimEvidenceRecordSchema>;
+
+export const ClaimEvidenceListSchema = z.object({
+  "records": z.array(ClaimEvidenceRecordSchema),
+});
+export type ClaimEvidenceList = z.infer<typeof ClaimEvidenceListSchema>;
+
+export const ClaimEvidencePdfSchema = z.object({
+  "filename": z.string(),
+  "contentType": z.enum(["application/pdf"]),
+  "dataBase64": z.string(),
+});
+export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
+
+export const ClaimStatementSchema = z.object({
+  "periodEnd": z.string().date(),
+  "receivedOn": z.string().date(),
+  "signedOn": z.string().date().nullable(),
+  "note": z.string().nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type ClaimStatement = z.infer<typeof ClaimStatementSchema>;
+
 export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
 export type CloseRfiRequest = z.infer<typeof CloseRfiRequestSchema>;
+
+export const CommitmentStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "void"]);
+export type CommitmentStatus = z.infer<typeof CommitmentStatusSchema>;
+
+export const CommitmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^cmt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "kind": z.enum(["subcontract", "purchase_order"]),
+  "title": z.string(),
+  "vendorCompanyId": z.string().nullable(),
+  "status": CommitmentStatusSchema,
+  "total": FinancialsMoneySchema,
+  "overBudgetOverride": z.boolean(),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decisionNote": z.string().nullable(),
+});
+export type Commitment = z.infer<typeof CommitmentSchema>;
+
+export const CommitmentApprovalRequestSchema = z.object({
+  "note": z.string().min(1).max(5000).optional(),
+  "allowOverBudget": z.boolean().optional(),
+}).strict();
+export type CommitmentApprovalRequest = z.infer<typeof CommitmentApprovalRequestSchema>;
+
+export const CommitmentDecisionRequestSchema = z.object({
+  "note": z.string().min(1).max(5000).optional(),
+}).strict();
+export type CommitmentDecisionRequest = z.infer<typeof CommitmentDecisionRequestSchema>;
+
+export const CommitmentLineSchema = z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "description": z.string(),
+  "amount": FinancialsMoneySchema,
+});
+export type CommitmentLine = z.infer<typeof CommitmentLineSchema>;
+
+export const CommitmentDetailSchema = z.object({
+  "commitment": CommitmentSchema,
+  "lines": z.array(CommitmentLineSchema),
+});
+export type CommitmentDetail = z.infer<typeof CommitmentDetailSchema>;
+
+export const CommitmentForecastSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "title": z.string(),
+  "committed": FinancialsMoneySchema,
+  "claimedToDate": FinancialsMoneySchema,
+  "costToComplete": FinancialsMoneySchema,
+  "adjustments": FinancialsSignedMoneySchema,
+  "forecastFinal": FinancialsSignedMoneySchema,
+  "pendingVariations": FinancialsMoneySchema,
+});
+export type CommitmentForecast = z.infer<typeof CommitmentForecastSchema>;
+
+export const CommitmentListSchema = z.object({
+  "data": z.array(CommitmentSchema),
+});
+export type CommitmentList = z.infer<typeof CommitmentListSchema>;
 
 export const CompanyTypeSchema = z.enum(["builder", "subcontractor", "consultant", "client", "supplier"]);
 export type CompanyType = z.infer<typeof CompanyTypeSchema>;
@@ -374,6 +733,185 @@ export const CompanyPageSchema = z.object({
 });
 export type CompanyPage = z.infer<typeof CompanyPageSchema>;
 
+export const ComparedContractSchema = z.object({
+  "suggestionId": z.string(),
+  "fileName": z.string(),
+  "pageCount": z.number().int().min(0),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+});
+export type ComparedContract = z.infer<typeof ComparedContractSchema>;
+
+export const ComplianceItemTypeSchema = z.enum(["contractor_licence", "trade_licence", "workers_comp", "public_liability", "contract_works", "professional_indemnity", "personal_accident", "home_warranty", "subcontractor_statement", "plant_registration", "test_and_tag", "wwcc", "modern_slavery", "abn", "white_card", "hrw_licence", "other"]);
+export type ComplianceItemType = z.infer<typeof ComplianceItemTypeSchema>;
+
+export const ComplianceAccessLogEntrySchema = z.object({
+  "id": z.string().regex(new RegExp("^cal_[0-9A-Za-z]{26}$")),
+  "granteeName": z.string(),
+  "kind": z.enum(["list", "document", "file"]),
+  "itemType": z.union([ComplianceItemTypeSchema, z.null()]),
+  "documentId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type ComplianceAccessLogEntry = z.infer<typeof ComplianceAccessLogEntrySchema>;
+
+export const ComplianceAccessLogListSchema = z.object({
+  "data": z.array(ComplianceAccessLogEntrySchema),
+});
+export type ComplianceAccessLogList = z.infer<typeof ComplianceAccessLogListSchema>;
+
+export const ComplianceAccessRequestSchema = z.object({
+  "id": z.string().regex(new RegExp("^car_[0-9A-Za-z]{26}$")),
+  "requesterName": z.string(),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "grantExpiresOn": z.string().date(),
+  "codeExpiresAt": z.string().datetime({ offset: true }),
+  "status": z.enum(["requested", "accepted", "cancelled"]),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceAccessRequest = z.infer<typeof ComplianceAccessRequestSchema>;
+
+export const ComplianceAccessRequestCreatedSchema = z.object({
+  "request": ComplianceAccessRequestSchema,
+  "code": z.string(),
+});
+export type ComplianceAccessRequestCreated = z.infer<typeof ComplianceAccessRequestCreatedSchema>;
+
+export const ComplianceAccessRequestListSchema = z.object({
+  "data": z.array(ComplianceAccessRequestSchema),
+});
+export type ComplianceAccessRequestList = z.infer<typeof ComplianceAccessRequestListSchema>;
+
+export const ComplianceAccessRequestPreviewSchema = z.object({
+  "requesterName": z.string(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "grantExpiresOn": z.string().date(),
+});
+export type ComplianceAccessRequestPreview = z.infer<typeof ComplianceAccessRequestPreviewSchema>;
+
+export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
+export type FileRef = z.infer<typeof FileRefSchema>;
+
+export const ComplianceDocumentSchema = z.object({
+  "id": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "itemType": ComplianceItemTypeSchema,
+  "title": z.string(),
+  "numberLast4": z.string().nullable(),
+  "numberCheck": z.enum(["format_ok", "not_checked"]),
+  "issuingState": z.union([AuStateSchema, z.null()]),
+  "licenceClass": z.string().nullable(),
+  "insurer": z.string().nullable(),
+  "limitCents": z.number().int().nullable(),
+  "startsOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "fileIds": z.array(FileRefSchema),
+  "evidence": z.enum(["recorded", "sighted", "self_declared"]),
+  "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
+  "workerId": z.union([z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")), z.null()]),
+  "holderName": z.string().nullable(),
+  "whiteCard": z.union([z.object({
+  "state": z.enum(["no_work_recorded", "recent_work", "may_have_lapsed"]),
+  "lastWorkOn": z.string().date().nullable(),
+  "source": z.union([z.enum(["sign_in", "declared"]), z.null()]),
+}), z.null()]),
+  "lastWorkDeclaredOn": z.string().date().nullable(),
+  "sightedBy": z.union([UserRefSchema, z.null()]),
+  "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "archivedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceDocument = z.infer<typeof ComplianceDocumentSchema>;
+
+export const ComplianceDocumentListSchema = z.object({
+  "data": z.array(ComplianceDocumentSchema),
+});
+export type ComplianceDocumentList = z.infer<typeof ComplianceDocumentListSchema>;
+
+export const ComplianceExpiryAlertSchema = z.object({
+  "id": z.string().regex(new RegExp("^cea_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "itemType": ComplianceItemTypeSchema,
+  "threshold": z.number().int().min(0).max(30),
+  "expiresOn": z.string().date(),
+  "raisedOn": z.string().date(),
+  "documentArchived": z.boolean(),
+});
+export type ComplianceExpiryAlert = z.infer<typeof ComplianceExpiryAlertSchema>;
+
+export const ComplianceExpiryAlertListSchema = z.object({
+  "data": z.array(ComplianceExpiryAlertSchema),
+});
+export type ComplianceExpiryAlertList = z.infer<typeof ComplianceExpiryAlertListSchema>;
+
+export const ComplianceFileLinkSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceFileLink = z.infer<typeof ComplianceFileLinkSchema>;
+
+export const ComplianceGrantSchema = z.object({
+  "id": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "granteeName": z.string(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "expiresOn": z.string().date(),
+  "acceptedAt": z.string().datetime({ offset: true }),
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+  "status": z.enum(["live", "expired", "revoked"]),
+  "version": z.number().int(),
+});
+export type ComplianceGrant = z.infer<typeof ComplianceGrantSchema>;
+
+export const ComplianceGrantListSchema = z.object({
+  "data": z.array(ComplianceGrantSchema),
+});
+export type ComplianceGrantList = z.infer<typeof ComplianceGrantListSchema>;
+
+export const ComplianceShareCodeRequestSchema = z.object({
+  "code": z.string().min(8).max(100),
+}).strict();
+export type ComplianceShareCodeRequest = z.infer<typeof ComplianceShareCodeRequestSchema>;
+
+export const SharedComplianceDocumentSchema = z.object({
+  "id": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "itemType": ComplianceItemTypeSchema,
+  "title": z.string(),
+  "numberLast4": z.string().nullable(),
+  "issuingState": z.union([AuStateSchema, z.null()]),
+  "licenceClass": z.string().nullable(),
+  "insurer": z.string().nullable(),
+  "limitCents": z.number().int().nullable(),
+  "startsOn": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "evidence": z.enum(["recorded", "sighted", "self_declared"]),
+  "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
+  "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "fileCount": z.number().int().min(0).max(4),
+});
+export type SharedComplianceDocument = z.infer<typeof SharedComplianceDocumentSchema>;
+
+export const ComplianceSnapshotSchema = z.object({
+  "id": z.string().regex(new RegExp("^crs_[0-9A-Za-z]{26}$")),
+  "grantId": z.string(),
+  "documentId": z.string(),
+  "itemType": ComplianceItemTypeSchema,
+  "reason": z.enum(["site_entry", "claim_assessment", "other"]),
+  "sha256": z.string().regex(new RegExp("^[0-9a-f]{64}$")),
+  "document": SharedComplianceDocumentSchema,
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceSnapshot = z.infer<typeof ComplianceSnapshotSchema>;
+
 export const ConfirmSheetScaleRequestSchema = z.object({
   "scale": z.number().int().min(1).max(100000),
 }).strict();
@@ -381,9 +919,6 @@ export type ConfirmSheetScaleRequest = z.infer<typeof ConfirmSheetScaleRequestSc
 
 export const ContractKindSchema = z.enum(["head", "subcontract"]);
 export type ContractKind = z.infer<typeof ContractKindSchema>;
-
-export const FinancialsMoneySchema = z.string().regex(new RegExp("^\\d{1,16}(\\.\\d{1,2})?$"));
-export type FinancialsMoney = z.infer<typeof FinancialsMoneySchema>;
 
 export const SopaStateSchema = z.enum(["NSW", "VIC", "QLD", "WA", "SA", "TAS", "ACT", "NT"]);
 export type SopaState = z.infer<typeof SopaStateSchema>;
@@ -408,6 +943,7 @@ export type Contract = z.infer<typeof ContractSchema>;
 
 export const SovItemSchema = z.object({
   "id": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
   "code": z.string(),
   "description": z.string(),
   "value": FinancialsMoneySchema,
@@ -420,10 +956,84 @@ export const ContractDetailSchema = z.object({
 });
 export type ContractDetail = z.infer<typeof ContractDetailSchema>;
 
+export const ContractFlagDecisionKindSchema = z.enum(["accept_risk", "negotiate", "refer_to_lawyer", "not_relevant"]);
+export type ContractFlagDecisionKind = z.infer<typeof ContractFlagDecisionKindSchema>;
+
 export const ContractListSchema = z.object({
   "data": z.array(ContractSchema),
 });
 export type ContractList = z.infer<typeof ContractListSchema>;
+
+export const PaymentSummaryClaimSchema = z.object({
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "periodEnd": z.string().date(),
+  "status": z.string(),
+  "claimedTotal": FinancialsMoneySchema,
+  "scheduledAmount": z.string().nullable(),
+  "amountDue": z.string().nullable(),
+  "paid": FinancialsSignedMoneySchema,
+  "lastPaidOn": z.string().date().nullable(),
+  "outstanding": z.string().nullable(),
+  "paymentDueOn": z.string().date().nullable(),
+  "overdue": z.boolean(),
+});
+export type PaymentSummaryClaim = z.infer<typeof PaymentSummaryClaimSchema>;
+
+export const TrustStatusSchema = z.enum(["not_required", "not_set_up", "ok", "shortfall"]);
+export type TrustStatus = z.infer<typeof TrustStatusSchema>;
+
+export const TrustMovementKindSchema = z.enum(["deposit", "interest", "release", "reversal"]);
+export type TrustMovementKind = z.infer<typeof TrustMovementKindSchema>;
+
+export const TrustMovementSchema = z.object({
+  "id": z.string().regex(new RegExp("^tmv_[0-9A-Za-z]{26}$")),
+  "kind": TrustMovementKindSchema,
+  "amount": FinancialsSignedMoneySchema,
+  "movedOn": z.string().date(),
+  "reference": z.string(),
+  "note": z.string().nullable(),
+  "reversesMovementId": z.string().regex(new RegExp("^tmv_[0-9A-Za-z]{26}$")).nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type TrustMovement = z.infer<typeof TrustMovementSchema>;
+
+export const ContractTrustSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "requirement": z.object({
+  "required": z.boolean(),
+  "basis": z.string(),
+  "rulesReviewed": z.boolean(),
+}),
+  "account": z.object({
+  "governmentClient": z.boolean(),
+  "institution": z.string().nullable(),
+  "accountName": z.string().nullable(),
+  "accountLast4": z.string().nullable(),
+  "openedOn": z.string().date().nullable(),
+}).nullable(),
+  "position": z.object({
+  "status": TrustStatusSchema,
+  "retentionWithheld": FinancialsMoneySchema,
+  "released": FinancialsMoneySchema,
+  "requiredInTrust": FinancialsMoneySchema,
+  "balance": FinancialsMoneySchema,
+  "shortfall": FinancialsMoneySchema,
+  "interest": FinancialsMoneySchema,
+}),
+  "movements": z.array(TrustMovementSchema),
+});
+export type ContractTrust = z.infer<typeof ContractTrustSchema>;
+
+export const ContractPaymentSummarySchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "title": z.string(),
+  "claims": z.array(PaymentSummaryClaimSchema),
+  "totalDue": FinancialsMoneySchema,
+  "totalPaid": FinancialsSignedMoneySchema,
+  "trust": ContractTrustSchema,
+});
+export type ContractPaymentSummary = z.infer<typeof ContractPaymentSummarySchema>;
 
 export const ContractTypeSchema = z.enum(["head_contract", "subcontract", "consultant_agreement"]);
 export type ContractType = z.infer<typeof ContractTypeSchema>;
@@ -456,6 +1066,56 @@ export const ContractSourceRefSchema = z.object({
   "quote": z.string(),
 });
 export type ContractSourceRef = z.infer<typeof ContractSourceRefSchema>;
+
+export const CoordinationCommentSchema = z.object({
+  "id": z.string(),
+  "authorId": z.string(),
+  "body": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type CoordinationComment = z.infer<typeof CoordinationCommentSchema>;
+
+export const CoordinationIssueStatusSchema = z.enum(["open", "in_progress", "resolved", "closed"]);
+export type CoordinationIssueStatus = z.infer<typeof CoordinationIssueStatusSchema>;
+
+export const CoordinationIssuePrioritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type CoordinationIssuePriority = z.infer<typeof CoordinationIssuePrioritySchema>;
+
+export const CoordinationIssueSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string(),
+  "status": CoordinationIssueStatusSchema,
+  "priority": CoordinationIssuePrioritySchema,
+  "assigneeId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "modelId": z.string().nullable(),
+  "elementGuids": z.array(z.string()),
+  "location": z.string(),
+  "rfiId": z.string().nullable(),
+  "resolvedAt": z.string().datetime({ offset: true }).nullable(),
+  "commentCount": z.number().int(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type CoordinationIssue = z.infer<typeof CoordinationIssueSchema>;
+
+export const CoordinationIssueDetailSchema = z.object({
+  "issue": CoordinationIssueSchema,
+  "comments": z.array(CoordinationCommentSchema),
+});
+export type CoordinationIssueDetail = z.infer<typeof CoordinationIssueDetailSchema>;
+
+export const CoordinationIssueListSchema = z.object({
+  "data": z.array(CoordinationIssueSchema),
+});
+export type CoordinationIssueList = z.infer<typeof CoordinationIssueListSchema>;
+
+export const CorrectiveStatusSchema = z.enum(["open", "done", "verified"]);
+export type CorrectiveStatus = z.infer<typeof CorrectiveStatusSchema>;
 
 export const CorrespondenceStatusSchema = z.enum(["draft", "sent", "responded", "closed", "void"]);
 export type CorrespondenceStatus = z.infer<typeof CorrespondenceStatusSchema>;
@@ -565,6 +1225,53 @@ export type CorrespondenceTypeRef = z.infer<typeof CorrespondenceTypeRefSchema>;
 export const CostCategorySchema = z.enum(["labour", "material", "plant", "subcontract", "other"]);
 export type CostCategory = z.infer<typeof CostCategorySchema>;
 
+export const CostCodeSchema = z.object({
+  "id": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+  "code": z.string(),
+  "description": z.string(),
+  "parentId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "archived": z.boolean(),
+});
+export type CostCode = z.infer<typeof CostCodeSchema>;
+
+export const CostCodeListSchema = z.object({
+  "data": z.array(CostCodeSchema),
+});
+export type CostCodeList = z.infer<typeof CostCodeListSchema>;
+
+export const ForecastAdjustmentCategorySchema = z.enum(["unawarded_work", "allowance", "risk", "saving", "other"]);
+export type ForecastAdjustmentCategory = z.infer<typeof ForecastAdjustmentCategorySchema>;
+
+export const ForecastAdjustmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).nullable(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "category": ForecastAdjustmentCategorySchema,
+  "label": z.string(),
+  "note": z.string().nullable(),
+  "amount": FinancialsSignedMoneySchema,
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ForecastAdjustment = z.infer<typeof ForecastAdjustmentSchema>;
+
+export const CostForecastSchema = z.object({
+  "revenue": FinancialsMoneySchema,
+  "billedToDate": FinancialsMoneySchema,
+  "pendingRevenueVariations": FinancialsMoneySchema,
+  "committed": FinancialsMoneySchema,
+  "claimedToDate": FinancialsMoneySchema,
+  "costToComplete": FinancialsMoneySchema,
+  "projectAdjustments": FinancialsSignedMoneySchema,
+  "directCosts": FinancialsMoneySchema,
+  "forecastFinalCost": FinancialsSignedMoneySchema,
+  "pendingCostVariations": FinancialsMoneySchema,
+  "forecastMargin": FinancialsSignedMoneySchema,
+  "forecastMarginPct": z.string().nullable(),
+  "commitments": z.array(CommitmentForecastSchema),
+  "adjustments": z.array(ForecastAdjustmentSchema),
+});
+export type CostForecast = z.infer<typeof CostForecastSchema>;
+
 export const CostImpactSchema = z.enum(["yes", "no", "tbc"]);
 export type CostImpact = z.infer<typeof CostImpactSchema>;
 
@@ -633,6 +1340,39 @@ export const CreateAttendanceSiteRequestSchema = z.object({
 }).strict();
 export type CreateAttendanceSiteRequest = z.infer<typeof CreateAttendanceSiteRequestSchema>;
 
+export const CreateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict();
+export type CreateBidderListRequest = z.infer<typeof CreateBidderListRequestSchema>;
+
+export const CreateBimModelRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "discipline": BimDisciplineSchema,
+  "versionLabel": z.string().max(50).optional(),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).optional(),
+  "supersedesModelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateBimModelRequest = z.infer<typeof CreateBimModelRequestSchema>;
+
+export const CreateCommitmentFromAwardRequestSchema = z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+}).strict();
+export type CreateCommitmentFromAwardRequest = z.infer<typeof CreateCommitmentFromAwardRequestSchema>;
+
+export const CreateCommitmentRequestSchema = z.object({
+  "kind": z.enum(["subcontract", "purchase_order"]),
+  "title": z.string().min(1).max(300),
+  "vendorCompanyId": z.string().nullable().optional(),
+  "lines": z.array(z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "description": z.string().min(1).max(300),
+  "amount": FinancialsMoneySchema,
+}).strict()).min(1).max(200),
+}).strict();
+export type CreateCommitmentRequest = z.infer<typeof CreateCommitmentRequestSchema>;
+
 export const CreateCompanyRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "abn": AbnSchema.optional(),
@@ -642,6 +1382,39 @@ export const CreateCompanyRequestSchema = z.object({
   "phone": z.string().max(50).optional(),
 }).strict();
 export type CreateCompanyRequest = z.infer<typeof CreateCompanyRequestSchema>;
+
+export const CreateComplianceAccessRequestSchema = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "allProjects": z.boolean().optional(),
+  "itemTypes": z.array(ComplianceItemTypeSchema).min(1),
+  "expiresOn": z.string().date().optional(),
+}).strict();
+export type CreateComplianceAccessRequest = z.infer<typeof CreateComplianceAccessRequestSchema>;
+
+export const CreateComplianceDocumentRequestSchema = z.object({
+  "itemType": ComplianceItemTypeSchema,
+  "title": z.string().min(1).max(200),
+  "number": z.string().min(1).max(50).optional(),
+  "issuingState": AuStateSchema.optional(),
+  "licenceClass": z.string().max(200).optional(),
+  "insurer": z.string().max(200).optional(),
+  "limitCents": z.number().int().min(0).optional(),
+  "startsOn": z.string().date().optional(),
+  "expiresOn": z.string().date().optional(),
+  "fileIds": z.array(FileRefSchema).max(4).optional(),
+  "holderName": z.string().min(1).max(200).optional(),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")).optional(),
+  "lastWorkOn": z.string().date().optional(),
+  "selfDeclared": z.boolean().optional(),
+}).strict();
+export type CreateComplianceDocumentRequest = z.infer<typeof CreateComplianceDocumentRequestSchema>;
+
+export const CreateComplianceSnapshotRequestSchema = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "reason": z.enum(["site_entry", "claim_assessment", "other"]),
+}).strict();
+export type CreateComplianceSnapshotRequest = z.infer<typeof CreateComplianceSnapshotRequestSchema>;
 
 export const CreateContractRequestSchema = z.object({
   "kind": ContractKindSchema,
@@ -658,12 +1431,23 @@ export const CreateContractRequestSchema = z.object({
   "code": z.string().min(1).max(50),
   "description": z.string().min(1).max(300),
   "value": FinancialsMoneySchema,
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
 }).strict()).max(500),
 }).strict();
 export type CreateContractRequest = z.infer<typeof CreateContractRequestSchema>;
 
-export const FileRefSchema = z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$"));
-export type FileRef = z.infer<typeof FileRefSchema>;
+export const CreateCoordinationIssueRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "description": z.string().max(10000).optional(),
+  "priority": CoordinationIssuePrioritySchema.optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).optional(),
+  "dueDate": z.string().date().optional(),
+  "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).optional(),
+  "elementGuids": z.array(z.string().max(64)).max(50).optional(),
+  "location": z.string().max(200).optional(),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateCoordinationIssueRequest = z.infer<typeof CreateCoordinationIssueRequestSchema>;
 
 export const CreateCorrespondenceRequestSchema = z.object({
   "typeId": CorrespondenceTypeRefSchema,
@@ -693,6 +1477,13 @@ export const CreateCorrespondenceTypeRequestSchema = z.object({
   "bodyTemplate": z.string().max(20000).optional(),
 }).strict();
 export type CreateCorrespondenceTypeRequest = z.infer<typeof CreateCorrespondenceTypeRequestSchema>;
+
+export const CreateCostCodeRequestSchema = z.object({
+  "code": z.string().min(1).max(30),
+  "description": z.string().min(1).max(200),
+  "parentId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type CreateCostCodeRequest = z.infer<typeof CreateCostCodeRequestSchema>;
 
 export const CreateCostItemRequestSchema = z.object({
   "code": z.string().min(1).max(40),
@@ -833,6 +1624,21 @@ export const CreateDrawingSetRequestSchema = z.object({
 }).strict();
 export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
 
+export const CreateEquipmentBookingRequestSchema = z.object({
+  "startsOn": z.string().date(),
+  "endsOn": z.string().date(),
+  "bookedFor": z.string().min(1).max(200),
+  "note": z.string().min(1).max(2000).optional(),
+}).strict();
+export type CreateEquipmentBookingRequest = z.infer<typeof CreateEquipmentBookingRequestSchema>;
+
+export const CreateEquipmentRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "assetNumber": z.string().min(1).max(60),
+  "type": z.string().min(1).max(100),
+}).strict();
+export type CreateEquipmentRequest = z.infer<typeof CreateEquipmentRequestSchema>;
+
 export const CreateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "baseDate": z.string().date().optional(),
@@ -853,6 +1659,16 @@ export const CreateFolderRequestSchema = z.object({
 }).strict();
 export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
 
+export const CreateForecastAdjustmentRequestSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).optional(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
+  "category": ForecastAdjustmentCategorySchema,
+  "label": z.string().min(1).max(300),
+  "note": z.string().min(1).max(5000).optional(),
+  "amount": FinancialsSignedMoneySchema,
+}).strict();
+export type CreateForecastAdjustmentRequest = z.infer<typeof CreateForecastAdjustmentRequestSchema>;
+
 export const CreateGateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
@@ -871,6 +1687,22 @@ export const CreateImportJobRequestSchema = z.object({
   "headerRow": z.number().int().min(1).max(100).optional(),
 }).strict();
 export type CreateImportJobRequest = z.infer<typeof CreateImportJobRequestSchema>;
+
+export const IncidentSourceSchema = z.object({
+  "type": z.enum(["inspection", "observation"]),
+  "id": z.string().regex(new RegExp("^(ins|obs)_[0-9A-Za-z]{26}$")),
+}).strict();
+export type IncidentSource = z.infer<typeof IncidentSourceSchema>;
+
+export const CreateIncidentActionRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "description": z.string().max(4000).optional(),
+  "assigneeCompanyId": CompanyRefSchema.optional(),
+  "assigneeUserId": UserRefSchema.optional(),
+  "dueDate": z.string().date().optional(),
+  "source": IncidentSourceSchema.optional(),
+}).strict();
+export type CreateIncidentActionRequest = z.infer<typeof CreateIncidentActionRequestSchema>;
 
 export const MobileNumberSchema = z.string().regex(new RegExp("^\\+[1-9][0-9]{6,14}$"));
 export type MobileNumber = z.infer<typeof MobileNumberSchema>;
@@ -1044,6 +1876,61 @@ export const CreateOrgRequestSchema = z.object({
 }).strict();
 export type CreateOrgRequest = z.infer<typeof CreateOrgRequestSchema>;
 
+export const CreateOwnerApprovalRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "description": z.string().max(10000).optional(),
+  "amountCents": z.number().int().min(0).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+}).strict();
+export type CreateOwnerApprovalRequest = z.infer<typeof CreateOwnerApprovalRequestSchema>;
+
+export const OwnerMilestoneStatusSchema = z.enum(["done", "on_track", "at_risk", "late"]);
+export type OwnerMilestoneStatus = z.infer<typeof OwnerMilestoneStatusSchema>;
+
+export const OwnerMilestoneSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "date": z.string().date().nullable(),
+  "status": OwnerMilestoneStatusSchema,
+}).strict();
+export type OwnerMilestone = z.infer<typeof OwnerMilestoneSchema>;
+
+export const CreateOwnerProgressUpdateRequestSchema = z.object({
+  "title": z.string().min(1).max(200),
+  "periodStart": z.string().date(),
+  "periodEnd": z.string().date(),
+  "summary": z.string().max(10000).optional(),
+  "percentComplete": z.number().int().min(0).max(100),
+  "milestones": z.array(OwnerMilestoneSchema).max(50).optional(),
+}).strict();
+export type CreateOwnerProgressUpdateRequest = z.infer<typeof CreateOwnerProgressUpdateRequestSchema>;
+
+export const PrequalQuestionSchema = z.object({
+  "id": z.string().regex(new RegExp("^[a-z0-9][a-z0-9_-]{0,39}$")),
+  "section": z.string().max(100),
+  "prompt": z.string().min(1).max(1000),
+  "type": z.enum(["yes_no", "text", "number", "select", "date"]),
+  "options": z.array(z.string().max(200)).max(20),
+  "required": z.boolean(),
+  "expect": z.enum(["yes", "no"]).nullable(),
+  "points": z.number().int().min(0).max(100),
+  "critical": z.boolean(),
+});
+export type PrequalQuestion = z.infer<typeof PrequalQuestionSchema>;
+
+export const CreatePrequalTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "validityMonths": z.number().int().min(1).max(60).optional(),
+  "questions": z.array(PrequalQuestionSchema).max(100),
+}).strict();
+export type CreatePrequalTemplateRequest = z.infer<typeof CreatePrequalTemplateRequestSchema>;
+
+export const CreatePrequalificationRequestSchema = z.object({
+  "companyId": CompanyRefSchema,
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+  "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
+}).strict();
+export type CreatePrequalificationRequest = z.infer<typeof CreatePrequalificationRequestSchema>;
+
 export const ProjectStatusSchema = z.enum(["tender", "active", "on_hold", "closed", "archived"]);
 export type ProjectStatus = z.infer<typeof ProjectStatusSchema>;
 
@@ -1140,6 +2027,58 @@ export const CreateRfiResponseRequestSchema = z.object({
 }).strict();
 export type CreateRfiResponseRequest = z.infer<typeof CreateRfiResponseRequestSchema>;
 
+export const CreateScheduleActivityRequestSchema = z.object({
+  "name": z.string().min(1).max(300),
+  "kind": z.enum(["task", "milestone"]).optional(),
+  "wbs": z.string().max(100).optional(),
+  "start": z.string().date(),
+  "finish": z.string().date().optional(),
+  "pctComplete": z.number().int().min(0).max(100).optional(),
+  "assignee": z.string().max(200).optional(),
+}).strict();
+export type CreateScheduleActivityRequest = z.infer<typeof CreateScheduleActivityRequestSchema>;
+
+export const ScheduleDepTypeSchema = z.enum(["FS", "SS", "FF", "SF"]);
+export type ScheduleDepType = z.infer<typeof ScheduleDepTypeSchema>;
+
+export const CreateScheduleDependencyRequestSchema = z.object({
+  "predecessorId": z.string(),
+  "successorId": z.string(),
+  "type": ScheduleDepTypeSchema.optional(),
+  "lagDays": z.number().int().min(-1000).max(1000).optional(),
+}).strict();
+export type CreateScheduleDependencyRequest = z.infer<typeof CreateScheduleDependencyRequestSchema>;
+
+export const CreateScheduleLinkRequestSchema = z.object({
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+}).strict();
+export type CreateScheduleLinkRequest = z.infer<typeof CreateScheduleLinkRequestSchema>;
+
+export const CreateScheduleRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+}).strict();
+export type CreateScheduleRequest = z.infer<typeof CreateScheduleRequestSchema>;
+
+export const CreateShiftRequestSchema = z.object({
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+  "crew": z.string().min(1).max(100).optional(),
+  "trade": z.string().min(1).max(100),
+  "note": z.string().min(1).max(2000).optional(),
+  "startsAt": z.string().datetime({ offset: true }),
+  "endsAt": z.string().datetime({ offset: true }),
+  "requiredHeadcount": z.number().int().min(1).max(500),
+}).strict();
+export type CreateShiftRequest = z.infer<typeof CreateShiftRequestSchema>;
+
+export const CreateSpecBookRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "issuedDate": z.string().date().nullable().optional(),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "supersedesBookId": z.string().regex(new RegExp("^spb_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type CreateSpecBookRequest = z.infer<typeof CreateSpecBookRequestSchema>;
+
 export const SubmittalTypeSchema = z.enum(["shop_drawing", "product_data", "sample", "mock_up", "certificate", "other"]);
 export type SubmittalType = z.infer<typeof SubmittalTypeSchema>;
 
@@ -1159,6 +2098,7 @@ export type CreateSubmittalRequest = z.infer<typeof CreateSubmittalRequestSchema
 export const CreateSupportAccessGrantRequestSchema = z.object({
   "ticketRef": z.string().min(2).max(60),
   "hours": z.number().int().min(1).max(72),
+  "projectIds": z.array(z.string()).min(1).max(50).optional(),
 }).strict();
 export type CreateSupportAccessGrantRequest = z.infer<typeof CreateSupportAccessGrantRequestSchema>;
 
@@ -1282,6 +2222,7 @@ export const CreateVariationRequestSchema = z.object({
   "description": z.string().max(5000).optional(),
   "amount": FinancialsMoneySchema,
   "timeImpactDays": z.number().int().min(0).max(3650).optional(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateVariationRequest = z.infer<typeof CreateVariationRequestSchema>;
 
@@ -1316,6 +2257,18 @@ export const CreateWorkerRequestSchema = z.object({
   "kind": z.enum(["worker", "visitor", "delivery"]).optional(),
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
+
+export const DateRangeRequestSchema = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+}).strict();
+export type DateRangeRequest = z.infer<typeof DateRangeRequestSchema>;
+
+export const DecideOwnerApprovalRequestSchema = z.object({
+  "decision": z.enum(["approved", "rejected"]),
+  "note": z.string().max(5000).optional(),
+}).strict();
+export type DecideOwnerApprovalRequest = z.infer<typeof DecideOwnerApprovalRequestSchema>;
 
 export const DefectStatusSchema = z.enum(["draft", "open", "ready_for_review", "closed", "disputed", "void"]);
 export type DefectStatus = z.infer<typeof DefectStatusSchema>;
@@ -1606,6 +2559,33 @@ export const DiaryEntryListSchema = z.object({
 });
 export type DiaryEntryList = z.infer<typeof DiaryEntryListSchema>;
 
+export const DirectCostCategorySchema = z.enum(["labour", "materials", "plant", "fees", "other"]);
+export type DirectCostCategory = z.infer<typeof DirectCostCategorySchema>;
+
+export const DirectCostSchema = z.object({
+  "id": z.string().regex(new RegExp("^dcs_[0-9A-Za-z]{26}$")),
+  "number": z.number().int(),
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "category": DirectCostCategorySchema,
+  "description": z.string(),
+  "supplier": z.string().nullable(),
+  "reference": z.string().nullable(),
+  "incurredOn": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "gst": FinancialsMoneySchema,
+  "status": z.enum(["recorded", "void"]),
+  "voidReason": z.string().nullable(),
+  "voidedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type DirectCost = z.infer<typeof DirectCostSchema>;
+
+export const DirectCostListSchema = z.object({
+  "data": z.array(DirectCostSchema),
+  "total": FinancialsMoneySchema,
+});
+export type DirectCostList = z.infer<typeof DirectCostListSchema>;
+
 export const DocumentRevisionSchema = z.object({
   "id": z.string(),
   "documentId": z.string(),
@@ -1675,6 +2655,11 @@ export const DraftDrawingRevisionInputSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type DraftDrawingRevisionInput = z.infer<typeof DraftDrawingRevisionInputSchema>;
+
+export const DraftMinutesRequestSchema = z.object({
+  "notes": z.string().min(1).max(40000),
+}).strict();
+export type DraftMinutesRequest = z.infer<typeof DraftMinutesRequestSchema>;
 
 export const DrainGrantSchema = z.object({
   "token": z.string(),
@@ -1835,6 +2820,55 @@ export const EntitlementsSchema = z.object({
 });
 export type Entitlements = z.infer<typeof EntitlementsSchema>;
 
+export const EquipmentStatusSchema = z.enum(["available", "in_use", "maintenance", "retired"]);
+export type EquipmentStatus = z.infer<typeof EquipmentStatusSchema>;
+
+export const EquipmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "assetNumber": z.string(),
+  "type": z.string(),
+  "status": EquipmentStatusSchema,
+  "version": z.number().int(),
+});
+export type Equipment = z.infer<typeof EquipmentSchema>;
+
+export const EquipmentBookingSchema = z.object({
+  "id": z.string().regex(new RegExp("^eqb_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "startsOn": z.string().date(),
+  "endsOn": z.string().date(),
+  "bookedFor": z.string(),
+  "note": z.string().nullable(),
+  "status": z.enum(["active", "cancelled"]),
+});
+export type EquipmentBooking = z.infer<typeof EquipmentBookingSchema>;
+
+export const EquipmentBookingListSchema = z.object({
+  "data": z.array(EquipmentBookingSchema),
+});
+export type EquipmentBookingList = z.infer<typeof EquipmentBookingListSchema>;
+
+export const EquipmentListSchema = z.object({
+  "data": z.array(EquipmentSchema),
+});
+export type EquipmentList = z.infer<typeof EquipmentListSchema>;
+
+export const EquipmentLogSchema = z.object({
+  "id": z.string().regex(new RegExp("^eql_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "hours": z.string().regex(new RegExp("^\\d{1,2}\\.\\d{2}$")),
+  "operator": z.string().nullable(),
+  "notes": z.string().nullable(),
+});
+export type EquipmentLog = z.infer<typeof EquipmentLogSchema>;
+
+export const EquipmentLogListSchema = z.object({
+  "data": z.array(EquipmentLogSchema),
+});
+export type EquipmentLogList = z.infer<typeof EquipmentLogListSchema>;
+
 export const EstimateSettingsSchema = z.object({
   "baseDate": z.string().date(),
   "region": z.string().nullable(),
@@ -1923,6 +2957,12 @@ export const EstimatePageSchema = z.object({
 });
 export type EstimatePage = z.infer<typeof EstimatePageSchema>;
 
+export const FeatureFlagsSchema = z.object({
+  "orgId": z.string(),
+  "flags": z.record(z.string(), z.boolean()),
+});
+export type FeatureFlags = z.infer<typeof FeatureFlagsSchema>;
+
 export const FileObjectSchema = z.object({
   "id": z.string(),
   "projectId": z.string().nullable(),
@@ -1949,6 +2989,60 @@ export const FolderSchema = z.object({
 });
 export type Folder = z.infer<typeof FolderSchema>;
 
+export const FolderCallbackRequestSchema = z.object({
+  "state": z.string().min(1).max(200),
+  "code": z.string().min(1).max(2000).optional(),
+});
+export type FolderCallbackRequest = z.infer<typeof FolderCallbackRequestSchema>;
+
+export const FolderConnectRequestSchema = z.object({
+  "tenantId": z.string().min(1).max(255).optional(),
+});
+export type FolderConnectRequest = z.infer<typeof FolderConnectRequestSchema>;
+
+export const FolderProviderNameSchema = z.enum(["m365", "google"]);
+export type FolderProviderName = z.infer<typeof FolderProviderNameSchema>;
+
+export const FolderConnectionSchema = z.object({
+  "id": z.string(),
+  "provider": FolderProviderNameSchema,
+  "status": z.enum(["pending", "active", "error"]),
+  "tenantId": z.string().nullable(),
+  "lastError": z.string().nullable(),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type FolderConnection = z.infer<typeof FolderConnectionSchema>;
+
+export const FolderConnectionListSchema = z.object({
+  "data": z.array(FolderConnectionSchema),
+  "available": z.array(FolderProviderNameSchema),
+});
+export type FolderConnectionList = z.infer<typeof FolderConnectionListSchema>;
+
+export const FolderLinkSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "provider": FolderProviderNameSchema,
+  "folderName": z.string(),
+  "webUrl": z.string().nullable(),
+  "status": z.enum(["active", "error"]),
+  "lastError": z.string().nullable(),
+  "lastPublishedAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type FolderLink = z.infer<typeof FolderLinkSchema>;
+
+export const FolderLinkCreateSchema = z.object({
+  "provider": FolderProviderNameSchema,
+  "url": z.string().min(1).max(2000).optional(),
+});
+export type FolderLinkCreate = z.infer<typeof FolderLinkCreateSchema>;
+
+export const FolderLinkListSchema = z.object({
+  "data": z.array(FolderLinkSchema),
+});
+export type FolderLinkList = z.infer<typeof FolderLinkListSchema>;
+
 export const FolderListSchema = z.object({
   "data": z.array(FolderSchema),
 });
@@ -1959,6 +3053,28 @@ export const GateWithCodeSchema = z.object({
   "code": z.string(),
 });
 export type GateWithCode = z.infer<typeof GateWithCodeSchema>;
+
+export const GenerateTimesheetsResultSchema = z.object({
+  "sheetsCreated": z.number().int(),
+  "linesAdded": z.number().int(),
+});
+export type GenerateTimesheetsResult = z.infer<typeof GenerateTimesheetsResultSchema>;
+
+export const GrantedWalletSchema = z.object({
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "subbieName": z.string(),
+  "itemTypes": z.array(ComplianceItemTypeSchema),
+  "projectId": z.string().nullable(),
+  "projectName": z.string().nullable(),
+  "allProjects": z.boolean(),
+  "expiresOn": z.string().date(),
+});
+export type GrantedWallet = z.infer<typeof GrantedWalletSchema>;
+
+export const GrantedWalletListSchema = z.object({
+  "data": z.array(GrantedWalletSchema),
+});
+export type GrantedWalletList = z.infer<typeof GrantedWalletListSchema>;
 
 export const ImportJobStatusSchema = z.enum(["uploaded", "parsed", "mapped", "validated", "applying", "done", "failed", "rolled_back", "cancelled"]);
 export type ImportJobStatus = z.infer<typeof ImportJobStatusSchema>;
@@ -2028,6 +3144,211 @@ export const ImportRowPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type ImportRowPage = z.infer<typeof ImportRowPageSchema>;
+
+export const ImportScheduleRequestSchema = z.object({
+  "format": z.enum(["msp", "p6"]),
+  "name": z.string().min(1).max(200).optional(),
+  "content": z.string().min(1).max(900000),
+}).strict();
+export type ImportScheduleRequest = z.infer<typeof ImportScheduleRequestSchema>;
+
+export const ScheduleSourceSchema = z.enum(["native", "msp", "p6"]);
+export type ScheduleSource = z.infer<typeof ScheduleSourceSchema>;
+
+export const ScheduleSummarySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "source": ScheduleSourceSchema,
+  "dataDate": z.string().date().nullable(),
+  "activityCount": z.number().int(),
+  "startDate": z.string().date().nullable(),
+  "finishDate": z.string().date().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ScheduleSummary = z.infer<typeof ScheduleSummarySchema>;
+
+export const ScheduleActivitySchema = z.object({
+  "id": z.string(),
+  "wbs": z.string(),
+  "name": z.string(),
+  "kind": z.enum(["task", "milestone"]),
+  "start": z.string().date(),
+  "finish": z.string().date(),
+  "durationDays": z.number().int(),
+  "pctComplete": z.number().int(),
+  "assignee": z.string(),
+  "externalId": z.string().nullable(),
+  "floatDays": z.number().int(),
+  "critical": z.boolean(),
+});
+export type ScheduleActivity = z.infer<typeof ScheduleActivitySchema>;
+
+export const ScheduleDependencySchema = z.object({
+  "id": z.string(),
+  "predecessorId": z.string(),
+  "successorId": z.string(),
+  "type": ScheduleDepTypeSchema,
+  "lagDays": z.number().int(),
+  "slackDays": z.number().int(),
+  "violated": z.boolean(),
+});
+export type ScheduleDependency = z.infer<typeof ScheduleDependencySchema>;
+
+export const ScheduleDetailSchema = z.object({
+  "schedule": ScheduleSummarySchema,
+  "activities": z.array(ScheduleActivitySchema),
+  "dependencies": z.array(ScheduleDependencySchema),
+  "criticalCount": z.number().int(),
+  "violationCount": z.number().int(),
+});
+export type ScheduleDetail = z.infer<typeof ScheduleDetailSchema>;
+
+export const ImportScheduleResultSchema = z.object({
+  "detail": ScheduleDetailSchema,
+  "skipped": z.array(z.string()),
+});
+export type ImportScheduleResult = z.infer<typeof ImportScheduleResultSchema>;
+
+export const IncidentTypeSchema = z.enum(["injury", "near_miss", "property_damage", "environmental", "dangerous_occurrence"]);
+export type IncidentType = z.infer<typeof IncidentTypeSchema>;
+
+export const IncidentSeveritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type IncidentSeverity = z.infer<typeof IncidentSeveritySchema>;
+
+export const NotifiableClassSchema = z.enum(["death", "serious_injury_illness", "dangerous_incident"]);
+export type NotifiableClass = z.infer<typeof NotifiableClassSchema>;
+
+export const IncidentRootCauseSchema = z.object({
+  "method": z.enum(["five_whys", "fishbone", "other"]),
+  "causes": z.array(z.string().max(500)).max(20),
+  "summary": z.string().max(4000),
+}).strict();
+export type IncidentRootCause = z.infer<typeof IncidentRootCauseSchema>;
+
+export const IncidentStatusSchema = z.enum(["reported", "investigating", "closed"]);
+export type IncidentStatus = z.infer<typeof IncidentStatusSchema>;
+
+export const IncidentSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "numberLabel": z.string(),
+  "title": z.string(),
+  "type": IncidentTypeSchema,
+  "severity": IncidentSeveritySchema,
+  "occurredAt": z.string().datetime({ offset: true }),
+  "location": z.string().nullable(),
+  "description": z.string(),
+  "immediateActions": z.string().nullable(),
+  "isNotifiable": z.boolean(),
+  "notifiableClass": z.union([NotifiableClassSchema, z.null()]),
+  "regulatorNotifiedAt": z.string().datetime({ offset: true }).nullable(),
+  "writtenNoticeRequestedAt": z.string().datetime({ offset: true }).nullable(),
+  "writtenNoticeDueAt": z.string().datetime({ offset: true }).nullable(),
+  "keepUntil": z.string().datetime({ offset: true }).nullable(),
+  "rootCause": z.union([IncidentRootCauseSchema, z.null()]),
+  "status": IncidentStatusSchema,
+  "closedAt": z.string().datetime({ offset: true }).nullable(),
+  "openActions": z.number().int(),
+  "createdBy": z.string().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+  "version": z.number().int(),
+});
+export type Incident = z.infer<typeof IncidentSchema>;
+
+export const IncidentActionSchema = z.object({
+  "id": z.string(),
+  "incidentId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string().nullable(),
+  "assigneeCompanyId": z.string().nullable(),
+  "assigneeUserId": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "source": z.union([IncidentSourceSchema, z.null()]),
+  "status": CorrectiveStatusSchema,
+  "isOverdue": z.boolean(),
+  "completedAt": z.string().datetime({ offset: true }).nullable(),
+  "verifiedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+});
+export type IncidentAction = z.infer<typeof IncidentActionSchema>;
+
+export const IncidentActionFromSourceSchema = z.object({
+  "action": IncidentActionSchema,
+  "incidentId": z.string(),
+  "incidentNumberLabel": z.string(),
+  "incidentTitle": z.string(),
+});
+export type IncidentActionFromSource = z.infer<typeof IncidentActionFromSourceSchema>;
+
+export const IncidentActionFromSourceListSchema = z.object({
+  "data": z.array(IncidentActionFromSourceSchema),
+});
+export type IncidentActionFromSourceList = z.infer<typeof IncidentActionFromSourceListSchema>;
+
+export const IncidentCloseBlockerSchema = z.object({
+  "field": z.string(),
+  "message": z.string(),
+});
+export type IncidentCloseBlocker = z.infer<typeof IncidentCloseBlockerSchema>;
+
+export const IncidentPersonSchema = z.object({
+  "id": z.string(),
+  "personName": z.string(),
+  "companyId": z.string().nullable(),
+  "role": z.enum(["injured", "witness", "involved"]),
+  "injury": z.record(z.string(), z.unknown()).nullable(),
+});
+export type IncidentPerson = z.infer<typeof IncidentPersonSchema>;
+
+export const IncidentEventSchema = z.object({
+  "id": z.string(),
+  "action": z.string(),
+  "fromStatus": z.string().nullable(),
+  "toStatus": z.string(),
+  "note": z.string().nullable(),
+  "actorId": z.string().nullable(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type IncidentEvent = z.infer<typeof IncidentEventSchema>;
+
+export const IncidentDetailSchema = z.object({
+  "incident": IncidentSchema,
+  "photoFileIds": z.array(z.string()),
+  "people": z.array(IncidentPersonSchema),
+  "injuryHidden": z.boolean(),
+  "actions": z.array(IncidentActionSchema),
+  "events": z.array(IncidentEventSchema),
+  "closeBlockers": z.array(IncidentCloseBlockerSchema),
+  "canManage": z.boolean(),
+});
+export type IncidentDetail = z.infer<typeof IncidentDetailSchema>;
+
+export const IncidentPageSchema = z.object({
+  "data": z.array(IncidentSchema),
+  "nextCursor": z.string().nullable(),
+});
+export type IncidentPage = z.infer<typeof IncidentPageSchema>;
+
+export const IncidentPersonInputSchema = z.object({
+  "personName": z.string().min(1).max(200),
+  "companyId": CompanyRefSchema.optional(),
+  "role": z.enum(["injured", "witness", "involved"]),
+  "injury": z.record(z.string(), z.unknown()).optional(),
+}).strict();
+export type IncidentPersonInput = z.infer<typeof IncidentPersonInputSchema>;
+
+export const IncidentTransitionActionSchema = z.enum(["investigate", "close", "reopen"]);
+export type IncidentTransitionAction = z.infer<typeof IncidentTransitionActionSchema>;
+
+export const IncidentTransitionRequestSchema = z.object({
+  "action": IncidentTransitionActionSchema,
+  "reason": z.string().max(2000).optional(),
+}).strict();
+export type IncidentTransitionRequest = z.infer<typeof IncidentTransitionRequestSchema>;
 
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
@@ -2534,6 +3855,7 @@ export type InspectionTemplateList = z.infer<typeof InspectionTemplateListSchema
 
 export const InvitePackageRequestSchema = z.object({
   "companyIds": z.array(CompanyRefSchema).min(1).max(50),
+  "overrideReason": z.string().min(1).max(500).optional(),
 }).strict();
 export type InvitePackageRequest = z.infer<typeof InvitePackageRequestSchema>;
 
@@ -2633,6 +3955,14 @@ export const LateSubmissionListSchema = z.object({
 }).strict();
 export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
 
+export const LogEquipmentHoursRequestSchema = z.object({
+  "date": z.string().date(),
+  "hours": z.string().regex(new RegExp("^\\d{1,2}(\\.\\d{1,2})?$")),
+  "operator": z.string().min(1).max(200).optional(),
+  "notes": z.string().min(1).max(2000).optional(),
+}).strict();
+export type LogEquipmentHoursRequest = z.infer<typeof LogEquipmentHoursRequestSchema>;
+
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
   "password": z.string().min(1).max(256),
@@ -2723,6 +4053,7 @@ export const MeetingActionSchema = z.object({
   "isOverdue": z.boolean(),
   "carriedCount": z.number().int(),
   "stale": z.boolean(),
+  "version": z.number().int(),
 });
 export type MeetingAction = z.infer<typeof MeetingActionSchema>;
 
@@ -2749,6 +4080,26 @@ export const MeetingAttendeeViewSchema = z.intersection(MeetingPersonViewSchema,
   "attendance": MeetingAttendanceSchema,
 }));
 export type MeetingAttendeeView = z.infer<typeof MeetingAttendeeViewSchema>;
+
+export const MeetingLiveRowSchema = z.object({
+  "ref": z.string(),
+  "title": z.string(),
+  "detail": z.string(),
+  "link": z.object({
+  "type": z.enum(["rfi", "defect", "submittal"]),
+  "id": z.string(),
+}).nullable(),
+});
+export type MeetingLiveRow = z.infer<typeof MeetingLiveRowSchema>;
+
+export const MeetingLiveListSchema = z.object({
+  "source": MeetingLiveSourceSchema,
+  "asOf": z.string().datetime({ offset: true }),
+  "rows": z.array(MeetingLiveRowSchema),
+  "truncated": z.boolean(),
+  "restricted": z.boolean(),
+});
+export type MeetingLiveList = z.infer<typeof MeetingLiveListSchema>;
 
 export const MeetingItemHistorySchema = z.object({
   "meetingId": z.string(),
@@ -2785,6 +4136,8 @@ export const MeetingSectionViewSchema = z.object({
   "position": z.number().int(),
   "title": z.string(),
   "internalOnly": z.boolean(),
+  "liveSource": z.union([MeetingLiveSourceSchema, z.null()]),
+  "live": z.union([MeetingLiveListSchema, z.null()]),
   "items": z.array(MeetingItemSchema),
 });
 export type MeetingSectionView = z.infer<typeof MeetingSectionViewSchema>;
@@ -2818,6 +4171,25 @@ export const MeetingDetailSchema = z.object({
   "viewer": MeetingViewerSchema,
 });
 export type MeetingDetail = z.infer<typeof MeetingDetailSchema>;
+
+export const MeetingLinkedItemSchema = z.object({
+  "meetingId": z.string(),
+  "meetingTitle": z.string(),
+  "meetingNumber": z.number().int(),
+  "heldAt": z.string().datetime({ offset: true }),
+  "itemNo": z.string(),
+  "kind": z.enum(["action", "decision", "information"]),
+  "body": z.string(),
+  "status": z.enum(["open", "closed"]),
+  "ownerName": z.string().nullable(),
+  "dueDate": z.string().nullable(),
+});
+export type MeetingLinkedItem = z.infer<typeof MeetingLinkedItemSchema>;
+
+export const MeetingLinkedItemListSchema = z.object({
+  "data": z.array(MeetingLinkedItemSchema),
+});
+export type MeetingLinkedItemList = z.infer<typeof MeetingLinkedItemListSchema>;
 
 export const MeetingSummarySchema = z.object({
   "id": z.string(),
@@ -2872,6 +4244,25 @@ export const NegotiationTurnSchema = z.object({
 }).strict();
 export type NegotiationTurn = z.infer<typeof NegotiationTurnSchema>;
 
+export const NotificationSchema = z.object({
+  "id": z.string().regex(new RegExp("^ntf_[0-9A-Za-z]{26}$")),
+  "kind": z.string(),
+  "title": z.string(),
+  "body": z.string(),
+  "entityType": z.enum(["meeting", "tender_package", "contract", "incident", "compliance_document"]),
+  "entityId": z.string(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
+  "readAt": z.string().datetime({ offset: true }).nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Notification = z.infer<typeof NotificationSchema>;
+
+export const NotificationListSchema = z.object({
+  "data": z.array(NotificationSchema),
+  "unreadCount": z.number().int().min(0),
+});
+export type NotificationList = z.infer<typeof NotificationListSchema>;
+
 export const NovaSourceSchema = z.object({
   "sourceType": z.enum(["document", "drawing", "rfi", "defect", "diary"]),
   "sourceId": z.string(),
@@ -2897,7 +4288,50 @@ export const NovaAnswerSchema = z.object({
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 
+export const NovaContractAnswerSchema = z.object({
+  "runId": z.string(),
+  "question": z.string(),
+  "kind": z.enum(["answered", "not_addressed", "withheld"]),
+  "answer": z.string(),
+  "citations": z.array(z.object({
+  "page": z.number().int().min(1),
+  "clause": z.string().nullable(),
+  "quote": z.string(),
+})),
+  "droppedCitations": z.number().int().min(0),
+  "unreadPages": z.array(z.number().int().min(1)),
+  "truncated": z.boolean(),
+});
+export type NovaContractAnswer = z.infer<typeof NovaContractAnswerSchema>;
+
+export const NovaContractComparisonSchema = z.object({
+  "runId": z.string(),
+  "base": ComparedContractSchema,
+  "other": ComparedContractSchema,
+  "changes": z.array(z.object({
+  "kind": z.enum(["added", "removed", "changed"]),
+  "topic": z.string(),
+  "summary": z.string(),
+  "base": z.union([ContractSourceRefSchema, z.null()]),
+  "other": z.union([ContractSourceRefSchema, z.null()]),
+})),
+  "dropped": z.object({
+  "notOnPage": z.number().int().min(0),
+  "bannedWords": z.number().int().min(0),
+  "notAChange": z.number().int().min(0),
+}),
+});
+export type NovaContractComparison = z.infer<typeof NovaContractComparisonSchema>;
+
 export const NovaContractReviewSchema = z.object({
+  "createdAt": z.string().datetime({ offset: true }),
+  "decisions": z.array(z.object({
+  "flagIndex": z.number().int().min(0),
+  "decision": ContractFlagDecisionKindSchema,
+  "note": z.string().nullable(),
+  "decidedBy": z.string(),
+  "decidedAt": z.string().datetime({ offset: true }),
+})),
   "runId": z.string(),
   "suggestionId": z.string(),
   "disclaimer": z.string(),
@@ -2943,6 +4377,20 @@ export const NovaContractReviewSchema = z.object({
 }), z.null()]),
   "wordingStatus": z.enum(["offered", "review_due", "none"]),
 })),
+  "statutoryState": z.string().nullable().optional(),
+  "statutoryRulesChecked": z.number().int().min(0).optional(),
+  "statutoryNote": z.string().optional(),
+  "statutoryDropped": z.number().int().min(0).optional(),
+  "statutoryFlags": z.array(z.object({
+  "ruleKey": z.string(),
+  "ruleVersion": z.number().int().min(1),
+  "topic": z.string(),
+  "provision": z.string(),
+  "wording": z.string(),
+  "signedBy": z.string(),
+  "signedOn": z.string().date(),
+  "source": ContractSourceRefSchema,
+})).optional(),
   "dropped": z.object({
   "notOnPage": z.number().int().min(0),
   "bannedWords": z.number().int().min(0),
@@ -3297,6 +4745,90 @@ export const OrgSchema = z.object({
 });
 export type Org = z.infer<typeof OrgSchema>;
 
+export const OwnerApprovalStatusSchema = z.enum(["requested", "approved", "rejected", "withdrawn"]);
+export type OwnerApprovalStatus = z.infer<typeof OwnerApprovalStatusSchema>;
+
+export const OwnerApprovalSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "number": z.number().int(),
+  "title": z.string(),
+  "description": z.string(),
+  "amountCents": z.number().int().min(0).nullable(),
+  "dueDate": z.string().date().nullable(),
+  "status": OwnerApprovalStatusSchema,
+  "decidedBy": z.string().nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decisionNote": z.string().nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type OwnerApproval = z.infer<typeof OwnerApprovalSchema>;
+
+export const OwnerApprovalListSchema = z.object({
+  "data": z.array(OwnerApprovalSchema),
+});
+export type OwnerApprovalList = z.infer<typeof OwnerApprovalListSchema>;
+
+export const OwnerCapitalItemSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "fiscalYear": z.number().int(),
+  "category": z.string(),
+  "description": z.string(),
+  "budgetCents": z.number().int().min(0),
+  "forecastCents": z.number().int().min(0),
+  "spentCents": z.number().int().min(0),
+  "version": z.number().int(),
+});
+export type OwnerCapitalItem = z.infer<typeof OwnerCapitalItemSchema>;
+
+export const OwnerCapitalItemInputSchema = z.object({
+  "fiscalYear": z.number().int().min(2000).max(2100),
+  "category": z.string().min(1).max(100),
+  "description": z.string().max(1000).optional(),
+  "budgetCents": z.number().int().min(0),
+  "forecastCents": z.number().int().min(0),
+  "spentCents": z.number().int().min(0).optional(),
+}).strict();
+export type OwnerCapitalItemInput = z.infer<typeof OwnerCapitalItemInputSchema>;
+
+export const OwnerCapitalTotalsSchema = z.object({
+  "fiscalYear": z.number().int().nullable(),
+  "budgetCents": z.number().int(),
+  "forecastCents": z.number().int(),
+  "spentCents": z.number().int(),
+});
+export type OwnerCapitalTotals = z.infer<typeof OwnerCapitalTotalsSchema>;
+
+export const OwnerCapitalPlanSchema = z.object({
+  "items": z.array(OwnerCapitalItemSchema),
+  "totals": z.array(OwnerCapitalTotalsSchema),
+});
+export type OwnerCapitalPlan = z.infer<typeof OwnerCapitalPlanSchema>;
+
+export const OwnerProgressUpdateSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "title": z.string(),
+  "periodStart": z.string().date(),
+  "periodEnd": z.string().date(),
+  "summary": z.string(),
+  "percentComplete": z.number().int().min(0).max(100),
+  "milestones": z.array(OwnerMilestoneSchema),
+  "status": z.enum(["draft", "published"]),
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type OwnerProgressUpdate = z.infer<typeof OwnerProgressUpdateSchema>;
+
+export const OwnerProgressUpdateListSchema = z.object({
+  "data": z.array(OwnerProgressUpdateSchema),
+});
+export type OwnerProgressUpdateList = z.infer<typeof OwnerProgressUpdateListSchema>;
+
 export const PackageActionRequestSchema = z.object({
   "action": z.enum(["send", "close", "reopen", "cancel"]),
 }).strict();
@@ -3322,9 +4854,6 @@ export const PackageInviteSchema = z.object({
   "respondedAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type PackageInvite = z.infer<typeof PackageInviteSchema>;
-
-export const PackageStatusSchema = z.enum(["draft", "out_to_tender", "closed", "awarded", "cancelled"]);
-export type PackageStatus = z.infer<typeof PackageStatusSchema>;
 
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;
@@ -3382,6 +4911,8 @@ export const PaymentScheduleSchema = z.object({
 export type PaymentSchedule = z.infer<typeof PaymentScheduleSchema>;
 
 export const PaymentClaimDetailSchema = z.object({
+  "statement": z.union([ClaimStatementSchema, z.null()]),
+  "warnings": z.array(z.enum(["subcontractor_statement_missing"])),
   "claim": PaymentClaimSchema,
   "lines": z.array(PaymentClaimLineSchema),
   "schedule": z.union([PaymentScheduleSchema, z.null()]),
@@ -3404,6 +4935,127 @@ export const PermissionTemplateSchema = z.object({
   "version": z.number().int(),
 });
 export type PermissionTemplate = z.infer<typeof PermissionTemplateSchema>;
+
+export const PortfolioTotalsSchema = z.object({
+  "projects": z.number().int(),
+  "rfisOpen": z.number().int(),
+  "rfisOverdue": z.number().int(),
+  "defectsOpen": z.number().int(),
+  "defectsOverdue": z.number().int(),
+  "submittalsOpen": z.number().int(),
+  "submittalsOverdue": z.number().int(),
+});
+export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
+
+export const PortfolioToolSchema = z.object({
+  "restricted": z.boolean(),
+  "open": z.number().int(),
+  "overdue": z.number().int(),
+});
+export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
+
+export const PortfolioProjectSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "number": z.string().nullable(),
+  "status": z.string(),
+  "rfis": PortfolioToolSchema,
+  "defects": PortfolioToolSchema,
+  "submittals": PortfolioToolSchema,
+  "attention": z.number().int(),
+});
+export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;
+
+export const PortfolioSchema = z.object({
+  "totals": PortfolioTotalsSchema,
+  "projects": z.array(PortfolioProjectSchema),
+  "truncated": z.boolean(),
+});
+export type Portfolio = z.infer<typeof PortfolioSchema>;
+
+export const PrequalAnswersSchema = z.record(z.string(), z.union([z.string().max(2000), z.number(), z.boolean(), z.null()]));
+export type PrequalAnswers = z.infer<typeof PrequalAnswersSchema>;
+
+export const PrequalQualificationSchema = z.enum(["qualified", "expiring", "expired", "pending", "not_qualified"]);
+export type PrequalQualification = z.infer<typeof PrequalQualificationSchema>;
+
+export const PrequalStatusSchema = z.enum(["draft", "submitted", "approved", "rejected"]);
+export type PrequalStatus = z.infer<typeof PrequalStatusSchema>;
+
+export const PrequalificationSummarySchema = z.object({
+  "id": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+  "companyId": CompanyRefSchema,
+  "templateName": z.string(),
+  "templateVersion": z.number().int(),
+  "status": PrequalStatusSchema,
+  "qualification": PrequalQualificationSchema,
+  "trades": z.array(z.string()),
+  "scorePoints": z.number().int().nullable(),
+  "scoreMax": z.number().int().nullable(),
+  "concerns": z.array(z.string()),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type PrequalificationSummary = z.infer<typeof PrequalificationSummarySchema>;
+
+export const PrequalRegisterSchema = z.object({
+  "data": z.array(PrequalificationSummarySchema),
+});
+export type PrequalRegister = z.infer<typeof PrequalRegisterSchema>;
+
+export const PrequalSettingsSchema = z.object({
+  "requireForTenders": z.boolean(),
+}).strict();
+export type PrequalSettings = z.infer<typeof PrequalSettingsSchema>;
+
+export const PrequalTemplateSchema = z.object({
+  "id": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "version": z.number().int(),
+  "published": z.boolean(),
+  "validityMonths": z.number().int(),
+  "questions": z.array(PrequalQuestionSchema),
+  "rowVersion": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type PrequalTemplate = z.infer<typeof PrequalTemplateSchema>;
+
+export const PrequalTemplateListSchema = z.object({
+  "data": z.array(PrequalTemplateSchema),
+});
+export type PrequalTemplateList = z.infer<typeof PrequalTemplateListSchema>;
+
+export const PrequalificationSchema = z.object({
+  "id": z.string().regex(new RegExp("^pqf_[0-9A-Za-z]{26}$")),
+  "companyId": CompanyRefSchema,
+  "templateId": z.string().regex(new RegExp("^pqt_[0-9A-Za-z]{26}$")),
+  "templateName": z.string(),
+  "templateVersion": z.number().int(),
+  "status": PrequalStatusSchema,
+  "qualification": PrequalQualificationSchema,
+  "trades": z.array(z.string()),
+  "answers": PrequalAnswersSchema,
+  "scorePoints": z.number().int().nullable(),
+  "scoreMax": z.number().int().nullable(),
+  "concerns": z.array(z.string()),
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedAt": z.string().datetime({ offset: true }).nullable(),
+  "decidedBy": z.union([UserRefSchema, z.null()]),
+  "decisionNote": z.string().nullable(),
+  "validFrom": z.string().date().nullable(),
+  "expiresOn": z.string().date().nullable(),
+  "questions": z.array(PrequalQuestionSchema),
+  "version": z.number().int(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type Prequalification = z.infer<typeof PrequalificationSchema>;
+
+export const PrequalificationListSchema = z.object({
+  "data": z.array(PrequalificationSummarySchema),
+});
+export type PrequalificationList = z.infer<typeof PrequalificationListSchema>;
 
 export const ProblemSchema = z.object({
   "drainGrant": DrainGrantSchema.optional(),
@@ -3502,6 +5154,11 @@ export const PublishInductionRequestSchema = z.object({
   "changeNote": z.string().min(1).max(1000).optional(),
 }).strict();
 export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSchema>;
+
+export const QueueClaimEvidenceDeliveryRequestSchema = z.object({
+  "recipientEmail": z.string().email().max(254),
+}).strict();
+export type QueueClaimEvidenceDeliveryRequest = z.infer<typeof QueueClaimEvidenceDeliveryRequestSchema>;
 
 export const QuoteStatusSchema = z.enum(["reading", "ready_to_review", "confirmed", "superseded", "declined"]);
 export type QuoteStatus = z.infer<typeof QuoteStatusSchema>;
@@ -3657,16 +5314,150 @@ export const RecordAttendanceRequestSchema = z.object({
 }).strict();
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
 
+export const RecordClaimStatementRequestSchema = z.object({
+  "periodEnd": z.string().date(),
+  "receivedOn": z.string().date(),
+  "signedOn": z.string().date().optional(),
+  "note": z.string().max(500).optional(),
+}).strict();
+export type RecordClaimStatementRequest = z.infer<typeof RecordClaimStatementRequestSchema>;
+
+export const RecordDirectCostRequestSchema = z.object({
+  "budgetLineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+  "category": DirectCostCategorySchema,
+  "description": z.string().min(1).max(300),
+  "supplier": z.string().min(1).max(200).optional(),
+  "reference": z.string().min(1).max(100).optional(),
+  "incurredOn": z.string().date(),
+  "amount": FinancialsMoneySchema,
+  "gst": FinancialsMoneySchema.optional(),
+}).strict();
+export type RecordDirectCostRequest = z.infer<typeof RecordDirectCostRequestSchema>;
+
 export const RecordInspectionResponsesRequestSchema = z.object({
   "responses": z.array(InspectionResponseInputSchema).min(1).max(300),
 }).strict();
 export type RecordInspectionResponsesRequest = z.infer<typeof RecordInspectionResponsesRequestSchema>;
+
+export const RetentionStageSchema = z.enum(["practical_completion", "defects_end"]);
+export type RetentionStage = z.infer<typeof RetentionStageSchema>;
+
+export const RecordRetentionReleaseRequestSchema = z.object({
+  "stage": RetentionStageSchema,
+  "amount": FinancialsMoneySchema,
+  "releasedOn": z.string().date(),
+  "reference": z.string().min(1).max(200),
+  "note": z.string().min(1).max(2000).optional(),
+  "fromTrust": z.boolean().optional(),
+}).strict();
+export type RecordRetentionReleaseRequest = z.infer<typeof RecordRetentionReleaseRequestSchema>;
+
+export const RecordTrustMovementRequestSchema = z.object({
+  "kind": TrustMovementKindSchema,
+  "amount": FinancialsMoneySchema,
+  "movedOn": z.string().date(),
+  "reference": z.string().min(1).max(200),
+  "note": z.string().min(1).max(2000).optional(),
+  "reversesMovementId": z.string().regex(new RegExp("^tmv_[0-9A-Za-z]{26}$")).optional(),
+}).strict();
+export type RecordTrustMovementRequest = z.infer<typeof RecordTrustMovementRequestSchema>;
+
+export const RejectPrequalificationRequestSchema = z.object({
+  "note": z.string().min(1).max(2000),
+}).strict();
+export type RejectPrequalificationRequest = z.infer<typeof RejectPrequalificationRequestSchema>;
+
+export const RejectTimesheetRequestSchema = z.object({
+  "reason": z.string().min(1).max(1000),
+}).strict();
+export type RejectTimesheetRequest = z.infer<typeof RejectTimesheetRequestSchema>;
 
 export const RemoveProjectMemberRequestSchema = z.object({
   "kind": z.enum(["ordinary", "for_cause", "wipe_now"]),
   "reason": z.string().max(500).optional(),
 }).strict();
 export type RemoveProjectMemberRequest = z.infer<typeof RemoveProjectMemberRequestSchema>;
+
+export const ReplaceSpecSectionsRequestSchema = z.object({
+  "sections": z.array(z.object({
+  "sectionNumber": z.string().min(1).max(20),
+  "title": z.string().min(1).max(300),
+  "division": z.string().max(100).nullable().optional(),
+  "pageFrom": z.number().int().min(1),
+  "pageTo": z.number().int().min(1),
+  "revision": z.string().max(20).nullable().optional(),
+}).strict()).max(500),
+}).strict();
+export type ReplaceSpecSectionsRequest = z.infer<typeof ReplaceSpecSectionsRequestSchema>;
+
+export const ReportConfigSchema = z.object({
+  "source": z.enum(["rfis", "defects", "submittals"]),
+  "state": z.enum(["open", "closed", "all"]),
+  "projectIds": z.array(z.string()).max(200),
+  "columns": z.array(z.enum(["project", "ref", "title", "status", "dueDate", "overdue", "createdAt"])).min(1).max(7),
+  "overdueOnly": z.boolean(),
+}).strict();
+export type ReportConfig = z.infer<typeof ReportConfigSchema>;
+
+export const ReportSchema = z.object({
+  "id": z.string(),
+  "name": z.string(),
+  "shared": z.boolean(),
+  "config": ReportConfigSchema,
+  "mine": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type Report = z.infer<typeof ReportSchema>;
+
+export const ReportIncidentRequestSchema = z.object({
+  "title": z.string().min(1).max(300),
+  "type": IncidentTypeSchema,
+  "occurredAt": z.string().datetime({ offset: true }),
+  "location": z.string().max(500).optional(),
+  "description": z.string().max(8000).optional(),
+  "immediateActions": z.string().max(4000).optional(),
+  "severity": IncidentSeveritySchema.optional(),
+  "isNotifiable": z.boolean().optional(),
+  "notifiableClass": NotifiableClassSchema.optional(),
+  "regulatorNotifiedAt": z.string().datetime({ offset: true }).optional(),
+  "writtenNoticeRequestedAt": z.string().datetime({ offset: true }).optional(),
+  "people": z.array(IncidentPersonInputSchema).max(50).optional(),
+}).strict();
+export type ReportIncidentRequest = z.infer<typeof ReportIncidentRequestSchema>;
+
+export const ReportInputSchema = z.object({
+  "name": z.string().min(1).max(120),
+  "shared": z.boolean(),
+  "config": ReportConfigSchema,
+}).strict();
+export type ReportInput = z.infer<typeof ReportInputSchema>;
+
+export const ReportListSchema = z.object({
+  "data": z.array(ReportSchema),
+});
+export type ReportList = z.infer<typeof ReportListSchema>;
+
+export const ReportRowSchema = z.object({
+  "projectId": z.string(),
+  "project": z.string(),
+  "ref": z.string(),
+  "title": z.string(),
+  "status": z.string(),
+  "dueDate": z.string().date().nullable(),
+  "overdue": z.boolean(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ReportRow = z.infer<typeof ReportRowSchema>;
+
+export const ReportResultSchema = z.object({
+  "columns": z.array(z.enum(["project", "ref", "title", "status", "dueDate", "overdue", "createdAt"])),
+  "rows": z.array(ReportRowSchema),
+  "restrictedProjects": z.number().int(),
+  "truncated": z.boolean(),
+  "generatedAt": z.string().datetime({ offset: true }),
+});
+export type ReportResult = z.infer<typeof ReportResultSchema>;
 
 export const RespondCorrespondenceRequestSchema = z.object({
   "body": z.string().min(1).max(50000),
@@ -3683,6 +5474,41 @@ export const RespondSubmittalStepRequestSchema = z.object({
   "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict();
 export type RespondSubmittalStepRequest = z.infer<typeof RespondSubmittalStepRequestSchema>;
+
+export const RespondToShiftRequestSchema = z.object({
+  "status": z.enum(["accepted", "declined", "attended", "no_show"]),
+}).strict();
+export type RespondToShiftRequest = z.infer<typeof RespondToShiftRequestSchema>;
+
+export const RetentionStageStatusSchema = z.enum(["awaiting_date", "upcoming", "due", "released"]);
+export type RetentionStageStatus = z.infer<typeof RetentionStageStatusSchema>;
+
+export const RetentionReleaseSchema = z.object({
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+  "terms": z.object({
+  "practicalCompletionOn": z.string().date().nullable(),
+  "defectsPeriodDays": z.number().int().nullable(),
+  "firstReleasePct": z.string(),
+}),
+  "retentionHeld": FinancialsMoneySchema,
+  "stages": z.array(z.object({
+  "stage": RetentionStageSchema,
+  "dueOn": z.string().date().nullable(),
+  "entitled": FinancialsMoneySchema,
+  "released": FinancialsMoneySchema,
+  "remaining": FinancialsMoneySchema,
+  "status": RetentionStageStatusSchema,
+})),
+  "releases": z.array(z.object({
+  "stage": RetentionStageSchema,
+  "amount": FinancialsMoneySchema,
+  "releasedOn": z.string().date(),
+  "reference": z.string(),
+  "note": z.string().nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+})),
+});
+export type RetentionRelease = z.infer<typeof RetentionReleaseSchema>;
 
 export const RevokeRequestSchema = z.object({
   "token": z.string(),
@@ -3840,6 +5666,15 @@ export const RollCallListSchema = z.object({
 });
 export type RollCallList = z.infer<typeof RollCallListSchema>;
 
+export const SaveContractTrustRequestSchema = z.object({
+  "governmentClient": z.boolean().optional(),
+  "institution": z.string().min(1).max(200).nullable().optional(),
+  "accountName": z.string().min(1).max(200).nullable().optional(),
+  "accountLast4": z.string().regex(new RegExp("^[0-9]{4}$")).nullable().optional(),
+  "openedOn": z.string().date().nullable().optional(),
+}).strict();
+export type SaveContractTrustRequest = z.infer<typeof SaveContractTrustRequestSchema>;
+
 export const SaveDiaryEntryRequestSchema = z.object({
   "weatherOverride": z.union([DiaryWeatherSchema, z.null()]).optional(),
   "weatherNotes": z.string().max(2000).nullable().optional(),
@@ -3855,6 +5690,71 @@ export const SaveInductionDraftRequestSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
+
+export const SaveRetentionTermsRequestSchema = z.object({
+  "practicalCompletionOn": z.string().date().nullable().optional(),
+  "defectsPeriodDays": z.number().int().min(0).max(3650).nullable().optional(),
+  "firstReleasePct": z.string().regex(new RegExp("^\\d{1,3}(\\.\\d{1,2})?$")).optional(),
+}).strict();
+export type SaveRetentionTermsRequest = z.infer<typeof SaveRetentionTermsRequestSchema>;
+
+export const ScheduleItemPlacementSchema = z.object({
+  "linkId": z.string(),
+  "scheduleId": z.string(),
+  "scheduleName": z.string(),
+  "activityId": z.string(),
+  "activityName": z.string(),
+  "start": z.string().date(),
+  "finish": z.string().date(),
+});
+export type ScheduleItemPlacement = z.infer<typeof ScheduleItemPlacementSchema>;
+
+export const ScheduleItemPlacementListSchema = z.object({
+  "data": z.array(ScheduleItemPlacementSchema),
+});
+export type ScheduleItemPlacementList = z.infer<typeof ScheduleItemPlacementListSchema>;
+
+export const ScheduleLinkSchema = z.object({
+  "id": z.string(),
+  "activityId": z.string(),
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+  "visible": z.boolean(),
+  "ref": z.string().nullable(),
+  "title": z.string().nullable(),
+  "status": z.string().nullable(),
+  "dueDate": z.string().date().nullable(),
+  "scheduleImpactDays": z.number().int().nullable(),
+});
+export type ScheduleLink = z.infer<typeof ScheduleLinkSchema>;
+
+export const ScheduleLinkListSchema = z.object({
+  "data": z.array(ScheduleLinkSchema),
+});
+export type ScheduleLinkList = z.infer<typeof ScheduleLinkListSchema>;
+
+export const ScheduleListSchema = z.object({
+  "data": z.array(ScheduleSummarySchema),
+});
+export type ScheduleList = z.infer<typeof ScheduleListSchema>;
+
+export const ScheduleLookaheadItemSchema = z.object({
+  "activity": ScheduleActivitySchema,
+  "startsInWindow": z.boolean(),
+  "finishesInWindow": z.boolean(),
+  "late": z.boolean(),
+});
+export type ScheduleLookaheadItem = z.infer<typeof ScheduleLookaheadItemSchema>;
+
+export const ScheduleLookaheadSchema = z.object({
+  "scheduleId": z.string(),
+  "weeks": z.number().int(),
+  "today": z.string().date(),
+  "windowStart": z.string().date(),
+  "windowEnd": z.string().date(),
+  "items": z.array(ScheduleLookaheadItemSchema),
+});
+export type ScheduleLookahead = z.infer<typeof ScheduleLookaheadSchema>;
 
 export const SelfSignInRequestSchema = z.object({
   "gateCode": z.string().min(10).max(100),
@@ -3895,6 +5795,16 @@ export const SetMeetingAttendeesRequestSchema = z.object({
 }).strict();
 export type SetMeetingAttendeesRequest = z.infer<typeof SetMeetingAttendeesRequestSchema>;
 
+export const SetVariationCostCodeRequestSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+}).strict();
+export type SetVariationCostCodeRequest = z.infer<typeof SetVariationCostCodeRequestSchema>;
+
+export const SharedComplianceDocumentListSchema = z.object({
+  "data": z.array(SharedComplianceDocumentSchema),
+});
+export type SharedComplianceDocumentList = z.infer<typeof SharedComplianceDocumentListSchema>;
+
 export const SheetGeometrySchema = z.object({
   "revisionId": z.string(),
   "status": z.enum(["pending", "ready"]),
@@ -3906,6 +5816,44 @@ export const SheetGeometrySchema = z.object({
   "version": z.number().int(),
 });
 export type SheetGeometry = z.infer<typeof SheetGeometrySchema>;
+
+export const ShiftStatusSchema = z.enum(["draft", "published", "cancelled"]);
+export type ShiftStatus = z.infer<typeof ShiftStatusSchema>;
+
+export const ShiftAssignmentStatusSchema = z.enum(["offered", "accepted", "declined", "no_show", "attended"]);
+export type ShiftAssignmentStatus = z.infer<typeof ShiftAssignmentStatusSchema>;
+
+export const ShiftAssignmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^sha_[0-9A-Za-z]{26}$")),
+  "shiftId": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable(),
+  "status": ShiftAssignmentStatusSchema,
+  "notifiedAt": z.string().datetime({ offset: true }).nullable(),
+  "respondedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type ShiftAssignment = z.infer<typeof ShiftAssignmentSchema>;
+
+export const ShiftSchema = z.object({
+  "id": z.string().regex(new RegExp("^shf_[0-9A-Za-z]{26}$")),
+  "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")),
+  "crew": z.string().nullable(),
+  "trade": z.string(),
+  "note": z.string().nullable(),
+  "startsAt": z.string().datetime({ offset: true }),
+  "endsAt": z.string().datetime({ offset: true }),
+  "requiredHeadcount": z.number().int(),
+  "filled": z.number().int(),
+  "status": ShiftStatusSchema,
+  "publishedAt": z.string().datetime({ offset: true }).nullable(),
+  "assignments": z.array(ShiftAssignmentSchema),
+});
+export type Shift = z.infer<typeof ShiftSchema>;
+
+export const ShiftListSchema = z.object({
+  "data": z.array(ShiftSchema),
+});
+export type ShiftList = z.infer<typeof ShiftListSchema>;
 
 export const SignInResultSchema = z.object({
   "outcome": z.enum(["accepted", "blocked", "overridden", "already_on_site", "signed_out"]),
@@ -3933,6 +5881,63 @@ export const SignupRequestSchema = z.object({
   "name": z.string().min(1).max(200),
 }).strict();
 export type SignupRequest = z.infer<typeof SignupRequestSchema>;
+
+export const SpecBookSchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "issuedDate": z.string().date().nullable(),
+  "fileId": z.string().nullable(),
+  "status": z.enum(["current", "superseded"]),
+  "supersededById": z.string().nullable(),
+  "sectionCount": z.number().int(),
+  "version": z.number().int(),
+});
+export type SpecBook = z.infer<typeof SpecBookSchema>;
+
+export const SpecSectionSchema = z.object({
+  "id": z.string(),
+  "bookId": z.string(),
+  "sectionNumber": z.string(),
+  "title": z.string(),
+  "division": z.string().nullable(),
+  "pageFrom": z.number().int().min(1),
+  "pageTo": z.number().int().min(1),
+  "revision": z.string().nullable(),
+});
+export type SpecSection = z.infer<typeof SpecSectionSchema>;
+
+export const SpecBookDetailSchema = z.object({
+  "book": SpecBookSchema,
+  "sections": z.array(SpecSectionSchema),
+});
+export type SpecBookDetail = z.infer<typeof SpecBookDetailSchema>;
+
+export const SpecBookListSchema = z.object({
+  "data": z.array(SpecBookSchema),
+});
+export type SpecBookList = z.infer<typeof SpecBookListSchema>;
+
+export const SpecSectionHitSchema = z.object({
+  "section": SpecSectionSchema,
+  "bookId": z.string(),
+  "bookName": z.string(),
+});
+export type SpecSectionHit = z.infer<typeof SpecSectionHitSchema>;
+
+export const SpecSectionHitListSchema = z.object({
+  "data": z.array(SpecSectionHitSchema),
+});
+export type SpecSectionHitList = z.infer<typeof SpecSectionHitListSchema>;
+
+export const StaffActionSchema = z.object({
+  "id": z.string(),
+  "kind": z.enum(["trial.extend", "plan.change", "suspend", "reactivate", "credits.grant"]),
+  "summary": z.string(),
+  "ticketRef": z.string(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type StaffAction = z.infer<typeof StaffActionSchema>;
 
 export const StartInductionRequestSchema = z.object({
   "siteId": z.string().regex(new RegExp("^wst_[0-9A-Za-z]{26}$")).optional(),
@@ -4068,6 +6073,7 @@ export const SupportAccessGrantSchema = z.object({
   "id": z.string(),
   "ticketRef": z.string(),
   "level": z.enum(["view"]),
+  "projectIds": z.array(z.string()).nullable(),
   "grantedBy": z.string(),
   "createdAt": z.string().datetime({ offset: true }),
   "expiresAt": z.string().datetime({ offset: true }),
@@ -4100,6 +6106,16 @@ export const SupportBannerSchema = z.object({
   "since": z.string().datetime({ offset: true }).nullable(),
 });
 export type SupportBanner = z.infer<typeof SupportBannerSchema>;
+
+export const SupportReadSchema = z.object({
+  "id": z.string(),
+  "sessionId": z.string(),
+  "staffName": z.string(),
+  "page": z.string(),
+  "recordCount": z.number().int(),
+  "at": z.string().datetime({ offset: true }),
+});
+export type SupportRead = z.infer<typeof SupportReadSchema>;
 
 export const SwmsStatusSchema = z.enum(["submitted", "reviewed", "accepted", "rejected"]);
 export type SwmsStatus = z.infer<typeof SwmsStatusSchema>;
@@ -4301,6 +6317,46 @@ export const TenderPackagePageSchema = z.object({
 });
 export type TenderPackagePage = z.infer<typeof TenderPackagePageSchema>;
 
+export const TimesheetStatusSchema = z.enum(["draft", "submitted", "approved", "rejected", "exported"]);
+export type TimesheetStatus = z.infer<typeof TimesheetStatusSchema>;
+
+export const TimesheetLineSchema = z.object({
+  "id": z.string().regex(new RegExp("^tsl_[0-9A-Za-z]{26}$")),
+  "minutes": z.number().int(),
+  "breakMinutes": z.number().int(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "source": z.enum(["attendance", "manual", "adjusted"]),
+  "adjustedReason": z.string().nullable(),
+});
+export type TimesheetLine = z.infer<typeof TimesheetLineSchema>;
+
+export const TimesheetSchema = z.object({
+  "id": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")),
+  "companyId": z.string().regex(new RegExp("^cmp_[0-9A-Za-z]{26}$")).nullable(),
+  "date": z.string().date(),
+  "status": TimesheetStatusSchema,
+  "submittedAt": z.string().datetime({ offset: true }).nullable(),
+  "approvedAt": z.string().datetime({ offset: true }).nullable(),
+  "rejectionReason": z.string().nullable(),
+  "paidMinutes": z.number().int(),
+  "paidHours": z.string().regex(new RegExp("^\\d+\\.\\d{2}$")),
+  "lines": z.array(TimesheetLineSchema),
+});
+export type Timesheet = z.infer<typeof TimesheetSchema>;
+
+export const TimesheetExportSchema = z.object({
+  "filename": z.string(),
+  "csv": z.string(),
+  "count": z.number().int(),
+});
+export type TimesheetExport = z.infer<typeof TimesheetExportSchema>;
+
+export const TimesheetListSchema = z.object({
+  "data": z.array(TimesheetSchema),
+});
+export type TimesheetList = z.infer<typeof TimesheetListSchema>;
+
 export const TokenRequestSchema = z.object({
   "grant_type": z.enum(["authorization_code", "refresh_token"]),
   "client_id": z.string(),
@@ -4427,6 +6483,49 @@ export const UpdateAttendanceSiteRequestSchema = z.object({
 }).strict();
 export type UpdateAttendanceSiteRequest = z.infer<typeof UpdateAttendanceSiteRequestSchema>;
 
+export const UpdateBidderListRequestSchema = z.object({
+  "name": z.string().min(1).max(100).optional(),
+  "trade": z.string().max(100).optional(),
+  "companyIds": z.array(z.string()).max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateBidderListRequest = z.infer<typeof UpdateBidderListRequestSchema>;
+
+export const UpdateBudgetLineRequestSchema = z.object({
+  "description": z.string().max(300).optional(),
+  "original": FinancialsMoneySchema.optional(),
+  "isMargin": z.boolean().optional(),
+}).strict();
+export type UpdateBudgetLineRequest = z.infer<typeof UpdateBudgetLineRequestSchema>;
+
+export const UpdateComplianceDocumentRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "number": z.string().min(1).max(50).nullable().optional(),
+  "issuingState": z.union([AuStateSchema, z.null()]).optional(),
+  "licenceClass": z.string().max(200).nullable().optional(),
+  "insurer": z.string().max(200).nullable().optional(),
+  "limitCents": z.number().int().min(0).nullable().optional(),
+  "startsOn": z.string().date().nullable().optional(),
+  "expiresOn": z.string().date().nullable().optional(),
+  "fileIds": z.array(FileRefSchema).max(4).optional(),
+  "lastWorkOn": z.string().date().nullable().optional(),
+  "archived": z.boolean().optional(),
+}).strict();
+export type UpdateComplianceDocumentRequest = z.infer<typeof UpdateComplianceDocumentRequestSchema>;
+
+export const UpdateCoordinationIssueRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "description": z.string().max(10000).optional(),
+  "status": CoordinationIssueStatusSchema.optional(),
+  "priority": CoordinationIssuePrioritySchema.optional(),
+  "assigneeId": z.string().regex(new RegExp("^usr_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "modelId": z.string().regex(new RegExp("^bmd_[0-9A-Za-z]{26}$")).nullable().optional(),
+  "elementGuids": z.array(z.string().max(64)).max(50).optional(),
+  "location": z.string().max(200).optional(),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type UpdateCoordinationIssueRequest = z.infer<typeof UpdateCoordinationIssueRequestSchema>;
+
 export const UpdateCorrespondenceRequestSchema = z.object({
   "subject": z.string().max(300).optional(),
   "body": z.string().max(50000).optional(),
@@ -4454,6 +6553,12 @@ export const UpdateCorrespondenceTypeRequestSchema = z.object({
   "archived": z.boolean().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateCorrespondenceTypeRequest = z.infer<typeof UpdateCorrespondenceTypeRequestSchema>;
+
+export const UpdateCostCodeRequestSchema = z.object({
+  "description": z.string().min(1).max(200).optional(),
+  "archived": z.boolean().optional(),
+}).strict();
+export type UpdateCostCodeRequest = z.infer<typeof UpdateCostCodeRequestSchema>;
 
 export const UpdateCostItemRequestSchema = z.object({
   "code": z.string().min(1).max(40).optional(),
@@ -4567,6 +6672,13 @@ export const UpdateDraftDrawingRevisionRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDraftDrawingRevisionRequest = z.infer<typeof UpdateDraftDrawingRevisionRequestSchema>;
 
+export const UpdateEquipmentRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "type": z.string().min(1).max(100).optional(),
+  "status": EquipmentStatusSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEquipmentRequest = z.infer<typeof UpdateEquipmentRequestSchema>;
+
 export const UpdateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
   "baseDate": z.string().date().optional(),
@@ -4591,6 +6703,34 @@ export const UpdateGateRequestSchema = z.object({
   "active": z.boolean().optional(),
 }).strict();
 export type UpdateGateRequest = z.infer<typeof UpdateGateRequestSchema>;
+
+export const UpdateIncidentActionRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "description": z.string().max(4000).nullable().optional(),
+  "assigneeCompanyId": z.union([CompanyRefSchema, z.null()]).optional(),
+  "assigneeUserId": z.union([UserRefSchema, z.null()]).optional(),
+  "dueDate": z.string().date().nullable().optional(),
+  "source": z.union([IncidentSourceSchema, z.null()]).optional(),
+  "status": CorrectiveStatusSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateIncidentActionRequest = z.infer<typeof UpdateIncidentActionRequestSchema>;
+
+export const UpdateIncidentRequestSchema = z.object({
+  "title": z.string().min(1).max(300).optional(),
+  "type": IncidentTypeSchema.optional(),
+  "occurredAt": z.string().datetime({ offset: true }).optional(),
+  "location": z.string().max(500).nullable().optional(),
+  "description": z.string().max(8000).optional(),
+  "immediateActions": z.string().max(4000).nullable().optional(),
+  "severity": IncidentSeveritySchema.optional(),
+  "isNotifiable": z.boolean().optional(),
+  "notifiableClass": z.union([NotifiableClassSchema, z.null()]).optional(),
+  "regulatorNotifiedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "writtenNoticeRequestedAt": z.string().datetime({ offset: true }).nullable().optional(),
+  "rootCause": z.union([IncidentRootCauseSchema, z.null()]).optional(),
+  "people": z.array(IncidentPersonInputSchema).max(50).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateIncidentRequest = z.infer<typeof UpdateIncidentRequestSchema>;
 
 export const UpdateInductionRequestSchema = z.object({
   "title": z.string().min(1).max(200).optional(),
@@ -4672,6 +6812,39 @@ export const UpdateObservationRequestSchema = z.object({
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateObservationRequest = z.infer<typeof UpdateObservationRequestSchema>;
 
+export const UpdateOwnerCapitalItemRequestSchema = z.object({
+  "fiscalYear": z.number().int().min(2000).max(2100).optional(),
+  "category": z.string().min(1).max(100).optional(),
+  "description": z.string().max(1000).optional(),
+  "budgetCents": z.number().int().min(0).optional(),
+  "forecastCents": z.number().int().min(0).optional(),
+  "spentCents": z.number().int().min(0).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateOwnerCapitalItemRequest = z.infer<typeof UpdateOwnerCapitalItemRequestSchema>;
+
+export const UpdateOwnerProgressUpdateRequestSchema = z.object({
+  "title": z.string().min(1).max(200).optional(),
+  "periodStart": z.string().date().optional(),
+  "periodEnd": z.string().date().optional(),
+  "summary": z.string().max(10000).optional(),
+  "percentComplete": z.number().int().min(0).max(100).optional(),
+  "milestones": z.array(OwnerMilestoneSchema).max(50).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateOwnerProgressUpdateRequest = z.infer<typeof UpdateOwnerProgressUpdateRequestSchema>;
+
+export const UpdatePrequalTemplateRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "validityMonths": z.number().int().min(1).max(60).optional(),
+  "questions": z.array(PrequalQuestionSchema).max(100).optional(),
+}).strict();
+export type UpdatePrequalTemplateRequest = z.infer<typeof UpdatePrequalTemplateRequestSchema>;
+
+export const UpdatePrequalificationRequestSchema = z.object({
+  "answers": PrequalAnswersSchema.optional(),
+  "trades": z.array(z.string().min(1).max(100)).max(20).optional(),
+}).strict();
+export type UpdatePrequalificationRequest = z.infer<typeof UpdatePrequalificationRequestSchema>;
+
 export const UpdateProjectRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),
   "number": z.string().max(50).nullable().optional(),
@@ -4713,6 +6886,17 @@ export const UpdateRfiRequestSchema = z.object({
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
+
+export const UpdateScheduleActivityRequestSchema = z.object({
+  "name": z.string().min(1).max(300).optional(),
+  "kind": z.enum(["task", "milestone"]).optional(),
+  "wbs": z.string().max(100).optional(),
+  "start": z.string().date().optional(),
+  "finish": z.string().date().optional(),
+  "pctComplete": z.number().int().min(0).max(100).optional(),
+  "assignee": z.string().max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateScheduleActivityRequest = z.infer<typeof UpdateScheduleActivityRequestSchema>;
 
 export const UpdateSubmittalRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),
@@ -4794,6 +6978,7 @@ export const VariationSchema = z.object({
   "submittedAt": z.string().datetime({ offset: true }).nullable(),
   "decidedAt": z.string().datetime({ offset: true }).nullable(),
   "decisionNote": z.string().nullable(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
 });
 export type Variation = z.infer<typeof VariationSchema>;
 
@@ -4821,6 +7006,11 @@ export const VoidCorrespondenceRequestSchema = z.object({
   "reason": z.string().min(1).max(1000),
 }).strict();
 export type VoidCorrespondenceRequest = z.infer<typeof VoidCorrespondenceRequestSchema>;
+
+export const VoidDirectCostRequestSchema = z.object({
+  "note": z.string().min(1).max(5000),
+}).strict();
+export type VoidDirectCostRequest = z.infer<typeof VoidDirectCostRequestSchema>;
 
 export const WebhookSchema = z.object({
   "id": z.string(),

@@ -11,9 +11,14 @@ import {
 import type { AdminService, AiSettings } from '../application/admin';
 import type { DiarySummaryPayload, DiarySummaryService } from '../application/diary-summary';
 import type { DiaryWeeklyPayload, DiaryWeeklyService } from '../application/diary-weekly';
+import type { MinutesExtractPayload, MinutesExtractService } from '../application/minutes-extract';
 import type { AnswerSource, AskService } from '../application/ask';
 import type { ContractPlaybookService } from '../application/contract-playbook';
-import type { ContractReviewPayload, ContractReviewService } from '../application/contract-review';
+import type {
+  ContractReviewPayload,
+  ContractReviewRow,
+  ContractReviewService,
+} from '../application/contract-review';
 import type { TakeoffDetectService } from '../application/takeoff-detect';
 import type { SpeechService } from '../application/speech';
 import type { QuoteNegotiateService } from '../application/quote-negotiate';
@@ -89,6 +94,18 @@ function payloadDto(task: string, payload: unknown): Record<string, unknown> {
       ...p,
       sentences: p.sentences.map((x) => ({ ...x, sources: x.sources.map(diarySource) })),
       unmentionedDelays: p.unmentionedDelays.map(diarySource),
+    };
+  }
+  if (task === 'minutes.extract') {
+    const p = payload as MinutesExtractPayload;
+    return {
+      ...p,
+      meetingId: encodeId('meeting', p.meetingId),
+      items: p.items.map((i) => ({
+        ...i,
+        sectionId: i.sectionId ? encodeId('meetingSection', i.sectionId) : null,
+        attendeeId: i.attendeeId ? encodeId('meetingAttendee', i.attendeeId) : null,
+      })),
     };
   }
   if (task === 'rfi.draft') {
@@ -197,6 +214,20 @@ export const toSuggestionDto = (r: typeof suggestions.$inferSelect): AiSuggestio
   decidedAt: r.decidedAt ? r.decidedAt.toISOString() : null,
 });
 
+/** A saved review as the API shows it: ids public, decisions with the person's public user id. */
+function toContractReviewDto(r: ContractReviewRow) {
+  return {
+    ...payloadDto('contract.review', r.payload),
+    decisions: (r.payload.decisions ?? []).map((d) => ({
+      ...d,
+      decidedBy: encodeId('user', d.decidedBy),
+    })),
+    runId: encodeId('aiRun', r.runId),
+    suggestionId: encodeId('aiSuggestion', r.id),
+    createdAt: r.createdAt.toISOString(),
+  };
+}
+
 const toSourceDto = (s: AnswerSource) => ({
   sourceType: s.sourceType,
   ...sourceIds(s),
@@ -244,6 +275,7 @@ export function aiRoutes(
   contractReviews: ContractReviewService,
   speech: SpeechService,
   takeoffDetect: TakeoffDetectService,
+  minutesExtract: MinutesExtractService,
 ) {
   const ro = { readOnly: true } as const;
   return defineRoutes({
@@ -481,14 +513,80 @@ export function aiRoutes(
           ourSide: input.body.ourSide,
           baseForm: input.body.baseForm ?? null,
           multiState: input.body.multiState ?? false,
+          state: input.body.state ?? null,
         },
       );
       return {
         status: 200,
         body: {
           ...payloadDto('contract.review', payload),
+          decisions: [],
+          createdAt: new Date().toISOString(),
           runId: encodeId('aiRun', runId),
           suggestionId: encodeId('aiSuggestion', suggestionId),
+        },
+      };
+    },
+    listContractReviews: async (input) => {
+      const rows = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.list(scope, projectUuid(input.params.projectId)),
+        ro,
+      );
+      return { status: 200, body: { data: rows.map(toContractReviewDto) } };
+    },
+    getContractReview: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(
+        requireTenant(input),
+        (scope) => contractReviews.get(scope, projectUuid(input.params.projectId), id),
+        ro,
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    decideContractFlag: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const row = await database.withTenantTx(requireTenant(input), (scope) =>
+        contractReviews.decideFlag(
+          scope,
+          projectUuid(input.params.projectId),
+          id,
+          Number(input.params.flagIndex),
+          { decision: input.body.decision, note: input.body.note ?? null },
+        ),
+      );
+      return { status: 200, body: toContractReviewDto(row) };
+    },
+    askContract: async (input) => {
+      const id = decodeId('aiSuggestion', input.params.suggestionId);
+      if (!id) throw new AppError('ai.suggestion.not_found');
+      const a = await contractReviews.ask(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        id,
+        input.body.question,
+      );
+      return { status: 200, body: { ...a, runId: encodeId('aiRun', a.runId) } };
+    },
+    compareContracts: async (input) => {
+      const baseId = decodeId('aiSuggestion', input.body.baseReviewId);
+      const otherId = decodeId('aiSuggestion', input.body.otherReviewId);
+      if (!baseId || !otherId) throw new AppError('ai.suggestion.not_found');
+      const c = await contractReviews.compare(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        baseId,
+        otherId,
+      );
+      return {
+        status: 200,
+        body: {
+          ...c,
+          runId: encodeId('aiRun', c.runId),
+          base: { ...c.base, suggestionId: encodeId('aiSuggestion', c.base.suggestionId) },
+          other: { ...c.other, suggestionId: encodeId('aiSuggestion', c.other.suggestionId) },
         },
       };
     },
@@ -601,6 +699,17 @@ export function aiRoutes(
         requireTenant(input),
         projectId,
         input.params.weekStart,
+      );
+      return { status: 200, body: toSuggestionDto(row) };
+    },
+    draftMinutesWithNova: async (input) => {
+      const meetingId = decodeId('meeting', input.params.meetingId);
+      if (!meetingId) throw new AppError('meeting.not_found');
+      const row = await minutesExtract.extract(
+        requireTenant(input),
+        projectUuid(input.params.projectId),
+        meetingId,
+        { notes: input.body.notes },
       );
       return { status: 200, body: toSuggestionDto(row) };
     },

@@ -42,6 +42,16 @@ export function useMyActions(scope: 'mine' | 'all') {
   });
 }
 
+export function useLinkedMeetingItems(type: 'rfi' | 'defect' | 'variation', id: string) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'meetings', { linked: `${type}:${id}` }),
+    queryFn: () => source.linkedItems(projectId, { type, id }),
+  });
+}
+
 export function useMeeting(meetingId: string) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
@@ -88,10 +98,39 @@ export function useMeetingMutations(meetingId: string | null) {
         source.setAttendees(projectId, id(), attendees),
       onSuccess: settle,
     }),
+    addSection: useMutation({
+      mutationFn: (body: Parameters<typeof source.addSection>[2]) =>
+        source.addSection(projectId, id(), body),
+      onSuccess: settle,
+    }),
     createItem: useMutation({
       mutationFn: (body: Parameters<typeof source.createItem>[2]) =>
         source.createItem(projectId, id(), body),
       onSuccess: settle,
+    }),
+    draftMinutes: useMutation({
+      mutationFn: (notes: string) => source.draftMinutes(projectId, id(), notes),
+    }),
+    /** Adds the chosen items one at a time (each is its own numbered item), then records the draft as used. */
+    addDrafted: useMutation({
+      mutationFn: async (v: {
+        suggestionId: string;
+        items: Array<Parameters<typeof source.createItem>[2]>;
+        onAdded?: (index: number) => void;
+      }) => {
+        let last: MeetingDetail | null = null;
+        for (const [i, body] of v.items.entries()) {
+          last = await source.createItem(projectId, id(), body);
+          v.onAdded?.(i);
+        }
+        await source.decideDraft(projectId, v.suggestionId, 'accepted');
+        return last;
+      },
+      onSettled: () =>
+        qc.invalidateQueries({ queryKey: queryKeys.toolItem(orgId, projectId, 'meetings', id()) }),
+    }),
+    rejectDraft: useMutation({
+      mutationFn: (suggestionId: string) => source.decideDraft(projectId, suggestionId, 'rejected'),
     }),
     updateItem: useMutation({
       mutationFn: (v: {

@@ -25,11 +25,21 @@ const billing = createBillingModule(services);
 const backoffice = createBackofficeModule(services, {
   catalogue: billing.api.catalogue,
   accounts: billing.api.accounts,
+  adjustments: billing.api.adjustments,
   credits: () => {
     throw new Error('Granting credits is not available from the seed command');
   },
   supportReads: () => {
     throw new Error('The seed command does not read customer data');
+  },
+  notifyStaff: () => {
+    throw new Error('The seed command does not send email');
+  },
+  projectInOrg: () => {
+    throw new Error('The seed command does not manage legal holds');
+  },
+  notifySupportSession: () => {
+    throw new Error('The seed command does not open support sessions');
   },
   config: { localLogin: true, soloCoolingOffHours: 24 },
 });

@@ -384,3 +384,275 @@ describe('site sign-in (product/12)', () => {
     });
   });
 });
+
+describe('Rosters (ATT-US11)', () => {
+  const day = (h: number) => `2030-03-04T${String(h).padStart(2, '0')}:00:00Z`;
+
+  it('drafts, assigns, publishes and answers a shift, with company scoping and overlap checks', async () => {
+    const s = await setup('roster');
+    const mk = async (browser: typeof s.sm.browser, fullName: string, companyId: string) => {
+      const r = await browser.post(`${s.base}/workers`, { fullName, companyId });
+      expect(r.statusCode).toBe(201);
+      return r.json().id as string;
+    };
+    const w1 = await mk(s.sm.browser, 'Dana Formworker', s.subCo.companyId);
+    const w2 = await mk(s.sm.browser, 'Eli Sparky', s.sub2Co.companyId);
+
+    // A subcontractor cannot build rosters.
+    const denied = await s.sub.browser.post(`${s.base}/shifts`, {
+      siteId: s.site.id,
+      trade: 'Formwork',
+      startsAt: day(7),
+      endsAt: day(15),
+      requiredHeadcount: 2,
+    });
+    expect(denied.statusCode).toBe(403);
+
+    const bad = await s.sm.browser.post(`${s.base}/shifts`, {
+      siteId: s.site.id,
+      trade: 'Formwork',
+      startsAt: day(15),
+      endsAt: day(7),
+      requiredHeadcount: 2,
+    });
+    expect(bad.statusCode).toBe(422);
+
+    const created = await s.sm.browser.post(`${s.base}/shifts`, {
+      siteId: s.site.id,
+      crew: 'Slab crew',
+      trade: 'Formwork',
+      startsAt: day(7),
+      endsAt: day(15),
+      requiredHeadcount: 2,
+    });
+    expect(created.statusCode).toBe(201);
+    const shift = created.json();
+    expect(shift).toMatchObject({ status: 'draft', filled: 0, publishedAt: null });
+    const sp = `${s.base}/shifts/${shift.id}`;
+
+    // Drafts are the site manager's own.
+    expect((await s.sub.browser.get(sp)).statusCode).toBe(404);
+
+    const assigned = await s.sm.browser.post(`${sp}/assignments`, { workerIds: [w1, w2] });
+    expect(assigned.statusCode).toBe(200);
+    expect(assigned.json()).toMatchObject({ filled: 2 });
+    expect(
+      assigned.json().assignments.every((a: { notifiedAt: unknown }) => a.notifiedAt === null),
+    ).toBe(true);
+
+    // The same person can't be on an overlapping shift; back to back is fine.
+    const second = (
+      await s.sm.browser.post(`${s.base}/shifts`, {
+        siteId: s.site.id,
+        trade: 'Formwork',
+        startsAt: day(14),
+        endsAt: day(18),
+        requiredHeadcount: 1,
+      })
+    ).json();
+    const clash = await s.sm.browser.post(`${s.base}/shifts/${second.id}/assignments`, {
+      workerIds: [w1],
+    });
+    expect(clash.statusCode).toBe(409);
+
+    const published = await s.sm.browser.post(`${sp}/publish`);
+    expect(published.statusCode).toBe(200);
+    expect(published.json().status).toBe('published');
+    expect((await s.sm.browser.post(`${sp}/publish`)).statusCode).toBe(409);
+
+    // A subcontractor sees the shift but only its own worker's assignment, and answers only for them.
+    const seen = (await s.sub.browser.get(sp)).json();
+    expect(seen.assignments).toHaveLength(1);
+    expect(seen.filled).toBe(2);
+    const mine = seen.assignments[0];
+    expect(mine.notifiedAt).not.toBeNull();
+    const yes = await s.sub.browser.post(`${sp}/assignments/${mine.id}/respond`, {
+      status: 'accepted',
+    });
+    expect(yes.statusCode).toBe(200);
+    expect(yes.json().assignments[0].status).toBe('accepted');
+    const theirs = (await s.sm.browser.get(sp))
+      .json()
+      .assignments.find((a: { workerId: string }) => a.workerId === w2);
+    expect(
+      (await s.sub.browser.post(`${sp}/assignments/${theirs.id}/respond`, { status: 'accepted' }))
+        .statusCode,
+    ).toBe(404);
+
+    // Attendance is the manager's call, and only once the shift has begun (this one is in 2030).
+    expect(
+      (await s.sm.browser.post(`${sp}/assignments/${mine.id}/respond`, { status: 'attended' }))
+        .statusCode,
+    ).toBe(409);
+
+    const listed = await s.sm.browser.get(`${s.base}/shifts?from=${day(0)}&to=${day(23)}`);
+    expect(listed.json().data).toHaveLength(2);
+
+    const cancelled = await s.sm.browser.post(`${sp}/cancel`);
+    expect(cancelled.json().status).toBe('cancelled');
+    expect((await s.sm.browser.post(`${sp}/assignments`, { workerIds: [w1] })).statusCode).toBe(
+      409,
+    );
+  });
+});
+
+describe('Equipment', () => {
+  it('registers a machine, refuses clashing bookings and logs hours in quarter hours', async () => {
+    const s = await setup('equipment');
+    const eq = `${s.base}/equipment`;
+
+    // Only a site manager keeps the register.
+    const denied = await s.sub.browser.post(eq, {
+      name: 'Excavator',
+      assetNumber: 'EX-1',
+      type: 'Excavator',
+    });
+    expect(denied.statusCode).toBe(403);
+
+    const created = await s.sm.browser.post(eq, {
+      name: '5t excavator',
+      assetNumber: 'EX-1',
+      type: 'Excavator',
+    });
+    expect(created.statusCode).toBe(201);
+    const e = created.json();
+    expect(e).toMatchObject({ status: 'available', assetNumber: 'EX-1' });
+    const dup = await s.sm.browser.post(eq, {
+      name: 'Another',
+      assetNumber: 'EX-1',
+      type: 'Excavator',
+    });
+    expect(dup.statusCode).toBe(409);
+
+    const book = (startsOn: string, endsOn: string, bookedFor: string) =>
+      s.sm.browser.post(`${eq}/${e.id}/bookings`, { startsOn, endsOn, bookedFor });
+    const first = await book('2030-03-04', '2030-03-06', 'Slab crew');
+    expect(first.statusCode).toBe(201);
+    expect((await book('2030-03-06', '2030-03-08', 'Drainer')).statusCode).toBe(409);
+    expect((await book('2030-03-07', '2030-03-08', 'Drainer')).statusCode).toBe(201);
+    expect((await book('2030-03-09', '2030-03-08', 'Backwards')).statusCode).toBe(422);
+
+    // A cancelled booking frees the days.
+    const cancelled = await s.sm.browser.post(`${eq}/${e.id}/bookings/${first.json().id}/cancel`);
+    expect(cancelled.json().status).toBe('cancelled');
+    expect((await book('2030-03-05', '2030-03-06', 'Drainer')).statusCode).toBe(201);
+
+    const range = (
+      await s.sub.browser.get(`${s.base}/equipment-bookings?from=2030-03-07&to=2030-03-07`)
+    ).json().data;
+    expect(range).toHaveLength(1);
+
+    // A machine in maintenance can't be booked.
+    const m = await s.sm.browser.patch(`${eq}/${e.id}`, { status: 'maintenance' });
+    expect(m.json().status).toBe('maintenance');
+    expect((await book('2030-04-01', '2030-04-02', 'Late')).statusCode).toBe(409);
+
+    // Anyone with site access logs hours, in quarter hours.
+    const log = (hours: string) =>
+      s.sub.browser.post(`${eq}/${e.id}/logs`, { date: '2030-03-04', hours, operator: 'Pat' });
+    expect((await log('7.5')).statusCode).toBe(201);
+    expect((await log('7.3')).statusCode).toBe(422);
+    const logs = (await s.sm.browser.get(`${eq}/${e.id}/logs`)).json().data;
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ hours: '7.50', operator: 'Pat' });
+  });
+});
+
+describe('Timesheets (ATT-US9)', () => {
+  it('builds a sheet from sign-ins, adjusts it with a reason, approves, locks and exports it', async () => {
+    const s = await setup('timesheet');
+    const startedAt = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const day = localDateOf(new Date(startedAt), TZ);
+    const ts = `${s.base}/timesheets`;
+    const range = { from: day, to: day };
+    await s.sub.browser.post(`${s.base}/attendance/sign-in`, {
+      gateCode: s.code,
+      clientAt: startedAt,
+    });
+    await s.eng.browser.post(`${s.base}/attendance/sign-in`, {
+      gateCode: s.code,
+      clientAt: startedAt,
+    });
+
+    // Nothing to build from while they are still on site.
+    expect((await s.sm.browser.post(`${ts}/generate`, range)).json()).toMatchObject({
+      sheetsCreated: 0,
+    });
+    await s.sub.browser.post(`${s.base}/attendance/sign-out`, { gateCode: s.code });
+
+    // A subcontractor builds only its own crew's sheets.
+    const gen = await s.sub.browser.post(`${ts}/generate`, range);
+    expect(gen.statusCode).toBe(200);
+    expect(gen.json()).toMatchObject({ sheetsCreated: 1, linesAdded: 1 });
+    expect((await s.sub.browser.post(`${ts}/generate`, range)).json()).toMatchObject({
+      sheetsCreated: 0,
+      linesAdded: 0,
+    });
+
+    const mine = (await s.sub.browser.get(`${ts}?from=${day}&to=${day}`)).json().data;
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ status: 'draft', companyId: s.subCo.companyId });
+    expect(mine[0].paidMinutes).toBeGreaterThanOrEqual(179);
+    const sheet = mine[0];
+    const sp = `${ts}/${sheet.id}`;
+    expect((await s.sub2.browser.get(sp)).statusCode).toBe(404);
+
+    // Changing a sign-in line needs a reason; a break can't exceed the time worked.
+    const line = sheet.lines[0];
+    expect(
+      (await s.sub.browser.patch(`${sp}/lines/${line.id}`, { breakMinutes: 30 })).statusCode,
+    ).toBe(422);
+    expect(
+      (await s.sub.browser.patch(`${sp}/lines/${line.id}`, { breakMinutes: 9999, reason: 'x' }))
+        .statusCode,
+    ).toBe(422);
+    const adjusted = await s.sub.browser.patch(`${sp}/lines/${line.id}`, {
+      breakMinutes: 30,
+      reason: 'Half hour lunch',
+    });
+    expect(adjusted.statusCode).toBe(200);
+    expect(adjusted.json().lines[0]).toMatchObject({ source: 'adjusted', breakMinutes: 30 });
+    expect(adjusted.json().paidMinutes).toBe(sheet.paidMinutes - 30);
+    const added = await s.sub.browser.post(`${sp}/lines`, {
+      minutes: 60,
+      reason: 'Loading out after sign-out',
+    });
+    expect(added.json().lines).toHaveLength(2);
+
+    // Approving is the supervisor's job, and only after the sheet is submitted.
+    expect((await s.sm.browser.post(`${sp}/approve`)).statusCode).toBe(409);
+    expect((await s.sub.browser.post(`${sp}/submit`)).json().status).toBe('submitted');
+    expect((await s.sub.browser.post(`${sp}/approve`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.patch(`${sp}/lines/${line.id}`, { minutes: 1, reason: 'x' })).statusCode,
+    ).toBe(409);
+
+    // A rejection reopens it with the reason; resubmit and approve.
+    const rejected = await s.sm.browser.post(`${sp}/reject`, { reason: 'Lunch looks long' });
+    expect(rejected.json()).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'Lunch looks long',
+    });
+    await s.sub.browser.post(`${sp}/submit`);
+    const approved = await s.sm.browser.post(`${sp}/approve`);
+    expect(approved.json().status).toBe('approved');
+
+    // Approved is locked, and building again adds nothing to it.
+    expect(
+      (await s.sub.browser.post(`${sp}/lines`, { minutes: 5, reason: 'late' })).statusCode,
+    ).toBe(409);
+    expect((await s.sm.browser.post(`${ts}/generate`, range)).json()).toMatchObject({
+      linesAdded: 0,
+    });
+
+    // Only supervisors export; a sheet goes out once.
+    expect((await s.sub.browser.post(`${ts}/export`, range)).statusCode).toBe(403);
+    const out = await s.sm.browser.post(`${ts}/export`, range);
+    expect(out.statusCode).toBe(200);
+    expect(out.json().count).toBe(1);
+    expect(out.json().csv).toContain('date,worker,minutes,break_minutes,paid_hours');
+    expect(out.json().csv).toContain('Half hour lunch');
+    expect((await s.sm.browser.post(`${ts}/export`, range)).json().count).toBe(0);
+    expect((await s.sm.browser.get(sp)).json().status).toBe('exported');
+  });
+});

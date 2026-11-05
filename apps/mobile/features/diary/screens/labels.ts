@@ -29,4 +29,5 @@ export const diaryErrorText: Record<DiaryProblem, string> = {
   'diary.hours_invalid': 'Enter hours between 0 and 24, in quarter hours.',
   'diary.description_required': 'Add a description.',
   'diary.date_invalid': 'That date is not valid.',
+  'diary.photos_full': 'A day holds at most 50 photos.',
 };

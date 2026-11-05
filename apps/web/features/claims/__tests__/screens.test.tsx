@@ -32,6 +32,7 @@ const variation = (over: Record<string, unknown> = {}) => ({
   submittedAt: '2026-10-20T00:00:00Z',
   decidedAt: null,
   decisionNote: null,
+  costCodeId: null,
   ...over,
 });
 const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({
@@ -61,6 +62,8 @@ const claim = (over: Partial<PaymentClaim> = {}): PaymentClaim => ({
 });
 const detail = (over: Partial<PaymentClaim> = {}): PaymentClaimDetail => ({
   claim: claim(over),
+  statement: null,
+  warnings: [],
   lines: [
     {
       sovItemId: 'sov_1',
@@ -161,6 +164,42 @@ describe('ClaimDetailScreen', () => {
     expect(fake.callsTo('POST', `${P}/payment-claims/{claimId}/schedule`)[0]!.init.body).toEqual({
       scheduledAmount: '20000.00',
       overallReason: 'Rough-in incomplete',
+    });
+  });
+
+  it('warns about a missing subcontractor’s statement without blocking, and links one', async () => {
+    const stmt = `${P}/payment-claims/{claimId}/subcontractor-statement`;
+    fake.on('GET', `${P}/payment-claims/{claimId}`, () => ({
+      ...detail(),
+      warnings: ['subcontractor_statement_missing'],
+    }));
+    fake.on('PUT', stmt, () => ({
+      ...detail(),
+      statement: {
+        periodEnd: '2026-09-30',
+        receivedOn: '2026-10-14',
+        signedOn: null,
+        note: null,
+        recordedAt: '2026-10-14T01:00:00Z',
+      },
+    }));
+    const user = userEvent.setup();
+    renderInProject(<ClaimDetailScreen claimId="pcl_1" />);
+    expect(await screen.findByText(/No subcontractor’s statement linked/)).toBeTruthy();
+    expect(document.body.textContent).toMatch(/does not stop the claim/);
+    expect(document.body.textContent).not.toMatch(/withhold(?!ing payment)/i);
+    // The schedule form is still there.
+    expect(screen.getByRole('button', { name: 'Issue payment schedule' })).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Link the statement' }));
+    await user.click(screen.getByRole('button', { name: 'Save statement' }));
+    expect(await screen.findByText(/Enter the period the statement covers/)).toBeTruthy();
+    expect(fake.callsTo('PUT', stmt)).toHaveLength(0);
+    await enterText(user, screen.getByLabelText(/Received on/), '2026-10-14');
+    await user.click(screen.getByRole('button', { name: 'Save statement' }));
+    await waitFor(() => expect(fake.callsTo('PUT', stmt)).toHaveLength(1));
+    expect(fake.callsTo('PUT', stmt)[0]!.init.body).toEqual({
+      periodEnd: '2026-09-30',
+      receivedOn: '2026-10-14',
     });
   });
 

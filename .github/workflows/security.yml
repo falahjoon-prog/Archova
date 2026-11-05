@@ -32,7 +32,7 @@ jobs:
       - name: gitleaks
         run: |
           docker run --rm -v "$PWD:/repo" -w /repo ghcr.io/gitleaks/gitleaks:v8.28.0 \
-            git --redact --no-banner --exit-code 1 .
+            git --redact --verbose --no-banner --exit-code 1 .
 
   audit:
     name: Dependency audit (high and critical)

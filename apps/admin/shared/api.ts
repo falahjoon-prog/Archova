@@ -115,6 +115,41 @@ export const api = {
     orgId: string,
     body: { credits: number; kind: CreditGrantKind; reason: string; ticketRef: string },
   ) => call<OrgDetailDto>('grantOrgCredits', { params: { orgId }, body }),
+  addDiscount: (
+    orgId: string,
+    body: { percent: number; months: number; reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('addOrgDiscount', { params: { orgId }, body }),
+  revokeDiscount: (
+    orgId: string,
+    discountId: string,
+    body: { reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('revokeOrgDiscount', { params: { orgId, discountId }, body }),
+  grantOverride: (
+    orgId: string,
+    body: {
+      kind: 'module' | 'limit';
+      key: string;
+      limitValue: number | null;
+      days: number;
+      reason: string;
+      ticketRef: string;
+    },
+  ) => call<OrgDetailDto>('grantOrgOverride', { params: { orgId }, body }),
+  revokeOverride: (
+    orgId: string,
+    overrideId: string,
+    body: { reason: string; ticketRef: string },
+  ) => call<OrgDetailDto>('revokeOrgOverride', { params: { orgId, overrideId }, body }),
+  refund: (
+    orgId: string,
+    body: {
+      invoiceRef: string;
+      amountCents: number;
+      paidCents: number;
+      reason: string;
+      ticketRef: string;
+    },
+  ) => call<OrgDetailDto>('refundOrg', { params: { orgId }, body }),
   plans: () => call<{ items: PlanDto[] }>('listPlans'),
   createPlan: (code: string, draft: PlanDraftInput) =>
     call<{ code: string }>('createPlan', { body: { code, draft } }),

@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
@@ -11,15 +12,38 @@ import { loadConfig, workerRole } from './config';
 import { connectionFor, startQueues } from './queues';
 import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
+import { bidReminders } from './jobs/bid-reminders';
+import { trustReminders } from './jobs/trust-reminders';
+import { incidentActionEmails } from './jobs/incident-action-emails';
+import { incidentActionNotices } from './jobs/incident-action-notices';
+import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
+import { templateBackfill } from './jobs/template-backfill';
+import { trialBackfill } from './jobs/trial-backfill';
+import { trialEndingEmail } from './jobs/trial-ending-email';
+import { createLogSender, createSesSender } from './email';
+import { createSmtpSender } from './smtp';
+import { evidenceDeliveries } from './jobs/evidence-deliveries';
+import { evidenceTimestamps } from './jobs/evidence-timestamps';
+import { trialExpiry } from './jobs/trial-expiry';
 import { threatMove } from './jobs/threat-move';
 import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
+import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
+import { walletRetention } from './jobs/wallet-retention';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
 const ROUTES = AI_ROUTES;
+
+function readTimestampCa(file: string | null): string {
+  if (!file)
+    throw new Error(
+      'WORKER_EVIDENCE_TSA_URL needs WORKER_EVIDENCE_TSA_CA_FILE (pinned certificates)',
+    );
+  return readFileSync(file, 'utf8');
+}
 
 async function main() {
   const log = createLogger('worker');
@@ -31,8 +55,50 @@ async function main() {
   const database = createDatabase(config.databaseUrl);
   /** Registered as the standard subscribers land (audit, notifications, search-index, ...; backend 05 §1). */
   const SUBSCRIBERS: Subscriber[] = [];
+  const emailSender =
+    config.email.provider === 'ses'
+      ? createSesSender({
+          region: config.email.region,
+          from: config.email.from,
+          replyTo: config.email.replyTo,
+        })
+      : config.email.provider === 'smtp' && config.email.smtp
+        ? createSmtpSender({
+            ...config.email.smtp,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg));
   /** Nightly and hourly per-org jobs (backend 05 §3). */
-  const jobs: TenantJob[] = [accessLinkPurge, importStagingPurge, syncHoldsPurge];
+
+  const jobs: TenantJob[] = [
+    accessLinkPurge,
+    importStagingPurge,
+    syncHoldsPurge,
+    trialExpiry,
+    trialBackfill,
+    trialEndingEmail(emailSender, config.email.appBaseUrl),
+    // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
+    ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
+    ...(config.evidenceTimestampUrl
+      ? [
+          evidenceTimestamps(
+            config.evidenceTimestampUrl,
+            readTimestampCa(config.evidenceTimestampCaFile),
+            (msg, o) => log.warn(o, msg),
+          ),
+        ]
+      : []),
+    templateBackfill,
+    meetingReminders,
+    bidReminders,
+    trustReminders,
+    incidentActionNotices,
+    incidentActionEmails(emailSender, config.email.appBaseUrl),
+    // Alert rows are the record until the notification inbox lands; log what was raised.
+    walletExpiry(walletExpiryNotices),
+    walletRetention(),
+  ];
   let webhooks: ReturnType<typeof webhookDelivery> | null = null;
   if (config.webhookSecretKey) {
     webhooks = webhookDelivery(

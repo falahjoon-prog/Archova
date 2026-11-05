@@ -131,13 +131,25 @@ export function createXeroProvider(
       for (const p of res.Payments ?? []) {
         const reference = p.Invoice?.Reference;
         // Only documents we pushed carry a PC- reference.
-        if (!reference?.startsWith('PC-') || p.Status === 'DELETED') continue;
-        out.push({
-          remoteId: p.PaymentID,
-          documentReference: reference,
-          paidOn: xeroDate(p.Date),
-          amountCents: decimalToCents(p.Amount),
-        });
+        if (!reference?.startsWith('PC-')) continue;
+        const cents = decimalToCents(p.Amount);
+        // A payment removed in Xero comes back as a reversal of the one we recorded, never a delete (integrations/02 §3).
+        out.push(
+          p.Status === 'DELETED'
+            ? {
+                remoteId: `${p.PaymentID}:reversed`,
+                documentReference: reference,
+                paidOn: xeroDate(p.Date),
+                amountCents: -cents,
+                reverses: p.PaymentID,
+              }
+            : {
+                remoteId: p.PaymentID,
+                documentReference: reference,
+                paidOn: xeroDate(p.Date),
+                amountCents: cents,
+              },
+        );
       }
       return out;
     },

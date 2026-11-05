@@ -37,3 +37,29 @@ export const VARIATION_LABELS: Record<VariationStatus, string> = {
   rejected: 'Rejected',
   withdrawn: 'Withdrawn',
 };
+
+export const TRUST_STATUS_LABELS = {
+  not_required: 'Not required',
+  not_set_up: 'Account not recorded',
+  ok: 'Held in trust',
+  shortfall: 'Shortfall',
+} as const;
+
+export const TRUST_MOVEMENT_LABELS = {
+  deposit: 'Deposit',
+  interest: 'Interest',
+  release: 'Release to payee',
+  reversal: 'Reversal',
+} as const;
+
+export const RELEASE_STAGE_LABELS = {
+  practical_completion: 'At practical completion',
+  defects_end: 'After the defects period',
+} as const;
+
+export const RELEASE_STATUS_LABELS = {
+  awaiting_date: 'Awaiting dates',
+  upcoming: 'Upcoming',
+  due: 'Due for release',
+  released: 'Released',
+} as const;

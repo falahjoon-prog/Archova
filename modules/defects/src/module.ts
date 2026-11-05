@@ -1,4 +1,4 @@
-import { decodeId, encodeId } from '@archova/domain';
+import { DEFECT_ACTIONS, decodeId, encodeId } from '@archova/domain';
 import {
   AppError,
   defineModule,
@@ -41,8 +41,8 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
     return value;
   };
   /** `defects.transition`: the REST transition (issue, markReadyForReview, close, reject, reassign, ...) queued offline. */
-  const transitionCommand: SyncCommand = {
-    name: 'defects.transition',
+  const makeTransition = (name: string, fixedAction?: string): SyncCommand => ({
+    name,
     module: 'defects',
     // Worth an admin's look if the person lost access first (X38); a grant only queues it.
     drainable: true,
@@ -59,17 +59,19 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
           [{ path: 'baseVersion', message: 'Required' }],
         );
       const p = m.payload;
-      if (typeof p.action !== 'string')
+      const action = fixedAction ?? p.action;
+      if (typeof action !== 'string')
         throw new AppError('validation_failed', 'Name the action.', [
           { path: 'payload/action', message: 'Required' },
         ]);
-      const reason = textField(p.reason, 'payload/reason');
+      // The phone's per-action commands say `note`; `defects.transition` says `reason`.
+      const reason = textField(fixedAction ? (p.note ?? p.reason) : p.reason, 'payload/reason');
       const fileIds = p.fileIds === undefined ? undefined : p.fileIds;
       if (fileIds !== undefined && !Array.isArray(fileIds)) throw invalid('payload/fileIds');
       const projectId = await service.projectOf(scope, defectId);
       if (!projectId) throw new AppError('defect.not_found');
       const detail = await service.transition(scope, projectId, defectId, m.baseVersion, {
-        action: p.action as never,
+        action: action as never,
         ...(reason ? { reason } : {}),
         ...(fileIds
           ? { fileIds: fileIds.map((f, i) => id('file', f, `payload/fileIds/${i}`)) }
@@ -98,13 +100,21 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
         throw e;
       }
     },
-  };
+  });
+  const transitionCommand = makeTransition('defects.transition');
+  /** `defects.markReadyForReview`, `defects.close`, ...: the phone queues one command per action (mobile 02 §2.4). */
+  const actionCommands = DEFECT_ACTIONS.map((a) => makeTransition(`defects.${a}`, a));
   return {
     definition: defineModule({ name: 'defects', permissions: DEFECTS_PERMISSIONS }),
     routes: defectsRoutes(services.database, service),
     api: {
       /** Nova F5: live defects the caller can see near a point on a sheet, for duplicate checks. Called by `ai` only. */
       openNear: service.openNear,
+      /** Meeting agenda (`meetings`): open defects the caller can see, grouped by trade. */
+      openForMeeting: service.openForMeeting,
+      /** Portfolio dashboard and report builder (`reporting`): counts and flat rows of the defects the caller can see. */
+      portfolioCounts: service.portfolioCounts,
+      reportRows: service.reportRows,
       /** Nova Ask: issued defects with their history notes, to index (one defect when `only` is given). Called by `ai` only. */
       aiSources: service.aiSources,
       /** Nova Ask: the scopes the caller holds for defects (builder staff only). */
@@ -112,7 +122,7 @@ export function createDefectsModule(services: KernelServices, deps: DefectsDeps)
       /** What the mobile pull reads (modules/sync). */
       syncSource,
       /** What a device may queue offline and push (modules/sync). */
-      syncCommands: [transitionCommand],
+      syncCommands: [transitionCommand, ...actionCommands],
     },
   };
 }

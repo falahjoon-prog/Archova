@@ -13,9 +13,12 @@ import { heuristicInductionDraft } from '../../eval/suites/induction-draft';
 import { heuristicQaAnswer } from '../../eval/suites/qa-answer';
 import { heuristicQaRerank, heuristicQaRewrite } from '../../eval/suites/qa-retrieval';
 import { heuristicQuoteNegotiate } from '../../eval/suites/quote-negotiate';
+import { heuristicContractAsk } from '../../eval/suites/contract-ask';
+import { heuristicContractCompare } from '../../eval/suites/contract-compare';
 import { heuristicContractReview } from '../../eval/suites/contract-review';
 import { heuristicTakeoffDetect } from '../../eval/suites/takeoff-detect';
 import { heuristicQuoteRead } from '../../eval/suites/quote-read';
+import { heuristicMeetingMinutes } from '../../eval/suites/meeting-minutes';
 import { heuristicRfiAnswer } from '../../eval/suites/rfi-answer';
 import { heuristicRfiDraft } from '../../eval/suites/rfi-draft';
 import { fakeTranslate, fakeTranslationCheck } from '../../eval/suites/translation';
@@ -39,6 +42,7 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'translation.check': fakeTranslationCheck,
   'diary.summary': heuristicDiarySummary,
   'diary.weekly': heuristicDiaryWeekly,
+  'minutes.extract': heuristicMeetingMinutes,
   'rfi.draft': heuristicRfiDraft,
   'rfi.answer': heuristicRfiAnswer,
   'drawing.compare': heuristicDrawingCompare,
@@ -48,6 +52,8 @@ export const DEFAULT_FAKE_RESPONDERS: Readonly<Record<string, FakeResponder>> = 
   'quote.read': heuristicQuoteRead,
   'quote.negotiate': heuristicQuoteNegotiate,
   'contract.review': heuristicContractReview,
+  'contract.ask': heuristicContractAsk,
+  'contract.compare': heuristicContractCompare,
   'takeoff.detect': heuristicTakeoffDetect,
 };
 

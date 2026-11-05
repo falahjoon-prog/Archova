@@ -1,7 +1,8 @@
 // Site diary for one day (product 05 DIA-US1–US8). Opens on today in the project's time zone (DIA-AC1), works
 // with no signal, and after submit every change is an amendment with a reason (DIA-AC8).
 import { useState, type ReactNode } from 'react';
-import { Alert, Text, View } from 'react-native';
+import { Alert, Image, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import {
   DELAY_TYPES,
   PLANT_STATUSES,
@@ -9,6 +10,7 @@ import {
   type DelayType,
   type PlantStatus,
 } from '@archova/domain';
+import { mobileRoutes } from '@archova/routes';
 import { addDays, type LocalDate } from '@archova/time';
 import { Button, ListItem, Screen, TextField, useTheme } from '@archova/ui-native';
 import { deviceTimeZone } from '../../../lib/capture/capture';
@@ -22,6 +24,7 @@ import {
   labourTotals,
   listDiaryLines,
   newDelay,
+  newLineId,
   removeDiaryLine,
   setDiaryNotes,
   submitDiaryDay,
@@ -54,6 +57,7 @@ const toNumber = (text: string) => (text.trim() === '' ? NaN : Number(text));
 
 export function DiaryScreen({ projectId }: { projectId: string }) {
   const t = useTheme();
+  const router = useRouter();
   const device = useDeviceData();
   const data = device.status === 'ready' ? device.data : null;
   const { zone, fallback } = useProjectTimeZone(data, projectId);
@@ -115,7 +119,7 @@ export function DiaryScreen({ projectId }: { projectId: string }) {
         kind,
         projectId,
         date,
-        lineId: uuidv7(),
+        lineId: newLineId(kind),
         mutationId: uuidv7(),
         line,
         amendmentReason,
@@ -240,6 +244,34 @@ export function DiaryScreen({ projectId }: { projectId: string }) {
           />
         ))}
         <DelayForm onAdd={(line) => add('delay', line)} />
+      </Section>
+
+      <Section title="Photos">
+        <Text style={{ color: t.color.textSecondary }}>
+          {(day.entry.fileIds?.length ?? 0) + (day.entry.localPhotos?.length ?? 0)} on this day
+          {(day.entry.localPhotos?.length ?? 0) > 0 ? ' (some waiting to upload)' : ''}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[1] }}>
+          {(day.entry.localPhotos ?? []).map((p) => (
+            <Image
+              key={p.photoId}
+              source={{ uri: p.thumbnailUri }}
+              style={{ width: 56, height: 56, borderRadius: t.radius.md }}
+              accessibilityLabel="Photo waiting to upload"
+            />
+          ))}
+        </View>
+        <Button
+          label="Take photo"
+          variant="secondary"
+          onPress={() => {
+            if (submitted && reason.trim() === '') {
+              setError(diaryErrorText['diary.amendment_reason_required']);
+              return;
+            }
+            router.push(mobileRoutes.diaryPhoto(projectId, date, submitted ? reason : undefined));
+          }}
+        />
       </Section>
 
       <NotesForm

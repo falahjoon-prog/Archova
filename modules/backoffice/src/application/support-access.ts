@@ -1,4 +1,4 @@
-import { and, count, desc, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, isNotNull, isNull, lte, sql } from 'drizzle-orm';
 import type { SupportProjectDto } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
@@ -22,6 +22,8 @@ export interface GrantView {
   id: string;
   ticketRef: string;
   level: 'view';
+  /** NULL = the whole company; otherwise support can only see these projects. */
+  projectIds: string[] | null;
   grantedBy: string;
   createdAt: string;
   expiresAt: string;
@@ -40,25 +42,69 @@ export interface SessionView {
   pagesViewed: number;
   status: SessionStatus;
 }
+/** One logged read, as the customer sees it: which page, by whom, how many records, never the content. */
+export interface SupportReadView {
+  id: string;
+  sessionId: string;
+  staffName: string;
+  /** The page or list that was read, e.g. `projects.list`. */
+  page: string;
+  recordCount: number;
+  at: string;
+}
 export interface SupportAccessView {
   grants: GrantView[];
   sessions: SessionView[];
 }
 
+/** Told to the company's admins when a support session opens (Sam 12 §4a). */
+export interface SupportSessionNotice {
+  orgId: string;
+  staffName: string;
+  ticketRef: string;
+  startedAt: Date;
+  expiresAt: Date;
+  /** NULL = the whole company. */
+  projectIds: string[] | null;
+}
+
+/** What one gated read gets back: the open session, and the projects it is limited to (NULL = all). */
+export interface SupportGate {
+  sessionId: string;
+  projectIds: string[] | null;
+}
+
 /**
  * Support access (Sam 12 §4a). Customers grant it, staff hold sessions inside a grant, and every grant, revoke and
- * session is a row the customer can read. This slice is the consent and audit record; it does not let staff browse
- * project content yet.
+ * session is a row the customer can read. Every read of customer content goes through `read`: it needs a hardware
+ * key sign-in, a live session inside a live grant, stays inside the grant's projects, and is logged by record id.
  */
 export function createSupportAccessService(
   deps: Pick<KernelServices, 'database'> & {
     /** Read-only views of customer data; `platform` is built after this module, so it is resolved lazily. */
-    reads: () => { projects(orgId: string, staffId: string): Promise<SupportProjectDto[]> };
+    reads: () => {
+      projects(
+        orgId: string,
+        staffId: string,
+        projectIds: string[] | null,
+      ): Promise<SupportProjectDto[]>;
+    };
+    /** Emails the company's owners and admins; resolved lazily because `platform` is built after this module. */
+    notify: (notice: SupportSessionNotice) => Promise<void>;
+    /** Staff must have signed in with a hardware security key to open a session or read content. */
+    requireHardwareKey?: boolean;
     now?: () => Date;
   },
 ) {
   const now = deps.now ?? (() => new Date());
   const tx = <T>(fn: (t: Tx) => Promise<T>) => deps.database.withGlobalTx('backoffice', fn);
+  const requireKey = (staff: StaffContext) => {
+    if (deps.requireHardwareKey && !staff.hardwareKey)
+      throw new AppError(
+        'backoffice.hardware_key_required',
+        'Sign in with your hardware security key to use support access.',
+      );
+  };
 
   const grantStatus = (g: typeof supportGrants.$inferSelect, at: Date): GrantStatus =>
     g.revokedAt ? 'revoked' : g.expiresAt <= at ? 'expired' : 'active';
@@ -106,6 +152,7 @@ export function createSupportAccessService(
         id: g.id,
         ticketRef: g.ticketRef,
         level: g.level,
+        projectIds: g.projectIds,
         grantedBy: g.grantedByName,
         createdAt: g.createdAt.toISOString(),
         expiresAt: g.expiresAt.toISOString(),
@@ -132,7 +179,7 @@ export function createSupportAccessService(
   async function grant(
     orgId: string,
     by: { userId: string; name: string },
-    input: { ticketRef: string; hours: number },
+    input: { ticketRef: string; hours: number; projectIds?: string[] | undefined },
   ): Promise<GrantView> {
     if (input.hours < 1 || input.hours > MAX_GRANT_HOURS)
       throw new AppError('validation_failed', `A grant lasts 1 to ${MAX_GRANT_HOURS} hours.`);
@@ -171,6 +218,7 @@ export function createSupportAccessService(
         grantedByName: by.name,
         createdAt: at,
         expiresAt: new Date(at.getTime() + input.hours * HOUR_MS),
+        projectIds: input.projectIds?.length ? [...new Set(input.projectIds)] : null,
       });
     });
     const found = (await list(orgId)).grants.find((g) => g.id === id);
@@ -206,8 +254,10 @@ export function createSupportAccessService(
     orgId: string,
     ticketRef: string,
   ): Promise<SessionView> {
+    requireKey(staff);
     const at = now();
     const id = uuidv7();
+    let notice: SupportSessionNotice | null = null;
     await tx(async (t) => {
       const [g] = await t
         .select()
@@ -256,6 +306,9 @@ export function createSupportAccessService(
         );
       if (open)
         throw new AppError('backoffice.support_session_open', 'You already have a session open.');
+      const expiresAt = new Date(
+        Math.min(at.getTime() + MAX_SESSION_MINUTES * 60_000, g.expiresAt.getTime()),
+      );
       await t.insert(supportSessions).values({
         id,
         grantId: g.id,
@@ -263,11 +316,37 @@ export function createSupportAccessService(
         staffId: staff.staffId,
         ticketRef: g.ticketRef,
         startedAt: at,
-        expiresAt: new Date(
-          Math.min(at.getTime() + MAX_SESSION_MINUTES * 60_000, g.expiresAt.getTime()),
-        ),
+        expiresAt,
       });
+      notice = {
+        orgId,
+        staffName: staff.name,
+        ticketRef: g.ticketRef,
+        startedAt: at,
+        expiresAt,
+        projectIds: g.projectIds,
+      };
     });
+    // The company's admins are told as the session opens. If we cannot tell them, the session does not stand.
+    if (notice) {
+      try {
+        await deps.notify(notice);
+        await tx((t) =>
+          t.update(supportSessions).set({ notifiedAt: now() }).where(eq(supportSessions.id, id)),
+        );
+      } catch {
+        await tx((t) =>
+          t
+            .update(supportSessions)
+            .set({ endedAt: now(), endReason: 'ended' })
+            .where(eq(supportSessions.id, id)),
+        );
+        throw new AppError(
+          'backoffice.support_notify_failed',
+          "We couldn't email the company's admins, so the session was not opened. Try again.",
+        );
+      }
+    }
     return (await list(orgId)).sessions.find((s) => s.id === id)!;
   }
 
@@ -310,37 +389,87 @@ export function createSupportAccessService(
   }
 
   /**
-   * Staff side: project names and status for the caller's open session, logged by record id. The session must still
-   * sit inside an unrevoked, unexpired grant, so withdrawing consent stops reads at the next call.
+   * The one door to customer content for staff (Sam 12 §4a). The caller needs a hardware key sign-in and its own open
+   * session inside an unrevoked, unexpired grant, so withdrawing consent stops reads at the next call. `fn` gets the
+   * grant's project limit and returns the result plus the record ids it showed; those ids are logged against the
+   * session and the staff member before anything is returned.
    */
-  async function viewProjects(staff: StaffContext, orgId: string): Promise<SupportProjectDto[]> {
-    const at = now();
-    const session = await tx(async (t) => {
-      const [s] = await openSessionQuery(t, orgId, staff.staffId, at);
+  async function read<T>(
+    staff: StaffContext,
+    orgId: string,
+    what: string,
+    fn: (gate: SupportGate) => Promise<{ result: T; recordIds: string[] }>,
+  ): Promise<T> {
+    requireKey(staff);
+    const gate = await tx(async (t) => {
+      // A disabled staff account reads nothing, even inside a session that was opened before it was disabled.
+      const [who] = await t
+        .select({ status: staffUsers.status })
+        .from(staffUsers)
+        .where(eq(staffUsers.id, staff.staffId));
+      if (who?.status !== 'active') return undefined;
+      const [s] = await openSessionQuery(t, orgId, staff.staffId, now());
       return s;
     });
-    if (!session)
+    if (!gate)
       throw new AppError(
         'backoffice.support_no_session',
         'Start a support session for this company first.',
       );
-    const projects = await deps.reads().projects(orgId, staff.staffId);
+    const { result, recordIds } = await fn(gate);
     await tx((t) =>
       t.insert(supportEvents).values({
         id: uuidv7(),
-        sessionId: session.id,
+        sessionId: gate.sessionId,
         targetOrgId: orgId,
-        what: 'projects.list',
-        recordIds: projects.map((p) => p.id),
+        staffId: staff.staffId,
+        what,
+        recordIds,
       }),
     );
-    return projects;
+    return result;
   }
+
+  /** Customer side: the most recent logged reads for the company, newest first (record counts, never content). */
+  async function listReads(orgId: string, limit = 100): Promise<SupportReadView[]> {
+    const rows = await tx((t) =>
+      t
+        .select({
+          id: supportEvents.id,
+          sessionId: supportEvents.sessionId,
+          what: supportEvents.what,
+          recordIds: supportEvents.recordIds,
+          createdAt: supportEvents.createdAt,
+          staffName: staffUsers.name,
+        })
+        .from(supportEvents)
+        .leftJoin(staffUsers, eq(staffUsers.id, supportEvents.staffId))
+        .where(eq(supportEvents.targetOrgId, orgId))
+        .orderBy(desc(supportEvents.createdAt))
+        .limit(Math.min(limit, 200)),
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      sessionId: r.sessionId,
+      // Rows logged before reads carried a staff id still show, as support in general.
+      staffName: r.staffName ?? 'Archova support',
+      page: r.what,
+      recordCount: r.recordIds.length,
+      at: r.createdAt.toISOString(),
+    }));
+  }
+
+  /** Project names and status for the caller's open session, limited to the grant's projects. */
+  const viewProjects = (staff: StaffContext, orgId: string) =>
+    read(staff, orgId, 'projects.list', async (gate) => {
+      const projects = await deps.reads().projects(orgId, staff.staffId, gate.projectIds);
+      return { result: projects, recordIds: projects.map((p) => p.id) };
+    });
 
   /** The caller's own open session inside an unrevoked, unexpired grant. */
   function openSessionQuery(t: Tx, orgId: string, staffId: string, at: Date) {
     return t
-      .select({ id: supportSessions.id })
+      .select({ sessionId: supportSessions.id, projectIds: supportGrants.projectIds })
       .from(supportSessions)
       .innerJoin(supportGrants, eq(supportGrants.id, supportSessions.grantId))
       .where(
@@ -348,6 +477,7 @@ export function createSupportAccessService(
           eq(supportSessions.targetOrgId, orgId),
           eq(supportSessions.staffId, staffId),
           isNull(supportSessions.endedAt),
+          isNotNull(supportSessions.notifiedAt),
           gt(supportSessions.expiresAt, at),
           isNull(supportGrants.revokedAt),
           gt(supportGrants.expiresAt, at),
@@ -359,7 +489,7 @@ export function createSupportAccessService(
   const hasOpenSession = async (orgId: string, staffId: string) =>
     (await tx((t) => openSessionQuery(t, orgId, staffId, now()))).length > 0;
 
-  return { list, grant, revoke, start, end, banner, viewProjects, hasOpenSession };
+  return { list, grant, revoke, start, end, banner, read, viewProjects, hasOpenSession, listReads };
 }
 
 export type SupportAccessService = ReturnType<typeof createSupportAccessService>;

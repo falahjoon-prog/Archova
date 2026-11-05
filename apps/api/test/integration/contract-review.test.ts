@@ -202,6 +202,87 @@ describe('Nova contract review (F34)', () => {
     expect(call.text).not.toContain(s.file);
   });
 
+  it('flags only clauses that match a signed statutory rule, with the table wording, for the project state', async () => {
+    const s = await setup();
+    const ruleSql = `insert into ai.ai_legal_rules
+      (id, rule_key, version, state, contract_types, topic, detect, wording, provision, status, signed_by, signed_on)
+      values ($1, $2, 1, $3, '{subcontract}', $4, 'A clause that sets liquidated damages.', $5, 'Test Act s1', $6, $7, $8)`;
+    const pool = t.adminDb.pool;
+    await pool.query(ruleSql, [
+      '0192a000-0000-7000-8000-00000000a001',
+      'ld_rule',
+      'NSW',
+      'Liquidated damages',
+      'May be void under Test Act s1. Get advice.',
+      'signed',
+      'Lawyer A',
+      '2026-10-20',
+    ]);
+    // A draft rule, and a signed rule for another state, are never used.
+    await pool.query(ruleSql, [
+      '0192a000-0000-7000-8000-00000000a002',
+      'ret_rule',
+      'NSW',
+      'Retention',
+      'Draft wording',
+      'draft',
+      null,
+      null,
+    ]);
+    await pool.query(ruleSql, [
+      '0192a000-0000-7000-8000-00000000a003',
+      'vic_rule',
+      'VIC',
+      'Liquidated damages',
+      'VIC wording',
+      'signed',
+      'Lawyer B',
+      '2026-10-21',
+    ]);
+    try {
+      const run = (extra: Record<string, unknown>) =>
+        s.mgr.browser.post(`${s.base}/ai/contract-reviews`, {
+          fileId: s.file,
+          ...REQUEST,
+          ...extra,
+        });
+      const nsw = (await run({ state: 'NSW' })).json();
+      expect(nsw).toMatchObject({ statutoryState: 'NSW', statutoryRulesChecked: 1 });
+      expect(nsw.statutoryFlags).toEqual([
+        expect.objectContaining({
+          ruleKey: 'ld_rule',
+          wording: 'May be void under Test Act s1. Get advice.',
+          signedBy: 'Lawyer A',
+          source: expect.objectContaining({ page: 1, clause: '12.2' }),
+        }),
+      ]);
+      const call = t.ai.calls.filter((c) => c.task === 'contract.review').at(-1)!;
+      expect(call.text).toContain('<rule key="ld_rule">');
+      expect(call.text).not.toContain('ret_rule');
+      expect(call.text).not.toContain('vic_rule');
+
+      const qld = (await run({ state: 'QLD' })).json();
+      expect(qld).toMatchObject({
+        statutoryState: 'QLD',
+        statutoryRulesChecked: 0,
+        statutoryFlags: [],
+      });
+      // Several states, or no state: no statutory check at all.
+      const multi = (await run({ state: 'NSW', multiState: true })).json();
+      expect(multi).toMatchObject({
+        statutoryState: null,
+        statutoryRulesChecked: 0,
+        statutoryFlags: [],
+      });
+      const none = (await run({})).json();
+      expect(none).toMatchObject({ statutoryState: null, statutoryRulesChecked: 0 });
+    } finally {
+      await pool.query(
+        `delete from ai.ai_legal_rules where id::text like '0192a000-0000-7000-8000-00000000a00%'`,
+      );
+    }
+  });
+
   it('says so when there is no playbook, and still summarises', async () => {
     const s = await setup();
     const d = (
@@ -255,6 +336,44 @@ describe('Nova contract review (F34)', () => {
     ).toBe(200);
   });
 
+  it('lists reviews and records a decision on a flag, keeping the history', async () => {
+    const s = await setup();
+    await s.owner.browser.put(`/v1/orgs/${s.org.id}/ai/contract-playbooks/subcontract`, PLAYBOOK);
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    expect(made.decisions).toEqual([]);
+    const listed = (await s.mgr.browser.get(`${s.base}/ai/contract-reviews`)).json();
+    expect(listed.data.map((r: { suggestionId: string }) => r.suggestionId)).toEqual([
+      made.suggestionId,
+    ]);
+    const decide = (index: number, body: object, user = s.mgr) =>
+      user.browser.post(
+        `${s.base}/ai/contract-reviews/${made.suggestionId}/flags/${index}/decision`,
+        body,
+      );
+    // "Not relevant" needs a reason; a flag that is not in the review is refused.
+    expect((await decide(0, { decision: 'not_relevant' })).statusCode).toBe(422);
+    expect((await decide(9, { decision: 'negotiate' })).statusCode).toBe(404);
+    expect((await decide(0, { decision: 'negotiate' })).statusCode).toBe(200);
+    const after = await decide(0, { decision: 'refer_to_lawyer', note: 'Ask Jo' });
+    expect(after.statusCode).toBe(200);
+    expect(after.json().decisions).toEqual([
+      expect.objectContaining({ flagIndex: 0, decision: 'negotiate', note: null }),
+      expect.objectContaining({ flagIndex: 0, decision: 'refer_to_lawyer', note: 'Ask Jo' }),
+    ]);
+    const got = (
+      await s.mgr.browser.get(`${s.base}/ai/contract-reviews/${made.suggestionId}`)
+    ).json();
+    expect(got.decisions).toHaveLength(2);
+    // A site manager has no commercial role: nothing to list, open or decide.
+    expect((await s.site.browser.get(`${s.base}/ai/contract-reviews`)).statusCode).toBe(403);
+    expect(
+      (await s.site.browser.get(`${s.base}/ai/contract-reviews/${made.suggestionId}`)).statusCode,
+    ).toBe(403);
+    expect((await decide(0, { decision: 'accept_risk' }, s.site)).statusCode).toBe(403);
+  });
+
   it('refuses callers without the commercial role before any model call', async () => {
     const s = await setup();
     const calls = t.ai.calls.length;
@@ -269,6 +388,67 @@ describe('Nova contract review (F34)', () => {
       ...REQUEST,
     });
     expect(other.statusCode).toBeGreaterThanOrEqual(400);
+    expect(t.ai.calls.length).toBe(calls);
+  });
+
+  it('answers a question from the contract with its clause, and says so when it is silent', async () => {
+    const s = await setup();
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    const ask = (question: string, user = s.mgr, id = made.suggestionId) =>
+      user.browser.post(`${s.base}/ai/contract-reviews/${id}/questions`, { question });
+    const before = t.ai.calls.length;
+    const a = await ask('How much retention does the Principal hold?');
+    expect(a.statusCode).toBe(200);
+    expect(a.json()).toMatchObject({
+      kind: 'answered',
+      question: 'How much retention does the Principal hold?',
+      runId: expect.stringMatching(/^air_/),
+      citations: [{ page: 1, clause: '14.1', quote: expect.stringContaining('retention of 10%') }],
+      unreadPages: [],
+      truncated: false,
+    });
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'contract.ask')!;
+    expect(call.text).toContain('<question>How much retention');
+    expect(call.text).toContain('14.1 The Principal holds retention');
+    expect(call.text).not.toContain(s.file);
+
+    // The contract is silent: the fixed wording, no citations, nothing from general knowledge.
+    const silent = (await ask('What is the defects liability period?')).json();
+    expect(silent).toMatchObject({
+      kind: 'not_addressed',
+      answer: "The contract doesn't address this.",
+      citations: [],
+    });
+    // A question that asks for a legal view is not answered.
+    expect((await ask('Is the liquidated damages clause enforceable?')).json().kind).toBe(
+      'not_addressed',
+    );
+    // The question is bounded.
+    expect((await ask('?')).statusCode).toBe(422);
+    expect((await ask('x'.repeat(501))).statusCode).toBe(422);
+  });
+
+  it('keeps Ask to the commercial team and to this project, before any model call', async () => {
+    const s = await setup();
+    const made = (
+      await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId: s.file, ...REQUEST })
+    ).json();
+    const calls = t.ai.calls.length;
+    const url = `${s.base}/ai/contract-reviews/${made.suggestionId}/questions`;
+    expect((await s.site.browser.post(url, { question: 'Who is the Principal?' })).statusCode).toBe(
+      403,
+    );
+    // A review that doesn't exist is not found.
+    expect(
+      (
+        await s.mgr.browser.post(
+          `${s.base}/ai/contract-reviews/ais_00000000000000000000000000/questions`,
+          { question: 'Who is the Principal?' },
+        )
+      ).statusCode,
+    ).toBe(404);
     expect(t.ai.calls.length).toBe(calls);
   });
 
@@ -289,5 +469,78 @@ describe('Nova contract review (F34)', () => {
       ...REQUEST,
     });
     expect(res.statusCode).toBe(422);
+  });
+
+  it('compares two reviewed contracts and keeps Compare to the commercial team, this project and two different reviews', async () => {
+    const s = await setup();
+    const revised = await uploadBytes(
+      t,
+      s.owner.browser,
+      s.org.id,
+      s.project.id,
+      await contractPdf([
+        [
+          CONTRACT[0]![0]!,
+          CONTRACT[0]![1]!,
+          '14.1 The Principal holds retention of 5% of each payment.',
+          '25.2 The Contractor pays a security of 2% of the contract sum.',
+        ],
+        CONTRACT[1]!,
+      ]),
+      'revised.pdf',
+    );
+    const review = async (fileId: string) =>
+      (await s.mgr.browser.post(`${s.base}/ai/contract-reviews`, { fileId, ...REQUEST })).json();
+    const a = await review(s.file);
+    const b = await review(revised);
+    const url = `${s.base}/ai/contract-compares`;
+    const before = t.ai.calls.length;
+    const res = await s.mgr.browser.post(url, {
+      baseReviewId: a.suggestionId,
+      otherReviewId: b.suggestionId,
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body).toMatchObject({
+      runId: expect.stringMatching(/^air_/),
+      base: { suggestionId: a.suggestionId, fileName: 'subcontract.pdf', unreadPages: [] },
+      other: { suggestionId: b.suggestionId, fileName: 'revised.pdf', truncated: false },
+    });
+    const kinds = Object.fromEntries(
+      body.changes.map(
+        (c: { kind: string; base?: { clause: string }; other?: { clause: string } }) => [
+          (c.base ?? c.other)!.clause,
+          c.kind,
+        ],
+      ),
+    );
+    expect(kinds).toMatchObject({ '14.1': 'changed', '25.2': 'added' });
+    const call = t.ai.calls.slice(before).find((c) => c.task === 'contract.compare')!;
+    expect(call.text).toContain('<base>');
+    expect(call.text).toContain('<other>');
+    expect(call.text).not.toContain(s.file);
+
+    // Not allowed for site staff, not for a review of another contract that doesn't exist, not against itself:
+    // none of them reaches the model.
+    const calls = t.ai.calls.length;
+    const one = { baseReviewId: a.suggestionId, otherReviewId: b.suggestionId };
+    expect((await s.site.browser.post(url, one)).statusCode).toBe(403);
+    expect(
+      (
+        await s.mgr.browser.post(url, {
+          baseReviewId: a.suggestionId,
+          otherReviewId: 'ais_00000000000000000000000000',
+        })
+      ).statusCode,
+    ).toBe(404);
+    expect(
+      (
+        await s.mgr.browser.post(url, {
+          baseReviewId: a.suggestionId,
+          otherReviewId: a.suggestionId,
+        })
+      ).statusCode,
+    ).toBe(422);
+    expect(t.ai.calls.length).toBe(calls);
   });
 });

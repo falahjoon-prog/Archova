@@ -12,7 +12,11 @@ import {
   type DiaryStatus,
   type PlantStatus,
 } from '@archova/domain';
+import { encodeId, uuidv7, type IdKind } from '@archova/domain';
+import type { Capture } from '@archova/contracts';
 import { isLocalDate, localDateOf, type LocalDate } from '@archova/time';
+import type { SqlDatabase } from '../../lib/db/sql';
+import type { UploadQueue } from '../../lib/files/upload-queue';
 import type { SqliteSyncStore } from '../../lib/db/sync-store';
 
 export const DIARY_ENTRY = 'diary_entry';
@@ -25,6 +29,10 @@ export interface DiaryEntry {
   notesText: string;
   weather: unknown;
   submittedAt: string | null;
+  /** Photos of the day already on the server (public ids). */
+  fileIds?: string[];
+  /** Photos taken on this phone that are still uploading. */
+  localPhotos?: { photoId: string; thumbnailUri: string }[];
 }
 
 export interface LabourLine {
@@ -82,7 +90,8 @@ export type DiaryProblem =
   | 'diary.headcount_invalid'
   | 'diary.hours_invalid'
   | 'diary.description_required'
-  | 'diary.date_invalid';
+  | 'diary.date_invalid'
+  | 'diary.photos_full';
 
 export type DiaryResult<T> = { ok: true; value: T } | { ok: false; code: DiaryProblem };
 
@@ -90,6 +99,16 @@ export type DiaryResult<T> = { ok: true; value: T } | { ok: false; code: DiaryPr
 export function diaryToday(now: Date, projectTimeZone: string): LocalDate {
   return localDateOf(now, projectTimeZone);
 }
+
+const LINE_ID_KIND: Record<LineKind, IdKind> = {
+  labour: 'diaryLabour',
+  plant: 'diaryPlant',
+  delivery: 'diaryDelivery',
+  delay: 'diaryDelay',
+};
+
+/** A new line's id, chosen on the device in the form the server uses, so the pull confirms the same record. */
+export const newLineId = (kind: LineKind) => encodeId(LINE_ID_KIND[kind], uuidv7());
 
 /** Local key for a day the server hasn't sent yet. */
 const localDayId = (projectId: string, date: LocalDate) => `day:${projectId}:${date}`;
@@ -345,5 +364,99 @@ export async function submitDiaryDay(
       dependsOn: queued.map((e) => e.mutationId),
     },
   );
+  return { ok: true, value: null };
+}
+
+export interface DayPhotoInput {
+  projectId: string;
+  date: LocalDate;
+  photoId: string;
+  mutationId: string;
+  capture: Capture;
+  file: {
+    localUri: string;
+    thumbnailUri: string;
+    filename: string;
+    mime: string;
+    sizeBytes: number;
+    sha256: string;
+  };
+  /** Required once the day is submitted. */
+  amendmentReason?: string | null;
+  clientAt: string;
+}
+
+/** The server holds at most this many photos on a day. */
+export const MAX_DAY_PHOTOS = 50;
+
+/**
+ * A photo for the day, taken with no signal. It shows on the day at once; the file uploads in the background and
+ * then `diary.attachPhoto` (held until then) adds it to the day's photos. It goes after every change already queued
+ * for the day, so the day exists on the server by then.
+ */
+export async function attachDayPhoto(
+  deps: { db: SqlDatabase; store: SqliteSyncStore; uploads: UploadQueue },
+  input: DayPhotoInput,
+): Promise<DiaryResult<null>> {
+  if (!isLocalDate(input.date)) return { ok: false, code: 'diary.date_invalid' };
+  const day = await getDiaryDay(deps.store, input.projectId, input.date);
+  const problem = diaryChangeProblem(day.entry.status, input.amendmentReason);
+  if (problem) return { ok: false, code: problem };
+  const have = (day.entry.fileIds?.length ?? 0) + (day.entry.localPhotos?.length ?? 0);
+  if (have >= MAX_DAY_PHOTOS) return { ok: false, code: 'diary.photos_full' };
+  const queued = (await deps.store.listOutbox()).filter(
+    (e) =>
+      e.command.startsWith('diary.') &&
+      e.projectId === input.projectId &&
+      (e.status === 'pending' || e.status === 'held') &&
+      (e.payload as { date?: string }).date === input.date,
+  );
+  const next: DiaryEntry = {
+    ...day.entry,
+    fileIds: day.entry.fileIds ?? [],
+    localPhotos: [
+      ...(day.entry.localPhotos ?? []),
+      { photoId: input.photoId, thumbnailUri: input.file.thumbnailUri },
+    ],
+  };
+  await deps.db.withExclusiveTransactionAsync(async (tx) => {
+    await deps.store.writeLocalIn(tx, {
+      entityType: DIARY_ENTRY,
+      id: day.entry.id,
+      projectId: input.projectId,
+      data: next,
+    });
+    await deps.store.enqueueIn(
+      tx,
+      {
+        mutationId: input.mutationId,
+        command: 'diary.attachPhoto',
+        entityType: DIARY_ENTRY,
+        entityId: day.entry.id,
+        projectId: input.projectId,
+        baseVersion: null,
+        clientAt: input.clientAt,
+        dependsOn: queued.map((e) => e.mutationId),
+        payload: {
+          projectId: input.projectId,
+          date: input.date,
+          amendmentReason: input.amendmentReason?.trim() || null,
+        },
+      },
+      { held: true },
+    );
+    await deps.uploads.addIn(tx, {
+      id: input.photoId,
+      projectId: input.projectId,
+      module: 'diary',
+      localUri: input.file.localUri,
+      filename: input.file.filename,
+      mime: input.file.mime,
+      sizeBytes: input.file.sizeBytes,
+      sha256: input.file.sha256,
+      capture: input.capture,
+      releases: input.mutationId,
+    });
+  });
   return { ok: true, value: null };
 }

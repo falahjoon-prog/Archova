@@ -17,7 +17,7 @@ import type {
   UpdateMeetingRequest,
   UpdateMeetingSeriesRequest,
 } from '@archova/contracts';
-import { localDateOf } from '@archova/time';
+import { localDateOf, type LocalDate } from '@archova/time';
 import { AppError, nextNumber, versionConflict, type TenantScope } from '@archova/kernel';
 import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
@@ -33,6 +33,13 @@ import {
   type MinutesView,
   type Viewer,
 } from '../domain/minutes';
+import {
+  LIVE_LIMIT,
+  weekOf,
+  type LiveRow,
+  type LiveSnapshot,
+  type LiveSource,
+} from '../domain/live';
 import { renderMinutesPdf } from '../domain/pdf';
 import {
   attendees,
@@ -46,8 +53,38 @@ import {
   type LinkType,
 } from '../infra/tables';
 
+/** A register's list for a live section (MTG-US5): what `rfis`, `submittals` and `defects` hand over for the caller. */
+export interface LiveSourceList {
+  rows: Array<{ id: string; ref: string; title: string; detail: string }>;
+  truncated: boolean;
+  /** The caller can't read that register at all. */
+  restricted: boolean;
+}
+type LiveReader = (
+  scope: TenantScope,
+  projectId: string,
+  opts: { limit: number },
+) => Promise<LiveSourceList>;
+
 export interface MeetingsDeps {
   access: AccessService;
+  live: {
+    rfisOverdue: LiveReader;
+    submittalsDue: LiveReader;
+    defectsOpen: LiveReader;
+    /** `diary.api.delayLines`: delay lines in the date range, or null when the caller sees only their company's lines. */
+    delayLines: (
+      scope: TenantScope,
+      projectId: string,
+      opts: { from: LocalDate; to: LocalDate; limit: number },
+    ) => Promise<Array<{
+      id: string;
+      date: string;
+      type: string;
+      description: string;
+      hours: string | number;
+    }> | null>;
+  };
   platform: Pick<
     PlatformApi,
     'getProject' | 'getProjectMembership' | 'projectCompanies' | 'getOrg'
@@ -356,6 +393,7 @@ export function createMeetingService(deps: MeetingsDeps) {
           title: x.title,
           internalOnly: x.internalOnly,
           nextItem: x.nextItem,
+          liveSource: x.liveSource,
         })),
         items: rows.map((r) => ({
           id: r.id,
@@ -379,6 +417,7 @@ export function createMeetingService(deps: MeetingsDeps) {
         title: x.title,
         internalOnly: x.internalOnly,
         nextItem: x.nextItem,
+        liveSource: x.liveSource ?? null,
       }));
       await scope.tx.insert(sections).values(created);
       for (const c of created) sectionIds.set(c.position, c.id);
@@ -439,6 +478,71 @@ export function createMeetingService(deps: MeetingsDeps) {
   }
 
   /** The working minutes in the API's shape, with each item's earlier appearances. */
+  // ------------------------------------------------------------ live sections
+
+  /**
+   * MTG-US5: the register list for a live section, read as the caller (their access applies). It is read each time the
+   * working minutes are opened; issuing freezes it into the version snapshot, so an issued version shows the list as it
+   * was in the meeting (MTG-AC6).
+   */
+  async function liveSnapshot(
+    scope: TenantScope,
+    projectId: string,
+    source: LiveSource,
+  ): Promise<LiveSnapshot> {
+    const asOf = now().toISOString();
+    const opts = { limit: LIVE_LIMIT };
+    const fromList = (
+      list: LiveSourceList,
+      type: 'rfi' | 'defect' | 'submittal',
+      kind: 'rfi' | 'defect' | 'submittal',
+    ): LiveSnapshot => ({
+      source,
+      asOf,
+      truncated: list.truncated,
+      restricted: list.restricted,
+      rows: list.rows.map((r): LiveRow => ({
+        ref: r.ref,
+        title: r.title,
+        detail: r.detail,
+        link: { type, id: encodeId(kind, r.id) },
+      })),
+    });
+    switch (source) {
+      case 'rfis_overdue':
+        return fromList(await deps.live.rfisOverdue(scope, projectId, opts), 'rfi', 'rfi');
+      case 'submittals_due':
+        return fromList(
+          await deps.live.submittalsDue(scope, projectId, opts),
+          'submittal',
+          'submittal',
+        );
+      case 'defects_open':
+        return fromList(await deps.live.defectsOpen(scope, projectId, opts), 'defect', 'defect');
+      case 'delays_week': {
+        const empty = { source, asOf, rows: [], truncated: false };
+        if (!(await deps.access.can(scope, 'diary.entries.read', { projectId })))
+          return { ...empty, restricted: true };
+        const project = await deps.platform.getProject(scope, projectId);
+        const { from, to } = weekOf(localDateOf(now(), project.timezone));
+        const lines = await deps.live.delayLines(scope, projectId, { from, to, limit: LIVE_LIMIT });
+        if (!lines) return { ...empty, restricted: true };
+        return {
+          source,
+          asOf,
+          restricted: false,
+          truncated: lines.length > LIVE_LIMIT,
+          rows: lines.slice(0, LIVE_LIMIT).map((l) => ({
+            ref: l.date,
+            title: l.description || 'Delay',
+            detail: `${Number(l.hours)} h, ${l.type.replace(/_/g, ' ')}`,
+            link: null,
+          })),
+        };
+      }
+    }
+  }
+
   async function liveBody(scope: TenantScope, m: MeetingRow, seriesName: string) {
     const [atts, secs, its] = await Promise.all([
       scope.tx
@@ -516,13 +620,17 @@ export function createMeetingService(deps: MeetingsDeps) {
         ...personView(a),
         attendance: a.attendance,
       })),
-      sections: secs.map((s) => ({
-        id: encodeId('meetingSection', s.id),
-        position: s.position,
-        title: s.title,
-        internalOnly: s.internalOnly,
-        items: its.filter((i) => i.sectionId === s.id).map(itemDto),
-      })),
+      sections: await Promise.all(
+        secs.map(async (s) => ({
+          id: encodeId('meetingSection', s.id),
+          position: s.position,
+          title: s.title,
+          internalOnly: s.internalOnly,
+          liveSource: s.liveSource,
+          live: s.liveSource ? await liveSnapshot(scope, m.projectId, s.liveSource) : null,
+          items: its.filter((i) => i.sectionId === s.id).map(itemDto),
+        })),
+      ),
     };
   }
 
@@ -572,7 +680,8 @@ export function createMeetingService(deps: MeetingsDeps) {
     return {
       ...body,
       attendees: body.attendees.map((a) => ({ ...a, email: null })),
-      sections: body.sections.filter((s) => !s.internalOnly),
+      // A live list is a register extract: it never goes outside, whatever its flag says.
+      sections: body.sections.filter((s) => !s.internalOnly && !s.live),
     };
   }
 
@@ -741,7 +850,7 @@ export function createMeetingService(deps: MeetingsDeps) {
     scope: TenantScope,
     projectId: string,
     meetingId: string,
-    input: { title: string; internalOnly?: boolean },
+    input: { title: string; internalOnly?: boolean; liveSource?: LiveSource | null },
   ) {
     await internalViewer(scope, projectId);
     await getMeetingRow(scope, projectId, meetingId);
@@ -756,7 +865,9 @@ export function createMeetingService(deps: MeetingsDeps) {
       meetingId,
       position: position + 1,
       title: input.title.trim(),
-      internalOnly: input.internalOnly ?? false,
+      // A live list is builder-only: it is a register extract, and registers hold more than the room should see.
+      internalOnly: input.liveSource ? true : (input.internalOnly ?? false),
+      liveSource: input.liveSource ?? null,
     });
     return detail(scope, projectId, meetingId);
   }
@@ -944,6 +1055,12 @@ export function createMeetingService(deps: MeetingsDeps) {
         'meeting.nothing_to_issue',
         'Record who attended before you issue the minutes.',
       );
+    // A live list the issuer can't read would freeze as an empty list and read as "nothing due".
+    if (body.sections.some((x) => x.live?.restricted))
+      throw new AppError(
+        'meeting.live_unavailable',
+        "You can't see one of the live lists in these minutes, so they can't be issued from your account.",
+      );
     const version = m.issuedVersion + 1;
     const correctionsBy = input.correctionsBy === undefined ? m.correctionsBy : input.correctionsBy;
     const seen = new Set<string>();
@@ -1028,6 +1145,7 @@ export function createMeetingService(deps: MeetingsDeps) {
         position: s.position,
         title: s.title,
         internalOnly: s.internalOnly,
+        live: s.live ?? null,
         items: s.items.map((i) => ({
           itemNo: i.itemNo,
           kind: i.kind,
@@ -1075,6 +1193,84 @@ export function createMeetingService(deps: MeetingsDeps) {
       contentType: 'application/pdf',
       dataBase64: Buffer.from(bytes).toString('base64'),
     };
+  }
+
+  // ------------------------------------------------------------ nova drafting
+
+  /**
+   * What Nova needs to turn typed notes into minute items (MTG-US7): the meeting's title, day and agenda sections, and
+   * who attended. Only the project team that may write the minutes can ask; `ai` never reads anything else.
+   */
+  async function forMinutesDraft(scope: TenantScope, projectId: string, meetingId: string) {
+    await internalViewer(scope, projectId);
+    if (!(await deps.access.can(scope, 'meetings.meetings.write', { projectId })))
+      throw new AppError('meeting.not_allowed');
+    const m = await getMeetingRow(scope, projectId, meetingId);
+    const project = await deps.platform.getProject(scope, projectId);
+    const [secs, people] = await Promise.all([
+      scope.tx
+        .select({ id: sections.id, title: sections.title })
+        .from(sections)
+        .where(eq(sections.meetingId, m.id))
+        .orderBy(asc(sections.position)),
+      scope.tx
+        .select({ id: attendees.id, name: attendees.name, company: attendees.companyName })
+        .from(attendees)
+        .where(eq(attendees.meetingId, m.id))
+        .orderBy(asc(attendees.position)),
+    ]);
+    return {
+      title: m.title,
+      date: localDateOf(m.heldAt, project.timezone),
+      sections: secs,
+      attendees: people,
+    };
+  }
+
+  /**
+   * Minute items that point at one RFI, defect or variation, newest meeting first, for that record's Related tab
+   * (MTG-AC5). Only the project team reads the working minutes; an outsider gets nothing. A carried-forward item
+   * appears once, in its latest meeting.
+   */
+  async function linkedTo(scope: TenantScope, projectId: string, link: MeetingLink) {
+    const v = await viewer(scope, projectId);
+    if (!v.isInternal) return { data: [] };
+    const { linkedType, linkedId } = parseLink(link, 'id');
+    const rows = await scope.tx
+      .select({ i: items, m: meetings })
+      .from(items)
+      .innerJoin(meetings, eq(items.meetingId, meetings.id))
+      .where(
+        and(
+          eq(items.projectId, projectId),
+          eq(items.linkedType, linkedType),
+          eq(items.linkedId, linkedId),
+          isNull(items.deletedAt),
+          isNull(meetings.deletedAt),
+        ),
+      )
+      .orderBy(desc(meetings.heldAt), desc(items.id))
+      .limit(200);
+    const seen = new Set<string>();
+    const data = [];
+    for (const r of rows) {
+      if (seen.has(r.i.threadId)) continue;
+      seen.add(r.i.threadId);
+      data.push({
+        meetingId: encodeId('meeting', r.m.id),
+        meetingTitle: r.m.title,
+        meetingNumber: r.m.number,
+        heldAt: r.m.heldAt.toISOString(),
+        itemNo: r.i.itemNo,
+        kind: r.i.kind,
+        body: r.i.body,
+        status: r.i.status,
+        ownerName: r.i.ownerName,
+        dueDate: r.i.dueDate,
+      });
+      if (data.length >= 50) break;
+    }
+    return { data };
   }
 
   // --------------------------------------------------------------- actions
@@ -1130,6 +1326,7 @@ export function createMeetingService(deps: MeetingsDeps) {
         isOverdue: i.dueDate !== null && i.dueDate < today,
         carriedCount: i.carriedCount,
         stale: isStale(i),
+        version: i.version,
       })),
     };
   }
@@ -1150,6 +1347,8 @@ export function createMeetingService(deps: MeetingsDeps) {
     issue,
     pdf,
     actions,
+    forMinutesDraft,
+    linkedTo,
   };
 }
 

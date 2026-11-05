@@ -350,3 +350,20 @@ export async function outboxData<T>(
   );
   return (rows.rows as Array<{ data: T }>).map((r) => r.data);
 }
+
+/** Turns a feature flag on for one org, as the owner console's "this org" rule does (no staff needed in tests). */
+export async function enableFlag(ctx: TestContext, key: string, orgId: string) {
+  const id = decodeId('org', orgId);
+  if (!id) throw new Error(`enableFlag: bad org id ${orgId}`);
+  await ctx.adminDb.db.execute(
+    sql`insert into backoffice.flags (key) values (${key}) on conflict do nothing`,
+  );
+  await ctx.adminDb.db.execute(
+    sql`insert into backoffice.flag_targets (flag_key, kind, ref_id) values (${key}, 'org', ${id}) on conflict do nothing`,
+  );
+}
+
+/** Removes the per-org rules `enableFlag` added, so flag tests that list rules see a clean registry. */
+export async function clearFlagTargets(ctx: TestContext, key: string) {
+  await ctx.adminDb.db.execute(sql`delete from backoffice.flag_targets where flag_key = ${key}`);
+}

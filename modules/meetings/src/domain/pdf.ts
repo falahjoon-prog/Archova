@@ -43,7 +43,28 @@ export function minutesLines(m: MinutesView): Line[] {
   }
   for (const s of m.sections) {
     out.push({ text: `${s.position}. ${s.title}`, style: 'heading' });
-    if (!s.items.length) out.push({ text: 'Nothing recorded.', style: 'small', indent: 1 });
+    if (s.live) {
+      // MTG-AC6: the list as it stood when the minutes were issued.
+      out.push({
+        text: `List as at ${s.live.asOf.slice(0, 16).replace('T', ' ')} UTC`,
+        style: 'small',
+        indent: 1,
+      });
+      if (!s.live.rows.length)
+        out.push({ text: 'Nothing on this list at the time.', style: 'small', indent: 1 });
+      for (const r of s.live.rows) {
+        out.push({ text: `${r.ref}  ${r.title}`, style: 'body', indent: 1 });
+        if (r.detail) out.push({ text: r.detail, style: 'small', indent: 2 });
+      }
+      if (s.live.truncated)
+        out.push({
+          text: 'The list was longer; the rest is not shown.',
+          style: 'small',
+          indent: 1,
+        });
+    }
+    if (!s.items.length && !s.live)
+      out.push({ text: 'Nothing recorded.', style: 'small', indent: 1 });
     for (const i of s.items) {
       out.push({
         text: `${i.itemNo}  [${KIND[i.kind]}${i.kind === 'action' && i.status === 'closed' ? ', closed' : ''}]  ${i.body}`,

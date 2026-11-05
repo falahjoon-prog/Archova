@@ -15,7 +15,12 @@ export const BACKOFFICE_PERMISSIONS = [
   'backoffice.accounts.plan',
   'backoffice.accounts.suspend',
   'backoffice.accounts.credits',
+  'backoffice.accounts.discount',
+  'backoffice.accounts.override',
+  'backoffice.accounts.refund',
+  'backoffice.accounts.refund_approve',
   'backoffice.support.access',
+  'backoffice.holds.manage',
 ] as const;
 export type BackofficePermission = (typeof BACKOFFICE_PERMISSIONS)[number];
 
@@ -28,7 +33,10 @@ const READ: BackofficePermission[] = [
 
 export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]> = {
   // Support access is for Support and Security lead only; Owner, Sales and Finance never hold it (Sam 12 §4a).
-  owner: BACKOFFICE_PERMISSIONS.filter((p) => p !== 'backoffice.support.access'),
+  // Legal holds are for the Security lead only: placing and releasing one is a compliance act, not an admin one.
+  owner: BACKOFFICE_PERMISSIONS.filter(
+    (p) => p !== 'backoffice.support.access' && p !== 'backoffice.holds.manage',
+  ),
   pricing_approver: [
     ...READ,
     'backoffice.pricing.edit',
@@ -40,6 +48,9 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.pricing.edit',
     'backoffice.accounts.plan',
     'backoffice.accounts.credits',
+    'backoffice.accounts.discount',
+    'backoffice.accounts.override',
+    'backoffice.accounts.refund',
   ],
   sales: [
     'backoffice.customers.read',
@@ -48,6 +59,7 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.flags.edit',
     'backoffice.accounts.trial',
     'backoffice.accounts.plan',
+    'backoffice.accounts.discount',
   ],
   support: [
     'backoffice.customers.read',
@@ -62,6 +74,7 @@ export const ROLE_PERMISSIONS: Record<StaffRole, readonly BackofficePermission[]
     'backoffice.staff.read',
     'backoffice.accounts.suspend',
     'backoffice.support.access',
+    'backoffice.holds.manage',
   ],
   finance_read: READ,
 };

@@ -6,11 +6,12 @@ import type {
   PlanDraftInput,
 } from '@archova/contracts';
 import { decodeId } from '@archova/domain';
-import { AppError } from '@archova/kernel';
+import { AppError, defineRoutes, requireTenant } from '@archova/kernel';
 import type { CatalogueService } from '@archova/mod-billing';
 import type { CustomerService } from '../application/customers';
 import type { FlagService } from '../application/flags';
 import type { SupportAccessService } from '../application/support-access';
+import type { HoldService } from '../application/holds';
 import type { OrgActionService } from '../application/org-actions';
 import type { RequestService } from '../application/requests';
 import type { StaffContext, StaffService } from '../application/staff';
@@ -47,6 +48,7 @@ export interface InternalDeps {
   flags: FlagService;
   orgActions: OrgActionService;
   support: SupportAccessService;
+  holds: HoldService;
 }
 
 const me = (input: { staff: StaffContext | null }) => {
@@ -63,13 +65,14 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     return id;
   };
   const orgDetail = async (id: string): Promise<OrgDetailDto> => {
-    const [org, history, account, actions] = await Promise.all([
+    const [org, history, account, actions, adjustments] = await Promise.all([
       d.customers.get(id),
       d.requests.list({ orgId: id, limit: 20 }),
       d.orgActions.account(id),
       d.orgActions.list(id),
+      d.orgActions.adjustments(id),
     ]);
-    return { ...org, history, account, actions };
+    return { ...org, history, account, actions, ...adjustments };
   };
   return {
     login: async (i) => {
@@ -96,6 +99,13 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
       if (!id) throw new AppError('org.not_found');
       return ok(await orgDetail(id));
     },
+    listOrgHolds: async (i) => ok({ items: await d.holds.list(me(i), orgId(i.params.orgId)) }),
+    placeOrgHold: async (i) =>
+      ok({ items: await d.holds.place(me(i), orgId(i.params.orgId), i.body) }, 201),
+    releaseOrgHold: async (i) =>
+      ok({
+        items: await d.holds.release(me(i), orgId(i.params.orgId), i.params.holdId, i.body),
+      }),
     getOrgSupportAccess: async (i) => ok(await d.support.list(orgId(i.params.orgId))),
     startSupportSession: async (i) => {
       const id = orgId(i.params.orgId);
@@ -132,6 +142,31 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     grantOrgCredits: async (i) => {
       const id = orgId(i.params.orgId);
       await d.orgActions.grantCredits(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    addOrgDiscount: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.addDiscount(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    revokeOrgDiscount: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.revokeDiscount(me(i), id, i.params.discountId, i.body);
+      return ok(await orgDetail(id));
+    },
+    grantOrgOverride: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.grantOverride(me(i), id, i.body);
+      return ok(await orgDetail(id));
+    },
+    revokeOrgOverride: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.revokeOverride(me(i), id, i.params.overrideId, i.body);
+      return ok(await orgDetail(id));
+    },
+    refundOrg: async (i) => {
+      const id = orgId(i.params.orgId);
+      await d.orgActions.refund(me(i), id, i.body);
       return ok(await orgDetail(id));
     },
     listPlans: async () => ok({ items: await d.catalogue.listPlans() }),
@@ -238,4 +273,18 @@ export function internalRoutes(d: InternalDeps): InternalHandlers {
     },
     listStaff: async () => ok({ items: await d.staff.list() }),
   };
+}
+
+/** What the org's own signed-in members may ask: which flags are on for them (never the rules behind them). */
+export function customerRoutes(deps: { flags: FlagService }) {
+  return defineRoutes({
+    getFeatureFlags: async (input) => {
+      const tenant = requireTenant(input);
+      return {
+        status: 200,
+        body: { orgId: input.params.orgId, flags: await deps.flags.forOrg(tenant.orgId) },
+        headers: { 'cache-control': 'private, no-store' },
+      };
+    },
+  });
 }

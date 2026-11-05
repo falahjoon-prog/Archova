@@ -25,7 +25,13 @@ import { PriceChanges } from '@/shared/PriceChanges';
 import { ReasonDialog } from '@/shared/ReasonDialog';
 import { useStepUp } from '@/shared/StepUp';
 import { can, useStaff } from '@/shared/staff';
-import { REQUEST_STATUS_OPTIONS, STATUS_LABEL, formatDateTime, statusTone } from '@/shared/format';
+import {
+  REQUEST_STATUS_OPTIONS,
+  STATUS_LABEL,
+  formatDateTime,
+  formatMoney,
+  statusTone,
+} from '@/shared/format';
 
 const FIELDS: Array<[keyof PlanVersionDto, string]> = [
   ['name', 'Name'],
@@ -78,11 +84,26 @@ function Preview({ r }: { r: RequestDto }) {
       </>
     );
   }
+  if (r.kind === 'refund')
+    return (
+      <p>
+        <strong>{formatMoney(Number(p.amountCents))}</strong> back on invoice{' '}
+        <span className="mono">{String(p.invoiceRef)}</span>, which collected{' '}
+        {formatMoney(Number(p.paidCents))}. Ticket {String(p.ticketRef)}.
+      </p>
+    );
   const draft = p.draft as PlanVersionDto | null;
   return draft ? <PlanDiff draft={draft} live={(p.live as PlanVersionDto | null) ?? null} /> : null;
 }
 
 function outcomeMessage(r: RequestDto): string {
+  if (r.kind === 'refund') {
+    if (r.status === 'executed')
+      return `${r.subject} is approved. It is recorded for payment; no money moves from here.`;
+    if (r.status === 'failed')
+      return `${r.subject} could not be applied: ${String(r.result?.error ?? 'unknown error')}`;
+    return `${r.subject} was ${r.status === 'rejected' ? 'rejected' : 'cancelled'} and is not owed.`;
+  }
   if (r.status === 'executed')
     return r.result?.outcome === 'scheduled'
       ? `${r.subject} is approved and scheduled for its effective date.`
@@ -115,7 +136,10 @@ function RequestCard({ r, onDone }: { r: RequestDto; onDone: (message: string) =
 
   const mine = r.requestedBy.id === staff.id;
   const waiting = r.coolingOffUntil && new Date(r.coolingOffUntil) > new Date();
-  const decide = can(staff, 'backoffice.requests.decide') && r.status === 'pending';
+  const decide =
+    can(staff, 'backoffice.requests.decide') &&
+    (r.kind !== 'refund' || can(staff, 'backoffice.accounts.refund_approve')) &&
+    r.status === 'pending';
   const canApprove = decide && (!mine || r.coolingOffUntil !== null);
   const canCancel = r.status === 'pending' && (mine || staff.roles.includes('owner'));
 
@@ -139,17 +163,23 @@ function RequestCard({ r, onDone }: { r: RequestDto; onDone: (message: string) =
         {r.status === 'executed' && r.result ? (
           <p className="muted">
             {r.approvedBy ? `Approved by ${r.approvedBy.name}. ` : ''}
-            {r.result.outcome === 'scheduled' ? 'Scheduled for its effective date.' : 'Now live.'}
+            {r.kind === 'refund'
+              ? 'Recorded for payment.'
+              : r.result.outcome === 'scheduled'
+                ? 'Scheduled for its effective date.'
+                : 'Now live.'}
           </p>
         ) : null}
         {r.status === 'failed' ? (
           <Alert tone="danger" title="Could not apply">
-            {String(r.result?.error ?? 'Unknown error')} The change is back in draft.
+            {String(r.result?.error ?? 'Unknown error')}{' '}
+            {r.kind === 'refund' ? 'The refund is not owed.' : 'The change is back in draft.'}
           </Alert>
         ) : null}
         {r.status === 'pending' && mine && !r.coolingOffUntil ? (
           <Alert tone="info">
-            A second person has to approve this. You can cancel it to keep editing.
+            A second person has to approve this. You can cancel it
+            {r.kind === 'refund' ? '' : ' to keep editing'}.
           </Alert>
         ) : null}
         {r.status === 'pending' && mine && waiting ? (

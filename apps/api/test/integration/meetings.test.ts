@@ -163,7 +163,12 @@ describe('Meetings, minutes and actions (product/07)', () => {
     expect((await s.other.browser.get(`${s.base}/meetings/${meeting1}`)).statusCode).toBe(404);
     const mine = (await s.sub.browser.get(`${s.base}/meeting-actions`)).json().data;
     expect(mine).toHaveLength(1);
-    expect(mine[0]).toMatchObject({ itemNo: '1.1', body: 'Fix the edge protection on level 3' });
+    // `version` is what a phone sends as If-Match to close the action.
+    expect(mine[0]).toMatchObject({
+      itemNo: '1.1',
+      body: 'Fix the edge protection on level 3',
+      version: expect.any(Number),
+    });
     expect((await s.other.browser.get(`${s.base}/meeting-actions`)).json().data).toEqual([]);
 
     // Both versions stay downloadable; the outsider's PDF leaves the internal section out.

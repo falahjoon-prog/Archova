@@ -2,7 +2,7 @@ import { UnrecoverableError } from 'bullmq';
 import { describe, expect, it, vi } from 'vitest';
 import { AppError } from '@archova/kernel';
 import { AI_INDEX_ACTOR } from '@archova/mod-ai';
-import { AI_JOBS, AI_SWEEP_ROUTE } from '../../src/ai/declaration';
+import { ACCOUNTING_PULL_ROUTE, AI_JOBS, AI_SWEEP_ROUTE } from '../../src/ai/declaration';
 import { LAG_ALERT_MS, measureQueue, watchQueueAge, type AgeQueue } from '../../src/ai/queue-age';
 import { sanitizeFailure } from '../../src/ai/reindex';
 import { createSweep, type OrgSweeper } from '../../src/ai/sweep';
@@ -70,7 +70,7 @@ describe('the nightly sweep', () => {
   it('is a per-org job for the ai queue, once a day', () => {
     expect(AI_SWEEP_ROUTE).toMatchObject({ name: 'ai.sweep', queue: 'ai' });
     expect(AI_SWEEP_ROUTE.cron.split(' ').slice(2)).toEqual(['*', '*', '*']);
-    expect(AI_JOBS).toEqual([AI_SWEEP_ROUTE]);
+    expect(AI_JOBS).toEqual([AI_SWEEP_ROUTE, ACCOUNTING_PULL_ROUTE]);
   });
 
   const setup = (sweepOrg?: OrgSweeper['sweepOrg']) => {

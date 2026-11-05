@@ -17,8 +17,10 @@ import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { formatInstant, formatLocalDate } from '@/shared/lib/format';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
+import { AddSectionForm } from '../components/AddSectionForm';
 import { AttendanceCard } from '../components/AttendanceCard';
 import { IssueDialog } from '../components/IssueDialog';
+import { NovaMinutesDialog } from '../components/NovaMinutesDialog';
 import { SectionCard } from '../components/SectionCard';
 import { useMeeting, useMeetingMutations } from '../hooks/useMeetings';
 import { saveFile } from '../lib/labels';
@@ -34,6 +36,7 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
   const meeting = useMeeting(meetingId);
   const { pdf, update } = useMeetingMutations(meetingId);
   const [issuing, setIssuing] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [pickedVersion, setPickedVersion] = useState('');
 
   if (meeting.isPending) return <SkeletonRows label="Loading the minutes…" />;
@@ -56,11 +59,18 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
         eyebrow={`${m.seriesName}, meeting ${m.number}`}
         description={`${formatInstant(m.heldAt, project.timezone)}${m.location ? `, ${m.location}` : ''}`}
         actions={
-          d.viewer.canIssue ? (
-            <Button onClick={() => setIssuing(true)}>
-              {m.issuedVersion === 0 ? 'Issue minutes' : 'Issue a correction'}
-            </Button>
-          ) : null
+          <>
+            {d.viewer.canEdit ? (
+              <Button variant="secondary" onClick={() => setDrafting(true)}>
+                Draft with Nova
+              </Button>
+            ) : null}
+            {d.viewer.canIssue ? (
+              <Button onClick={() => setIssuing(true)}>
+                {m.issuedVersion === 0 ? 'Issue minutes' : 'Issue a correction'}
+              </Button>
+            ) : null}
+          </>
         }
       />
       <div className="details-row">
@@ -164,6 +174,10 @@ export function MeetingScreen({ meetingId }: { meetingId: string }) {
       {d.sections.map((s) => (
         <SectionCard key={s.id} section={s} meetingId={m.id} canEdit={d.viewer.canEdit} />
       ))}
+      {d.viewer.canEdit ? <AddSectionForm meetingId={m.id} /> : null}
+      {d.viewer.canEdit ? (
+        <NovaMinutesDialog open={drafting} onClose={() => setDrafting(false)} detail={d} />
+      ) : null}
       {d.viewer.canIssue ? (
         <IssueDialog
           key={m.issuedVersion}

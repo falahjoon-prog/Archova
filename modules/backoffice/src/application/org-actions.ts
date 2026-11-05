@@ -1,18 +1,35 @@
 import { desc, eq } from 'drizzle-orm';
-import type {
-  CreditGrantKind,
-  OrgAccountDto,
-  OrgActionDto,
-  SuspendCategory,
+import {
+  PLAN_MODULE_KEYS,
+  type CreditGrantKind,
+  type OrgAccountDto,
+  type OrgActionDto,
+  type OrgDiscountDto,
+  type OrgOverrideDto,
+  type OrgRefundDto,
+  type StaffActionDto,
+  type SuspendCategory,
 } from '@archova/contracts';
 import { uuidv7 } from '@archova/domain';
 import { AppError, type KernelServices, type Tx } from '@archova/kernel';
-import type { AccountService, AccountSeed, OrgAccount } from '@archova/mod-billing';
+import {
+  REFUND_APPROVAL_CENTS,
+  type AccountService,
+  type AccountSeed,
+  type AdjustmentService,
+  type OrgAccount,
+} from '@archova/mod-billing';
 import { orgActions, staffUsers, tenantDirectory } from '../infra/tables';
+import type { RequestService } from './requests';
 import type { StaffContext } from './staff';
+
+/** A refund over A$5,000 waits this long when the only Owner requests it (Sam 12 §4). */
+const REFUND_SOLO_COOLING_OFF_HOURS = 1;
 
 export interface OrgActionDeps extends Pick<KernelServices, 'database'> {
   accounts: AccountService;
+  adjustments: AdjustmentService;
+  requests: RequestService;
   /** Nova credit grants live in the `ai` ledger; supplied lazily because `ai` is built after this module. */
   credits: () => {
     grantCredits: (
@@ -69,6 +86,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
     staff: StaffContext,
     kind: OrgActionDto['kind'],
     summary: string,
+    customerSummary: string,
     input: { reason: string; ticketRef: string },
   ) {
     await t.insert(orgActions).values({
@@ -76,6 +94,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
       targetOrgId: orgId,
       kind,
       summary,
+      customerSummary,
       reason: input.reason,
       ticketRef: input.ticketRef,
       staffId: staff.staffId,
@@ -108,6 +127,28 @@ export function createOrgActionService(deps: OrgActionDeps) {
     }));
   }
 
+  /**
+   * The customer's own view of staff account actions: when, what and the ticket, worded for them. It leaves out the
+   * internal reason and the staff member's name, and says "Archova staff" (Sam, #182 review).
+   */
+  async function listForCustomer(orgId: string, limit = 50): Promise<StaffActionDto[]> {
+    const rows = await tx((t) =>
+      t
+        .select()
+        .from(orgActions)
+        .where(eq(orgActions.targetOrgId, orgId))
+        .orderBy(desc(orgActions.createdAt))
+        .limit(limit),
+    );
+    return rows.map((a) => ({
+      id: a.id,
+      kind: a.kind,
+      summary: a.customerSummary,
+      ticketRef: a.ticketRef,
+      at: a.createdAt.toISOString(),
+    }));
+  }
+
   type Common = { reason: string; ticketRef: string };
 
   async function extendTrial(staff: StaffContext, orgId: string, input: Common & { days: number }) {
@@ -124,6 +165,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'trial.extend',
         `Extended the trial by ${input.days} days (${a.trialExtendedDays} in total)`,
+        `Archova staff extended your trial by ${input.days} days.`,
         input,
       );
     });
@@ -144,6 +186,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'plan.change',
         `Moved from ${before.planCode} to ${a.planCode}`,
+        `Archova staff moved your plan from ${before.planCode} to ${a.planCode}.`,
         input,
       );
     });
@@ -172,6 +215,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'suspend',
         `Suspended (${input.category.replace('_', ' ')}) by ${actingRole(staff)}`,
+        'Archova staff suspended your account.',
         input,
       );
     });
@@ -188,6 +232,7 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'reactivate',
         `Reactivated after suspension by ${actingRole(staff)}`,
+        'Archova staff reactivated your account.',
         input,
       );
     });
@@ -211,12 +256,266 @@ export function createOrgActionService(deps: OrgActionDeps) {
         staff,
         'credits.grant',
         `Granted ${input.credits} Nova credits (${input.kind.replace('_', '-')}) for ${periodStart.slice(0, 7)}`,
+        `Archova staff added ${input.credits} Nova credits to your account for ${periodStart.slice(0, 7)}.`,
         input,
       ),
     );
   }
 
-  return { account, list, grantCredits, extendTrial, changePlan, suspend, reactivate };
+  const money = (cents: number) => `A$${(cents / 100).toFixed(2)}`;
+  const isOwner = (staff: StaffContext) => staff.roles.includes('owner');
+
+  async function addDiscount(
+    staff: StaffContext,
+    orgId: string,
+    input: Common & { percent: number; months: number },
+  ) {
+    await tx(async (t) => {
+      await seed(t, orgId);
+      const d = await deps.adjustments.addDiscount(t, orgId, staff.staffId, {
+        ...input,
+        ownerOverride: isOwner(staff),
+        now: now(),
+      });
+      await log(
+        t,
+        orgId,
+        staff,
+        'discount.add',
+        `Discount of ${d.percent}% from ${d.startsOn} to ${d.endsOn}`,
+        `Archova staff gave your account a ${d.percent}% discount until ${d.endsOn}.`,
+        input,
+      );
+    });
+  }
+
+  async function revokeDiscount(
+    staff: StaffContext,
+    orgId: string,
+    discountId: string,
+    input: Common,
+  ) {
+    await tx(async (t) => {
+      const d = await deps.adjustments.revokeDiscount(t, orgId, discountId, staff.staffId, now());
+      await log(
+        t,
+        orgId,
+        staff,
+        'discount.revoke',
+        `Ended the ${d.percent}% discount early`,
+        `Archova staff ended your ${d.percent}% discount early.`,
+        input,
+      );
+    });
+  }
+
+  async function grantOverride(
+    staff: StaffContext,
+    orgId: string,
+    input: Common & {
+      kind: 'module' | 'limit';
+      key: string;
+      limitValue: number | null;
+      days: number;
+    },
+  ) {
+    await tx(async (t) => {
+      await seed(t, orgId);
+      const o = await deps.adjustments.grantOverride(t, orgId, staff.staffId, {
+        ...input,
+        ownerOverride: isOwner(staff),
+        validModules: PLAN_MODULE_KEYS,
+        now: now(),
+      });
+      const what = o.kind === 'module' ? `Added ${o.key}` : `Set ${o.key} to ${o.limitValue}`;
+      await log(
+        t,
+        orgId,
+        staff,
+        'override.grant',
+        `${what} for ${input.days} days (until ${o.expiresAt.toISOString().slice(0, 10)})`,
+        `Archova staff changed your account's access until ${o.expiresAt.toISOString().slice(0, 10)}.`,
+        input,
+      );
+    });
+  }
+
+  async function revokeOverride(
+    staff: StaffContext,
+    orgId: string,
+    overrideId: string,
+    input: Common,
+  ) {
+    await tx(async (t) => {
+      const o = await deps.adjustments.revokeOverride(t, orgId, overrideId, staff.staffId, now());
+      await log(
+        t,
+        orgId,
+        staff,
+        'override.revoke',
+        `Ended the ${o.key} override early`,
+        `Archova staff ended a temporary change to your account's access.`,
+        input,
+      );
+    });
+  }
+
+  /**
+   * Records a refund. Up to A$5,000 it is approved and logged at once. Over that, the record waits and a `refund`
+   * request goes to a second Owner (or, with a sole Owner, back to them after a 1 hour delay). If the request cannot
+   * be created, the record is cancelled so nothing is left pending.
+   */
+  async function refund(
+    staff: StaffContext,
+    orgId: string,
+    input: Common & { invoiceRef: string; amountCents: number; paidCents: number },
+  ) {
+    const row = await tx(async (t) => {
+      await seed(t, orgId);
+      const r = await deps.adjustments.createRefund(t, orgId, staff.staffId, input);
+      if (r.status === 'approved')
+        await log(
+          t,
+          orgId,
+          staff,
+          'refund',
+          `Refund of ${money(r.amountCents)} on invoice ${r.invoiceRef}`,
+          `Archova staff recorded a refund of ${money(r.amountCents)} on invoice ${r.invoiceRef}.`,
+          input,
+        );
+      return r;
+    });
+    if (row.status === 'approved') return;
+    try {
+      await deps.requests.create(staff, {
+        kind: 'refund',
+        subjectRef: row.id,
+        subjectLabel: `Refund of ${money(row.amountCents)} on invoice ${row.invoiceRef}`,
+        reason: input.reason,
+        orgId,
+        coolingOffHours: REFUND_SOLO_COOLING_OFF_HOURS,
+        preview: {
+          invoiceRef: row.invoiceRef,
+          amountCents: row.amountCents,
+          paidCents: row.paidCents,
+          ticketRef: row.ticketRef,
+          approvalOverCents: REFUND_APPROVAL_CENTS,
+        },
+      });
+    } catch (e) {
+      await tx((t) => deps.adjustments.settleRefund(t, row.id, 'cancelled', null, now()));
+      throw e;
+    }
+  }
+
+  async function adjustments(orgId: string) {
+    const at = now();
+    const today = at.toISOString().slice(0, 10);
+    const [discounts, overrides, refunds] = await tx((t) =>
+      Promise.all([
+        deps.adjustments.listDiscounts(t, orgId),
+        deps.adjustments.listOverrides(t, orgId),
+        deps.adjustments.listRefunds(t, orgId),
+      ]),
+    );
+    return {
+      discounts: discounts.map((d): OrgDiscountDto => ({
+        id: d.id,
+        percent: d.percent,
+        startsOn: d.startsOn,
+        endsOn: d.endsOn,
+        reason: d.reason,
+        ticketRef: d.ticketRef,
+        status: d.revokedAt ? 'revoked' : d.endsOn > today ? 'active' : 'ended',
+      })),
+      overrides: overrides.map((o): OrgOverrideDto => ({
+        id: o.id,
+        kind: o.kind,
+        key: o.key,
+        limitValue: o.limitValue,
+        expiresAt: o.expiresAt.toISOString(),
+        reason: o.reason,
+        ticketRef: o.ticketRef,
+        status: o.revokedAt ? 'revoked' : o.expiresAt > at ? 'live' : 'expired',
+      })),
+      refunds: refunds.map((r): OrgRefundDto => ({
+        id: r.id,
+        invoiceRef: r.invoiceRef,
+        amountCents: r.amountCents,
+        paidCents: r.paidCents,
+        reason: r.reason,
+        ticketRef: r.ticketRef,
+        status: r.status,
+        at: r.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  /**
+   * System action for the trial-expiry job: moves a lapsed trial to read-only and keeps the customer list in step.
+   * No staff member acts, so there is no action-log row; the worker logs the org id. Returns whether it changed.
+   */
+  async function expireTrial(orgId: string, at: Date = now()): Promise<boolean> {
+    return tx(async (t) => {
+      const a = await deps.accounts.expireTrial(t, orgId, at);
+      if (!a) return false;
+      await syncDirectory(t, orgId, a);
+      return true;
+    });
+  }
+
+  /**
+   * System action for the trial-backfill job: gives a company created before #231 its trial end date and makes sure
+   * the customer list shows it. Returns whether anything changed.
+   */
+  async function backfillTrial(
+    org: { id: string; name: string; slug: string; createdAt: Date },
+    at: Date = now(),
+  ): Promise<boolean> {
+    return tx(async (t) => {
+      const a = await deps.accounts.backfillTrialEnd(t, org.id, org.createdAt, at);
+      if (!a) return false;
+      await t
+        .insert(tenantDirectory)
+        .values({
+          id: org.id,
+          name: org.name,
+          slug: org.slug,
+          planCode: a.planCode,
+          state: a.state,
+          trialEndsAt: a.trialEndsAt,
+        })
+        .onConflictDoUpdate({
+          target: tenantDirectory.id,
+          set: {
+            planCode: a.planCode,
+            state: a.state,
+            trialEndsAt: a.trialEndsAt,
+            updatedAt: new Date(),
+          },
+        });
+      return true;
+    });
+  }
+
+  return {
+    account,
+    list,
+    adjustments,
+    listForCustomer,
+    grantCredits,
+    extendTrial,
+    changePlan,
+    suspend,
+    reactivate,
+    addDiscount,
+    revokeDiscount,
+    grantOverride,
+    revokeOverride,
+    refund,
+    expireTrial,
+    backfillTrial,
+  };
 }
 
 export type OrgActionService = ReturnType<typeof createOrgActionService>;

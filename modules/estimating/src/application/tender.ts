@@ -11,6 +11,7 @@ import {
 import type { AccessService } from '@archova/mod-access';
 import type { DocumentsApi } from '@archova/mod-documents';
 import type { FilesModule } from '@archova/mod-files';
+import type { FinancialsModule } from '@archova/mod-financials';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf } from '@archova/time';
 import { compareQuotes } from '../domain/comparison';
@@ -21,6 +22,7 @@ import {
   lowestQuote,
   nextPackageStatus,
   quoteTotals,
+  subcontractSov,
   takesQuotes,
   fromCents,
   toCents,
@@ -46,9 +48,21 @@ export type QuoteView = QuoteRow & { lines: QuoteLineRow[] };
 
 export interface EstimatingDeps {
   access: AccessService;
-  platform: Pick<PlatformApi, 'getProject' | 'projectCompanies'>;
+  platform: Pick<PlatformApi, 'getProject' | 'projectCompanies' | 'companyExists'>;
   documents: Pick<DocumentsApi, 'getDrawingRevision' | 'getDocumentRef'>;
   files: Pick<FilesModule['api'], 'getFile'>;
+  /** Raising a subcontract from the awarded quote. */
+  financials: Pick<
+    FinancialsModule['api'],
+    'createContract' | 'contractForQuote' | 'createCommitment' | 'commitmentForQuote'
+  >;
+  /** Prequalification (precon): which companies a tender invite must refuse when the org requires it. */
+  prequal: {
+    tenderGate(
+      scope: TenantScope,
+      companyIds: readonly string[],
+    ): Promise<{ required: boolean; blocked: { companyId: string; state: string }[] }>;
+  };
   now?: () => Date;
 }
 
@@ -363,6 +377,7 @@ export function createTenderService(deps: EstimatingDeps) {
     projectId: string,
     packageId: string,
     companyIds: string[],
+    overrideReason?: string,
   ) {
     const { row } = await load(scope, projectId, packageId);
     if (!isEditable(row.status))
@@ -381,6 +396,32 @@ export function createTenderService(deps: EstimatingDeps) {
         throw new AppError('tender.company_not_on_project', 'Invite companies on this project.', [
           { path: `companyIds/${i}`, message: 'Not a company on the project' },
         ]);
+    // Companies already invited are left as they are, so only the new ones face the prequalification check.
+    const already = new Set(
+      (
+        await scope.tx
+          .select({ companyId: packageInvites.companyId })
+          .from(packageInvites)
+          .where(eq(packageInvites.packageId, packageId))
+      ).map((r) => r.companyId),
+    );
+    const gate = await deps.prequal.tenderGate(
+      scope,
+      ids.filter((id) => !already.has(id)),
+    );
+    const overridden = gate.blocked.length > 0 && Boolean(overrideReason?.trim());
+    if (gate.blocked.length > 0) {
+      if (overridden) await deps.access.assert(scope, 'precon.prequal.decide');
+      else
+        throw new AppError(
+          'tender.company_not_qualified',
+          'Only prequalified companies can be invited. Get the form approved, or override with a reason.',
+          gate.blocked.map((b) => ({
+            path: `companyIds/${ids.indexOf(b.companyId)}`,
+            message: `Not prequalified (${b.state})`,
+          })),
+        );
+    }
     await scope.tx
       .insert(packageInvites)
       .values(
@@ -401,6 +442,19 @@ export function createTenderService(deps: EstimatingDeps) {
       entityId: packageId,
       data: { packageId, companyIds: ids },
     });
+    if (overridden)
+      scope.events.add({
+        type: 'estimating.package.invite_override.v1',
+        projectId,
+        entityType: 'tender_package',
+        entityId: packageId,
+        data: {
+          packageId,
+          actorId: scope.ctx.userId,
+          reason: overrideReason!.trim(),
+          companyIds: gate.blocked.map((b) => b.companyId),
+        },
+      });
     return get(scope, projectId, packageId);
   }
 
@@ -487,6 +541,101 @@ export function createTenderService(deps: EstimatingDeps) {
       data: { packageId, quoteId: chosen.id, companyId: chosen.companyId, notLowest },
     });
     return get(scope, projectId, packageId);
+  }
+
+  /**
+   * Raise the draft subcontract for an awarded package from its winning quote. Safe to call again: a quote raises at
+   * most one contract, and the second call returns it. Needs `financials.contracts.manage` as well as the right to
+   * review quotes, which the financials service checks.
+   */
+  async function createSubcontract(scope: TenantScope, projectId: string, packageId: string) {
+    const { row } = await load(scope, projectId, packageId);
+    // Serialise two people pressing the button at once; the unique index is the backstop.
+    await scope.tx
+      .select({ id: tenderPackages.id })
+      .from(tenderPackages)
+      .where(eq(tenderPackages.id, packageId))
+      .for('update');
+    if (row.status !== 'awarded' || !row.awardedQuoteId)
+      throw new AppError(
+        'tender.invalid_state',
+        'Award the package before raising a subcontract.',
+        undefined,
+        {
+          status: row.status,
+        },
+      );
+    const existing = await deps.financials.contractForQuote(scope, projectId, row.awardedQuoteId);
+    if (existing) return { contract: existing, created: false };
+    const [quote] = await scope.tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.id, row.awardedQuoteId), eq(quotes.packageId, packageId)))
+      .limit(1);
+    if (!quote) throw new AppError('quote.not_found');
+    const lines = await scope.tx
+      .select()
+      .from(quoteLines)
+      .where(eq(quoteLines.quoteId, quote.id))
+      .orderBy(asc(quoteLines.sort));
+    const made = await deps.financials.createContract(scope, projectId, {
+      kind: 'subcontract',
+      title: row.name.slice(0, 300),
+      payeeCompanyId: quote.companyId,
+      originalValue: fromCents(toCents(quote.totalExGst)),
+      sov: subcontractSov(lines, quote.totalExGst, row.name),
+      source: { packageId, quoteId: quote.id },
+    });
+    return { contract: made.contract, created: true };
+  }
+
+  /**
+   * Raise the draft budget commitment for an awarded package: the winning company, one line for the quote total ex
+   * GST against the budget line the builder chose. Safe to repeat. Needs `financials.commitments.manage` as well.
+   */
+  async function createCommitment(
+    scope: TenantScope,
+    projectId: string,
+    packageId: string,
+    budgetLineId: string,
+  ) {
+    const { row } = await load(scope, projectId, packageId);
+    await scope.tx
+      .select({ id: tenderPackages.id })
+      .from(tenderPackages)
+      .where(eq(tenderPackages.id, packageId))
+      .for('update');
+    if (row.status !== 'awarded' || !row.awardedQuoteId)
+      throw new AppError(
+        'tender.invalid_state',
+        'Award the package before raising a commitment.',
+        undefined,
+        {
+          status: row.status,
+        },
+      );
+    const existing = await deps.financials.commitmentForQuote(scope, projectId, row.awardedQuoteId);
+    if (existing) return { commitment: existing, created: false };
+    const [quote] = await scope.tx
+      .select()
+      .from(quotes)
+      .where(and(eq(quotes.id, row.awardedQuoteId), eq(quotes.packageId, packageId)))
+      .limit(1);
+    if (!quote) throw new AppError('quote.not_found');
+    const made = await deps.financials.createCommitment(scope, projectId, {
+      kind: 'subcontract',
+      title: row.name.slice(0, 300),
+      vendorCompanyId: quote.companyId,
+      lines: [
+        {
+          budgetLineId,
+          description: row.name.slice(0, 300),
+          amount: fromCents(toCents(quote.totalExGst)),
+        },
+      ],
+      source: { packageId, quoteId: quote.id },
+    });
+    return { commitment: made.commitment, created: true };
   }
 
   // ---- quotes ----
@@ -927,6 +1076,8 @@ export function createTenderService(deps: EstimatingDeps) {
     invite,
     setAllowances,
     award,
+    createSubcontract,
+    createCommitment,
     listQuotes,
     getQuote,
     createQuote,

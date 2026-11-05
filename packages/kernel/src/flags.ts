@@ -28,6 +28,12 @@ export const FLAG_REGISTRY: readonly FlagDef[] = [
     owner: 'Ben',
     removeBy: '2027-06-30',
   },
+  {
+    key: 'subcontractor_prequalification',
+    description: 'Subcontractor prequalification forms, approval and expiry register.',
+    owner: 'Ben',
+    removeBy: '2027-06-30',
+  },
 ];
 
 export const FLAG_KEYS = FLAG_REGISTRY.map((f) => f.key);

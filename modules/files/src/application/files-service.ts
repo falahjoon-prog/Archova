@@ -318,23 +318,32 @@ export function createFilesService({
   async function downloadUrl(
     scope: TenantScope,
     fileId: string,
-    opts: { authorised?: boolean } = {},
+    opts: { authorised?: boolean; expiresInS?: number; contentType?: string } = {},
   ) {
     const f = await get(scope, fileId, opts);
     assertFileReady(f);
+    // A caller can ask for a shorter life (never a longer one).
+    const ttl = Math.min(DOWNLOAD_URL_TTL_S, Math.max(1, opts.expiresInS ?? DOWNLOAD_URL_TTL_S));
     const url = await store.presignGet(f.storageKey, {
       contentDisposition: contentDisposition(f.filename),
-      expiresInS: DOWNLOAD_URL_TTL_S,
+      expiresInS: ttl,
+      contentType: opts.contentType,
     });
-    return { url, expiresAt: new Date(Date.now() + DOWNLOAD_URL_TTL_S * 1000) };
+    return { url, expiresAt: new Date(Date.now() + ttl * 1000) };
   }
 
   /**
    * The file's bytes for server-side processing, after the same read check as a download. Capped so one request
-   * can't pull a huge file into memory; bigger files wait for the worker.
+   * can't pull a huge file into memory; bigger files wait for the worker. `authorised` is for background jobs
+   * that run as the system principal on a record another check already covers; routes never pass it.
    */
-  async function readBytes(scope: TenantScope, fileId: string, maxBytes: number) {
-    const f = await get(scope, fileId);
+  async function readBytes(
+    scope: TenantScope,
+    fileId: string,
+    maxBytes: number,
+    opts: { authorised?: boolean } = {},
+  ) {
+    const f = await get(scope, fileId, opts);
     assertFileReady(f);
     if (f.sizeBytes > maxBytes)
       throw new AppError('validation_failed', 'This file is too large to process here.', [
