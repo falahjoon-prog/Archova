@@ -1,8 +1,10 @@
+import { and, count, eq, isNull } from 'drizzle-orm';
 import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
   defineModule,
   type KernelServices,
+  type TenantScope,
   type SyncCommand,
   type SyncSource,
 } from '@archova/kernel';
@@ -12,6 +14,7 @@ import { createObservationService } from './application/observations';
 import type { QualityDeps } from './application/shared';
 import { qualityRoutes } from './api/routes';
 import { toInspectionDetail, toTemplateDetail } from './api/mappers';
+import { inspections as inspectionsTable, observations as observationsTable } from './infra/tables';
 import { QUALITY_PERMISSIONS } from './permissions';
 
 export type { QualityDeps } from './application/shared';
@@ -244,8 +247,23 @@ export function createQualityModule(services: KernelServices, deps: QualityDeps)
     api: {
       /** What the mobile pull reads (modules/sync) and what a device may queue offline and push. */
       ...syncPieces(inspections),
+      /** Whether an inspection or observation is on the project, for an incident action that links to it. Called by `safety` only. */
+      sourceExists: async (
+        scope: TenantScope,
+        projectId: string,
+        type: 'inspection' | 'observation',
+        sourceId: string,
+      ) => {
+        const t = type === 'inspection' ? inspectionsTable : observationsTable;
+        const [r] = await scope.tx
+          .select({ n: count() })
+          .from(t)
+          .where(and(eq(t.id, sourceId), eq(t.projectId, projectId), isNull(t.deletedAt)));
+        return (r?.n ?? 0) > 0;
+      },
     },
   };
 }
 
 export type QualityModule = ReturnType<typeof createQualityModule>;
+export type QualityApi = QualityModule['api'];

@@ -5,6 +5,8 @@
 import { delay, mockId, nowIso, problem, projectStores } from '@/shared/mocks/runtime';
 import type {
   ActionInput,
+  ActionSource,
+  SourcedAction,
   ClassifyInput,
   CorrectiveAction,
   CorrectiveStatus,
@@ -33,6 +35,8 @@ export interface IncidentSource {
     actionId: string,
     status: CorrectiveStatus,
   ): Promise<IncidentDetail>;
+  /** The corrective actions that came from one inspection or observation. */
+  fromSource(projectId: string, source: ActionSource): Promise<SourcedAction[]>;
 }
 
 interface Store {
@@ -227,7 +231,7 @@ export const incidentsPreview: IncidentSource = {
       description: input.description ?? null,
       assigneeCompanyId: input.assigneeCompanyId ?? null,
       dueDate: input.dueDate ?? null,
-      source: null,
+      source: input.source ?? null,
       status: 'open',
       isOverdue: false,
       version: 1,
@@ -254,6 +258,19 @@ export const incidentsPreview: IncidentSource = {
     a!.version += 1;
     return delay(structuredClone(refresh(hit)));
   },
+  fromSource: (projectId, source) =>
+    delay(
+      stores.get(projectId).items.flatMap((d) =>
+        d.actions
+          .filter((a) => a.source?.type === source.type && a.source.id === source.id)
+          .map((a) => ({
+            action: { ...a },
+            incidentId: d.incident.id,
+            incidentNumberLabel: d.incident.numberLabel,
+            incidentTitle: d.incident.title,
+          })),
+      ),
+    ),
 };
 
 export function resetIncidentsPreview() {

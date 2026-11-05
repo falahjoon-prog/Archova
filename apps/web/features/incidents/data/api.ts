@@ -156,6 +156,7 @@ export function createIncidentsApi(orgId: string): IncidentSource {
               ...(input.description ? { description: input.description } : {}),
               ...(input.assigneeCompanyId ? { assigneeCompanyId: input.assigneeCompanyId } : {}),
               ...(input.dueDate ? { dueDate: input.dueDate } : {}),
+              ...(input.source ? { source: input.source } : {}),
             },
           }),
         ),
@@ -173,6 +174,22 @@ export function createIncidentsApi(orgId: string): IncidentSource {
         }),
       );
       return get(projectId, d.incident.id);
+    },
+    async fromSource(projectId, source) {
+      const r = unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/incident-actions', {
+          params: {
+            path: { orgId, projectId },
+            query: { sourceType: source.type, sourceId: source.id },
+          },
+        }),
+      );
+      return r.data.map((x) => ({
+        action: toAction(x.action),
+        incidentId: x.incidentId,
+        incidentNumberLabel: x.incidentNumberLabel,
+        incidentTitle: x.incidentTitle,
+      }));
     },
   };
 }
