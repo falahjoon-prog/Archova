@@ -23,6 +23,7 @@ import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
+import { createSmtpSender } from './smtp';
 import { evidenceDeliveries } from './jobs/evidence-deliveries';
 import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
@@ -31,6 +32,7 @@ import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
 import { walletRetention } from './jobs/wallet-retention';
+import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -61,8 +63,16 @@ async function main() {
           from: config.email.from,
           replyTo: config.email.replyTo,
         })
-      : createLogSender((msg, o) => log.info(o, msg));
+      : config.email.provider === 'smtp' && config.email.smtp
+        ? createSmtpSender({
+            ...config.email.smtp,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg));
+  SUBSCRIBERS.push(dataExportNotices(emailSender, (msg, o) => log.info(o ?? {}, msg)));
   /** Nightly and hourly per-org jobs (backend 05 §3). */
+
   const jobs: TenantJob[] = [
     accessLinkPurge,
     importStagingPurge,
@@ -114,9 +124,13 @@ async function main() {
       ...(config.files.endpoint ? { endpoint: config.files.endpoint } : {}),
       ...(config.files.credentials ? { credentials: config.files.credentials } : {}),
     });
-    jobs.push(threatMove(store, log));
+    jobs.push(threatMove(store, log), dataExportSweep(store));
+    SUBSCRIBERS.push(dataExportBuilder(store, (msg, o) => log.info(o ?? {}, msg)));
   } else {
-    log.warn({}, 'WORKER_FILES_STORE is not s3: file jobs (threat move) are not scheduled');
+    log.warn(
+      {},
+      'WORKER_FILES_STORE is not s3: file jobs (threat move, data export) are not scheduled',
+    );
   }
   const platform = new pg.Pool({ connectionString: config.platformDatabaseUrl, max: 2 });
   const { publish, running } = startQueues(config.redisUrl, database, SUBSCRIBERS, {

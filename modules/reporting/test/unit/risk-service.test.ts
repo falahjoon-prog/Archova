@@ -79,11 +79,11 @@ function build(opts: { wallet?: unknown; fin?: Record<string, unknown> } = {}) {
     rfis: {} as never,
     defects: {} as never,
     submittals: {} as never,
-    financials: { sopaRiskSignals },
+    financials: { sopaRiskSignals } as never,
     scheduling: { slipSignals },
-    workforce: { insuranceSignals },
+    workforce: { insuranceSignals } as never,
     now: () => NOW,
-  });
+  } as never);
   return { svc, insuranceSignals, sopaRiskSignals, slipSignals };
 }
 

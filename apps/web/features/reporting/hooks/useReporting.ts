@@ -69,3 +69,14 @@ export function useProjectChoices() {
     select: (page) => page.data.map((p) => ({ id: p.id, name: p.name })),
   });
 }
+
+export function useReadinessPack() {
+  const { orgId } = useCurrentOrg();
+  const api = useApi();
+  return useQuery({ queryKey: ['orgs', orgId, 'readiness-pack'], queryFn: () => api.readiness() });
+}
+
+export function useReadinessPdf() {
+  const api = useApi();
+  return useMutation({ mutationFn: () => api.readinessPdf() });
+}

@@ -16,8 +16,10 @@ export const webRoutes = {
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
   portfolio: (orgSlug: string) => `/${enc(orgSlug)}/portfolio`,
   reports: (orgSlug: string) => `/${enc(orgSlug)}/reports`,
+  readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  integrations: (orgSlug: string) => `/${enc(orgSlug)}/settings/integrations`,
   folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
@@ -27,6 +29,7 @@ export const webRoutes = {
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
   apiAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/api`,
+  dataExport: (orgSlug: string) => `/${enc(orgSlug)}/settings/data-export`,
   project: (orgSlug: string, projectId: string) => `/${enc(orgSlug)}/projects/${enc(projectId)}`,
   projectMembers: (orgSlug: string, projectId: string) =>
     `/${enc(orgSlug)}/projects/${enc(projectId)}/members`,
@@ -143,6 +146,8 @@ export const mobileRoutes = {
     `/project/${enc(projectId)}/tenders/${enc(packageId)}`,
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
+  /** Hands-free voice actions for a project (diary note, delay, RFI, incident, Ask Nova). */
+  voice: (projectId: string) => `/project/${enc(projectId)}/voice`,
   /** A photo for a diary day; `reason` is the amendment reason once the day is submitted. */
   diaryPhoto: (projectId: string, date: string, reason?: string) =>
     `/project/${enc(projectId)}/diary/photo?date=${enc(date)}${reason ? `&reason=${enc(reason)}` : ''}`,

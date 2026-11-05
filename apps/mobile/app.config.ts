@@ -8,9 +8,21 @@ const appOrigin = process.env.EXPO_PUBLIC_APP_ORIGIN ?? 'http://localhost:3000';
 
 const VERDIGRIS = brand.verdigris;
 
+// Build profile (eas.json sets APP_VARIANT). Dev and preview get their own ids so all three sit on one phone
+// (docs/mobile/06 §6.1). Production keeps com.archova.app, which can never change after the first release.
+const variant =
+  process.env.APP_VARIANT === 'development' || process.env.APP_VARIANT === 'preview'
+    ? process.env.APP_VARIANT
+    : 'production';
+const appId =
+  variant === 'production'
+    ? 'com.archova.app'
+    : `com.archova.app.${variant === 'development' ? 'dev' : 'preview'}`;
+const appName = variant === 'production' ? 'Archova' : `Archova (${variant})`;
+
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'Archova',
+  name: appName,
   slug: 'archova',
   version: '0.0.0',
   scheme: 'com.archova.app',
@@ -20,11 +32,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   icon: './assets/icon.png',
   // New Architecture (Fabric, TurboModules) is always on from SDK 55; the old `newArchEnabled` flag no longer exists.
   ios: {
-    bundleIdentifier: 'com.archova.app',
+    bundleIdentifier: appId,
+    config: { usesNonExemptEncryption: false },
     supportsTablet: true,
   },
   android: {
-    package: 'com.archova.app',
+    package: appId,
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon.png',
       backgroundColor: VERDIGRIS,
@@ -40,6 +53,17 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-secure-store',
     'expo-web-browser',
     'expo-video',
+    // Hands-free voice (mobile F14): the phone's own speech recognition, on device where the OS supports it.
+    [
+      'expo-speech-recognition',
+      {
+        microphonePermission:
+          'Archova listens while you hold the voice button so you can log diary notes hands-free on site.',
+        speechRecognitionPermission:
+          'Archova turns your spoken diary notes and commands into text on your phone.',
+        androidSpeechServicePackages: ['com.google.android.googlequicksearchbox'],
+      },
+    ],
     // SQLCipher for the per-organisation device database (mobile 02 §2.3); lib/db refuses to open without it.
     ['expo-sqlite', { useSQLCipher: true }],
     [
