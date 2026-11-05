@@ -6,6 +6,7 @@ import { Alert, Button, Checkbox, NovaSuggestion, Select, TextField, Textarea } 
 import { NovaIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { useMarkupPicker, useSheetPicker } from '@/features/drawings';
+import { SpecSectionField } from '@/features/specifications';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { businessDaysBetween, dueInBusinessDays, todayIn } from '@/shared/lib/format';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
@@ -455,11 +456,10 @@ export function RfiForm({ initial, busy, error, onSaveDraft, onSubmit }: RfiForm
               );
             }}
           />
-          <TextField
-            label="Spec section"
-            placeholder="0331 Structural concrete"
+          <SpecSectionField
+            placeholder="03 30 00 Cast-in-place concrete"
             value={v.specSection ?? ''}
-            onChange={(e) => set('specSection', e.target.value || null)}
+            onChange={(x) => set('specSection', x || null)}
           />
           <TextField
             label="Location"
