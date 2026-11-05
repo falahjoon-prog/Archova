@@ -537,6 +537,15 @@ export const ClaimEvidencePdfSchema = z.object({
 });
 export type ClaimEvidencePdf = z.infer<typeof ClaimEvidencePdfSchema>;
 
+export const ClaimStatementSchema = z.object({
+  "periodEnd": z.string().date(),
+  "receivedOn": z.string().date(),
+  "signedOn": z.string().date().nullable(),
+  "note": z.string().nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type ClaimStatement = z.infer<typeof ClaimStatementSchema>;
+
 export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
@@ -4276,6 +4285,8 @@ export const PaymentScheduleSchema = z.object({
 export type PaymentSchedule = z.infer<typeof PaymentScheduleSchema>;
 
 export const PaymentClaimDetailSchema = z.object({
+  "statement": z.union([ClaimStatementSchema, z.null()]),
+  "warnings": z.array(z.enum(["subcontractor_statement_missing"])),
   "claim": PaymentClaimSchema,
   "lines": z.array(PaymentClaimLineSchema),
   "schedule": z.union([PaymentScheduleSchema, z.null()]),
@@ -4671,6 +4682,14 @@ export const RecordAttendanceRequestSchema = z.object({
   "overrideReason": z.string().min(1).max(500).optional(),
 }).strict();
 export type RecordAttendanceRequest = z.infer<typeof RecordAttendanceRequestSchema>;
+
+export const RecordClaimStatementRequestSchema = z.object({
+  "periodEnd": z.string().date(),
+  "receivedOn": z.string().date(),
+  "signedOn": z.string().date().optional(),
+  "note": z.string().max(500).optional(),
+}).strict();
+export type RecordClaimStatementRequest = z.infer<typeof RecordClaimStatementRequestSchema>;
 
 export const RecordInspectionResponsesRequestSchema = z.object({
   "responses": z.array(InspectionResponseInputSchema).min(1).max(300),

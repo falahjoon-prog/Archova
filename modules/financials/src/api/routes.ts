@@ -18,6 +18,7 @@ import {
   toContractDto,
   toLineDto,
   toScheduleDto,
+  toStatementDto,
   toSovDto,
   toVariationDto,
 } from './mappers';
@@ -55,6 +56,8 @@ export function financialsRoutes(
     claim: toClaimDto(d.claim, d.today, d.schedule !== null),
     lines: d.lines.map(toLineDto),
     schedule: d.schedule ? toScheduleDto(d.schedule) : null,
+    statement: d.statement ? toStatementDto(d.statement) : null,
+    warnings: d.warnings,
   });
   const contractBody = (d: {
     contract: Parameters<typeof toContractDto>[0];
@@ -388,6 +391,27 @@ export function financialsRoutes(
         ),
       ),
     }),
+    recordClaimStatement: async (input) => {
+      const b = input.body;
+      return {
+        status: 200,
+        body: claimBody(
+          await tx(input, (s) =>
+            financials.recordStatement(
+              s,
+              project(input.params),
+              ref('paymentClaim', input.params.claimId, 'claimId'),
+              {
+                periodEnd: b.periodEnd,
+                receivedOn: b.receivedOn,
+                ...(b.signedOn ? { signedOn: b.signedOn } : {}),
+                ...(b.note ? { note: b.note } : {}),
+              },
+            ),
+          ),
+        ),
+      };
+    },
     issuePaymentSchedule: async (input) => {
       const b = input.body;
       return {

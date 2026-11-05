@@ -254,3 +254,19 @@ export const trustMovements = financialsSchema.table('trust_movements', {
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
   recordedBy: uuid('recorded_by'),
 });
+
+/** NSW subcontractor's statement for one payment claim (compliance/05 §6). Never blocks a claim or a schedule. */
+export const claimStatements = financialsSchema.table('claim_statements', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  periodEnd: date('period_end').notNull(),
+  receivedOn: date('received_on').notNull(),
+  signedOn: date('signed_on'),
+  note: text('note'),
+  recordedBy: uuid('recorded_by'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  version: integer('version').notNull().default(1),
+});

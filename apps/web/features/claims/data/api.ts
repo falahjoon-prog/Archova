@@ -28,6 +28,7 @@ export type RecordTrustMovement = S['RecordTrustMovementRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
+export type RecordClaimStatement = S['RecordClaimStatementRequest'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}' as const;
 const idempotencyKey = () => ({ 'Idempotency-Key': crypto.randomUUID() });
@@ -167,6 +168,18 @@ export function createClaimsApi(orgId: string) {
       return unwrap(
         await api.POST(`${P}/contracts/{contractId}/claims`, {
           params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async recordStatement(
+      projectId: string,
+      claimId: string,
+      body: RecordClaimStatement,
+    ): Promise<PaymentClaimDetail> {
+      return unwrap(
+        await api.PUT(`${P}/payment-claims/{claimId}/subcontractor-statement`, {
+          params: { path: { orgId, projectId, claimId } },
           body,
         }),
       );

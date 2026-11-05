@@ -9781,6 +9781,30 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PaymentClaimId'
+    put:
+      operationId: recordClaimStatement
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.record
+      summary: Link the NSW subcontractor's statement to a payment claim (compliance/05 §6).
+      description: One statement per claim; recording again replaces it. Only for NSW subcontract claims. A claim without one is flagged (`warnings`) but never blocked, and the statement says nothing about withholding payment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordClaimStatementRequest' }
+      responses:
+        '200':
+          description: The claim with its statement linked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PaymentClaimDetail' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17642,8 +17666,17 @@ components:
           items: { $ref: '#/components/schemas/PaymentClaim' }
     PaymentClaimDetail:
       type: object
-      required: [claim, lines, schedule]
+      required: [claim, lines, schedule, statement, warnings]
       properties:
+        statement:
+          oneOf:
+            - { $ref: '#/components/schemas/ClaimStatement' }
+            - { type: 'null' }
+          description: The NSW subcontractor's statement linked to this claim, if one was recorded.
+        warnings:
+          type: array
+          items: { type: string, enum: [subcontractor_statement_missing] }
+          description: '`subcontractor_statement_missing` is an NSW subcontract claim with no statement linked. A prompt only: Archova does not suggest withholding payment for it (open question for the lawyer).'
         claim: { $ref: '#/components/schemas/PaymentClaim' }
         lines:
           type: array
@@ -17652,6 +17685,34 @@ components:
           oneOf:
             - { $ref: '#/components/schemas/PaymentSchedule' }
             - { type: 'null' }
+    ClaimStatement:
+      type: object
+      required: [periodEnd, receivedOn, signedOn, note, recordedAt]
+      properties:
+        periodEnd: { type: string, format: date }
+        receivedOn: { type: string, format: date }
+        signedOn: { type: [string, 'null'], format: date }
+        note: { type: [string, 'null'] }
+        recordedAt: { type: string, format: date-time }
+    RecordClaimStatementRequest:
+      type: object
+      additionalProperties: false
+      required: [periodEnd, receivedOn]
+      properties:
+        periodEnd:
+          {
+            type: string,
+            format: date,
+            description: The last day of the period the statement covers.,
+          }
+        receivedOn:
+          {
+            type: string,
+            format: date,
+            description: The day it reached the builder. Not in the future.,
+          }
+        signedOn: { type: string, format: date, description: Not after receivedOn. }
+        note: { type: string, maxLength: 500 }
     SubmitPaymentClaimRequest:
       type: object
       additionalProperties: false

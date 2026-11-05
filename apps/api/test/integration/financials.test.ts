@@ -313,6 +313,92 @@ describe('Contracts and payment claims (product/09)', () => {
     expect(issue.statusCode).toBe(409);
   });
 
+  it("warns when an NSW subcontract claim has no subcontractor's statement and links one when recorded (compliance/05 §6)", async () => {
+    const s = await setup('NSW');
+    const { contract, sov } = (
+      await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId))
+    ).json();
+    const claim = (
+      await s.pm.browser.post(`${s.base}/contracts/${contract.id}/claims`, {
+        periodEnd: '2026-09-30',
+        receivedAt: '2026-10-13T23:00:00Z',
+        statesAct: true,
+        lines: [{ sovItemId: sov[0].id, thisClaim: '30000.00' }],
+      })
+    ).json();
+    expect(claim).toMatchObject({ statement: null, warnings: ['subcontractor_statement_missing'] });
+    const url = `${s.base}/payment-claims/${claim.claim.id}/subcontractor-statement`;
+
+    // The warning never blocks: a schedule can be issued without a statement.
+    const sched = await s.pm.browser.post(`${s.base}/payment-claims/${claim.claim.id}/schedule`, {
+      scheduledAmount: '28500.00',
+    });
+    expect(sched.statusCode).toBe(201);
+    expect(sched.json().warnings).toEqual(['subcontractor_statement_missing']);
+
+    // Bad dates are refused; so is a subcontractor recording it for themselves.
+    const body = { periodEnd: '2026-09-30', receivedOn: '2026-10-14', signedOn: '2026-10-13' };
+    expect((await s.pm.browser.put(url, { ...body, receivedOn: '2999-01-01' })).statusCode).toBe(
+      422,
+    );
+    expect((await s.pm.browser.put(url, { ...body, signedOn: '2026-10-15' })).statusCode).toBe(422);
+    expect((await s.sub.browser.put(url, body)).statusCode).toBeGreaterThanOrEqual(403);
+
+    const linked = await s.pm.browser.put(url, body);
+    expect(linked.statusCode, linked.body).toBe(200);
+    expect(linked.json()).toMatchObject({
+      warnings: [],
+      statement: { periodEnd: '2026-09-30', receivedOn: '2026-10-14', signedOn: '2026-10-13' },
+    });
+    // Recording again replaces it rather than adding a second.
+    const again = await s.pm.browser.put(url, { ...body, note: 'Re-signed copy' });
+    expect(again.json().statement.note).toBe('Re-signed copy');
+    const read = await s.pm.browser.get(`${s.base}/payment-claims/${claim.claim.id}`);
+    expect(read.json()).toMatchObject({ warnings: [], statement: { note: 'Re-signed copy' } });
+
+    const ctx: TenantContext = {
+      orgId: decodeId('org', s.orgId)!,
+      userId: '00000000-0000-0000-0000-000000000000',
+      principalType: 'member',
+      orgRole: null,
+      entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+      requestId: 'test',
+    };
+    const tagged = await t.database.withTenantTx(ctx, (sc) =>
+      sc.tx.execute(
+        sql`select category, count(*)::int as n from shared.retention_ledger
+            where record_type = 'financials.claim_statements' group by 1`,
+      ),
+    );
+    expect(tagged.rows.map((r) => [r.category, r.n])).toEqual([['financial_7y', 1]]);
+    await expect(
+      t.database.withTenantTx(ctx, (sc) =>
+        sc.tx.execute(sql`delete from financials.claim_statements`),
+      ),
+    ).rejects.toMatchObject({ cause: { message: expect.stringMatching(/retention/) } });
+  });
+
+  it('has no statement rule outside NSW or for a head contract', async () => {
+    const q = await setup('QLD');
+    const { contract, sov } = (
+      await q.pm.browser.post(`${q.base}/contracts`, contractBody())
+    ).json();
+    const claim = (
+      await q.pm.browser.post(`${q.base}/contracts/${contract.id}/claims`, {
+        periodEnd: '2026-09-30',
+        receivedAt: '2026-10-13T23:00:00Z',
+        statesAct: true,
+        lines: [{ sovItemId: sov[0].id, thisClaim: '1000.00' }],
+      })
+    ).json();
+    expect(claim.warnings).toEqual([]);
+    const res = await q.pm.browser.put(
+      `${q.base}/payment-claims/${claim.claim.id}/subcontractor-statement`,
+      { periodEnd: '2026-09-30', receivedOn: '2026-10-14' },
+    );
+    expect(res.statusCode).toBe(422);
+  });
+
   it('rejects a schedule of values that does not add up to the contract value', async () => {
     const s = await setup('QLD');
     const res = await s.pm.browser.post(`${s.base}/contracts`, {
