@@ -197,7 +197,21 @@ export function createMarkupService(c: DocumentsContext, drawings: DrawingServic
     return rows.filter((m) => canSeeMarkup(m, v));
   }
 
-  return { list, create, update, remove, getOwn, visibleAmong };
+  /** Where a markup lives, for a queued command that carries only the markup's id; null when it is gone. */
+  async function locate(scope: TenantScope, markupId: string) {
+    const [row] = await scope.tx
+      .select({
+        projectId: drawingMarkups.projectId,
+        revisionId: drawingMarkups.revisionId,
+        version: drawingMarkups.version,
+      })
+      .from(drawingMarkups)
+      .where(and(eq(drawingMarkups.id, markupId), isNull(drawingMarkups.deletedAt)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  return { list, create, update, remove, getOwn, visibleAmong, locate };
 }
 
 /** Private and company markups only sync to the people who can see them. */

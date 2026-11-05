@@ -4,7 +4,7 @@
 import { encodeId, uuidv7 } from '@archova/domain';
 import type { Markup } from '@archova/contracts';
 import type { SqliteSyncStore } from '../../lib/db/sync-store';
-import type { PenShape } from './ink';
+import type { InkShape } from './ink';
 
 export const MARKUP_ENTITY = 'drawing_markup';
 
@@ -14,7 +14,7 @@ export interface MarkupTarget {
 }
 
 export interface SavePenMarkupInput extends MarkupTarget {
-  shapes: readonly PenShape[];
+  shapes: readonly InkShape[];
   /** Id of the queued command; a retry after a lost response is safe because the server remembers it. */
   mutationId: string;
   clientAt: string;
@@ -68,8 +68,74 @@ export async function listRevisionMarkups(
   projectId: string,
   revisionId: string,
 ): Promise<Markup[]> {
-  const rows = await store.listRecords<Markup>(MARKUP_ENTITY, projectId, {
+  const rows = await store.listRecords<StoredMarkup>(MARKUP_ENTITY, projectId, {
     '$.revisionId': revisionId,
   });
-  return rows.map((r) => r.data);
+  // A markup deleted on this device stays out of sight while the delete waits to be sent.
+  return rows.filter((r) => !r.data.deletedOnDevice).map((r) => r.data);
+}
+
+/** A markup as held on the device: the server's fields plus a mark for a delete not yet sent. */
+export type StoredMarkup = Markup & { deletedOnDevice?: true };
+
+/**
+ * Whether the person may still change this markup: not once it is published (that is the record), and only their
+ * own. A markup the device has not sent yet has no author on file, and a private one is only ever its author's.
+ */
+export function canChangeMarkup(markup: Markup, meId: string | null): boolean {
+  if (markup.visibility === 'project') return false;
+  return markup.visibility === 'private' || markup.ownerId === '' || markup.ownerId === meId;
+}
+
+export type ChangeMarkup =
+  { kind: 'shapes'; shapes: readonly InkShape[] } | { kind: 'publish' } | { kind: 'delete' };
+
+export type ChangeMarkupResult =
+  { ok: true } | { ok: false; reason: 'not_found' | 'published' | 'no_shapes' };
+
+/**
+ * Edits, publishes or deletes a markup from the device: shown at once, sent as `drawings.updateMarkup` or
+ * `drawings.deleteMarkup` against the version the device last saw. A markup still waiting to be created is changed
+ * after its create is sent, so the edit never reaches the server first.
+ */
+export async function changeMarkup(
+  store: SqliteSyncStore,
+  input: { markupId: string; change: ChangeMarkup; mutationId: string; clientAt: string },
+): Promise<ChangeMarkupResult> {
+  const held = await store.get(MARKUP_ENTITY, input.markupId);
+  if (!held) return { ok: false, reason: 'not_found' };
+  const markup = held.data as StoredMarkup;
+  if (markup.deletedOnDevice) return { ok: false, reason: 'not_found' };
+  if (markup.visibility === 'project') return { ok: false, reason: 'published' };
+  const { change } = input;
+  if (change.kind === 'shapes' && change.shapes.length === 0)
+    return { ok: false, reason: 'no_shapes' };
+  const earlier = (await store.listOutbox())
+    .filter((e) => e.entityType === MARKUP_ENTITY && e.entityId === input.markupId)
+    .map((e) => e.mutationId);
+  const next: StoredMarkup =
+    change.kind === 'shapes'
+      ? { ...markup, shapes: change.shapes.map((s) => ({ ...s })) as unknown as Markup['shapes'] }
+      : change.kind === 'publish'
+        ? { ...markup, visibility: 'project', publishedAt: input.clientAt }
+        : { ...markup, deletedOnDevice: true };
+  next.updatedAt = input.clientAt;
+  await store.write(
+    { entityType: MARKUP_ENTITY, id: input.markupId, data: next },
+    {
+      mutationId: input.mutationId,
+      command: change.kind === 'delete' ? 'drawings.deleteMarkup' : 'drawings.updateMarkup',
+      projectId: markup.projectId,
+      baseVersion: held.version,
+      clientAt: input.clientAt,
+      payload:
+        change.kind === 'shapes'
+          ? { shapes: next.shapes }
+          : change.kind === 'publish'
+            ? { visibility: 'project' }
+            : {},
+      dependsOn: earlier,
+    },
+  );
+  return { ok: true };
 }

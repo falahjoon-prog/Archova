@@ -1,7 +1,9 @@
 // Run one inspection's checklist offline: answer items, then sign and submit.
 import { useState } from 'react';
-import { Text, View } from 'react-native';
+import { Image, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { uuidv7, type ItemResult } from '@archova/domain';
+import { mobileRoutes } from '@archova/routes';
 import { Button, Screen, TextField, fontWeight, useTheme } from '@archova/ui-native';
 import { StateMessage, useDeviceData, useLocalQuery } from '../../../shared';
 import {
@@ -30,6 +32,7 @@ const RESULTS: { result: ItemResult; label: string }[] = [
 
 export function InspectionScreen({ inspectionId }: { inspectionId: string }) {
   const t = useTheme();
+  const router = useRouter();
   const device = useDeviceData();
   const data = device.status === 'ready' ? device.data : null;
   const state = useLocalQuery(data ? () => getInspection(data.store, inspectionId) : null, [
@@ -168,11 +171,7 @@ export function InspectionScreen({ inspectionId }: { inspectionId: string }) {
                       ),
                     )}
                   </View>
-                ) : item.responseType === 'photo' ? (
-                  <Text style={muted}>
-                    Photo items need a connection for now. Add the photo on the web.
-                  </Text>
-                ) : (
+                ) : item.responseType === 'photo' ? null : (
                   <TextField
                     label={
                       item.responseType === 'number'
@@ -197,6 +196,40 @@ export function InspectionScreen({ inspectionId }: { inspectionId: string }) {
                     }}
                   />
                 )}
+                {photoCount(a) > 0 ? (
+                  <View style={{ gap: t.space[1] }}>
+                    <Text style={muted}>
+                      {photoCount(a)} {photoCount(a) === 1 ? 'photo' : 'photos'}
+                      {(a?.localPhotos?.length ?? 0) > 0 ? ' (some waiting to upload)' : ''}
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space[1] }}>
+                      {(a?.localPhotos ?? []).map((p) => (
+                        <Image
+                          key={p.photoId}
+                          source={{ uri: p.thumbnailUri }}
+                          style={{ width: 56, height: 56, borderRadius: t.radius.md }}
+                          accessibilityLabel="Photo waiting to upload"
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ) : null}
+                {editable && (item.responseType === 'photo' || a) ? (
+                  <Button
+                    label={photoCount(a) > 0 ? 'Add another photo' : 'Take photo'}
+                    variant="secondary"
+                    onPress={() =>
+                      router.push(
+                        mobileRoutes.inspectionItemPhoto(
+                          inspection.projectId,
+                          inspection.id,
+                          item.id,
+                        ),
+                      )
+                    }
+                    testID={`photo-${item.id}`}
+                  />
+                ) : null}
                 {a?.result === 'fail' || a?.note ? (
                   <TextField
                     label="Note"
@@ -235,6 +268,9 @@ export function InspectionScreen({ inspectionId }: { inspectionId: string }) {
     </Screen>
   );
 }
+
+const photoCount = (r: { fileIds: string[]; localPhotos?: unknown[] } | undefined) =>
+  (r?.fileIds.length ?? 0) + (r?.localPhotos?.length ?? 0);
 
 function groupBySection(i: LocalInspection): [string, LocalItem[]][] {
   const groups = new Map<string, LocalItem[]>();

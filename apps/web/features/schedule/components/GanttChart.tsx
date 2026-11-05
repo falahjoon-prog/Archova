@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { StatusPill } from '@archova/ui';
 import { formatLocalDate } from '@/shared/lib/format';
 import type { ScheduleActivity, ScheduleDetail } from '../data/programme';
+import { openItemsLabel, type OpenItems } from '../lib/links';
 import { barBox, chartSpan, weekendBands, weekTicks, ZOOMS, type Zoom } from '../lib/gantt';
 
 const ROW_H = 44;
@@ -17,11 +18,14 @@ export function GanttChart({
   detail,
   today,
   zoom,
+  openItems,
   onSelect,
 }: {
   detail: ScheduleDetail;
   today: string;
   zoom: Zoom;
+  /** Linked RFIs and submittals still open, by activity id; each gets a marker (SCH-US10). */
+  openItems?: ReadonlyMap<string, OpenItems>;
   /** Set when the caller may edit; each activity then opens its editor. */
   onSelect?: (a: ScheduleActivity) => void;
 }) {
@@ -88,6 +92,8 @@ export function GanttChart({
           <div className="gantt__body">
             {activities.map((a) => {
               const box = barBox(span, a.start, a.finish, dayWidth);
+              const open = openItems?.get(a.id);
+              const openText = open ? openItemsLabel(open) : '';
               const range = `${formatLocalDate(a.start)}${a.kind === 'milestone' ? '' : ` to ${formatLocalDate(a.finish)}`}`;
               return (
                 <div key={a.id} className="gantt__row" style={{ height: ROW_H }}>
@@ -103,10 +109,16 @@ export function GanttChart({
                     ) : (
                       <span className="gantt__name">{a.name}</span>
                     )}
-                    <span className="gantt__meta">
+                    <span className="gantt__meta" title={openText || undefined}>
                       {a.wbs ? `${a.wbs} · ` : ''}
                       {range}
                       {a.assignee ? ` · ${a.assignee}` : ''}
+                      {open ? (
+                        <span className="gantt__open" data-risk={open.atRisk || undefined}>
+                          {' · '}
+                          {openText}
+                        </span>
+                      ) : null}
                     </span>
                   </div>
                   <div className="gantt__lane">
@@ -117,6 +129,20 @@ export function GanttChart({
                         style={{ left: w.left, width: w.width }}
                       />
                     ))}
+                    {open ? (
+                      <span
+                        className="gantt__flag"
+                        data-risk={open.atRisk || undefined}
+                        style={{
+                          left: box.left + (a.kind === 'milestone' ? dayWidth : box.width) + 6,
+                        }}
+                        role="img"
+                        aria-label={openText}
+                        title={openText}
+                      >
+                        {open.rfis + open.submittals}
+                      </span>
+                    ) : null}
                     {a.kind === 'milestone' ? (
                       <span
                         className="gantt__milestone"
@@ -179,6 +205,9 @@ export function GanttChart({
         </li>
         <li>
           <span className="gantt__swatch gantt__swatch--link" /> Link
+        </li>
+        <li>
+          <span className="gantt__swatch gantt__swatch--flag" /> Open RFIs or submittals
         </li>
         <li>
           <span className="gantt__swatch gantt__swatch--link" data-violated="true" /> Broken link

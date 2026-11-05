@@ -594,6 +594,9 @@ importers:
       '@archova/mod-billing':
         specifier: workspace:*
         version: link:../../modules/billing
+      '@archova/mod-estimating':
+        specifier: workspace:*
+        version: link:../../modules/estimating
       '@archova/mod-files':
         specifier: workspace:*
         version: link:../../modules/files

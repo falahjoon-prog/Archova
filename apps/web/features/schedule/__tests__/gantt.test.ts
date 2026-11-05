@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { barBox, chartSpan, weekendBands, weekTicks } from '../lib/gantt';
 import { groupByWeek } from '../lib/lookahead';
 import { formatForFile } from '../lib/labels';
+import { openItemsByActivity, openItemsLabel } from '../lib/links';
+import type { ScheduleLink } from '../data/programme';
 
 describe('gantt geometry', () => {
   const span = chartSpan(['2026-11-09', '2026-11-20'], '2026-11-05');
@@ -59,5 +61,53 @@ describe('import file type', () => {
     expect(formatForFile('Tower.XER')).toBe('p6');
     expect(formatForFile('tower.xml')).toBe('msp');
     expect(formatForFile('tower.mpp')).toBeNull();
+  });
+});
+
+describe('open linked items on the programme', () => {
+  const link = (over: Partial<ScheduleLink>): ScheduleLink => ({
+    id: 'slk_1',
+    activityId: 'a1',
+    kind: 'rfi',
+    targetId: 'rfi_1',
+    visible: true,
+    ref: 'RFI-001',
+    title: 'x',
+    status: 'open',
+    dueDate: null,
+    scheduleImpactDays: null,
+    ...over,
+  });
+  const starts = new Map([['a1', '2026-11-09']]);
+
+  it('counts open RFIs and unfinished submittals, and skips answered, approved and hidden items', () => {
+    const out = openItemsByActivity(
+      [
+        link({}),
+        link({ id: 'l2', status: 'answered' }),
+        link({ id: 'l3', kind: 'submittal', status: 'in_review' }),
+        link({ id: 'l4', kind: 'submittal', status: 'approved' }),
+        link({ id: 'l5', visible: false, status: null }),
+      ],
+      starts,
+      '2026-11-05',
+    );
+    expect(out.get('a1')).toEqual({ rfis: 1, submittals: 1, atRisk: false });
+    expect(openItemsLabel(out.get('a1')!)).toBe('1 open RFI, 1 open submittal');
+  });
+
+  it('flags an overdue item or one due on or after the start', () => {
+    expect(
+      openItemsByActivity([link({ dueDate: '2026-11-03' })], starts, '2026-11-05').get('a1')
+        ?.atRisk,
+    ).toBe(true);
+    expect(
+      openItemsByActivity([link({ dueDate: '2026-11-09' })], starts, '2026-11-05').get('a1')
+        ?.atRisk,
+    ).toBe(true);
+    expect(
+      openItemsByActivity([link({ dueDate: '2026-11-06' })], starts, '2026-11-05').get('a1')
+        ?.atRisk,
+    ).toBe(false);
   });
 });

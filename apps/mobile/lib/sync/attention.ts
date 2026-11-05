@@ -9,7 +9,10 @@ const COMMAND_LABEL: Record<string, string> = {
   'defects.close': 'Defect closed',
   'photos.create': 'Photo',
   'drawings.createMarkup': 'Drawing markup',
+  'drawings.updateMarkup': 'Drawing markup change',
+  'drawings.deleteMarkup': 'Drawing markup deleted',
   'comments.add': 'Comment',
+  'quality.startInspection': 'Inspection started',
   'quality.recordResponses': 'Inspection answer',
   'quality.submit': 'Inspection submitted',
 };

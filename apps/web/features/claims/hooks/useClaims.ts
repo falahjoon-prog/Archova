@@ -7,6 +7,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import {
   createClaimsApi,
   type CreateContract,
+  type CreateForecastAdjustment,
   type CreateVariation,
   type IssuePaymentSchedule,
   type PaymentClaimStatus,
@@ -35,6 +36,35 @@ export function useContract(projectId: string, contractId: string) {
     queryKey: queryKeys.toolItem(orgId, projectId, 'contracts', contractId),
     queryFn: () => source.contract(projectId, contractId),
   });
+}
+
+export function useCostForecast(projectId: string, enabled = true) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'cost-forecast', {}),
+    queryFn: () => source.costForecast(projectId),
+    enabled,
+  });
+}
+
+/** The forecast is derived from contracts and claims, so a change to either is also a change to it. */
+export function useForecastMutations(projectId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'cost-forecast') });
+  return {
+    createAdjustment: useMutation({
+      mutationFn: (body: CreateForecastAdjustment) => source.createAdjustment(projectId, body),
+      onSuccess: refresh,
+    }),
+    deleteAdjustment: useMutation({
+      mutationFn: (adjustmentId: string) => source.deleteAdjustment(projectId, adjustmentId),
+      onSuccess: refresh,
+    }),
+  };
 }
 
 export function useVariations(projectId: string, contractId: string) {
@@ -73,6 +103,7 @@ export function useClaimsMutations(projectId: string) {
     Promise.all([
       qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') }),
       qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'payment-claims') }),
+      qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'cost-forecast') }),
     ]);
   return {
     createContract: useMutation({
