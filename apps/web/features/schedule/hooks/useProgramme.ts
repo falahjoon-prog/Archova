@@ -40,6 +40,17 @@ export function useSchedule(scheduleId: string | null) {
   });
 }
 
+export function useScheduleLinks(scheduleId: string | null) {
+  const { orgId } = useCurrentOrg();
+  const { projectId } = useCurrentProject();
+  const source = useApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'programme', { links: scheduleId }),
+    queryFn: () => source.listLinks(projectId, scheduleId!),
+    enabled: scheduleId !== null,
+  });
+}
+
 export function useLookahead(scheduleId: string | null, weeks: number) {
   const { orgId } = useCurrentOrg();
   const { projectId } = useCurrentProject();
@@ -96,6 +107,15 @@ export function useProgrammeMutations(scheduleId: string | null) {
     createDependency: useMutation({
       mutationFn: (body: CreateDependency) => source.createDependency(projectId, id(), body),
       onSuccess: store,
+    }),
+    createLink: useMutation({
+      mutationFn: (v: { activityId: string; kind: 'rfi' | 'submittal'; targetId: string }) =>
+        source.createLink(projectId, id(), v.activityId, { kind: v.kind, targetId: v.targetId }),
+      onSuccess: all,
+    }),
+    deleteLink: useMutation({
+      mutationFn: (linkId: string) => source.deleteLink(projectId, id(), linkId),
+      onSuccess: all,
     }),
     deleteDependency: useMutation({
       mutationFn: (dependencyId: string) => source.deleteDependency(projectId, id(), dependencyId),

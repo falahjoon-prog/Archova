@@ -37,6 +37,8 @@ export function createRfisModule(services: KernelServices, deps: RfisDeps) {
       aiAccessScopes: service.aiAccessScopes,
       /** The delay register (`scheduling`): RFIs the caller can see that carry a schedule impact or were answered late. */
       timeImpacts: service.timeImpacts,
+      /** Programme links (`scheduling`): details of the RFIs among some ids that the caller can see. */
+      summariesByIds: service.summariesByIds,
       /** Meeting agenda (`meetings`): open RFIs past their due date that the caller can see. */
       overdueForMeeting: service.overdueForMeeting,
       /** Nova F21: open RFIs the caller can see pinned to these drawing revisions. Called by `ai` only. */

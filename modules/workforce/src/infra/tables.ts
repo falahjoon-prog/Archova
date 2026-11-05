@@ -361,6 +361,7 @@ export const complianceAccessLog = workforceSchema.table('compliance_access_log'
   granteeName: text('grantee_name').notNull(),
   documentId: uuid('document_id'),
   itemType: text('item_type'),
+  fileId: uuid('file_id'),
   kind: text('kind').$type<'list' | 'document' | 'file'>().notNull(),
   at: timestamp('at', { withTimezone: true }).notNull().defaultNow(),
 });

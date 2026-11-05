@@ -168,6 +168,24 @@ export const DeleteScheduleDependencyParams = z.object({
   "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
   "dependencyId": z.string().regex(new RegExp("^sdp_[0-9A-Za-z]{26}$")),
 });
+export const ListScheduleLinksParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleLinkBody = s.CreateScheduleLinkRequestSchema;
+export const DeleteScheduleLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "linkId": z.string().regex(new RegExp("^slk_[0-9A-Za-z]{26}$")),
+});
 export const GetScheduleLookaheadParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -694,6 +712,25 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const ListBidderListsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListBidderListsQuery = z.object({
+  "trade": z.string().max(100).optional(),
+});
+export const CreateBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateBidderListBody = s.CreateBidderListRequestSchema;
+export const UpdateBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+});
+export const UpdateBidderListBody = s.UpdateBidderListRequestSchema;
+export const DeleteBidderListParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "bidderListId": z.string().regex(new RegExp("^bdl_[0-9A-Za-z]{26}$")),
+});
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -1811,6 +1848,15 @@ export const ListGrantedWalletDocumentsParams = z.object({
 export const ListGrantedWalletDocumentsQuery = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
 });
+export const GetGrantedWalletFileLinkParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
+  "documentId": z.string().regex(new RegExp("^cdo_[0-9A-Za-z]{26}$")),
+  "position": z.enum(["1", "2", "3", "4"]),
+});
+export const GetGrantedWalletFileLinkQuery = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
 export const CreateComplianceSnapshotParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "grantId": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
@@ -2791,6 +2837,42 @@ export const operations = {
     internal: false,
     contentType: null,
     params: DeleteScheduleDependencyParams,
+    query: null,
+    body: null,
+  },
+  listScheduleLinks: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListScheduleLinksParams,
+    query: null,
+    body: null,
+  },
+  createScheduleLink: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}/links',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleLinkParams,
+    query: null,
+    body: CreateScheduleLinkBody,
+  },
+  deleteScheduleLink: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links/{linkId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleLinkParams,
     query: null,
     body: null,
   },
@@ -3814,6 +3896,54 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  listBidderLists: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bidder-lists',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.read",
+    internal: false,
+    contentType: null,
+    params: ListBidderListsParams,
+    query: ListBidderListsQuery,
+    body: null,
+  },
+  createBidderList: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/bidder-lists',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateBidderListParams,
+    query: null,
+    body: CreateBidderListBody,
+  },
+  updateBidderList: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/bidder-lists/{bidderListId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateBidderListParams,
+    query: null,
+    body: UpdateBidderListBody,
+  },
+  deleteBidderList: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/bidder-lists/{bidderListId}',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.bidders.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteBidderListParams,
+    query: null,
+    body: null,
   },
   getBidBoard: {
     method: 'GET',
@@ -6152,6 +6282,20 @@ export const operations = {
     contentType: null,
     params: ListGrantedWalletDocumentsParams,
     query: ListGrantedWalletDocumentsQuery,
+    body: null,
+  },
+  getGrantedWalletFileLink: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.wallet.read_granted",
+    internal: false,
+    flag: "subcontractor_wallet",
+    rateLimit: 20,
+    contentType: null,
+    params: GetGrantedWalletFileLinkParams,
+    query: GetGrantedWalletFileLinkQuery,
     body: null,
   },
   createComplianceSnapshot: {

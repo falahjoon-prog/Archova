@@ -17,6 +17,7 @@ export const webRoutes = {
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
+  plan: (orgSlug: string) => `/${enc(orgSlug)}/settings/plan`,
   permissionTemplates: (orgSlug: string) => `/${enc(orgSlug)}/settings/permission-templates`,
   novaSettings: (orgSlug: string) => `/${enc(orgSlug)}/settings/nova`,
   contractPlaybook: (orgSlug: string) => `/${enc(orgSlug)}/settings/contract-playbook`,
@@ -62,6 +63,7 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/contracts/review`,
   contractReview: (orgSlug: string, projectId: string, reviewId: string) =>
     `${p(orgSlug, projectId)}/contracts/review/${enc(reviewId)}`,
+  costForecast: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/cost-forecast`,
   paymentClaims: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/payment-claims`,
   paymentClaim: (orgSlug: string, projectId: string, claimId: string) =>
     `${p(orgSlug, projectId)}/payment-claims/${enc(claimId)}`,

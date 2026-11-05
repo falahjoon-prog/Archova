@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Image, PanResponder, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { uuidv7 } from '@archova/domain';
 import { mobileRoutes } from '@archova/routes';
 import { Button, useTheme } from '@archova/ui-native';
@@ -15,7 +15,15 @@ import type { Markup } from '@archova/contracts';
 import { overviewPath, tilePath } from '../../../lib/files/sheet-cache';
 import { supersededNotice } from '../banner';
 import { MarkupLayer } from './MarkupLayer';
-import { createPenMarkup } from '../commands';
+import {
+  canChangeMarkup,
+  changeMarkup,
+  listRevisionMarkups,
+  savePenMarkup,
+  type ChangeMarkup,
+} from '../commands';
+import { MyMarkups } from './MyMarkups';
+import { useMe } from '../../platform';
 import { createInk, type Ink } from '../ink';
 import { needsLocationCheck } from '../markup';
 import { drawingPdfUrl } from '../pdf';
@@ -333,18 +341,48 @@ export function DrawingViewerScreen({
   const revisionInfo =
     revision.data ?? (storedRevision.value as typeof revision.data | null | undefined) ?? undefined;
   const notice = revisionInfo ? supersededNotice(revisionInfo) : null;
-  const markups = useQuery({
-    ...queries.markups(orgId ?? '', projectId, revisionId),
-    enabled: orgId !== null,
-  });
-  const markupList = markups.data?.data ?? [];
-  const queryClient = useQueryClient();
+  // Markups come from the device, so a sheet and the strokes just drawn on it work with no signal.
+  const markups = useLocalQuery(
+    device.status === 'ready'
+      ? () => listRevisionMarkups(device.data.store, projectId, revisionId)
+      : null,
+    [device.status === 'ready' ? device.data : null, projectId, revisionId],
+  );
+  const markupList = markups.value ?? [];
+  const me = useMe();
+  const myMarkups = markupList.filter((m) => canChangeMarkup(m, me.data?.user.id ?? null));
+  const [changing, setChanging] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const change = (markupId: string, what: ChangeMarkup) => {
+    if (device.status !== 'ready') return;
+    setChanging(true);
+    setChangeError(null);
+    changeMarkup(device.data.store, {
+      markupId,
+      change: what,
+      mutationId: uuidv7(),
+      clientAt: new Date().toISOString(),
+    })
+      .then((r) => {
+        if (!r.ok) {
+          setChangeError(
+            r.reason === 'published'
+              ? 'A published markup can not be changed.'
+              : 'That markup is no longer on this device.',
+          );
+        } else {
+          device.data.requestSync('local_write');
+        }
+        markups.refresh();
+      })
+      .catch(() => setChangeError('Could not save that change on this device. Try again.'))
+      .finally(() => setChanging(false));
+  };
   const [ink] = useState(() => createInk(uuidv7));
   const [, setInkVersion] = useState(0);
   const [inking, setInking] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
-  const saveKey = useRef(uuidv7());
   const [placing, setPlacing] = useState(false);
   const [pdfError, setPdfError] = useState(false);
   const sheetId = revisionInfo?.sheetId ?? null;
@@ -538,23 +576,22 @@ export function DrawingViewerScreen({
                   label="Save markup"
                   disabled={saving}
                   onPress={() => {
-                    if (!orgId) return;
+                    if (device.status !== 'ready') return;
                     setSaving(true);
                     setSaveError(false);
-                    createPenMarkup(
-                      api,
-                      { orgId, projectId, revisionId },
-                      ink.strokes,
-                      saveKey.current,
-                    )
+                    savePenMarkup(device.data.store, {
+                      projectId,
+                      revisionId,
+                      shapes: ink.strokes,
+                      mutationId: uuidv7(),
+                      clientAt: new Date().toISOString(),
+                    })
                       .then(() => {
                         ink.clear();
-                        saveKey.current = uuidv7();
                         setInking(false);
                         setInkVersion((n) => n + 1);
-                        return queryClient.invalidateQueries({
-                          queryKey: queries.markups(orgId, projectId, revisionId).queryKey,
-                        });
+                        markups.refresh();
+                        device.data.requestSync('local_write');
                       })
                       .catch(() => setSaveError(true))
                       .finally(() => setSaving(false));
@@ -580,10 +617,22 @@ export function DrawingViewerScreen({
                 />
                 {saveError ? (
                   <Text style={{ color: t.color.statusDanger }}>
-                    Could not save the markup. Check your connection and try again.
+                    Could not save the markup on this device. Try again.
                   </Text>
                 ) : null}
               </View>
+            ) : null}
+            <MyMarkups
+              markups={myMarkups}
+              busy={changing}
+              onRemoveLastStroke={(m) =>
+                change(m.id, { kind: 'shapes', shapes: m.shapes.slice(0, -1) as never })
+              }
+              onPublish={(m) => change(m.id, { kind: 'publish' })}
+              onDelete={(m) => change(m.id, { kind: 'delete' })}
+            />
+            {changeError ? (
+              <Text style={{ color: t.color.statusDanger }}>{changeError}</Text>
             ) : null}
             <Button
               label={

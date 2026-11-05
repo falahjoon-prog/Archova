@@ -2,6 +2,7 @@
 export { ContractListScreen } from './screens/ContractListScreen';
 export { ContractNewScreen } from './screens/ContractNewScreen';
 export { ContractDetailScreen } from './screens/ContractDetailScreen';
+export { CostForecastScreen } from './screens/CostForecastScreen';
 export { ClaimsRegisterScreen } from './screens/ClaimsRegisterScreen';
 export { ClaimDetailScreen } from './screens/ClaimDetailScreen';
 export { useContracts, useVariations } from './hooks/useClaims';

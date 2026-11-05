@@ -9,6 +9,7 @@ import type { AccessService } from '@archova/mod-access';
 import type { PlatformApi } from '@archova/mod-platform';
 import { localDateOf, type LocalDate } from '@archova/time';
 import { canonicalJson, sha256 } from '../domain/induction';
+import type { InductionDeps } from './inductions';
 import {
   CODE_VALID_DAYS,
   SHAREABLE_ITEM_TYPES,
@@ -52,15 +53,19 @@ export function sharedDocument(d: DocumentRow, today: LocalDate) {
     evidence: d.evidence,
     expiry: expiryState(d.expiresOn, today),
     sightedAt: d.sightedAt ? d.sightedAt.toISOString() : null,
+    fileCount: d.fileIds.length,
   };
 }
 export type SharedDocument = ReturnType<typeof sharedDocument>;
+
+const FILE_URL_TTL_S = 60;
 
 const hashCode = (code: string) => sha256(code.trim());
 
 export function createWalletGrantService(deps: {
   access: Pick<AccessService, 'assert'>;
   platform: Pick<PlatformApi, 'getOrg' | 'getProject'>;
+  files: Pick<InductionDeps['files'], 'downloadUrl'>;
   now?: () => Date;
 }) {
   const now = deps.now ?? (() => new Date());
@@ -200,6 +205,7 @@ export function createWalletGrantService(deps: {
     g: GrantRow,
     kind: 'list' | 'document' | 'file',
     doc?: { id: string; itemType: string },
+    fileId?: string,
   ) {
     const org = await deps.platform.getOrg(scope);
     await scope.tx.insert(complianceAccessLog).values({
@@ -210,6 +216,7 @@ export function createWalletGrantService(deps: {
       granteeName: org.name,
       documentId: doc?.id ?? null,
       itemType: doc?.itemType ?? null,
+      fileId: fileId ?? null,
       kind,
     });
   }
@@ -248,6 +255,45 @@ export function createWalletGrantService(deps: {
       },
     });
     return { grant: g, documents: docs.map((d) => sharedDocument(d, today())) };
+  }
+
+  /**
+   * A short-lived download link for one file of a shared document (compliance/05 §7). The grant is checked, the file
+   * must be one of that document's files, and the subbie's log row is written before anything is signed, so a view
+   * that can't be logged returns nothing. Only the URL is returned, never the storage key.
+   */
+  async function fileUrl(
+    scope: TenantScope,
+    grantId: string,
+    projectId: string,
+    documentId: string,
+    position: number,
+  ) {
+    const g = await liveGrantFor(scope, grantId, projectId);
+    const doc = (await documentsFor(scope, g)).find((d) => d.id === documentId);
+    const fileId = doc?.fileIds[position - 1];
+    if (!doc || !fileId) throw new AppError('compliance_document.not_found');
+    // The files policy needs this one file as well as the grant; nothing else in the transaction can see it.
+    await scope.tx.execute(sql`select set_config('app.wallet_file', ${fileId}, true)`);
+    await logView(scope, g, 'file', doc, fileId);
+    const link = await deps.files
+      .downloadUrl(scope, fileId, {
+        authorised: true,
+        expiresInS: FILE_URL_TTL_S,
+        // With the attachment disposition this stops a browser sniffing the bytes into something it would render.
+        contentType: 'application/octet-stream',
+      })
+      .catch(() => {
+        throw new AppError('compliance_document.not_found');
+      });
+    scope.events.add({
+      type: 'workforce.compliance_file.viewed.v1',
+      projectId,
+      entityType: 'compliance_grant',
+      entityId: g.id,
+      data: { grantId: g.id, subbieOrgId: g.orgId, documentId: doc.id, itemType: doc.itemType },
+    });
+    return link;
   }
 
   /** The builder's record of a document it relied on: the DTO and its SHA-256, never files. */
@@ -430,6 +476,7 @@ export function createWalletGrantService(deps: {
     cancelRequest,
     listGranted,
     listGrantedDocuments,
+    fileUrl,
     createSnapshot,
     previewCode,
     acceptCode,
