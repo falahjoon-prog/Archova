@@ -9415,7 +9415,7 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention` or `financials.retention_release_due`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due` or `financials.payment_overdue`. */
             kind: string;
             title: string;
             body: string;
