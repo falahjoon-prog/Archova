@@ -1164,6 +1164,11 @@ export const ListWebhookDeliveriesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
 });
+export const ReplayWebhookDeliveryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "webhookId": z.string().regex(new RegExp("^whk_[0-9A-Za-z]{26}$")),
+  "deliveryId": z.string().regex(new RegExp("^whd_[0-9A-Za-z]{26}$")),
+});
 export const ListFolderConnectionsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -5435,6 +5440,18 @@ export const operations = {
     internal: true,
     contentType: null,
     params: ListWebhookDeliveriesParams,
+    query: null,
+    body: null,
+  },
+  replayWebhookDelivery: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries/{deliveryId}/replay',
+    module: "integrations",
+    auth: "required",
+    permission: "integrations.webhooks.manage",
+    internal: true,
+    contentType: null,
+    params: ReplayWebhookDeliveryParams,
     query: null,
     body: null,
   },

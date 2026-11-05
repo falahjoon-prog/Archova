@@ -3771,6 +3771,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/webhooks/{webhookId}/deliveries/{deliveryId}/replay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+                deliveryId: components["parameters"]["WebhookDeliveryId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a finished delivery again, signed with the endpoint's current secret. It keeps the same event id, so a receiver that de-duplicates on it can tell it is a repeat. The 72 hour retry window starts again. */
+        post: operations["replayWebhookDelivery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/folder-connections": {
         parameters: {
             query?: never;
@@ -16004,6 +16025,7 @@ export interface components {
         FolderProvider: "m365" | "google";
         SyncIssueId: string;
         WebhookId: string;
+        WebhookDeliveryId: string;
         ImportJobId: string;
         LateSubmissionId: string;
         Limit: number;
@@ -21964,6 +21986,31 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookDeliveryList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    replayWebhookDelivery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                webhookId: components["parameters"]["WebhookId"];
+                deliveryId: components["parameters"]["WebhookDeliveryId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The delivery, queued to be sent again. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
                 };
             };
             default: components["responses"]["Problem"];

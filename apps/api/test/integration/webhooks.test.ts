@@ -265,6 +265,48 @@ describe('delivery', () => {
     expect(await run((sc) => svc.fanOut(sc, event(orgId, projectId)))).toBe(0);
   });
 
+  it('replays a finished delivery, but not a pending one or one on a disabled endpoint', async () => {
+    const s = await setup('wh-replay');
+    answer = { status: 200, error: null };
+    const created = (
+      await s.owner.browser.post(
+        `/v1/orgs/${s.org.id}/webhooks`,
+        body({ projectIds: [s.project.id] }),
+      )
+    ).json();
+    const orgId = decodeId('org', s.org.id)!;
+    const projectId = decodeId('project', s.project.id)!;
+    const clock = { now: new Date() };
+    const svc = service(clock);
+    const run = <T>(fn: Parameters<typeof t.database.withTenantTx<T>>[1]) =>
+      t.database.withTenantTx(jobContext(orgId, 'test'), fn);
+    const url = (id: string) =>
+      `/v1/orgs/${s.org.id}/webhooks/${created.id}/deliveries/${id}/replay`;
+    const list = async () =>
+      (await s.owner.browser.get(`/v1/orgs/${s.org.id}/webhooks/${created.id}/deliveries`)).json()
+        .data;
+
+    const e = event(orgId, projectId);
+    await run((sc) => svc.fanOut(sc, e));
+    const pending = (await list())[0];
+    expect((await s.owner.browser.post(url(pending.id), {})).statusCode).toBe(409);
+
+    await svc.attemptDue(t.database, jobContext(orgId, 'test'));
+    const done = (await list())[0];
+    expect(done).toMatchObject({ status: 'succeeded', attempts: 1 });
+    const res = await s.owner.browser.post(url(done.id), {});
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ id: done.id, status: 'pending', attempts: 0 });
+
+    // and it goes out again with the same event id
+    clock.now = new Date(Date.now() + 5_000);
+    sent.length = 0;
+    await svc.attemptDue(t.database, jobContext(orgId, 'test'));
+    expect(sent.at(-1)!.headers['webhook-id']).toBe(e.id);
+
+    expect((await s.owner.browser.post(url('whd_' + '0'.repeat(26)), {})).statusCode).toBe(404);
+  });
+
   it('switches an endpoint off, and drops its queue, once too many events are waiting', async () => {
     const s = await setup('wh-cap');
     answer = { status: 200, error: null };
