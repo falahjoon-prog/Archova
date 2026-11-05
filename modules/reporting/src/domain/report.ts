@@ -1,6 +1,13 @@
 // Report builder and portfolio rules. Pure, no IO.
 
-export const REPORT_SOURCES = ['rfis', 'defects', 'submittals', 'claims', 'variations'] as const;
+export const REPORT_SOURCES = [
+  'rfis',
+  'defects',
+  'submittals',
+  'claims',
+  'variations',
+  'incidents',
+] as const;
 export type ReportSource = (typeof REPORT_SOURCES)[number];
 
 export const REPORT_STATES = ['open', 'closed', 'all'] as const;
@@ -86,6 +93,7 @@ export interface ProjectCounts {
   submittals: ToolCounts;
   claims: ToolCounts;
   variations: ToolCounts;
+  incidents: ToolCounts;
 }
 
 export const attention = (p: ProjectCounts) =>
@@ -111,6 +119,8 @@ export function totals(projects: readonly ProjectCounts[]) {
     claimsOverdue: sum((p) => p.claims, 'overdue'),
     variationsOpen: sum((p) => p.variations, 'open'),
     variationsOverdue: sum((p) => p.variations, 'overdue'),
+    incidentsOpen: sum((p) => p.incidents, 'open'),
+    incidentsOverdue: sum((p) => p.incidents, 'overdue'),
   };
 }
 
@@ -119,7 +129,12 @@ export function orderPortfolio<T extends { name: string; attention: number } & P
   rows: readonly T[],
 ): T[] {
   const open = (p: ProjectCounts) =>
-    p.rfis.open + p.defects.open + p.submittals.open + p.claims.open + p.variations.open;
+    p.rfis.open +
+    p.defects.open +
+    p.submittals.open +
+    p.claims.open +
+    p.variations.open +
+    p.incidents.open;
   return [...rows].sort(
     (a, b) => b.attention - a.attention || open(b) - open(a) || a.name.localeCompare(b.name),
   );
