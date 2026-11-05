@@ -117,3 +117,13 @@ export const isOverdue = (dueDate: string | null, status: CorrectiveStatus, loca
   status !== 'verified' && dueDate !== null && dueDate < localToday;
 
 export const incidentLabel = (n: number) => `INC-${String(n).padStart(4, '0')}`;
+
+/**
+ * A notifiable incident still open with no regulator notification recorded: what the portfolio counts as overdue.
+ * Archova records the notification, the builder makes it (compliance 03 §7), so this is "not recorded", not "late".
+ */
+export const awaitingRegulatorNotice = (i: {
+  status: string;
+  isNotifiable: boolean;
+  regulatorNotifiedAt: Date | null;
+}) => i.status !== 'closed' && i.isNotifiable && i.regulatorNotifiedAt === null;

@@ -364,6 +364,7 @@ export const PROBLEM_CODES = {
   'incident.closed': 409,
   'incident.cannot_close': 422,
   'incident.reason_required': 422,
+  'ai.swms.not_enabled': 403,
   'ai.induction.no_documents': 422,
   'ai.induction.up_to_date': 409,
   'ai.induction.cannot_refresh': 422,

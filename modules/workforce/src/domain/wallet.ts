@@ -39,6 +39,15 @@ export const SHAREABLE_ITEM_TYPES = [
   'other',
 ] as const;
 
+/** The insurance types, the ones whose expiry matters when paying a subcontractor. */
+export const INSURANCE_ITEM_TYPES = [
+  'workers_comp',
+  'public_liability',
+  'contract_works',
+  'professional_indemnity',
+  'personal_accident',
+] as const;
+
 // ---- Per-worker items (compliance/05 §3.4)
 
 /** Item types held by a named worker rather than the company. Never shareable to a builder. */
