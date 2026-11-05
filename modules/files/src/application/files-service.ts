@@ -334,10 +334,16 @@ export function createFilesService({
 
   /**
    * The file's bytes for server-side processing, after the same read check as a download. Capped so one request
-   * can't pull a huge file into memory; bigger files wait for the worker.
+   * can't pull a huge file into memory; bigger files wait for the worker. `authorised` is for background jobs
+   * that run as the system principal on a record another check already covers; routes never pass it.
    */
-  async function readBytes(scope: TenantScope, fileId: string, maxBytes: number) {
-    const f = await get(scope, fileId);
+  async function readBytes(
+    scope: TenantScope,
+    fileId: string,
+    maxBytes: number,
+    opts: { authorised?: boolean } = {},
+  ) {
+    const f = await get(scope, fileId, opts);
     assertFileReady(f);
     if (f.sizeBytes > maxBytes)
       throw new AppError('validation_failed', 'This file is too large to process here.', [

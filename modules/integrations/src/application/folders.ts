@@ -425,6 +425,8 @@ export function createFoldersService(deps: FoldersDeps) {
             scope,
             rev.fileId,
             MAX_PUBLISH_BYTES,
+            // The job runs as the system principal; the project admin who made the link already chose to publish.
+            { authorised: true },
           );
           return { todo, file, bytes, tooLarge: false };
         } catch (e) {
