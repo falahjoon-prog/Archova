@@ -24,8 +24,8 @@
     "@archova/mod-backoffice": "workspace:*",
     "@archova/mod-billing": "workspace:*",
     "@archova/mod-estimating": "workspace:*",
-    "@archova/mod-financials": "workspace:*",
     "@archova/mod-files": "workspace:*",
+    "@archova/mod-financials": "workspace:*",
     "@archova/mod-integrations": "workspace:*",
     "@archova/mod-meetings": "workspace:*",
     "@archova/mod-notifications": "workspace:*",
@@ -33,10 +33,12 @@
     "@archova/mod-sync": "workspace:*",
     "@archova/time": "workspace:*",
     "@aws-sdk/client-sesv2": "^3.900.0",
+    "asn1js": "^4.0.0",
     "bullmq": "^5.58.0",
     "drizzle-orm": "^0.45.2",
     "ioredis": "^5.8.0",
-    "pg": "^8.16.0"
+    "pg": "^8.16.0",
+    "pkijs": "^4.0.1"
   },
   "devDependencies": {
     "@archova/config-eslint": "workspace:*",

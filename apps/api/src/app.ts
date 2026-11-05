@@ -21,6 +21,7 @@ import {
 } from '@archova/mod-integrations';
 import {
   DEV_ACCOUNTING_KEY,
+  DEV_EVIDENCE_KEY_ID,
   DEV_EVIDENCE_SIGNING_KEY,
   DEV_WEBHOOK_KEY,
   type ApiConfig,
@@ -123,8 +124,9 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         folders: { credentials: config.folders },
       },
       evidenceSigner: createEvidenceSigner(
-        config.evidenceSigning?.keyId ?? 'archova-evidence-dev',
+        config.evidenceSigning?.keyId ?? DEV_EVIDENCE_KEY_ID,
         config.evidenceSigning?.privateKeyPem ?? DEV_EVIDENCE_SIGNING_KEY,
+        config.evidenceSigning?.retired ?? {},
       ),
       ...(deps.entitlements ? { entitlements: deps.entitlements } : {}),
       ai: {

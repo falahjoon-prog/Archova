@@ -24,5 +24,6 @@ export {
   sha256Bytes,
   type EvidenceSigner,
   type TimestampResult,
+  type TimestampVerifier,
 } from './domain/seal-proof';
 export { MAX_EVIDENCE_EMAIL_BYTES } from './application/financials';

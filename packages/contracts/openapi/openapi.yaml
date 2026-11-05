@@ -13367,7 +13367,10 @@ components:
             description: 'The exact text signed; it names both hashes, the claim and the sealed time.',
           }
         publicKeyPem:
-          { type: [string, 'null'], description: 'Null when the server no longer holds that key.' }
+          {
+            type: [string, 'null'],
+            description: 'Null when the server holds no key with that id (current or retired).',
+          }
         valid:
           {
             type: [boolean, 'null'],
@@ -13375,7 +13378,7 @@ components:
           }
     ClaimEvidenceTimestamp:
       type: object
-      required: [authority, time, imprintSha256, serialHex, tokenBase64]
+      required: [authority, time, imprintSha256, serialHex, tokenBase64, caChainPem]
       properties:
         authority: { type: string }
         time: { type: string, format: date-time }
@@ -13384,7 +13387,12 @@ components:
         tokenBase64:
           {
             type: string,
-            description: 'The whole RFC 3161 TimeStampToken, so the authority signature can be checked.',
+            description: 'The whole RFC 3161 TimeStampResp, so the authority signature can be checked.',
+          }
+        caChainPem:
+          {
+            type: string,
+            description: 'The pinned certificates the response was verified against when it was taken.',
           }
     ClaimEvidenceDelivery:
       type: object
