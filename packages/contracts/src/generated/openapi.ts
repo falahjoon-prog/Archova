@@ -2029,6 +2029,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova flags visual hazard signals in a site photo (F35).
+         * @description Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+         *     the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+         *     an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+         *     confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+         *     does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+         *     (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+         *     `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+         *     a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+         *     is a 422.
+         */
+        post: operations["scanSitePhotoForHazardsWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Hazard signals Nova flagged in this project's photos, newest first. */
+        get: operations["listHazardSignals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss a hazard signal.
+         * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+         *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+         *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+         *     the manager reports one from the incidents screen if it warrants it.
+         */
+        post: operations["reviewHazardSignal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Hazard categories that keep showing up in this project's photos.
+         * @description Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+         *     least three signals in it across at least two different photos, the early warning that a near miss may follow.
+         *     `trend` compares the later half of the window with the earlier half.
+         */
+        get: operations["getHazardPatterns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings": {
         parameters: {
             query?: never;
@@ -10155,7 +10258,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -10732,6 +10835,52 @@ export interface components {
             /** @enum {string|null} */
             warning: "source_not_found" | null;
         }[];
+        /** @enum {string} */
+        HazardSignalStatus: "open" | "confirmed" | "dismissed";
+        /** @enum {string} */
+        HazardConfidence: "low" | "medium" | "high";
+        HazardSignal: {
+            /** @description The signal (`ahs_`) */
+            id: string;
+            /** @description The photo it was flagged in (`fil_`) */
+            fileId: string;
+            category: string;
+            categoryLabel: string;
+            /** @description What the photo shows */
+            observation: string;
+            confidence: components["schemas"]["HazardConfidence"];
+            status: components["schemas"]["HazardSignalStatus"];
+            reviewNote: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NovaHazardScan: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The scan (`ahn_`); its signals share it */
+            scanId: string;
+            signals: components["schemas"]["HazardSignal"][];
+            /** @description The photo was too dark */
+            photoUnclear: boolean;
+            /** @description Signals left out because their wording judged instead of observing. */
+            dropped: number;
+            unsupportedNumbers: string[];
+            disclaimer: string;
+        };
+        HazardPattern: {
+            category: string;
+            label: string;
+            open: number;
+            confirmed: number;
+            dismissed: number;
+            /** @description Photos with a confirmed signal in this category. */
+            photos: number;
+            isPattern: boolean;
+            /** @enum {string} */
+            trend: "rising" | "steady" | "falling";
+        };
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -19262,6 +19411,131 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NovaDefectTag"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    scanSitePhotoForHazardsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    /** @description What the person said or typed about the photo. May be empty. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaHazardScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listHazardSignals: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HazardSignalStatus"];
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HazardSignal"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewHazardSignal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "confirmed" | "dismissed";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The decided signal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HazardSignal"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHazardPatterns: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The categories, patterns first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        days: number;
+                        data: components["schemas"]["HazardPattern"][];
+                    };
                 };
             };
             default: components["responses"]["Problem"];

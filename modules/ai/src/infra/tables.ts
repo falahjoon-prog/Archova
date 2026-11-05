@@ -251,3 +251,21 @@ export const legalRules = ai.table('ai_legal_rules', {
   signedOn: date('signed_on', { mode: 'string' }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const hazardSignals = ai.table('ai_hazard_signals', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  scanId: uuid('scan_id').notNull(),
+  fileId: uuid('file_id').notNull(),
+  runId: uuid('run_id').notNull(),
+  promptVersion: integer('prompt_version').notNull(),
+  category: text('category').notNull(),
+  observation: text('observation').notNull(),
+  confidence: text('confidence').$type<'low' | 'medium' | 'high'>().notNull(),
+  status: text('status').$type<'open' | 'confirmed' | 'dismissed'>().notNull().default('open'),
+  reviewNote: text('review_note'),
+  reviewedBy: uuid('reviewed_by'),
+  reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
+  ...audit,
+});

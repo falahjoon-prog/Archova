@@ -50,6 +50,8 @@ export const ID_PREFIXES = {
   transmittalRecipient: 'trr',
   aiRun: 'air',
   aiSuggestion: 'ais',
+  aiHazardScan: 'ahn',
+  aiHazardSignal: 'ahs',
   rfiResponse: 'rfr',
   submittal: 'sbm',
   submittalStep: 'sbs',

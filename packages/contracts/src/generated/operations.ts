@@ -597,6 +597,40 @@ export const TagDefectWithNovaBody = z.object({
   "note": z.string().max(1000).optional(),
   "pin": s.DrawingPinSchema.optional(),
 }).strict();
+export const ScanSitePhotoForHazardsWithNovaParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ScanSitePhotoForHazardsWithNovaBody = z.object({
+  "photo": z.object({
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+}).strict(),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const ListHazardSignalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListHazardSignalsQuery = z.object({
+  "status": s.HazardSignalStatusSchema.optional(),
+  "limit": z.coerce.number().int().min(1).max(100).default(50),
+});
+export const ReviewHazardSignalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "signalId": z.string().regex(new RegExp("^ahs_[0-9A-Za-z]{26}$")),
+});
+export const ReviewHazardSignalBody = z.object({
+  "decision": z.enum(["confirmed", "dismissed"]),
+  "note": z.string().max(1000).optional(),
+}).strict();
+export const GetHazardPatternsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GetHazardPatternsQuery = z.object({
+  "days": z.coerce.number().int().min(7).max(180).default(30),
+});
 export const SuggestImportMappingWithNovaParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -4295,6 +4329,54 @@ export const operations = {
     params: TagDefectWithNovaParams,
     query: null,
     body: TagDefectWithNovaBody,
+  },
+  scanSitePhotoForHazardsWithNova: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.scan",
+    internal: false,
+    contentType: "application/json",
+    params: ScanSitePhotoForHazardsWithNovaParams,
+    query: null,
+    body: ScanSitePhotoForHazardsWithNovaBody,
+  },
+  listHazardSignals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: ListHazardSignalsParams,
+    query: ListHazardSignalsQuery,
+    body: null,
+  },
+  reviewHazardSignal: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: "application/json",
+    params: ReviewHazardSignalParams,
+    query: null,
+    body: ReviewHazardSignalBody,
+  },
+  getHazardPatterns: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns',
+    module: "ai",
+    auth: "required",
+    permission: "ai.safety.review",
+    internal: false,
+    contentType: null,
+    params: GetHazardPatternsParams,
+    query: GetHazardPatternsQuery,
+    body: null,
   },
   suggestImportMappingWithNova: {
     method: 'POST',

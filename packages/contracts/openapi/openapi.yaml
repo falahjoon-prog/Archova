@@ -2584,6 +2584,153 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/NovaDefectTag' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: scanSitePhotoForHazardsWithNova
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.scan
+      summary: Nova flags visual hazard signals in a site photo (F35).
+      description: |
+        Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+        the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+        an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+        confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+        does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+        (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+        `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+        a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+        is a 422.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [photo]
+              properties:
+                photo:
+                  type: object
+                  additionalProperties: false
+                  required: [fileId]
+                  properties:
+                    fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+                note:
+                  type: string
+                  maxLength: 1000
+                  description: What the person said or typed about the photo. May be empty.
+      responses:
+        '200':
+          description: The signals
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NovaHazardScan' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listHazardSignals
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Hazard signals Nova flagged in this project's photos, newest first.
+      parameters:
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/HazardSignalStatus' } }
+        - {
+            name: limit,
+            in: query,
+            schema: { type: integer, minimum: 1, maximum: 100, default: 50 },
+          }
+      responses:
+        '200':
+          description: The signals
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - name: signalId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ahs_[0-9A-Za-z]{26}$' }
+    post:
+      operationId: reviewHazardSignal
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Confirm or dismiss a hazard signal.
+      description: |
+        A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+        project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+        is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+        the manager reports one from the incidents screen if it warrants it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [decision]
+              properties:
+                decision: { type: string, enum: [confirmed, dismissed] }
+                note: { type: string, maxLength: 1000 }
+      responses:
+        '200':
+          description: The decided signal
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HazardSignal' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getHazardPatterns
+      tags: [ai]
+      x-module: ai
+      x-permission: ai.safety.review
+      summary: Hazard categories that keep showing up in this project's photos.
+      description: |
+        Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+        least three signals in it across at least two different photos, the early warning that a near miss may follow.
+        `trend` compares the later half of the window with the earlier half.
+      parameters:
+        - {
+            name: days,
+            in: query,
+            schema: { type: integer, minimum: 7, maximum: 180, default: 30 },
+          }
+      responses:
+        '200':
+          description: The categories, patterns first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [days, data]
+                properties:
+                  days: { type: integer }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/HazardPattern' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -14291,6 +14438,7 @@ components:
           rfi_draft,
           diary_summary,
           defect_tagging,
+          safety_hazards,
           minutes,
           estimating,
           contract_review,
@@ -15281,6 +15429,74 @@ components:
           scopeKey: { type: [string, 'null'] }
           source: { oneOf: [{ $ref: '#/components/schemas/QuoteSourceRef' }, { type: 'null' }] }
           warning: { type: [string, 'null'], enum: [source_not_found, null] }
+    HazardSignalStatus: { type: string, enum: [open, confirmed, dismissed] }
+    HazardConfidence: { type: string, enum: [low, medium, high] }
+    HazardSignal:
+      type: object
+      required:
+        [
+          id,
+          fileId,
+          category,
+          categoryLabel,
+          observation,
+          confidence,
+          status,
+          reviewNote,
+          reviewedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, description: The signal (`ahs_`) }
+        fileId: { type: string, description: The photo it was flagged in (`fil_`) }
+        category: { type: string }
+        categoryLabel: { type: string }
+        observation:
+          {
+            type: string,
+            description: What the photo shows,
+            as an observation and never a finding.,
+          }
+        confidence: { $ref: '#/components/schemas/HazardConfidence' }
+        status: { $ref: '#/components/schemas/HazardSignalStatus' }
+        reviewNote: { type: [string, 'null'] }
+        reviewedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    NovaHazardScan:
+      type: object
+      required: [runId, scanId, signals, photoUnclear, dropped, unsupportedNumbers, disclaimer]
+      properties:
+        runId: { type: string, description: For feedback (`air_`) }
+        scanId: { type: string, description: The scan (`ahn_`); its signals share it }
+        signals:
+          type: array
+          items: { $ref: '#/components/schemas/HazardSignal' }
+        photoUnclear:
+          {
+            type: boolean,
+            description: The photo was too dark,
+            blurred or distant to judge,
+            or isn't a site photo.,
+          }
+        dropped:
+          type: integer
+          description: Signals left out because their wording judged instead of observing.
+        unsupportedNumbers:
+          type: array
+          items: { type: string }
+        disclaimer: { type: string }
+    HazardPattern:
+      type: object
+      required: [category, label, open, confirmed, dismissed, photos, isPattern, trend]
+      properties:
+        category: { type: string }
+        label: { type: string }
+        open: { type: integer }
+        confirmed: { type: integer }
+        dismissed: { type: integer }
+        photos: { type: integer, description: Photos with a confirmed signal in this category. }
+        isPattern: { type: boolean }
+        trend: { type: string, enum: [rising, steady, falling] }
     NovaDefectTag:
       type: object
       required:
