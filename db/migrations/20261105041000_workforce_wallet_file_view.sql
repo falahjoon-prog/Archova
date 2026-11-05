@@ -5,8 +5,6 @@
 -- document. No other query in the builder's transaction, including a plain files listing, can see these rows.
 alter table workforce.compliance_access_log add column file_id uuid;
 
-create index compliance_documents_file_ids on workforce.compliance_documents using gin (file_ids);
-
 create policy wallet_grantee_select on files.file_objects for select
   using (
     project_id is null and status = 'ready' and deleted_at is null
