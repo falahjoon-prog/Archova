@@ -1,7 +1,19 @@
 import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm';
 import { type TenantScope } from '@archova/kernel';
-import { sealMessage, type TimestampResult } from '../domain/seal-proof';
-import { evidenceDeliveries, evidenceRecords, evidenceTimestamps } from '../infra/tables';
+import {
+  sealMessage,
+  sendProofMessage,
+  sha256Bytes,
+  type EvidenceSigner,
+  type TimestampResult,
+} from '../domain/seal-proof';
+import {
+  evidenceDeliveries,
+  evidenceRecords,
+  evidenceSendProofs,
+  evidenceSendTimestamps,
+  evidenceTimestamps,
+} from '../infra/tables';
 
 /** Worker-side steps for sealed evidence: sending the service emails and taking the outside timestamps. */
 
@@ -21,6 +33,8 @@ export interface DeliveryJob {
   pdf: Buffer;
   snapshotText: string;
   signatureKeyId: string | null;
+  evidenceId: string;
+  addressBasis: string | null;
 }
 
 /**
@@ -74,6 +88,8 @@ export async function takeDueDeliveries(scope: TenantScope, now: Date, limit = 1
       pdf: rec.pdf,
       snapshotText: rec.snapshotText,
       signatureKeyId: sig.rows[0]?.key_id ?? null,
+      evidenceId: d.evidenceId,
+      addressBasis: d.addressBasis,
     });
   }
   return jobs;
@@ -183,6 +199,108 @@ export async function recordTimestamp(
     .insert(evidenceTimestamps)
     .values({
       evidenceId,
+      orgId: scope.ctx.orgId,
+      authority,
+      imprintSha256: t.imprintHex,
+      genTime: t.genTime,
+      serialHex: t.serialHex,
+      token: t.token,
+      caChainPem,
+    })
+    .onConflictDoNothing();
+}
+
+export interface SendReport {
+  provider: 'ses' | 'smtp' | 'log';
+  providerMessageId: string | null;
+  /** SHA-256 of `renderEvidenceEmail` output (see emailContentSha256). */
+  contentSha256: string;
+  /** The exact bytes handed to the relay, when the sender reports them; stored and hashed. */
+  raw?: Uint8Array | null;
+  serverResponse?: string | null;
+}
+
+/**
+ * Records that the message left our mail system: when, to whom, and the hash of exactly what went. Written in the same
+ * transaction that marks the delivery sent, signed when a key is held, and append-only. This is dispatch only; it is
+ * never delivery confirmation and must not be shown as service (compliance/01 §4).
+ */
+export async function recordSendProof(
+  scope: TenantScope,
+  job: DeliveryJob,
+  sentAt: Date,
+  report: SendReport,
+  signer: EvidenceSigner | null,
+) {
+  const message = sendProofMessage({
+    evidenceId: job.evidenceId,
+    deliveryId: job.id,
+    recipient: job.recipientEmail,
+    addressBasis: job.addressBasis,
+    sentAt: sentAt.toISOString(),
+    providerMessageId: report.providerMessageId,
+    contentSha256: report.contentSha256,
+    snapshotSha256: job.snapshotSha256,
+    pdfSha256: job.pdfSha256,
+  });
+  await scope.tx
+    .insert(evidenceSendProofs)
+    .values({
+      deliveryId: job.id,
+      orgId: scope.ctx.orgId,
+      evidenceId: job.evidenceId,
+      provider: report.provider,
+      recipientEmail: job.recipientEmail,
+      providerMessageId: report.providerMessageId,
+      sentAt,
+      message,
+      messageSha256: sha256Bytes(message).toString('hex'),
+      contentSha256: report.contentSha256,
+      addressBasis: job.addressBasis,
+      rawMessage: report.raw ? Buffer.from(report.raw) : null,
+      rawSha256: report.raw ? sha256Bytes(report.raw).toString('hex') : null,
+      serverResponse: report.serverResponse?.slice(0, 500) ?? null,
+      keyId: signer?.keyId ?? null,
+      signature: signer ? signer.sign(message) : null,
+    })
+    .onConflictDoNothing();
+}
+
+export interface UntimestampedSend {
+  deliveryId: string;
+  /** The send-proof message; its SHA-256 is what the authority timestamps. */
+  message: string;
+}
+
+/** Send proofs with no outside timestamp yet, oldest first. */
+export async function findUntimestampedSends(
+  scope: TenantScope,
+  limit = 20,
+): Promise<UntimestampedSend[]> {
+  const rows = await scope.tx
+    .select({ id: evidenceSendProofs.deliveryId, message: evidenceSendProofs.message })
+    .from(evidenceSendProofs)
+    .leftJoin(
+      evidenceSendTimestamps,
+      eq(evidenceSendTimestamps.deliveryId, evidenceSendProofs.deliveryId),
+    )
+    .where(isNull(evidenceSendTimestamps.deliveryId))
+    .orderBy(asc(evidenceSendProofs.sentAt))
+    .limit(limit);
+  return rows.map((r) => ({ deliveryId: r.id, message: r.message }));
+}
+
+export async function recordSendTimestamp(
+  scope: TenantScope,
+  deliveryId: string,
+  authority: string,
+  t: TimestampResult,
+  caChainPem: string,
+) {
+  await scope.tx
+    .insert(evidenceSendTimestamps)
+    .values({
+      deliveryId,
       orgId: scope.ctx.orgId,
       authority,
       imprintSha256: t.imprintHex,

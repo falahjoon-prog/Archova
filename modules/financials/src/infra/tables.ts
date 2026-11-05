@@ -189,6 +189,7 @@ export const evidenceDeliveries = financialsSchema.table('evidence_deliveries', 
   evidenceId: uuid('evidence_id').notNull(),
   kind: text('kind').$type<'claim' | 'schedule'>().notNull(),
   recipientEmail: text('recipient_email').notNull(),
+  addressBasis: text('address_basis'),
   status: text('status')
     .$type<'queued' | 'sending' | 'sent' | 'delivered' | 'bounced' | 'failed'>()
     .notNull()
@@ -202,6 +203,56 @@ export const evidenceDeliveries = financialsSchema.table('evidence_deliveries', 
   deliveredAt: timestamp('delivered_at', { withTimezone: true }),
   bouncedAt: timestamp('bounced_at', { withTimezone: true }),
   lastError: text('last_error'),
+});
+
+export const evidenceSendProofs = financialsSchema.table('evidence_send_proofs', {
+  deliveryId: uuid('delivery_id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  evidenceId: uuid('evidence_id').notNull(),
+  provider: text('provider').$type<'ses' | 'smtp' | 'log'>().notNull(),
+  recipientEmail: text('recipient_email').notNull(),
+  providerMessageId: text('provider_message_id'),
+  sentAt: timestamp('sent_at', { withTimezone: true }).notNull(),
+  message: text('message').notNull(),
+  messageSha256: text('message_sha256').notNull(),
+  contentSha256: text('content_sha256').notNull(),
+  addressBasis: text('address_basis'),
+  rawMessage: bytea('raw_message'),
+  rawSha256: text('raw_sha256'),
+  serverResponse: text('server_response'),
+  keyId: text('key_id'),
+  signature: text('signature'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceSendTimestamps = financialsSchema.table('evidence_send_timestamps', {
+  deliveryId: uuid('delivery_id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  authority: text('authority').notNull(),
+  imprintSha256: text('imprint_sha256').notNull(),
+  genTime: timestamp('gen_time', { withTimezone: true }).notNull(),
+  serialHex: text('serial_hex').notNull(),
+  token: bytea('token').notNull(),
+  caChainPem: text('ca_chain_pem').notNull(),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const evidenceServiceRecords = financialsSchema.table('evidence_service_records', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  claimId: uuid('claim_id').notNull(),
+  evidenceId: uuid('evidence_id').notNull(),
+  kind: text('kind').$type<'claim' | 'schedule'>().notNull(),
+  method: text('method')
+    .$type<'hand' | 'courier' | 'post' | 'recipient_reply' | 'other'>()
+    .notNull(),
+  servedAt: timestamp('served_at', { withTimezone: true }).notNull(),
+  servedTo: text('served_to').notNull(),
+  note: text('note'),
+  basis: text('basis').$type<'self_reported'>().notNull().default('self_reported'),
+  recordedBy: uuid('recorded_by'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const costCodes = financialsSchema.table('cost_codes', {

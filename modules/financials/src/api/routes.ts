@@ -67,6 +67,23 @@ export function financialsRoutes(
     sentAt: d.sentAt?.toISOString() ?? null,
     deliveredAt: d.deliveredAt?.toISOString() ?? null,
     bouncedAt: d.bouncedAt?.toISOString() ?? null,
+    sendProof: d.sendProof
+      ? {
+          ...d.sendProof,
+          recordedAt: d.sendProof.recordedAt.toISOString(),
+          timestampedAt: d.sendProof.timestampedAt?.toISOString() ?? null,
+        }
+      : null,
+  });
+  const serviceDto = (r: Awaited<ReturnType<FinancialsService['recordEvidenceService']>>) => ({
+    id: r.id,
+    kind: r.kind,
+    method: r.method,
+    servedAt: r.servedAt.toISOString(),
+    basis: r.basis,
+    servedTo: r.servedTo,
+    note: r.note,
+    recordedAt: r.recordedAt.toISOString(),
   });
   const claimBody = (d: Awaited<ReturnType<FinancialsService['claimDetail']>>) => ({
     claim: toClaimDto(d.claim, d.today, d.schedule !== null),
@@ -557,6 +574,37 @@ export function financialsRoutes(
             ref('paymentClaim', input.params.claimId, 'claimId'),
             input.params.kind,
             input.body.recipientEmail,
+            input.body.addressBasis,
+          ),
+        ),
+      ),
+    }),
+    listClaimEvidenceServiceRecords: async (input) => ({
+      status: 200,
+      body: {
+        records: (
+          await read(input, (s) =>
+            financials.listEvidenceServiceRecords(
+              s,
+              project(input.params),
+              ref('paymentClaim', input.params.claimId, 'claimId'),
+            ),
+          )
+        )
+          .filter((r) => r.kind === input.params.kind)
+          .map(serviceDto),
+      },
+    }),
+    recordClaimEvidenceService: async (input) => ({
+      status: 201,
+      body: serviceDto(
+        await tx(input, (s) =>
+          financials.recordEvidenceService(
+            s,
+            project(input.params),
+            ref('paymentClaim', input.params.claimId, 'claimId'),
+            input.params.kind,
+            { ...input.body, servedAt: new Date(input.body.servedAt) },
           ),
         ),
       ),

@@ -1,9 +1,12 @@
 import { sql } from 'drizzle-orm';
 import {
+  emailContentSha256,
   markDeliveryFailed,
   markDeliverySent,
+  recordSendProof,
   takeDueDeliveries,
   type DeliveryJob,
+  type EvidenceSigner,
 } from '@archova/mod-financials';
 import type { EmailMessage, EmailSender } from '@archova/kernel';
 import { jobContext } from '../subscribers';
@@ -52,9 +55,16 @@ export function renderEvidenceEmail(j: DeliveryJob, senderOrgName: string): Emai
 /**
  * Sends the sealed records queued for email, every two minutes. A delivery is marked `sending` before the send so two
  * runs never take the same one; a failure puts it back for another try (up to four), then it shows as not confirmed.
- * "Sent" is not service: that waits for the receiving server's delivery confirmation.
+ * "Sent" is not service: that waits for the receiving server's delivery confirmation. Each send leaves a signed send
+ * proof (dispatch only) that the timestamp job then covers.
  */
-export function evidenceDeliveries(sender: EmailSender): TenantJob {
+export function evidenceDeliveries(
+  sender: EmailSender,
+  proof: { provider: 'ses' | 'smtp' | 'log'; signer: EvidenceSigner | null } = {
+    provider: 'ses',
+    signer: null,
+  },
+): TenantJob {
   return {
     name: 'financials.evidence-deliveries',
     cron: '*/2 * * * *',
@@ -73,9 +83,26 @@ export function evidenceDeliveries(sender: EmailSender): TenantJob {
       let failed = 0;
       for (const j of work.jobs) {
         try {
-          const res = await sender.send(renderEvidenceEmail(j, work.orgName));
+          const email = renderEvidenceEmail(j, work.orgName);
+          const res = await sender.send(email);
           const messageId = (res && res.messageId) || null;
-          await database.withTenantTx(ctx, (s) => markDeliverySent(s, j.id, now, messageId));
+          // The send proof and the sent mark commit together: a message we sent always has its record.
+          await database.withTenantTx(ctx, async (s) => {
+            await markDeliverySent(s, j.id, now, messageId);
+            await recordSendProof(
+              s,
+              j,
+              now,
+              {
+                provider: proof.provider,
+                providerMessageId: messageId,
+                contentSha256: emailContentSha256(email),
+                raw: (res && res.raw) || null,
+                serverResponse: (res && res.serverResponse) || null,
+              },
+              proof.signer,
+            );
+          });
           sent += 1;
         } catch (e) {
           failed += 1;

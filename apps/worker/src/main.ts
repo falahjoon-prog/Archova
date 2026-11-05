@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import { createDatabase, createLogger } from '@archova/kernel';
 import { createS3ObjectStore } from '@archova/mod-files';
+import { createEvidenceSigner } from '@archova/mod-financials';
 import {
   createHttpsTransport,
   createWebhookService,
@@ -71,7 +72,19 @@ async function main() {
     trialBackfill,
     trialEndingEmail(emailSender, config.email.appBaseUrl),
     // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
-    ...(config.email.provider === 'ses' ? [evidenceDeliveries(emailSender)] : []),
+    ...(config.email.provider === 'ses'
+      ? [
+          evidenceDeliveries(emailSender, {
+            provider: 'ses',
+            signer: config.evidenceSigning
+              ? createEvidenceSigner(
+                  config.evidenceSigning.keyId,
+                  config.evidenceSigning.privateKeyPem,
+                )
+              : null,
+          }),
+        ]
+      : []),
     ...(config.evidenceTimestampUrl
       ? [
           evidenceTimestamps(

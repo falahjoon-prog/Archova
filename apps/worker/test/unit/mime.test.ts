@@ -49,6 +49,8 @@ describe('service email', () => {
         pdf: Buffer.from('pdf'),
         snapshotText: '{"a":1}',
         signatureKeyId: 'k1',
+        evidenceId: 'e',
+        addressBasis: null,
       },
       'Harbour Build',
     );

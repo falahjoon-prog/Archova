@@ -35,6 +35,9 @@ import {
   costCodes,
   evidenceDeliveries,
   evidenceRecords,
+  evidenceSendProofs,
+  evidenceSendTimestamps,
+  evidenceServiceRecords,
   evidenceSignatures,
   evidenceTimestamps,
   paymentClaimLines,
@@ -888,6 +891,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     claimId: string,
     kind: EvidenceKind,
     recipientEmail: string,
+    addressBasis?: string | null,
   ) {
     await need(
       scope,
@@ -934,6 +938,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         evidenceId: row.id,
         kind,
         recipientEmail: email,
+        addressBasis: addressBasis?.trim().slice(0, 500) || null,
         queuedBy: scope.ctx.userId,
         queuedAt: now(),
       })
@@ -941,17 +946,34 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return deliveryView(created!);
   }
 
-  function deliveryView(d: typeof evidenceDeliveries.$inferSelect) {
+  type SendProofSummary = {
+    recordedAt: Date;
+    messageSha256: string;
+    signed: boolean;
+    timestampedAt: Date | null;
+  };
+
+  function deliveryView(
+    d: typeof evidenceDeliveries.$inferSelect,
+    proof: SendProofSummary | null = null,
+  ) {
     const open = d.status === 'queued' || d.status === 'sending' || d.status === 'sent';
     return {
       id: d.id,
       kind: d.kind,
       recipientEmail: d.recipientEmail,
+      addressBasis: d.addressBasis,
       status: d.status,
       queuedAt: d.queuedAt,
       sentAt: d.sentAt,
       deliveredAt: d.deliveredAt,
       bouncedAt: d.bouncedAt,
+      // `sentAt` is when our relay took the message; it is not delivery. `deliveredAt` is the recipient side only.
+      // `confirmed_delivery` is the only basis that shows service by email. A send proof is our own record of
+      // dispatch: it says what we sent and when, never that it arrived.
+      serviceBasis: (d.deliveredAt !== null ? 'confirmed_delivery' : 'dispatch_only') as
+        'confirmed_delivery' | 'dispatch_only',
+      sendProof: proof,
       // Service counts from delivery confirmation only. Anything else after an hour must be served another way.
       notConfirmed:
         d.status === 'bounced' ||
@@ -970,7 +992,121 @@ export function createFinancialsService(deps: FinancialsDeps) {
       .from(evidenceDeliveries)
       .where(eq(evidenceDeliveries.claimId, claimId))
       .orderBy(desc(evidenceDeliveries.queuedAt));
-    return rows.map(deliveryView);
+    const proofs = await scope.tx
+      .select({
+        deliveryId: evidenceSendProofs.deliveryId,
+        recordedAt: evidenceSendProofs.recordedAt,
+        messageSha256: evidenceSendProofs.messageSha256,
+        signature: evidenceSendProofs.signature,
+        stamped: evidenceSendTimestamps.genTime,
+      })
+      .from(evidenceSendProofs)
+      .leftJoin(
+        evidenceSendTimestamps,
+        eq(evidenceSendTimestamps.deliveryId, evidenceSendProofs.deliveryId),
+      )
+      .where(
+        inArray(
+          evidenceSendProofs.deliveryId,
+          rows.map((r) => r.id),
+        ),
+      );
+    const byId = new Map(proofs.map((p) => [p.deliveryId, p]));
+    return rows.map((d) => {
+      const p = byId.get(d.id);
+      return deliveryView(
+        d,
+        p
+          ? {
+              recordedAt: p.recordedAt,
+              messageSha256: p.messageSha256,
+              signed: p.signature !== null,
+              timestampedAt: p.stamped,
+            }
+          : null,
+      );
+    });
+  }
+
+  const SERVICE_METHODS = ['hand', 'courier', 'post', 'recipient_reply', 'other'] as const;
+  type ServiceMethod = (typeof SERVICE_METHODS)[number];
+
+  /**
+   * A record that the sealed claim or schedule was served by other means (by hand, courier, post, or the recipient's
+   * own reply), made by a person who knows when it reached the recipient. It is kept apart from email deliveries so
+   * it is never mistaken for a confirmed delivery, and it cannot be edited or removed.
+   */
+  async function recordEvidenceService(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+    kind: EvidenceKind,
+    input: { method: string; servedAt: Date; servedTo: string; note?: string | null },
+  ) {
+    await need(
+      scope,
+      kind === 'schedule' ? 'financials.claims.assess' : 'financials.claims.record',
+      projectId,
+    );
+    await requireStaff(scope, projectId, 'record service');
+    const { row } = await evidenceFile(scope, projectId, claimId, kind);
+    if (!(SERVICE_METHODS as readonly string[]).includes(input.method))
+      throw new AppError('validation_failed', 'Choose how it was served.', [
+        { path: 'method', message: 'Not a service method' },
+      ]);
+    const servedTo = input.servedTo.trim();
+    if (servedTo.length < 1 || servedTo.length > 200)
+      throw new AppError('validation_failed', 'Say who it was served on.', [
+        { path: 'servedTo', message: 'Required, up to 200 characters' },
+      ]);
+    if (
+      Number.isNaN(input.servedAt.getTime()) ||
+      input.servedAt.getTime() > now().getTime() + 5 * 60 * 1000 ||
+      input.servedAt.getTime() < row.sealedAt.getTime()
+    )
+      throw new AppError(
+        'validation_failed',
+        'The time served must be after the record was sealed and not in the future.',
+        [{ path: 'servedAt', message: 'Out of range' }],
+      );
+    const note = input.note?.trim() || null;
+    if (note && note.length > 2000)
+      throw new AppError('validation_failed', 'The note is too long.', [
+        { path: 'note', message: 'Up to 2000 characters' },
+      ]);
+    const [created] = await scope.tx
+      .insert(evidenceServiceRecords)
+      .values({
+        id: uuidv7(),
+        orgId: scope.ctx.orgId,
+        projectId,
+        claimId,
+        evidenceId: row.id,
+        kind,
+        method: input.method as ServiceMethod,
+        servedAt: input.servedAt,
+        servedTo,
+        note,
+        basis: 'self_reported' as const,
+        recordedBy: scope.ctx.userId,
+        recordedAt: now(),
+      })
+      .returning();
+    return created!;
+  }
+
+  async function listEvidenceServiceRecords(
+    scope: TenantScope,
+    projectId: string,
+    claimId: string,
+  ) {
+    await claimDetail(scope, projectId, claimId, true);
+    await requireStaff(scope, projectId, 'see service records');
+    return scope.tx
+      .select()
+      .from(evidenceServiceRecords)
+      .where(eq(evidenceServiceRecords.claimId, claimId))
+      .orderBy(desc(evidenceServiceRecords.servedAt));
   }
 
   async function evidenceFile(
@@ -1496,6 +1632,8 @@ export function createFinancialsService(deps: FinancialsDeps) {
     listEvidence,
     queueEvidenceDelivery,
     listEvidenceDeliveries,
+    recordEvidenceService,
+    listEvidenceServiceRecords,
     evidencePdf,
     evidenceJson,
   };

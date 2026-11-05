@@ -32,6 +32,59 @@ export function sealMessage(i: {
   ].join('\n');
 }
 
+/**
+ * What a send proof says, and no more: this message left our mail system at this time for this address, carrying
+ * exactly these attachments. It records dispatch (ETA s14), never receipt (s14A), so it is not service by itself.
+ * `contentSha256` covers subject, text, html and every attachment's name, type and bytes.
+ */
+export function sendProofMessage(i: {
+  evidenceId: string;
+  deliveryId: string;
+  recipient: string;
+  addressBasis: string | null;
+  sentAt: string;
+  providerMessageId: string | null;
+  contentSha256: string;
+  snapshotSha256: string;
+  pdfSha256: string;
+}): string {
+  return [
+    'archova-send-proof-v1',
+    `evidence:${i.evidenceId}`,
+    `delivery:${i.deliveryId}`,
+    `to:${i.recipient.toLowerCase()}`,
+    `address-basis:${(i.addressBasis ?? '').replace(/[\r\n]+/g, ' ')}`,
+    `sent:${i.sentAt}`,
+    `message-id:${i.providerMessageId ?? ''}`,
+    `content-sha256:${i.contentSha256}`,
+    `snapshot-sha256:${i.snapshotSha256}`,
+    `pdf-sha256:${i.pdfSha256}`,
+  ].join('\n');
+}
+
+/** Length-prefixed so two different messages can never produce the same byte stream. */
+export function emailContentSha256(m: {
+  subject: string;
+  text: string;
+  html: string;
+  attachments?: { filename: string; contentType: string; content: Uint8Array }[];
+}): string {
+  const h = createHash('sha256');
+  const put = (b: Uint8Array | string) => {
+    const buf = typeof b === 'string' ? Buffer.from(b, 'utf8') : Buffer.from(b);
+    h.update(`${buf.length}:`).update(buf);
+  };
+  put(m.subject);
+  put(m.text);
+  put(m.html);
+  for (const a of m.attachments ?? []) {
+    put(a.filename);
+    put(a.contentType);
+    put(a.content);
+  }
+  return h.digest('hex');
+}
+
 export const sha256Bytes = (data: string | Uint8Array) =>
   createHash('sha256').update(data).digest();
 
