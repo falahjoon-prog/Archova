@@ -327,7 +327,8 @@ export function createTimesheetService(deps: TimesheetDeps) {
         ),
       )
       .orderBy(asc(timesheets.localDate), asc(workers.fullName))
-      .for('update', { of: timesheets });
+      // Not `of timesheets`: Postgres wants an unqualified name there and drizzle prints the schema.
+      .for('update');
     const lines = await linesFor(
       scope,
       sheets.map((s) => s.sheet.id),

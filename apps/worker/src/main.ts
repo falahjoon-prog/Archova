@@ -23,6 +23,7 @@ import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
+import { createSmtpSender } from './smtp';
 import { evidenceDeliveries } from './jobs/evidence-deliveries';
 import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
@@ -61,8 +62,15 @@ async function main() {
           from: config.email.from,
           replyTo: config.email.replyTo,
         })
-      : createLogSender((msg, o) => log.info(o, msg));
+      : config.email.provider === 'smtp' && config.email.smtp
+        ? createSmtpSender({
+            ...config.email.smtp,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg));
   /** Nightly and hourly per-org jobs (backend 05 §3). */
+
   const jobs: TenantJob[] = [
     accessLinkPurge,
     importStagingPurge,

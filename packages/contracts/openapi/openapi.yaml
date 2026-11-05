@@ -20725,7 +20725,7 @@ components:
         approvedAt: { type: [string, 'null'], format: date-time }
         rejectionReason: { type: [string, 'null'] }
         paidMinutes: { type: integer, description: Minutes worked less breaks. }
-        paidHours: { type: string, pattern: '^\\d+\\.\\d{2}$' }
+        paidHours: { type: string, pattern: '^\d+\.\d{2}$' }
         lines:
           type: array
           items: { $ref: '#/components/schemas/TimesheetLine' }
@@ -20850,7 +20850,7 @@ components:
         id: { type: string, pattern: '^eql_[0-9A-Za-z]{26}$' }
         equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
         date: { type: string, format: date }
-        hours: { type: string, pattern: '^\\d{1,2}\\.\\d{2}$' }
+        hours: { type: string, pattern: '^\d{1,2}\.\d{2}$' }
         operator: { type: [string, 'null'] }
         notes: { type: [string, 'null'] }
     EquipmentLogList:
@@ -20869,7 +20869,7 @@ components:
         hours:
           {
             type: string,
-            pattern: '^\\d{1,2}(\\.\\d{1,2})?$',
+            pattern: '^\d{1,2}(\.\d{1,2})?$',
             description: In quarter hours,
             up to 24.,
           }
