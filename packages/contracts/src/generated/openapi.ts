@@ -129,6 +129,103 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/oauth/consent": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the consent page shows for a partner app. Needs a signed-in web session. */
+        get: operations["getOauthConsent"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Partner apps this organisation has registered. Owners and admins only. */
+        get: operations["listOauthApps"];
+        put?: never;
+        /** Register a private partner app for this organisation (integrations/06 §4). Needs a recent sign-in. The client secret is in the response once. A private app can be installed only into this organisation. */
+        post: operations["createOauthApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace an app's client secret. The old one stops working at once. Needs a recent sign-in. */
+        post: operations["rotateOauthAppSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Apps installed in this organisation, with their approved scopes and last use. Owners and admins only. */
+        get: operations["listAppInstalls"];
+        put?: never;
+        /** Approve a partner app for this organisation and the scopes it asked for. Needs a recent sign-in. Returns the address to send the browser to, carrying a single-use 60-second code. Other owners and admins are emailed. */
+        post: operations["installApp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/app-installs/{appInstallId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an app. Every token it holds stops working on its next request. */
+        delete: operations["revokeAppInstall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/oauth/token": {
         parameters: {
             query?: never;
@@ -9999,6 +10096,8 @@ export interface components {
             redirect_uri?: string;
             code_verifier?: string;
             refresh_token?: string;
+            /** @description Required for partner apps. */
+            client_secret?: string;
         };
         TokenResponse: {
             access_token: string;
@@ -10006,6 +10105,8 @@ export interface components {
             token_type: "Bearer";
             expires_in: number;
             refresh_token: string;
+            /** @description Partner apps only. The scopes approved */
+            scope?: string;
         };
         RevokeRequest: {
             token: string;
@@ -13191,6 +13292,67 @@ export interface components {
             /** Format: date-time */
             finishedAt: string | null;
             version: number;
+        };
+        OauthConsent: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            /** @description The only organisation this app can be installed into. */
+            ownerOrgId: string;
+            scopes: string[];
+        };
+        OauthApp: {
+            clientId: string;
+            name: string;
+            description: string | null;
+            redirectUris: string[];
+            scopes: string[];
+            disabled: boolean;
+        };
+        OauthAppList: {
+            data: components["schemas"]["OauthApp"][];
+            availableScopes: string[];
+        };
+        CreateOauthAppRequest: {
+            name: string;
+            description?: string;
+            redirectUris: string[];
+            scopes: string[];
+        };
+        OauthAppCreated: components["schemas"]["OauthApp"] & {
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        OauthAppSecret: {
+            clientId: string;
+            /** @description Shown once. */
+            clientSecret: string;
+        };
+        InstallAppRequest: {
+            clientId: string;
+            redirectUri: string;
+            codeChallenge: string;
+            state: string;
+            scopes: string[];
+        };
+        InstallAppResponse: {
+            redirectUrl: string;
+        };
+        AppInstall: {
+            id: string;
+            clientId: string;
+            appName: string;
+            scopes: string[];
+            installedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            lastUsedAt: string | null;
+            /** Format: date-time */
+            revokedAt: string | null;
+        };
+        AppInstallList: {
+            data: components["schemas"]["AppInstall"][];
         };
         ApiToken: {
             id: string;
@@ -16621,6 +16783,176 @@ export interface operations {
         responses: {
             /** @description Redirect to the client with an authorisation code */
             302: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOauthConsent: {
+        parameters: {
+            query: {
+                client_id: string;
+                redirect_uri: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthConsent"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOauthApps: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOauthApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOauthAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppCreated"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    rotateOauthAppSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                clientId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OauthAppSecret"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listAppInstalls: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppInstallList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    installApp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["InstallAppRequest"];
+            };
+        };
+        responses: {
+            /** @description Installed */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstallAppResponse"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    revokeAppInstall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                appInstallId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
