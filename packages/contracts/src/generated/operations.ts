@@ -2212,6 +2212,12 @@ export const WithdrawVariationParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
 });
+export const SetVariationCostCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "variationId": z.string().regex(new RegExp("^var_[0-9A-Za-z]{26}$")),
+});
+export const SetVariationCostCodeBody = s.SetVariationCostCodeRequestSchema;
 export const ListPaymentClaimsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7310,6 +7316,18 @@ export const operations = {
     params: WithdrawVariationParams,
     query: null,
     body: null,
+  },
+  setVariationCostCode: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code',
+    module: "financials",
+    auth: "required",
+    permission: "financials.variations.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SetVariationCostCodeParams,
+    query: null,
+    body: SetVariationCostCodeBody,
   },
   listPaymentClaims: {
     method: 'GET',

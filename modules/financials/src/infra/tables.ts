@@ -68,6 +68,7 @@ export const variations = financialsSchema.table('variations', {
   decidedAt: timestamp('decided_at', { withTimezone: true }),
   decidedBy: uuid('decided_by'),
   decisionNote: text('decision_note'),
+  costCodeId: uuid('cost_code_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
   version: integer('version').notNull().default(1),

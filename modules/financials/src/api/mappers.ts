@@ -74,6 +74,7 @@ export const toVariationDto = (v: { variation: VariationRow; claimedToDate: stri
   submittedAt: v.variation.submittedAt?.toISOString() ?? null,
   decidedAt: v.variation.decidedAt?.toISOString() ?? null,
   decisionNote: v.variation.decisionNote,
+  costCodeId: v.variation.costCodeId ? encodeId('costCode', v.variation.costCodeId) : null,
 });
 
 export const toLineDto = (l: ClaimLineRow) => ({
