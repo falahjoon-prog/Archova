@@ -57,6 +57,8 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
       recordPayment: service.recordPayment,
       createContract: service.createContract,
       contractForQuote: service.contractForQuote,
+      /** Retention-trust standing of a project's subcontracts, for the tender-readiness pack (`reporting`). */
+      trustSummary: trust.trustSummary,
       createCommitment: commitments.createCommitment,
       commitmentForQuote: commitments.commitmentForQuote,
       /** Portfolio dashboard and report builder (`reporting`): claim and variation counts and rows. */

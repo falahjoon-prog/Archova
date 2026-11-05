@@ -2029,6 +2029,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/photo-scans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Nova flags visual hazard signals in a site photo (F35).
+         * @description Nova looks at a site photo already uploaded to this project (a diary, incident or inspection photo) and lists
+         *     the visual hazard patterns it can see: protective equipment that appears not to be worn, an unprotected edge,
+         *     an untidy walkway. Each signal has a category, one or two plain sentences saying what the photo shows, and a
+         *     confidence. A signal is an observation for a safety manager to review: Nova does not say a rule was broken,
+         *     does not cite legislation, does not describe people and raises no incident. Wording that judges is dropped
+         *     (`dropped` counts them). Numbers in an observation that the note doesn't contain are listed in
+         *     `unsupportedNumbers`. The signals are kept as `open` for a manager to confirm or dismiss. Costs a quarter of
+         *     a Nova credit. The photo is a PNG, JPEG or WebP already uploaded to this project, up to 3 MB; anything else
+         *     is a 422.
+         */
+        post: operations["scanSitePhotoForHazardsWithNova"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Hazard signals Nova flagged in this project's photos, newest first. */
+        get: operations["listHazardSignals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-signals/{signalId}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm or dismiss a hazard signal.
+         * @description A safety manager looks at the photo and decides. `confirmed` means the hazard is real and counts towards the
+         *     project's patterns; `dismissed` means it isn't (the photo is misleading, it was already dealt with). A signal
+         *     is decided once; deciding it again is `ai.hazard_signal.already_reviewed`. Confirming raises no incident:
+         *     the manager reports one from the incidents screen if it warrants it.
+         */
+        post: operations["reviewHazardSignal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/ai/safety/hazard-patterns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Hazard categories that keep showing up in this project's photos.
+         * @description Counts the signals of the last `days` days by category. A category is a `pattern` when managers confirmed at
+         *     least three signals in it across at least two different photos, the early warning that a near miss may follow.
+         *     `trend` compares the later half of the window with the earlier half.
+         */
+        get: operations["getHazardPatterns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/ai/import-mappings": {
         parameters: {
             query?: never;
@@ -2802,6 +2905,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/readiness-pack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The tender-readiness pack (licences, insurance, prequalification, safety record, retention trust).
+         * @description One company-wide page a builder can hand to a client, financier or insurer. Each section is limited to what the
+         *     caller may read: licences and insurance need the compliance wallet, prequalification needs prequal access, and
+         *     safety and trust cover only the projects where the caller can read them (the rest are counted in
+         *     `projectsRestricted`). Documents are recorded or sighted, never verified. Staff only.
+         */
+        get: operations["getReadinessPack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/readiness-pack/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** The tender-readiness pack as a PDF. */
+        get: operations["getReadinessPackPdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/reports": {
         parameters: {
             query?: never;
@@ -2886,6 +3033,80 @@ export interface paths {
         get: operations["runReport"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's recent full exports, newest first.
+         * @description Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+         */
+        get: operations["listDataExports"];
+        put?: never;
+        /**
+         * Start a full export of everything the organisation holds in Archova.
+         * @description Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+         *     original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+         *     sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+         *     a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+         *     hours later, depending on how many files there are, and kept for 7 days.
+         */
+        post: operations["createDataExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        /** One export and how far it has got. */
+        get: operations["getDataExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A short-lived link to download a finished export.
+         * @description The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+         *     still being built or if it failed; 410 once it has expired.
+         */
+        post: operations["createDataExportDownload"];
         delete?: never;
         options?: never;
         head?: never;
@@ -8960,6 +9181,77 @@ export interface components {
             /** @description True when more than 200 projects matched and the rest were left out. */
             truncated: boolean;
         };
+        ReadinessPackPdf: {
+            filename: string;
+            /** @enum {string} */
+            contentType: "application/pdf";
+            dataBase64: string;
+        };
+        ReadinessPack: {
+            /** @description Local date the pack was built. */
+            generatedOn: string;
+            timeZone: string;
+            prequal: {
+                restricted: boolean;
+                companies: number;
+                qualified: number;
+                expiring: number;
+                pending: number;
+                expired: number;
+                notQualified: number;
+                requiredForTenders: boolean;
+            };
+            credentials: {
+                restricted: boolean;
+                current: number;
+                expiring: number;
+                expired: number;
+                noExpiry: number;
+                items: {
+                    itemType: string;
+                    title: string;
+                    insurer: string | null;
+                    expiresOn: string | null;
+                    /** @enum {string} */
+                    evidence: "recorded" | "sighted" | "self_declared";
+                    /** @enum {string} */
+                    state: "current" | "expiring" | "expired" | "no_expiry";
+                }[];
+            };
+            safety: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                incidents: {
+                    total: number;
+                    notifiable: number;
+                    notClosed: number;
+                    high: number;
+                    critical: number;
+                };
+                swms: {
+                    accepted: number;
+                    expired: number;
+                    awaitingReview: number;
+                    rejected: number;
+                };
+            };
+            trust: {
+                projectsCovered: number;
+                projectsRestricted: number;
+                subcontracts: number;
+                ok: number;
+                shortfall: number;
+                notSetUp: number;
+                notRequired: number;
+                shortfallCents: number;
+            };
+            attention: {
+                /** @enum {string} */
+                area: "prequal" | "credentials" | "safety" | "trust";
+                text: string;
+            }[];
+            truncated: boolean;
+        };
         ReportConfig: {
             /** @enum {string} */
             source: "rfis" | "defects" | "submittals" | "claims" | "variations";
@@ -8990,6 +9282,38 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        DataExport: {
+            id: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "ready" | "failed" | "expired";
+            requestedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            sizeBytes: number | null;
+            /** @description SHA-256 of the zip */
+            sha256: string | null;
+            tableCount: number | null;
+            fileCount: number | null;
+            /** @description Files that could not be included (infected */
+            skippedFileCount: number | null;
+            /** @description Why a failed export failed */
+            error: string | null;
+        };
+        DataExportList: {
+            data: components["schemas"]["DataExport"][];
+        };
+        DataExportDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            filename: string;
         };
         ReportList: {
             data: components["schemas"]["Report"][];
@@ -10163,7 +10487,7 @@ export interface components {
          * @description A Nova feature an admin can switch off (ai/01 §2).
          * @enum {string}
          */
-        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "minutes" | "estimating" | "contract_review";
+        AiFeature: "ask" | "drawing_register" | "drawing_compare" | "rfi_draft" | "diary_summary" | "defect_tagging" | "safety_hazards" | "minutes" | "estimating" | "contract_review";
         AiUsage: {
             /** Format: date */
             periodStart: string;
@@ -10740,6 +11064,52 @@ export interface components {
             /** @enum {string|null} */
             warning: "source_not_found" | null;
         }[];
+        /** @enum {string} */
+        HazardSignalStatus: "open" | "confirmed" | "dismissed";
+        /** @enum {string} */
+        HazardConfidence: "low" | "medium" | "high";
+        HazardSignal: {
+            /** @description The signal (`ahs_`) */
+            id: string;
+            /** @description The photo it was flagged in (`fil_`) */
+            fileId: string;
+            category: string;
+            categoryLabel: string;
+            /** @description What the photo shows */
+            observation: string;
+            confidence: components["schemas"]["HazardConfidence"];
+            status: components["schemas"]["HazardSignalStatus"];
+            reviewNote: string | null;
+            /** Format: date-time */
+            reviewedAt: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        NovaHazardScan: {
+            /** @description For feedback (`air_`) */
+            runId: string;
+            /** @description The scan (`ahn_`); its signals share it */
+            scanId: string;
+            signals: components["schemas"]["HazardSignal"][];
+            /** @description The photo was too dark */
+            photoUnclear: boolean;
+            /** @description Signals left out because their wording judged instead of observing. */
+            dropped: number;
+            unsupportedNumbers: string[];
+            disclaimer: string;
+        };
+        HazardPattern: {
+            category: string;
+            label: string;
+            open: number;
+            confirmed: number;
+            dismissed: number;
+            /** @description Photos with a confirmed signal in this category. */
+            photos: number;
+            isPattern: boolean;
+            /** @enum {string} */
+            trend: "rising" | "steady" | "falling";
+        };
         NovaDefectTag: {
             /** @description For feedback (`air_`) */
             runId: string;
@@ -16027,6 +16397,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -19275,6 +19646,131 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    scanSitePhotoForHazardsWithNova: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    photo: {
+                        fileId: string;
+                    };
+                    /** @description What the person said or typed about the photo. May be empty. */
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NovaHazardScan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listHazardSignals: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["HazardSignalStatus"];
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The signals */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HazardSignal"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    reviewHazardSignal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                signalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    decision: "confirmed" | "dismissed";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description The decided signal */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HazardSignal"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getHazardPatterns: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The categories, patterns first */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        days: number;
+                        data: components["schemas"]["HazardPattern"][];
+                    };
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     suggestImportMappingWithNova: {
         parameters: {
             query?: never;
@@ -20196,6 +20692,52 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getReadinessPack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The pack */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPack"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getReadinessPackPdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The PDF, base64 encoded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReadinessPackPdf"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listReports: {
         parameters: {
             query?: never;
@@ -20368,6 +20910,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDataExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted; poll the export until it is ready. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExportDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportDownload"];
                 };
             };
             default: components["responses"]["Problem"];

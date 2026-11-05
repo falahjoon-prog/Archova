@@ -11,6 +11,13 @@ export const REPORTING_PERMISSIONS: readonly PermissionDefinition[] = [
     level: 'read',
     orgRoles: ['member'],
   },
+  {
+    key: 'reporting.readiness.read',
+    scope: 'org',
+    tool: null,
+    level: 'read',
+    orgRoles: ['member'],
+  },
   { key: 'reporting.reports.read', scope: 'org', tool: null, level: 'read', orgRoles: ['member'] },
   {
     key: 'reporting.reports.manage',

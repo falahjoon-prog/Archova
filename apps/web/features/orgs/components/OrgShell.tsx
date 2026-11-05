@@ -62,6 +62,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
               ? [
                   { href: webRoutes.portfolio(orgSlug), label: 'Portfolio' },
                   { href: webRoutes.reports(orgSlug), label: 'Reports' },
+                  { href: webRoutes.readiness(orgSlug), label: 'Tender readiness' },
                   { href: webRoutes.bidBoard(orgSlug), label: 'Bid board' },
                   { href: webRoutes.prequalification(orgSlug), label: 'Prequalification' },
                 ]
@@ -79,6 +80,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                   { href: webRoutes.plan(orgSlug), label: 'Plan and limits' },
                   { href: webRoutes.permissionTemplates(orgSlug), label: 'Permission templates' },
                   { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
+                  { href: webRoutes.dataExport(orgSlug), label: 'Export your data' },
                 ]
               : []),
           ]}
