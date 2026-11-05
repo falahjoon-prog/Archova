@@ -113,6 +113,70 @@ export const GetDelayRegisterQuery = z.object({
   "source": z.enum(["diary", "rfi"]).optional(),
   "eotOnly": z.enum(["true", "false"]).optional(),
 });
+export const ListSchedulesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleBody = s.CreateScheduleRequestSchema;
+export const ImportScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ImportScheduleBody = s.ImportScheduleRequestSchema;
+export const GetScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const DeleteScheduleParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleActivityBody = s.CreateScheduleActivityRequestSchema;
+export const UpdateScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const UpdateScheduleActivityBody = s.UpdateScheduleActivityRequestSchema;
+export const DeleteScheduleActivityParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "activityId": z.string().regex(new RegExp("^sac_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleDependencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const CreateScheduleDependencyBody = s.CreateScheduleDependencyRequestSchema;
+export const DeleteScheduleDependencyParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+  "dependencyId": z.string().regex(new RegExp("^sdp_[0-9A-Za-z]{26}$")),
+});
+export const GetScheduleLookaheadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
+});
+export const GetScheduleLookaheadQuery = z.object({
+  "weeks": z.coerce.number().int().min(1).max(6).default(3),
+  "from": z.string().date().optional(),
+});
 export const ListProjectMembersParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -630,6 +694,14 @@ export const RejectLateSubmissionParams = z.object({
 export const RejectLateSubmissionBody = z.object({
   "note": z.string().max(1000).optional(),
 }).strict();
+export const GetBidBoardParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetBidBoardQuery = z.object({
+  "status": s.PackageStatusSchema.optional(),
+  "trade": z.string().max(100).optional(),
+  "projectId": z.string().optional(),
+});
 export const ListTenderPackagesParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2545,6 +2617,138 @@ export const operations = {
     query: GetDelayRegisterQuery,
     body: null,
   },
+  listSchedules: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListSchedulesParams,
+    query: null,
+    body: null,
+  },
+  createSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleParams,
+    query: null,
+    body: CreateScheduleBody,
+  },
+  importSchedule: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/import',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.import",
+    internal: false,
+    contentType: "application/json",
+    params: ImportScheduleParams,
+    query: null,
+    body: ImportScheduleBody,
+  },
+  getSchedule: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetScheduleParams,
+    query: null,
+    body: null,
+  },
+  deleteSchedule: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.import",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleParams,
+    query: null,
+    body: null,
+  },
+  createScheduleActivity: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleActivityParams,
+    query: null,
+    body: CreateScheduleActivityBody,
+  },
+  updateScheduleActivity: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateScheduleActivityParams,
+    query: null,
+    body: UpdateScheduleActivityBody,
+  },
+  deleteScheduleActivity: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleActivityParams,
+    query: null,
+    body: null,
+  },
+  createScheduleDependency: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: "application/json",
+    params: CreateScheduleDependencyParams,
+    query: null,
+    body: CreateScheduleDependencyBody,
+  },
+  deleteScheduleDependency: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies/{dependencyId}',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.write",
+    internal: false,
+    contentType: null,
+    params: DeleteScheduleDependencyParams,
+    query: null,
+    body: null,
+  },
+  getScheduleLookahead: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: GetScheduleLookaheadParams,
+    query: GetScheduleLookaheadQuery,
+    body: null,
+  },
   listProjectMembers: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/members',
@@ -3553,6 +3757,18 @@ export const operations = {
     params: RejectLateSubmissionParams,
     query: null,
     body: RejectLateSubmissionBody,
+  },
+  getBidBoard: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/bid-board',
+    module: "estimating",
+    auth: "required",
+    permission: "estimating.board.read",
+    internal: false,
+    contentType: null,
+    params: GetBidBoardParams,
+    query: GetBidBoardQuery,
+    body: null,
   },
   listTenderPackages: {
     method: 'GET',

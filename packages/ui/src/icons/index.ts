@@ -69,6 +69,7 @@ export {
   FileStack as DocumentsIcon,
   Home as HomeIcon,
   Hourglass as DelaysIcon,
+  ChartGantt as ProgrammeIcon,
   Handshake as ContractsIcon,
   PiggyBank as BudgetIcon,
   Map as DrawingsIcon,

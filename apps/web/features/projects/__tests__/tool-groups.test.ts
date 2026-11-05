@@ -16,6 +16,7 @@ describe('projectToolGroups', () => {
       'Correspondence',
       'Site diary',
       'Delay register',
+      'Programme',
       'Defects',
       'Meetings',
       'Inductions',

@@ -1,5 +1,6 @@
 import { encodeId } from '@archova/domain';
 import type {
+  BidBoardEntry,
   CostItem,
   CostRate,
   Estimate,
@@ -12,6 +13,7 @@ import type {
 } from '@archova/contracts';
 import type { QuoteNote as NoteRow } from '../infra/tables';
 import type { PackageView, QuoteView } from '../application/tender';
+import type { BoardRow } from '../application/board';
 import type { MeasurementRow } from '../application/takeoff';
 import type { CostItemView, CostRateRow } from '../application/library';
 import type { EstimateRow, EstimateView } from '../application/estimate';
@@ -245,4 +247,21 @@ export const toEstimateDto = ({ estimate: e, lines, totals }: EstimateView): Est
   createdAt: e.createdAt.toISOString(),
   updatedAt: e.updatedAt.toISOString(),
   version: e.version,
+});
+
+export const toBoardEntryDto = (r: BoardRow): BidBoardEntry => ({
+  id: encodeId('tenderPackage', r.id),
+  projectId: encodeId('project', r.projectId),
+  projectName: r.projectName,
+  numberLabel: formatPackageNumber(r.number),
+  name: r.name,
+  trade: r.trade,
+  status: r.status,
+  dueAt: iso(r.dueAt),
+  dueState: r.dueState,
+  invites: r.invites,
+  quotesConfirmed: r.quotesConfirmed,
+  quotesToReview: r.quotesToReview,
+  lowestExGst: r.lowestExGst,
+  awarded: r.awarded,
 });

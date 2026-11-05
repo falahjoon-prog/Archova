@@ -350,6 +350,44 @@ export const BallInCourtSchema = z.object({
 });
 export type BallInCourt = z.infer<typeof BallInCourtSchema>;
 
+export const PackageStatusSchema = z.enum(["draft", "out_to_tender", "closed", "awarded", "cancelled"]);
+export type PackageStatus = z.infer<typeof PackageStatusSchema>;
+
+export const BidBoardInviteTallySchema = z.object({
+  "invited": z.number().int(),
+  "viewed": z.number().int(),
+  "declined": z.number().int(),
+  "intendsToQuote": z.number().int(),
+  "submitted": z.number().int(),
+  "awaiting": z.number().int(),
+});
+export type BidBoardInviteTally = z.infer<typeof BidBoardInviteTallySchema>;
+
+export const BidBoardEntrySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "numberLabel": z.string(),
+  "name": z.string(),
+  "trade": z.string(),
+  "status": PackageStatusSchema,
+  "dueAt": z.string().datetime({ offset: true }).nullable(),
+  "dueState": z.enum(["overdue", "closing_soon", "open"]).nullable(),
+  "invites": BidBoardInviteTallySchema,
+  "quotesConfirmed": z.number().int(),
+  "quotesToReview": z.number().int(),
+  "lowestExGst": z.string().nullable(),
+  "awarded": z.boolean(),
+});
+export type BidBoardEntry = z.infer<typeof BidBoardEntrySchema>;
+
+export const BidBoardSchema = z.object({
+  "data": z.array(BidBoardEntrySchema),
+  "asOf": z.string().datetime({ offset: true }),
+  "truncated": z.boolean(),
+});
+export type BidBoard = z.infer<typeof BidBoardSchema>;
+
 export const BudgetLineSchema = z.object({
   "id": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
   "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
@@ -1507,6 +1545,33 @@ export const CreateRfiResponseRequestSchema = z.object({
 }).strict();
 export type CreateRfiResponseRequest = z.infer<typeof CreateRfiResponseRequestSchema>;
 
+export const CreateScheduleActivityRequestSchema = z.object({
+  "name": z.string().min(1).max(300),
+  "kind": z.enum(["task", "milestone"]).optional(),
+  "wbs": z.string().max(100).optional(),
+  "start": z.string().date(),
+  "finish": z.string().date().optional(),
+  "pctComplete": z.number().int().min(0).max(100).optional(),
+  "assignee": z.string().max(200).optional(),
+}).strict();
+export type CreateScheduleActivityRequest = z.infer<typeof CreateScheduleActivityRequestSchema>;
+
+export const ScheduleDepTypeSchema = z.enum(["FS", "SS", "FF", "SF"]);
+export type ScheduleDepType = z.infer<typeof ScheduleDepTypeSchema>;
+
+export const CreateScheduleDependencyRequestSchema = z.object({
+  "predecessorId": z.string(),
+  "successorId": z.string(),
+  "type": ScheduleDepTypeSchema.optional(),
+  "lagDays": z.number().int().min(-1000).max(1000).optional(),
+}).strict();
+export type CreateScheduleDependencyRequest = z.infer<typeof CreateScheduleDependencyRequestSchema>;
+
+export const CreateScheduleRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+}).strict();
+export type CreateScheduleRequest = z.infer<typeof CreateScheduleRequestSchema>;
+
 export const SubmittalTypeSchema = z.enum(["shop_drawing", "product_data", "sample", "mock_up", "certificate", "other"]);
 export type SubmittalType = z.infer<typeof SubmittalTypeSchema>;
 
@@ -2423,6 +2488,71 @@ export const ImportRowPageSchema = z.object({
   "nextCursor": z.string().nullable(),
 });
 export type ImportRowPage = z.infer<typeof ImportRowPageSchema>;
+
+export const ImportScheduleRequestSchema = z.object({
+  "format": z.enum(["msp", "p6"]),
+  "name": z.string().min(1).max(200).optional(),
+  "content": z.string().min(1).max(900000),
+}).strict();
+export type ImportScheduleRequest = z.infer<typeof ImportScheduleRequestSchema>;
+
+export const ScheduleSourceSchema = z.enum(["native", "msp", "p6"]);
+export type ScheduleSource = z.infer<typeof ScheduleSourceSchema>;
+
+export const ScheduleSummarySchema = z.object({
+  "id": z.string(),
+  "projectId": z.string(),
+  "name": z.string(),
+  "source": ScheduleSourceSchema,
+  "dataDate": z.string().date().nullable(),
+  "activityCount": z.number().int(),
+  "startDate": z.string().date().nullable(),
+  "finishDate": z.string().date().nullable(),
+  "createdAt": z.string().datetime({ offset: true }),
+});
+export type ScheduleSummary = z.infer<typeof ScheduleSummarySchema>;
+
+export const ScheduleActivitySchema = z.object({
+  "id": z.string(),
+  "wbs": z.string(),
+  "name": z.string(),
+  "kind": z.enum(["task", "milestone"]),
+  "start": z.string().date(),
+  "finish": z.string().date(),
+  "durationDays": z.number().int(),
+  "pctComplete": z.number().int(),
+  "assignee": z.string(),
+  "externalId": z.string().nullable(),
+  "floatDays": z.number().int(),
+  "critical": z.boolean(),
+});
+export type ScheduleActivity = z.infer<typeof ScheduleActivitySchema>;
+
+export const ScheduleDependencySchema = z.object({
+  "id": z.string(),
+  "predecessorId": z.string(),
+  "successorId": z.string(),
+  "type": ScheduleDepTypeSchema,
+  "lagDays": z.number().int(),
+  "slackDays": z.number().int(),
+  "violated": z.boolean(),
+});
+export type ScheduleDependency = z.infer<typeof ScheduleDependencySchema>;
+
+export const ScheduleDetailSchema = z.object({
+  "schedule": ScheduleSummarySchema,
+  "activities": z.array(ScheduleActivitySchema),
+  "dependencies": z.array(ScheduleDependencySchema),
+  "criticalCount": z.number().int(),
+  "violationCount": z.number().int(),
+});
+export type ScheduleDetail = z.infer<typeof ScheduleDetailSchema>;
+
+export const ImportScheduleResultSchema = z.object({
+  "detail": ScheduleDetailSchema,
+  "skipped": z.array(z.string()),
+});
+export type ImportScheduleResult = z.infer<typeof ImportScheduleResultSchema>;
 
 export const InductionSectionKeySchema = z.enum(["who_and_access", "layout_and_amenities", "emergencies_and_first_aid", "site_hazards", "high_risk_work_and_permits", "ppe", "site_rules", "incident_reporting", "consultation", "extra"]);
 export type InductionSectionKey = z.infer<typeof InductionSectionKeySchema>;
@@ -3786,9 +3916,6 @@ export const PackageInviteSchema = z.object({
 });
 export type PackageInvite = z.infer<typeof PackageInviteSchema>;
 
-export const PackageStatusSchema = z.enum(["draft", "out_to_tender", "closed", "awarded", "cancelled"]);
-export type PackageStatus = z.infer<typeof PackageStatusSchema>;
-
 export const PasswordSchema = z.string().min(10).max(256);
 export type Password = z.infer<typeof PasswordSchema>;
 
@@ -4318,6 +4445,29 @@ export const SaveInductionDraftRequestSchema = z.object({
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type SaveInductionDraftRequest = z.infer<typeof SaveInductionDraftRequestSchema>;
+
+export const ScheduleListSchema = z.object({
+  "data": z.array(ScheduleSummarySchema),
+});
+export type ScheduleList = z.infer<typeof ScheduleListSchema>;
+
+export const ScheduleLookaheadItemSchema = z.object({
+  "activity": ScheduleActivitySchema,
+  "startsInWindow": z.boolean(),
+  "finishesInWindow": z.boolean(),
+  "late": z.boolean(),
+});
+export type ScheduleLookaheadItem = z.infer<typeof ScheduleLookaheadItemSchema>;
+
+export const ScheduleLookaheadSchema = z.object({
+  "scheduleId": z.string(),
+  "weeks": z.number().int(),
+  "today": z.string().date(),
+  "windowStart": z.string().date(),
+  "windowEnd": z.string().date(),
+  "items": z.array(ScheduleLookaheadItemSchema),
+});
+export type ScheduleLookahead = z.infer<typeof ScheduleLookaheadSchema>;
 
 export const SelfSignInRequestSchema = z.object({
   "gateCode": z.string().min(10).max(100),
@@ -5228,6 +5378,17 @@ export const UpdateRfiRequestSchema = z.object({
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
+
+export const UpdateScheduleActivityRequestSchema = z.object({
+  "name": z.string().min(1).max(300).optional(),
+  "kind": z.enum(["task", "milestone"]).optional(),
+  "wbs": z.string().max(100).optional(),
+  "start": z.string().date().optional(),
+  "finish": z.string().date().optional(),
+  "pctComplete": z.number().int().min(0).max(100).optional(),
+  "assignee": z.string().max(200).optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateScheduleActivityRequest = z.infer<typeof UpdateScheduleActivityRequestSchema>;
 
 export const UpdateSubmittalRequestSchema = z.object({
   "title": z.string().min(1).max(300).optional(),

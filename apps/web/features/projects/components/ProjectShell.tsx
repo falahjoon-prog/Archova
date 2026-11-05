@@ -13,6 +13,7 @@ import {
   ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
+  ProgrammeIcon,
   ContractsIcon,
   BudgetIcon,
   DelaysIcon,
@@ -137,6 +138,11 @@ export function projectToolGroups(
       href: webRoutes.delays(orgSlug, projectId),
       label: 'Delay register',
       icon: DelaysIcon,
+    },
+    canRead('schedule') && {
+      href: webRoutes.programme(orgSlug, projectId),
+      label: 'Programme',
+      icon: ProgrammeIcon,
     },
     canRead('defects') && {
       href: webRoutes.defects(orgSlug, projectId),

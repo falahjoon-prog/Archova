@@ -1,4 +1,4 @@
--- Composed from modules/financials/db/migrations/20261105040000_financials_budget.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/financials/db/migrations/20261105040100_financials_budget.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- financials: cost codes, project budget and budget adjustments (docs/backend/schema/financials.md "Budget and cost").
 -- Cost codes live here (not platform) because budgets are their first user; other modules hold a plain cost_code_id.
 -- A budget is drafted freely, then locked. After lock the original is frozen and every change is an append-only

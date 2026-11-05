@@ -580,6 +580,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project programmes, newest first (SCH-US9). */
+        get: operations["listSchedules"];
+        put?: never;
+        /** Start an empty programme to build in Archova. */
+        post: operations["createSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import an MS Project XML or Primavera P6 XER file as a new programme revision (SCH-AC6). The file is sent as text, up to about 900 KB. */
+        post: operations["importSchedule"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        /** A programme with its activities, links, float and critical path. */
+        get: operations["getSchedule"];
+        put?: never;
+        post?: never;
+        /** Remove a programme revision. */
+        delete: operations["deleteSchedule"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a task or milestone. Returns the whole programme with float recalculated. */
+        post: operations["createScheduleActivity"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/activities/{activityId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove an activity and its links. Returns the whole programme. */
+        delete: operations["deleteScheduleActivity"];
+        options?: never;
+        head?: never;
+        /** Change dates, progress, name or assignee. Returns the whole programme. */
+        patch: operations["updateScheduleActivity"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Link two activities (finish-to-start, start-to-start, finish-to-finish, start-to-finish, with lag). A link that would make a loop is refused. */
+        post: operations["createScheduleDependency"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/dependencies/{dependencyId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                dependencyId: components["parameters"]["ScheduleDependencyId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a link. Returns the whole programme. */
+        delete: operations["deleteScheduleDependency"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/lookahead": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        /** The look-ahead: unfinished work on the programme in the next 2 to 6 whole weeks (SCH-US8). Subcontractors can filter on their own assignee name in the client. */
+        get: operations["getScheduleLookahead"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/members": {
         parameters: {
             query?: never;
@@ -2301,6 +2472,33 @@ export interface paths {
         put?: never;
         /** Decline a held change; it is never applied, even if the device sends it again. */
         post: operations["rejectLateSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/bid-board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Tender packages across the company's projects, with how invitees have answered and where the price stands.
+         * @description The bid board. One entry per tender package on projects where the caller holds `estimating.quotes.review`
+         *     (other projects are left out, since the board shows prices). Each entry carries a tally of invitee answers,
+         *     quotes confirmed and waiting for review, the lowest levelled total ex GST (allowances included), and a due state
+         *     for packages still out to tender: `overdue`, `closing_soon` (within 72 hours) or `open`. Ordered by due date,
+         *     soonest first. At most 500 packages; `truncated` says when there are more. Builder staff only; a subcontractor
+         *     never reaches it.
+         */
+        get: operations["getBidBoard"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -6644,6 +6842,125 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        ScheduleSource: "native" | "msp" | "p6";
+        /** @enum {string} */
+        ScheduleDepType: "FS" | "SS" | "FF" | "SF";
+        ScheduleSummary: {
+            id: string;
+            projectId: string;
+            name: string;
+            source: components["schemas"]["ScheduleSource"];
+            /** Format: date */
+            dataDate: string | null;
+            activityCount: number;
+            /** Format: date */
+            startDate: string | null;
+            /** Format: date */
+            finishDate: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ScheduleList: {
+            data: components["schemas"]["ScheduleSummary"][];
+        };
+        ScheduleActivity: {
+            id: string;
+            wbs: string;
+            name: string;
+            /** @enum {string} */
+            kind: "task" | "milestone";
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            finish: string;
+            /** @description Working days, Monday to Friday; 0 for a milestone. */
+            durationDays: number;
+            pctComplete: number;
+            assignee: string;
+            externalId: string | null;
+            /** @description Total float in working days, from the dates on the programme. */
+            floatDays: number;
+            critical: boolean;
+        };
+        ScheduleDependency: {
+            id: string;
+            predecessorId: string;
+            successorId: string;
+            type: components["schemas"]["ScheduleDepType"];
+            lagDays: number;
+            slackDays: number;
+            /** @description The dates break this link (the successor is too early). */
+            violated: boolean;
+        };
+        ScheduleDetail: {
+            schedule: components["schemas"]["ScheduleSummary"];
+            activities: components["schemas"]["ScheduleActivity"][];
+            dependencies: components["schemas"]["ScheduleDependency"][];
+            criticalCount: number;
+            violationCount: number;
+        };
+        ImportScheduleResult: {
+            detail: components["schemas"]["ScheduleDetail"];
+            skipped: string[];
+        };
+        CreateScheduleRequest: {
+            name: string;
+        };
+        ImportScheduleRequest: {
+            /** @enum {string} */
+            format: "msp" | "p6";
+            name?: string;
+            content: string;
+        };
+        CreateScheduleActivityRequest: {
+            name: string;
+            /** @enum {string} */
+            kind?: "task" | "milestone";
+            wbs?: string;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            finish?: string;
+            pctComplete?: number;
+            assignee?: string;
+        };
+        UpdateScheduleActivityRequest: {
+            name?: string;
+            /** @enum {string} */
+            kind?: "task" | "milestone";
+            wbs?: string;
+            /** Format: date */
+            start?: string;
+            /** Format: date */
+            finish?: string;
+            pctComplete?: number;
+            assignee?: string;
+        };
+        CreateScheduleDependencyRequest: {
+            predecessorId: string;
+            successorId: string;
+            type?: components["schemas"]["ScheduleDepType"];
+            lagDays?: number;
+        };
+        ScheduleLookaheadItem: {
+            activity: components["schemas"]["ScheduleActivity"];
+            startsInWindow: boolean;
+            finishesInWindow: boolean;
+            /** @description Should have started or finished before today and has not. */
+            late: boolean;
+        };
+        ScheduleLookahead: {
+            scheduleId: string;
+            weeks: number;
+            /** Format: date */
+            today: string;
+            /** Format: date */
+            windowStart: string;
+            /** Format: date */
+            windowEnd: string;
+            items: components["schemas"]["ScheduleLookaheadItem"][];
+        };
         CreateMeetingSeriesRequest: {
             name: string;
             template?: components["schemas"]["MeetingTemplate"];
@@ -9358,6 +9675,44 @@ export interface components {
         };
         RfiReasonRequest: {
             reason: string;
+        };
+        BidBoard: {
+            data: components["schemas"]["BidBoardEntry"][];
+            /** Format: date-time */
+            asOf: string;
+            truncated: boolean;
+        };
+        BidBoardEntry: {
+            id: string;
+            projectId: string;
+            projectName: string;
+            /** @description TP-001 */
+            numberLabel: string;
+            name: string;
+            trade: string;
+            status: components["schemas"]["PackageStatus"];
+            /** Format: date-time */
+            dueAt: string | null;
+            /**
+             * @description Null unless the package is out to tender with a due date.
+             * @enum {string|null}
+             */
+            dueState: "overdue" | "closing_soon" | "open" | null;
+            invites: components["schemas"]["BidBoardInviteTally"];
+            quotesConfirmed: number;
+            quotesToReview: number;
+            /** @description Lowest levelled total ex GST across confirmed quotes, decimal AUD. Null with none confirmed. */
+            lowestExGst: string | null;
+            awarded: boolean;
+        };
+        BidBoardInviteTally: {
+            invited: number;
+            viewed: number;
+            declined: number;
+            intendsToQuote: number;
+            submitted: number;
+            /** @description Invited or only viewed */
+            awaiting: number;
         };
         /** @enum {string} */
         PackageStatus: "draft" | "out_to_tender" | "closed" | "awarded" | "cancelled";
@@ -12232,6 +12587,9 @@ export interface components {
         IdempotencyKey: string;
         /** @description The ETag from the last read. Missing → 428, stale → 412. */
         IfMatch: string;
+        ScheduleId: string;
+        ScheduleActivityId: string;
+        ScheduleDependencyId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -13075,6 +13433,310 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DelayRegister"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listSchedules: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createSchedule: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    importSchedule: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportScheduleRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportScheduleResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createScheduleActivity: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteScheduleActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateScheduleActivity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                activityId: components["parameters"]["ScheduleActivityId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateScheduleActivityRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createScheduleDependency: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateScheduleDependencyRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteScheduleDependency: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+                dependencyId: components["parameters"]["ScheduleDependencyId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getScheduleLookahead: {
+        parameters: {
+            query?: {
+                weeks?: number;
+                from?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                scheduleId: components["parameters"]["ScheduleId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleLookahead"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -15504,6 +16166,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LateSubmission"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBidBoard: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["PackageStatus"];
+                trade?: string;
+                projectId?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BidBoard"];
                 };
             };
             default: components["responses"]["Problem"];

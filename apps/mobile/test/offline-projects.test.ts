@@ -11,7 +11,7 @@ async function setup() {
   return {
     db,
     store,
-    offline: new OfflineProjects(db, store, () => new Date('2026-11-05T00:00:00Z')),
+    offline: new OfflineProjects(db, store, null, () => new Date('2026-11-05T00:00:00Z')),
   };
 }
 
@@ -109,6 +109,11 @@ describe('storage and reapply', () => {
     );
     expect(await offline.storageBytes('p1')).toBe(records + 2_000_000);
     expect(formatBytes(2_000_000)).toBe('2.0 MB');
+    const withSheets = new OfflineProjects(db, store, {
+      bytesFor: async () => 5_000,
+      removeProject: async () => undefined,
+    });
+    expect(await withSheets.storageBytes('p1')).toBe(records + 2_000_000 + 5_000);
     expect(formatBytes(1500)).toBe('2 KB');
   });
 
