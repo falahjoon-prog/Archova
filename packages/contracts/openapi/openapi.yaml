@@ -10098,6 +10098,31 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/CommitmentDetail' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}/cost-code:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/VariationId'
+    put:
+      operationId: setVariationCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.variations.manage
+      summary: Code a variation to a cost code, or clear it with null. Allowed after approval; not for rejected or withdrawn ones.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SetVariationCostCodeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Variation' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/payment-claims:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17794,6 +17819,7 @@ components:
           submittedAt,
           decidedAt,
           decisionNote,
+          costCodeId,
         ]
       properties:
         id: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
@@ -17809,6 +17835,13 @@ components:
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    SetVariationCostCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [costCodeId]
+      properties:
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
     TrustStatus:
       type: string
       enum: [not_required, not_set_up, ok, shortfall]
@@ -18006,6 +18039,7 @@ components:
         description: { type: string, maxLength: 5000 }
         amount: { $ref: '#/components/schemas/FinancialsMoney' }
         timeImpactDays: { type: integer, minimum: 0, maximum: 3650 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
     VariationDecisionRequest:
       type: object
       additionalProperties: false

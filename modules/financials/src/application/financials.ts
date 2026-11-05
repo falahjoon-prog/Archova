@@ -123,6 +123,7 @@ export interface CreateVariationInput {
   description?: string;
   amount: string;
   timeImpactDays?: number;
+  costCodeId?: string;
 }
 
 export interface IssueScheduleInput {
@@ -1022,6 +1023,56 @@ export function createFinancialsService(deps: FinancialsDeps) {
     return row;
   }
 
+  async function requireCostCode(scope: TenantScope, projectId: string, costCodeId: string) {
+    const [found] = await scope.tx
+      .select({ id: costCodes.id, archived: costCodes.archived })
+      .from(costCodes)
+      .where(and(eq(costCodes.projectId, projectId), eq(costCodes.id, costCodeId)));
+    if (!found)
+      throw new AppError(
+        'financials.cost_code.not_found',
+        'That cost code is not on this project.',
+      );
+    if (found.archived)
+      throw new AppError('validation_failed', 'That cost code is archived.', [
+        { path: 'costCodeId', message: 'Archived' },
+      ]);
+  }
+
+  /** Tags (or clears) a variation's cost code. Money does not change, so any state but withdrawn/rejected will do. */
+  async function setVariationCostCode(
+    scope: TenantScope,
+    projectId: string,
+    variationId: string,
+    costCodeId: string | null,
+  ) {
+    await need(scope, 'financials.variations.manage', projectId);
+    await requireStaff(scope, projectId, 'code a variation');
+    const row = await variationRow(scope, projectId, variationId);
+    if (row.status === 'withdrawn' || row.status === 'rejected')
+      throw new AppError(
+        'financials.variation.bad_state',
+        `A variation that is ${row.status} can't be coded.`,
+      );
+    if (costCodeId) await requireCostCode(scope, projectId, costCodeId);
+    const [updated] = await scope.tx
+      .update(variations)
+      .set({ costCodeId, version: row.version + 1 })
+      .where(and(eq(variations.id, variationId), eq(variations.version, row.version)))
+      .returning();
+    if (!updated)
+      throw new AppError('conflict', 'This variation just changed. Reload and try again.');
+    scope.events.add({
+      type: 'financials.variation.coded.v1',
+      projectId,
+      entityType: 'variation',
+      entityId: variationId,
+      entityVersion: updated.version,
+      data: { variationId, contractId: row.contractId, costCodeId },
+    });
+    return withClaimed(scope, updated);
+  }
+
   async function createVariation(
     scope: TenantScope,
     projectId: string,
@@ -1036,6 +1087,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       throw new AppError('validation_failed', 'A variation must be for more than zero.', [
         { path: 'amount', message: 'Must be more than zero' },
       ]);
+    if (input.costCodeId) await requireCostCode(scope, projectId, input.costCodeId);
     const [n] = await scope.tx
       .select({ n: sql<number>`coalesce(max(${variations.number}), 0) + 1` })
       .from(variations)
@@ -1053,6 +1105,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
         description: input.description?.trim() || null,
         amount: input.amount,
         timeImpactDays: input.timeImpactDays ?? 0,
+        costCodeId: input.costCodeId ?? null,
         createdBy: scope.ctx.userId,
       })
       .returning();
@@ -1246,6 +1299,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
     ledgerSource,
     recordPayment,
     createVariation,
+    setVariationCostCode,
     listVariations,
     getVariation,
     moveVariation,

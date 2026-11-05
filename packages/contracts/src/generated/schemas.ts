@@ -2015,6 +2015,7 @@ export const CreateVariationRequestSchema = z.object({
   "description": z.string().max(5000).optional(),
   "amount": FinancialsMoneySchema,
   "timeImpactDays": z.number().int().min(0).max(3650).optional(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateVariationRequest = z.infer<typeof CreateVariationRequestSchema>;
 
@@ -5333,6 +5334,11 @@ export const SetMeetingAttendeesRequestSchema = z.object({
 }).strict();
 export type SetMeetingAttendeesRequest = z.infer<typeof SetMeetingAttendeesRequestSchema>;
 
+export const SetVariationCostCodeRequestSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+}).strict();
+export type SetVariationCostCodeRequest = z.infer<typeof SetVariationCostCodeRequestSchema>;
+
 export const SharedComplianceDocumentListSchema = z.object({
   "data": z.array(SharedComplianceDocumentSchema),
 });
@@ -6364,6 +6370,7 @@ export const VariationSchema = z.object({
   "submittedAt": z.string().datetime({ offset: true }).nullable(),
   "decidedAt": z.string().datetime({ offset: true }).nullable(),
   "decisionNote": z.string().nullable(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
 });
 export type Variation = z.infer<typeof VariationSchema>;
 

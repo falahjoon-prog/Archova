@@ -1122,4 +1122,62 @@ describe('Budget against forecast', () => {
 
     expect((await s.sub.browser.get(`${s.base}/budget/vs-forecast`)).statusCode).toBe(403);
   });
+
+  it('counts an approved variation against the cost code it is coded to', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const cc = (await post('/cost-codes', { code: '16-100', description: 'Electrical' })).json();
+    const { contract } = (
+      await post('/contracts', {
+        ...contractBody(s.subCo.companyId),
+        sov: [{ code: 'E1', description: 'Rough-in', value: '100000.00' }],
+      })
+    ).json();
+    const vs = async () => (await s.pm.browser.get(`${s.base}/budget/vs-forecast`)).json();
+
+    // Coded at creation; counts only once approved.
+    const bad = await post(`/contracts/${contract.id}/variations`, {
+      title: 'x',
+      amount: '1.00',
+      costCodeId: 'ccd_0000000000000000000000000A',
+    });
+    expect(bad.statusCode).toBe(404);
+    const v = (
+      await post(`/contracts/${contract.id}/variations`, {
+        title: 'Extra circuits',
+        amount: '5000.00',
+        costCodeId: cc.id,
+      })
+    ).json();
+    expect(v.costCodeId).toBe(cc.id);
+    await post(`/variations/${v.id}/submit`, {});
+    expect((await vs()).rows.find((r: { code: string }) => r.code === '16-100')).toBeUndefined();
+    await post(`/variations/${v.id}/approve`, {});
+    let r = await vs();
+    expect(r.rows.find((x: { code: string }) => x.code === '16-100')).toMatchObject({
+      committed: '5000.00',
+      forecastFinal: '5000.00',
+    });
+    expect(r.unallocated).toMatchObject({ committed: '100000.00' });
+
+    // Clearing it after approval moves the amount to unallocated; totals do not change.
+    const put = (id: string, costCodeId: string | null) =>
+      s.pm.browser.put(`${s.base}/variations/${id}/cost-code`, { costCodeId });
+    expect((await put(v.id, null)).json().costCodeId).toBeNull();
+    r = await vs();
+    expect(r.unallocated).toMatchObject({ committed: '105000.00' });
+    expect((await put(v.id, cc.id)).json().costCodeId).toBe(cc.id);
+    expect((await vs()).totals.forecastFinal).toBe(r.totals.forecastFinal);
+
+    // A subcontractor cannot code a variation; a withdrawn one cannot be coded.
+    expect(
+      (await s.sub.browser.put(`${s.base}/variations/${v.id}/cost-code`, { costCodeId: null }))
+        .statusCode,
+    ).toBe(403);
+    const w = (
+      await post(`/contracts/${contract.id}/variations`, { title: 'Dropped', amount: '10.00' })
+    ).json();
+    await post(`/variations/${w.id}/withdraw`, {});
+    expect((await put(w.id, cc.id)).statusCode).toBe(409);
+  });
 });
