@@ -7,6 +7,8 @@ import {
   listRevisionMarkups,
   MAX_POINTS_PER_STROKE,
   MAX_SHAPES,
+  MAX_TEXT_LENGTH,
+  type PenShape,
   savePenMarkup,
 } from '../features/drawings';
 import { migrate, SqliteSyncStore } from '../lib/db';
@@ -32,7 +34,7 @@ describe('createInk', () => {
     expect(ink.strokes).toEqual([
       expect.objectContaining({ id: 's1', kind: 'pen', points: expect.any(Array) }),
     ]);
-    expect(ink.strokes[0]!.points).toHaveLength(3);
+    expect((ink.strokes[0] as PenShape).points).toHaveLength(3);
   });
 
   it('ignores a tap and tiny movements', () => {
@@ -71,8 +73,85 @@ describe('createInk', () => {
     for (let i = 1; i < MAX_POINTS_PER_STROKE + 50; i++)
       ink.move({ x: (i % 2) * 0.5, y: i / 20000 + 0.01 * (i % 2) });
     ink.end();
-    expect(ink.strokes[0]!.points.length).toBeLessThanOrEqual(MAX_POINTS_PER_STROKE);
+    expect((ink.strokes[0] as PenShape).points.length).toBeLessThanOrEqual(MAX_POINTS_PER_STROKE);
     expect(MAX_SHAPES).toBe(2000);
+  });
+});
+
+describe('createInk shapes', () => {
+  const drag = (ink: ReturnType<typeof createInk>, a: [number, number], b: [number, number]) => {
+    ink.begin({ x: a[0], y: a[1] });
+    ink.move({ x: b[0], y: b[1] });
+  };
+
+  it('draws each dragged shape from where the finger went down to where it lifted', () => {
+    const ink = createInk(counter());
+    for (const tool of ['line', 'arrow', 'rect', 'ellipse', 'cloud'] as const) {
+      ink.tool = tool;
+      drag(ink, [0.1, 0.1], [0.4, 0.3]);
+      expect(ink.liveShape).toMatchObject({ kind: tool, from: { x: 0.1, y: 0.1 } });
+      ink.end();
+      expect(ink.liveShape).toBeNull();
+    }
+    expect(ink.strokes.map((s) => s.kind)).toEqual(['line', 'arrow', 'rect', 'ellipse', 'cloud']);
+    expect(ink.strokes[2]).toMatchObject({
+      from: { x: 0.1, y: 0.1 },
+      to: { x: 0.4, y: 0.3 },
+      strokeWidth: 3,
+    });
+  });
+
+  it('ignores a tap or a slip when a shape tool is chosen', () => {
+    const ink = createInk(counter());
+    ink.tool = 'rect';
+    drag(ink, [0.5, 0.5], [0.502, 0.5]);
+    ink.end();
+    ink.begin({ x: 0.5, y: 0.5 });
+    ink.end();
+    expect(ink.strokes).toEqual([]);
+  });
+
+  it('puts a text note where the sheet was tapped, trimmed and kept short', () => {
+    const ink = createInk(counter());
+    ink.tool = 'text';
+    ink.begin({ x: 0.3, y: 0.6 });
+    ink.end();
+    expect(ink.textAt).toEqual({ x: 0.3, y: 0.6 });
+    expect(ink.addText('   ')).toBe(false);
+    expect(ink.addText(`  check this ${'x'.repeat(300)}`)).toBe(true);
+    expect(ink.textAt).toBeNull();
+    const [note] = ink.strokes;
+    expect(note).toMatchObject({ kind: 'text', at: { x: 0.3, y: 0.6 } });
+    expect((note as { text: string }).text).toHaveLength(MAX_TEXT_LENGTH);
+    expect(ink.addText('no spot picked')).toBe(false);
+  });
+
+  it('drops a picked text spot or work in progress when the tool changes', () => {
+    const ink = createInk(counter());
+    ink.tool = 'text';
+    ink.begin({ x: 0.3, y: 0.6 });
+    ink.end();
+    ink.tool = 'pen';
+    expect(ink.textAt).toBeNull();
+    ink.tool = 'line';
+    drag(ink, [0.1, 0.1], [0.5, 0.5]);
+    ink.tool = 'pen';
+    expect(ink.liveShape).toBeNull();
+    ink.end();
+    expect(ink.strokes).toEqual([]);
+  });
+
+  it('keeps shapes in order with pen strokes and undoes them one by one', () => {
+    const ink = createInk(counter());
+    ink.begin({ x: 0.1, y: 0.1 });
+    ink.move({ x: 0.3, y: 0.3 });
+    ink.end();
+    ink.tool = 'ellipse';
+    drag(ink, [0.2, 0.2], [0.6, 0.5]);
+    ink.end();
+    expect(ink.strokes.map((s) => s.kind)).toEqual(['pen', 'ellipse']);
+    ink.undo();
+    expect(ink.strokes.map((s) => s.kind)).toEqual(['pen']);
   });
 });
 
