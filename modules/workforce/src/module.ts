@@ -25,7 +25,7 @@ export function createWorkforceModule(
   const attendance = createAttendanceService({ ...deps, complianceSources: sources });
   const inductions = createInductionService(deps, attendance);
   sources.unshift(inductions.gateSource);
-  const wallet = createWalletService({ files: deps.files });
+  const wallet = createWalletService({ files: deps.files, vault: deps.vault });
   const grants = createWalletGrantService({
     access: deps.access,
     platform: deps.platform,
