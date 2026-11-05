@@ -2258,6 +2258,35 @@ export const CreateWorkerRequestSchema = z.object({
 }).strict();
 export type CreateWorkerRequest = z.infer<typeof CreateWorkerRequestSchema>;
 
+export const DataExportSchema = z.object({
+  "id": z.string(),
+  "status": z.enum(["queued", "running", "ready", "failed", "expired"]),
+  "requestedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "startedAt": z.string().datetime({ offset: true }).nullable(),
+  "finishedAt": z.string().datetime({ offset: true }).nullable(),
+  "expiresAt": z.string().datetime({ offset: true }).nullable(),
+  "sizeBytes": z.number().int().nullable(),
+  "sha256": z.string().nullable(),
+  "tableCount": z.number().int().nullable(),
+  "fileCount": z.number().int().nullable(),
+  "skippedFileCount": z.number().int().nullable(),
+  "error": z.string().nullable(),
+});
+export type DataExport = z.infer<typeof DataExportSchema>;
+
+export const DataExportDownloadSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+  "filename": z.string(),
+});
+export type DataExportDownload = z.infer<typeof DataExportDownloadSchema>;
+
+export const DataExportListSchema = z.object({
+  "data": z.array(DataExportSchema),
+});
+export type DataExportList = z.infer<typeof DataExportListSchema>;
+
 export const DateRangeRequestSchema = z.object({
   "from": z.string().date(),
   "to": z.string().date(),
@@ -2858,7 +2887,7 @@ export const EquipmentLogSchema = z.object({
   "id": z.string().regex(new RegExp("^eql_[0-9A-Za-z]{26}$")),
   "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
   "date": z.string().date(),
-  "hours": z.string().regex(new RegExp("^\\\\d{1,2}\\\\.\\\\d{2}$")),
+  "hours": z.string().regex(new RegExp("^\\d{1,2}\\.\\d{2}$")),
   "operator": z.string().nullable(),
   "notes": z.string().nullable(),
 });
@@ -3921,7 +3950,7 @@ export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
 
 export const LogEquipmentHoursRequestSchema = z.object({
   "date": z.string().date(),
-  "hours": z.string().regex(new RegExp("^\\\\d{1,2}(\\\\.\\\\d{1,2})?$")),
+  "hours": z.string().regex(new RegExp("^\\d{1,2}(\\.\\d{1,2})?$")),
   "operator": z.string().min(1).max(200).optional(),
   "notes": z.string().min(1).max(2000).optional(),
 }).strict();
@@ -6374,7 +6403,7 @@ export const TimesheetSchema = z.object({
   "approvedAt": z.string().datetime({ offset: true }).nullable(),
   "rejectionReason": z.string().nullable(),
   "paidMinutes": z.number().int(),
-  "paidHours": z.string().regex(new RegExp("^\\\\d+\\\\.\\\\d{2}$")),
+  "paidHours": z.string().regex(new RegExp("^\\d+\\.\\d{2}$")),
   "lines": z.array(TimesheetLineSchema),
 });
 export type Timesheet = z.infer<typeof TimesheetSchema>;

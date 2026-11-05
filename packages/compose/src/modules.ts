@@ -58,6 +58,7 @@ import {
   type NumberVault,
 } from '@archova/mod-workforce';
 import { RFIS_PERMISSIONS, createRfisModule } from '@archova/mod-rfis';
+import { EXPORTS_PERMISSIONS, createExportsModule } from '@archova/mod-exports';
 import { REPORTING_PERMISSIONS, createReportingModule } from '@archova/mod-reporting';
 import { SCHEDULING_PERMISSIONS, createSchedulingModule } from '@archova/mod-scheduling';
 import { SUBMITTALS_PERMISSIONS, createSubmittalsModule } from '@archova/mod-submittals';
@@ -80,6 +81,7 @@ export const MODULE_PERMISSIONS = [
   BIM_PERMISSIONS,
   SCHEDULING_PERMISSIONS,
   REPORTING_PERMISSIONS,
+  EXPORTS_PERMISSIONS,
   FINANCIALS_PERMISSIONS,
   QUALITY_PERMISSIONS,
   PRECON_PERMISSIONS,
@@ -384,6 +386,8 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     platform: platform.api,
   });
 
+  const exportsModule = createExportsModule(services, { store: opts.files.store });
+
   const workforce = createWorkforceModule(services, {
     vault: opts.walletVault,
     access: access.api,
@@ -471,6 +475,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    exportsModule,
     workforce,
     sync,
   ];
@@ -509,6 +514,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     diary,
     scheduling,
     reporting,
+    exportsModule,
     workforce,
     routes,
   };

@@ -47,6 +47,7 @@ tags:
   - name: ownerportal
   - name: notifications
   - name: reporting
+  - name: data-export
 paths:
   /v1/auth/signup:
     post:
@@ -3760,6 +3761,83 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ReportResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listDataExports
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      summary: The organisation's recent full exports, newest first.
+      description: Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createDataExport
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      x-rate-limit: 10
+      summary: Start a full export of everything the organisation holds in Archova.
+      description: |
+        Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+        original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+        sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+        a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+        hours later, depending on how many files there are, and kept for 7 days.
+      responses:
+        '202':
+          description: Accepted; poll the export until it is ready.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports/{exportId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DataExportId'
+    get:
+      operationId: getDataExport
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      summary: One export and how far it has got.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/data-exports/{exportId}/download:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/DataExportId'
+    post:
+      operationId: createDataExportDownload
+      tags: [data-export]
+      x-module: platform
+      x-permission: exports.data.export
+      x-rate-limit: 30
+      summary: A short-lived link to download a finished export.
+      description: |
+        The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+        still being built or if it failed; 410 once it has expired.
+      responses:
+        '200':
+          description: The link
+          headers:
+            Cache-Control: { schema: { type: string } }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DataExportDownload' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/bid-board:
     parameters:
@@ -12324,6 +12402,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^rpt_[0-9A-Za-z]{26}$' }
+    DataExportId:
+      name: exportId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dxp_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -12705,6 +12788,62 @@ components:
           }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
+    DataExport:
+      type: object
+      required:
+        [
+          id,
+          status,
+          requestedBy,
+          createdAt,
+          startedAt,
+          finishedAt,
+          expiresAt,
+          sizeBytes,
+          sha256,
+          tableCount,
+          fileCount,
+          skippedFileCount,
+          error,
+        ]
+      properties:
+        id: { type: string }
+        status: { type: string, enum: [queued, running, ready, failed, expired] }
+        requestedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        startedAt: { type: [string, 'null'], format: date-time }
+        finishedAt: { type: [string, 'null'], format: date-time }
+        expiresAt: { type: [string, 'null'], format: date-time }
+        sizeBytes: { type: [integer, 'null'] }
+        sha256:
+          {
+            type: [string, 'null'],
+            description: SHA-256 of the zip,
+            so it can be checked after download.,
+          }
+        tableCount: { type: [integer, 'null'] }
+        fileCount: { type: [integer, 'null'] }
+        skippedFileCount:
+          {
+            type: [integer, 'null'],
+            description: Files that could not be included (infected,
+            missing from storage); each is listed in the manifest with the reason.,
+          }
+        error: { type: [string, 'null'], description: Why a failed export failed, in plain words. }
+    DataExportList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DataExport' }
+    DataExportDownload:
+      type: object
+      required: [url, expiresAt, filename]
+      properties:
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+        filename: { type: string }
     ReportList:
       type: object
       required: [data]
@@ -20872,7 +21011,7 @@ components:
         approvedAt: { type: [string, 'null'], format: date-time }
         rejectionReason: { type: [string, 'null'] }
         paidMinutes: { type: integer, description: Minutes worked less breaks. }
-        paidHours: { type: string, pattern: '^\\d+\\.\\d{2}$' }
+        paidHours: { type: string, pattern: '^\d+\.\d{2}$' }
         lines:
           type: array
           items: { $ref: '#/components/schemas/TimesheetLine' }
@@ -20997,7 +21136,7 @@ components:
         id: { type: string, pattern: '^eql_[0-9A-Za-z]{26}$' }
         equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
         date: { type: string, format: date }
-        hours: { type: string, pattern: '^\\d{1,2}\\.\\d{2}$' }
+        hours: { type: string, pattern: '^\d{1,2}\.\d{2}$' }
         operator: { type: [string, 'null'] }
         notes: { type: [string, 'null'] }
     EquipmentLogList:
@@ -21016,7 +21155,7 @@ components:
         hours:
           {
             type: string,
-            pattern: '^\\d{1,2}(\\.\\d{1,2})?$',
+            pattern: '^\d{1,2}(\.\d{1,2})?$',
             description: In quarter hours,
             up to 24.,
           }
