@@ -87,6 +87,8 @@ export interface LedgerSource {
   kind: 'bill' | 'invoice';
   localType: 'payment_schedule' | 'claim';
   localId: string;
+  /** Contract numbers restart in every project, so the project is part of what names a document in the ledger. */
+  projectId: string;
   contractNumber: number;
   claimNumber: number;
   /** The subcontractor for a bill, the client for an invoice. */
@@ -985,6 +987,7 @@ export function createFinancialsService(deps: FinancialsDeps) {
       kind: isBill ? 'bill' : 'invoice',
       localType: isBill ? 'payment_schedule' : 'claim',
       localId: isBill ? schedule!.id : claim.id,
+      projectId: claim.projectId,
       contractNumber: contract.number,
       claimNumber: claim.number,
       counterparty:
