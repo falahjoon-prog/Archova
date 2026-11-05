@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { decodeId } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DEFAULT_FAKE_RESPONDERS } from '@archova/mod-ai';
 import {
@@ -6,6 +8,7 @@ import {
   createProject,
   createTestContext,
   signUp,
+  outboxData,
   uploadBytes,
   type TestContext,
 } from './helpers';
@@ -134,6 +137,51 @@ describe('Nova site photo hazard signals (F35)', () => {
       photos: 3,
       isPattern: true,
     });
+  });
+
+  it('audits scans and reviews without the observation text, and keeps signals for five years', async () => {
+    const s = await setup();
+    const fileId = await s.photo();
+    const scan = (await s.scan('Rubbish in the corridor', fileId)).json();
+    const id = scan.signals[0].id as string;
+    await s.pm.browser.post(`${s.base}/ai/safety/hazard-signals/${id}/review`, {
+      decision: 'confirmed',
+      note: 'private note text',
+    });
+    const user = s.pm.userId;
+    const scans = await outboxData<Record<string, unknown>>(
+      t,
+      s.org.id,
+      user,
+      'ai.hazard_scan.created.v1',
+    );
+    const reviews = await outboxData<Record<string, unknown>>(
+      t,
+      s.org.id,
+      user,
+      'ai.hazard_signal.reviewed.v1',
+    );
+    expect(scans.at(-1)).toMatchObject({ signals: 1 });
+    expect(reviews.at(-1)).toMatchObject({ decision: 'confirmed', category: 'housekeeping' });
+    const text = JSON.stringify([scans, reviews]);
+    expect(text).not.toContain('private note text');
+    expect(text).not.toContain('Rubbish');
+    const kept = await t.adminDb.withTenantTx(
+      {
+        orgId: decodeId('org', s.org.id)!,
+        userId: decodeId('user', user)!,
+        principalType: 'member' as const,
+        orgRole: 'owner' as const,
+        entitlements: { plan: 'x', state: 'active' as const, modules: [], limits: {} },
+        requestId: 'test',
+      },
+      ({ tx }) =>
+        tx.execute(
+          sql`select category from shared.retention_ledger where record_type = 'ai.ai_hazard_signals'`,
+        ),
+    );
+    expect(kept.rows.length).toBeGreaterThan(0);
+    expect(kept.rows[0]!.category).toBe('whs_incident_5y');
   });
 
   it('only reads photos of this project, and only for people who may scan and review', async () => {

@@ -20,6 +20,9 @@ export const HAZARD_DISCLAIMER =
 const JUDGING =
   /\b(breach\w*|non-?complian\w*|illegal\w*|unlawful\w*|violat\w*|offence\w*|negligen\w*|contravene\w*|contravention|liable|liability|at fault|stop work|should be|must be|needs? to be|ought to|whs act|regulations?|australian standard|as ?\d{3,4})\b/i;
 
+/** A name for a person ("a worker named Dave", "Mr Smith"): signals describe what is visible, never who. */
+const PERSON_NAME = /\b(?:[Nn]amed|[Cc]alled|known as|Mr|Mrs|Ms|Miss|Dr)\.?\s+[A-Z][a-z]+/;
+
 /** "Is not worn" states a fact about a person Nova can't know from one frame; keep it as what the photo suggests. */
 export function soften(text: string): string {
   return text
@@ -37,7 +40,7 @@ export interface ReviewedSignal {
 export interface ReviewedHazardScan {
   signals: ReviewedSignal[];
   photoUnclear: boolean;
-  /** Signals left out because their wording judged instead of observing. */
+  /** Signals left out because their wording judged instead of observing, or named a person. */
   dropped: number;
   /** Numbers in the observations that the person didn't type; a number is only legible text, so check it. */
   unsupportedNumbers: string[];
@@ -57,7 +60,7 @@ export function reviewHazardScan(
   const kept: ReviewedSignal[] = [];
   for (const s of output.signals) {
     const observation = soften(s.observation.trim());
-    if (!observation || JUDGING.test(observation)) {
+    if (!observation || JUDGING.test(observation) || PERSON_NAME.test(observation)) {
       dropped += 1;
       continue;
     }

@@ -5,7 +5,13 @@
 // before a near miss becomes an incident. The photo is read through the caller's own file access.
 import { hazardScanPrompt, type HazardConfidence } from '@archova/ai-prompts';
 import { uuidv7 } from '@archova/domain';
-import { AppError, type Database, type TenantContext, type TenantScope } from '@archova/kernel';
+import {
+  AppError,
+  recordRetention,
+  type Database,
+  type TenantContext,
+  type TenantScope,
+} from '@archova/kernel';
 import { and, desc, eq, gte } from 'drizzle-orm';
 import {
   HAZARD_DISCLAIMER,
@@ -97,7 +103,7 @@ export function createHazardScanService(deps: HazardScanDeps) {
     const scanId = uuidv7();
     const rows = await database.withTenantTx(ctx, async (scope) => {
       if (!reviewed.signals.length) return [];
-      return scope.tx
+      const inserted = await scope.tx
         .insert(hazardSignals)
         .values(
           reviewed.signals.map((s) => ({
@@ -117,6 +123,24 @@ export function createHazardScanService(deps: HazardScanDeps) {
           })),
         )
         .returning();
+      // Audit: ids and counts only, never the observation text.
+      scope.events.add({
+        type: 'ai.hazard_scan.created.v1',
+        entityType: 'hazard_scan',
+        entityId: scanId,
+        entityVersion: 1,
+        data: { fileId: input.photoFileId, signals: inserted.length, actorId: scope.ctx.userId },
+      });
+      // Safety records are kept 5 years (compliance/07), counted from the scan.
+      for (const r of inserted)
+        await recordRetention(scope, {
+          recordType: 'ai.ai_hazard_signals',
+          recordId: r.id,
+          projectId,
+          category: 'whs_incident_5y',
+          anchor: r.createdAt,
+        });
+      return inserted;
     });
     return {
       runId: run.runId,
@@ -176,6 +200,19 @@ export function createHazardScanService(deps: HazardScanDeps) {
       })
       .where(eq(hazardSignals.id, signalId))
       .returning();
+    // Audit: who decided what on which signal, never the observation or the note.
+    scope.events.add({
+      type: 'ai.hazard_signal.reviewed.v1',
+      entityType: 'hazard_signal',
+      entityId: signalId,
+      entityVersion: updated!.version,
+      data: {
+        decision: input.decision,
+        category: row.category,
+        fileId: row.fileId,
+        actorId: scope.ctx.userId,
+      },
+    });
     return view(updated!);
   }
 

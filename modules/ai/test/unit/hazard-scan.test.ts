@@ -33,6 +33,22 @@ describe('reviewHazardScan', () => {
     expect(r.dropped).toBe(2);
   });
 
+  it('never keeps a name for a person', () => {
+    const r = reviewHazardScan(
+      {
+        signals: [
+          sig('ppe', 'A worker named Dave has no hard hat.'),
+          sig('ppe', 'Mr Smith is near the edge.'),
+          sig('ppe', 'The photo shows a worker near the edge.'),
+        ],
+        photoUnclear: false,
+      },
+      { note: '' },
+    );
+    expect(r.signals).toHaveLength(1);
+    expect(r.dropped).toBe(2);
+  });
+
   it('keeps PPE as what the photo suggests, never as a fact about a person', () => {
     expect(soften('One worker is not wearing a hard hat.')).toBe(
       'One worker appears not to be wearing a hard hat.',
