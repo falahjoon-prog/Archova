@@ -581,6 +581,12 @@ export const ComplianceExpiryAlertListSchema = z.object({
 });
 export type ComplianceExpiryAlertList = z.infer<typeof ComplianceExpiryAlertListSchema>;
 
+export const ComplianceFileLinkSchema = z.object({
+  "url": z.string(),
+  "expiresAt": z.string().datetime({ offset: true }),
+});
+export type ComplianceFileLink = z.infer<typeof ComplianceFileLinkSchema>;
+
 export const ComplianceGrantSchema = z.object({
   "id": z.string().regex(new RegExp("^cgr_[0-9A-Za-z]{26}$")),
   "granteeName": z.string(),
@@ -620,6 +626,7 @@ export const SharedComplianceDocumentSchema = z.object({
   "evidence": z.enum(["recorded", "sighted", "self_declared"]),
   "expiry": z.enum(["no_expiry", "current", "expiring", "expired"]),
   "sightedAt": z.string().datetime({ offset: true }).nullable(),
+  "fileCount": z.number().int().min(0).max(4),
 });
 export type SharedComplianceDocument = z.infer<typeof SharedComplianceDocumentSchema>;
 

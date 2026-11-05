@@ -7868,6 +7868,50 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SharedComplianceDocumentList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: grantId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cgr_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: documentId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' },
+        }
+      - {
+          name: position,
+          in: path,
+          required: true,
+          schema: { type: string, enum: ['1', '2', '3', '4'] },
+        }
+    get:
+      operationId: getGrantedWalletFileLink
+      tags: [workforce]
+      x-module: workforce
+      x-flag: subcontractor_wallet
+      x-rate-limit: 20
+      x-permission: workforce.wallet.read_granted
+      summary: Get a 60-second download link for one file of a shared document.
+      description: The view is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A revoked or expired grant, a type the grant does not cover, `wwcc`, an archived document and any other subcontractor's file all answer 404.
+      parameters:
+        - {
+            name: projectId,
+            in: query,
+            required: true,
+            schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ComplianceFileLink' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17986,6 +18030,7 @@ components:
           evidence,
           expiry,
           sightedAt,
+          fileCount,
         ]
       properties:
         id: { type: string, pattern: '^cdo_[0-9A-Za-z]{26}$' }
@@ -18001,6 +18046,19 @@ components:
         evidence: { type: string, enum: [recorded, sighted, self_declared] }
         expiry: { type: string, enum: [no_expiry, current, expiring, expired] }
         sightedAt: { type: [string, 'null'], format: date-time }
+        fileCount:
+          {
+            type: integer,
+            minimum: 0,
+            maximum: 4,
+            description: 'How many files back this document; fetch each by position (1 to fileCount) through the file route.',
+          }
+    ComplianceFileLink:
+      type: object
+      required: [url, expiresAt]
+      properties:
+        url: { type: string, description: 'Signed download link, valid for 60 seconds.' }
+        expiresAt: { type: string, format: date-time }
     SharedComplianceDocumentList:
       type: object
       required: [data]

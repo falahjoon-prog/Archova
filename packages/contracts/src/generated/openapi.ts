@@ -5644,6 +5644,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/documents/{documentId}/files/{position}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+                documentId: string;
+                position: "1" | "2" | "3" | "4";
+            };
+            cookie?: never;
+        };
+        /**
+         * Get a 60-second download link for one file of a shared document.
+         * @description The view is written to the subcontractor's access log first; if it can't be logged, nothing is returned. A revoked or expired grant, a type the grant does not cover, `wwcc`, an archived document and any other subcontractor's file all answer 404.
+         */
+        get: operations["getGrantedWalletFileLink"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/subcontractor-wallets/{grantId}/snapshots": {
         parameters: {
             query?: never;
@@ -12156,6 +12181,14 @@ export interface components {
             expiry: "no_expiry" | "current" | "expiring" | "expired";
             /** Format: date-time */
             sightedAt: string | null;
+            /** @description How many files back this document; fetch each by position (1 to fileCount) through the file route. */
+            fileCount: number;
+        };
+        ComplianceFileLink: {
+            /** @description Signed download link, valid for 60 seconds. */
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
         };
         SharedComplianceDocumentList: {
             data: components["schemas"]["SharedComplianceDocument"][];
@@ -22034,6 +22067,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SharedComplianceDocumentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getGrantedWalletFileLink: {
+        parameters: {
+            query: {
+                projectId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                grantId: string;
+                documentId: string;
+                position: "1" | "2" | "3" | "4";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ComplianceFileLink"];
                 };
             };
             default: components["responses"]["Problem"];
