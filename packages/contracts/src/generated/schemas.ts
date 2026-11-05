@@ -2858,7 +2858,7 @@ export const EquipmentLogSchema = z.object({
   "id": z.string().regex(new RegExp("^eql_[0-9A-Za-z]{26}$")),
   "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
   "date": z.string().date(),
-  "hours": z.string().regex(new RegExp("^\\\\d{1,2}\\\\.\\\\d{2}$")),
+  "hours": z.string().regex(new RegExp("^\\d{1,2}\\.\\d{2}$")),
   "operator": z.string().nullable(),
   "notes": z.string().nullable(),
 });
@@ -3925,7 +3925,7 @@ export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
 
 export const LogEquipmentHoursRequestSchema = z.object({
   "date": z.string().date(),
-  "hours": z.string().regex(new RegExp("^\\\\d{1,2}(\\\\.\\\\d{1,2})?$")),
+  "hours": z.string().regex(new RegExp("^\\d{1,2}(\\.\\d{1,2})?$")),
   "operator": z.string().min(1).max(200).optional(),
   "notes": z.string().min(1).max(2000).optional(),
 }).strict();
@@ -6308,7 +6308,7 @@ export const TimesheetSchema = z.object({
   "approvedAt": z.string().datetime({ offset: true }).nullable(),
   "rejectionReason": z.string().nullable(),
   "paidMinutes": z.number().int(),
-  "paidHours": z.string().regex(new RegExp("^\\\\d+\\\\.\\\\d{2}$")),
+  "paidHours": z.string().regex(new RegExp("^\\d+\\.\\d{2}$")),
   "lines": z.array(TimesheetLineSchema),
 });
 export type Timesheet = z.infer<typeof TimesheetSchema>;
