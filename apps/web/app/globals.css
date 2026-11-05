@@ -1527,6 +1527,128 @@ fieldset.worker-card > legend {
   border: 1px solid var(--c-border-divider);
   border-radius: var(--radius-sm);
 }
+/* Animation editor: stage and timeline on one side, settings on the other once there is room. */
+.induction-block--animation {
+  flex-direction: column;
+  align-items: stretch;
+}
+.anim-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.anim-editor__scenes {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding-bottom: var(--space-1);
+}
+.anim-editor__scene-tab {
+  flex: none;
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--radius-md);
+  background: var(--c-surface);
+  color: var(--c-text);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.anim-editor__scene-tab[aria-selected='true'] {
+  border-color: var(--c-action-primary);
+  color: var(--c-action-primary);
+  font-weight: 600;
+}
+.anim-editor__grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 900px) {
+  .anim-editor__grid {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+    align-items: start;
+  }
+}
+.anim-editor__stage-col,
+.anim-editor__side,
+.anim-editor__inspector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  margin: 0;
+}
+.anim-editor__inspector {
+  padding: var(--space-3);
+  border: 1px solid var(--c-border-divider);
+  border-radius: var(--radius-md);
+}
+.anim-editor__stage {
+  touch-action: none;
+  user-select: none;
+}
+.anim-editor__stage .ac-anim__el {
+  cursor: grab;
+}
+.anim-editor__transport {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.anim-editor__scrub {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+.anim-editor__scrub input {
+  width: 100%;
+}
+.anim-editor__clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--c-text-secondary);
+}
+.anim-editor__timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.anim-editor__lane {
+  display: grid;
+  grid-template-columns: minmax(80px, 30%) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-2);
+}
+.anim-editor__lane-label {
+  min-height: 44px;
+  padding: 0 var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--c-text);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.anim-editor__lane-label[aria-pressed='true'] {
+  font-weight: 600;
+  color: var(--c-action-primary);
+}
+.anim-editor__lane-track {
+  position: relative;
+  height: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--c-border-divider);
+}
+.anim-editor__lane-bar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: var(--radius-sm);
+  background: var(--c-action-primary);
+}
 .induction-option {
   display: flex;
   flex-wrap: wrap;
