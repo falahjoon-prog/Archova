@@ -409,6 +409,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
       ...defects.api.syncCommands,
       ...diary.api.syncCommands,
       ...quality.api.syncCommands,
+      ...safety.api.syncCommands,
       ...documents.api.syncCommands,
     ],
     accessState: platform.api.getProjectAccessState,

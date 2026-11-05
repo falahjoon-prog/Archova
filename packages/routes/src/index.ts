@@ -135,6 +135,7 @@ export const mobileRoutes = {
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
+  incidents: (projectId: string) => `/project/${enc(projectId)}/incidents`,
   inspections: (projectId: string) => `/project/${enc(projectId)}/inspections`,
   inspection: (projectId: string, inspectionId: string) =>
     `/project/${enc(projectId)}/inspections/${enc(inspectionId)}`,
