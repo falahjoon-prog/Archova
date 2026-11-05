@@ -3,7 +3,14 @@ import { useState } from 'react';
 import { Text } from 'react-native';
 import { Button, ListItem, Screen, fontWeight, useTheme } from '@archova/ui-native';
 import { StateMessage, useCurrentOrg, useDeviceData, useLocalQuery } from '../../../shared';
-import { attentionReason, commandLabel } from '../../../lib/sync/attention';
+import { uuidv7 } from '@archova/domain';
+import {
+  attentionReason,
+  canReapply,
+  commandLabel,
+  formatBytes,
+  reapplyEntries,
+} from '../../../lib/sync/attention';
 import { useProjects } from '../hooks';
 
 export function OfflineScreen() {
@@ -26,6 +33,7 @@ export function OfflineScreen() {
               kept: !excluded.has(id),
               unsynced: await data.offline.unsyncedCount(id),
               records: await data.offline.recordCount(id),
+              bytes: await data.offline.storageBytes(id),
             })),
           );
         }
@@ -91,6 +99,17 @@ export function OfflineScreen() {
           testID={`attention-${e.mutationId}`}
         />
       ))}
+      {(attention.value ?? []).some(canReapply) ? (
+        <Button
+          label="Try these changes again"
+          onPress={async () => {
+            await reapplyEntries(data.store, attention.value ?? [], uuidv7);
+            attention.refresh();
+            data.requestSync('manual');
+          }}
+          testID="reapply-attention"
+        />
+      ) : null}
       {(attention.value ?? []).length > 0 ? (
         <Button
           label="Discard these changes"
@@ -113,7 +132,7 @@ export function OfflineScreen() {
           subtitle={
             r.kept
               ? [
-                  `${r.records} record${r.records === 1 ? '' : 's'} offline`,
+                  `${r.records} record${r.records === 1 ? '' : 's'} · ${formatBytes(r.bytes)}`,
                   r.unsynced > 0 ? `${r.unsynced} waiting to sync` : null,
                 ]
                   .filter(Boolean)

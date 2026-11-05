@@ -49,6 +49,19 @@ export class OfflineProjects {
     return row?.n ?? 0;
   }
 
+  /** Bytes the device holds for a project: its synced records plus files still waiting to upload. */
+  async storageBytes(projectId: string): Promise<number> {
+    const rec = await this.db.getFirstAsync<{ n: number | null }>(
+      'SELECT SUM(length(CAST(data AS BLOB))) AS n FROM records WHERE project_id = ?',
+      [projectId],
+    );
+    const files = await this.db.getFirstAsync<{ n: number | null }>(
+      'SELECT SUM(size_bytes) AS n FROM file_queue WHERE project_id = ?',
+      [projectId],
+    );
+    return (rec?.n ?? 0) + (files?.n ?? 0);
+  }
+
   /** Stop keeping a project offline and delete its local data. Refused while it has unsynced work. */
   async remove(projectId: string): Promise<RemoveResult> {
     const unsynced = await this.unsyncedCount(projectId);
