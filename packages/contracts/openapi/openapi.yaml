@@ -8209,6 +8209,218 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCostCodes
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Cost codes for the project, in code order.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCodeList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Add a cost code. A parent makes it a child code.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCostCodeRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCode' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CostCodeId'
+    patch:
+      operationId: updateCostCode
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Rename a cost code or archive it. An archived code with budget lines stays on the budget.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCostCodeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CostCode' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: getBudget
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: The project budget with its lines and totals, or an empty draft when none exists. Margin lines are left out without the margin permission.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBudget
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Start the project budget as a draft.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: addBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Add a line to a draft budget, one per cost code.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddBudgetLineRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetLineId'
+    patch:
+      operationId: updateBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Change a draft line. Once the budget is locked use an adjustment.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateBudgetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Remove a line from a draft budget.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '204':
+          description: No content
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lock:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: lockBudget
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Freeze the original budget. Changes after this are adjustments with a reason.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Budget' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/BudgetLineId'
+    get:
+      operationId: listBudgetAdjustments
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.read
+      summary: Revision history for one line, oldest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetAdjustmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: adjustBudgetLine
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.budget.manage
+      summary: Raise or lower a locked line by a signed amount, with the reason. Append-only.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdjustBudgetLineRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BudgetLine' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/variations/{variationId}:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -8891,6 +9103,16 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+    CostCodeId:
+      name: costCodeId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    BudgetLineId:
+      name: lineId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
     VariationId:
       name: variationId
       in: path
@@ -14703,6 +14925,156 @@ components:
               code: { type: string, minLength: 1, maxLength: 50 }
               description: { type: string, minLength: 1, maxLength: 300 }
               value: { $ref: '#/components/schemas/FinancialsMoney' }
+    CostCode:
+      type: object
+      required: [id, code, description, parentId, archived]
+      properties:
+        id: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        description: { type: string }
+        parentId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        archived: { type: boolean }
+    CostCodeList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CostCode' }
+    CreateCostCodeRequest:
+      type: object
+      additionalProperties: false
+      required: [code, description]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 30 }
+        description: { type: string, minLength: 1, maxLength: 200 }
+        parentId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+    UpdateCostCodeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        description: { type: string, minLength: 1, maxLength: 200 }
+        archived: { type: boolean }
+    BudgetLine:
+      type: object
+      required:
+        [
+          id,
+          costCodeId,
+          code,
+          codeDescription,
+          description,
+          original,
+          approvedChanges,
+          revised,
+          committed,
+          actual,
+          forecastToComplete,
+          isMargin,
+        ]
+      properties:
+        id: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        code: { type: string }
+        codeDescription: { type: string }
+        description: { type: string }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        actual: { $ref: '#/components/schemas/FinancialsMoney' }
+        forecastToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
+        isMargin: { type: boolean }
+    BudgetTotals:
+      type: object
+      required: [original, approvedChanges, revised, committed, actual, forecastToComplete]
+      properties:
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        approvedChanges:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        revised:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        committed: { $ref: '#/components/schemas/FinancialsMoney' }
+        actual: { $ref: '#/components/schemas/FinancialsMoney' }
+        forecastToComplete: { $ref: '#/components/schemas/FinancialsMoney' }
+    Budget:
+      type: object
+      required: [id, status, lockedAt, lines, totals]
+      properties:
+        id: { type: [string, 'null'], pattern: '^bud_[0-9A-Za-z]{26}$' }
+        status: { type: string, enum: [draft, locked] }
+        lockedAt: { type: [string, 'null'], format: date-time }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetLine' }
+        totals:
+          $ref: '#/components/schemas/BudgetTotals'
+    AddBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [costCodeId, original]
+      properties:
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        description: { type: string, maxLength: 300 }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        isMargin: { type: boolean }
+    UpdateBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        description: { type: string, maxLength: 300 }
+        original: { $ref: '#/components/schemas/FinancialsMoney' }
+        isMargin: { type: boolean }
+    AdjustBudgetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [amount, reason]
+      properties:
+        amount:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    BudgetAdjustment:
+      type: object
+      required: [id, amount, reason, createdAt]
+      properties:
+        id: { type: string, pattern: '^bad_[0-9A-Za-z]{26}$' }
+        amount:
+          {
+            type: string,
+            pattern: '^-?\d{1,16}(\.\d{1,2})?$',
+            description: Signed decimal AUD ex GST.,
+          }
+        reason: { type: string }
+        createdAt: { type: string, format: date-time }
+    BudgetAdjustmentList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BudgetAdjustment' }
     VariationStatus:
       type: string
       enum: [draft, submitted, approved, rejected, withdrawn]
