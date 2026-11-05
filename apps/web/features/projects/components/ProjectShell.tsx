@@ -9,6 +9,7 @@ import {
   ObservationsIcon,
   InspectionsIcon,
   SwmsIcon,
+  LateSubmissionsIcon,
   DefectsIcon,
   MeetingsIcon,
   ContractsIcon,
@@ -93,6 +94,11 @@ export function projectToolGroups(
     perms.orgRole === 'owner' ||
     perms.orgRole === 'admin' ||
     atLeast(perms.toolLevels[tool], 'read');
+  const canAdmin = (tool: Tool) =>
+    !perms ||
+    perms.orgRole === 'owner' ||
+    perms.orgRole === 'admin' ||
+    atLeast(perms.toolLevels[tool], 'admin');
   const core: Array<ProjectNavItem | false> = [
     canRead('documents') && {
       href: webRoutes.documents(orgSlug, projectId),
@@ -174,6 +180,11 @@ export function projectToolGroups(
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.lateSubmissions(orgSlug, projectId),
+      label: 'Late submissions',
+      icon: LateSubmissionsIcon,
     },
   ];
   return [

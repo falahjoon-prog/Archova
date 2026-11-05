@@ -81,6 +81,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/inspections${inspectionId ? `?id=${enc(inspectionId)}` : ''}`,
   inspectionTemplates: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/inspections/templates`,
+  lateSubmissions: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/late-submissions`,
   observations: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/observations`,
   attendance: (orgSlug: string, projectId: string) => `${p(orgSlug, projectId)}/attendance`,
   attendanceWorkers: (orgSlug: string, projectId: string) =>
