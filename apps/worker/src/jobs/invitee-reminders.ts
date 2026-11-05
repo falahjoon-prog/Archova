@@ -13,6 +13,7 @@ import { jobContext } from '../subscribers';
 import type { TenantJob } from '../scheduler';
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const oneLine = (v: string) => v.replace(/[\r\n]+/g, ' ').trim();
 const escapeHtml = (s: string) =>
   s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -95,15 +96,17 @@ export function inviteeReminders(sender: EmailSender, appBaseUrl: string): Tenan
         const when = localDateOf(c.dueAt, r.zone);
         const label = r.p.stage === 'one_day' ? 'closes tomorrow' : 'closes in two days';
         const url = `${base}/q/${r.token}`;
-        const subject = `Reminder: ${work.orgName} is waiting on your quote for ${c.name}`;
+        const orgName = oneLine(work.orgName);
+        const pkgName = oneLine(c.name);
+        const subject = `Reminder: ${orgName} is waiting on your quote for ${pkgName}`;
         const text = [
-          `${work.orgName} invited ${r.companyName} to quote on ${r.projectName}: ${c.name} (${c.trade}).`,
+          `${orgName} invited ${oneLine(r.companyName)} to quote on ${oneLine(r.projectName)}: ${pkgName} (${oneLine(c.trade)}).`,
           `It ${label} (due ${when}) and we haven't heard from you yet.`,
           '',
           `See the scope and tell them if you will quote: ${url}`,
           `This link is for ${r.email} and works until ${r.expiresAt.toISOString().slice(0, 10)}. You don't need an account. It replaces the link in the earlier email.`,
         ].join('\n');
-        const html = `<p>${escapeHtml(work.orgName)} invited ${escapeHtml(r.companyName)} to quote on ${escapeHtml(r.projectName)}: ${escapeHtml(c.name)} (${escapeHtml(c.trade)}).</p><p>It ${label} (due ${escapeHtml(when)}) and we haven't heard from you yet.</p><p><a href="${escapeHtml(url)}">See the scope and tell them if you will quote</a></p><p>This link is for ${escapeHtml(r.email)} and works until ${r.expiresAt.toISOString().slice(0, 10)}. You don't need an account. It replaces the link in the earlier email.</p>`;
+        const html = `<p>${escapeHtml(orgName)} invited ${escapeHtml(oneLine(r.companyName))} to quote on ${escapeHtml(oneLine(r.projectName))}: ${escapeHtml(pkgName)} (${escapeHtml(oneLine(c.trade))}).</p><p>It ${label} (due ${escapeHtml(when)}) and we haven't heard from you yet.</p><p><a href="${escapeHtml(url)}">See the scope and tell them if you will quote</a></p><p>This link is for ${escapeHtml(r.email)} and works until ${r.expiresAt.toISOString().slice(0, 10)}. You don't need an account. It replaces the link in the earlier email.</p>`;
         try {
           await sender.send({ to: r.email, subject, text, html });
           sent += 1;

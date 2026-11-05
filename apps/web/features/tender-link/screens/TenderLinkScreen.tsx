@@ -68,6 +68,10 @@ export function TenderLinkScreen({ token }: { token: string }) {
               {access.package.number} {access.package.name}
             </h1>
           </header>
+          <p className="u-caption u-m-0">
+            This link is personal to {access.invite.email ?? 'your company'}. Please don&apos;t
+            forward it.
+          </p>
           <section className="ac-card" aria-label="Details">
             <DescriptionList
               items={[

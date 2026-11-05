@@ -1,7 +1,6 @@
 import { decodeId, encodeId, type IdKind } from '@archova/domain';
 import {
   AppError,
-  ACCESS_LINK_COOKIE,
   ACCESS_LINK_SESSION_MS,
   defineRoutes,
   etag,
@@ -22,7 +21,11 @@ import type {
 } from '../application/tender';
 import type { MeasurementFields, TakeoffService } from '../application/takeoff';
 import type { EstimateService, LineInput as EstimateLineInput } from '../application/estimate';
-import type { IssueResult, TenderLinkService } from '../application/tender-links';
+import {
+  TENDER_LINK_COOKIE,
+  type IssueResult,
+  type TenderLinkService,
+} from '../application/tender-links';
 import type { BiddersService } from '../application/bidders';
 import type { BoardService } from '../application/board';
 import type { LibraryService } from '../application/library';
@@ -204,6 +207,9 @@ export interface TenderMail {
   logger?: Pick<Logger, 'warn'>;
 }
 
+/** Names and company names come from user input: one line each, so none can add a header or a line to the mail. */
+const oneLine = (v: string) => v.replace(/[\r\n]+/g, ' ').trim();
+
 const LINK_HEADERS = {
   'referrer-policy': 'no-referrer',
   'x-robots-tag': 'noindex, nofollow',
@@ -231,7 +237,7 @@ export function estimatingRoutes(
     requestId: input.requestId,
   });
   const linkCookie = (input: { cookies: Readonly<Record<string, string | undefined>> }) =>
-    input.cookies[ACCESS_LINK_COOKIE];
+    input.cookies[TENDER_LINK_COOKIE];
 
   /**
    * Emails each invite link after the transaction commits, then records when it went out. A failed email leaves
@@ -254,16 +260,20 @@ export function estimatingRoutes(
       const names = await tenderLinks.names(s, projectId);
       return { p: await svc.get(s, projectId, packageId), ...names };
     });
-    const sentBy = await mail.senderName(tenant.userId);
+    const sentBy = oneLine(await mail.senderName(tenant.userId));
+    const org = oneLine(info.org);
+    const project = oneLine(info.project);
+    const pkgName = oneLine(info.p.name);
+    const trade = oneLine(info.p.trade);
     const delivered: string[] = [];
     for (const l of result.issued) {
       const due = info.p.dueAt
         ? `Quotes are due ${info.p.dueAt.toISOString().slice(0, 10)}.`
         : null;
       const lines = [
-        `${info.org} invited ${l.companyName} to quote on ${info.project}.`,
+        `${org} invited ${oneLine(l.companyName)} to quote on ${project}.`,
         `Sent by ${sentBy}.`,
-        `${info.p.name} (${info.p.trade})`,
+        `${pkgName} (${trade})`,
         ...(due ? [due] : []),
         '',
         `See the scope and tell them if you will quote: ${mail.baseUrl}/q/${l.token}`,
@@ -271,7 +281,7 @@ export function estimatingRoutes(
       ];
       try {
         await mail.messages.email(l.email, {
-          subject: `${info.org}: invitation to quote ${info.p.name}`,
+          subject: `${org}: invitation to quote ${pkgName}`,
           text: lines.join('\n'),
         });
         delivered.push(l.inviteId);
@@ -726,7 +736,7 @@ export function estimatingRoutes(
         headers: LINK_HEADERS,
         setCookies: [
           {
-            name: ACCESS_LINK_COOKIE,
+            name: TENDER_LINK_COOKIE,
             value: r.cookie,
             httpOnly: true,
             maxAgeSeconds: Math.floor(ACCESS_LINK_SESSION_MS / 1000),
