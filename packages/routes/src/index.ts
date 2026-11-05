@@ -14,6 +14,7 @@ export const webRoutes = {
   projects: (orgSlug: string) => `/${enc(orgSlug)}/projects`,
   inbox: (orgSlug: string) => `/${enc(orgSlug)}/inbox`,
   bidBoard: (orgSlug: string) => `/${enc(orgSlug)}/bid-board`,
+  prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,
   wallet: (orgSlug: string) => `/${enc(orgSlug)}/settings/wallet`,
