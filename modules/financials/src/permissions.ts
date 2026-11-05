@@ -19,4 +19,9 @@ export const FINANCIALS_PERMISSIONS: readonly PermissionDefinition[] = [
   { key: 'financials.forecast.read', scope: 'project', tool: 'payment_claims', level: 'admin' },
   { key: 'financials.forecast.manage', scope: 'project', tool: 'payment_claims', level: 'admin' },
   { key: 'financials.variations.decide', scope: 'project', tool: 'payment_claims', level: 'admin' },
+  // Budgets are the builder's cost position (margin included), so the budget tool is admin-only by default and the
+  // client and subcontractor templates have none (permission templates).
+  { key: 'financials.budget.read', scope: 'project', tool: 'budget', level: 'standard' },
+  { key: 'financials.budget.manage', scope: 'project', tool: 'budget', level: 'admin' },
+  { key: 'financials.budget.view_margin', scope: 'project', tool: 'budget', level: 'admin' },
 ];

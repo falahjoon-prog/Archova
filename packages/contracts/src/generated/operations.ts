@@ -2090,6 +2090,60 @@ export const CreateVariationParams = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
 });
 export const CreateVariationBody = s.CreateVariationRequestSchema;
+export const ListCostCodesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCostCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateCostCodeBody = s.CreateCostCodeRequestSchema;
+export const UpdateCostCodeParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")),
+});
+export const UpdateCostCodeBody = s.UpdateCostCodeRequestSchema;
+export const GetBudgetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateBudgetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AddBudgetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const AddBudgetLineBody = s.AddBudgetLineRequestSchema;
+export const UpdateBudgetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const UpdateBudgetLineBody = s.UpdateBudgetLineRequestSchema;
+export const DeleteBudgetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const LockBudgetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListBudgetAdjustmentsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const AdjustBudgetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^bln_[0-9A-Za-z]{26}$")),
+});
+export const AdjustBudgetLineBody = s.AdjustBudgetLineRequestSchema;
 export const GetVariationParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6865,6 +6919,138 @@ export const operations = {
     params: CreateVariationParams,
     query: null,
     body: CreateVariationBody,
+  },
+  listCostCodes: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListCostCodesParams,
+    query: null,
+    body: null,
+  },
+  createCostCode: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateCostCodeParams,
+    query: null,
+    body: CreateCostCodeBody,
+  },
+  updateCostCode: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-codes/{costCodeId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateCostCodeParams,
+    query: null,
+    body: UpdateCostCodeBody,
+  },
+  getBudget: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: GetBudgetParams,
+    query: null,
+    body: null,
+  },
+  createBudget: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: null,
+    params: CreateBudgetParams,
+    query: null,
+    body: null,
+  },
+  addBudgetLine: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AddBudgetLineParams,
+    query: null,
+    body: AddBudgetLineBody,
+  },
+  updateBudgetLine: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateBudgetLineParams,
+    query: null,
+    body: UpdateBudgetLineBody,
+  },
+  deleteBudgetLine: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteBudgetLineParams,
+    query: null,
+    body: null,
+  },
+  lockBudget: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lock',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: null,
+    params: LockBudgetParams,
+    query: null,
+    body: null,
+  },
+  listBudgetAdjustments: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.read",
+    internal: false,
+    contentType: null,
+    params: ListBudgetAdjustmentsParams,
+    query: null,
+    body: null,
+  },
+  adjustBudgetLine: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/budget/lines/{lineId}/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.budget.manage",
+    internal: false,
+    contentType: "application/json",
+    params: AdjustBudgetLineParams,
+    query: null,
+    body: AdjustBudgetLineBody,
   },
   getVariation: {
     method: 'GET',
