@@ -54,6 +54,7 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     },
     api: {
       ledgerSource: service.ledgerSource,
+      sopaRiskSignals: service.sopaRiskSignals,
       recordPayment: service.recordPayment,
       createContract: service.createContract,
       contractForQuote: service.contractForQuote,

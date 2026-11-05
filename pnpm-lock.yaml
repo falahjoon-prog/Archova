@@ -1648,15 +1648,24 @@ importers:
       '@archova/mod-defects':
         specifier: workspace:*
         version: link:../defects
+      '@archova/mod-financials':
+        specifier: workspace:*
+        version: link:../financials
       '@archova/mod-platform':
         specifier: workspace:*
         version: link:../platform
       '@archova/mod-rfis':
         specifier: workspace:*
         version: link:../rfis
+      '@archova/mod-scheduling':
+        specifier: workspace:*
+        version: link:../scheduling
       '@archova/mod-submittals':
         specifier: workspace:*
         version: link:../submittals
+      '@archova/mod-workforce':
+        specifier: workspace:*
+        version: link:../workforce
       '@archova/time':
         specifier: workspace:*
         version: link:../../packages/time
@@ -1795,6 +1804,9 @@ importers:
       '@archova/kernel':
         specifier: workspace:*
         version: link:../../packages/kernel
+      '@archova/mod-access':
+        specifier: workspace:*
+        version: link:../access
       '@archova/mod-diary':
         specifier: workspace:*
         version: link:../diary

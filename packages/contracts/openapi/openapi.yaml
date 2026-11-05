@@ -200,6 +200,137 @@ paths:
       responses:
         '302': { description: Redirect to the client with an authorisation code }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/oauth/consent:
+    get:
+      operationId: getOauthConsent
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: What the consent page shows for a partner app. Needs a signed-in web session.
+      parameters:
+        - { name: client_id, in: query, required: true, schema: { type: string, maxLength: 100 } }
+        - {
+            name: redirect_uri,
+            in: query,
+            required: true,
+            schema: { type: string, maxLength: 2000 },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthConsent' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/oauth-apps:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listOauthApps
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Partner apps this organisation has registered. Owners and admins only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthAppList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOauthApp
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Register a private partner app for this organisation (integrations/06 §4). Needs a recent sign-in. The client
+        secret is in the response once. A private app can be installed only into this organisation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOauthAppRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthAppCreated' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/oauth-apps/{clientId}/rotate-secret:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: clientId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^app_[0-9a-f]{24}$' }
+    post:
+      operationId: rotateOauthAppSecret
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Replace an app's client secret. The old one stops working at once. Needs a recent sign-in.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OauthAppSecret' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/app-installs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listAppInstalls
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Apps installed in this organisation, with their approved scopes and last use. Owners and admins only.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AppInstallList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: installApp
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: >-
+        Approve a partner app for this organisation and the scopes it asked for. Needs a recent sign-in. Returns the
+        address to send the browser to, carrying a single-use 60-second code. Other owners and admins are emailed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InstallAppRequest' }
+      responses:
+        '201':
+          description: Installed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/InstallAppResponse' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/app-installs/{appInstallId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - name: appInstallId
+        in: path
+        required: true
+        schema: { type: string, pattern: '^ain_[0-9A-Za-z]{26}$' }
+    delete:
+      operationId: revokeAppInstall
+      tags: [oauth]
+      x-module: identity
+      x-internal: true
+      summary: Remove an app. Every token it holds stops working on its next request.
+      responses:
+        '204':
+          description: Removed
+        default: { $ref: '#/components/responses/Problem' }
   /v1/oauth/token:
     post:
       operationId: oauthToken
@@ -3879,6 +4010,39 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Portfolio' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/risk/late-sopa-claims:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getLateSopaClaimRisk
+      tags: [reporting]
+      x-module: platform
+      x-permission: reporting.portfolio.read
+      summary: Projects at risk of a late SOPA payment schedule, with the schedule and insurance signals behind each.
+      description: |
+        Nova project risk. Lists the projects the caller can see that have a valid subcontract claim still waiting for a
+        payment schedule that is due within 5 days or already past due. Each project is ranked high, medium or low:
+        both aggravators (an expired insurance, or one expiring on or before the payment due date, for a claiming
+        subcontractor; and programme tasks past their planned finish) make it high, one makes it medium, none makes it
+        low, raised to medium when a schedule is already overdue. Every figure comes from the tool modules, each read
+        as the caller: projects where the caller cannot read claims are counted in `unreadableProjects` and left out;
+        a subcontractor's insurance is read only through a live compliance wallet grant, otherwise it is `not_visible`;
+        a programme the caller cannot read is listed under `unknown`. All sentences come from fixed rules, not a model.
+        Staff only.
+      parameters:
+        - {
+            name: includeClosed,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: The projects at risk
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LateSopaClaimRisk' }
+
   /v1/orgs/{orgId}/readiness-pack:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -13159,6 +13323,93 @@ components:
         variationsOverdue: { type: integer }
         incidentsOpen: { type: integer }
         incidentsOverdue: { type: integer }
+    LateSopaClaimRisk:
+      type: object
+      required: [projects, unreadableProjects, truncated]
+      properties:
+        projects:
+          type: array
+          items: { $ref: '#/components/schemas/LateSopaClaimRiskProject' }
+        unreadableProjects:
+          type: integer
+          description: 'Projects left out because the caller cannot read their claims.'
+        truncated: { type: boolean }
+    LateSopaClaimRiskProject:
+      type: object
+      required:
+        [
+          projectId,
+          projectName,
+          number,
+          level,
+          claims,
+          insuranceProblem,
+          scheduleSlip,
+          unknown,
+          slip,
+        ]
+      properties:
+        projectId: { type: string }
+        projectName: { type: string }
+        number: { type: [string, 'null'] }
+        level: { type: string, enum: [high, medium, low] }
+        insuranceProblem: { type: boolean }
+        scheduleSlip: { type: boolean }
+        unknown:
+          type: array
+          items: { type: string }
+          description: 'Signals Nova could not read, so a gap is never shown as no risk.'
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/LateSopaClaimRiskClaim' }
+        slip:
+          type: object
+          required: [lateCount, worst]
+          properties:
+            lateCount: { type: integer }
+            worst:
+              type: array
+              items:
+                type: object
+                required: [id, wbs, name, finish, daysLate]
+                properties:
+                  id: { type: string }
+                  wbs: { type: string }
+                  name: { type: string }
+                  finish: { type: string, format: date }
+                  daysLate: { type: integer }
+    LateSopaClaimRiskClaim:
+      type: object
+      required:
+        [
+          claimId,
+          claimNumber,
+          contractNumber,
+          contractTitle,
+          subbieName,
+          claimedTotal,
+          scheduleDueOn,
+          paymentDueOn,
+          deadline,
+          daysToScheduleDue,
+          insurance,
+          summary,
+        ]
+      properties:
+        claimId: { type: string }
+        claimNumber: { type: integer }
+        contractNumber: { type: integer }
+        contractTitle: { type: string }
+        subbieName: { type: [string, 'null'] }
+        claimedTotal: { type: string }
+        scheduleDueOn: { type: string, format: date }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        deadline: { type: string, enum: [overdue, due_soon] }
+        daysToScheduleDue: { type: integer }
+        insurance:
+          type: string
+          enum: [expired, expires_before_payment_due, current, none_on_file, not_visible]
+        summary: { type: string }
     Portfolio:
       type: object
       required: [totals, projects, truncated]
@@ -14528,6 +14779,7 @@ components:
         redirect_uri: { type: string }
         code_verifier: { type: string, minLength: 43, maxLength: 128 }
         refresh_token: { type: string }
+        client_secret: { type: string, description: Required for partner apps. }
     TokenResponse:
       type: object
       required: [access_token, token_type, expires_in, refresh_token]
@@ -14536,6 +14788,12 @@ components:
         token_type: { type: string, enum: [Bearer] }
         expires_in: { type: integer }
         refresh_token: { type: string }
+        scope:
+          {
+            type: string,
+            description: Partner apps only. The scopes approved,
+            separated by spaces.,
+          }
     RevokeRequest:
       type: object
       required: [token, client_id]
@@ -19660,6 +19918,88 @@ components:
         updatedAt: { type: string, format: date-time }
         finishedAt: { type: [string, 'null'], format: date-time }
         version: { type: integer }
+    OauthConsent:
+      type: object
+      required: [clientId, name, description, ownerOrgId, scopes]
+      properties:
+        clientId: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        ownerOrgId:
+          { type: string, description: The only organisation this app can be installed into. }
+        scopes: { type: array, items: { type: string } }
+    OauthApp:
+      type: object
+      required: [clientId, name, description, redirectUris, scopes, disabled]
+      properties:
+        clientId: { type: string }
+        name: { type: string }
+        description: { type: [string, 'null'] }
+        redirectUris: { type: array, items: { type: string } }
+        scopes: { type: array, items: { type: string } }
+        disabled: { type: boolean }
+    OauthAppList:
+      type: object
+      required: [data, availableScopes]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/OauthApp' } }
+        availableScopes: { type: array, items: { type: string } }
+    CreateOauthAppRequest:
+      type: object
+      required: [name, redirectUris, scopes]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 80 }
+        description: { type: string, maxLength: 500 }
+        redirectUris:
+          type: array
+          minItems: 1
+          maxItems: 5
+          items: { type: string, maxLength: 2000 }
+        scopes: { type: array, minItems: 1, items: { type: string } }
+    OauthAppCreated:
+      allOf:
+        - $ref: '#/components/schemas/OauthApp'
+        - type: object
+          required: [clientSecret]
+          properties:
+            clientSecret: { type: string, description: Shown once. }
+    OauthAppSecret:
+      type: object
+      required: [clientId, clientSecret]
+      properties:
+        clientId: { type: string }
+        clientSecret: { type: string, description: Shown once. }
+    InstallAppRequest:
+      type: object
+      required: [clientId, redirectUri, codeChallenge, state, scopes]
+      properties:
+        clientId: { type: string, maxLength: 100 }
+        redirectUri: { type: string, maxLength: 2000 }
+        codeChallenge: { type: string, minLength: 43, maxLength: 128 }
+        state: { type: string, minLength: 1, maxLength: 512 }
+        scopes: { type: array, minItems: 1, items: { type: string } }
+    InstallAppResponse:
+      type: object
+      required: [redirectUrl]
+      properties:
+        redirectUrl: { type: string }
+    AppInstall:
+      type: object
+      required: [id, clientId, appName, scopes, installedBy, createdAt, lastUsedAt, revokedAt]
+      properties:
+        id: { type: string }
+        clientId: { type: string }
+        appName: { type: string }
+        scopes: { type: array, items: { type: string } }
+        installedBy: { type: string }
+        createdAt: { type: string, format: date-time }
+        lastUsedAt: { type: [string, 'null'], format: date-time }
+        revokedAt: { type: [string, 'null'], format: date-time }
+    AppInstallList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/AppInstall' } }
     ApiToken:
       type: object
       required: [id, userId, name, prefix, scopes, expiresAt, lastUsedAt, revokedAt, createdAt]
