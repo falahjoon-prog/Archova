@@ -40,6 +40,18 @@ export function useTemplates() {
   return useQuery({ queryKey: [...key(orgId), 'templates'], queryFn: () => p.templates() });
 }
 
+export function usePrequalSettings() {
+  const { orgId } = useCurrentOrg();
+  const p = useApi();
+  const qc = useQueryClient();
+  const query = useQuery({ queryKey: [...key(orgId), 'settings'], queryFn: () => p.settings() });
+  const update = useMutation({
+    mutationFn: (requireForTenders: boolean) => p.updateSettings({ requireForTenders }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: [...key(orgId), 'settings'] }),
+  });
+  return { query, update };
+}
+
 export function useCompanies() {
   const { orgId } = useCurrentOrg();
   const p = useApi();

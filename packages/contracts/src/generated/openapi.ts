@@ -5564,6 +5564,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/prequalification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether tender invites require a company to be prequalified. */
+        get: operations["getPrequalSettings"];
+        /** Turn the tender invite requirement on or off. */
+        put: operations["updatePrequalSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/prequalification-register": {
         parameters: {
             query?: never;
@@ -10232,6 +10252,8 @@ export interface components {
         };
         InvitePackageRequest: {
             companyIds: components["schemas"]["CompanyRef"][];
+            /** @description Invite companies that are not prequalified anyway. Needs the right to decide prequalifications. The reason is recorded. */
+            overrideReason?: string;
         };
         SetAllowancesRequest: {
             allowances: {
@@ -12171,6 +12193,10 @@ export interface components {
         };
         /** @enum {string} */
         ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "other";
+        PrequalSettings: {
+            /** @description When on, a tender invite refuses any company that is not currently prequalified (an approved form still in date), unless a person with decision rights overrides it with a reason. */
+            requireForTenders: boolean;
+        };
         PrequalQuestion: {
             id: string;
             section: string;
@@ -22313,6 +22339,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Prequalification"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getPrequalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrequalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrequalSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalSettings"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -46,6 +46,21 @@ export function createPrequalApi(orgId: string) {
         }),
       );
     },
+    async settings(): Promise<{ requireForTenders: boolean }> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/prequalification-settings', {
+          params: { path: { orgId } },
+        }),
+      );
+    },
+    async updateSettings(body: { requireForTenders: boolean }) {
+      return unwrap(
+        await api.PUT('/v1/orgs/{orgId}/prequalification-settings', {
+          params: { path: { orgId } },
+          body,
+        }),
+      );
+    },
     async register(f: { state?: S['PrequalQualification']; trade?: string }) {
       return unwrap(
         await api.GET('/v1/orgs/{orgId}/prequalification-register', {

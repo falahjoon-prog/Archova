@@ -53,3 +53,10 @@ export const prequalifications = preconSchema.table('prequalifications', {
   updatedBy: uuid('updated_by'),
   version: integer('version').notNull().default(1),
 });
+
+export const settings = preconSchema.table('settings', {
+  orgId: uuid('org_id').primaryKey(),
+  requireForTenders: boolean('require_for_tenders').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});

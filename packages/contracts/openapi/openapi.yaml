@@ -7755,6 +7755,42 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Prequalification' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalification-settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPrequalSettings
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: 'Whether tender invites require a company to be prequalified.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updatePrequalSettings
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: 'Turn the tender invite requirement on or off.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrequalSettings' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalSettings' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/prequalification-register:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -14891,6 +14927,11 @@ components:
           minItems: 1
           maxItems: 50
           items: { $ref: '#/components/schemas/CompanyRef' }
+        overrideReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: 'Invite companies that are not prequalified anyway. Needs the right to decide prequalifications. The reason is recorded.'
     SetAllowancesRequest:
       type: object
       additionalProperties: false
@@ -18077,6 +18118,14 @@ components:
           abn,
           other,
         ]
+    PrequalSettings:
+      type: object
+      additionalProperties: false
+      required: [requireForTenders]
+      properties:
+        requireForTenders:
+          type: boolean
+          description: 'When on, a tender invite refuses any company that is not currently prequalified (an approved form still in date), unless a person with decision rights overrides it with a reason.'
     PrequalQuestion:
       type: object
       required: [id, section, prompt, type, options, required, expect, points, critical]

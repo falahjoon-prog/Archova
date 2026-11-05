@@ -262,7 +262,12 @@ export interface QuotesSource {
     input: { name: string; trade: string; dueAt: string },
   ): Promise<TenderPackage>;
   addScopeLines(projectId: string, packageId: string, lines: ScopeLine[]): Promise<TenderPackage>;
-  invite(projectId: string, packageId: string, companyIds: string[]): Promise<TenderPackage>;
+  invite(
+    projectId: string,
+    packageId: string,
+    companyIds: string[],
+    overrideReason?: string,
+  ): Promise<TenderPackage>;
   /** Send a draft out to tender, or close, reopen or cancel it. */
   transition(projectId: string, packageId: string, action: PackageAction): Promise<TenderPackage>;
   listQuotes(projectId: string, packageId: string): Promise<Quote[]>;
@@ -428,7 +433,12 @@ export const quotesSource: QuotesSource & {
     );
   },
 
-  async invite(projectId: string, packageId: string, companyIds: string[]): Promise<TenderPackage> {
+  async invite(
+    projectId: string,
+    packageId: string,
+    companyIds: string[],
+    _overrideReason?: string,
+  ): Promise<TenderPackage> {
     const pkg = findPackage(projectId, packageId);
     if (!pkg.scope.length)
       problem(422, 'package.no_scope', 'Add scope lines before inviting subcontractors.');
