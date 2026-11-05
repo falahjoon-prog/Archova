@@ -1,4 +1,4 @@
--- Composed from modules/ai/db/migrations/20261105180000_ai_ncc_provisions.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/ai/db/migrations/20261105210000_ai_ncc_provisions.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Ask Nova NCC references: the table of National Construction Code provisions Nova may point to. A reference
 -- comes only from here, never from the model's memory (compliance/08 §1.2): clause numbers change between
 -- editions, and a wrong one in a building answer is a real risk. Grace enters a provision and checks it against the
