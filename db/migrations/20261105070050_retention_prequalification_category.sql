@@ -1,4 +1,4 @@
--- Composed from packages/kernel/db/migrations/20261105070000_retention_prequalification_category.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from packages/kernel/db/migrations/20261105070050_retention_prequalification_category.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- Retention category for subcontractor prequalification forms and the frozen question sets they were answered against:
 -- 7 years after the decision or expiry, whichever is later, so a company's compliance history stays available.
 alter table shared.retention_ledger drop constraint retention_ledger_category_check;

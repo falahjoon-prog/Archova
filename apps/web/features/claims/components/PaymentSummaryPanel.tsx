@@ -15,6 +15,7 @@ import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import type { ContractPaymentSummary } from '../data/api';
 import { usePaymentSummary } from '../hooks/useClaims';
 import { aud } from '../lib/money';
+import { RetentionReleasePanel } from './RetentionReleasePanel';
 import { TrustPanel } from './TrustPanel';
 
 type Row = ContractPaymentSummary['claims'][number];
@@ -105,6 +106,7 @@ export function PaymentSummaryPanel({
           />
         }
       />
+      <RetentionReleasePanel contractId={contractId} canManage={canManageTrust} />
       <TrustPanel contractId={contractId} trust={s.trust} canManage={canManageTrust} />
     </section>
   );

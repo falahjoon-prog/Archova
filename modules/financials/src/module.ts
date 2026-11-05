@@ -4,6 +4,7 @@ import { financialsRoutes } from './api/routes';
 import { createBudgetService } from './application/budget';
 import { createForecastService } from './application/forecast';
 import { createFinancialsService, type FinancialsDeps } from './application/financials';
+import { createRetentionService } from './application/retention';
 import { createTrustService } from './application/trust';
 import { FINANCIALS_PERMISSIONS } from './permissions';
 
@@ -20,15 +21,17 @@ export function createFinancialsModule(services: KernelServices, deps: Financial
     forecastInputs: forecast.inputsByCode,
     ...(deps.now ? { now: deps.now } : {}),
   });
-  const trust = createTrustService({
+  const trustDeps = {
     ...deps,
     contractFor: service.contractFor,
     requireStaff: service.requireStaff,
-  });
+  };
+  const trust = createTrustService(trustDeps);
+  const retention = createRetentionService(trustDeps);
   return {
     definition: defineModule({ name: 'financials', permissions: FINANCIALS_PERMISSIONS }),
     routes: {
-      ...financialsRoutes(services.database, service, forecast, trust),
+      ...financialsRoutes(services.database, service, forecast, trust, retention),
       ...budgetRoutes(services.database, budget),
     },
     api: {

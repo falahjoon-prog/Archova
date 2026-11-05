@@ -818,6 +818,83 @@ describe('Budget and cost codes', () => {
   });
 });
 
+describe('Retention release', () => {
+  it('releases retention in two stages, capped at what the terms entitle, and shows the payee', async () => {
+    const s = await setup('NSW');
+    const made = (
+      await s.pm.browser.post(`${s.base}/contracts`, contractBody(s.subCo.companyId))
+    ).json();
+    const url = `${s.base}/contracts/${made.contract.id}/retention-release`;
+    await s.pm.browser.post(`${s.base}/contracts/${made.contract.id}/claims`, {
+      periodEnd: '2026-09-30',
+      receivedAt: '2026-10-13T23:00:00Z',
+      statesAct: true,
+      lines: [{ sovItemId: made.sov[0].id, thisClaim: '40000.00' }],
+    });
+    // 5% of 40,000 is 2,000 retention. No dates yet, so nothing can be released.
+    const none = (await s.pm.browser.get(url)).json();
+    expect(none).toMatchObject({
+      retentionHeld: '2000.00',
+      terms: { practicalCompletionOn: null, firstReleasePct: '50.00' },
+      stages: [{ status: 'awaiting_date' }, { status: 'awaiting_date' }],
+    });
+    const release = (body: Record<string, unknown>) =>
+      s.pm.browser.post(`${url}/releases`, {
+        releasedOn: '2026-11-01',
+        reference: 'R-1',
+        ...body,
+      });
+    const early = await release({ stage: 'practical_completion', amount: '100.00' });
+    expect(early.statusCode).toBe(422);
+    expect(early.json().code).toBe('financials.retention.terms_missing');
+
+    const saved = await s.pm.browser.put(url, {
+      practicalCompletionOn: '2026-10-01',
+      defectsPeriodDays: 365,
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().stages).toMatchObject([
+      { stage: 'practical_completion', entitled: '1000.00', remaining: '1000.00' },
+      { stage: 'defects_end', dueOn: '2027-10-01', entitled: '1000.00' },
+    ]);
+
+    const over = await release({ stage: 'practical_completion', amount: '1000.01' });
+    expect(over.json().code).toBe('financials.retention.over_entitlement');
+    const ok = await release({ stage: 'practical_completion', amount: '1000.00' });
+    expect(ok.statusCode).toBe(201);
+    expect(ok.json().stages[0]).toMatchObject({
+      released: '1000.00',
+      remaining: '0.00',
+      status: 'released',
+    });
+    const again = await release({
+      stage: 'practical_completion',
+      amount: '0.01',
+      reference: 'R-2',
+    });
+    expect(again.json().code).toBe('financials.retention.over_entitlement');
+
+    // The payee can read it but not change it; another company's contract is hidden.
+    expect((await s.sub.browser.get(url)).json().releases).toHaveLength(1);
+    expect((await s.sub.browser.put(url, { defectsPeriodDays: 1 })).statusCode).toBe(403);
+    expect(
+      (
+        await s.sub.browser.post(`${url}/releases`, {
+          stage: 'defects_end',
+          amount: '1.00',
+          releasedOn: '2026-11-01',
+          reference: 'x',
+        })
+      ).statusCode,
+    ).toBe(403);
+    const theirs = (await s.pm.browser.post(`${s.base}/contracts`, contractBody())).json();
+    expect(
+      (await s.sub.browser.get(`${s.base}/contracts/${theirs.contract.id}/retention-release`))
+        .statusCode,
+    ).toBe(404);
+  });
+});
+
 describe('Cost forecast', () => {
   it('projects cost to complete from contracts, claims and adjustments, for staff only', async () => {
     const s = await setup('NSW');
