@@ -10,6 +10,7 @@ import {
   InspectionsIcon,
   SwmsIcon,
   LateSubmissionsIcon,
+  ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
   ContractsIcon,
@@ -185,6 +186,11 @@ export function projectToolGroups(
       href: webRoutes.lateSubmissions(orgSlug, projectId),
       label: 'Late submissions',
       icon: LateSubmissionsIcon,
+    },
+    canAdmin('project_admin') && {
+      href: webRoutes.imports(orgSlug, projectId),
+      label: 'Imports',
+      icon: ImportsIcon,
     },
   ];
   return [
