@@ -21,6 +21,7 @@ const ENTITY_KIND: Record<NotificationEntity, IdKind> = {
   tender_package: 'tenderPackage',
   contract: 'contract',
   incident: 'incident',
+  compliance_document: 'complianceDocument',
 };
 
 type Row = typeof notifications.$inferSelect;

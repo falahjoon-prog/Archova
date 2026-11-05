@@ -3,6 +3,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import { AppError, recordRetention, versionConflict, type TenantScope } from '@archova/kernel';
 import { localDateOf } from '@archova/time';
+import type { NumberVault } from '../domain/number-vault';
 import { checkNumber, hasNumberCheck, isWorkerItem, last4 } from '../domain/wallet';
 import {
   attendanceSessions,
@@ -62,7 +63,13 @@ export interface WalletUpdate {
 
 const unique = (ids: string[]) => [...new Set(ids)];
 
-export function createWalletService(deps: { files: InductionDeps['files'] }) {
+export function createWalletService(deps: { files: InductionDeps['files']; vault: NumberVault }) {
+  /** The full number, sealed to this org and row; null when there is none. */
+  const sealNumber = (orgId: string, id: string, n: string | null | undefined) => {
+    const t = n?.trim();
+    return t ? deps.vault.seal(orgId, 'wallet-document-number', id, t) : null;
+  };
+
   /** Audit trail: ids and item type only, never the number or file names. */
   const audit = (
     scope: TenantScope,
@@ -248,14 +255,16 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
         { path: 'fileIds', message: 'At least one file is required' },
       ]);
     await assertFiles(scope, input.fileIds);
+    const id = uuidv7();
     const [row] = await scope.tx
       .insert(complianceDocuments)
       .values({
-        id: uuidv7(),
+        id,
         orgId: scope.ctx.orgId,
         itemType: input.itemType,
         title: input.title.trim(),
         numberLast4: last4(input.number),
+        numberSealed: sealNumber(scope.ctx.orgId, id, input.number),
         numberCheck: input.number && hasNumberCheck(input.itemType) ? ('format_ok' as const) : null,
         issuingState: input.issuingState ?? null,
         licenceClass: input.licenceClass?.trim() || null,
@@ -357,6 +366,11 @@ export function createWalletService(deps: { files: InductionDeps['files'] }) {
       .update(complianceDocuments)
       .set({
         ...content,
+        // Outside `content`: a fresh seal differs every time, so it must not read as the document having changed.
+        numberSealed:
+          input.number === undefined
+            ? cur.numberSealed
+            : sealNumber(scope.ctx.orgId, cur.id, input.number),
         lastWorkDeclaredOn: lastWork,
         ...(resighted ? { evidence: 'recorded' as const, sightedBy: null, sightedAt: null } : {}),
         ...(input.archived === undefined

@@ -202,6 +202,87 @@ describe('Nova contract review (F34)', () => {
     expect(call.text).not.toContain(s.file);
   });
 
+  it('flags only clauses that match a signed statutory rule, with the table wording, for the project state', async () => {
+    const s = await setup();
+    const ruleSql = `insert into ai.ai_legal_rules
+      (id, rule_key, version, state, contract_types, topic, detect, wording, provision, status, signed_by, signed_on)
+      values ($1, $2, 1, $3, '{subcontract}', $4, 'A clause that sets liquidated damages.', $5, 'Test Act s1', $6, $7, $8)`;
+    const pool = t.adminDb.pool;
+    await pool.query(ruleSql, [
+      '0192a000-0000-7000-8000-00000000a001',
+      'ld_rule',
+      'NSW',
+      'Liquidated damages',
+      'May be void under Test Act s1. Get advice.',
+      'signed',
+      'Lawyer A',
+      '2026-10-20',
+    ]);
+    // A draft rule, and a signed rule for another state, are never used.
+    await pool.query(ruleSql, [
+      '0192a000-0000-7000-8000-00000000a002',
+      'ret_rule',
+      'NSW',
+      'Retention',
+      'Draft wording',
+      'draft',
+      null,
+      null,
+    ]);
+    await pool.query(ruleSql, [
+      '0192a000-0000-7000-8000-00000000a003',
+      'vic_rule',
+      'VIC',
+      'Liquidated damages',
+      'VIC wording',
+      'signed',
+      'Lawyer B',
+      '2026-10-21',
+    ]);
+    try {
+      const run = (extra: Record<string, unknown>) =>
+        s.mgr.browser.post(`${s.base}/ai/contract-reviews`, {
+          fileId: s.file,
+          ...REQUEST,
+          ...extra,
+        });
+      const nsw = (await run({ state: 'NSW' })).json();
+      expect(nsw).toMatchObject({ statutoryState: 'NSW', statutoryRulesChecked: 1 });
+      expect(nsw.statutoryFlags).toEqual([
+        expect.objectContaining({
+          ruleKey: 'ld_rule',
+          wording: 'May be void under Test Act s1. Get advice.',
+          signedBy: 'Lawyer A',
+          source: expect.objectContaining({ page: 1, clause: '12.2' }),
+        }),
+      ]);
+      const call = t.ai.calls.filter((c) => c.task === 'contract.review').at(-1)!;
+      expect(call.text).toContain('<rule key="ld_rule">');
+      expect(call.text).not.toContain('ret_rule');
+      expect(call.text).not.toContain('vic_rule');
+
+      const qld = (await run({ state: 'QLD' })).json();
+      expect(qld).toMatchObject({
+        statutoryState: 'QLD',
+        statutoryRulesChecked: 0,
+        statutoryFlags: [],
+      });
+      // Several states, or no state: no statutory check at all.
+      const multi = (await run({ state: 'NSW', multiState: true })).json();
+      expect(multi).toMatchObject({
+        statutoryState: null,
+        statutoryRulesChecked: 0,
+        statutoryFlags: [],
+      });
+      const none = (await run({})).json();
+      expect(none).toMatchObject({ statutoryState: null, statutoryRulesChecked: 0 });
+    } finally {
+      await pool.query(
+        `delete from ai.ai_legal_rules where id::text like '0192a000-0000-7000-8000-00000000a00%'`,
+      );
+    }
+  });
+
   it('says so when there is no playbook, and still summarises', async () => {
     const s = await setup();
     const d = (

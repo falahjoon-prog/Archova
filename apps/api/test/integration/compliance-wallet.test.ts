@@ -3,6 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { decodeId } from '@archova/domain';
 import type { TenantContext } from '@archova/kernel';
 import { sql } from 'drizzle-orm';
+import { numberVaultFromKey } from '@archova/mod-workforce';
+import { DEV_WALLET_KEY } from '../../src/config';
 import { hexToBase64, quarantineKey } from '@archova/mod-files';
 import {
   clearFlagTargets,
@@ -94,6 +96,30 @@ describe('compliance wallet', () => {
     const pl = expiring.json();
     expect(pl).toMatchObject({ numberLast4: '5678', evidence: 'recorded', expiry: 'expiring' });
     expect(JSON.stringify(pl)).not.toContain('PL-1234');
+
+    // The full number is kept sealed next to the last four: opaque in the table, openable only with the key, and
+    // bound to its org and row.
+    const orgId = decodeId('org', org.id)!;
+    const rowId = decodeId('complianceDocument', pl.id)!;
+    const stored = await t.database.withTenantTx(
+      {
+        orgId,
+        userId: '00000000-0000-0000-0000-000000000000',
+        principalType: 'member',
+        orgRole: null,
+        entitlements: { plan: 'system', state: 'active', modules: [], limits: {} },
+        requestId: 'test',
+      },
+      (sc) =>
+        sc.tx.execute(
+          sql`select number_last4, number_sealed from workforce.compliance_documents where id = ${rowId}`,
+        ),
+    );
+    const sealed = (stored.rows[0] as { number_sealed: Buffer }).number_sealed;
+    expect(sealed.includes(Buffer.from('12345678'))).toBe(false);
+    const vault = numberVaultFromKey(DEV_WALLET_KEY);
+    expect(vault.open(orgId, 'wallet-document-number', rowId, sealed)).toBe('PL-12345678');
+    expect(() => vault.open(orgId, 'wallet-document-number', orgId, sealed)).toThrow();
 
     const expired = (
       await u.browser.post(base, {

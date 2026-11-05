@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto';
 import type { ModelProvider } from '@archova/mod-ai';
 import { createMemoryObjectStore, noScanner } from '@archova/mod-files';
 import { vaultFromKey } from '@archova/mod-integrations';
+import { numberVaultFromKey } from '@archova/mod-workforce';
 import type { AiWorkerConfig } from './config';
 import { indexContext, isOrgGone, type ReindexDeps } from './reindex';
 
@@ -37,6 +38,8 @@ export function loadAiWorkerModules(
       linkBaseUrl: 'http://ai-worker.invalid',
       backoffice: { localLogin: false, soloCoolingOffHours: 24 },
       ai: { config: config.ai, ...(provider ? { provider } : {}) },
+      // The worker never writes wallet numbers; an ephemeral key keeps it unable to open the API's.
+      walletVault: numberVaultFromKey(randomBytes(32).toString('base64')),
       // Webhooks are delivered by the default worker; here they can neither seal a secret nor send.
       webhooks: {
         vault: vaultFromKey(randomBytes(32).toString('base64')),

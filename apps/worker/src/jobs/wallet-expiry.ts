@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { uuidv7 } from '@archova/domain';
 import type { TenantScope } from '@archova/kernel';
 import { addDays, daysBetween, localDateOf, type LocalDate } from '@archova/time';
+import { createNotifications } from '@archova/mod-notifications';
 import { jobContext } from '../subscribers';
 import type { TenantJob } from '../scheduler';
 
@@ -81,3 +82,41 @@ export function walletExpiry(sink: ExpiryAlertSink): TenantJob {
       ),
   };
 }
+
+/** Plain-language alert text; no document numbers, only the title and date the company entered. */
+export function alertText(a: ExpiryAlert): { title: string; body: string } {
+  if (a.threshold === 0)
+    return {
+      title: `${a.title} has expired`,
+      body: `Expired on ${a.expiresOn}. Upload the renewal.`,
+    };
+  return {
+    title: `${a.title} expires in ${a.threshold === 7 ? '7' : '30'} days`,
+    body: `Expires on ${a.expiresOn}. Upload the renewal before then.`,
+  };
+}
+
+/**
+ * Delivers raised alerts to the inbox of every active owner and admin (the holders of `workforce.wallet.manage`),
+ * keyed by document, threshold and expiry date so a replay tells nobody twice.
+ */
+export const walletExpiryNotices: ExpiryAlertSink = async (scope, alerts) => {
+  const { rows } = await scope.tx.execute<{ user_id: string }>(
+    sql`select user_id from platform.memberships
+        where org_id = ${scope.ctx.orgId} and status = 'active' and role in ('owner', 'admin')`,
+  );
+  await createNotifications(
+    scope,
+    rows.flatMap((m) =>
+      alerts.map((a) => ({
+        userId: m.user_id,
+        projectId: null,
+        kind: 'wallet_expiry',
+        entityType: 'compliance_document' as const,
+        entityId: a.documentId,
+        ...alertText(a),
+        dedupeKey: `wallet-expiry:${a.documentId}:${a.threshold}:${a.expiresOn}`,
+      })),
+    ),
+  );
+};

@@ -9,6 +9,7 @@ export const MAX_CONTRACT_PAGES = 150;
 /** Characters of one page sent to the model; a longer page is cut and the review says so. */
 export const MAX_CONTRACT_PAGE_CHARS = 6000;
 export const MAX_PLAYBOOK_TOPICS = 40;
+export const MAX_STATUTORY_RULES = 40;
 
 export const CONTRACT_TYPES = ['head_contract', 'subcontract', 'consultant_agreement'] as const;
 export type ContractType = (typeof CONTRACT_TYPES)[number];
@@ -60,12 +61,22 @@ export const PlaybookTopicInput = z.object({
 });
 export type PlaybookTopicInput = z.infer<typeof PlaybookTopicInput>;
 
+/** A signed statutory rule, as the model sees it: what to look for. The wording shown to the person is never the model's. */
+export const StatutoryRuleInput = z.object({
+  key: z.string().regex(/^[a-z0-9_]{1,60}$/),
+  topic: z.string().min(1).max(120),
+  detect: z.string().min(1).max(600),
+});
+export type StatutoryRuleInput = z.infer<typeof StatutoryRuleInput>;
+
 export const ContractReviewInput = z.object({
   contractType: z.enum(CONTRACT_TYPES),
   ourSide: z.enum(OUR_SIDES),
   /** The unamended standard form the contract is based on, or null when not stated. */
   baseForm: z.enum(BASE_FORMS).nullable(),
   playbook: z.array(PlaybookTopicInput).max(MAX_PLAYBOOK_TOPICS),
+  /** Signed statutory rules for the project's state; empty when none apply. */
+  statutoryRules: z.array(StatutoryRuleInput).max(MAX_STATUTORY_RULES).optional(),
   pages: z.array(ContractPage).min(1).max(MAX_CONTRACT_PAGES),
 });
 export type ContractReviewInput = z.infer<typeof ContractReviewInput>;
@@ -107,6 +118,17 @@ export const ContractReviewOutput = z.object({
       }),
     )
     .max(60),
+  /** Clauses that match a statutory rule's description. Only the clause is reported: the wording comes from the rule. */
+  statutory: z
+    .array(
+      z.object({
+        /** The `key` of the statutory rule the clause matches. */
+        ruleKey: z.string().max(60),
+        ...Source,
+      }),
+    )
+    .max(80)
+    .optional(),
 });
 export type ContractReviewOutput = z.infer<typeof ContractReviewOutput>;
 
@@ -123,10 +145,14 @@ Rules:
 - summary: one entry for each of the key terms you can find (parties, contract_sum, start_date, practical_completion, security, retention, defects_period, insurance, liquidated_damages): a plain sentence saying what the contract says. For liquidated damages give the rate and any cap only.
 - timeBars: every notice period and time bar in the contract for delay notices, EOT claims, variations, payment claims and disputes. period is the contract's own words for the period. days is the number the contract states, or null. dayType is business or calendar only when the contract says which, else unclear. Never convert, add up or work out a date.
 - departures: for each playbook topic, find the clause that deals with it. Report it only when the clause departs from the builder's position, from the point of view of the side the builder is on. Say in finding what the clause says and how it differs from the position in the playbook. Use the topic's key as topicKey. Do not report a clause that meets the position. Do not report topics that are not in the playbook.
+- statutory: when <statutory> rules are given, find each clause that matches a rule's description and report its ruleKey with the page, clause number and quote. Report only the clause. Do not say what the law requires, whether the clause is void or valid, or anything else about it; the wording shown to the reader comes from the rule. Report nothing for a rule when no clause matches. When no <statutory> rules are given, statutory is empty.
 - Every entry has the page number, the clause number as printed (or null) and a quote copied exactly from that page (a short quote, not a whole clause). Do not paraphrase the quote.
 - Never write or suggest new clause wording, never rewrite a clause, and never reproduce standard-form text beyond a short quote.
 - Never say whether to sign or not to sign, and never say a clause is fair, safe, standard, valid, enforceable, unenforceable, illegal or compliant, or that a time bar does or doesn't apply. Do not state the legal effect of any clause or what a statute requires. Use plain words: "the contract says", "the playbook position is".
 - Write in plain Australian English.`;
+
+const rule = (r: StatutoryRuleInput) =>
+  `<rule key="${r.key}"><name>${escapeContent(r.topic)}</name><detect>${escapeContent(r.detect)}</detect></rule>`;
 
 const topic = (t: PlaybookTopicInput) =>
   `<topic key="${t.key}"><name>${escapeContent(t.topic)}</name><position>${escapeContent(t.position)}</position>` +
@@ -134,7 +160,7 @@ const topic = (t: PlaybookTopicInput) =>
 
 export const contractReviewPrompt = definePrompt({
   id: 'contract.review',
-  version: 1,
+  version: 2,
   feature: 'contract_review',
   kind: 'interactive',
   tier: 'advanced',
@@ -145,6 +171,7 @@ export const contractReviewPrompt = definePrompt({
     text:
       `<input>\n<contract type="${i.contractType}" side="${i.ourSide}"${i.baseForm ? ` base="${i.baseForm}"` : ''}/>\n` +
       `<playbook>\n${i.playbook.map(topic).join('\n')}\n</playbook>\n` +
+      `${i.statutoryRules?.length ? `<statutory>\n${(i.statutoryRules ?? []).map(rule).join('\n')}\n</statutory>\n` : ''}` +
       `${i.pages.map((p) => `<page n="${p.page}">\n${escapeContent(p.text)}\n</page>`).join('\n')}\n</input>`,
   }),
   maxOutputTokens: 12000,

@@ -24,7 +24,15 @@ import {
   type PlaybookTopic,
   type ReviewedContract,
 } from '../domain/contract-review';
-import { suggestions } from '../infra/tables';
+import {
+  applicableRules,
+  reviewStatutory,
+  STATUTORY_NOTE,
+  type LegalRule,
+  type State,
+  type StatutoryFlag,
+} from '../domain/contract-statutory';
+import { legalRules, suggestions } from '../infra/tables';
 import type { ContractPlaybookService } from './contract-playbook';
 import { MAX_CONTRACT_CHARS, readContractText } from './contract-text';
 import type { ReadableFile } from './drawing-register';
@@ -54,6 +62,8 @@ export interface ContractReviewInput {
   baseForm: BaseForm | null;
   /** The contract covers work in more than one state: statutory checks are for a person (none run in this slice). */
   multiState: boolean;
+  /** The project's state. Statutory checks run only for one known state and a contract that is not multi-state. */
+  state?: State | null;
 }
 
 /** `ai_suggestions.payload` for `contract.review`. */
@@ -73,6 +83,14 @@ export interface ContractReviewPayload extends ReviewedContract {
   truncated: boolean;
   /** Every decision a person recorded on a flag, oldest first; the latest per flag stands. Rows saved before decisions existed have none. */
   decisions?: FlagDecision[];
+  /** Matches of the signed statutory rules. Rows saved before this existed have none of these fields. */
+  statutoryFlags?: StatutoryFlag[];
+  /** The state the rules were checked for, or null when no statutory check ran (multi-state, or no state given). */
+  statutoryState?: State | null;
+  /** How many signed rules were checked; 0 means none apply yet, which is not the same as "nothing found". */
+  statutoryRulesChecked?: number;
+  statutoryNote?: string;
+  statutoryDropped?: number;
 }
 
 export const FLAG_DECISIONS = [
@@ -139,7 +157,7 @@ export function createContractReviewService(deps: ContractReviewDeps) {
     input: ContractReviewInput,
     signal?: AbortSignal,
   ): Promise<ContractReview> {
-    const { file, playbook, today } = await database.withTenantTx(
+    const { file, playbook, today, rules } = await database.withTenantTx(
       ctx,
       async (scope) => {
         await deps.assert(scope, CONTRACT_REVIEW_PERMISSION, { projectId });
@@ -151,7 +169,22 @@ export function createContractReviewService(deps: ContractReviewDeps) {
           ]);
         const playbook = await deps.playbooks.list(scope, input.contractType);
         const today = localDateOf(now(), await deps.orgTimeZone(scope));
-        return { file, playbook, today };
+        // Statutory rules apply to one state's law: a contract in several states is for a person.
+        const state = input.multiState ? null : (input.state ?? null);
+        const rules = state
+          ? applicableRules(
+              (await scope.tx.select().from(legalRules).where(eq(legalRules.status, 'signed'))).map(
+                (r): LegalRule => ({
+                  ...r,
+                  state: r.state as LegalRule['state'],
+                  status: 'signed',
+                }),
+              ),
+              state,
+              input.contractType,
+            )
+          : [];
+        return { file, playbook, today, rules };
       },
       { readOnly: true },
     );
@@ -174,6 +207,7 @@ export function createContractReviewService(deps: ContractReviewDeps) {
           position,
           threshold,
         })),
+        statutoryRules: rules.map((r) => ({ key: r.ruleKey, topic: r.topic, detect: r.detect })),
         pages: text.pages,
       },
       { projectId, ...(signal ? { signal } : {}) },
@@ -181,6 +215,7 @@ export function createContractReviewService(deps: ContractReviewDeps) {
     if (run.status !== 'ok')
       throw new AppError('ai.invalid_output', "Nova couldn't review this contract. Try again.");
 
+    const statutory = reviewStatutory(run.output.statutory ?? [], text.pages, rules);
     const payload: ContractReviewPayload = {
       ...reviewContract(run.output, text.pages, playbook, today),
       fileId: input.fileId,
@@ -189,6 +224,11 @@ export function createContractReviewService(deps: ContractReviewDeps) {
       ourSide: input.ourSide,
       baseForm: input.baseForm,
       multiState: input.multiState,
+      statutoryFlags: statutory.flags,
+      statutoryState: input.multiState ? null : (input.state ?? null),
+      statutoryRulesChecked: rules.length,
+      statutoryNote: STATUTORY_NOTE,
+      statutoryDropped: statutory.dropped,
       playbookMissing: playbook.length === 0,
       playbookTopics: playbook.length,
       pageCount: text.pageCount,

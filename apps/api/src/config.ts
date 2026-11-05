@@ -71,6 +71,10 @@ const Env = z.object({
   // open the other. The worker reads the same key as WORKER_ACCOUNTING_SECRET_KEY. Required in production once a
   // provider is configured; elsewhere a fixed development key is used.
   API_ACCOUNTING_SECRET_KEY: z.string().optional(),
+  // Seals full licence, card and policy numbers in the compliance wallet and worker credentials (32 bytes, base64):
+  // its own key, so a leak of another vault key does not open them. Required in production; elsewhere a fixed
+  // development key is used. Rotating it needs a re-seal job (rows carry a seal version byte for that).
+  API_WALLET_SECRET_KEY: z.string().optional(),
   // Xero and MYOB app registrations (integrations/02). A provider without both values answers 409 not_configured.
   API_XERO_CLIENT_ID: z.string().optional(),
   API_XERO_CLIENT_SECRET: z.string().optional(),
@@ -101,6 +105,7 @@ export const DEV_EVIDENCE_SIGNING_KEY = `-----BEGIN PRIVATE KEY-----\n${Buffer.c
   Buffer.from('302e020100300506032b657004220420', 'hex'),
   Buffer.alloc(32, 11),
 ]).toString('base64')}\n-----END PRIVATE KEY-----\n`;
+export const DEV_WALLET_KEY = Buffer.alloc(32, 11).toString('base64');
 export const DEV_ACCOUNTING_KEY = Buffer.alloc(32, 9).toString('base64');
 
 export type ApiConfig = ReturnType<typeof loadConfig>;
@@ -150,6 +155,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     apiRateLimitOrgRpm: e.API_RATE_LIMIT_ORG_RPM,
     webhookSecretKey: e.API_WEBHOOK_SECRET_KEY ?? null,
     accountingSecretKey: e.API_ACCOUNTING_SECRET_KEY ?? null,
+    walletSecretKey: e.API_WALLET_SECRET_KEY ?? null,
     evidenceSigning: e.API_EVIDENCE_SIGNING_KEY
       ? {
           keyId: e.API_EVIDENCE_SIGNING_KEY_ID,
@@ -202,6 +208,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     throw new Error('API_ACCOUNTING_SECRET_KEY must be 32 bytes, base64 encoded');
   if (config.accountingSecretKey && config.accountingSecretKey === config.webhookSecretKey)
     throw new Error('API_ACCOUNTING_SECRET_KEY must differ from API_WEBHOOK_SECRET_KEY');
+  if (config.walletSecretKey && Buffer.from(config.walletSecretKey, 'base64').length !== 32)
+    throw new Error('API_WALLET_SECRET_KEY must be 32 bytes, base64 encoded');
+  if (
+    config.walletSecretKey &&
+    (config.walletSecretKey === config.webhookSecretKey ||
+      config.walletSecretKey === config.accountingSecretKey)
+  )
+    throw new Error('API_WALLET_SECRET_KEY must differ from the webhook and accounting keys');
   const cdnSet = [e.API_FILES_CDN_DOMAIN, e.API_FILES_CDN_KEY_PAIR_ID, e.API_FILES_CDN_PRIVATE_KEY];
   if (cdnSet.some(Boolean) && !cdnSet.every(Boolean))
     throw new Error(
@@ -241,6 +255,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     if (config.appOrigins.some((o) => !o.startsWith('https://')))
       missing.push('https API_APP_ORIGINS');
     if (!config.webhookSecretKey) missing.push('API_WEBHOOK_SECRET_KEY (32 bytes, base64)');
+    if (!config.walletSecretKey) missing.push('API_WALLET_SECRET_KEY (32 bytes, base64)');
     if (!config.evidenceSigning) missing.push('API_EVIDENCE_SIGNING_KEY (Ed25519 PEM)');
     if (config.evidenceSigning?.keyId === DEV_EVIDENCE_KEY_ID)
       missing.push(`API_EVIDENCE_SIGNING_KEY_ID other than ${DEV_EVIDENCE_KEY_ID}`);

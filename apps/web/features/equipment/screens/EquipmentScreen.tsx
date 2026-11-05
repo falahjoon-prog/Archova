@@ -82,14 +82,21 @@ export function EquipmentScreen() {
       header: 'Status',
       cell: (e) =>
         canManage ? (
-          <Select
-            label={`Status of ${e.name}`}
+          <select
+            className="ac-input ac-select"
+            style={{ minWidth: '8rem' }}
+            aria-label={`Status of ${e.name}`}
             value={e.status}
             onChange={(ev) =>
               m.setStatus.mutate({ equipmentId: e.id, status: ev.target.value as EquipmentStatus })
             }
-            options={Object.entries(STATUS_LABELS).map(([value, label]) => ({ value, label }))}
-          />
+          >
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
         ) : (
           <StatusPill tone={TONE[e.status]}>{STATUS_LABELS[e.status]}</StatusPill>
         ),
