@@ -1,5 +1,5 @@
 import { decodeId, encodeId } from '@archova/domain';
-import { AppError, type SyncCommand, type SyncSource } from '@archova/kernel';
+import { AppError, type SyncCommand, type SyncSource, type TenantScope } from '@archova/kernel';
 import type { MarkupVisibility } from '@archova/markup';
 import type { DrawingService } from '../application/drawings';
 import type { MarkupService } from '../application/markups';
@@ -96,5 +96,90 @@ export function createMarkupCommand(
     async current() {
       return null;
     },
+  };
+}
+
+/** The markup id and the version a queued edit or delete was made against, or a validation error. */
+function target(m: { entityId: unknown; baseVersion: number | null }) {
+  const markupId = typeof m.entityId === 'string' ? decodeId('markup', m.entityId) : null;
+  if (!markupId) throw invalid('entityId', 'Invalid id');
+  if (m.baseVersion === null)
+    throw invalid('baseVersion', 'A change needs the version it was made against.');
+  return { markupId, baseVersion: m.baseVersion };
+}
+
+async function currentMarkup(
+  markups: Pick<MarkupService, 'locate' | 'visibleAmong'>,
+  scope: TenantScope,
+  entityId: string,
+) {
+  const markupId = typeof entityId === 'string' ? decodeId('markup', entityId) : null;
+  if (!markupId) return null;
+  const at = await markups.locate(scope, markupId);
+  if (!at) return null;
+  const [m] = await markups.visibleAmong(scope, at.projectId, [markupId]);
+  return m
+    ? { version: m.version, data: toMarkupDto(m) as unknown as Record<string, unknown> }
+    : null;
+}
+
+/**
+ * `drawings.updateMarkup`: the author's edit of their own markup queued offline: new shapes and/or a wider
+ * visibility (publishing to the project is one-way, and the service refuses it for anyone without the publish
+ * permission). A markup changed elsewhere since the device read it comes back as a conflict with the current copy.
+ */
+export function updateMarkupCommand(
+  markups: Pick<MarkupService, 'update' | 'locate' | 'visibleAmong'>,
+): SyncCommand {
+  return {
+    name: 'drawings.updateMarkup',
+    module: 'documents',
+    async run(scope, m) {
+      const { markupId, baseVersion } = target(m);
+      const p = m.payload;
+      const patch: { visibility?: MarkupVisibility; shapes?: StoredShape[] } = {};
+      if (p.visibility !== undefined) {
+        if (!VISIBILITIES.includes(p.visibility as MarkupVisibility))
+          throw invalid('payload/visibility', 'Invalid visibility');
+        patch.visibility = p.visibility as MarkupVisibility;
+      }
+      if (p.shapes !== undefined) {
+        if (!Array.isArray(p.shapes) || p.shapes.length === 0 || p.shapes.length > MAX_SHAPES)
+          throw invalid('payload/shapes', `Send between 1 and ${MAX_SHAPES} shapes`);
+        patch.shapes = p.shapes as StoredShape[];
+      }
+      if (patch.visibility === undefined && patch.shapes === undefined)
+        throw invalid('payload', 'Send shapes or a visibility to change');
+      const at = await markups.locate(scope, markupId);
+      if (!at) throw new AppError('markup.not_found');
+      const row = await markups.update(
+        scope,
+        at.projectId,
+        at.revisionId,
+        markupId,
+        baseVersion,
+        patch,
+      );
+      return { version: row.version };
+    },
+    current: (scope, entityId) => currentMarkup(markups, scope, entityId),
+  };
+}
+
+/** `drawings.deleteMarkup`: the author deletes their own, unpublished markup (published ones are the record). */
+export function deleteMarkupCommand(
+  markups: Pick<MarkupService, 'remove' | 'locate' | 'visibleAmong'>,
+): SyncCommand {
+  return {
+    name: 'drawings.deleteMarkup',
+    module: 'documents',
+    async run(scope, m) {
+      const { markupId, baseVersion } = target(m);
+      const at = await markups.locate(scope, markupId);
+      if (!at) throw new AppError('markup.not_found');
+      await markups.remove(scope, at.projectId, at.revisionId, markupId, baseVersion);
+      return { version: baseVersion + 1 };
+    },
+    current: (scope, entityId) => currentMarkup(markups, scope, entityId),
   };
 }

@@ -15,7 +15,15 @@ import type { Markup } from '@archova/contracts';
 import { overviewPath, tilePath } from '../../../lib/files/sheet-cache';
 import { supersededNotice } from '../banner';
 import { MarkupLayer } from './MarkupLayer';
-import { listRevisionMarkups, savePenMarkup } from '../commands';
+import {
+  canChangeMarkup,
+  changeMarkup,
+  listRevisionMarkups,
+  savePenMarkup,
+  type ChangeMarkup,
+} from '../commands';
+import { MyMarkups } from './MyMarkups';
+import { useMe } from '../../platform';
 import { createInk, type Ink } from '../ink';
 import { needsLocationCheck } from '../markup';
 import { drawingPdfUrl } from '../pdf';
@@ -341,6 +349,35 @@ export function DrawingViewerScreen({
     [device.status === 'ready' ? device.data : null, projectId, revisionId],
   );
   const markupList = markups.value ?? [];
+  const me = useMe();
+  const myMarkups = markupList.filter((m) => canChangeMarkup(m, me.data?.user.id ?? null));
+  const [changing, setChanging] = useState(false);
+  const [changeError, setChangeError] = useState<string | null>(null);
+  const change = (markupId: string, what: ChangeMarkup) => {
+    if (device.status !== 'ready') return;
+    setChanging(true);
+    setChangeError(null);
+    changeMarkup(device.data.store, {
+      markupId,
+      change: what,
+      mutationId: uuidv7(),
+      clientAt: new Date().toISOString(),
+    })
+      .then((r) => {
+        if (!r.ok) {
+          setChangeError(
+            r.reason === 'published'
+              ? 'A published markup can not be changed.'
+              : 'That markup is no longer on this device.',
+          );
+        } else {
+          device.data.requestSync('local_write');
+        }
+        markups.refresh();
+      })
+      .catch(() => setChangeError('Could not save that change on this device. Try again.'))
+      .finally(() => setChanging(false));
+  };
   const [ink] = useState(() => createInk(uuidv7));
   const [, setInkVersion] = useState(0);
   const [inking, setInking] = useState(false);
@@ -584,6 +621,18 @@ export function DrawingViewerScreen({
                   </Text>
                 ) : null}
               </View>
+            ) : null}
+            <MyMarkups
+              markups={myMarkups}
+              busy={changing}
+              onRemoveLastStroke={(m) =>
+                change(m.id, { kind: 'shapes', shapes: m.shapes.slice(0, -1) as never })
+              }
+              onPublish={(m) => change(m.id, { kind: 'publish' })}
+              onDelete={(m) => change(m.id, { kind: 'delete' })}
+            />
+            {changeError ? (
+              <Text style={{ color: t.color.statusDanger }}>{changeError}</Text>
             ) : null}
             <Button
               label={
