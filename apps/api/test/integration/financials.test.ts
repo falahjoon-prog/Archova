@@ -884,3 +884,79 @@ describe('Commitments against the budget', () => {
     expect((await s.sub.browser.get(`${s.base}/commitments`)).statusCode).toBe(403);
   });
 });
+
+describe('Budget against forecast', () => {
+  it('compares revised budget with forecast final cost per cost code', async () => {
+    const s = await setup('NSW');
+    const post = (path: string, body?: unknown) => s.pm.browser.post(`${s.base}${path}`, body);
+    const cc = (await post('/cost-codes', { code: '16-100', description: 'Electrical' })).json();
+    await post('/budget');
+    await post('/budget/lines', { costCodeId: cc.id, original: '50000.00' });
+    await post('/budget/lock');
+
+    const bad = await post('/contracts', {
+      ...contractBody(s.subCo.companyId),
+      sov: [
+        {
+          code: 'E1',
+          description: 'x',
+          value: '100000.00',
+          costCodeId: 'ccd_0000000000000000000000000A',
+        },
+      ],
+    });
+    expect(bad.statusCode).toBe(404);
+
+    const created = await post('/contracts', {
+      ...contractBody(s.subCo.companyId),
+      sov: [
+        { code: 'E1', description: 'Rough-in', value: '60000.00', costCodeId: cc.id },
+        { code: 'E2', description: 'Fit-off', value: '40000.00' },
+      ],
+    });
+    expect(created.statusCode).toBe(201);
+    const { contract, sov } = created.json();
+    expect(sov[0].costCodeId).toBe(cc.id);
+    expect(
+      (
+        await post(`/contracts/${contract.id}/claims`, {
+          periodEnd: '2026-09-30',
+          receivedAt: '2026-10-13T23:00:00Z',
+          statesAct: true,
+          lines: [{ sovItemId: sov[0].id, thisClaim: '30000.00' }],
+        })
+      ).statusCode,
+    ).toBe(201);
+    expect(
+      (
+        await post('/cost-forecast/adjustments', {
+          category: 'risk',
+          label: 'Switchboard',
+          amount: '5000.00',
+          costCodeId: cc.id,
+        })
+      ).statusCode,
+    ).toBe(201);
+
+    const r = (await s.pm.browser.get(`${s.base}/budget/vs-forecast`)).json();
+    expect(r.budgetStatus).toBe('locked');
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0]).toMatchObject({
+      code: '16-100',
+      revised: '50000.00',
+      committed: '60000.00',
+      claimed: '30000.00',
+      adjustments: '5000.00',
+      forecastFinal: '65000.00',
+      variance: '-15000.00',
+    });
+    expect(r.unallocated).toMatchObject({ committed: '40000.00', forecastFinal: '40000.00' });
+    expect(r.totals).toMatchObject({ forecastFinal: '105000.00', variance: '-55000.00' });
+
+    // Reconciles with the project forecast.
+    const f = (await s.pm.browser.get(`${s.base}/cost-forecast`)).json();
+    expect(f.forecastFinalCost).toBe(r.totals.forecastFinal);
+
+    expect((await s.sub.browser.get(`${s.base}/budget/vs-forecast`)).statusCode).toBe(403);
+  });
+});

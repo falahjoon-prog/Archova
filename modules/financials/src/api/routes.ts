@@ -205,7 +205,14 @@ export function financialsRoutes(
               ...(b.sopaState ? { sopaState: b.sopaState } : {}),
               ...(b.scheduleDays !== undefined ? { scheduleDays: b.scheduleDays } : {}),
               ...(b.paymentDays !== undefined ? { paymentDays: b.paymentDays } : {}),
-              sov: b.sov.map((i, n) => ({ ...i, value: money(i.value, `sov/${n}/value`) })),
+              sov: b.sov.map((i, n) => ({
+                code: i.code,
+                description: i.description,
+                value: money(i.value, `sov/${n}/value`),
+                ...(i.costCodeId
+                  ? { costCodeId: ref('costCode', i.costCodeId, `sov/${n}/costCodeId`) }
+                  : {}),
+              })),
             }),
           ),
         ),
@@ -285,6 +292,7 @@ export function financialsRoutes(
               ...(b.contractId ? { contractId: ref('contract', b.contractId, 'contractId') } : {}),
               category: b.category,
               label: b.label,
+              ...(b.costCodeId ? { costCodeId: ref('costCode', b.costCodeId, 'costCodeId') } : {}),
               ...(b.note ? { note: b.note } : {}),
               amount: b.amount,
             }),

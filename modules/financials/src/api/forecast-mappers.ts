@@ -5,6 +5,7 @@ import { fromCents } from '../domain/money';
 export const toAdjustmentDto = (a: AdjustmentRow) => ({
   id: encodeId('forecastAdjustment', a.id),
   contractId: a.contractId ? encodeId('contract', a.contractId) : null,
+  costCodeId: a.costCodeId ? encodeId('costCode', a.costCodeId) : null,
   category: a.category,
   label: a.label,
   note: a.note,

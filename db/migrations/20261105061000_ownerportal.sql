@@ -1,4 +1,4 @@
--- Composed from modules/ownerportal/db/migrations/20261105060000_ownerportal.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
+-- Composed from modules/ownerportal/db/migrations/20261105061000_ownerportal.sql by tools/db/compose.ts. Edit the source, then run pnpm db:compose.
 -- ownerportal: what the client (owner or developer) sees of a project: published progress updates, decisions the
 -- builder asks them to make, and the capital plan. Builders write; the client role reads and decides.
 

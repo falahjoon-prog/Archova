@@ -6739,6 +6739,26 @@ export interface paths {
         patch: operations["updateBudgetLine"];
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/budget/vs-forecast": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Revised budget against forecast final cost for each cost code, with what is not yet tagged to a code. */
+        get: operations["getBudgetVsForecast"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/budget/lock": {
         parameters: {
             query?: never;
@@ -11489,6 +11509,7 @@ export interface components {
         ContractKind: "head" | "subcontract";
         SovItem: {
             id: string;
+            costCodeId: string | null;
             code: string;
             description: string;
             value: components["schemas"]["FinancialsMoney"];
@@ -11535,6 +11556,7 @@ export interface components {
                 code: string;
                 description: string;
                 value: components["schemas"]["FinancialsMoney"];
+                costCodeId?: string;
             }[];
         };
         CostCode: {
@@ -11607,6 +11629,25 @@ export interface components {
             amount: string;
             reason: string;
         };
+        BudgetVsForecastRow: {
+            costCodeId: string | null;
+            code: string | null;
+            codeDescription: string;
+            revised: components["schemas"]["FinancialsSignedMoney"];
+            committed: components["schemas"]["FinancialsMoney"];
+            claimed: components["schemas"]["FinancialsMoney"];
+            adjustments: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Revised budget less forecast final cost. Negative is over budget. */
+            variance: components["schemas"]["FinancialsSignedMoney"];
+        };
+        BudgetVsForecast: {
+            /** @enum {string|null} */
+            budgetStatus: "draft" | "locked" | null;
+            rows: components["schemas"]["BudgetVsForecastRow"][];
+            unallocated: components["schemas"]["BudgetVsForecastRow"];
+            totals: components["schemas"]["BudgetVsForecastRow"];
+        };
         BudgetAdjustment: {
             id: string;
             /** @description Signed decimal AUD ex GST. */
@@ -11623,6 +11664,7 @@ export interface components {
         ForecastAdjustment: {
             id: string;
             contractId: string | null;
+            costCodeId: string | null;
             category: components["schemas"]["ForecastAdjustmentCategory"];
             label: string;
             note: string | null;
@@ -11634,6 +11676,7 @@ export interface components {
         ForecastAdjustmentCategory: "unawarded_work" | "allowance" | "risk" | "saving" | "other";
         CreateForecastAdjustmentRequest: {
             contractId?: string;
+            costCodeId?: string;
             category: components["schemas"]["ForecastAdjustmentCategory"];
             label: string;
             note?: string;
@@ -25021,6 +25064,30 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BudgetLine"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getBudgetVsForecast: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BudgetVsForecast"];
                 };
             };
             default: components["responses"]["Problem"];
