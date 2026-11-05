@@ -14,6 +14,7 @@ export const TOOLS = [
   'rfis',
   'submittals',
   'correspondence',
+  'coordination',
   'diary',
   'defects',
   'meetings',

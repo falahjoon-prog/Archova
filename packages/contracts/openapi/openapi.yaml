@@ -31,6 +31,7 @@ tags:
   - name: ai
   - name: rfis
   - name: correspondence
+  - name: bim
   - name: defects
   - name: financials
   - name: quality
@@ -1368,6 +1369,157 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SpecSectionHitList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/bim-models:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listBimModels
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.models.read
+      summary: The project's registered models, newest first.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BimModelList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createBimModel
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.models.manage
+      summary: Register a model file. Naming the model it supersedes retires that one.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateBimModelRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BimModel' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listCoordinationIssues
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.read
+      summary: Coordination issues, newest first, up to 500.
+      parameters:
+        - {
+            name: status,
+            in: query,
+            schema: { $ref: '#/components/schemas/CoordinationIssueStatus' },
+          }
+        - { name: modelId, in: query, schema: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' } }
+        - { name: q, in: query, schema: { type: string, minLength: 1, maxLength: 200 } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Raise a coordination issue.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCoordinationIssueRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoordinationIssueId'
+    get:
+      operationId: getCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.read
+      summary: One issue with its comments.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateCoordinationIssue
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Edit an issue or move it along. A change of status not allowed from the current one is refused.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCoordinationIssueRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/CoordinationIssueId'
+    post:
+      operationId: addCoordinationIssueComment
+      tags: [bim]
+      x-module: bim
+      x-permission: bim.issues.manage
+      summary: Add a comment to an issue.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddCoordinationCommentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CoordinationIssueDetail' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/documents:
     parameters:
@@ -11438,6 +11590,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^cty_[0-9A-Za-z]{26}$' }
+    CoordinationIssueId:
+      name: issueId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^cis_[0-9A-Za-z]{26}$' }
     CorrespondenceId:
       name: correspondenceId
       in: path
@@ -14892,6 +15049,165 @@ components:
         pageFrom: { type: integer, minimum: 1 }
         pageTo: { type: integer, minimum: 1 }
         revision: { type: [string, 'null'] }
+    BimDiscipline:
+      type: string
+      enum: [architectural, structural, mechanical, electrical, hydraulic, fire, civil, other]
+    CoordinationIssueStatus:
+      type: string
+      enum: [open, in_progress, resolved, closed]
+    CoordinationIssuePriority:
+      type: string
+      enum: [low, medium, high, critical]
+    BimModel:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          name,
+          discipline,
+          versionLabel,
+          fileId,
+          status,
+          supersededById,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        name: { type: string }
+        discipline: { $ref: '#/components/schemas/BimDiscipline' }
+        versionLabel: { type: string }
+        fileId: { type: [string, 'null'] }
+        status: { type: string, enum: [current, superseded] }
+        supersededById: { type: [string, 'null'] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    BimModelList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/BimModel' }
+    CreateBimModelRequest:
+      type: object
+      additionalProperties: false
+      required: [name, discipline]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        discipline: { $ref: '#/components/schemas/BimDiscipline' }
+        versionLabel: { type: string, maxLength: 50 }
+        fileId: { type: string, pattern: '^fil_[0-9A-Za-z]{26}$' }
+        supersedesModelId: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' }
+    CoordinationIssue:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          status,
+          priority,
+          assigneeId,
+          dueDate,
+          modelId,
+          elementGuids,
+          location,
+          rfiId,
+          resolvedAt,
+          commentCount,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        status: { $ref: '#/components/schemas/CoordinationIssueStatus' }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: [string, 'null'] }
+        dueDate: { type: [string, 'null'], format: date }
+        modelId: { type: [string, 'null'] }
+        elementGuids:
+          type: array
+          items: { type: string }
+        location: { type: string }
+        rfiId: { type: [string, 'null'] }
+        resolvedAt: { type: [string, 'null'], format: date-time }
+        commentCount: { type: integer }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    CoordinationIssueList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CoordinationIssue' }
+    CoordinationComment:
+      type: object
+      required: [id, authorId, body, createdAt]
+      properties:
+        id: { type: string }
+        authorId: { type: string }
+        body: { type: string }
+        createdAt: { type: string, format: date-time }
+    CoordinationIssueDetail:
+      type: object
+      required: [issue, comments]
+      properties:
+        issue: { $ref: '#/components/schemas/CoordinationIssue' }
+        comments:
+          type: array
+          items: { $ref: '#/components/schemas/CoordinationComment' }
+    CreateCoordinationIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: string, pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: string, format: date }
+        modelId: { type: string, pattern: '^bmd_[0-9A-Za-z]{26}$' }
+        elementGuids:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 200 }
+        rfiId: { type: string, pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    UpdateCoordinationIssueRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        status: { $ref: '#/components/schemas/CoordinationIssueStatus' }
+        priority: { $ref: '#/components/schemas/CoordinationIssuePriority' }
+        assigneeId: { type: [string, 'null'], pattern: '^usr_[0-9A-Za-z]{26}$' }
+        dueDate: { type: [string, 'null'], format: date }
+        modelId: { type: [string, 'null'], pattern: '^bmd_[0-9A-Za-z]{26}$' }
+        elementGuids:
+          type: array
+          maxItems: 50
+          items: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 200 }
+        rfiId: { type: [string, 'null'], pattern: '^rfi_[0-9A-Za-z]{26}$' }
+    AddCoordinationCommentRequest:
+      type: object
+      additionalProperties: false
+      required: [body]
+      properties:
+        body: { type: string, minLength: 1, maxLength: 5000 }
     SpecBookList:
       type: object
       required: [data]

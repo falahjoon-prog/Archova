@@ -66,6 +66,7 @@ export {
   TriangleAlert as IncidentsIcon,
   MailWarning as LateSubmissionsIcon,
   Building2 as OwnerPortalIcon,
+  Boxes as CoordinationIcon,
   FileUp as ImportsIcon,
   ClipboardCheck as DefectsIcon,
   FileStack as DocumentsIcon,

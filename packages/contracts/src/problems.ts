@@ -184,6 +184,10 @@ export const PROBLEM_CODES = {
   'submittal.reviewer_not_on_project': 422,
   'submittal.review_not_allowed': 403,
   'submittal_step.not_found': 404,
+  // bim
+  'bim.model_not_found': 404,
+  'bim.issue_not_found': 404,
+  'bim.invalid_transition': 409,
   // correspondence
   'correspondence.not_found': 404,
   'correspondence.invalid_transition': 409,

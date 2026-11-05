@@ -1139,6 +1139,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/bim-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The project's registered models, newest first. */
+        get: operations["listBimModels"];
+        put?: never;
+        /** Register a model file. Naming the model it supersedes retires that one. */
+        post: operations["createBimModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Coordination issues, newest first, up to 500. */
+        get: operations["listCoordinationIssues"];
+        put?: never;
+        /** Raise a coordination issue. */
+        post: operations["createCoordinationIssue"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        /** One issue with its comments. */
+        get: operations["getCoordinationIssue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit an issue or move it along. A change of status not allowed from the current one is refused. */
+        patch: operations["updateCoordinationIssue"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/coordination-issues/{issueId}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add a comment to an issue. */
+        post: operations["addCoordinationIssueComment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/documents": {
         parameters: {
             query?: never;
@@ -10430,6 +10515,102 @@ export interface components {
             pageTo: number;
             revision: string | null;
         };
+        /** @enum {string} */
+        BimDiscipline: "architectural" | "structural" | "mechanical" | "electrical" | "hydraulic" | "fire" | "civil" | "other";
+        /** @enum {string} */
+        CoordinationIssueStatus: "open" | "in_progress" | "resolved" | "closed";
+        /** @enum {string} */
+        CoordinationIssuePriority: "low" | "medium" | "high" | "critical";
+        BimModel: {
+            id: string;
+            projectId: string;
+            name: string;
+            discipline: components["schemas"]["BimDiscipline"];
+            versionLabel: string;
+            fileId: string | null;
+            /** @enum {string} */
+            status: "current" | "superseded";
+            supersededById: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BimModelList: {
+            data: components["schemas"]["BimModel"][];
+        };
+        CreateBimModelRequest: {
+            name: string;
+            discipline: components["schemas"]["BimDiscipline"];
+            versionLabel?: string;
+            fileId?: string;
+            supersedesModelId?: string;
+        };
+        CoordinationIssue: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            status: components["schemas"]["CoordinationIssueStatus"];
+            priority: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId: string | null;
+            /** Format: date */
+            dueDate: string | null;
+            modelId: string | null;
+            elementGuids: string[];
+            location: string;
+            rfiId: string | null;
+            /** Format: date-time */
+            resolvedAt: string | null;
+            commentCount: number;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CoordinationIssueList: {
+            data: components["schemas"]["CoordinationIssue"][];
+        };
+        CoordinationComment: {
+            id: string;
+            authorId: string;
+            body: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        CoordinationIssueDetail: {
+            issue: components["schemas"]["CoordinationIssue"];
+            comments: components["schemas"]["CoordinationComment"][];
+        };
+        CreateCoordinationIssueRequest: {
+            title: string;
+            description?: string;
+            priority?: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId?: string;
+            /** Format: date */
+            dueDate?: string;
+            modelId?: string;
+            elementGuids?: string[];
+            location?: string;
+            rfiId?: string;
+        };
+        UpdateCoordinationIssueRequest: {
+            title?: string;
+            description?: string;
+            status?: components["schemas"]["CoordinationIssueStatus"];
+            priority?: components["schemas"]["CoordinationIssuePriority"];
+            assigneeId?: string | null;
+            /** Format: date */
+            dueDate?: string | null;
+            modelId?: string | null;
+            elementGuids?: string[];
+            location?: string;
+            rfiId?: string | null;
+        };
+        AddCoordinationCommentRequest: {
+            body: string;
+        };
         SpecBookList: {
             data: components["schemas"]["SpecBook"][];
         };
@@ -15142,6 +15323,7 @@ export interface components {
         SubmittalId: string;
         SubmittalStepId: string;
         CorrespondenceTypeId: string;
+        CoordinationIssueId: string;
         CorrespondenceId: string;
         RfiId: string;
         ContractId: string;
@@ -16956,6 +17138,208 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SpecSectionHitList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listBimModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BimModelList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createBimModel: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateBimModelRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BimModel"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listCoordinationIssues: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["CoordinationIssueStatus"];
+                modelId?: string;
+                q?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCoordinationIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateCoordinationIssue: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCoordinationIssueRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    addCoordinationIssueComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                issueId: components["parameters"]["CoordinationIssueId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddCoordinationCommentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoordinationIssueDetail"];
                 };
             };
             default: components["responses"]["Problem"];
