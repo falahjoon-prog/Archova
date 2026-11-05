@@ -16,6 +16,7 @@ export const RETENTION_PERIODS = {
   sopa_evidence_10y: '10 years', // from practical completion; customers may extend, never shorten
   project_records_10y: '10 years', // from completion, on customer close
   wallet_document_7y: '7 years', // compliance/05 §7: 7 years after expiry or last use
+  prequalification_7y: '7 years', // from the decision or expiry, whichever is later
   tax_gst_5y: '5 years', // ITAA 1936 s262A
   whs_incident_5y: '5 years', // from notification
   location_at_sign_in_12m: '12 months',
