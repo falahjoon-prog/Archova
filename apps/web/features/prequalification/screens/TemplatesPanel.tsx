@@ -16,7 +16,7 @@ import {
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { isApiError } from '@/shared/lib/errors';
 import { serverFieldErrors } from '@/shared/lib/forms';
-import { usePrequalMutations, useTemplates } from '../hooks/usePrequal';
+import { usePrequalMutations, usePrequalSettings, useTemplates } from '../hooks/usePrequal';
 import {
   blankQuestion,
   nextQuestionId,
@@ -281,11 +281,28 @@ function TemplateRow({ t, onEdit }: { t: PrequalTemplate; onEdit: (t: PrequalTem
   );
 }
 
+function TenderGateSetting() {
+  const { query, update } = usePrequalSettings();
+  if (query.isPending || query.isError) return null;
+  return (
+    <div className="stack">
+      <Checkbox
+        label="Only invite prequalified subcontractors to tender"
+        checked={query.data.requireForTenders}
+        disabled={update.isPending}
+        onChange={(e) => update.mutate(e.target.checked)}
+      />
+      <ErrorAlert error={update.error} title="We couldn’t save that setting" />
+    </div>
+  );
+}
+
 export function TemplatesPanel() {
   const templates = useTemplates();
   const [dialog, setDialog] = useState<{ t: PrequalTemplate | null } | null>(null);
   return (
     <div className="stack">
+      <TenderGateSetting />
       <div>
         <Button onClick={() => setDialog({ t: null })}>New form</Button>
       </div>

@@ -222,12 +222,12 @@ export function createQuotesApi(orgId: string): QuotesSource {
       return toPackage(updated, await names(projectId));
     },
 
-    async invite(projectId, packageId, companyIds) {
+    async invite(projectId, packageId, companyIds, overrideReason) {
       await ensureCsrfToken();
       const updated = unwrap(
         await api.POST(`${PKG}/invites`, {
           params: { path: { orgId, projectId, packageId }, header: idempotencyKey() },
-          body: { companyIds },
+          body: overrideReason ? { companyIds, overrideReason } : { companyIds },
         }),
       );
       return toPackage(updated, await names(projectId));

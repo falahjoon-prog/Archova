@@ -30,6 +30,7 @@ const TOOLS: Array<[string, string]> = [
   ['directory', 'Directory'],
   ['workforce', 'Workforce'],
   ['project_admin', 'Project admin'],
+  ['owner_portal', 'Owner portal'],
 ];
 const TOOL_LABEL = Object.fromEntries(TOOLS);
 const LEVEL_LABEL: Record<string, string> = {

@@ -168,6 +168,14 @@ export const DeleteScheduleDependencyParams = z.object({
   "scheduleId": z.string().regex(new RegExp("^sch_[0-9A-Za-z]{26}$")),
   "dependencyId": z.string().regex(new RegExp("^sdp_[0-9A-Za-z]{26}$")),
 });
+export const ListScheduleLinksForItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListScheduleLinksForItemQuery = z.object({
+  "kind": z.enum(["rfi", "submittal"]),
+  "targetId": z.string(),
+});
 export const ListScheduleLinksParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -1808,6 +1816,13 @@ export const CreatePrequalificationParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
 export const CreatePrequalificationBody = s.CreatePrequalificationRequestSchema;
+export const GetPrequalSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalSettingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const UpdatePrequalSettingsBody = s.PrequalSettingsSchema;
 export const GetPrequalificationRegisterParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -2079,6 +2094,28 @@ export const DeleteForecastAdjustmentParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "adjustmentId": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
 });
+export const GetContractPaymentSummaryParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const GetContractTrustParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractTrustParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const SaveContractTrustBody = s.SaveContractTrustRequestSchema;
+export const RecordTrustMovementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
+});
+export const RecordTrustMovementBody = s.RecordTrustMovementRequestSchema;
 export const ListVariationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2337,6 +2374,66 @@ export const ListMeetingActionsParams = z.object({
 });
 export const ListMeetingActionsQuery = z.object({
   "scope": z.enum(["mine", "all"]).default("mine"),
+});
+export const ListOwnerProgressUpdatesParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerProgressUpdateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerProgressUpdateBody = s.CreateOwnerProgressUpdateRequestSchema;
+export const UpdateOwnerProgressUpdateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "updateId": z.string().regex(new RegExp("^opu_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOwnerProgressUpdateBody = s.UpdateOwnerProgressUpdateRequestSchema;
+export const PublishOwnerProgressUpdateParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "updateId": z.string().regex(new RegExp("^opu_[0-9A-Za-z]{26}$")),
+});
+export const ListOwnerApprovalsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerApprovalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerApprovalBody = s.CreateOwnerApprovalRequestSchema;
+export const DecideOwnerApprovalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "approvalId": z.string().regex(new RegExp("^oap_[0-9A-Za-z]{26}$")),
+});
+export const DecideOwnerApprovalBody = s.DecideOwnerApprovalRequestSchema;
+export const WithdrawOwnerApprovalParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "approvalId": z.string().regex(new RegExp("^oap_[0-9A-Za-z]{26}$")),
+});
+export const GetOwnerCapitalPlanParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerCapitalItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateOwnerCapitalItemBody = s.OwnerCapitalItemInputSchema;
+export const UpdateOwnerCapitalItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
+});
+export const UpdateOwnerCapitalItemBody = s.UpdateOwnerCapitalItemRequestSchema;
+export const DeleteOwnerCapitalItemParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "itemId": z.string().regex(new RegExp("^oci_[0-9A-Za-z]{26}$")),
 });
 
 export interface OperationDef {
@@ -2883,6 +2980,18 @@ export const operations = {
     contentType: null,
     params: DeleteScheduleDependencyParams,
     query: null,
+    body: null,
+  },
+  listScheduleLinksForItem: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/schedule-links',
+    module: "diary",
+    auth: "required",
+    permission: "scheduling.schedule.read",
+    internal: false,
+    contentType: null,
+    params: ListScheduleLinksForItemParams,
+    query: ListScheduleLinksForItemQuery,
     body: null,
   },
   listScheduleLinks: {
@@ -6223,6 +6332,32 @@ export const operations = {
     query: null,
     body: CreatePrequalificationBody,
   },
+  getPrequalSettings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/prequalification-settings',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.prequal.view",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: null,
+    params: GetPrequalSettingsParams,
+    query: null,
+    body: null,
+  },
+  updatePrequalSettings: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/prequalification-settings',
+    module: "estimating",
+    auth: "required",
+    permission: "precon.templates.manage",
+    internal: false,
+    flag: "subcontractor_prequalification",
+    contentType: "application/json",
+    params: UpdatePrequalSettingsParams,
+    query: null,
+    body: UpdatePrequalSettingsBody,
+  },
   getPrequalificationRegister: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/prequalification-register',
@@ -6933,6 +7068,54 @@ export const operations = {
     query: null,
     body: null,
   },
+  getContractPaymentSummary: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/payment-summary',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.read",
+    internal: false,
+    contentType: null,
+    params: GetContractPaymentSummaryParams,
+    query: null,
+    body: null,
+  },
+  getContractTrust: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust',
+    module: "financials",
+    auth: "required",
+    permission: "financials.contracts.read",
+    internal: false,
+    contentType: null,
+    params: GetContractTrustParams,
+    query: null,
+    body: null,
+  },
+  saveContractTrust: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust',
+    module: "financials",
+    auth: "required",
+    permission: "financials.trust.manage",
+    internal: false,
+    contentType: "application/json",
+    params: SaveContractTrustParams,
+    query: null,
+    body: SaveContractTrustBody,
+  },
+  recordTrustMovement: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust/movements',
+    module: "financials",
+    auth: "required",
+    permission: "financials.trust.manage",
+    internal: false,
+    contentType: "application/json",
+    params: RecordTrustMovementParams,
+    query: null,
+    body: RecordTrustMovementBody,
+  },
   listVariations: {
     method: 'GET',
     path: '/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations',
@@ -7495,6 +7678,150 @@ export const operations = {
     contentType: null,
     params: ListMeetingActionsParams,
     query: ListMeetingActionsQuery,
+    body: null,
+  },
+  listOwnerProgressUpdates: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerProgressUpdatesParams,
+    query: null,
+    body: null,
+  },
+  createOwnerProgressUpdate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerProgressUpdateParams,
+    query: null,
+    body: CreateOwnerProgressUpdateBody,
+  },
+  updateOwnerProgressUpdate: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateOwnerProgressUpdateParams,
+    query: null,
+    body: UpdateOwnerProgressUpdateBody,
+  },
+  publishOwnerProgressUpdate: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}/publish',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.updates.manage",
+    internal: false,
+    contentType: null,
+    params: PublishOwnerProgressUpdateParams,
+    query: null,
+    body: null,
+  },
+  listOwnerApprovals: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.read",
+    internal: false,
+    contentType: null,
+    params: ListOwnerApprovalsParams,
+    query: null,
+    body: null,
+  },
+  createOwnerApproval: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.request",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerApprovalParams,
+    query: null,
+    body: CreateOwnerApprovalBody,
+  },
+  decideOwnerApproval: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/decision',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.decide",
+    internal: false,
+    contentType: "application/json",
+    params: DecideOwnerApprovalParams,
+    query: null,
+    body: DecideOwnerApprovalBody,
+  },
+  withdrawOwnerApproval: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/withdraw',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.approvals.request",
+    internal: false,
+    contentType: null,
+    params: WithdrawOwnerApprovalParams,
+    query: null,
+    body: null,
+  },
+  getOwnerCapitalPlan: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.read",
+    internal: false,
+    contentType: null,
+    params: GetOwnerCapitalPlanParams,
+    query: null,
+    body: null,
+  },
+  createOwnerCapitalItem: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateOwnerCapitalItemParams,
+    query: null,
+    body: CreateOwnerCapitalItemBody,
+  },
+  updateOwnerCapitalItem: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateOwnerCapitalItemParams,
+    query: null,
+    body: UpdateOwnerCapitalItemBody,
+  },
+  deleteOwnerCapitalItem: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}',
+    module: "ownerportal",
+    auth: "required",
+    permission: "ownerportal.capital.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteOwnerCapitalItemParams,
+    query: null,
     body: null,
   },
 } as const satisfies Record<string, OperationDef>;

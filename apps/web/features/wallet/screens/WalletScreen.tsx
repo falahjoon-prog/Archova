@@ -36,6 +36,9 @@ import {
   ITEM_TYPES,
   LICENCE_TYPES,
   STATES,
+  WHITE_CARD_HINT,
+  WHITE_CARD_LABELS,
+  WORKER_TYPES,
   alertLabel,
   NUMBER_CHECK_HINT,
   NUMBER_CHECK_LABEL,
@@ -64,12 +67,15 @@ const toForm = (d: ComplianceDocument): DocumentForm => ({
   limit: centsToDollars(d.limitCents),
   startsOn: d.startsOn ?? '',
   expiresOn: d.expiresOn ?? '',
+  holderName: d.holderName ?? '',
+  lastWorkOn: d.lastWorkDeclaredOn ?? '',
   selfDeclared: d.evidence === 'self_declared',
 });
 
 /** Fields that only apply to some kinds of document are hidden for the others. */
 const isInsurance = (t: ItemType) => INSURANCE_TYPES.includes(t);
 const isLicence = (t: ItemType) => LICENCE_TYPES.includes(t);
+const isWorkerItem = (t: ItemType) => WORKER_TYPES.includes(t);
 
 function DocumentDialog({
   doc,
@@ -99,6 +105,9 @@ function DocumentDialog({
     if (Number.isNaN(cents)) return setProblem('Enter the cover limit as a dollar amount.');
     if (form.startsOn && form.expiresOn && form.expiresOn < form.startsOn)
       return setProblem('The expiry date is before the start date.');
+    const holderName = form.holderName.trim();
+    if (!doc && isWorkerItem(form.itemType) && !holderName)
+      return setProblem('Say whose card this is.');
     if (!doc && !declared && files.length === 0)
       return setProblem('Add a file, or tick “No document, a declaration only”.');
     if (existing + files.length > MAX_FILES)
@@ -119,6 +128,7 @@ function DocumentDialog({
             limitCents: cents,
             startsOn: form.startsOn || null,
             expiresOn: form.expiresOn || null,
+            ...(doc.itemType === 'white_card' ? { lastWorkOn: form.lastWorkOn || null } : {}),
           },
         },
         { onSuccess: onClose },
@@ -138,6 +148,10 @@ function DocumentDialog({
           ...(cents !== null ? { limitCents: cents } : {}),
           ...(form.startsOn ? { startsOn: form.startsOn } : {}),
           ...(form.expiresOn ? { expiresOn: form.expiresOn } : {}),
+          ...(isWorkerItem(form.itemType) ? { holderName } : {}),
+          ...(form.itemType === 'white_card' && form.lastWorkOn
+            ? { lastWorkOn: form.lastWorkOn }
+            : {}),
           selfDeclared: declared,
         },
       },
@@ -196,6 +210,25 @@ function DocumentDialog({
           maxLength={50}
           autoComplete="off"
         />
+        {!doc && isWorkerItem(form.itemType) ? (
+          <TextField
+            label="Whose card is it?"
+            value={form.holderName}
+            onChange={(e) => set('holderName', e.target.value)}
+            error={server.holderName}
+            maxLength={200}
+          />
+        ) : null}
+        {form.itemType === 'white_card' ? (
+          <TextField
+            label="Last did construction work on"
+            type="date"
+            value={form.lastWorkOn}
+            onChange={(e) => set('lastWorkOn', e.target.value)}
+            error={server.lastWorkOn}
+            hint="Their own say-so. A white card lapses after 2 years without construction work."
+          />
+        ) : null}
         {showInsurer ? (
           <TextField
             label="Insurer"
@@ -337,6 +370,7 @@ function DocumentRow({
     doc.issuingState,
     doc.licenceClass,
   ].filter(Boolean);
+  const card = doc.whiteCard;
   const evidence =
     doc.evidence === 'sighted' && doc.sightedAt
       ? `Sighted by ${doc.sightedBy === user.id ? 'you' : 'a team member'} on ${formatLocalDate(doc.sightedAt.slice(0, 10))}`
@@ -354,11 +388,20 @@ function DocumentRow({
               <span className="u-visually-hidden">. {NUMBER_CHECK_HINT}</span>
             </span>
           ) : null}
+          {card ? (
+            <span title={WHITE_CARD_HINT}>
+              <StatusPill tone={card.state === 'may_have_lapsed' ? 'warning' : 'neutral'}>
+                {WHITE_CARD_LABELS[card.state]}
+              </StatusPill>
+              <span className="u-visually-hidden">. {WHITE_CARD_HINT}</span>
+            </span>
+          ) : null}
           {archived ? <StatusPill tone="neutral">Archived</StatusPill> : null}
         </span>
       </div>
       <span className="u-caption">
         {ITEM_TYPE_LABELS[doc.itemType]}
+        {doc.holderName ? ` · ${doc.holderName}` : ''}
         {details.length ? ` · ${details.join(' · ')}` : ''}
       </span>
       <span className="u-caption">

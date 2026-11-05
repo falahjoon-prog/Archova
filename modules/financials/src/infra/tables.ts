@@ -252,3 +252,33 @@ export const commitmentLines = financialsSchema.table('commitment_lines', {
   amount: money('amount').notNull(),
   sort: integer('sort').notNull(),
 });
+
+export const trustAccounts = financialsSchema.table('trust_accounts', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  contractId: uuid('contract_id').notNull(),
+  governmentClient: boolean('government_client').notNull().default(false),
+  institution: text('institution'),
+  accountName: text('account_name'),
+  accountLast4: text('account_last4'),
+  openedOn: date('opened_on'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+});
+
+export const trustMovements = financialsSchema.table('trust_movements', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  trustAccountId: uuid('trust_account_id').notNull(),
+  kind: text('kind').$type<'deposit' | 'interest' | 'release' | 'reversal'>().notNull(),
+  amount: money('amount').notNull(),
+  movedOn: date('moved_on').notNull(),
+  reference: text('reference').notNull(),
+  note: text('note'),
+  reversesMovementId: uuid('reverses_movement_id'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  recordedBy: uuid('recorded_by'),
+});

@@ -10,11 +10,13 @@ import {
   InspectionsIcon,
   SwmsIcon,
   LateSubmissionsIcon,
+  OwnerPortalIcon,
   ImportsIcon,
   DefectsIcon,
   MeetingsIcon,
   ProgrammeIcon,
   ContractsIcon,
+  BudgetIcon,
   DelaysIcon,
   DiaryIcon,
   DocumentsIcon,
@@ -168,6 +170,11 @@ export function projectToolGroups(
       label: 'Payment claims',
       icon: ContractsIcon,
     },
+    canRead('budget') && {
+      href: webRoutes.budget(orgSlug, projectId),
+      label: 'Budget',
+      icon: BudgetIcon,
+    },
     canRead('workforce') && {
       href: webRoutes.attendance(orgSlug, projectId),
       label: 'Attendance',
@@ -187,6 +194,11 @@ export function projectToolGroups(
       href: webRoutes.swms(orgSlug, projectId),
       label: 'SWMS',
       icon: SwmsIcon,
+    },
+    canRead('owner_portal') && {
+      href: webRoutes.ownerPortal(orgSlug, projectId),
+      label: 'Owner portal',
+      icon: OwnerPortalIcon,
     },
     canAdmin('project_admin') && {
       href: webRoutes.lateSubmissions(orgSlug, projectId),

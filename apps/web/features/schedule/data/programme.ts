@@ -15,6 +15,7 @@ export type UpdateActivity = S['UpdateScheduleActivityRequest'];
 export type CreateDependency = S['CreateScheduleDependencyRequest'];
 export type ImportRequest = S['ImportScheduleRequest'];
 export type ScheduleLink = S['ScheduleLink'];
+export type ItemPlacement = S['ScheduleItemPlacement'];
 export type DepType = S['ScheduleDepType'];
 
 const P = '/v1/orgs/{orgId}/projects/{projectId}/schedules' as const;
@@ -87,6 +88,17 @@ export function createProgrammeApi(orgId: string) {
     async listLinks(projectId: string, scheduleId: string): Promise<ScheduleLink[]> {
       return unwrap(
         await api.GET(`${P}/{scheduleId}/links`, { params: path(projectId, scheduleId) }),
+      ).data;
+    },
+    async placements(
+      projectId: string,
+      kind: 'rfi' | 'submittal',
+      targetId: string,
+    ): Promise<ItemPlacement[]> {
+      return unwrap(
+        await api.GET('/v1/orgs/{orgId}/projects/{projectId}/schedule-links', {
+          params: { path: { orgId, projectId }, query: { kind, targetId } },
+        }),
       ).data;
     },
     async createLink(

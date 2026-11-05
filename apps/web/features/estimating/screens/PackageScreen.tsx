@@ -23,6 +23,7 @@ import { usePublishAssistantScope } from '@/features/assistant';
 import { listsFor, listCandidates, useBidderLists } from '@/features/bid-board';
 import { useUrlState } from '@/shared/hooks/useUrlState';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
+import { toErrorView } from '@/shared/lib/errors';
 import { PreviewDataNotice } from '@/shared/layout/PreviewDataNotice';
 import { previewDataOnly } from '@/shared/lib/data-mode';
 import { formatInstant, todayIn } from '@/shared/lib/format';
@@ -466,6 +467,8 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
   const [line, setLine] = useState({ description: '', quantity: '', unit: 'm²' });
   const [csv, setCsv] = useState('');
   const [invite, setInvite] = useState<string[]>([]);
+  const [overrideReason, setOverrideReason] = useState('');
+  const notQualified = toErrorView(m.invite.error).code === 'tender.company_not_qualified';
   const bidderLists = useBidderLists({ enabled: !previewDataOnly });
   const locked = pkg.status === 'awarded';
   const invited = new Set(pkg.invites.map((i) => i.companyId));
@@ -663,10 +666,29 @@ function Scope({ pkg }: { pkg: TenderPackage }) {
                 />
               ))}
             </div>
+            {notQualified ? (
+              <TextField
+                label="Override reason (admins only)"
+                value={overrideReason}
+                maxLength={500}
+                hint="These companies aren't prequalified. To invite them anyway, an admin can record why."
+                onChange={(e) => setOverrideReason(e.target.value)}
+              />
+            ) : null}
             <div className="u-m-0">
               <Button
                 disabled={!invite.length || m.invite.isPending}
-                onClick={() => m.invite.mutate(invite, { onSuccess: () => setInvite([]) })}
+                onClick={() =>
+                  m.invite.mutate(
+                    { companyIds: invite, overrideReason: overrideReason.trim() || undefined },
+                    {
+                      onSuccess: () => {
+                        setInvite([]);
+                        setOverrideReason('');
+                      },
+                    },
+                  )
+                }
               >
                 Send {invite.length || ''} {invite.length === 1 ? 'invite' : 'invites'}
               </Button>

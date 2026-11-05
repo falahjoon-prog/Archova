@@ -43,6 +43,7 @@ tags:
   - name: workforce
   - name: scheduling
   - name: meetings
+  - name: ownerportal
   - name: notifications
 paths:
   /v1/auth/signup:
@@ -863,6 +864,31 @@ paths:
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ScheduleDetail' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/schedule-links:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listScheduleLinksForItem
+      tags: [scheduling]
+      x-module: diary
+      x-permission: scheduling.schedule.read
+      summary: 'Where one RFI or submittal sits on the programme: the activities it is tied to (SCH-US10). Empty when the caller cannot see the item.'
+      parameters:
+        - {
+            name: kind,
+            in: query,
+            required: true,
+            schema: { type: string, enum: [rfi, submittal] },
+          }
+        - { name: targetId, in: query, required: true, schema: { type: string } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ScheduleItemPlacementList' }
         default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links:
     parameters:
@@ -7730,6 +7756,42 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Prequalification' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/prequalification-settings:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: getPrequalSettings
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.prequal.view
+      summary: 'Whether tender invites require a company to be prequalified.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalSettings' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: updatePrequalSettings
+      tags: [precon]
+      x-module: estimating
+      x-flag: subcontractor_prequalification
+      x-permission: precon.templates.manage
+      summary: 'Turn the tender invite requirement on or off.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PrequalSettings' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PrequalSettings' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/prequalification-register:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -9023,6 +9085,88 @@ paths:
       responses:
         '204': { description: Deleted }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/payment-summary:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractPaymentSummary
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.claims.read
+      summary: What has been claimed, scheduled, paid and is still owing on a contract, with the retention held for the payee.
+      description: >-
+        The subcontractor payment view. A subcontractor only reaches a contract where their company is the payee
+        (CLM-AC11); anything else is a 404. Amounts due include GST at 10% of the scheduled amount.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractPaymentSummary' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    get:
+      operationId: getContractTrust
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.contracts.read
+      summary: Retention and project trust record for a contract, visible to the payee.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractTrust' }
+        default: { $ref: '#/components/responses/Problem' }
+    put:
+      operationId: saveContractTrust
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.trust.manage
+      summary: Record which account holds the retention trust for the contract (builder staff).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaveContractTrustRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractTrust' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust/movements:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/ContractId'
+    post:
+      operationId: recordTrustMovement
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.trust.manage
+      summary: Record money paid into or out of the trust account (append-only; undo with a reversal).
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordTrustMovementRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContractTrust' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10003,6 +10147,235 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/MeetingActionList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerProgressUpdates
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.read
+      summary: 'Progress updates for the client, newest first. Drafts are shown only to the project team.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdateList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerProgressUpdate
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.manage
+      summary: 'Write a draft progress update.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerProgressUpdateRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerProgressUpdateId' }
+    patch:
+      operationId: updateOwnerProgressUpdate
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.manage
+      summary: 'Change a draft progress update. A published one is frozen.'
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOwnerProgressUpdateRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}/publish:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerProgressUpdateId' }
+    post:
+      operationId: publishOwnerProgressUpdate
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.updates.manage
+      summary: 'Publish the update so the client can read it. This cannot be undone.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: listOwnerApprovals
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.read
+      summary: 'Decisions the builder has asked the client to make, newest first.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApprovalList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerApproval
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.request
+      summary: 'Ask the client to approve something.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateOwnerApprovalRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApproval' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/decision:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerApprovalId' }
+    post:
+      operationId: decideOwnerApproval
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.decide
+      summary: 'Approve or reject a request. A decision is final and the person who asked cannot make it.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideOwnerApprovalRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApproval' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/withdraw:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerApprovalId' }
+    post:
+      operationId: withdrawOwnerApproval
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.approvals.request
+      summary: 'Withdraw a request that has not been decided.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerApproval' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+    get:
+      operationId: getOwnerCapitalPlan
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.read
+      summary: 'The capital plan: budget, forecast and spend by year and category, with totals.'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerCapitalPlan' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createOwnerCapitalItem
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.manage
+      summary: 'Add a line to the capital plan.'
+      parameters:
+        - { $ref: '#/components/parameters/IdempotencyKey' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/OwnerCapitalItemInput' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerCapitalItem' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}:
+    parameters:
+      - { $ref: '#/components/parameters/OrgId' }
+      - { $ref: '#/components/parameters/ProjectId' }
+      - { $ref: '#/components/parameters/OwnerCapitalItemId' }
+    patch:
+      operationId: updateOwnerCapitalItem
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.manage
+      summary: 'Change a capital plan line.'
+      parameters:
+        - { name: If-Match, in: header, required: true, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateOwnerCapitalItemRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/OwnerCapitalItem' }
+        default: { $ref: '#/components/responses/Problem' }
+    delete:
+      operationId: deleteOwnerCapitalItem
+      tags: [ownerportal]
+      x-module: ownerportal
+      x-permission: ownerportal.capital.manage
+      summary: 'Remove a capital plan line.'
+      responses:
+        '204': { description: Removed }
+        default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
     InspectionTemplateId:
@@ -10254,6 +10627,21 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^slk_[0-9A-Za-z]{26}$' }
+    OwnerProgressUpdateId:
+      name: updateId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^opu_[0-9A-Za-z]{26}$' }
+    OwnerApprovalId:
+      name: approvalId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^oap_[0-9A-Za-z]{26}$' }
+    OwnerCapitalItemId:
+      name: itemId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^oci_[0-9A-Za-z]{26}$' }
     MeetingSeriesId:
       name: seriesId
       in: path
@@ -10387,6 +10775,24 @@ components:
             type: [integer, 'null'],
             description: 'RFI schedule impact in days; null for submittals.',
           }
+    ScheduleItemPlacement:
+      type: object
+      required: [linkId, scheduleId, scheduleName, activityId, activityName, start, finish]
+      properties:
+        linkId: { type: string }
+        scheduleId: { type: string }
+        scheduleName: { type: string }
+        activityId: { type: string }
+        activityName: { type: string }
+        start: { type: string, format: date }
+        finish: { type: string, format: date }
+    ScheduleItemPlacementList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ScheduleItemPlacement' }
     ScheduleLinkList:
       type: object
       required: [data]
@@ -10660,6 +11066,209 @@ components:
         email: { type: [string, 'null'] }
         userId: { type: [string, 'null'] }
         companyId: { type: [string, 'null'] }
+    OwnerMilestoneStatus:
+      type: string
+      enum: [done, on_track, at_risk, late]
+    OwnerMilestone:
+      type: object
+      additionalProperties: false
+      required: [name, date, status]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        date: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/OwnerMilestoneStatus' }
+    OwnerProgressUpdate:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          title,
+          periodStart,
+          periodEnd,
+          summary,
+          percentComplete,
+          milestones,
+          status,
+          publishedAt,
+          version,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        title: { type: string }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        summary: { type: string }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        milestones:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+        status: { type: string, enum: [draft, published] }
+        publishedAt: { type: [string, 'null'], format: date-time }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    OwnerProgressUpdateList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerProgressUpdate' }
+    CreateOwnerProgressUpdateRequest:
+      type: object
+      additionalProperties: false
+      required: [title, periodStart, periodEnd, percentComplete]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        summary: { type: string, maxLength: 10000 }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        milestones:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+    UpdateOwnerProgressUpdateRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        periodStart: { type: string, format: date }
+        periodEnd: { type: string, format: date }
+        summary: { type: string, maxLength: 10000 }
+        percentComplete: { type: integer, minimum: 0, maximum: 100 }
+        milestones:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/OwnerMilestone' }
+    OwnerApprovalStatus:
+      type: string
+      enum: [requested, approved, rejected, withdrawn]
+    OwnerApproval:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          number,
+          title,
+          description,
+          amountCents,
+          dueDate,
+          status,
+          decidedBy,
+          decidedAt,
+          decisionNote,
+          version,
+          createdAt,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        number: { type: integer }
+        title: { type: string }
+        description: { type: string }
+        amountCents: { type: [integer, 'null'], minimum: 0 }
+        dueDate: { type: [string, 'null'], format: date }
+        status: { $ref: '#/components/schemas/OwnerApprovalStatus' }
+        decidedBy: { type: [string, 'null'] }
+        decidedAt: { type: [string, 'null'], format: date-time }
+        decisionNote: { type: [string, 'null'] }
+        version: { type: integer }
+        createdAt: { type: string, format: date-time }
+    OwnerApprovalList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerApproval' }
+    CreateOwnerApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [title]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 200 }
+        description: { type: string, maxLength: 10000 }
+        amountCents: { type: [integer, 'null'], minimum: 0 }
+        dueDate: { type: [string, 'null'], format: date }
+    DecideOwnerApprovalRequest:
+      type: object
+      additionalProperties: false
+      required: [decision]
+      properties:
+        decision: { type: string, enum: [approved, rejected] }
+        note: { type: string, maxLength: 5000 }
+    OwnerCapitalItem:
+      type: object
+      required:
+        [
+          id,
+          projectId,
+          fiscalYear,
+          category,
+          description,
+          budgetCents,
+          forecastCents,
+          spentCents,
+          version,
+        ]
+      properties:
+        id: { type: string }
+        projectId: { type: string }
+        fiscalYear: { type: integer }
+        category: { type: string }
+        description: { type: string }
+        budgetCents: { type: integer, minimum: 0 }
+        forecastCents: { type: integer, minimum: 0 }
+        spentCents: { type: integer, minimum: 0 }
+        version: { type: integer }
+    OwnerCapitalItemInput:
+      type: object
+      additionalProperties: false
+      required: [fiscalYear, category, budgetCents, forecastCents]
+      properties:
+        fiscalYear: { type: integer, minimum: 2000, maximum: 2100 }
+        category: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        budgetCents: { type: integer, minimum: 0 }
+        forecastCents: { type: integer, minimum: 0 }
+        spentCents: { type: integer, minimum: 0 }
+    UpdateOwnerCapitalItemRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        fiscalYear: { type: integer, minimum: 2000, maximum: 2100 }
+        category: { type: string, minLength: 1, maxLength: 100 }
+        description: { type: string, maxLength: 1000 }
+        budgetCents: { type: integer, minimum: 0 }
+        forecastCents: { type: integer, minimum: 0 }
+        spentCents: { type: integer, minimum: 0 }
+    OwnerCapitalTotals:
+      type: object
+      required: [fiscalYear, budgetCents, forecastCents, spentCents]
+      properties:
+        fiscalYear: { type: [integer, 'null'], description: 'Null for the all-years total.' }
+        budgetCents: { type: integer }
+        forecastCents: { type: integer }
+        spentCents: { type: integer }
+    OwnerCapitalPlan:
+      type: object
+      required: [items, totals]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/OwnerCapitalItem' }
+        totals:
+          type: array
+          description: One row per fiscal year, then the all-years total last.
+          items: { $ref: '#/components/schemas/OwnerCapitalTotals' }
     MeetingSeries:
       type: object
       required:
@@ -15003,6 +15612,11 @@ components:
           minItems: 1
           maxItems: 50
           items: { $ref: '#/components/schemas/CompanyRef' }
+        overrideReason:
+          type: string
+          minLength: 1
+          maxLength: 500
+          description: 'Invite companies that are not prequalified anyway. Needs the right to decide prequalifications. The reason is recorded.'
     SetAllowancesRequest:
       type: object
       additionalProperties: false
@@ -16542,6 +17156,125 @@ components:
         submittedAt: { type: [string, 'null'], format: date-time }
         decidedAt: { type: [string, 'null'], format: date-time }
         decisionNote: { type: [string, 'null'] }
+    TrustStatus:
+      type: string
+      enum: [not_required, not_set_up, ok, shortfall]
+    TrustMovementKind:
+      type: string
+      enum: [deposit, interest, release, reversal]
+    TrustMovement:
+      type: object
+      required: [id, kind, amount, movedOn, reference, note, reversesMovementId, recordedAt]
+      properties:
+        id: { type: string, pattern: '^tmv_[0-9A-Za-z]{26}$' }
+        kind: { $ref: '#/components/schemas/TrustMovementKind' }
+        amount: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        movedOn: { type: string, format: date }
+        reference: { type: string }
+        note: { type: [string, 'null'] }
+        reversesMovementId: { type: [string, 'null'], pattern: '^tmv_[0-9A-Za-z]{26}$' }
+        recordedAt: { type: string, format: date-time }
+    ContractTrust:
+      type: object
+      required: [contractId, requirement, account, position, movements]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        requirement:
+          type: object
+          required: [required, basis, rulesReviewed]
+          properties:
+            required: { type: boolean }
+            basis: { type: string }
+            rulesReviewed:
+              type: boolean
+              description: False until a lawyer has signed off the thresholds (compliance/01 §7).
+        account:
+          type: [object, 'null']
+          required: [governmentClient, institution, accountName, accountLast4, openedOn]
+          properties:
+            governmentClient: { type: boolean }
+            institution: { type: [string, 'null'] }
+            accountName: { type: [string, 'null'] }
+            accountLast4: { type: [string, 'null'] }
+            openedOn: { type: [string, 'null'], format: date }
+        position:
+          type: object
+          required:
+            [status, retentionWithheld, released, requiredInTrust, balance, shortfall, interest]
+          properties:
+            status: { $ref: '#/components/schemas/TrustStatus' }
+            retentionWithheld: { $ref: '#/components/schemas/FinancialsMoney' }
+            released: { $ref: '#/components/schemas/FinancialsMoney' }
+            requiredInTrust: { $ref: '#/components/schemas/FinancialsMoney' }
+            balance: { $ref: '#/components/schemas/FinancialsMoney' }
+            shortfall: { $ref: '#/components/schemas/FinancialsMoney' }
+            interest: { $ref: '#/components/schemas/FinancialsMoney' }
+        movements:
+          type: array
+          items: { $ref: '#/components/schemas/TrustMovement' }
+    SaveContractTrustRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        governmentClient: { type: boolean }
+        institution: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        accountName: { type: [string, 'null'], minLength: 1, maxLength: 200 }
+        accountLast4: { type: [string, 'null'], pattern: '^[0-9]{4}$' }
+        openedOn: { type: [string, 'null'], format: date }
+    RecordTrustMovementRequest:
+      type: object
+      additionalProperties: false
+      required: [kind, amount, movedOn, reference]
+      properties:
+        kind: { $ref: '#/components/schemas/TrustMovementKind' }
+        amount:
+          $ref: '#/components/schemas/FinancialsMoney'
+        movedOn: { type: string, format: date }
+        reference: { type: string, minLength: 1, maxLength: 200 }
+        note: { type: string, minLength: 1, maxLength: 2000 }
+        reversesMovementId: { type: string, pattern: '^tmv_[0-9A-Za-z]{26}$' }
+    PaymentSummaryClaim:
+      type: object
+      required:
+        [
+          claimId,
+          number,
+          periodEnd,
+          status,
+          claimedTotal,
+          scheduledAmount,
+          amountDue,
+          paid,
+          lastPaidOn,
+          outstanding,
+          paymentDueOn,
+          overdue,
+        ]
+      properties:
+        claimId: { type: string, pattern: '^pcl_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        periodEnd: { type: string, format: date }
+        status: { type: string }
+        claimedTotal: { $ref: '#/components/schemas/FinancialsMoney' }
+        scheduledAmount: { type: [string, 'null'] }
+        amountDue: { type: [string, 'null'] }
+        paid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        lastPaidOn: { type: [string, 'null'], format: date }
+        outstanding: { type: [string, 'null'] }
+        paymentDueOn: { type: [string, 'null'], format: date }
+        overdue: { type: boolean }
+    ContractPaymentSummary:
+      type: object
+      required: [contractId, title, claims, totalDue, totalPaid, trust]
+      properties:
+        contractId: { type: string, pattern: '^cnt_[0-9A-Za-z]{26}$' }
+        title: { type: string }
+        claims:
+          type: array
+          items: { $ref: '#/components/schemas/PaymentSummaryClaim' }
+        totalDue: { $ref: '#/components/schemas/FinancialsMoney' }
+        totalPaid: { $ref: '#/components/schemas/FinancialsSignedMoney' }
+        trust: { $ref: '#/components/schemas/ContractTrust' }
     VariationList:
       type: object
       required: [data, approvedTotal]
@@ -18271,8 +19004,18 @@ components:
           wwcc,
           modern_slavery,
           abn,
+          white_card,
+          hrw_licence,
           other,
         ]
+    PrequalSettings:
+      type: object
+      additionalProperties: false
+      required: [requireForTenders]
+      properties:
+        requireForTenders:
+          type: boolean
+          description: 'When on, a tender invite refuses any company that is not currently prequalified (an approved form still in date), unless a person with decision rights overrides it with a reason.'
     PrequalQuestion:
       type: object
       required: [id, section, prompt, type, options, required, expect, points, critical]
@@ -18495,6 +19238,10 @@ components:
           fileIds,
           evidence,
           expiry,
+          workerId,
+          holderName,
+          whiteCard,
+          lastWorkDeclaredOn,
           sightedBy,
           sightedAt,
           archivedAt,
@@ -18527,6 +19274,30 @@ components:
           type: string
           enum: [no_expiry, current, expiring, expired]
           description: "`expiring` is within 30 days of `expiresOn`, in the company's own time zone (Sydney until orgs carry one)."
+        workerId:
+          oneOf: [{ type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }, { type: 'null' }]
+          description: "The holder's entry on this org's worker list, when linked; null otherwise. Per-worker items are never shared with a builder."
+        holderName:
+          {
+            type: [string, 'null'],
+            description: Whose card it is,
+            for a white card or high-risk licence.,
+          }
+        whiteCard:
+          oneOf:
+            - type: object
+              required: [state, lastWorkOn, source]
+              properties:
+                state:
+                  type: string
+                  enum: [no_work_recorded, recent_work, may_have_lapsed]
+                  description: 'A white card has no expiry date but lapses after 2 years without construction work. `may_have_lapsed` is a prompt to check, not a finding: no record of work is not a record of no work, and states differ (VIC unconfirmed).'
+                lastWorkOn: { type: [string, 'null'], format: date }
+                source:
+                  oneOf: [{ type: string, enum: [sign_in, declared] }, { type: 'null' }]
+                  description: Whether the date is the last Archova sign-in or the holder's own declaration (the later of the two).
+            - type: 'null'
+        lastWorkDeclaredOn: { type: [string, 'null'], format: date }
         sightedBy: { oneOf: [{ $ref: '#/components/schemas/UserRef' }, { type: 'null' }] }
         sightedAt: { type: [string, 'null'], format: date-time }
         archivedAt: { type: [string, 'null'], format: date-time }
@@ -18585,6 +19356,25 @@ components:
             items: { $ref: '#/components/schemas/FileRef' },
             description: 'Ready files in this org. Required unless `selfDeclared`.',
           }
+        holderName:
+          {
+            type: string,
+            minLength: 1,
+            maxLength: 200,
+            description: 'Required for a white card or high-risk licence (whose card it is); not allowed for a company item.',
+          }
+        workerId:
+          {
+            type: string,
+            pattern: '^wkr_[0-9A-Za-z]{26}$',
+            description: "Optional, per-worker items only: the holder's entry on this org's worker list, so their sign-ins count towards the white card 2-year rule.",
+          }
+        lastWorkOn:
+          {
+            type: string,
+            format: date,
+            description: 'White card only: the day the holder says they last did construction work. Used for the 2-year rule.',
+          }
         selfDeclared:
           {
             type: boolean,
@@ -18604,6 +19394,7 @@ components:
         startsOn: { type: [string, 'null'], format: date }
         expiresOn: { type: [string, 'null'], format: date }
         fileIds: { type: array, maxItems: 4, items: { $ref: '#/components/schemas/FileRef' } }
+        lastWorkOn: { type: [string, 'null'], format: date }
         archived: { type: boolean }
     ComplianceShareCodeRequest:
       type: object

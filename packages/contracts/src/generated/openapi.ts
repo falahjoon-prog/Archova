@@ -730,6 +730,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/schedule-links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Where one RFI or submittal sits on the programme: the activities it is tied to (SCH-US10). Empty when the caller cannot see the item. */
+        get: operations["listScheduleLinksForItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/schedules/{scheduleId}/links": {
         parameters: {
             query?: never;
@@ -5544,6 +5564,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/prequalification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /** Whether tender invites require a company to be prequalified. */
+        get: operations["getPrequalSettings"];
+        /** Turn the tender invite requirement on or off. */
+        put: operations["updatePrequalSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/prequalification-register": {
         parameters: {
             query?: never;
@@ -6505,6 +6545,73 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/payment-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What has been claimed, scheduled, paid and is still owing on a contract, with the retention held for the payee.
+         * @description The subcontractor payment view. A subcontractor only reaches a contract where their company is the payee (CLM-AC11); anything else is a 404. Amounts due include GST at 10% of the scheduled amount.
+         */
+        get: operations["getContractPaymentSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        /** Retention and project trust record for a contract, visible to the payee. */
+        get: operations["getContractTrust"];
+        /** Record which account holds the retention trust for the contract (builder staff). */
+        put: operations["saveContractTrust"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/trust/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record money paid into or out of the trust account (append-only; undo with a reversal). */
+        post: operations["recordTrustMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/contracts/{contractId}/variations": {
         parameters: {
             query?: never;
@@ -7303,6 +7410,175 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Progress updates for the client, newest first. Drafts are shown only to the project team. */
+        get: operations["listOwnerProgressUpdates"];
+        put?: never;
+        /** Write a draft progress update. */
+        post: operations["createOwnerProgressUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a draft progress update. A published one is frozen. */
+        patch: operations["updateOwnerProgressUpdate"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/progress-updates/{updateId}/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Publish the update so the client can read it. This cannot be undone. */
+        post: operations["publishOwnerProgressUpdate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** Decisions the builder has asked the client to make, newest first. */
+        get: operations["listOwnerApprovals"];
+        put?: never;
+        /** Ask the client to approve something. */
+        post: operations["createOwnerApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Approve or reject a request. A decision is final and the person who asked cannot make it. */
+        post: operations["decideOwnerApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/approvals/{approvalId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Withdraw a request that has not been decided. */
+        post: operations["withdrawOwnerApproval"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        /** The capital plan: budget, forecast and spend by year and category, with totals. */
+        get: operations["getOwnerCapitalPlan"];
+        put?: never;
+        /** Add a line to the capital plan. */
+        post: operations["createOwnerCapitalItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/projects/{projectId}/owner-portal/capital-plan/{itemId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["OwnerCapitalItemId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a capital plan line. */
+        delete: operations["deleteOwnerCapitalItem"];
+        options?: never;
+        head?: never;
+        /** Change a capital plan line. */
+        patch: operations["updateOwnerCapitalItem"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -7378,6 +7654,20 @@ export interface components {
             dueDate: string | null;
             /** @description RFI schedule impact in days; null for submittals. */
             scheduleImpactDays: number | null;
+        };
+        ScheduleItemPlacement: {
+            linkId: string;
+            scheduleId: string;
+            scheduleName: string;
+            activityId: string;
+            activityName: string;
+            /** Format: date */
+            start: string;
+            /** Format: date */
+            finish: string;
+        };
+        ScheduleItemPlacementList: {
+            data: components["schemas"]["ScheduleItemPlacement"][];
         };
         ScheduleLinkList: {
             data: components["schemas"]["ScheduleLink"][];
@@ -7561,6 +7851,132 @@ export interface components {
             email: string | null;
             userId: string | null;
             companyId: string | null;
+        };
+        /** @enum {string} */
+        OwnerMilestoneStatus: "done" | "on_track" | "at_risk" | "late";
+        OwnerMilestone: {
+            name: string;
+            /** Format: date */
+            date: string | null;
+            status: components["schemas"]["OwnerMilestoneStatus"];
+        };
+        OwnerProgressUpdate: {
+            id: string;
+            projectId: string;
+            title: string;
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            summary: string;
+            percentComplete: number;
+            milestones: components["schemas"]["OwnerMilestone"][];
+            /** @enum {string} */
+            status: "draft" | "published";
+            /** Format: date-time */
+            publishedAt: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        OwnerProgressUpdateList: {
+            data: components["schemas"]["OwnerProgressUpdate"][];
+        };
+        CreateOwnerProgressUpdateRequest: {
+            title: string;
+            /** Format: date */
+            periodStart: string;
+            /** Format: date */
+            periodEnd: string;
+            summary?: string;
+            percentComplete: number;
+            milestones?: components["schemas"]["OwnerMilestone"][];
+        };
+        UpdateOwnerProgressUpdateRequest: {
+            title?: string;
+            /** Format: date */
+            periodStart?: string;
+            /** Format: date */
+            periodEnd?: string;
+            summary?: string;
+            percentComplete?: number;
+            milestones?: components["schemas"]["OwnerMilestone"][];
+        };
+        /** @enum {string} */
+        OwnerApprovalStatus: "requested" | "approved" | "rejected" | "withdrawn";
+        OwnerApproval: {
+            id: string;
+            projectId: string;
+            number: number;
+            title: string;
+            description: string;
+            amountCents: number | null;
+            /** Format: date */
+            dueDate: string | null;
+            status: components["schemas"]["OwnerApprovalStatus"];
+            decidedBy: string | null;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+            version: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        OwnerApprovalList: {
+            data: components["schemas"]["OwnerApproval"][];
+        };
+        CreateOwnerApprovalRequest: {
+            title: string;
+            description?: string;
+            amountCents?: number | null;
+            /** Format: date */
+            dueDate?: string | null;
+        };
+        DecideOwnerApprovalRequest: {
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note?: string;
+        };
+        OwnerCapitalItem: {
+            id: string;
+            projectId: string;
+            fiscalYear: number;
+            category: string;
+            description: string;
+            budgetCents: number;
+            forecastCents: number;
+            spentCents: number;
+            version: number;
+        };
+        OwnerCapitalItemInput: {
+            fiscalYear: number;
+            category: string;
+            description?: string;
+            budgetCents: number;
+            forecastCents: number;
+            spentCents?: number;
+        };
+        UpdateOwnerCapitalItemRequest: {
+            fiscalYear?: number;
+            category?: string;
+            description?: string;
+            budgetCents?: number;
+            forecastCents?: number;
+            spentCents?: number;
+        };
+        OwnerCapitalTotals: {
+            /** @description Null for the all-years total. */
+            fiscalYear: number | null;
+            budgetCents: number;
+            forecastCents: number;
+            spentCents: number;
+        };
+        OwnerCapitalPlan: {
+            items: components["schemas"]["OwnerCapitalItem"][];
+            /** @description One row per fiscal year, then the all-years total last. */
+            totals: components["schemas"]["OwnerCapitalTotals"][];
         };
         MeetingSeries: {
             id: string;
@@ -10324,6 +10740,8 @@ export interface components {
         };
         InvitePackageRequest: {
             companyIds: components["schemas"]["CompanyRef"][];
+            /** @description Invite companies that are not prequalified anyway. Needs the right to decide prequalifications. The reason is recorded. */
+            overrideReason?: string;
         };
         SetAllowancesRequest: {
             allowances: {
@@ -11264,6 +11682,91 @@ export interface components {
             /** Format: date-time */
             decidedAt: string | null;
             decisionNote: string | null;
+        };
+        /** @enum {string} */
+        TrustStatus: "not_required" | "not_set_up" | "ok" | "shortfall";
+        /** @enum {string} */
+        TrustMovementKind: "deposit" | "interest" | "release" | "reversal";
+        TrustMovement: {
+            id: string;
+            kind: components["schemas"]["TrustMovementKind"];
+            amount: components["schemas"]["FinancialsSignedMoney"];
+            /** Format: date */
+            movedOn: string;
+            reference: string;
+            note: string | null;
+            reversesMovementId: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        ContractTrust: {
+            contractId: string;
+            requirement: {
+                required: boolean;
+                basis: string;
+                /** @description False until a lawyer has signed off the thresholds (compliance/01 §7). */
+                rulesReviewed: boolean;
+            };
+            account: {
+                governmentClient: boolean;
+                institution: string | null;
+                accountName: string | null;
+                accountLast4: string | null;
+                /** Format: date */
+                openedOn: string | null;
+            } | null;
+            position: {
+                status: components["schemas"]["TrustStatus"];
+                retentionWithheld: components["schemas"]["FinancialsMoney"];
+                released: components["schemas"]["FinancialsMoney"];
+                requiredInTrust: components["schemas"]["FinancialsMoney"];
+                balance: components["schemas"]["FinancialsMoney"];
+                shortfall: components["schemas"]["FinancialsMoney"];
+                interest: components["schemas"]["FinancialsMoney"];
+            };
+            movements: components["schemas"]["TrustMovement"][];
+        };
+        SaveContractTrustRequest: {
+            governmentClient?: boolean;
+            institution?: string | null;
+            accountName?: string | null;
+            accountLast4?: string | null;
+            /** Format: date */
+            openedOn?: string | null;
+        };
+        RecordTrustMovementRequest: {
+            kind: components["schemas"]["TrustMovementKind"];
+            amount: components["schemas"]["FinancialsMoney"];
+            /** Format: date */
+            movedOn: string;
+            reference: string;
+            note?: string;
+            reversesMovementId?: string;
+        };
+        PaymentSummaryClaim: {
+            claimId: string;
+            number: number;
+            /** Format: date */
+            periodEnd: string;
+            status: string;
+            claimedTotal: components["schemas"]["FinancialsMoney"];
+            scheduledAmount: string | null;
+            amountDue: string | null;
+            paid: components["schemas"]["FinancialsSignedMoney"];
+            /** Format: date */
+            lastPaidOn: string | null;
+            outstanding: string | null;
+            /** Format: date */
+            paymentDueOn: string | null;
+            overdue: boolean;
+        };
+        ContractPaymentSummary: {
+            contractId: string;
+            title: string;
+            claims: components["schemas"]["PaymentSummaryClaim"][];
+            totalDue: components["schemas"]["FinancialsMoney"];
+            totalPaid: components["schemas"]["FinancialsSignedMoney"];
+            trust: components["schemas"]["ContractTrust"];
         };
         VariationList: {
             data: components["schemas"]["Variation"][];
@@ -12310,7 +12813,11 @@ export interface components {
             createdAt: string;
         };
         /** @enum {string} */
-        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "other";
+        ComplianceItemType: "contractor_licence" | "trade_licence" | "workers_comp" | "public_liability" | "contract_works" | "professional_indemnity" | "personal_accident" | "home_warranty" | "subcontractor_statement" | "plant_registration" | "test_and_tag" | "wwcc" | "modern_slavery" | "abn" | "white_card" | "hrw_licence" | "other";
+        PrequalSettings: {
+            /** @description When on, a tender invite refuses any company that is not currently prequalified (an approved form still in date), unless a person with decision rights overrides it with a reason. */
+            requireForTenders: boolean;
+        };
         PrequalQuestion: {
             id: string;
             section: string;
@@ -12474,6 +12981,23 @@ export interface components {
              * @enum {string}
              */
             expiry: "no_expiry" | "current" | "expiring" | "expired";
+            /** @description The holder's entry on this org's worker list, when linked; null otherwise. Per-worker items are never shared with a builder. */
+            workerId: string | null;
+            /** @description Whose card it is */
+            holderName: string | null;
+            whiteCard: {
+                /**
+                 * @description A white card has no expiry date but lapses after 2 years without construction work. `may_have_lapsed` is a prompt to check, not a finding: no record of work is not a record of no work, and states differ (VIC unconfirmed).
+                 * @enum {string}
+                 */
+                state: "no_work_recorded" | "recent_work" | "may_have_lapsed";
+                /** Format: date */
+                lastWorkOn: string | null;
+                /** @description Whether the date is the last Archova sign-in or the holder's own declaration (the later of the two). */
+                source: ("sign_in" | "declared") | null;
+            } | null;
+            /** Format: date */
+            lastWorkDeclaredOn: string | null;
             sightedBy: components["schemas"]["UserRef"] | null;
             /** Format: date-time */
             sightedAt: string | null;
@@ -12517,6 +13041,15 @@ export interface components {
             expiresOn?: string;
             /** @description Ready files in this org. Required unless `selfDeclared`. */
             fileIds?: components["schemas"]["FileRef"][];
+            /** @description Required for a white card or high-risk licence (whose card it is); not allowed for a company item. */
+            holderName?: string;
+            /** @description Optional, per-worker items only: the holder's entry on this org's worker list, so their sign-ins count towards the white card 2-year rule. */
+            workerId?: string;
+            /**
+             * Format: date
+             * @description White card only: the day the holder says they last did construction work. Used for the 2-year rule.
+             */
+            lastWorkOn?: string;
             /**
              * @description A declaration with no document, such as "no employees".
              * @default false
@@ -12535,6 +13068,8 @@ export interface components {
             /** Format: date */
             expiresOn?: string | null;
             fileIds?: components["schemas"]["FileRef"][];
+            /** Format: date */
+            lastWorkOn?: string | null;
             archived?: boolean;
         };
         ComplianceShareCodeRequest: {
@@ -13300,6 +13835,9 @@ export interface components {
         ScheduleActivityId: string;
         ScheduleDependencyId: string;
         ScheduleLinkId: string;
+        OwnerProgressUpdateId: string;
+        OwnerApprovalId: string;
+        OwnerCapitalItemId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -14419,6 +14957,33 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ScheduleDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listScheduleLinksForItem: {
+        parameters: {
+            query: {
+                kind: "rfi" | "submittal";
+                targetId: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ScheduleItemPlacementList"];
                 };
             };
             default: components["responses"]["Problem"];
@@ -22432,6 +22997,56 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getPrequalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updatePrequalSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrequalSettings"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrequalSettings"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     getPrequalificationRegister: {
         parameters: {
             query?: {
@@ -24024,6 +24639,116 @@ export interface operations {
             default: components["responses"]["Problem"];
         };
     };
+    getContractPaymentSummary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractPaymentSummary"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getContractTrust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    saveContractTrust: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveContractTrustRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordTrustMovement: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                contractId: components["parameters"]["ContractId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordTrustMovementRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContractTrust"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
     listVariations: {
         parameters: {
             query?: never;
@@ -25336,6 +26061,332 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeetingActionList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerProgressUpdates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdateList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerProgressUpdate: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerProgressUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOwnerProgressUpdate: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOwnerProgressUpdateRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    publishOwnerProgressUpdate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                updateId: components["parameters"]["OwnerProgressUpdateId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerProgressUpdate"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listOwnerApprovals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApprovalList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerApproval: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateOwnerApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApproval"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    decideOwnerApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideOwnerApprovalRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApproval"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    withdrawOwnerApproval: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                approvalId: components["parameters"]["OwnerApprovalId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerApproval"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getOwnerCapitalPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerCapitalPlan"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createOwnerCapitalItem: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerCapitalItemInput"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerCapitalItem"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteOwnerCapitalItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["OwnerCapitalItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateOwnerCapitalItem: {
+        parameters: {
+            query?: never;
+            header: {
+                "If-Match": string;
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                itemId: components["parameters"]["OwnerCapitalItemId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateOwnerCapitalItemRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerCapitalItem"];
                 };
             };
             default: components["responses"]["Problem"];

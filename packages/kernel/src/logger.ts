@@ -53,6 +53,10 @@ export function createLogger(
           '*.refresh_token',
           '*.access_token',
           '*.code_verifier',
+          // A drain grant (X38) rides in an error body: never in a log line or an error report.
+          '*.drainGrant',
+          '*.drainGrant.token',
+          'err.extra',
         ],
         censor: '[redacted]',
       },

@@ -301,6 +301,23 @@ describe('Programme: Gantt, float, import and look-ahead (product/08 S4/S5)', ()
       404,
     );
 
+    // The reverse view: where the submittal sits on the programme, and nothing for a caller who can't see it.
+    const place = await s.pm.browser.get(
+      `${s.base}/schedule-links?kind=submittal&targetId=${submittal.id}`,
+    );
+    expect(place.statusCode).toBe(200);
+    expect(place.json()).toMatchObject({
+      data: [{ scheduleName: 'Linked', activityName: 'Slab pour', start: '2030-03-04' }],
+    });
+    const hidden = await s.sub.browser.get(
+      `${s.base}/schedule-links?kind=submittal&targetId=${submittal.id}`,
+    );
+    expect(hidden.json()).toEqual({ data: [] });
+    expect(
+      (await s.pm.browser.get(`${s.base}/schedule-links?kind=rfi&targetId=${submittal.id}`))
+        .statusCode,
+    ).toBe(422);
+
     // Removing the activity removes its links.
     await s.pm.browser.del(`${s.base}/schedules/${sid}/activities/${aid}`);
     const after = (await s.pm.browser.get(`${s.base}/schedules/${sid}/links`)).json() as {
