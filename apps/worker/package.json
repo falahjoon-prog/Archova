@@ -24,6 +24,7 @@
     "@archova/mod-backoffice": "workspace:*",
     "@archova/mod-billing": "workspace:*",
     "@archova/mod-estimating": "workspace:*",
+    "@archova/mod-financials": "workspace:*",
     "@archova/mod-files": "workspace:*",
     "@archova/mod-integrations": "workspace:*",
     "@archova/mod-meetings": "workspace:*",
