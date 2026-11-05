@@ -6064,6 +6064,54 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/RfiActivity' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+    get:
+      operationId: listRfiAnnotations
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.read
+      summary: Everyone's marks on the RFI's photos, for anyone who can see the RFI.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiAnnotationList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/RfiId'
+      - $ref: '#/components/parameters/FileId'
+    put:
+      operationId: putRfiFileAnnotation
+      tags: [rfis]
+      x-module: rfis
+      x-permission: rfis.rfis.create
+      summary: Set the caller's own marks on one of the RFI's photos; an empty list removes them.
+      description: |
+        Each person has one layer per photo, so a consultant's marks sit over the raiser's without changing them.
+        The file must be attached to the RFI or to one of its responses, and be an image. Not allowed once the RFI is
+        closed or void. The original photo is never changed.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PutRfiAnnotationRequest' }
+      responses:
+        '200':
+          description: The caller's layer after the change; `null` when it was removed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RfiAnnotationResult' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/close:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -17256,6 +17304,7 @@ components:
           ballInCourt,
           distributionUserIds,
           distributionCompanyIds,
+          fileIds,
           dueDate,
           isOverdue,
           openedAt,
@@ -17312,6 +17361,10 @@ components:
         specSection: { type: [string, 'null'], description: 'As written on the form.' }
         location: { type: [string, 'null'], description: 'As written on the form.' }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPin' }, { type: 'null' }] }
+        fileIds:
+          description: Photos and files attached to the question itself (not to a response). Photos can be marked up (`putRfiFileAnnotation`).
+          type: array
+          items: { type: string }
         officialResponseId: { type: [string, 'null'] }
         createdBy: { type: [string, 'null'] }
         createdAt: { type: string, format: date-time }
@@ -17395,6 +17448,10 @@ components:
             description: 'Where on the project, as written (e.g. `Level 2, gridline C`).',
           }
         pin: { $ref: '#/components/schemas/RfiPinInput' }
+        fileIds:
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
         aiSuggestionId:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
@@ -17428,6 +17485,11 @@ components:
         specSection: { type: [string, 'null'], maxLength: 200 }
         location: { type: [string, 'null'], maxLength: 200 }
         pin: { oneOf: [{ $ref: '#/components/schemas/RfiPinInput' }, { type: 'null' }] }
+        fileIds:
+          description: The files attached to the question; replaces the list.
+          type: array
+          maxItems: 20
+          items: { $ref: '#/components/schemas/FileRef' }
     CreateRfiResponseRequest:
       type: object
       additionalProperties: false
@@ -17442,6 +17504,41 @@ components:
           type: string
           pattern: '^ais_[0-9A-Za-z]{26}$'
           description: The Nova `rfi.answer` suggestion this response was drafted from.
+    RfiAnnotation:
+      type: object
+      required: [id, rfiId, fileId, authorId, shapes, createdAt, updatedAt]
+      properties:
+        id: { type: string }
+        rfiId: { type: string }
+        fileId: { type: string }
+        authorId: { type: [string, 'null'] }
+        shapes:
+          type: array
+          items: { $ref: '#/components/schemas/MarkupShape' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    RfiAnnotationList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/RfiAnnotation' }
+    RfiAnnotationResult:
+      type: object
+      required: [annotation]
+      properties:
+        annotation:
+          oneOf: [{ $ref: '#/components/schemas/RfiAnnotation' }, { type: 'null' }]
+    PutRfiAnnotationRequest:
+      type: object
+      additionalProperties: false
+      required: [shapes]
+      properties:
+        shapes:
+          type: array
+          maxItems: 500
+          items: { $ref: '#/components/schemas/MarkupShape' }
     RfiActivityItem:
       type: object
       required: [id, kind, at, actorId, details]

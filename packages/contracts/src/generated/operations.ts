@@ -1441,6 +1441,18 @@ export const GetRfiActivityParams = z.object({
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
   "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
 });
+export const ListRfiAnnotationsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "rfiId": z.string().regex(new RegExp("^rfi_[0-9A-Za-z]{26}$")),
+  "fileId": z.string().regex(new RegExp("^fil_[0-9A-Za-z]{26}$")),
+});
+export const PutRfiFileAnnotationBody = s.PutRfiAnnotationRequestSchema;
 export const CloseRfiParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -5989,6 +6001,30 @@ export const operations = {
     params: GetRfiActivityParams,
     query: null,
     body: null,
+  },
+  listRfiAnnotations: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/annotations',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.read",
+    internal: false,
+    contentType: null,
+    params: ListRfiAnnotationsParams,
+    query: null,
+    body: null,
+  },
+  putRfiFileAnnotation: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/rfis/{rfiId}/files/{fileId}/annotation',
+    module: "rfis",
+    auth: "required",
+    permission: "rfis.rfis.create",
+    internal: false,
+    contentType: "application/json",
+    params: PutRfiFileAnnotationParams,
+    query: null,
+    body: PutRfiFileAnnotationBody,
   },
   closeRfi: {
     method: 'POST',

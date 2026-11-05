@@ -51,6 +51,7 @@ export const ID_PREFIXES = {
   aiRun: 'air',
   aiSuggestion: 'ais',
   rfiResponse: 'rfr',
+  rfiAnnotation: 'rfa',
   submittal: 'sbm',
   submittalStep: 'sbs',
   correspondenceType: 'cty',

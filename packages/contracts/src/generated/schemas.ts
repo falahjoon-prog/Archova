@@ -2016,6 +2016,7 @@ export const CreateRfiRequestSchema = z.object({
   "specSection": z.string().max(200).optional(),
   "location": z.string().max(200).optional(),
   "pin": RfiPinInputSchema.optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
   "aiSuggestionId": z.string().regex(new RegExp("^ais_[0-9A-Za-z]{26}$")).optional(),
 }).strict();
 export type CreateRfiRequest = z.infer<typeof CreateRfiRequestSchema>;
@@ -5119,6 +5120,11 @@ export const PublishInductionRequestSchema = z.object({
 }).strict();
 export type PublishInductionRequest = z.infer<typeof PublishInductionRequestSchema>;
 
+export const PutRfiAnnotationRequestSchema = z.object({
+  "shapes": z.array(MarkupShapeSchema).max(500),
+}).strict();
+export type PutRfiAnnotationRequest = z.infer<typeof PutRfiAnnotationRequestSchema>;
+
 export const QueueClaimEvidenceDeliveryRequestSchema = z.object({
   "recipientEmail": z.string().email().max(254),
 }).strict();
@@ -5534,6 +5540,7 @@ export const RfiSchema = z.object({
   "specSection": z.string().nullable(),
   "location": z.string().nullable(),
   "pin": z.union([RfiPinSchema, z.null()]),
+  "fileIds": z.array(z.string()),
   "officialResponseId": z.string().nullable(),
   "createdBy": z.string().nullable(),
   "createdAt": z.string().datetime({ offset: true }),
@@ -5563,6 +5570,27 @@ export const RfiActivitySchema = z.object({
   "data": z.array(RfiActivityItemSchema),
 });
 export type RfiActivity = z.infer<typeof RfiActivitySchema>;
+
+export const RfiAnnotationSchema = z.object({
+  "id": z.string(),
+  "rfiId": z.string(),
+  "fileId": z.string(),
+  "authorId": z.string().nullable(),
+  "shapes": z.array(MarkupShapeSchema),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type RfiAnnotation = z.infer<typeof RfiAnnotationSchema>;
+
+export const RfiAnnotationListSchema = z.object({
+  "data": z.array(RfiAnnotationSchema),
+});
+export type RfiAnnotationList = z.infer<typeof RfiAnnotationListSchema>;
+
+export const RfiAnnotationResultSchema = z.object({
+  "annotation": z.union([RfiAnnotationSchema, z.null()]),
+});
+export type RfiAnnotationResult = z.infer<typeof RfiAnnotationResultSchema>;
 
 export const RfiResponseSchema = z.object({
   "id": z.string(),
@@ -6848,6 +6876,7 @@ export const UpdateRfiRequestSchema = z.object({
   "specSection": z.string().max(200).nullable().optional(),
   "location": z.string().max(200).nullable().optional(),
   "pin": z.union([RfiPinInputSchema, z.null()]).optional(),
+  "fileIds": z.array(FileRefSchema).max(20).optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateRfiRequest = z.infer<typeof UpdateRfiRequestSchema>;
 
