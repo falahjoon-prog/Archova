@@ -4,7 +4,7 @@ import { createDatabase, type Database } from '@archova/kernel';
 import { uuidv7 } from '@archova/domain';
 import { testAppUrl } from '@archova/testing';
 import type { ExpiryAlert } from '../../src/jobs/wallet-expiry';
-import { walletExpiry } from '../../src/jobs/wallet-expiry';
+import { walletExpiry, walletExpiryNotices } from '../../src/jobs/wallet-expiry';
 import { jobContext } from '../../src/subscribers';
 import { runTenantJob } from '../../src/scheduler';
 
@@ -84,5 +84,32 @@ describe('workforce.wallet-expiry', () => {
     );
     expect(await run(NOW)).toEqual({ raised: 0 });
     expect(await run(new Date('2027-10-20T03:00:00Z'))).toEqual({ raised: 1 });
+  });
+
+  it('puts each alert in the inbox of active owners and admins once', async () => {
+    const id = await org();
+    const [owner, admin, member, suspended] = [uuidv7(), uuidv7(), uuidv7(), uuidv7()];
+    await database.withTenantTx(jobContext(id, 't'), async (s) => {
+      for (const [u, role, status] of [
+        [owner, 'owner', 'active'],
+        [admin, 'admin', 'active'],
+        [member, 'member', 'active'],
+        [suspended, 'admin', 'suspended'],
+      ] as const)
+        await s.tx.execute(sql`insert into platform.memberships (id, org_id, user_id, role, status)
+          values (${uuidv7()}, ${id}, ${u}, ${role}, ${status})`);
+    });
+    await doc(id, 'insurance', '2026-11-10');
+    const job = walletExpiry(walletExpiryNotices);
+    const run = (now: Date) => runTenantJob([job], database, { job: job.name, orgId: id }, now);
+    expect(await run(NOW)).toEqual({ raised: 1 });
+    expect(await run(NOW)).toEqual({ raised: 0 });
+    const { rows } = await database.withTenantTx(jobContext(id, 't'), (s) =>
+      s.tx.execute<{ user_id: string; title: string }>(
+        sql`select user_id, title from notifications.notifications where kind = 'wallet_expiry'`,
+      ),
+    );
+    expect(rows.map((r) => r.user_id).sort()).toEqual([owner, admin].sort());
+    expect(rows[0]!.title).toBe('insurance expires in 7 days');
   });
 });
