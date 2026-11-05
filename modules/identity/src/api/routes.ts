@@ -45,11 +45,15 @@ export function identityRoutes({
   /** Partner app administration needs a person signed in to the app, recently, and a plan with API access. */
   const appAdmin = (
     input: Parameters<typeof requireTenant>[0] & Parameters<typeof requirePrincipal>[0],
+    opts: { web?: boolean } = {},
   ) => {
     const tenant = requireTenant(input);
     const principal = requirePrincipal(input);
     if (principal.apiToken || tenant.principalType !== 'member')
       throw new AppError('app.not_allowed', 'Sign in as a member to manage apps.');
+    // Approval is a browser action on the app origin; a bearer token of any kind cannot give it.
+    if (opts.web && principal.client !== 'web')
+      throw new AppError('app.not_allowed', 'Sign in on the web to approve an app.');
     if (Date.now() - principal.authTime.getTime() > STEP_UP_MS)
       throw new AppError('auth.step_up_required', 'Sign in again to manage apps.');
     if (!tenant.entitlements.modules.includes('api'))
@@ -115,7 +119,7 @@ export function identityRoutes({
       return { status: 200, body: { data: rows.map(toAppInstallDto) } };
     },
     installApp: async (input) => {
-      const tenant = appAdmin(input);
+      const tenant = appAdmin(input, { web: true });
       const redirectUrl = await partnerApps.install(tenant, input.body, input.ip);
       return {
         status: 201,

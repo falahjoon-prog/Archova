@@ -119,6 +119,7 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
     userId: string | null,
     ip: string | null,
     installId: string | null = null,
+    detail: Record<string, unknown> | null = null,
   ) {
     await tx.insert(appEvents).values({
       id: uuidv7(),
@@ -128,6 +129,7 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
       event: kind,
       userId,
       ip,
+      detail,
       createdAt: now(),
     });
   }
@@ -288,6 +290,11 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
       if (live) {
         id = live.id;
         await tx.update(appInstalls).set({ scopes }).where(eq(appInstalls.id, live.id));
+        if ([...live.scopes].sort().join() !== [...scopes].sort().join())
+          await event(tx, tenant.orgId, client.clientId, 'scope_changed', tenant.userId, ip, id, {
+            from: live.scopes,
+            to: scopes,
+          });
       } else {
         id = uuidv7();
         await tx.insert(appInstalls).values({
@@ -305,6 +312,7 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
         userId: tenant.userId,
         targetOrgId: tenant.orgId,
         installId: id,
+        familyId: uuidv7(),
         redirectUri: input.redirectUri,
         codeChallenge: input.codeChallenge,
         expiresAt: new Date(at.getTime() + AUTH_CODE_TTL_MS),
@@ -485,7 +493,42 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
         .where(and(eq(appCodes.codeHash, sha256(code)), isNull(appCodes.usedAt)))
         .returning(),
     );
-    if (!row || row.expiresAt < now()) throw invalidGrant();
+    if (!row) {
+      // A code that was already used: whoever holds tokens from it is suspect, so end that whole family.
+      const [used] = await database.withGlobalTx('identity', (tx) =>
+        tx
+          .select()
+          .from(appCodes)
+          .where(eq(appCodes.codeHash, sha256(code)))
+          .limit(1),
+      );
+      if (used && used.clientId === client.clientId) {
+        const ended = await database.withGlobalTx('identity', (tx) =>
+          tx
+            .update(appTokens)
+            .set({ revokedAt: now() })
+            .where(and(eq(appTokens.familyId, used.familyId), isNull(appTokens.revokedAt)))
+            .returning({ id: appTokens.id }),
+        );
+        if (ended.length)
+          await database.withTenantTx(lookupContext(used.targetOrgId), ({ tx }) =>
+            event(
+              tx,
+              used.targetOrgId,
+              client.clientId,
+              'reuse_detected',
+              used.userId,
+              null,
+              used.installId,
+              {
+                source: 'authorization_code',
+              },
+            ),
+          );
+      }
+      throw invalidGrant();
+    }
+    if (row.expiresAt < now()) throw invalidGrant();
     if (row.clientId !== client.clientId || row.redirectUri !== input.redirect_uri)
       throw invalidGrant();
     if (!verifyPkce(input.code_verifier, row.codeChallenge))
@@ -497,7 +540,7 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
       orgId: row.targetOrgId,
       userId: row.userId,
       scopes: inst.scopes,
-      familyId: uuidv7(),
+      familyId: row.familyId,
       absoluteExpiresAt: new Date(now().getTime() + APP_REFRESH_ABSOLUTE_MS),
     });
   }
@@ -648,7 +691,7 @@ export function createPartnerAppService(database: Database, deps: PartnerAppsDep
       authMethod: 'api_token',
       authTime: row.createdAt,
       // Rate limits count per install, not per short-lived token.
-      apiToken: { id: live.id, orgId, scopes: live.scopes },
+      apiToken: { id: live.id, orgId, scopes: live.scopes, app: true },
     };
   }
 

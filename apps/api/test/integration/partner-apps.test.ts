@@ -1,7 +1,9 @@
 import { createHash, randomBytes } from 'node:crypto';
+import { decodeId } from '@archova/domain';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   API_HOST,
+  APP_HOST,
   addMember,
   createOrg,
   createProject,
@@ -322,4 +324,200 @@ describe('partner apps (integrations/06 §4)', () => {
     expect(res.json()).toMatchObject({ code: 'feature-unavailable' });
     expect((await bearer(off, 'pa_live_abc', `/v1/orgs/${org.id}/projects`)).statusCode).toBe(401);
   });
+
+  it('ends everything issued from a code that is replayed, and logs it', async () => {
+    const s = await setup('pa-replay');
+    const tokens = await s.connect();
+    expect((await bearer(t, tokens.access_token, `/v1/orgs/${s.org.id}/projects`)).statusCode).toBe(
+      200,
+    );
+    // The same code again: someone else has it.
+    expect((await s.exchange(tokens.code)).statusCode).toBe(400);
+    expect((await bearer(t, tokens.access_token, `/v1/orgs/${s.org.id}/projects`)).statusCode).toBe(
+      401,
+    );
+    expect((await s.refresh(tokens.refresh_token)).statusCode).toBe(400);
+    const events = await orgQuery(
+      s.org.id,
+      `select event, detail from identity.app_events where client_id = $1 order by created_at`,
+      [s.app.clientId],
+    );
+    expect(events.map((e) => e.event)).toContain('reuse_detected');
+  });
+
+  it('logs scope changes with the old and new scopes, and the log cannot be edited', async () => {
+    const s = await setup('pa-scope', ['projects:read', 'rfis:read']);
+    await s.install({ scopes: ['projects:read'] });
+    await s.install({ scopes: ['projects:read', 'rfis:read'] });
+    const events = await orgQuery(
+      s.org.id,
+      `select event, detail from identity.app_events where client_id = $1 order by created_at`,
+      [s.app.clientId],
+    );
+    expect(events.map((e) => e.event).sort()).toEqual([
+      'app_created',
+      'installed',
+      'installed',
+      'scope_changed',
+    ]);
+    expect(events.find((e) => e.event === 'scope_changed')!.detail).toEqual({
+      from: ['projects:read'],
+      to: ['projects:read', 'rfis:read'],
+    });
+    await expect(
+      orgQuery(s.org.id, `update identity.app_events set event = 'revoked' where client_id = $1`, [
+        s.app.clientId,
+      ]),
+    ).rejects.toThrow(/append-only/);
+    await expect(
+      orgQuery(s.org.id, `delete from identity.app_events where client_id = $1`, [s.app.clientId]),
+    ).rejects.toThrow(/append-only/);
+  });
+
+  it('needs a recent sign-in to register, rotate or install', async () => {
+    const s = await setup('pa-stepup');
+    await t.adminDb.pool.query(
+      `update identity.sessions set auth_time = now() - interval '2 hours' where user_id = $1`,
+      [decodeId('user', s.owner.userId)],
+    );
+    await t.redis?.flushdb();
+    const create = await s.owner.browser.post(`/v1/orgs/${s.org.id}/oauth-apps`, {
+      name: 'X',
+      redirectUris: [REDIRECT],
+      scopes: ['projects:read'],
+    });
+    const rotate = await s.owner.browser.post(
+      `/v1/orgs/${s.org.id}/oauth-apps/${s.app.clientId}/rotate-secret`,
+    );
+    const install = await s.install();
+    for (const res of [create, rotate, install]) {
+      expect(res.statusCode).toBe(403);
+      expect(res.json()).toMatchObject({ code: 'auth.step_up_required' });
+    }
+  });
+
+  it('stops working when the person who approved it leaves the company or is disabled', async () => {
+    const s = await setup('pa-leaver');
+    const tokens = await s.connect();
+    const url = `/v1/orgs/${s.org.id}/projects`;
+    expect((await bearer(t, tokens.access_token, url)).statusCode).toBe(200);
+    await orgQuery(
+      s.org.id,
+      `update platform.memberships set status = 'suspended' where user_id = $1`,
+      [decodeId('user', s.owner.userId)],
+    );
+    await t.redis?.flushdb();
+    expect([401, 403, 404]).toContain((await bearer(t, tokens.access_token, url)).statusCode);
+    await orgQuery(
+      s.org.id,
+      `update platform.memberships set status = 'active' where user_id = $1`,
+      [decodeId('user', s.owner.userId)],
+    );
+    await t.redis?.flushdb();
+    expect((await bearer(t, tokens.access_token, url)).statusCode).toBe(200);
+    await t.adminDb.pool.query(`update identity.users set status = 'disabled' where id = $1`, [
+      decodeId('user', s.owner.userId),
+    ]);
+    expect((await bearer(t, tokens.access_token, url)).statusCode).toBe(401);
+    expect((await s.refresh(tokens.refresh_token)).statusCode).toBe(400);
+    await t.adminDb.pool.query(`update identity.users set status = 'active' where id = $1`, [
+      decodeId('user', s.owner.userId),
+    ]);
+  });
+
+  it('is refused on web-only, identity, export and approval routes, and on the app origin', async () => {
+    const s = await setup('pa-routes');
+    const tokens = await s.connect();
+    const org = `/v1/orgs/${s.org.id}`;
+    for (const url of [
+      '/v1/me',
+      `${org}/data-exports`,
+      `${org}/api-tokens`,
+      `${org}/webhooks`,
+      `${org}/oauth-apps`,
+      `${org}/app-installs`,
+      `${org}/feature-flags`,
+    ]) {
+      const res = await bearer(t, tokens.access_token, url);
+      expect(res.statusCode, url).toBeGreaterThanOrEqual(400);
+      expect(res.statusCode, url).not.toBe(200);
+    }
+    for (const [method, url] of [
+      ['POST', `${org}/app-installs`],
+      ['POST', `${org}/api-tokens`],
+      ['POST', `${org}/data-exports`],
+      ['DELETE', `${org}/app-installs/ain_00000000000000000000000000`],
+    ] as const) {
+      const res = await t.app.inject({
+        method,
+        url,
+        headers: { host: API_HOST, authorization: `Bearer ${tokens.access_token}` },
+        payload: method === 'POST' ? {} : undefined,
+      });
+      expect(res.statusCode, `${method} ${url}`).toBeGreaterThanOrEqual(400);
+    }
+    const onApp = await t.app.inject({
+      method: 'GET',
+      url: `${org}/projects`,
+      headers: { host: APP_HOST, authorization: `Bearer ${tokens.access_token}` },
+    });
+    expect(onApp.statusCode).toBe(401);
+    expect(onApp.json()).toMatchObject({ code: 'auth.wrong_origin_credential' });
+  });
+
+  it('only a web session can approve: a first-party mobile token cannot', async () => {
+    const s = await setup('pa-mobile');
+    const verifier = randomBytes(32).toString('base64url');
+    const challenge = createHash('sha256').update(verifier).digest('base64url');
+    const authz = await s.owner.browser.get(
+      `/v1/oauth/authorize?${new URLSearchParams({
+        response_type: 'code',
+        client_id: 'archova-mobile',
+        redirect_uri: 'com.archova.app:/oauth/callback',
+        code_challenge: challenge,
+        code_challenge_method: 'S256',
+        state: 's',
+      })}`,
+    );
+    const code = new URL(authz.headers.location as string).searchParams.get('code')!;
+    const mobile = (
+      await form(t, '/v1/oauth/token', {
+        grant_type: 'authorization_code',
+        client_id: 'archova-mobile',
+        code,
+        redirect_uri: 'com.archova.app:/oauth/callback',
+        code_verifier: verifier,
+      })
+    ).json() as { access_token: string };
+    const res = await t.app.inject({
+      method: 'POST',
+      url: `/v1/orgs/${s.org.id}/app-installs`,
+      headers: { host: API_HOST, authorization: `Bearer ${mobile.access_token}` },
+      payload: {
+        clientId: s.app.clientId,
+        redirectUri: REDIRECT,
+        codeChallenge: challenge,
+        state: 's',
+        scopes: ['projects:read'],
+      },
+    });
+    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode).not.toBe(201);
+  });
 });
+
+async function orgQuery(orgId: string, sql: string, params: unknown[]) {
+  const client = await t.adminDb.pool.connect();
+  try {
+    await client.query('begin');
+    await client.query(`select set_config('app.org_id', $1, true)`, [decodeId('org', orgId)]);
+    const res = await client.query(sql, params);
+    await client.query('commit');
+    return res.rows as Array<Record<string, any>>;
+  } catch (e) {
+    await client.query('rollback');
+    throw e;
+  } finally {
+    client.release();
+  }
+}

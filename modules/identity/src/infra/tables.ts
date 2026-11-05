@@ -1,4 +1,4 @@
-import { boolean, customType, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, customType, jsonb, pgSchema, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 const bytea = customType<{ data: Buffer }>({ dataType: () => 'bytea' });
 const citext = customType<{ data: string }>({ dataType: () => 'citext' });
@@ -123,10 +123,18 @@ export const appEvents = identity.table('app_events', {
   clientId: text('client_id').notNull(),
   installId: uuid('install_id'),
   event: text('event')
-    .$type<'app_created' | 'secret_rotated' | 'installed' | 'revoked' | 'reuse_detected'>()
+    .$type<
+      | 'app_created'
+      | 'secret_rotated'
+      | 'installed'
+      | 'scope_changed'
+      | 'revoked'
+      | 'reuse_detected'
+    >()
     .notNull(),
   userId: uuid('user_id'),
   ip: text('ip'),
+  detail: jsonb('detail').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -136,6 +144,7 @@ export const appCodes = identity.table('app_codes', {
   userId: uuid('user_id').notNull(),
   targetOrgId: uuid('target_org_id').notNull(),
   installId: uuid('install_id').notNull(),
+  familyId: uuid('family_id').notNull(),
   redirectUri: text('redirect_uri').notNull(),
   codeChallenge: text('code_challenge').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),

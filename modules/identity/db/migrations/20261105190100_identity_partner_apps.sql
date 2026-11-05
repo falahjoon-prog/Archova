@@ -30,13 +30,27 @@ create table identity.app_events (
   client_id  text not null,
   install_id uuid,
   event      text not null check (event in
-               ('app_created', 'secret_rotated', 'installed', 'revoked', 'reuse_detected')),
+               ('app_created', 'secret_rotated', 'installed', 'scope_changed', 'revoked', 'reuse_detected')),
   user_id    uuid,
   ip         text,
+  -- e.g. the old and new scopes of a re-approved install
+  detail     jsonb,
   created_at timestamptz not null default now()
 );
 create index app_events_org on identity.app_events (org_id, created_at desc);
 select kernel.enable_tenant_rls('identity.app_events');
+
+-- The trail is evidence for the customer: once written, a row cannot be changed or removed, not even by the app role.
+create function identity.app_events_immutable() returns trigger
+  language plpgsql as $$
+begin
+  raise exception 'identity.app_events is append-only';
+end;
+$$;
+create trigger app_events_no_update before update or delete on identity.app_events
+  for each row execute function identity.app_events_immutable();
+create trigger app_events_no_truncate before truncate on identity.app_events
+  for each statement execute function identity.app_events_immutable();
 
 -- Authorisation codes: single use, 60 seconds, PKCE S256. Global like oauth_codes (the token endpoint has no org yet).
 create table identity.app_codes (
@@ -45,6 +59,8 @@ create table identity.app_codes (
   user_id        uuid not null references identity.users (id) on delete cascade,
   target_org_id  uuid not null,
   install_id     uuid not null,
+  -- the token family this code will start, so a replayed code can end everything issued from it
+  family_id      uuid not null,
   redirect_uri   text not null,
   code_challenge text not null,
   expires_at     timestamptz not null,
