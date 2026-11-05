@@ -25,6 +25,7 @@ describe('projectToolGroups', () => {
       'Inspections',
       'Observations',
       'SWMS',
+      'Late submissions',
       'Tender packages',
       'Estimates',
       'Cost library',

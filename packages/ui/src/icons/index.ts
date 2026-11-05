@@ -63,6 +63,7 @@ export {
   Eye as ObservationsIcon,
   ClipboardList as InspectionsIcon,
   FileWarning as SwmsIcon,
+  MailWarning as LateSubmissionsIcon,
   ClipboardCheck as DefectsIcon,
   FileStack as DocumentsIcon,
   Home as HomeIcon,
