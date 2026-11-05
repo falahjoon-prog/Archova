@@ -19,6 +19,12 @@ export type VariationAction = 'submit' | 'approve' | 'reject' | 'withdraw';
 export type CostForecast = S['CostForecast'];
 export type ForecastAdjustment = S['ForecastAdjustment'];
 export type CreateForecastAdjustment = S['CreateForecastAdjustmentRequest'];
+export type ContractPaymentSummary = S['ContractPaymentSummary'];
+export type ContractTrust = S['ContractTrust'];
+export type TrustMovement = S['TrustMovement'];
+export type TrustStatus = S['TrustStatus'];
+export type SaveContractTrust = S['SaveContractTrustRequest'];
+export type RecordTrustMovement = S['RecordTrustMovementRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
@@ -43,6 +49,37 @@ export function createClaimsApi(orgId: string) {
       return unwrap(
         await api.POST(`${P}/contracts`, {
           params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async paymentSummary(projectId: string, contractId: string): Promise<ContractPaymentSummary> {
+      return unwrap(
+        await api.GET(`${P}/contracts/{contractId}/payment-summary`, {
+          params: { path: { orgId, projectId, contractId } },
+        }),
+      );
+    },
+    async saveTrust(
+      projectId: string,
+      contractId: string,
+      body: SaveContractTrust,
+    ): Promise<ContractTrust> {
+      return unwrap(
+        await api.PUT(`${P}/contracts/{contractId}/trust`, {
+          params: { path: { orgId, projectId, contractId } },
+          body,
+        }),
+      );
+    },
+    async recordTrustMovement(
+      projectId: string,
+      contractId: string,
+      body: RecordTrustMovement,
+    ): Promise<ContractTrust> {
+      return unwrap(
+        await api.POST(`${P}/contracts/{contractId}/trust/movements`, {
+          params: { path: { orgId, projectId, contractId }, header: idempotencyKey() },
           body,
         }),
       );
