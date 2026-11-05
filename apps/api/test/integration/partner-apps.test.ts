@@ -513,7 +513,7 @@ async function orgQuery(orgId: string, sql: string, params: unknown[]) {
     await client.query(`select set_config('app.org_id', $1, true)`, [decodeId('org', orgId)]);
     const res = await client.query(sql, params);
     await client.query('commit');
-    return res.rows as Array<Record<string, any>>;
+    return res.rows as Array<Record<string, unknown> & { event?: string; detail?: unknown }>;
   } catch (e) {
     await client.query('rollback');
     throw e;
