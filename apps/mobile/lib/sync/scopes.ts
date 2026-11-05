@@ -5,7 +5,7 @@ import { unwrap, type ApiClient } from '@archova/api-client';
 import { ORG_SCOPE, projectScope, type SyncScope } from '@archova/sync-core';
 
 /** Modules the phone app reads and writes offline. */
-export const OFFLINE_MODULES = ['defects', 'diary', 'photos'] as const;
+export const OFFLINE_MODULES = ['defects', 'diary', 'photos', 'quality'] as const;
 
 export async function deviceScopes(
   api: ApiClient,
