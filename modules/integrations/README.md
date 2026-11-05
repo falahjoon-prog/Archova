@@ -17,7 +17,7 @@ created in other modules yet.
 
 `src/domain/accounting/` holds the pure parts of the Xero and MYOB connectors: provider-neutral ledger documents,
 field-map line resolution (retention as a negative line, unmapped cost codes listed together), Xero and MYOB
-payload builders and clients (find-by-`PC-` reference before create, drafts only updated, locked once approved),
+payload builders and clients (find-by-`PC-{project key}-{contract}-{claim}` reference before create, drafts only updated, locked once approved),
 payment pull (A7), OAuth with PKCE and self-refreshing sessions, a rate limiter, and a sealed-token vault.
 All HTTP goes through an injected `fetch`, so tests run with no network.
 
