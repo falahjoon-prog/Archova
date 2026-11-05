@@ -458,6 +458,30 @@ export const BudgetAdjustmentListSchema = z.object({
 });
 export type BudgetAdjustmentList = z.infer<typeof BudgetAdjustmentListSchema>;
 
+export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
+export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
+
+export const BudgetVsForecastRowSchema = z.object({
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
+  "code": z.string().nullable(),
+  "codeDescription": z.string(),
+  "revised": FinancialsSignedMoneySchema,
+  "committed": FinancialsMoneySchema,
+  "claimed": FinancialsMoneySchema,
+  "adjustments": FinancialsSignedMoneySchema,
+  "forecastFinal": FinancialsSignedMoneySchema,
+  "variance": FinancialsSignedMoneySchema,
+});
+export type BudgetVsForecastRow = z.infer<typeof BudgetVsForecastRowSchema>;
+
+export const BudgetVsForecastSchema = z.object({
+  "budgetStatus": z.enum(["draft", "locked"]).nullable(),
+  "rows": z.array(BudgetVsForecastRowSchema),
+  "unallocated": BudgetVsForecastRowSchema,
+  "totals": BudgetVsForecastRowSchema,
+});
+export type BudgetVsForecast = z.infer<typeof BudgetVsForecastSchema>;
+
 export const GeoFixSchema = z.object({
   "lat": z.number().min(-90).max(90),
   "lng": z.number().min(-180).max(180),
@@ -508,9 +532,6 @@ export const CloseRfiRequestSchema = z.object({
   "officialResponseId": z.string().regex(new RegExp("^rfr_[0-9A-Za-z]{26}$")),
 }).strict();
 export type CloseRfiRequest = z.infer<typeof CloseRfiRequestSchema>;
-
-export const FinancialsSignedMoneySchema = z.string().regex(new RegExp("^-?\\d{1,16}(\\.\\d{1,2})?$"));
-export type FinancialsSignedMoney = z.infer<typeof FinancialsSignedMoneySchema>;
 
 export const CommitmentForecastSchema = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
@@ -759,6 +780,7 @@ export type Contract = z.infer<typeof ContractSchema>;
 
 export const SovItemSchema = z.object({
   "id": z.string().regex(new RegExp("^sov_[0-9A-Za-z]{26}$")),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
   "code": z.string(),
   "description": z.string(),
   "value": FinancialsMoneySchema,
@@ -1010,6 +1032,7 @@ export type ForecastAdjustmentCategory = z.infer<typeof ForecastAdjustmentCatego
 export const ForecastAdjustmentSchema = z.object({
   "id": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).nullable(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).nullable(),
   "category": ForecastAdjustmentCategorySchema,
   "label": z.string(),
   "note": z.string().nullable(),
@@ -1168,6 +1191,7 @@ export const CreateContractRequestSchema = z.object({
   "code": z.string().min(1).max(50),
   "description": z.string().min(1).max(300),
   "value": FinancialsMoneySchema,
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
 }).strict()).max(500),
 }).strict();
 export type CreateContractRequest = z.infer<typeof CreateContractRequestSchema>;
@@ -1369,6 +1393,7 @@ export type CreateFolderRequest = z.infer<typeof CreateFolderRequestSchema>;
 
 export const CreateForecastAdjustmentRequestSchema = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")).optional(),
+  "costCodeId": z.string().regex(new RegExp("^ccd_[0-9A-Za-z]{26}$")).optional(),
   "category": ForecastAdjustmentCategorySchema,
   "label": z.string().min(1).max(300),
   "note": z.string().min(1).max(5000).optional(),

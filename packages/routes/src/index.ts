@@ -141,6 +141,7 @@ export const mobileRoutes = {
   meetings: (projectId: string) => `/project/${enc(projectId)}/meetings`,
   meeting: (projectId: string, meetingId: string) =>
     `/project/${enc(projectId)}/meetings/${enc(meetingId)}`,
+  ownerPortal: (projectId: string) => `/project/${enc(projectId)}/owner-portal`,
   rollCall: (projectId: string) => `/project/${enc(projectId)}/roll-call`,
   induction: (projectId: string) => `/project/${enc(projectId)}/induction`,
   newDefect: (

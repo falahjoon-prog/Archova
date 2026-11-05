@@ -47,7 +47,7 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
       header: 'Code',
       rowHeader: true,
       sortValue: (l) => l.code,
-      cell: (l) => <span className="u-mono">{l.code}</span>,
+      cell: (l) => <span className="u-mono u-nowrap">{l.code}</span>,
     },
     {
       id: 'description',
@@ -55,8 +55,10 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
       sortValue: (l) => l.codeDescription,
       cell: (l) => (
         <>
-          {l.codeDescription}
-          {l.isMargin ? <StatusPill tone="info">Margin</StatusPill> : null}
+          <span className="row-actions">
+            {l.codeDescription}
+            {l.isMargin ? <StatusPill tone="info">Margin</StatusPill> : null}
+          </span>
           {l.description ? <p className="u-m-0 u-caption">{l.description}</p> : null}
         </>
       ),
@@ -66,21 +68,21 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
       header: 'Original',
       align: 'end',
       sortValue: (l) => Number(l.original),
-      cell: (l) => <span className="u-mono">{aud(l.original)}</span>,
+      cell: (l) => <span className="u-mono u-nowrap">{aud(l.original)}</span>,
     },
     {
       id: 'changes',
       header: 'Approved changes',
       align: 'end',
       sortValue: (l) => Number(l.approvedChanges),
-      cell: (l) => <span className="u-mono">{aud(l.approvedChanges)}</span>,
+      cell: (l) => <span className="u-mono u-nowrap">{aud(l.approvedChanges)}</span>,
     },
     {
       id: 'revised',
       header: 'Revised',
       align: 'end',
       sortValue: (l) => Number(l.revised),
-      cell: (l) => <span className="u-mono">{aud(l.revised)}</span>,
+      cell: (l) => <span className="u-mono u-nowrap">{aud(l.revised)}</span>,
     },
     {
       id: 'actions',
@@ -169,12 +171,15 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
       <Card>
         <DescriptionList
           items={[
-            { label: 'Original', value: <span className="u-mono">{aud(t.original)}</span> },
+            {
+              label: 'Original',
+              value: <span className="u-mono u-nowrap">{aud(t.original)}</span>,
+            },
             {
               label: 'Approved changes',
-              value: <span className="u-mono">{aud(t.approvedChanges)}</span>,
+              value: <span className="u-mono u-nowrap">{aud(t.approvedChanges)}</span>,
             },
-            { label: 'Revised', value: <span className="u-mono">{aud(t.revised)}</span> },
+            { label: 'Revised', value: <span className="u-mono u-nowrap">{aud(t.revised)}</span> },
           ]}
         />
       </Card>
@@ -189,11 +194,6 @@ export function BudgetPanel({ canManage }: { canManage: boolean }) {
             title="No lines yet"
             description="Add a line for each cost code you want to budget."
           />
-        }
-        footer={
-          <>
-            <strong>Total</strong> <span className="u-mono">{aud(t.revised)}</span>
-          </>
         }
       />
       {editing ? (

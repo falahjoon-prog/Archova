@@ -11,6 +11,8 @@ import {
   type CreateVariation,
   type IssuePaymentSchedule,
   type PaymentClaimStatus,
+  type RecordTrustMovement,
+  type SaveContractTrust,
   type SubmitPaymentClaim,
   type VariationAction,
 } from '../data/api';
@@ -36,6 +38,36 @@ export function useContract(projectId: string, contractId: string) {
     queryKey: queryKeys.toolItem(orgId, projectId, 'contracts', contractId),
     queryFn: () => source.contract(projectId, contractId),
   });
+}
+
+/** The payee's view of one contract: claims, what is owed and paid, and the trust record beside them. */
+export function usePaymentSummary(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  return useQuery({
+    queryKey: queryKeys.toolList(orgId, projectId, 'contracts', { paymentSummary: contractId }),
+    queryFn: () => source.paymentSummary(projectId, contractId),
+  });
+}
+
+/** Trust records change the payment summary (it carries the trust position), so both are refreshed. */
+export function useTrustMutations(projectId: string, contractId: string) {
+  const { orgId } = useCurrentOrg();
+  const source = useClaimsApi();
+  const qc = useQueryClient();
+  const refresh = () =>
+    qc.invalidateQueries({ queryKey: queryKeys.tool(orgId, projectId, 'contracts') });
+  return {
+    saveTrust: useMutation({
+      mutationFn: (body: SaveContractTrust) => source.saveTrust(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+    recordMovement: useMutation({
+      mutationFn: (body: RecordTrustMovement) =>
+        source.recordTrustMovement(projectId, contractId, body),
+      onSuccess: refresh,
+    }),
+  };
 }
 
 export function useCostForecast(projectId: string, enabled = true) {

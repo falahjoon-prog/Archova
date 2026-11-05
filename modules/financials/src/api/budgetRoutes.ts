@@ -14,7 +14,7 @@ import type {
   BudgetService,
   CostCodeRow,
 } from '../application/budget';
-import { isMoney } from '../domain/money';
+import { fromCents, isMoney } from '../domain/money';
 import { isSignedMoney, revisedOf, totalsOf } from '../domain/budget';
 
 const ref = (kind: IdKind, value: string, path: string) => {
@@ -181,6 +181,36 @@ export function budgetRoutes(database: Database, budget: BudgetService) {
             budget.adjustLine(s, project(input.params), line(input.params), input.body),
           ),
         ),
+      };
+    },
+    getBudgetVsForecast: async (input) => {
+      const r = await read(input, (s) => budget.budgetVsForecastFor(s, project(input.params)));
+      const row = (
+        x: (typeof r.rows)[number],
+        label?: { code: string | null; description: string },
+      ) => ({
+        costCodeId: x.costCodeId ? encodeId('costCode', x.costCodeId) : null,
+        code: label ? label.code : (r.byId.get(x.costCodeId ?? '')?.code ?? null),
+        codeDescription: label
+          ? label.description
+          : (r.byId.get(x.costCodeId ?? '')?.description ?? ''),
+        revised: fromCents(x.revisedCents),
+        committed: fromCents(x.committedCents),
+        claimed: fromCents(x.claimedCents),
+        adjustments: fromCents(x.adjustmentsCents),
+        forecastFinal: fromCents(x.forecastFinalCents),
+        variance: fromCents(x.varianceCents),
+      });
+      return {
+        status: 200,
+        body: {
+          budgetStatus: r.budget?.status ?? null,
+          rows: r.rows
+            .map((x) => row(x))
+            .sort((a, b) => (a.code ?? '').localeCompare(b.code ?? '')),
+          unallocated: row(r.unallocated, { code: null, description: 'Not tagged to a cost code' }),
+          totals: row(r.totals, { code: null, description: 'Total' }),
+        },
       };
     },
     listBudgetAdjustments: async (input) => ({

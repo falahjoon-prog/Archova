@@ -20,6 +20,7 @@ import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
 import { useCurrentProject } from '@/shared/providers/CurrentProjectProvider';
 import { useProjectDirectory } from '@/shared/providers/useProjectDirectory';
 import { DeadlineChip } from '../components/DeadlineChip';
+import { PaymentSummaryPanel } from '../components/PaymentSummaryPanel';
 import { RecordClaimForm } from '../components/RecordClaimForm';
 import { VariationsPanel } from '../components/VariationsPanel';
 import type { ContractDetail, PaymentClaim, SovItem } from '../data/api';
@@ -158,6 +159,10 @@ function Detail({ d }: { d: ContractDetail }) {
             description="Claims recorded against this contract appear here with their deadlines."
           />
         }
+      />
+      <PaymentSummaryPanel
+        contractId={c.id}
+        canManageTrust={canDecide && !perms.data?.isExternal}
       />
       {canRecord ? (
         <Card title="Record a payment claim">
