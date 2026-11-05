@@ -24,6 +24,7 @@ import { templateBackfill } from './jobs/template-backfill';
 import { trialBackfill } from './jobs/trial-backfill';
 import { trialEndingEmail } from './jobs/trial-ending-email';
 import { createLogSender, createSesSender } from './email';
+import { createSmtpSender } from './smtp';
 import { evidenceDeliveries } from './jobs/evidence-deliveries';
 import { evidenceTimestamps } from './jobs/evidence-timestamps';
 import { trialExpiry } from './jobs/trial-expiry';
@@ -62,13 +63,20 @@ async function main() {
           from: config.email.from,
           replyTo: config.email.replyTo,
         })
-      : createLogSender((msg, o) => log.info(o, msg));
+      : config.email.provider === 'smtp' && config.email.smtp
+        ? createSmtpSender({
+            ...config.email.smtp,
+            from: config.email.from,
+            replyTo: config.email.replyTo,
+          })
+        : createLogSender((msg, o) => log.info(o, msg));
   if (process.env.NODE_ENV === 'production' && !config.evidenceSigning)
     log.warn(
       {},
       'WORKER_EVIDENCE_SIGNING_KEY is not set: sealed claim send proofs will be hashed and timestamped but not signed',
     );
   /** Nightly and hourly per-org jobs (backend 05 §3). */
+
   const jobs: TenantJob[] = [
     accessLinkPurge,
     importStagingPurge,
@@ -77,10 +85,11 @@ async function main() {
     trialBackfill,
     trialEndingEmail(emailSender, config.email.appBaseUrl),
     // Sealed claims go out as real attachments or not at all: the log sender would mark them sent.
-    ...(config.email.provider === 'ses'
+    // SMTP can send sealed claims too, but only ever as dispatch: no delivery confirmation comes back (compliance/01 §4).
+    ...(config.email.provider === 'ses' || config.email.provider === 'smtp'
       ? [
           evidenceDeliveries(emailSender, {
-            provider: 'ses',
+            provider: config.email.provider,
             signer: config.evidenceSigning
               ? createEvidenceSigner(
                   config.evidenceSigning.keyId,
