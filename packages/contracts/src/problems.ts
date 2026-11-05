@@ -287,6 +287,11 @@ export const PROBLEM_CODES = {
   // reporting (portfolio dashboard, report builder)
   'report.not_found': 404,
   'report.not_owner': 403,
+  // data export (one-click full export)
+  'data_export.not_found': 404,
+  'data_export.in_progress': 409,
+  'data_export.not_ready': 409,
+  'data_export.expired': 410,
   'schedule.import_failed': 422,
   // financials (contracts, claims, payment schedules)
   'financials.contract.not_found': 404,

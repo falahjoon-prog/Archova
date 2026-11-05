@@ -6,7 +6,9 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Readable } from 'node:stream';
 
 /** Storage port for the files module. S3 in every deployed environment; in-memory for tests. */
 export interface ObjectStore {
@@ -27,6 +29,10 @@ export interface ObjectStore {
   ): Promise<string>;
   /** Reads a whole object, for server-side processing (Nova title blocks); null when it doesn't exist. */
   get(key: string): Promise<Uint8Array | null>;
+  /** Streams an object, for copies and archives too big to hold in memory; null when it doesn't exist. */
+  getStream(key: string): Promise<Readable | null>;
+  /** Uploads a stream of unknown length (multipart). Used by the data export for the finished archive. */
+  putStream(key: string, body: Readable, p: { contentType: string }): Promise<void>;
 }
 
 export interface S3StoreConfig {
@@ -96,6 +102,21 @@ export function createS3ObjectStore(cfg: S3StoreConfig): ObjectStore {
         throw e;
       }
     },
+    async getStream(key) {
+      try {
+        const r = await s3.send(new GetObjectCommand({ Bucket, Key: key }));
+        return r.Body ? (r.Body as Readable) : null;
+      } catch (e) {
+        if ((e as { name?: string }).name === 'NoSuchKey') return null;
+        throw e;
+      }
+    },
+    async putStream(key, body, p) {
+      await new Upload({
+        client: s3,
+        params: { Bucket, Key: key, Body: body, ContentType: p.contentType },
+      }).done();
+    },
     async presignGet(key, p) {
       return getSignedUrl(
         s3,
@@ -135,6 +156,16 @@ export function createMemoryObjectStore() {
     },
     async get(key) {
       return objects.get(key)?.bytes ?? null;
+    },
+    async getStream(key) {
+      const b = objects.get(key)?.bytes;
+      return b ? Readable.from([Buffer.from(b)]) : null;
+    },
+    async putStream(key, body) {
+      const chunks: Buffer[] = [];
+      for await (const c of body) chunks.push(Buffer.from(c as Uint8Array));
+      const bytes = Buffer.concat(chunks);
+      objects.set(key, { size: bytes.length, sha256Base64: null, bytes });
     },
     async copy(from, to) {
       const o = objects.get(from);

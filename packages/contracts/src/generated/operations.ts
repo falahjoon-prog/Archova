@@ -876,6 +876,20 @@ export const RunReportParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "reportId": z.string().regex(new RegExp("^rpt_[0-9A-Za-z]{26}$")),
 });
+export const ListDataExportsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const GetDataExportParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
+export const CreateDataExportDownloadParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "exportId": z.string().regex(new RegExp("^dxp_[0-9A-Za-z]{26}$")),
+});
 export const GetBidBoardParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -4832,6 +4846,56 @@ export const operations = {
     internal: false,
     contentType: null,
     params: RunReportParams,
+    query: null,
+    body: null,
+  },
+  listDataExports: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: ListDataExportsParams,
+    query: null,
+    body: null,
+  },
+  createDataExport: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 10,
+    contentType: null,
+    params: CreateDataExportParams,
+    query: null,
+    body: null,
+  },
+  getDataExport: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    contentType: null,
+    params: GetDataExportParams,
+    query: null,
+    body: null,
+  },
+  createDataExportDownload: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/data-exports/{exportId}/download',
+    module: "platform",
+    auth: "required",
+    permission: "exports.data.export",
+    internal: false,
+    rateLimit: 30,
+    contentType: null,
+    params: CreateDataExportDownloadParams,
     query: null,
     body: null,
   },

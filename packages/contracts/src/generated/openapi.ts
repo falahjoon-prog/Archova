@@ -2995,6 +2995,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/data-exports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's recent full exports, newest first.
+         * @description Owners and admins only. Shows the last 20 exports, including ones that are still being built.
+         */
+        get: operations["listDataExports"];
+        put?: never;
+        /**
+         * Start a full export of everything the organisation holds in Archova.
+         * @description Builds one zip with every record as CSV, every uploaded file (drawings, documents, photos, evidence) as the
+         *     original, and a manifest with row counts and SHA-256 checksums. Owners and admins only, and it needs a recent
+         *     sign-in. Works on a read-only or cancelled organisation, so leaving is never blocked. One export at a time:
+         *     a second request while one is queued or running is refused with 409. The zip is ready a few minutes to a few
+         *     hours later, depending on how many files there are, and kept for 7 days.
+         */
+        post: operations["createDataExport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        /** One export and how far it has got. */
+        get: operations["getDataExport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/data-exports/{exportId}/download": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A short-lived link to download a finished export.
+         * @description The link works for 15 minutes and is recorded against the person who asked for it. 409 while the export is
+         *     still being built or if it failed; 410 once it has expired.
+         */
+        post: operations["createDataExportDownload"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/bid-board": {
         parameters: {
             query?: never;
@@ -9085,6 +9159,38 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
+        };
+        DataExport: {
+            id: string;
+            /** @enum {string} */
+            status: "queued" | "running" | "ready" | "failed" | "expired";
+            requestedBy: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            startedAt: string | null;
+            /** Format: date-time */
+            finishedAt: string | null;
+            /** Format: date-time */
+            expiresAt: string | null;
+            sizeBytes: number | null;
+            /** @description SHA-256 of the zip */
+            sha256: string | null;
+            tableCount: number | null;
+            fileCount: number | null;
+            /** @description Files that could not be included (infected */
+            skippedFileCount: number | null;
+            /** @description Why a failed export failed */
+            error: string | null;
+        };
+        DataExportList: {
+            data: components["schemas"]["DataExport"][];
+        };
+        DataExportDownload: {
+            url: string;
+            /** Format: date-time */
+            expiresAt: string;
+            filename: string;
         };
         ReportList: {
             data: components["schemas"]["Report"][];
@@ -16168,6 +16274,7 @@ export interface components {
         OwnerApprovalId: string;
         OwnerCapitalItemId: string;
         ReportId: string;
+        DataExportId: string;
         MeetingSeriesId: string;
         MeetingId: string;
         MeetingItemId: string;
@@ -20634,6 +20741,101 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReportResult"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listDataExports: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Accepted; poll the export until it is ready. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getDataExport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExport"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createDataExportDownload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                exportId: components["parameters"]["DataExportId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link */
+            200: {
+                headers: {
+                    "Cache-Control"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataExportDownload"];
                 };
             };
             default: components["responses"]["Problem"];
