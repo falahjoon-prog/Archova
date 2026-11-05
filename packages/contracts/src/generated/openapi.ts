@@ -191,7 +191,19 @@ export interface paths {
         get: operations["getMe"];
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * Delete my account (the in-app deletion both app stores require).
+         * @description Needs a sign-in in the last 15 minutes (`403 auth.step_up_required` otherwise) and `confirm: DELETE`.
+         *     Clears the profile, credentials, sessions and API tokens, and ends the person's seat in every organisation and
+         *     project (their phone is told to wipe). Records they made or signed stay, as retention rules require, and read
+         *     "Deleted user". The email can be used to sign up again.
+         *
+         *     `409 account.sole_owner` (with `orgs`) means an organisation others still use has no other owner: make
+         *     someone else an owner first. `409 account.org_on_hold` means the person's own empty organisation can't be
+         *     closed because of a platform hold: contact support. An owner who is alone in an organisation closes it with
+         *     the account. Returns 204; the session ends, so the client signs the person out locally.
+         */
+        delete: operations["deleteMe"];
         options?: never;
         head?: never;
         patch?: never;
@@ -15341,6 +15353,10 @@ export interface components {
         TranslateInductionRequest: {
             lang: string;
         };
+        DeleteMeRequest: {
+            /** @enum {string} */
+            confirm: "DELETE";
+        };
         AskInductionRequest: {
             question: string;
         };
@@ -16306,6 +16322,29 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Me"];
                 };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    deleteMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteMeRequest"];
+            };
+        };
+        responses: {
+            /** @description Account deleted */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Problem"];
         };

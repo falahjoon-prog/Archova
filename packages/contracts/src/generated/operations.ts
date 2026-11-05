@@ -26,6 +26,7 @@ export const OauthAuthorizeQuery = z.object({
 });
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
+export const DeleteMeBody = s.DeleteMeRequestSchema;
 export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3011,6 +3012,18 @@ export const operations = {
     params: null,
     query: null,
     body: null,
+  },
+  deleteMe: {
+    method: 'DELETE',
+    path: '/v1/me',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DeleteMeBody,
   },
   createOrg: {
     method: 'POST',
