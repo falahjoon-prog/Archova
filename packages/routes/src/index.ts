@@ -109,6 +109,7 @@ export const webRoutes = {
 export const mobileRoutes = {
   signIn: () => '/sign-in',
   home: () => '/',
+  offline: () => '/offline',
   project: (projectId: string) => `/project/${enc(projectId)}`,
   diary: (projectId: string) => `/project/${enc(projectId)}/diary`,
   defects: (projectId: string) => `/project/${enc(projectId)}/defects`,
