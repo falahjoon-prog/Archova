@@ -9415,12 +9415,12 @@ export interface components {
         };
         Notification: {
             id: string;
-            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention` or `financials.retention_release_due`. */
+            /** @description What happened, e.g. `meeting.action_due_soon`, `meeting.action_overdue`, `tender.bid_due_soon`, `tender.bid_overdue`, `financials.trust_attention`, `financials.retention_release_due` or `safety.incident_action_assigned`. */
             kind: string;
             title: string;
             body: string;
             /** @enum {string} */
-            entityType: "meeting" | "tender_package" | "contract";
+            entityType: "meeting" | "tender_package" | "contract" | "incident";
             /** @description Public id of the record the notification is about. */
             entityId: string;
             projectId: string | null;

@@ -13,6 +13,7 @@ import { runRelay } from './relay';
 import { accessLinkPurge } from './jobs/access-links';
 import { bidReminders } from './jobs/bid-reminders';
 import { trustReminders } from './jobs/trust-reminders';
+import { incidentActionNotices } from './jobs/incident-action-notices';
 import { meetingReminders } from './jobs/meeting-reminders';
 import { importStagingPurge } from './jobs/import-staging';
 import { syncHoldsPurge } from './jobs/sync-holds';
@@ -62,6 +63,7 @@ async function main() {
     meetingReminders,
     bidReminders,
     trustReminders,
+    incidentActionNotices,
     // Alert rows are the record until the notification inbox lands; log what was raised.
     walletExpiry(async (scope, alerts) => {
       log.info({ orgId: scope.ctx.orgId, alerts: alerts.length }, 'wallet expiry alerts raised');
