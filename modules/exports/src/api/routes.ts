@@ -10,7 +10,7 @@ import {
 } from '@archova/kernel';
 import type { ExportsService } from '../application/exports';
 
-/** Starting an export needs a sign-in from the last 15 minutes: it is the one request that gathers every record. */
+/** Starting or downloading an export needs a sign-in from the last 15 minutes: it gathers every record. */
 const STEP_UP_MS = 15 * 60_000;
 
 export function exportsRoutes(database: Database, service: ExportsService) {
@@ -33,26 +33,29 @@ export function exportsRoutes(database: Database, service: ExportsService) {
     return p;
   };
 
+  const stepUp = (p: { authTime: Date }) => {
+    if (Date.now() - p.authTime.getTime() > STEP_UP_MS)
+      throw new AppError('auth.step_up_required', 'Sign in again to export your data.');
+  };
+
   return defineRoutes({
     listDataExports: async (input) => {
       person(input);
       return { status: 200, body: await read(input, (s) => service.list(s)) };
     },
     createDataExport: async (input) => {
-      const p = person(input);
-      if (Date.now() - p.authTime.getTime() > STEP_UP_MS)
-        throw new AppError('auth.step_up_required', 'Sign in again to export your data.');
-      return { status: 202, body: await tx(input, (s) => service.create(s)) };
+      stepUp(person(input));
+      return { status: 202, body: await tx(input, (s) => service.create(s, input.ip)) };
     },
     getDataExport: async (input) => {
       person(input);
       return { status: 200, body: await read(input, (s) => service.get(s, id(input.params))) };
     },
     createDataExportDownload: async (input) => {
-      person(input);
+      stepUp(person(input));
       return {
         status: 200,
-        body: await tx(input, (s) => service.download(s, id(input.params))),
+        body: await tx(input, (s) => service.download(s, id(input.params), input.ip)),
         headers: { 'cache-control': 'no-store' },
       };
     },

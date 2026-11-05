@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, gt, sql } from 'drizzle-orm';
 import { encodeId } from '@archova/domain';
 import { AppError, type TenantScope } from '@archova/kernel';
 import type { ObjectStore } from '@archova/mod-files';
@@ -12,7 +12,7 @@ export function toDto(r: Row) {
   return {
     id: encodeId('dataExport', r.id),
     status: r.status,
-    requestedBy: r.requestedBy,
+    requestedBy: encodeId('user', r.requestedBy),
     createdAt: r.createdAt.toISOString(),
     startedAt: iso(r.startedAt),
     finishedAt: iso(r.finishedAt),
@@ -27,6 +27,7 @@ export function toDto(r: Row) {
 }
 
 const DOWNLOAD_TTL_S = 900;
+const DAILY_CAP = 5;
 
 export function createExportsService(deps: {
   store: ObjectStore;
@@ -56,7 +57,14 @@ export function createExportsService(deps: {
     },
 
     /** Queues the export; the worker builds it when it sees the event. One at a time per org (a unique index). */
-    async create(scope: TenantScope) {
+    async create(scope: TenantScope, ip?: string | null) {
+      // A runaway script or a stolen session cannot queue exports all day.
+      const [recent] = await scope.tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(exportJobs)
+        .where(gt(exportJobs.createdAt, new Date(now().getTime() - 86_400_000)));
+      if ((recent?.n ?? 0) >= DAILY_CAP)
+        throw new AppError('rate_limited', 'Exports are limited to 5 a day. Try again tomorrow.');
       const id = deps.newId();
       try {
         const [row] = await scope.tx
@@ -68,7 +76,7 @@ export function createExportsService(deps: {
           entityType: 'data_export',
           entityId: id,
           entityVersion: 1,
-          data: { exportId: id },
+          data: { exportId: id, by: scope.ctx.userId, ip: ip ?? null },
         });
         return toDto(row!);
       } catch (e) {
@@ -82,7 +90,7 @@ export function createExportsService(deps: {
     },
 
     /** A 15 minute link, and an event naming who asked for it: the archive holds everything the company has. */
-    async download(scope: TenantScope, id: string) {
+    async download(scope: TenantScope, id: string, ip?: string | null) {
       const row = await load(scope, id);
       if (row.status === 'expired' || (row.expiresAt && row.expiresAt <= now()))
         throw new AppError('data_export.expired', 'This export has expired. Start a new one.');
@@ -100,7 +108,7 @@ export function createExportsService(deps: {
         entityType: 'data_export',
         entityId: id,
         entityVersion: row.version,
-        data: { exportId: id, by: scope.ctx.userId },
+        data: { exportId: id, by: scope.ctx.userId, ip: ip ?? null },
       });
       return {
         url,

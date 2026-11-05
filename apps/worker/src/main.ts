@@ -31,7 +31,7 @@ import type { TenantJob } from './scheduler';
 import type { Subscriber } from './subscribers';
 import { walletExpiry, walletExpiryNotices } from './jobs/wallet-expiry';
 import { walletRetention } from './jobs/wallet-retention';
-import { dataExportBuilder, dataExportSweep } from './jobs/data-exports';
+import { dataExportBuilder, dataExportNotices, dataExportSweep } from './jobs/data-exports';
 import { webhookDelivery } from './webhooks';
 
 /** Subscribers whose handlers run in another role's process: routed here, never run here. */
@@ -63,6 +63,7 @@ async function main() {
           replyTo: config.email.replyTo,
         })
       : createLogSender((msg, o) => log.info(o, msg));
+  SUBSCRIBERS.push(dataExportNotices(emailSender, (msg, o) => log.info(o ?? {}, msg)));
   /** Nightly and hourly per-org jobs (backend 05 §3). */
   const jobs: TenantJob[] = [
     accessLinkPurge,
