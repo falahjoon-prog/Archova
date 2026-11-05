@@ -277,7 +277,7 @@ export const workerCredentials = workforceSchema.table('worker_credentials', {
   orgId: uuid('org_id').notNull(),
   workerId: uuid('worker_id').notNull(),
   kind: text('kind').$type<CredentialKind>().notNull(),
-  number: text('number').notNull(),
+  numberLast4: text('number_last4').notNull(),
   issuingState: text('issuing_state'),
   licenceClass: text('licence_class'),
   issuedOn: date('issued_on'),
