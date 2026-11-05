@@ -3,6 +3,7 @@ import { encodeId } from '@archova/domain';
 import type {
   ClaimLineRow,
   ClaimRow,
+  ClaimStatementRow,
   ContractRow,
   ScheduleRow,
   SovRow,
@@ -81,6 +82,14 @@ export const toLineDto = (l: ClaimLineRow) => ({
   previous: l.previous,
   thisClaim: l.thisClaim,
   toDate: l.toDate,
+});
+
+export const toStatementDto = (s: ClaimStatementRow) => ({
+  periodEnd: s.periodEnd,
+  receivedOn: s.receivedOn,
+  signedOn: s.signedOn,
+  note: s.note,
+  recordedAt: s.recordedAt.toISOString(),
 });
 
 export const toScheduleDto = (s: ScheduleRow) => ({

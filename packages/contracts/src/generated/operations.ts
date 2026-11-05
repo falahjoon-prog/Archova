@@ -2226,6 +2226,12 @@ export const IssuePaymentScheduleParams = z.object({
   "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
 });
 export const IssuePaymentScheduleBody = s.IssuePaymentScheduleRequestSchema;
+export const RecordClaimStatementParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "claimId": z.string().regex(new RegExp("^pcl_[0-9A-Za-z]{26}$")),
+});
+export const RecordClaimStatementBody = s.RecordClaimStatementRequestSchema;
 export const ListClaimEvidenceParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -7330,6 +7336,18 @@ export const operations = {
     params: IssuePaymentScheduleParams,
     query: null,
     body: IssuePaymentScheduleBody,
+  },
+  recordClaimStatement: {
+    method: 'PUT',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement',
+    module: "financials",
+    auth: "required",
+    permission: "financials.claims.record",
+    internal: false,
+    contentType: "application/json",
+    params: RecordClaimStatementParams,
+    query: null,
+    body: RecordClaimStatementBody,
   },
   listClaimEvidence: {
     method: 'GET',

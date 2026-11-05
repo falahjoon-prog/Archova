@@ -6946,6 +6946,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/subcontractor-statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Link the NSW subcontractor's statement to a payment claim (compliance/05 §6).
+         * @description One statement per claim; recording again replaces it. Only for NSW subcontract claims. A claim without one is flagged (`warnings`) but never blocked, and the statement says nothing about withholding payment.
+         */
+        put: operations["recordClaimStatement"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/projects/{projectId}/payment-claims/{claimId}/evidence": {
         parameters: {
             query?: never;
@@ -11714,9 +11738,42 @@ export interface components {
             data: components["schemas"]["PaymentClaim"][];
         };
         PaymentClaimDetail: {
+            /** @description The NSW subcontractor's statement linked to this claim, if one was recorded. */
+            statement: components["schemas"]["ClaimStatement"] | null;
+            /** @description `subcontractor_statement_missing` is an NSW subcontract claim with no statement linked. A prompt only: Archova does not suggest withholding payment for it (open question for the lawyer). */
+            warnings: "subcontractor_statement_missing"[];
             claim: components["schemas"]["PaymentClaim"];
             lines: components["schemas"]["PaymentClaimLine"][];
             schedule: components["schemas"]["PaymentSchedule"] | null;
+        };
+        ClaimStatement: {
+            /** Format: date */
+            periodEnd: string;
+            /** Format: date */
+            receivedOn: string;
+            /** Format: date */
+            signedOn: string | null;
+            note: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        RecordClaimStatementRequest: {
+            /**
+             * Format: date
+             * @description The last day of the period the statement covers.
+             */
+            periodEnd: string;
+            /**
+             * Format: date
+             * @description The day it reached the builder. Not in the future.
+             */
+            receivedOn: string;
+            /**
+             * Format: date
+             * @description Not after receivedOn.
+             */
+            signedOn?: string;
+            note?: string;
         };
         SubmitPaymentClaimRequest: {
             /** Format: date */
@@ -25146,6 +25203,35 @@ export interface operations {
         responses: {
             /** @description Issued */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentClaimDetail"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    recordClaimStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                projectId: components["parameters"]["ProjectId"];
+                claimId: components["parameters"]["PaymentClaimId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordClaimStatementRequest"];
+            };
+        };
+        responses: {
+            /** @description The claim with its statement linked */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

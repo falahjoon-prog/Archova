@@ -10,6 +10,7 @@ import {
   type CreateForecastAdjustment,
   type CreateVariation,
   type IssuePaymentSchedule,
+  type RecordClaimStatement,
   type PaymentClaimStatus,
   type SubmitPaymentClaim,
   type VariationAction,
@@ -123,6 +124,11 @@ export function useClaimsMutations(projectId: string) {
     submitClaim: useMutation({
       mutationFn: (v: { contractId: string; body: SubmitPaymentClaim }) =>
         source.submitClaim(projectId, v.contractId, v.body),
+      onSuccess: refresh,
+    }),
+    recordStatement: useMutation({
+      mutationFn: (v: { claimId: string; body: RecordClaimStatement }) =>
+        source.recordStatement(projectId, v.claimId, v.body),
       onSuccess: refresh,
     }),
     issueSchedule: useMutation({
