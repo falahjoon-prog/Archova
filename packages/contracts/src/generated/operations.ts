@@ -1882,6 +1882,20 @@ export const SubmitPaymentClaimParams = z.object({
   "contractId": z.string().regex(new RegExp("^cnt_[0-9A-Za-z]{26}$")),
 });
 export const SubmitPaymentClaimBody = s.SubmitPaymentClaimRequestSchema;
+export const GetCostForecastParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateForecastAdjustmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateForecastAdjustmentBody = s.CreateForecastAdjustmentRequestSchema;
+export const DeleteForecastAdjustmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "adjustmentId": z.string().regex(new RegExp("^fca_[0-9A-Za-z]{26}$")),
+});
 export const ListVariationsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -2114,6 +2128,8 @@ export interface OperationDef {
   internal: boolean;
   /** Feature flag that must be on for the org (x-flag); absent for ungated operations. */
   flag?: string;
+  /** Requests per minute for one user in one org (x-rate-limit), counted for every caller; absent when unlimited. */
+  rateLimit?: number;
   contentType: string | null;
   params: z.ZodTypeAny | null;
   query: z.ZodTypeAny | null;
@@ -5569,6 +5585,7 @@ export const operations = {
     permission: "workforce.wallet.request",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 20,
     contentType: "application/json",
     params: CreateComplianceAccessRequestParams,
     query: null,
@@ -5595,6 +5612,7 @@ export const operations = {
     permission: "workforce.wallet.manage",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 10,
     contentType: "application/json",
     params: PreviewComplianceShareCodeParams,
     query: null,
@@ -5621,6 +5639,7 @@ export const operations = {
     permission: "workforce.wallet.manage",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 10,
     contentType: "application/json",
     params: AcceptComplianceGrantParams,
     query: null,
@@ -5660,6 +5679,7 @@ export const operations = {
     permission: "workforce.wallet.read_granted",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 30,
     contentType: null,
     params: ListGrantedWalletsParams,
     query: null,
@@ -5673,6 +5693,7 @@ export const operations = {
     permission: "workforce.wallet.read_granted",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 30,
     contentType: null,
     params: ListGrantedWalletDocumentsParams,
     query: ListGrantedWalletDocumentsQuery,
@@ -5686,6 +5707,7 @@ export const operations = {
     permission: "workforce.wallet.read_granted",
     internal: false,
     flag: "subcontractor_wallet",
+    rateLimit: 30,
     contentType: "application/json",
     params: CreateComplianceSnapshotParams,
     query: null,
@@ -6230,6 +6252,42 @@ export const operations = {
     params: SubmitPaymentClaimParams,
     query: null,
     body: SubmitPaymentClaimBody,
+  },
+  getCostForecast: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.read",
+    internal: false,
+    contentType: null,
+    params: GetCostForecastParams,
+    query: null,
+    body: null,
+  },
+  createForecastAdjustment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateForecastAdjustmentParams,
+    query: null,
+    body: CreateForecastAdjustmentBody,
+  },
+  deleteForecastAdjustment: {
+    method: 'DELETE',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/cost-forecast/adjustments/{adjustmentId}',
+    module: "financials",
+    auth: "required",
+    permission: "financials.forecast.manage",
+    internal: false,
+    contentType: null,
+    params: DeleteForecastAdjustmentParams,
+    query: null,
+    body: null,
   },
   listVariations: {
     method: 'GET',

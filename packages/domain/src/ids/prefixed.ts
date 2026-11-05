@@ -99,6 +99,7 @@ export const ID_PREFIXES = {
   budget: 'bud',
   budgetLine: 'bln',
   budgetAdjustment: 'bad',
+  forecastAdjustment: 'fca',
 } as const;
 
 export type IdKind = keyof typeof ID_PREFIXES;
