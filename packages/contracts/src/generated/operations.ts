@@ -1608,6 +1608,60 @@ export const DeleteDiaryStandDownParams = z.object({
 export const DeleteDiaryStandDownQuery = z.object({
   "amendmentReason": z.string().min(1).max(1000).optional(),
 });
+export const ListTimesheetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListTimesheetsQuery = z.object({
+  "from": z.string().date(),
+  "to": z.string().date(),
+  "status": s.TimesheetStatusSchema.optional(),
+  "workerId": z.string().regex(new RegExp("^wkr_[0-9A-Za-z]{26}$")).optional(),
+});
+export const GenerateTimesheetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const GenerateTimesheetsBody = s.DateRangeRequestSchema;
+export const ExportTimesheetsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ExportTimesheetsBody = s.DateRangeRequestSchema;
+export const GetTimesheetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "timesheetId": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+});
+export const AddTimesheetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "timesheetId": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+});
+export const AddTimesheetLineBody = s.AddTimesheetLineRequestSchema;
+export const AdjustTimesheetLineParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "timesheetId": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+  "lineId": z.string().regex(new RegExp("^tsl_[0-9A-Za-z]{26}$")),
+});
+export const AdjustTimesheetLineBody = s.AdjustTimesheetLineRequestSchema;
+export const SubmitTimesheetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "timesheetId": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+});
+export const ApproveTimesheetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "timesheetId": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+});
+export const RejectTimesheetParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "timesheetId": z.string().regex(new RegExp("^tsh_[0-9A-Za-z]{26}$")),
+});
+export const RejectTimesheetBody = s.RejectTimesheetRequestSchema;
 export const ListEquipmentParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6137,6 +6191,114 @@ export const operations = {
     params: DeleteDiaryStandDownParams,
     query: DeleteDiaryStandDownQuery,
     body: null,
+  },
+  listTimesheets: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.view",
+    internal: false,
+    contentType: null,
+    params: ListTimesheetsParams,
+    query: ListTimesheetsQuery,
+    body: null,
+  },
+  generateTimesheets: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/generate',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.edit",
+    internal: false,
+    contentType: "application/json",
+    params: GenerateTimesheetsParams,
+    query: null,
+    body: GenerateTimesheetsBody,
+  },
+  exportTimesheets: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/export',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.export",
+    internal: false,
+    contentType: "application/json",
+    params: ExportTimesheetsParams,
+    query: null,
+    body: ExportTimesheetsBody,
+  },
+  getTimesheet: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.view",
+    internal: false,
+    contentType: null,
+    params: GetTimesheetParams,
+    query: null,
+    body: null,
+  },
+  addTimesheetLine: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.edit",
+    internal: false,
+    contentType: "application/json",
+    params: AddTimesheetLineParams,
+    query: null,
+    body: AddTimesheetLineBody,
+  },
+  adjustTimesheetLine: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.edit",
+    internal: false,
+    contentType: "application/json",
+    params: AdjustTimesheetLineParams,
+    query: null,
+    body: AdjustTimesheetLineBody,
+  },
+  submitTimesheet: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.edit",
+    internal: false,
+    contentType: null,
+    params: SubmitTimesheetParams,
+    query: null,
+    body: null,
+  },
+  approveTimesheet: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.approve",
+    internal: false,
+    contentType: null,
+    params: ApproveTimesheetParams,
+    query: null,
+    body: null,
+  },
+  rejectTimesheet: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.timesheets.approve",
+    internal: false,
+    contentType: "application/json",
+    params: RejectTimesheetParams,
+    query: null,
+    body: RejectTimesheetBody,
   },
   listEquipment: {
     method: 'GET',

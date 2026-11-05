@@ -557,3 +557,102 @@ describe('Equipment', () => {
     expect(logs[0]).toMatchObject({ hours: '7.50', operator: 'Pat' });
   });
 });
+
+describe('Timesheets (ATT-US9)', () => {
+  it('builds a sheet from sign-ins, adjusts it with a reason, approves, locks and exports it', async () => {
+    const s = await setup('timesheet');
+    const startedAt = new Date(Date.now() - 3 * 3600_000).toISOString();
+    const day = localDateOf(new Date(startedAt), TZ);
+    const ts = `${s.base}/timesheets`;
+    const range = { from: day, to: day };
+    await s.sub.browser.post(`${s.base}/attendance/sign-in`, {
+      gateCode: s.code,
+      clientAt: startedAt,
+    });
+    await s.eng.browser.post(`${s.base}/attendance/sign-in`, {
+      gateCode: s.code,
+      clientAt: startedAt,
+    });
+
+    // Nothing to build from while they are still on site.
+    expect((await s.sm.browser.post(`${ts}/generate`, range)).json()).toMatchObject({
+      sheetsCreated: 0,
+    });
+    await s.sub.browser.post(`${s.base}/attendance/sign-out`, { gateCode: s.code });
+
+    // A subcontractor builds only its own crew's sheets.
+    const gen = await s.sub.browser.post(`${ts}/generate`, range);
+    expect(gen.statusCode).toBe(200);
+    expect(gen.json()).toMatchObject({ sheetsCreated: 1, linesAdded: 1 });
+    expect((await s.sub.browser.post(`${ts}/generate`, range)).json()).toMatchObject({
+      sheetsCreated: 0,
+      linesAdded: 0,
+    });
+
+    const mine = (await s.sub.browser.get(`${ts}?from=${day}&to=${day}`)).json().data;
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ status: 'draft', companyId: s.subCo.companyId });
+    expect(mine[0].paidMinutes).toBeGreaterThanOrEqual(179);
+    const sheet = mine[0];
+    const sp = `${ts}/${sheet.id}`;
+    expect((await s.sub2.browser.get(sp)).statusCode).toBe(404);
+
+    // Changing a sign-in line needs a reason; a break can't exceed the time worked.
+    const line = sheet.lines[0];
+    expect(
+      (await s.sub.browser.patch(`${sp}/lines/${line.id}`, { breakMinutes: 30 })).statusCode,
+    ).toBe(422);
+    expect(
+      (await s.sub.browser.patch(`${sp}/lines/${line.id}`, { breakMinutes: 9999, reason: 'x' }))
+        .statusCode,
+    ).toBe(422);
+    const adjusted = await s.sub.browser.patch(`${sp}/lines/${line.id}`, {
+      breakMinutes: 30,
+      reason: 'Half hour lunch',
+    });
+    expect(adjusted.statusCode).toBe(200);
+    expect(adjusted.json().lines[0]).toMatchObject({ source: 'adjusted', breakMinutes: 30 });
+    expect(adjusted.json().paidMinutes).toBe(sheet.paidMinutes - 30);
+    const added = await s.sub.browser.post(`${sp}/lines`, {
+      minutes: 60,
+      reason: 'Loading out after sign-out',
+    });
+    expect(added.json().lines).toHaveLength(2);
+
+    // Approving is the supervisor's job, and only after the sheet is submitted.
+    expect((await s.sm.browser.post(`${sp}/approve`)).statusCode).toBe(409);
+    expect((await s.sub.browser.post(`${sp}/submit`)).json().status).toBe('submitted');
+    expect((await s.sub.browser.post(`${sp}/approve`)).statusCode).toBe(403);
+    expect(
+      (await s.sub.browser.patch(`${sp}/lines/${line.id}`, { minutes: 1, reason: 'x' })).statusCode,
+    ).toBe(409);
+
+    // A rejection reopens it with the reason; resubmit and approve.
+    const rejected = await s.sm.browser.post(`${sp}/reject`, { reason: 'Lunch looks long' });
+    expect(rejected.json()).toMatchObject({
+      status: 'rejected',
+      rejectionReason: 'Lunch looks long',
+    });
+    await s.sub.browser.post(`${sp}/submit`);
+    const approved = await s.sm.browser.post(`${sp}/approve`);
+    expect(approved.json().status).toBe('approved');
+
+    // Approved is locked, and building again adds nothing to it.
+    expect(
+      (await s.sub.browser.post(`${sp}/lines`, { minutes: 5, reason: 'late' })).statusCode,
+    ).toBe(409);
+    expect((await s.sm.browser.post(`${ts}/generate`, range)).json()).toMatchObject({
+      linesAdded: 0,
+    });
+
+    // Only supervisors export; a sheet goes out once.
+    expect((await s.sub.browser.post(`${ts}/export`, range)).statusCode).toBe(403);
+    const out = await s.sm.browser.post(`${ts}/export`, range);
+    expect(out.statusCode).toBe(200);
+    expect(out.json().count).toBe(1);
+    expect(out.json().csv).toContain('date,worker,minutes,break_minutes,paid_hours');
+    expect(out.json().csv).toContain('Half hour lunch');
+    expect((await s.sm.browser.post(`${ts}/export`, range)).json().count).toBe(0);
+    expect((await s.sm.browser.get(sp)).json().status).toBe('exported');
+  });
+});

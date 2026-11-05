@@ -109,6 +109,8 @@ export const webRoutes = {
     `${p(orgSlug, projectId)}/attendance/roster`,
   attendanceEquipment: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/equipment`,
+  attendanceTimesheets: (orgSlug: string, projectId: string) =>
+    `${p(orgSlug, projectId)}/attendance/timesheets`,
   attendanceSites: (orgSlug: string, projectId: string) =>
     `${p(orgSlug, projectId)}/attendance/sites`,
   tenderPackages: (orgSlug: string, projectId: string) =>

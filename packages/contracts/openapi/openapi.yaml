@@ -6721,6 +6721,203 @@ paths:
         '204':
           description: Removed
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: Daily timesheets in a date range (up to 62 days). A subcontractor sees only its own workers.
+      parameters:
+        - { name: from, in: query, required: true, schema: { type: string, format: date } }
+        - { name: to, in: query, required: true, schema: { type: string, format: date } }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/TimesheetStatus' } }
+        - { name: workerId, in: query, schema: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetList' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/generate:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: generateTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Fill draft timesheets from closed sign-ins in a date range. Safe to repeat; sheets past draft are left alone.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DateRangeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GenerateTimesheetsResult' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/export:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      operationId: exportTimesheets
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.export
+      summary: CSV of approved timesheets in a range, one row per line. The sheets are marked exported.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DateRangeRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TimesheetExport' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    get:
+      operationId: getTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.view
+      summary: One timesheet with its lines.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: addTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Add hours that sign-in did not capture. A reason is required. Only while the sheet is draft or rejected.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AddTimesheetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/lines/{lineId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+      - {
+          name: lineId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' },
+        }
+    patch:
+      operationId: adjustTimesheetLine
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Change a line's minutes, break or cost code. A reason is required; a sign-in line becomes an adjusted line.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AdjustTimesheetLineRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/submit:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: submitTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.edit
+      summary: Submit for approval.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/approve:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: approveTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: Approve and lock the timesheet.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/timesheets/{timesheetId}/reject:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TimesheetId'
+    post:
+      operationId: rejectTimesheet
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.timesheets.approve
+      summary: Send a submitted timesheet back with a reason; it can be edited and submitted again.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RejectTimesheetRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Timesheet' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/equipment:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -11490,6 +11687,11 @@ paths:
         default: { $ref: '#/components/responses/Problem' }
 components:
   parameters:
+    TimesheetId:
+      name: timesheetId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
     EquipmentId:
       name: equipmentId
       in: path
@@ -19856,6 +20058,100 @@ components:
         status: { $ref: '#/components/schemas/ShiftAssignmentStatus' }
         notifiedAt: { type: [string, 'null'], format: date-time }
         respondedAt: { type: [string, 'null'], format: date-time }
+    TimesheetStatus:
+      type: string
+      enum: [draft, submitted, approved, rejected, exported]
+    TimesheetLine:
+      type: object
+      required: [id, minutes, breakMinutes, costCodeId, source, adjustedReason]
+      properties:
+        id: { type: string, pattern: '^tsl_[0-9A-Za-z]{26}$' }
+        minutes: { type: integer }
+        breakMinutes: { type: integer }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        source: { type: string, enum: [attendance, manual, adjusted] }
+        adjustedReason: { type: [string, 'null'] }
+    Timesheet:
+      type: object
+      required:
+        [
+          id,
+          workerId,
+          companyId,
+          date,
+          status,
+          submittedAt,
+          approvedAt,
+          rejectionReason,
+          paidMinutes,
+          paidHours,
+          lines,
+        ]
+      properties:
+        id: { type: string, pattern: '^tsh_[0-9A-Za-z]{26}$' }
+        workerId: { type: string, pattern: '^wkr_[0-9A-Za-z]{26}$' }
+        companyId: { type: [string, 'null'], pattern: '^cmp_[0-9A-Za-z]{26}$' }
+        date: { type: string, format: date, description: The day in the project's time zone. }
+        status: { $ref: '#/components/schemas/TimesheetStatus' }
+        submittedAt: { type: [string, 'null'], format: date-time }
+        approvedAt: { type: [string, 'null'], format: date-time }
+        rejectionReason: { type: [string, 'null'] }
+        paidMinutes: { type: integer, description: Minutes worked less breaks. }
+        paidHours: { type: string, pattern: '^\\d+\\.\\d{2}$' }
+        lines:
+          type: array
+          items: { $ref: '#/components/schemas/TimesheetLine' }
+    TimesheetList:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/Timesheet' }
+    DateRangeRequest:
+      type: object
+      additionalProperties: false
+      required: [from, to]
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+    GenerateTimesheetsResult:
+      type: object
+      required: [sheetsCreated, linesAdded]
+      properties:
+        sheetsCreated: { type: integer }
+        linesAdded: { type: integer }
+    TimesheetExport:
+      type: object
+      required: [filename, csv, count]
+      properties:
+        filename: { type: string }
+        csv: { type: string }
+        count: { type: integer, description: Timesheets included, now marked exported. }
+    AddTimesheetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [minutes, reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        costCodeId: { type: string, pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    AdjustTimesheetLineRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        minutes: { type: integer, minimum: 0, maximum: 1440 }
+        breakMinutes: { type: integer, minimum: 0, maximum: 1440 }
+        costCodeId: { type: [string, 'null'], pattern: '^ccd_[0-9A-Za-z]{26}$' }
+        reason: { type: string, minLength: 1, maxLength: 1000 }
+    RejectTimesheetRequest:
+      type: object
+      additionalProperties: false
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1, maxLength: 1000 }
     EquipmentStatus:
       type: string
       enum: [available, in_use, maintenance, retired]
