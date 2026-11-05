@@ -7898,6 +7898,158 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ComplianceExpiryAlertList' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/equipment:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+    get:
+      operationId: listEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: The organisation's equipment register, by asset number, with the hours each item has worked.
+      description: Retired equipment is left out unless `includeRetired` is set or `status` is `retired`.
+      parameters:
+        - {
+            name: status,
+            in: query,
+            required: false,
+            schema: { $ref: '#/components/schemas/EquipmentStatus' },
+          }
+        - {
+            name: projectId,
+            in: query,
+            required: false,
+            schema: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' },
+          }
+        - {
+            name: includeRetired,
+            in: query,
+            required: false,
+            schema: { type: string, enum: ['true', 'false'] },
+          }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: createEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Add an item to the equipment register, available and not at any project.
+      description: Asset numbers are unique within the organisation, ignoring case.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEquipmentRequest' }
+      responses:
+        '201':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/equipment/{equipmentId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: equipmentId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: getEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: One item of equipment.
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+    patch:
+      operationId: updateEquipment
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.manage
+      summary: Change an item's details, status or project.
+      description: An item is `in_use` exactly when it is at a project. Sending a project puts it to work there; sending `currentProjectId` null, or any other status, takes it off site.
+      parameters:
+        - $ref: '#/components/parameters/IfMatch'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEquipmentRequest' }
+      responses:
+        '200':
+          description: OK
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Equipment' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/equipment/{equipmentId}/logs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - {
+          name: equipmentId,
+          in: path,
+          required: true,
+          schema: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' },
+        }
+    get:
+      operationId: listEquipmentLogs
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.view
+      summary: An item's usage log, newest day first.
+      parameters:
+        - { name: from, in: query, required: false, schema: { type: string, format: date } }
+        - { name: to, in: query, required: false, schema: { type: string, format: date } }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentLogList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: logEquipmentUsage
+      tags: [workforce]
+      x-module: workforce
+      x-permission: workforce.equipment.log
+      summary: Record hours an item worked at a project on a day.
+      description: Entries cannot be edited or deleted. Record a negative number of hours to correct an earlier entry; the running total cannot go below zero. Retired equipment cannot be logged.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogEquipmentUsageRequest' }
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/EquipmentLog' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/compliance-documents:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -20857,6 +21009,91 @@ components:
       required: [data]
       properties:
         data: { type: array, items: { $ref: '#/components/schemas/ComplianceExpiryAlert' } }
+    EquipmentStatus:
+      type: string
+      enum: [available, in_use, maintenance, retired]
+    Equipment:
+      type: object
+      required:
+        [
+          id,
+          name,
+          assetNumber,
+          type,
+          status,
+          currentProjectId,
+          notes,
+          totalHours,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        name: { type: string }
+        assetNumber: { type: string }
+        type: { type: string }
+        status: { $ref: '#/components/schemas/EquipmentStatus' }
+        currentProjectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
+        notes: { type: [string, 'null'] }
+        totalHours:
+          description: Hours logged across all projects, as a decimal string with two places.
+          type: string
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+    EquipmentList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/Equipment' } }
+    CreateEquipmentRequest:
+      type: object
+      additionalProperties: false
+      required: [name, assetNumber, type]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        assetNumber: { type: string, minLength: 1, maxLength: 60 }
+        type: { type: string, minLength: 1, maxLength: 100 }
+        notes: { type: string, maxLength: 2000 }
+    UpdateEquipmentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, minLength: 1, maxLength: 200 }
+        assetNumber: { type: string, minLength: 1, maxLength: 60 }
+        type: { type: string, minLength: 1, maxLength: 100 }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+        status: { $ref: '#/components/schemas/EquipmentStatus' }
+        currentProjectId: { type: [string, 'null'], pattern: '^prj_[0-9A-Za-z]{26}$' }
+    EquipmentLog:
+      type: object
+      required: [id, equipmentId, projectId, loggedOn, hours, operator, notes, recordedAt]
+      properties:
+        id: { type: string, pattern: '^eql_[0-9A-Za-z]{26}$' }
+        equipmentId: { type: string, pattern: '^eqp_[0-9A-Za-z]{26}$' }
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        loggedOn: { type: string, format: date }
+        hours: { type: string, description: Decimal string; negative for a correction. }
+        operator: { type: [string, 'null'] }
+        notes: { type: [string, 'null'] }
+        recordedAt: { type: string, format: date-time }
+    EquipmentLogList:
+      type: object
+      required: [data]
+      properties:
+        data: { type: array, items: { $ref: '#/components/schemas/EquipmentLog' } }
+    LogEquipmentUsageRequest:
+      type: object
+      additionalProperties: false
+      required: [projectId, loggedOn, hours]
+      properties:
+        projectId: { type: string, pattern: '^prj_[0-9A-Za-z]{26}$' }
+        loggedOn: { type: string, format: date }
+        hours:
+          description: Hours worked, up to two decimal places, between -24 and 24 and not zero.
+          type: string
+          pattern: '^-?[0-9]{1,2}(\.[0-9]{1,2})?$'
+        operator: { type: string, minLength: 1, maxLength: 200 }
+        notes: { type: string, maxLength: 2000 }
     ComplianceDocumentList:
       type: object
       required: [data]

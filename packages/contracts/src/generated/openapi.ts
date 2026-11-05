@@ -5799,6 +5799,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/orgs/{orgId}/equipment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        /**
+         * The organisation's equipment register, by asset number, with the hours each item has worked.
+         * @description Retired equipment is left out unless `includeRetired` is set or `status` is `retired`.
+         */
+        get: operations["listEquipment"];
+        put?: never;
+        /**
+         * Add an item to the equipment register, available and not at any project.
+         * @description Asset numbers are unique within the organisation, ignoring case.
+         */
+        post: operations["createEquipment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/equipment/{equipmentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                equipmentId: string;
+            };
+            cookie?: never;
+        };
+        /** One item of equipment. */
+        get: operations["getEquipment"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change an item's details, status or project.
+         * @description An item is `in_use` exactly when it is at a project. Sending a project puts it to work there; sending `currentProjectId` null, or any other status, takes it off site.
+         */
+        patch: operations["updateEquipment"];
+        trace?: never;
+    };
+    "/v1/orgs/{orgId}/equipment/{equipmentId}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                equipmentId: string;
+            };
+            cookie?: never;
+        };
+        /** An item's usage log, newest day first. */
+        get: operations["listEquipmentLogs"];
+        put?: never;
+        /**
+         * Record hours an item worked at a project on a day.
+         * @description Entries cannot be edited or deleted. Record a negative number of hours to correct an earlier entry; the running total cannot go below zero. Retired equipment cannot be logged.
+         */
+        post: operations["logEquipmentUsage"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/orgs/{orgId}/compliance-documents": {
         parameters: {
             query?: never;
@@ -14151,6 +14225,65 @@ export interface components {
         };
         ComplianceExpiryAlertList: {
             data: components["schemas"]["ComplianceExpiryAlert"][];
+        };
+        /** @enum {string} */
+        EquipmentStatus: "available" | "in_use" | "maintenance" | "retired";
+        Equipment: {
+            id: string;
+            name: string;
+            assetNumber: string;
+            type: string;
+            status: components["schemas"]["EquipmentStatus"];
+            currentProjectId: string | null;
+            notes: string | null;
+            /** @description Hours logged across all projects, as a decimal string with two places. */
+            totalHours: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        EquipmentList: {
+            data: components["schemas"]["Equipment"][];
+        };
+        CreateEquipmentRequest: {
+            name: string;
+            assetNumber: string;
+            type: string;
+            notes?: string;
+        };
+        UpdateEquipmentRequest: {
+            name?: string;
+            assetNumber?: string;
+            type?: string;
+            notes?: string | null;
+            status?: components["schemas"]["EquipmentStatus"];
+            currentProjectId?: string | null;
+        };
+        EquipmentLog: {
+            id: string;
+            equipmentId: string;
+            projectId: string;
+            /** Format: date */
+            loggedOn: string;
+            /** @description Decimal string; negative for a correction. */
+            hours: string;
+            operator: string | null;
+            notes: string | null;
+            /** Format: date-time */
+            recordedAt: string;
+        };
+        EquipmentLogList: {
+            data: components["schemas"]["EquipmentLog"][];
+        };
+        LogEquipmentUsageRequest: {
+            projectId: string;
+            /** Format: date */
+            loggedOn: string;
+            /** @description Hours worked, up to two decimal places, between -24 and 24 and not zero. */
+            hours: string;
+            operator?: string;
+            notes?: string;
         };
         ComplianceDocumentList: {
             data: components["schemas"]["ComplianceDocument"][];
@@ -24588,6 +24721,177 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ComplianceExpiryAlertList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipment: {
+        parameters: {
+            query?: {
+                status?: components["schemas"]["EquipmentStatus"];
+                projectId?: string;
+                includeRetired?: "true" | "false";
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    createEquipment: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEquipmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    getEquipment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                equipmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    updateEquipment: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description The ETag from the last read. Missing → 428, stale → 412. */
+                "If-Match": components["parameters"]["IfMatch"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                equipmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEquipmentRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    ETag: components["headers"]["ETag"];
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Equipment"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    listEquipmentLogs: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                equipmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentLogList"];
+                };
+            };
+            default: components["responses"]["Problem"];
+        };
+    };
+    logEquipmentUsage: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: components["parameters"]["IdempotencyKey"];
+            };
+            path: {
+                orgId: components["parameters"]["OrgId"];
+                equipmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogEquipmentUsageRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EquipmentLog"];
                 };
             };
             default: components["responses"]["Problem"];

@@ -1470,6 +1470,14 @@ export const CreateDrawingSetRequestSchema = z.object({
 }).strict();
 export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
 
+export const CreateEquipmentRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "assetNumber": z.string().min(1).max(60),
+  "type": z.string().min(1).max(100),
+  "notes": z.string().max(2000).optional(),
+}).strict();
+export type CreateEquipmentRequest = z.infer<typeof CreateEquipmentRequestSchema>;
+
 export const CreateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "baseDate": z.string().date().optional(),
@@ -2618,6 +2626,45 @@ export const EntitlementsSchema = z.object({
 });
 export type Entitlements = z.infer<typeof EntitlementsSchema>;
 
+export const EquipmentStatusSchema = z.enum(["available", "in_use", "maintenance", "retired"]);
+export type EquipmentStatus = z.infer<typeof EquipmentStatusSchema>;
+
+export const EquipmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "assetNumber": z.string(),
+  "type": z.string(),
+  "status": EquipmentStatusSchema,
+  "currentProjectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable(),
+  "notes": z.string().nullable(),
+  "totalHours": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "updatedAt": z.string().datetime({ offset: true }),
+});
+export type Equipment = z.infer<typeof EquipmentSchema>;
+
+export const EquipmentListSchema = z.object({
+  "data": z.array(EquipmentSchema),
+});
+export type EquipmentList = z.infer<typeof EquipmentListSchema>;
+
+export const EquipmentLogSchema = z.object({
+  "id": z.string().regex(new RegExp("^eql_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "loggedOn": z.string().date(),
+  "hours": z.string(),
+  "operator": z.string().nullable(),
+  "notes": z.string().nullable(),
+  "recordedAt": z.string().datetime({ offset: true }),
+});
+export type EquipmentLog = z.infer<typeof EquipmentLogSchema>;
+
+export const EquipmentLogListSchema = z.object({
+  "data": z.array(EquipmentLogSchema),
+});
+export type EquipmentLogList = z.infer<typeof EquipmentLogListSchema>;
+
 export const EstimateSettingsSchema = z.object({
   "baseDate": z.string().date(),
   "region": z.string().nullable(),
@@ -3660,6 +3707,15 @@ export const LateSubmissionListSchema = z.object({
   "pendingCount": z.number().int().min(0),
 }).strict();
 export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
+
+export const LogEquipmentUsageRequestSchema = z.object({
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "loggedOn": z.string().date(),
+  "hours": z.string().regex(new RegExp("^-?[0-9]{1,2}(\\.[0-9]{1,2})?$")),
+  "operator": z.string().min(1).max(200).optional(),
+  "notes": z.string().max(2000).optional(),
+}).strict();
+export type LogEquipmentUsageRequest = z.infer<typeof LogEquipmentUsageRequestSchema>;
 
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
@@ -6279,6 +6335,16 @@ export const UpdateDraftDrawingRevisionRequestSchema = z.object({
   "drawingDate": z.string().date().nullable().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDraftDrawingRevisionRequest = z.infer<typeof UpdateDraftDrawingRevisionRequestSchema>;
+
+export const UpdateEquipmentRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "assetNumber": z.string().min(1).max(60).optional(),
+  "type": z.string().min(1).max(100).optional(),
+  "notes": z.string().max(2000).nullable().optional(),
+  "status": EquipmentStatusSchema.optional(),
+  "currentProjectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).nullable().optional(),
+}).strict();
+export type UpdateEquipmentRequest = z.infer<typeof UpdateEquipmentRequestSchema>;
 
 export const UpdateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

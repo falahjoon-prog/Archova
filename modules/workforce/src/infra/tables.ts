@@ -6,6 +6,7 @@ import {
   doublePrecision,
   integer,
   jsonb,
+  numeric,
   pgSchema,
   real,
   text,
@@ -432,4 +433,35 @@ export const shiftAssignments = workforceSchema.table('shift_assignments', {
   respondedAt: timestamp('responded_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   createdBy: uuid('created_by'),
+});
+
+export type EquipmentStatus = 'available' | 'in_use' | 'maintenance' | 'retired';
+
+export const equipment = workforceSchema.table('equipment', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  name: text('name').notNull(),
+  assetNumber: text('asset_number').notNull(),
+  type: text('type').notNull(),
+  status: text('status').$type<EquipmentStatus>().notNull().default('available'),
+  currentProjectId: uuid('current_project_id'),
+  notes: text('notes'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: uuid('updated_by'),
+  version: integer('version').notNull().default(1),
+});
+
+export const equipmentLogs = workforceSchema.table('equipment_logs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  equipmentId: uuid('equipment_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  loggedOn: date('logged_on').notNull(),
+  hours: numeric('hours', { precision: 5, scale: 2 }).notNull(),
+  operator: text('operator'),
+  notes: text('notes'),
+  recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
+  recordedBy: uuid('recorded_by'),
 });

@@ -24,4 +24,9 @@ export const WORKFORCE_PERMISSIONS: readonly PermissionDefinition[] = [
   // with `wallet.manage`.
   { key: 'workforce.wallet.request', scope: 'org', tool: null, level: 'admin' },
   { key: 'workforce.wallet.read_granted', scope: 'org', tool: null, level: 'standard' },
+  // Equipment register (plan: workforce and equipment): the organisation's plant and tools. Org-level because an
+  // item belongs to the company and moves between projects.
+  { key: 'workforce.equipment.view', scope: 'org', tool: null, level: 'standard' },
+  { key: 'workforce.equipment.log', scope: 'org', tool: null, level: 'standard' },
+  { key: 'workforce.equipment.manage', scope: 'org', tool: null, level: 'admin' },
 ];

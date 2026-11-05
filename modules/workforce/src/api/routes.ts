@@ -14,7 +14,9 @@ import {
   type TenantScope,
 } from '@archova/kernel';
 import type { AttendanceService } from '../application/attendance';
+import type { EquipmentService } from '../application/equipment';
 import type { RosterService } from '../application/roster';
+import { toEquipmentDto, toEquipmentLogDto } from './equipment-mappers';
 import { toShiftDto } from './roster-mappers';
 import type { WalletService } from '../application/wallet';
 import type { WalletGrantService } from '../application/wallet-grants';
@@ -99,6 +101,7 @@ export function workforceRoutes(
   wallet: WalletService,
   grants: WalletGrantService,
   roster: RosterService,
+  equipment: EquipmentService,
   hooks: InductionHooks = {},
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
@@ -124,7 +127,86 @@ export function workforceRoutes(
   const assignmentId = (p: { assignmentId: string }) =>
     id('shiftAssignment', p.assignmentId, 'workforce_shift.assignment_not_found');
 
+  const equipmentId = (p: { equipmentId: string }) =>
+    id('equipment', p.equipmentId, 'workforce_equipment.not_found');
+
   return defineRoutes({
+    // -------------------------------------------------------------------- equipment register
+
+    listEquipment: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        equipment.list(s, {
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.projectId ? { projectId: ref('project', q.projectId, 'projectId') } : {}),
+          includeRetired: q.includeRetired === 'true',
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toEquipmentDto) } };
+    },
+    createEquipment: async (input) => {
+      const b = input.body;
+      const row = await tx(input, (s) =>
+        equipment.create(s, {
+          name: b.name,
+          assetNumber: b.assetNumber,
+          type: b.type,
+          ...(b.notes ? { notes: b.notes } : {}),
+        }),
+      );
+      return { status: 201, body: toEquipmentDto(row), headers: { etag: etag(row.version) } };
+    },
+    getEquipment: async (input) => {
+      const row = await read(input, (s) => equipment.get(s, equipmentId(input.params)));
+      return { status: 200, body: toEquipmentDto(row), headers: { etag: etag(row.version) } };
+    },
+    updateEquipment: async (input) => {
+      const expected = parseIfMatch(input.headers['if-match']);
+      const b = input.body;
+      const row = await tx(input, (s) =>
+        equipment.update(s, equipmentId(input.params), expected, {
+          ...(b.name !== undefined ? { name: b.name } : {}),
+          ...(b.assetNumber !== undefined ? { assetNumber: b.assetNumber } : {}),
+          ...(b.type !== undefined ? { type: b.type } : {}),
+          ...(b.notes !== undefined ? { notes: b.notes } : {}),
+          ...(b.status !== undefined ? { status: b.status } : {}),
+          ...(b.currentProjectId !== undefined
+            ? {
+                currentProjectId:
+                  b.currentProjectId === null
+                    ? null
+                    : ref('project', b.currentProjectId, 'currentProjectId'),
+              }
+            : {}),
+        }),
+      );
+      return { status: 200, body: toEquipmentDto(row), headers: { etag: etag(row.version) } };
+    },
+    listEquipmentLogs: async (input) => {
+      const q = input.query;
+      const rows = await read(input, (s) =>
+        equipment.listLogs(s, equipmentId(input.params), {
+          ...(q.from ? { from: q.from } : {}),
+          ...(q.to ? { to: q.to } : {}),
+        }),
+      );
+      return { status: 200, body: { data: rows.map(toEquipmentLogDto) } };
+    },
+    logEquipmentUsage: async (input) => {
+      const b = input.body;
+      const row = await tx(input, (s) =>
+        equipment.logUsage(s, equipmentId(input.params), {
+          projectId: ref('project', b.projectId, 'projectId'),
+          loggedOn: b.loggedOn,
+          hours: b.hours,
+          ...(b.operator ? { operator: b.operator } : {}),
+          ...(b.notes ? { notes: b.notes } : {}),
+        }),
+      );
+      return { status: 201, body: toEquipmentLogDto(row) };
+    },
+    // -------------------------------------------------------------------- rosters
+
     listShifts: async (input) => {
       const q = input.query;
       const rows = await read(input, (s) =>

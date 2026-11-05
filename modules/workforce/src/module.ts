@@ -2,6 +2,7 @@ import { encodeId } from '@archova/domain';
 import { defineModule, type KernelServices, type SyncSource } from '@archova/kernel';
 import { createAttendanceService, type ComplianceSource } from './application/attendance';
 import { createInductionLinkService, type InductionLinkDeps } from './application/induction-links';
+import { createEquipmentService } from './application/equipment';
 import { createRosterService } from './application/roster';
 import { createWalletService } from './application/wallet';
 import { createWalletGrantService } from './application/wallet-grants';
@@ -34,6 +35,7 @@ export function createWorkforceModule(
     attendance,
     ...(deps.now ? { now: deps.now } : {}),
   });
+  const equipment = createEquipmentService({ platform: deps.platform });
   const links = createInductionLinkService({
     ...deps.links,
     database: services.database,
@@ -67,6 +69,7 @@ export function createWorkforceModule(
       wallet,
       grants,
       roster,
+      equipment,
       {
         logger: services.logger,
         ...deps.hooks,

@@ -1885,6 +1885,40 @@ export const SightWorkerCredentialParams = z.object({
 export const ListComplianceExpiryAlertsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
+export const ListEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const ListEquipmentQuery = z.object({
+  "status": s.EquipmentStatusSchema.optional(),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")).optional(),
+  "includeRetired": z.enum(["true", "false"]).optional(),
+});
+export const CreateEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+});
+export const CreateEquipmentBody = s.CreateEquipmentRequestSchema;
+export const GetEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEquipmentBody = s.UpdateEquipmentRequestSchema;
+export const ListEquipmentLogsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const ListEquipmentLogsQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+});
+export const LogEquipmentUsageParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const LogEquipmentUsageBody = s.LogEquipmentUsageRequestSchema;
 export const ListComplianceDocumentsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
 });
@@ -6668,6 +6702,78 @@ export const operations = {
     params: ListComplianceExpiryAlertsParams,
     query: null,
     body: null,
+  },
+  listEquipment: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/equipment',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.view",
+    internal: false,
+    contentType: null,
+    params: ListEquipmentParams,
+    query: ListEquipmentQuery,
+    body: null,
+  },
+  createEquipment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/equipment',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEquipmentParams,
+    query: null,
+    body: CreateEquipmentBody,
+  },
+  getEquipment: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/equipment/{equipmentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.view",
+    internal: false,
+    contentType: null,
+    params: GetEquipmentParams,
+    query: null,
+    body: null,
+  },
+  updateEquipment: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/equipment/{equipmentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEquipmentParams,
+    query: null,
+    body: UpdateEquipmentBody,
+  },
+  listEquipmentLogs: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/equipment/{equipmentId}/logs',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.view",
+    internal: false,
+    contentType: null,
+    params: ListEquipmentLogsParams,
+    query: ListEquipmentLogsQuery,
+    body: null,
+  },
+  logEquipmentUsage: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/equipment/{equipmentId}/logs',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogEquipmentUsageParams,
+    query: null,
+    body: LogEquipmentUsageBody,
   },
   listComplianceDocuments: {
     method: 'GET',
