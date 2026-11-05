@@ -4352,6 +4352,19 @@ export type MeetingSeriesList = z.infer<typeof MeetingSeriesListSchema>;
 export const MeetingSeriesRefSchema = z.string().regex(new RegExp("^msr_[0-9A-Za-z]{26}$"));
 export type MeetingSeriesRef = z.infer<typeof MeetingSeriesRefSchema>;
 
+export const NccReferenceSchema = z.object({
+  "provisionKey": z.string(),
+  "edition": z.string(),
+  "volume": z.enum(["1", "2", "3"]),
+  "clause": z.string(),
+  "title": z.string(),
+  "summary": z.string(),
+  "url": z.string(),
+  "signedBy": z.string(),
+  "signedOn": z.string().date(),
+});
+export type NccReference = z.infer<typeof NccReferenceSchema>;
+
 export const NegotiationTurnSchema = z.object({
   "role": z.enum(["estimator", "nova"]),
   "text": z.string().min(1).max(1500),
@@ -4399,6 +4412,8 @@ export const NovaAnswerSchema = z.object({
   "answer": z.string(),
   "citations": z.array(NovaCitationSchema),
   "closestMatches": z.array(NovaSourceSchema),
+  "nccReferences": z.array(NccReferenceSchema).optional(),
+  "nccNote": z.string().optional(),
 });
 export type NovaAnswer = z.infer<typeof NovaAnswerSchema>;
 

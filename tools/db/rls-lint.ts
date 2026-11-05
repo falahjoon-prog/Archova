@@ -15,6 +15,7 @@ export const GLOBAL_TABLES = new Set([
   'kernel.schema_migrations',
   // Nova statutory clause-rule table: lawyer-signed reference data, read-only to the app (ai/11 F34).
   'ai.ai_legal_rules',
+  'ai.ai_ncc_provisions',
   // Owner console and price book: staff-only and public catalogue data, no org content (backend 09).
   'billing.plans',
   'billing.plan_versions',

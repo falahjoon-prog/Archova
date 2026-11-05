@@ -2427,7 +2427,7 @@ paths:
         access also search sent RFIs, their question and every response; an RFI is cited by its `rfi_` id, and other
         people never retrieve RFI text through Ask. When the project's records don't answer it, `found` is false and
         `closestMatches` lists the nearest passages instead of a guess. Costs one Nova credit when the model is
-        called; nothing when no visible passage matches.
+        called; nothing when no visible passage matches. `nccReferences` lists signed NCC provisions the answer touches.
       requestBody:
         required: true
         content:
@@ -15456,6 +15456,36 @@ components:
           description: When not found, the nearest passages so the user can check themselves.
           type: array
           items: { $ref: '#/components/schemas/NovaSource' }
+        nccReferences:
+          description: |
+            National Construction Code provisions from Archova's signed table (edition, volume, clause, link) that the
+            question or answer touches. Chosen by matching the table's keywords, never written by the model, and
+            empty when no signed provision applies.
+          type: array
+          items: { $ref: '#/components/schemas/NccReference' }
+        nccNote:
+          {
+            type: string,
+            description: Fixed wording to show with `nccReferences` when there are any.,
+          }
+    NccReference:
+      type: object
+      required: [provisionKey, edition, volume, clause, title, summary, url, signedBy, signedOn]
+      properties:
+        provisionKey: { type: string }
+        edition:
+          {
+            type: string,
+            description: The NCC edition the clause number was checked against.,
+            example: '2022',
+          }
+        volume: { type: string, enum: ['1', '2', '3'] }
+        clause: { type: string, example: J3D3 }
+        title: { type: string }
+        summary: { type: string, description: In Archova's own words, not the NCC text. }
+        url: { type: string, format: uri }
+        signedBy: { type: string }
+        signedOn: { type: string, format: date }
     NovaRfiDraft:
       type: object
       required:
