@@ -97,6 +97,8 @@ main:focus {
   gap: var(--space-3);
 }
 .app-shell__logo {
+  /* The wordmark never gives up width to the org name or the actions beside it. */
+  flex-shrink: 0;
   font-size: var(--font-md);
   font-weight: 700;
   color: var(--c-text);
@@ -1514,6 +1516,10 @@ fieldset.worker-card > legend {
 .brand-logo {
   display: inline-flex;
   align-items: center;
+}
+.brand-logo img {
+  flex-shrink: 0;
+  max-width: none;
 }
 .brand-logo__light {
   display: block;
