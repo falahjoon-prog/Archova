@@ -9948,6 +9948,86 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Variation' }
         default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/direct-costs:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      operationId: listDirectCosts
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.read
+      summary: Direct costs, newest first, with the total of those not voided (ex GST).
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCostList' }
+        default: { $ref: '#/components/responses/Problem' }
+    post:
+      operationId: recordDirectCost
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.manage
+      summary: Record money spent against a budget line outside a subcontract or purchase order. It adds to the line's actual cost.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RecordDirectCostRequest' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DirectCostId'
+    get:
+      operationId: getDirectCost
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.read
+      summary: One direct cost.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
+  /v1/orgs/{orgId}/projects/{projectId}/direct-costs/{directCostId}/void:
+    parameters:
+      - $ref: '#/components/parameters/OrgId'
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/DirectCostId'
+    post:
+      operationId: voidDirectCost
+      tags: [financials]
+      x-module: financials
+      x-permission: financials.direct_costs.manage
+      summary: Void a direct cost with a reason. The amount comes off the budget line's actual cost.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VoidDirectCostRequest' }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DirectCost' }
+        default: { $ref: '#/components/responses/Problem' }
   /v1/orgs/{orgId}/projects/{projectId}/commitments:
     parameters:
       - $ref: '#/components/parameters/OrgId'
@@ -10981,6 +11061,11 @@ components:
       in: path
       required: true
       schema: { type: string, pattern: '^var_[0-9A-Za-z]{26}$' }
+    DirectCostId:
+      name: directCostId
+      in: path
+      required: true
+      schema: { type: string, pattern: '^dcs_[0-9A-Za-z]{26}$' }
     CommitmentId:
       name: commitmentId
       in: path
@@ -18091,6 +18176,70 @@ components:
         lines:
           type: array
           items: { $ref: '#/components/schemas/CommitmentLine' }
+    DirectCostCategory:
+      type: string
+      enum: [labour, materials, plant, fees, other]
+    DirectCost:
+      type: object
+      required:
+        [
+          id,
+          number,
+          budgetLineId,
+          category,
+          description,
+          supplier,
+          reference,
+          incurredOn,
+          amount,
+          gst,
+          status,
+          voidReason,
+          voidedAt,
+          createdAt,
+        ]
+      properties:
+        id: { type: string, pattern: '^dcs_[0-9A-Za-z]{26}$' }
+        number: { type: integer }
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        category: { $ref: '#/components/schemas/DirectCostCategory' }
+        description: { type: string }
+        supplier: { type: [string, 'null'] }
+        reference: { type: [string, 'null'] }
+        incurredOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+        status: { type: string, enum: [recorded, void] }
+        voidReason: { type: [string, 'null'] }
+        voidedAt: { type: [string, 'null'], format: date-time }
+        createdAt: { type: string, format: date-time }
+    DirectCostList:
+      type: object
+      required: [data, total]
+      properties:
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/DirectCost' }
+        total: { $ref: '#/components/schemas/FinancialsMoney' }
+    RecordDirectCostRequest:
+      type: object
+      additionalProperties: false
+      required: [budgetLineId, category, description, incurredOn, amount]
+      properties:
+        budgetLineId: { type: string, pattern: '^bln_[0-9A-Za-z]{26}$' }
+        category: { $ref: '#/components/schemas/DirectCostCategory' }
+        description: { type: string, minLength: 1, maxLength: 300 }
+        supplier: { type: string, minLength: 1, maxLength: 200 }
+        reference: { type: string, minLength: 1, maxLength: 100 }
+        incurredOn: { type: string, format: date }
+        amount: { $ref: '#/components/schemas/FinancialsMoney' }
+        gst: { $ref: '#/components/schemas/FinancialsMoney' }
+    VoidDirectCostRequest:
+      type: object
+      additionalProperties: false
+      required: [note]
+      properties:
+        note: { type: string, minLength: 1, maxLength: 5000 }
     CommitmentList:
       type: object
       required: [data]

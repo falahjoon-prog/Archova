@@ -258,6 +258,28 @@ export const commitmentLines = financialsSchema.table('commitment_lines', {
   sort: integer('sort').notNull(),
 });
 
+export const directCosts = financialsSchema.table('direct_costs', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  number: integer('number').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  category: text('category').$type<'labour' | 'materials' | 'plant' | 'fees' | 'other'>().notNull(),
+  description: text('description').notNull(),
+  supplier: text('supplier'),
+  reference: text('reference'),
+  incurredOn: date('incurred_on').notNull(),
+  amount: money('amount').notNull(),
+  gst: money('gst').notNull().default('0'),
+  status: text('status').$type<'recorded' | 'void'>().notNull().default('recorded'),
+  voidReason: text('void_reason'),
+  voidedAt: timestamp('voided_at', { withTimezone: true }),
+  voidedBy: uuid('voided_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+  version: integer('version').notNull().default(1),
+});
+
 export const trustAccounts = financialsSchema.table('trust_accounts', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

@@ -112,6 +112,7 @@ export const ID_PREFIXES = {
   budget: 'bud',
   budgetLine: 'bln',
   commitment: 'cmt',
+  directCost: 'dcs',
   budgetAdjustment: 'bad',
   prequalTemplate: 'pqt',
   prequalification: 'pqf',
