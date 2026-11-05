@@ -449,6 +449,7 @@ export async function loadModules(services: KernelServices, opts: ModuleOptions)
     variations: financials.api.reporting.variations,
     incidents: safety.api.reporting,
     programme: scheduling.api.reporting,
+    budget: { portfolioSummary: financials.api.budgetSummary },
     precon: precon.api,
     workforce: workforce.api,
     safety: safety.api,

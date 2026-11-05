@@ -5221,6 +5221,11 @@ export const PortfolioTotalsSchema = z.object({
   "incidentsOverdue": z.number().int(),
   "programmeOpen": z.number().int(),
   "programmeOverdue": z.number().int(),
+  "budgetProjects": z.number().int(),
+  "projectsOverBudget": z.number().int(),
+  "budgetRevised": FinancialsSignedMoneySchema,
+  "budgetForecastFinal": FinancialsSignedMoneySchema,
+  "budgetVariance": FinancialsSignedMoneySchema,
 });
 export type PortfolioTotals = z.infer<typeof PortfolioTotalsSchema>;
 
@@ -5230,6 +5235,16 @@ export const PortfolioToolSchema = z.object({
   "overdue": z.number().int(),
 });
 export type PortfolioTool = z.infer<typeof PortfolioToolSchema>;
+
+export const PortfolioBudgetSchema = z.object({
+  "restricted": z.boolean(),
+  "hasBudget": z.boolean(),
+  "revised": FinancialsSignedMoneySchema,
+  "forecastFinal": FinancialsSignedMoneySchema,
+  "variance": FinancialsSignedMoneySchema,
+  "overBudgetCodes": z.number().int(),
+});
+export type PortfolioBudget = z.infer<typeof PortfolioBudgetSchema>;
 
 export const PortfolioProjectSchema = z.object({
   "id": z.string(),
@@ -5243,6 +5258,7 @@ export const PortfolioProjectSchema = z.object({
   "variations": PortfolioToolSchema,
   "incidents": PortfolioToolSchema,
   "programme": PortfolioToolSchema,
+  "budget": PortfolioBudgetSchema,
   "attention": z.number().int(),
 });
 export type PortfolioProject = z.infer<typeof PortfolioProjectSchema>;

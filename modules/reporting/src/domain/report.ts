@@ -98,6 +98,49 @@ export interface ProjectCounts {
   programme: ToolCounts;
 }
 
+/**
+ * Budget against forecast for one project, in whole cents ex GST. Unlike the counts above this is money, so it is
+ * not folded into `attention` or the ordering: a project over budget is not "overdue".
+ */
+export interface BudgetSummary {
+  restricted: boolean;
+  hasBudget: boolean;
+  revisedCents: number;
+  forecastFinalCents: number;
+  /** Revised budget less forecast final cost: negative means the forecast is over budget. */
+  varianceCents: number;
+  /** Cost codes whose own forecast is over their revised budget. */
+  overBudgetCodes: number;
+}
+
+const money = (cents: number) => {
+  const abs = Math.abs(cents);
+  return `${cents < 0 ? '-' : ''}${Math.floor(abs / 100)}.${String(abs % 100).padStart(2, '0')}`;
+};
+
+/** The API shape of a project's budget line: decimal strings, and no figures at all when the caller may not see them. */
+export const budgetView = (b: BudgetSummary) => ({
+  restricted: b.restricted,
+  hasBudget: b.hasBudget,
+  revised: money(b.restricted || !b.hasBudget ? 0 : b.revisedCents),
+  forecastFinal: money(b.restricted || !b.hasBudget ? 0 : b.forecastFinalCents),
+  variance: money(b.restricted || !b.hasBudget ? 0 : b.varianceCents),
+  overBudgetCodes: b.restricted || !b.hasBudget ? 0 : b.overBudgetCodes,
+});
+
+/** Company-wide budget position over the projects that have a budget the caller can see. */
+export function budgetTotals(budgets: readonly BudgetSummary[]) {
+  const seen = budgets.filter((b) => !b.restricted && b.hasBudget);
+  const sum = (pick: (b: BudgetSummary) => number) => seen.reduce((n, b) => n + pick(b), 0);
+  return {
+    budgetProjects: seen.length,
+    projectsOverBudget: seen.filter((b) => b.varianceCents < 0).length,
+    budgetRevised: money(sum((b) => b.revisedCents)),
+    budgetForecastFinal: money(sum((b) => b.forecastFinalCents)),
+    budgetVariance: money(sum((b) => b.varianceCents)),
+  };
+}
+
 export const attention = (p: ProjectCounts) =>
   p.rfis.overdue +
   p.defects.overdue +

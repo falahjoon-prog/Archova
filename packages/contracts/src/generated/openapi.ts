@@ -9522,6 +9522,17 @@ export interface components {
             open: number;
             overdue: number;
         };
+        /** @description Budget against forecast for the project, AUD ex GST. Staff with the budget and forecast permissions only, and margin lines are left out unless the caller may see them. Variance is revised budget less forecast final cost, so a negative variance is over budget. */
+        PortfolioBudget: {
+            /** @description True when the caller may not read the budget or forecast; figures are then zero. */
+            restricted: boolean;
+            hasBudget: boolean;
+            revised: components["schemas"]["FinancialsSignedMoney"];
+            forecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            variance: components["schemas"]["FinancialsSignedMoney"];
+            /** @description Cost codes whose forecast is over their revised budget. */
+            overBudgetCodes: number;
+        };
         PortfolioProject: {
             id: string;
             name: string;
@@ -9538,6 +9549,7 @@ export interface components {
             incidents: components["schemas"]["PortfolioTool"];
             /** @description Activities on the newest programme that are not complete; overdue means they should have started or finished before today. */
             programme: components["schemas"]["PortfolioTool"];
+            budget: components["schemas"]["PortfolioBudget"];
             /** @description Overdue RFIs, defects, submittals, claims, unnotified incidents and late programme activities together. */
             attention: number;
         };
@@ -9557,6 +9569,12 @@ export interface components {
             incidentsOverdue: number;
             programmeOpen: number;
             programmeOverdue: number;
+            /** @description Projects with a budget the caller can see. */
+            budgetProjects: number;
+            projectsOverBudget: number;
+            budgetRevised: components["schemas"]["FinancialsSignedMoney"];
+            budgetForecastFinal: components["schemas"]["FinancialsSignedMoney"];
+            budgetVariance: components["schemas"]["FinancialsSignedMoney"];
         };
         LateSopaClaimRisk: {
             projects: components["schemas"]["LateSopaClaimRiskProject"][];

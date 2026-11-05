@@ -17,8 +17,9 @@ import { HomeIcon } from '@archova/ui/icons';
 import { webRoutes } from '@archova/routes';
 import { ErrorAlert } from '@/shared/layout/ErrorAlert';
 import { useCurrentOrg } from '@/shared/providers/CurrentOrgProvider';
+import { formatMoney } from '@/shared/lib/format';
 import { usePortfolio } from '../hooks/useReporting';
-import type { PortfolioProject, PortfolioTool } from '../lib/types';
+import type { PortfolioBudget, PortfolioProject, PortfolioTool } from '../lib/types';
 
 /** "4 open" with a red "2 overdue" beside it; "No access" when the caller cannot open that tool on the project. */
 function ToolCell({ tool }: { tool: PortfolioTool }) {
@@ -32,6 +33,23 @@ function ToolCell({ tool }: { tool: PortfolioTool }) {
           <StatusPill tone="danger">{tool.overdue} overdue</StatusPill>
         </>
       ) : null}
+    </>
+  );
+}
+
+const aud = (amount: string) => formatMoney({ amount, currency: 'AUD' });
+
+/** Forecast final cost against the revised budget: the shortfall in red when over, the headroom when under. */
+function BudgetCell({ budget }: { budget: PortfolioBudget }) {
+  if (budget.restricted) return <span className="u-muted">No access</span>;
+  if (!budget.hasBudget) return <span className="u-muted">No budget</span>;
+  const over = budget.variance.startsWith('-');
+  return (
+    <>
+      {over ? aud(budget.variance.slice(1)) : aud(budget.variance)}{' '}
+      <StatusPill tone={over ? 'danger' : 'success'}>
+        {over ? 'over budget' : 'under budget'}
+      </StatusPill>
     </>
   );
 }
@@ -98,6 +116,13 @@ export function PortfolioScreen() {
       cell: (r) => <ToolCell tool={r.programme} />,
     },
     {
+      id: 'budget',
+      header: 'Forecast vs budget',
+      sortValue: (r) =>
+        r.budget.hasBudget && !r.budget.restricted ? Number(r.budget.variance) : 0,
+      cell: (r) => <BudgetCell budget={r.budget} />,
+    },
+    {
       id: 'attention',
       header: 'Overdue',
       align: 'end',
@@ -146,6 +171,16 @@ export function PortfolioScreen() {
               label: 'Programme activities open',
               value: `${data.totals.programmeOpen} (${data.totals.programmeOverdue} late)`,
             },
+            ...(data.totals.budgetProjects > 0
+              ? [
+                  {
+                    label: 'Forecast vs budget',
+                    value: `${aud(data.totals.budgetVariance.replace('-', ''))} ${
+                      data.totals.budgetVariance.startsWith('-') ? 'over' : 'under'
+                    } across ${data.totals.budgetProjects} projects (${data.totals.projectsOverBudget} over budget)`,
+                  },
+                ]
+              : []),
           ]}
         />
       ) : null}
