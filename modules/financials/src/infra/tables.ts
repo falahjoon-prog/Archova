@@ -259,6 +259,17 @@ export const evidenceServiceRecords = financialsSchema.table('evidence_service_r
   recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const evidenceArchive = financialsSchema.table('evidence_archive', {
+  deliveryId: uuid('delivery_id').primaryKey(),
+  id: uuid('id').notNull().defaultRandom(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  objectKey: text('object_key').notNull(),
+  rawSha256: text('raw_sha256').notNull(),
+  storedSha256: text('stored_sha256'),
+  archivedAt: timestamp('archived_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const evidenceServiceVoids = financialsSchema.table('evidence_service_voids', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

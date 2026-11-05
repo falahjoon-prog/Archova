@@ -19,6 +19,7 @@ export const webRoutes = {
   readiness: (orgSlug: string) => `/${enc(orgSlug)}/readiness`,
   prequalification: (orgSlug: string) => `/${enc(orgSlug)}/prequalification`,
   accounting: (orgSlug: string) => `/${enc(orgSlug)}/settings/accounting`,
+  apps: (orgSlug: string) => `/${enc(orgSlug)}/settings/apps`,
   integrations: (orgSlug: string) => `/${enc(orgSlug)}/settings/integrations`,
   folders: (orgSlug: string) => `/${enc(orgSlug)}/settings/folders`,
   supportAccess: (orgSlug: string) => `/${enc(orgSlug)}/settings/support-access`,

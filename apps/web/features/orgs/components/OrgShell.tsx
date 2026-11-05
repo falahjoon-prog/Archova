@@ -74,6 +74,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
             ...(membership.role === 'owner' || membership.role === 'admin'
               ? [
                   { href: webRoutes.integrations(orgSlug), label: 'Integrations' },
+                  { href: webRoutes.apps(orgSlug), label: 'Apps' },
                   { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
                   { href: webRoutes.folders(orgSlug), label: 'SharePoint and Drive' },
                   { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },

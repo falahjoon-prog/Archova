@@ -7,8 +7,11 @@ export interface Principal {
   client: 'web' | 'ios' | 'android' | 'api';
   authMethod: 'password' | 'passkey' | 'sso' | 'oauth' | 'api_token';
   authTime: Date;
-  /** Set when the caller used a personal access token: it works in one org and only within these scopes. */
-  apiToken?: { id: string; orgId: string; scopes: readonly string[] };
+  /**
+   * Set when the caller used a personal access token or a partner app token: it works in one org and only within
+   * these scopes. `app` marks a partner app token, which needs its approver to still be a member of the org.
+   */
+  apiToken?: { id: string; orgId: string; scopes: readonly string[]; app?: true };
 }
 
 /**

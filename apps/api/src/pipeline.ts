@@ -402,6 +402,9 @@ export function registerOperations(
                   module: 'api',
                 },
               );
+            // A partner app was approved by an org member; once that person is no longer one, the app stops.
+            if (principal.apiToken?.app && tenant.principalType !== 'member')
+              throw new AppError('org.not_found');
             if (principal.apiToken) await limitRate(reply, principal.apiToken, tenant);
             if (def.rateLimit) await limitOperation(reply, operationId, def.rateLimit, tenant);
             checkEntitlement(def, tenant, req.method, operationId);

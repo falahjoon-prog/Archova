@@ -28,6 +28,8 @@ const Env = z.object({
   API_JWT_PRIVATE_JWK: z.string().optional(),
   API_JWT_ISSUER: z.string().optional(),
   API_WEB_SIGN_IN_URL: z.string().url().default('http://localhost:3000/login'),
+  // Platform kill switch for third-party partner apps (integrations/06). Off until Sam clears go-live.
+  API_PARTNER_APPS: z.enum(['on', 'off']).default('off'),
   API_FILES_STORE: z.enum(['s3', 'memory']).default('memory'),
   API_FILES_BUCKET: z.string().default('archova-local-files'),
   API_FILES_REGION: z.string().default('ap-southeast-2'),
@@ -131,6 +133,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env) {
     jwtPrivateJwk: e.API_JWT_PRIVATE_JWK ?? null,
     jwtIssuer: e.API_JWT_ISSUER ?? `https://${e.API_PUBLIC_HOSTS[0] ?? 'api.localhost'}`,
     webSignInUrl: e.API_WEB_SIGN_IN_URL,
+    partnerAppsEnabled: e.API_PARTNER_APPS === 'on',
     files: {
       store: e.API_FILES_STORE,
       bucket: e.API_FILES_BUCKET,
