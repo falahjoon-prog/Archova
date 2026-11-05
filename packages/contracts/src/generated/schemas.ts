@@ -266,6 +266,23 @@ export const ApiTokenListSchema = z.object({
 });
 export type ApiTokenList = z.infer<typeof ApiTokenListSchema>;
 
+export const AppInstallSchema = z.object({
+  "id": z.string(),
+  "clientId": z.string(),
+  "appName": z.string(),
+  "scopes": z.array(z.string()),
+  "installedBy": z.string(),
+  "createdAt": z.string().datetime({ offset: true }),
+  "lastUsedAt": z.string().datetime({ offset: true }).nullable(),
+  "revokedAt": z.string().datetime({ offset: true }).nullable(),
+});
+export type AppInstall = z.infer<typeof AppInstallSchema>;
+
+export const AppInstallListSchema = z.object({
+  "data": z.array(AppInstallSchema),
+});
+export type AppInstallList = z.infer<typeof AppInstallListSchema>;
+
 export const ApproveInductionSectionRequestSchema = z.object({
   "section": z.number().int().min(0).max(29),
 }).strict();
@@ -1876,6 +1893,14 @@ export const CreateMeetingSeriesRequestSchema = z.object({
   "agenda": z.array(MeetingAgendaSectionSchema).min(1).max(40).optional(),
 }).strict();
 export type CreateMeetingSeriesRequest = z.infer<typeof CreateMeetingSeriesRequestSchema>;
+
+export const CreateOauthAppRequestSchema = z.object({
+  "name": z.string().min(1).max(80),
+  "description": z.string().max(500).optional(),
+  "redirectUris": z.array(z.string().max(2000)).min(1).max(5),
+  "scopes": z.array(z.string()).min(1),
+});
+export type CreateOauthAppRequest = z.infer<typeof CreateOauthAppRequestSchema>;
 
 export const ObservationTypeSchema = z.enum(["safety", "quality", "environmental", "commercial"]);
 export type ObservationType = z.infer<typeof ObservationTypeSchema>;
@@ -3951,6 +3976,20 @@ export const InspectionTemplateListSchema = z.object({
 });
 export type InspectionTemplateList = z.infer<typeof InspectionTemplateListSchema>;
 
+export const InstallAppRequestSchema = z.object({
+  "clientId": z.string().max(100),
+  "redirectUri": z.string().max(2000),
+  "codeChallenge": z.string().min(43).max(128),
+  "state": z.string().min(1).max(512),
+  "scopes": z.array(z.string()).min(1),
+});
+export type InstallAppRequest = z.infer<typeof InstallAppRequestSchema>;
+
+export const InstallAppResponseSchema = z.object({
+  "redirectUrl": z.string(),
+});
+export type InstallAppResponse = z.infer<typeof InstallAppResponseSchema>;
+
 export const IntegrationCatalogueEntrySchema = z.object({
   "key": z.string(),
   "name": z.string(),
@@ -4043,6 +4082,51 @@ export const KeyDatesSchema = z.object({
   "updatedAt": z.string().datetime({ offset: true }).nullable(),
 });
 export type KeyDates = z.infer<typeof KeyDatesSchema>;
+
+export const LateSopaClaimRiskClaimSchema = z.object({
+  "claimId": z.string(),
+  "claimNumber": z.number().int(),
+  "contractNumber": z.number().int(),
+  "contractTitle": z.string(),
+  "subbieName": z.string().nullable(),
+  "claimedTotal": z.string(),
+  "scheduleDueOn": z.string().date(),
+  "paymentDueOn": z.string().date().nullable(),
+  "deadline": z.enum(["overdue", "due_soon"]),
+  "daysToScheduleDue": z.number().int(),
+  "insurance": z.enum(["expired", "expires_before_payment_due", "current", "none_on_file", "not_visible"]),
+  "summary": z.string(),
+});
+export type LateSopaClaimRiskClaim = z.infer<typeof LateSopaClaimRiskClaimSchema>;
+
+export const LateSopaClaimRiskProjectSchema = z.object({
+  "projectId": z.string(),
+  "projectName": z.string(),
+  "number": z.string().nullable(),
+  "level": z.enum(["high", "medium", "low"]),
+  "insuranceProblem": z.boolean(),
+  "scheduleSlip": z.boolean(),
+  "unknown": z.array(z.string()),
+  "claims": z.array(LateSopaClaimRiskClaimSchema),
+  "slip": z.object({
+  "lateCount": z.number().int(),
+  "worst": z.array(z.object({
+  "id": z.string(),
+  "wbs": z.string(),
+  "name": z.string(),
+  "finish": z.string().date(),
+  "daysLate": z.number().int(),
+})),
+}),
+});
+export type LateSopaClaimRiskProject = z.infer<typeof LateSopaClaimRiskProjectSchema>;
+
+export const LateSopaClaimRiskSchema = z.object({
+  "projects": z.array(LateSopaClaimRiskProjectSchema),
+  "unreadableProjects": z.number().int(),
+  "truncated": z.boolean(),
+});
+export type LateSopaClaimRisk = z.infer<typeof LateSopaClaimRiskSchema>;
 
 export const LateSubmissionSchema = z.object({
   "id": z.string().regex(new RegExp("^lsb_[0-9A-Za-z]{26}$")),
@@ -4812,6 +4896,42 @@ export const NovaTakeoffDetectionSchema = z.object({
 })),
 });
 export type NovaTakeoffDetection = z.infer<typeof NovaTakeoffDetectionSchema>;
+
+export const OauthAppSchema = z.object({
+  "clientId": z.string(),
+  "name": z.string(),
+  "description": z.string().nullable(),
+  "redirectUris": z.array(z.string()),
+  "scopes": z.array(z.string()),
+  "disabled": z.boolean(),
+});
+export type OauthApp = z.infer<typeof OauthAppSchema>;
+
+export const OauthAppCreatedSchema = z.intersection(OauthAppSchema, z.object({
+  "clientSecret": z.string(),
+}));
+export type OauthAppCreated = z.infer<typeof OauthAppCreatedSchema>;
+
+export const OauthAppListSchema = z.object({
+  "data": z.array(OauthAppSchema),
+  "availableScopes": z.array(z.string()),
+});
+export type OauthAppList = z.infer<typeof OauthAppListSchema>;
+
+export const OauthAppSecretSchema = z.object({
+  "clientId": z.string(),
+  "clientSecret": z.string(),
+});
+export type OauthAppSecret = z.infer<typeof OauthAppSecretSchema>;
+
+export const OauthConsentSchema = z.object({
+  "clientId": z.string(),
+  "name": z.string(),
+  "description": z.string().nullable(),
+  "ownerOrgId": z.string(),
+  "scopes": z.array(z.string()),
+});
+export type OauthConsent = z.infer<typeof OauthConsentSchema>;
 
 export const ObservationStatusSchema = z.enum(["open", "resolved", "closed"]);
 export type ObservationStatus = z.infer<typeof ObservationStatusSchema>;
@@ -6655,6 +6775,7 @@ export const TokenRequestSchema = z.object({
   "redirect_uri": z.string().optional(),
   "code_verifier": z.string().min(43).max(128).optional(),
   "refresh_token": z.string().optional(),
+  "client_secret": z.string().optional(),
 });
 export type TokenRequest = z.infer<typeof TokenRequestSchema>;
 
@@ -6663,6 +6784,7 @@ export const TokenResponseSchema = z.object({
   "token_type": z.enum(["Bearer"]),
   "expires_in": z.number().int(),
   "refresh_token": z.string(),
+  "scope": z.string().optional(),
 });
 export type TokenResponse = z.infer<typeof TokenResponseSchema>;
 

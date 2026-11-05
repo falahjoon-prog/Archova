@@ -185,3 +185,49 @@ export function createMemoryObjectStore() {
   };
   return store;
 }
+
+/**
+ * A store that can only add: no read, no delete, no overwrite. Used for evidence in a bucket with Object Lock, where the
+ * worker's role may only put. The key must already hold everything that makes the bytes unique (a hash of them), so an
+ * object that already exists at the key is the same object and a retry is safe.
+ */
+export interface WriteOnceStore {
+  /** Returns the SHA-256 S3 computed for the stored bytes. `created` is false when the key already existed. */
+  putIfAbsent(
+    key: string,
+    body: Uint8Array,
+    p: { contentType: string; sha256Base64: string },
+  ): Promise<{ created: boolean; sha256Base64: string | null }>;
+}
+
+/** Sends no retention or legal-hold headers: the bucket's default lock covers every object. */
+export function createS3WriteOnceStore(cfg: S3StoreConfig): WriteOnceStore {
+  const s3 = new S3Client({
+    region: cfg.region,
+    ...(cfg.endpoint ? { endpoint: cfg.endpoint } : {}),
+    forcePathStyle: cfg.forcePathStyle ?? Boolean(cfg.endpoint),
+    ...(cfg.credentials ? { credentials: cfg.credentials } : {}),
+  });
+  return {
+    async putIfAbsent(key, body, p) {
+      try {
+        const res = await s3.send(
+          new PutObjectCommand({
+            Bucket: cfg.bucket,
+            Key: key,
+            Body: body,
+            ContentType: p.contentType,
+            ChecksumSHA256: p.sha256Base64,
+            IfNoneMatch: '*',
+          }),
+        );
+        return { created: true, sha256Base64: res.ChecksumSHA256 ?? null };
+      } catch (e) {
+        // 412: the key exists. Because the key carries the content hash, that is the same bytes from an earlier try.
+        if ((e as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode === 412)
+          return { created: false, sha256Base64: null };
+        throw e;
+      }
+    },
+  };
+}
