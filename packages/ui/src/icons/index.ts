@@ -68,6 +68,7 @@ export {
   Home as HomeIcon,
   Hourglass as DelaysIcon,
   Handshake as ContractsIcon,
+  PiggyBank as BudgetIcon,
   Map as DrawingsIcon,
   MessageCircleQuestion as RfisIcon,
   PackageCheck as SubmittalsIcon,

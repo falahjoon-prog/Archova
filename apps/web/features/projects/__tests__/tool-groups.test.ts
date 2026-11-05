@@ -21,6 +21,7 @@ describe('projectToolGroups', () => {
       'Inductions',
       'Contracts',
       'Payment claims',
+      'Budget',
       'Attendance',
       'Inspections',
       'Observations',
