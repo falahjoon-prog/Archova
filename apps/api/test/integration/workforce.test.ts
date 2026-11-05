@@ -495,3 +495,65 @@ describe('Rosters (ATT-US11)', () => {
     );
   });
 });
+
+describe('Equipment', () => {
+  it('registers a machine, refuses clashing bookings and logs hours in quarter hours', async () => {
+    const s = await setup('equipment');
+    const eq = `${s.base}/equipment`;
+
+    // Only a site manager keeps the register.
+    const denied = await s.sub.browser.post(eq, {
+      name: 'Excavator',
+      assetNumber: 'EX-1',
+      type: 'Excavator',
+    });
+    expect(denied.statusCode).toBe(403);
+
+    const created = await s.sm.browser.post(eq, {
+      name: '5t excavator',
+      assetNumber: 'EX-1',
+      type: 'Excavator',
+    });
+    expect(created.statusCode).toBe(201);
+    const e = created.json();
+    expect(e).toMatchObject({ status: 'available', assetNumber: 'EX-1' });
+    const dup = await s.sm.browser.post(eq, {
+      name: 'Another',
+      assetNumber: 'EX-1',
+      type: 'Excavator',
+    });
+    expect(dup.statusCode).toBe(409);
+
+    const book = (startsOn: string, endsOn: string, bookedFor: string) =>
+      s.sm.browser.post(`${eq}/${e.id}/bookings`, { startsOn, endsOn, bookedFor });
+    const first = await book('2030-03-04', '2030-03-06', 'Slab crew');
+    expect(first.statusCode).toBe(201);
+    expect((await book('2030-03-06', '2030-03-08', 'Drainer')).statusCode).toBe(409);
+    expect((await book('2030-03-07', '2030-03-08', 'Drainer')).statusCode).toBe(201);
+    expect((await book('2030-03-09', '2030-03-08', 'Backwards')).statusCode).toBe(422);
+
+    // A cancelled booking frees the days.
+    const cancelled = await s.sm.browser.post(`${eq}/${e.id}/bookings/${first.json().id}/cancel`);
+    expect(cancelled.json().status).toBe('cancelled');
+    expect((await book('2030-03-05', '2030-03-06', 'Drainer')).statusCode).toBe(201);
+
+    const range = (
+      await s.sub.browser.get(`${s.base}/equipment-bookings?from=2030-03-07&to=2030-03-07`)
+    ).json().data;
+    expect(range).toHaveLength(1);
+
+    // A machine in maintenance can't be booked.
+    const m = await s.sm.browser.patch(`${eq}/${e.id}`, { status: 'maintenance' });
+    expect(m.json().status).toBe('maintenance');
+    expect((await book('2030-04-01', '2030-04-02', 'Late')).statusCode).toBe(409);
+
+    // Anyone with site access logs hours, in quarter hours.
+    const log = (hours: string) =>
+      s.sub.browser.post(`${eq}/${e.id}/logs`, { date: '2030-03-04', hours, operator: 'Pat' });
+    expect((await log('7.5')).statusCode).toBe(201);
+    expect((await log('7.3')).statusCode).toBe(422);
+    const logs = (await s.sm.browser.get(`${eq}/${e.id}/logs`)).json().data;
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ hours: '7.50', operator: 'Pat' });
+  });
+});

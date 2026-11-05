@@ -1470,6 +1470,21 @@ export const CreateDrawingSetRequestSchema = z.object({
 }).strict();
 export type CreateDrawingSetRequest = z.infer<typeof CreateDrawingSetRequestSchema>;
 
+export const CreateEquipmentBookingRequestSchema = z.object({
+  "startsOn": z.string().date(),
+  "endsOn": z.string().date(),
+  "bookedFor": z.string().min(1).max(200),
+  "note": z.string().min(1).max(2000).optional(),
+}).strict();
+export type CreateEquipmentBookingRequest = z.infer<typeof CreateEquipmentBookingRequestSchema>;
+
+export const CreateEquipmentRequestSchema = z.object({
+  "name": z.string().min(1).max(200),
+  "assetNumber": z.string().min(1).max(60),
+  "type": z.string().min(1).max(100),
+}).strict();
+export type CreateEquipmentRequest = z.infer<typeof CreateEquipmentRequestSchema>;
+
 export const CreateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200),
   "baseDate": z.string().date().optional(),
@@ -2618,6 +2633,55 @@ export const EntitlementsSchema = z.object({
 });
 export type Entitlements = z.infer<typeof EntitlementsSchema>;
 
+export const EquipmentStatusSchema = z.enum(["available", "in_use", "maintenance", "retired"]);
+export type EquipmentStatus = z.infer<typeof EquipmentStatusSchema>;
+
+export const EquipmentSchema = z.object({
+  "id": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "name": z.string(),
+  "assetNumber": z.string(),
+  "type": z.string(),
+  "status": EquipmentStatusSchema,
+  "version": z.number().int(),
+});
+export type Equipment = z.infer<typeof EquipmentSchema>;
+
+export const EquipmentBookingSchema = z.object({
+  "id": z.string().regex(new RegExp("^eqb_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "startsOn": z.string().date(),
+  "endsOn": z.string().date(),
+  "bookedFor": z.string(),
+  "note": z.string().nullable(),
+  "status": z.enum(["active", "cancelled"]),
+});
+export type EquipmentBooking = z.infer<typeof EquipmentBookingSchema>;
+
+export const EquipmentBookingListSchema = z.object({
+  "data": z.array(EquipmentBookingSchema),
+});
+export type EquipmentBookingList = z.infer<typeof EquipmentBookingListSchema>;
+
+export const EquipmentListSchema = z.object({
+  "data": z.array(EquipmentSchema),
+});
+export type EquipmentList = z.infer<typeof EquipmentListSchema>;
+
+export const EquipmentLogSchema = z.object({
+  "id": z.string().regex(new RegExp("^eql_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "date": z.string().date(),
+  "hours": z.string().regex(new RegExp("^\\\\d{1,2}\\\\.\\\\d{2}$")),
+  "operator": z.string().nullable(),
+  "notes": z.string().nullable(),
+});
+export type EquipmentLog = z.infer<typeof EquipmentLogSchema>;
+
+export const EquipmentLogListSchema = z.object({
+  "data": z.array(EquipmentLogSchema),
+});
+export type EquipmentLogList = z.infer<typeof EquipmentLogListSchema>;
+
 export const EstimateSettingsSchema = z.object({
   "baseDate": z.string().date(),
   "region": z.string().nullable(),
@@ -3660,6 +3724,14 @@ export const LateSubmissionListSchema = z.object({
   "pendingCount": z.number().int().min(0),
 }).strict();
 export type LateSubmissionList = z.infer<typeof LateSubmissionListSchema>;
+
+export const LogEquipmentHoursRequestSchema = z.object({
+  "date": z.string().date(),
+  "hours": z.string().regex(new RegExp("^\\\\d{1,2}(\\\\.\\\\d{1,2})?$")),
+  "operator": z.string().min(1).max(200).optional(),
+  "notes": z.string().min(1).max(2000).optional(),
+}).strict();
+export type LogEquipmentHoursRequest = z.infer<typeof LogEquipmentHoursRequestSchema>;
 
 export const LoginRequestSchema = z.object({
   "email": EmailSchema,
@@ -6279,6 +6351,13 @@ export const UpdateDraftDrawingRevisionRequestSchema = z.object({
   "drawingDate": z.string().date().nullable().optional(),
 }).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
 export type UpdateDraftDrawingRevisionRequest = z.infer<typeof UpdateDraftDrawingRevisionRequestSchema>;
+
+export const UpdateEquipmentRequestSchema = z.object({
+  "name": z.string().min(1).max(200).optional(),
+  "type": z.string().min(1).max(100).optional(),
+  "status": EquipmentStatusSchema.optional(),
+}).strict().refine((v) => Object.keys(v).length >= 1, { message: 'At least 1 field(s) required' });
+export type UpdateEquipmentRequest = z.infer<typeof UpdateEquipmentRequestSchema>;
 
 export const UpdateEstimateRequestSchema = z.object({
   "name": z.string().min(1).max(200).optional(),

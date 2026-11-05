@@ -1608,6 +1608,52 @@ export const DeleteDiaryStandDownParams = z.object({
 export const DeleteDiaryStandDownQuery = z.object({
   "amendmentReason": z.string().min(1).max(1000).optional(),
 });
+export const ListEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const CreateEquipmentBody = s.CreateEquipmentRequestSchema;
+export const UpdateEquipmentParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const UpdateEquipmentBody = s.UpdateEquipmentRequestSchema;
+export const ListEquipmentBookingsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+});
+export const ListEquipmentBookingsQuery = z.object({
+  "from": z.string().date().optional(),
+  "to": z.string().date().optional(),
+});
+export const CreateEquipmentBookingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const CreateEquipmentBookingBody = s.CreateEquipmentBookingRequestSchema;
+export const CancelEquipmentBookingParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+  "bookingId": z.string().regex(new RegExp("^eqb_[0-9A-Za-z]{26}$")),
+});
+export const ListEquipmentLogsParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const LogEquipmentHoursParams = z.object({
+  "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
+  "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
+  "equipmentId": z.string().regex(new RegExp("^eqp_[0-9A-Za-z]{26}$")),
+});
+export const LogEquipmentHoursBody = s.LogEquipmentHoursRequestSchema;
 export const ListShiftsParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
   "projectId": z.string().regex(new RegExp("^prj_[0-9A-Za-z]{26}$")),
@@ -6091,6 +6137,102 @@ export const operations = {
     params: DeleteDiaryStandDownParams,
     query: DeleteDiaryStandDownQuery,
     body: null,
+  },
+  listEquipment: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.view",
+    internal: false,
+    contentType: null,
+    params: ListEquipmentParams,
+    query: null,
+    body: null,
+  },
+  createEquipment: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEquipmentParams,
+    query: null,
+    body: CreateEquipmentBody,
+  },
+  updateEquipment: {
+    method: 'PATCH',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.manage",
+    internal: false,
+    contentType: "application/json",
+    params: UpdateEquipmentParams,
+    query: null,
+    body: UpdateEquipmentBody,
+  },
+  listEquipmentBookings: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment-bookings',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.view",
+    internal: false,
+    contentType: null,
+    params: ListEquipmentBookingsParams,
+    query: ListEquipmentBookingsQuery,
+    body: null,
+  },
+  createEquipmentBooking: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.manage",
+    internal: false,
+    contentType: "application/json",
+    params: CreateEquipmentBookingParams,
+    query: null,
+    body: CreateEquipmentBookingBody,
+  },
+  cancelEquipmentBooking: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/bookings/{bookingId}/cancel',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.manage",
+    internal: false,
+    contentType: null,
+    params: CancelEquipmentBookingParams,
+    query: null,
+    body: null,
+  },
+  listEquipmentLogs: {
+    method: 'GET',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/logs',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.view",
+    internal: false,
+    contentType: null,
+    params: ListEquipmentLogsParams,
+    query: null,
+    body: null,
+  },
+  logEquipmentHours: {
+    method: 'POST',
+    path: '/v1/orgs/{orgId}/projects/{projectId}/equipment/{equipmentId}/logs',
+    module: "workforce",
+    auth: "required",
+    permission: "workforce.equipment.log",
+    internal: false,
+    contentType: "application/json",
+    params: LogEquipmentHoursParams,
+    query: null,
+    body: LogEquipmentHoursBody,
   },
   listShifts: {
     method: 'GET',

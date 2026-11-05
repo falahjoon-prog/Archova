@@ -53,6 +53,7 @@ export type ProjectTool =
   | 'inductions'
   | 'attendance'
   | 'roster'
+  | 'equipment'
   | 'observations'
   | 'swms'
   | 'incidents'
