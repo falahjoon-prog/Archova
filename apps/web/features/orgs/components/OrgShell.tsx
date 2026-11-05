@@ -58,6 +58,9 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
           orgName={membership.orgName}
           nav={[
             { href: webRoutes.projects(orgSlug), label: 'Projects' },
+            ...(membership.kind === 'member'
+              ? [{ href: webRoutes.bidBoard(orgSlug), label: 'Bid board' }]
+              : []),
             { href: webRoutes.wallet(orgSlug), label: 'Compliance wallet' },
             { href: webRoutes.apiAccess(orgSlug), label: 'API access' },
             // Consent for Archova support is an owner/admin decision (platform.support_access.manage).
@@ -66,6 +69,7 @@ export function OrgShell({ orgSlug, children }: { orgSlug: string; children: Rea
                   { href: webRoutes.accounting(orgSlug), label: 'Accounting' },
                   { href: webRoutes.contractPlaybook(orgSlug), label: 'Contract playbook' },
                   { href: webRoutes.novaSettings(orgSlug), label: 'Nova settings' },
+                  { href: webRoutes.permissionTemplates(orgSlug), label: 'Permission templates' },
                   { href: webRoutes.supportAccess(orgSlug), label: 'Support access' },
                 ]
               : []),

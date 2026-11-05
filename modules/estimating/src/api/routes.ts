@@ -18,8 +18,10 @@ import type {
 } from '../application/tender';
 import type { MeasurementFields, TakeoffService } from '../application/takeoff';
 import type { EstimateService, LineInput as EstimateLineInput } from '../application/estimate';
+import type { BoardService } from '../application/board';
 import type { LibraryService } from '../application/library';
 import {
+  toBoardEntryDto,
   toComparisonDto,
   toCostItemDto,
   toCostRateDto,
@@ -185,6 +187,7 @@ export function estimatingRoutes(
   takeoff: TakeoffService,
   library: LibraryService,
   estimates: EstimateService,
+  board: BoardService,
 ) {
   const tx = <T>(input: { tenant: TenantContext | null }, fn: (s: TenantScope) => Promise<T>) =>
     database.withTenantTx(requireTenant(input), fn);
@@ -489,6 +492,24 @@ export function estimatingRoutes(
           ),
         ),
       ),
+    getBidBoard: async (input) => {
+      const q = input.query;
+      const r = await read(input, (s) =>
+        board.board(s, {
+          ...(q.status ? { status: q.status } : {}),
+          ...(q.trade ? { trade: q.trade } : {}),
+          ...(q.projectId ? { projectId: ref('project', q.projectId, 'projectId') } : {}),
+        }),
+      );
+      return {
+        status: 200,
+        body: {
+          data: r.data.map(toBoardEntryDto),
+          asOf: r.asOf.toISOString(),
+          truncated: r.truncated,
+        },
+      };
+    },
     listTenderPackages: async (input) => {
       const q = input.query;
       const page = await read(input, (s) =>

@@ -81,3 +81,30 @@ export function timeLost(row: { hours: number | null; days: number | null }): st
   if (row.days !== null) return plural(row.days, 'day');
   return '—';
 }
+
+export const DEP_LABELS = {
+  FS: 'Finish to start',
+  SS: 'Start to start',
+  FF: 'Finish to finish',
+  SF: 'Start to finish',
+} as const;
+
+/** The import request carries the file as text; the API takes up to about 900 KB. */
+export const MAX_IMPORT_CHARS = 900_000;
+
+/** Which reader a file name suggests: `.xer` is Primavera P6, `.xml` is MS Project. */
+export function formatForFile(name: string): 'msp' | 'p6' | null {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.xer')) return 'p6';
+  if (lower.endsWith('.xml')) return 'msp';
+  return null;
+}
+
+export const SOURCE_NAMES = { native: 'Archova', msp: 'MS Project', p6: 'Primavera P6' } as const;
+
+/** "Float 3 days", "No float" or, for finished work, nothing worth saying. */
+export function floatLabel(floatDays: number, critical: boolean): string {
+  if (critical) return 'Critical';
+  if (floatDays <= 0) return 'No float';
+  return `Float ${floatDays} ${floatDays === 1 ? 'day' : 'days'}`;
+}
