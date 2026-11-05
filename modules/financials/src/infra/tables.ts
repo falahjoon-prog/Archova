@@ -155,6 +155,57 @@ export const evidenceRecords = financialsSchema.table('evidence_records', {
   pdfSha256: text('pdf_sha256').notNull(),
 });
 
+export const costCodes = financialsSchema.table('cost_codes', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  code: text('code').notNull(),
+  description: text('description').notNull(),
+  parentId: uuid('parent_id'),
+  archived: boolean('archived').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const budgets = financialsSchema.table('budgets', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  status: text('status').$type<'draft' | 'locked'>().notNull().default('draft'),
+  lockedAt: timestamp('locked_at', { withTimezone: true }),
+  lockedBy: uuid('locked_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
+export const budgetLines = financialsSchema.table('budget_lines', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetId: uuid('budget_id').notNull(),
+  costCodeId: uuid('cost_code_id').notNull(),
+  description: text('description').notNull().default(''),
+  original: money('original').notNull(),
+  approvedChanges: money('approved_changes').notNull().default('0'),
+  committed: money('committed').notNull().default('0'),
+  actual: money('actual').notNull().default('0'),
+  forecastToComplete: money('forecast_to_complete').notNull().default('0'),
+  isMargin: boolean('is_margin').notNull().default(false),
+  sort: integer('sort').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const budgetAdjustments = financialsSchema.table('budget_adjustments', {
+  id: uuid('id').primaryKey(),
+  orgId: uuid('org_id').notNull(),
+  projectId: uuid('project_id').notNull(),
+  budgetLineId: uuid('budget_line_id').notNull(),
+  amount: money('amount').notNull(),
+  reason: text('reason').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  createdBy: uuid('created_by'),
+});
+
 export const forecastAdjustments = financialsSchema.table('forecast_adjustments', {
   id: uuid('id').primaryKey(),
   orgId: uuid('org_id').notNull(),

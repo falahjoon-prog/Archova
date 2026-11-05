@@ -17,7 +17,12 @@ import { createTransmittalService } from './application/transmittals';
 import { createTransmittalLinkService } from './application/transmittal-links';
 import { documentsRoutes } from './api/routes';
 import { toDocumentDto, toFolderDto } from './api/mappers';
-import { createDrawingsSyncSource, createMarkupCommand } from './api/drawings-sync';
+import {
+  createDrawingsSyncSource,
+  createMarkupCommand,
+  deleteMarkupCommand,
+  updateMarkupCommand,
+} from './api/drawings-sync';
 import { DOCUMENTS_PERMISSIONS } from './permissions';
 
 export function createDocumentsModule(
@@ -103,7 +108,11 @@ export function createDocumentsModule(
       /** The drawing register and revisions the mobile pull reads (modules/sync). */
       drawingsSyncSource,
       /** What a device may queue offline and push (modules/sync). */
-      syncCommands: [createMarkupCommand(drawings, markups)],
+      syncCommands: [
+        createMarkupCommand(drawings, markups),
+        updateMarkupCommand(markups),
+        deleteMarkupCommand(markups),
+      ],
       /** For RFIs and defects pinned to drawings: the revision and its sheet, or not_found. */
       getDrawingRevision: drawings.getRevision,
       /** For inductions linking a SWMS: the document's title, or not_found. */

@@ -50,3 +50,17 @@ export function summarise(rows: readonly BidBoardEntry[]): BoardSummary {
     awarded: rows.filter((r) => r.awarded).length,
   };
 }
+
+type ListLike = { id: string; trade: string; name: string; companyIds: readonly string[] };
+
+/** Lists for a trade first (case-insensitive), then the rest, each by name. */
+export function listsFor<T extends ListLike>(lists: readonly T[], trade: string): T[] {
+  const t = trade.trim().toLowerCase();
+  const match = (l: ListLike) => (l.trade.trim().toLowerCase() === t ? 0 : 1);
+  return [...lists].sort((a, b) => match(a) - match(b) || a.name.localeCompare(b.name));
+}
+
+/** The list's companies that can be invited now: on the project and not already invited. */
+export function listCandidates(list: ListLike, candidateIds: readonly string[]): string[] {
+  return list.companyIds.filter((id) => candidateIds.includes(id));
+}

@@ -16,6 +16,9 @@ export type VariationList = S['VariationList'];
 export type VariationStatus = S['VariationStatus'];
 export type CreateVariation = S['CreateVariationRequest'];
 export type VariationAction = 'submit' | 'approve' | 'reject' | 'withdraw';
+export type CostForecast = S['CostForecast'];
+export type ForecastAdjustment = S['ForecastAdjustment'];
+export type CreateForecastAdjustment = S['CreateForecastAdjustmentRequest'];
 export type CreateContract = S['CreateContractRequest'];
 export type SubmitPaymentClaim = S['SubmitPaymentClaimRequest'];
 export type IssuePaymentSchedule = S['IssuePaymentScheduleRequest'];
@@ -41,6 +44,29 @@ export function createClaimsApi(orgId: string) {
         await api.POST(`${P}/contracts`, {
           params: { path: { orgId, projectId }, header: idempotencyKey() },
           body,
+        }),
+      );
+    },
+    async costForecast(projectId: string): Promise<CostForecast> {
+      return unwrap(
+        await api.GET(`${P}/cost-forecast`, { params: { path: { orgId, projectId } } }),
+      );
+    },
+    async createAdjustment(
+      projectId: string,
+      body: CreateForecastAdjustment,
+    ): Promise<ForecastAdjustment> {
+      return unwrap(
+        await api.POST(`${P}/cost-forecast/adjustments`, {
+          params: { path: { orgId, projectId }, header: idempotencyKey() },
+          body,
+        }),
+      );
+    },
+    async deleteAdjustment(projectId: string, adjustmentId: string): Promise<void> {
+      unwrap(
+        await api.DELETE(`${P}/cost-forecast/adjustments/{adjustmentId}`, {
+          params: { path: { orgId, projectId, adjustmentId } },
         }),
       );
     },
