@@ -23,9 +23,11 @@ export const OauthAuthorizeQuery = z.object({
   "code_challenge": z.string().min(43).max(128),
   "code_challenge_method": z.enum(["S256"]),
   "state": z.string().max(512),
+  "prompt": z.enum(["login"]).optional(),
 });
 export const OauthTokenBody = s.TokenRequestSchema;
 export const OauthRevokeBody = s.RevokeRequestSchema;
+export const DeleteMeBody = s.DeleteMeRequestSchema;
 export const CreateOrgBody = s.CreateOrgRequestSchema;
 export const GetOrgParams = z.object({
   "orgId": z.string().regex(new RegExp("^org_[0-9A-Za-z]{26}$")),
@@ -3091,6 +3093,18 @@ export const operations = {
     params: null,
     query: null,
     body: null,
+  },
+  deleteMe: {
+    method: 'DELETE',
+    path: '/v1/me',
+    module: "platform",
+    auth: "required",
+    permission: null,
+    internal: false,
+    contentType: "application/json",
+    params: null,
+    query: null,
+    body: DeleteMeBody,
   },
   createOrg: {
     method: 'POST',

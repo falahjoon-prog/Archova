@@ -204,7 +204,13 @@ export function createApiTokenService(database: Database, now: () => Date = () =
     };
   }
 
-  return { create, list, revoke, authenticate };
+  /** Revokes every live token the caller holds in the org (account deletion). */
+  async function revokeAllOwn(tenant: TenantContext, ip: string | null) {
+    const mine = (await list(tenant, false)).filter((t) => !t.revokedAt);
+    for (const t of mine) await revoke(tenant, t.id, false, ip);
+  }
+
+  return { create, list, revoke, revokeAllOwn, authenticate };
 }
 
 export type ApiTokenService = ReturnType<typeof createApiTokenService>;

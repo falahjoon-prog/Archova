@@ -40,6 +40,9 @@ export async function createIdentityModule(services: KernelServices, config: Ide
       getUser: accounts.getUser,
       getUsers: accounts.getUsers,
       findUserByEmail: accounts.findUserByEmail,
+      /** Account deletion: clears the profile and ends every session (platform runs the org side first). */
+      eraseAccount: accounts.eraseAccount,
+      revokeOwnApiTokens: apiTokens.revokeAllOwn,
     },
   };
 }

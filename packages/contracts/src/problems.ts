@@ -22,6 +22,9 @@ export const PROBLEM_CODES = {
   'auth.step_up_required': 403,
   'auth.email_taken': 409,
   'auth.weak_password': 422,
+  // deleting your own account
+  'account.sole_owner': 409,
+  'account.org_on_hold': 409,
   // personal access tokens (public API)
   'api_token.not_found': 404,
   'api_token.invalid_scope': 422,

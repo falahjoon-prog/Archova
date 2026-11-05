@@ -2428,6 +2428,11 @@ export const DelayRegisterSchema = z.object({
 });
 export type DelayRegister = z.infer<typeof DelayRegisterSchema>;
 
+export const DeleteMeRequestSchema = z.object({
+  "confirm": z.enum(["DELETE"]),
+}).strict();
+export type DeleteMeRequest = z.infer<typeof DeleteMeRequestSchema>;
+
 export const DiaryAmendmentSchema = z.object({
   "id": z.string(),
   "targetType": z.enum(["entry", "labour", "plant", "delivery", "delay", "visitor", "event", "stand_down"]),
